@@ -1,5 +1,5 @@
 {
-	"format_version": "1.8.0",
+	"format_version": "1.10.0",
 	"minecraft:client_entity": {
 		"description": {
 			"identifier": "cobblemon:001_bulbasaur",
@@ -12,24 +12,21 @@
 			"geometry": {
 				"default": "geometry.001_bulbasaur"
 			},
-			"scripts": {},
+			"scripts": {
+				"animate": ["pose"]
+			},
 			"animations": {
 				"blink": "animation.bulbasaur.blink",
 				"cry": "animation.bulbasaur.cry",
 				"faint": "animation.bulbasaur.faint",
 				"ground_idle": "animation.bulbasaur.ground_idle",
 				"ground_walk": "animation.bulbasaur.ground_walk",
-				"sleep": "animation.bulbasaur.sleep"
+				"sleep": "animation.bulbasaur.sleep",
+				"pose": "controller.animation.bulbasaur.pose"
 			},
-			"animation_controllers": [
-				{"blink": "controller.animation.bulbasaur.blink"},
-				{"cry": "controller.animation.bulbasaur.cry"},
-				{"faint": "controller.animation.bulbasaur.faint"},
-				{"ground_idle": "controller.animation.bulbasaur.ground_idle"},
-				{"ground_walk": "controller.animation.bulbasaur.ground_walk"},
-				{"sleep": "controller.animation.bulbasaur.sleep"}
+			"render_controllers": [
+				"controller.render.agent"
 			],
-			"render_controllers": ["controller.render.agent"],
 			"spawn_egg": {
 				"texture": "001_bulbasaur_spawn_egg"
 			}
