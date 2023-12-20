@@ -1,5 +1,5 @@
 {
-	"format_version": "1.8.0",
+	"format_version": "1.10.0",
 	"minecraft:client_entity": {
 		"description": {
 			"identifier": "cobblemon:003_venusaur",
@@ -12,23 +12,18 @@
 			"geometry": {
 				"default": "geometry.003_venusaur"
 			},
-			"scripts": {},
+			"scripts": {
+				"animate": ["pose"]
+			},
 			"animations": {
 				"blink": "animation.venusaur.blink",
 				"cry": "animation.venusaur.cry",
 				"faint": "animation.venusaur.faint",
 				"ground_idle": "animation.venusaur.ground_idle",
 				"ground_walk": "animation.venusaur.ground_walk",
-				"sleep": "animation.venusaur.sleep"
+				"sleep": "animation.venusaur.sleep",
+				"pose": "controller.animation.venusaur.pose"
 			},
-			"animation_controllers": [
-				{"blink": "controller.animation.venusaur.blink"},
-				{"cry": "controller.animation.venusaur.cry"},
-				{"faint": "controller.animation.venusaur.faint"},
-				{"ground_idle": "controller.animation.venusaur.ground_idle"},
-				{"ground_walk": "controller.animation.venusaur.ground_walk"},
-				{"sleep": "controller.animation.venusaur.sleep"}
-			],
 			"render_controllers": ["controller.render.agent"],
 			"spawn_egg": {
 				"texture": "003_venusaur_spawn_egg"

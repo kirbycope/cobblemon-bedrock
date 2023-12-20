@@ -1,5 +1,5 @@
 {
-	"format_version": "1.8.0",
+	"format_version": "1.10.0",
 	"minecraft:client_entity": {
 		"description": {
 			"identifier": "cobblemon:008_wartortle",
@@ -12,7 +12,9 @@
 			"geometry": {
 				"default": "geometry.008_wartortle"
 			},
-			"scripts": {},
+			"scripts": {
+				"animate": ["pose"]
+			},
 			"animations": {
 				"blink": "animation.wartortle.blink",
 				"cry": "animation.wartortle.cry",
@@ -21,18 +23,9 @@
 				"ground_walk": "animation.wartortle.ground_walk",
 				"sleep": "animation.wartortle.sleep",
 				"water_idle": "animation.wartortle.water_idle",
-				"water_swim": "animation.wartortle.water_swim"
+				"water_swim": "animation.wartortle.water_swim",
+				"pose": "controller.animation.wartortle.pose"
 			},
-			"animation_controllers": [
-				{"blink": "controller.animation.wartortle.blink"},
-				{"cry": "controller.animation.wartortle.cry"},
-				{"faint": "controller.animation.wartortle.faint"},
-				{"ground_idle": "controller.animation.wartortle.ground_idle"},
-				{"ground_walk": "controller.animation.wartortle.ground_walk"},
-				{"sleep": "controller.animation.wartortle.sleep"},
-				{"water_idle": "controller.animation.wartortle.water_idle"},
-				{"water_swim": "controller.animation.wartortle.water_swim"}
-			],
 			"render_controllers": ["controller.render.agent"],
 			"spawn_egg": {
 				"texture": "008_wartortle_spawn_egg"
