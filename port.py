@@ -145,19 +145,17 @@ def create_client_entities():
                         "default": f"textures/entity/{pokemon}/{pokemonName}"
                     },
                     "geometry": {
-                        "default": f"geometry.{pokemon}"
+                        "default": f"geometry.{pokemonName}"
                     },
                     "scripts": {
                         "animate": ["pose"]
                     },
                     "animations": {
-                        "blink": "animation.name.blink",
-                        "cry": "animation.name.cry",
-                        "faint": "animation.name.faint",
-                        "ground_idle": "animation.name.ground_idle",
-                        "ground_walk": "animation.name.ground_walk",
-                        "sleep": "animation.name.sleep",
-                        "pose": "controller.animation.name.pose"
+                        "faint": f"animation.{pokemonName}.faint",
+                        "ground_idle": f"animation.{pokemonName}.ground_idle",
+                        "ground_walk": f"animation.{pokemonName}.ground_walk",
+                        "sleep": f"animation.{pokemonName}.sleep",
+                        "pose": f"controller.animation.{pokemonName}.pose"
                     },
                     "render_controllers": ["controller.render.agent"],
                     "spawn_egg": {
@@ -171,11 +169,11 @@ def create_client_entities():
             file.write(jsonData)
     print("Create client entities complete.")
 
-copy_animations()
-copy_models()
-copy_textures()
+#copy_animations()
+#copy_models()
+#copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
 create_texts()
-download_spawn_egg_textures()
+#download_spawn_egg_textures()
 create_animation_controllers()
 create_client_entities() # ToDo: Dynamic animations definition
