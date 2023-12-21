@@ -42,7 +42,7 @@ def copy_textures():
     print("Copy textures complete.")
 
 def create_texts():
-    print("Adding texts...")
+    print("Creating texts...")
     if not os.path.exists(textsBedrock): os.makedirs(textsBedrock)
     fileName = f"{textsBedrock}/en_US.lang"
     if os.path.exists(f"{textsBedrock}/en_US.lang"): os.remove(fileName)
@@ -59,10 +59,10 @@ def create_texts():
             pokemonName = pokemonName.replace("Ironleaves","Iron Leaves")
             file.write(f"entity.cobblemon:{pokemon}.name={pokemonName}\n")
             file.write(f"item.spawn_egg.entity.cobblemon:{pokemon}.name=Spawn {pokemonName}\n")
-    print("Add text complete.")
+    print("Create text complete.")
 
 def download_spawn_egg_textures():
-    print("Downloading sprites...")
+    print("Downloading spawn egg textures...")
     if not os.path.exists(texturesItemsBedrock): os.makedirs(texturesItemsBedrock)
     for pokemon in pokemons:
         spriteBaseUri1 = "https://img.pokemondb.net/sprites/sword-shield/icon"
@@ -87,10 +87,47 @@ def download_spawn_egg_textures():
                 spriteUrl = f"{spriteBaseUri2}/{pokemonName}.png"
                 opener.retrieve(spriteUrl, fileName)
             except Exception as e: print(f"Failed to download: {pokemon}")
-    print("Download sprites complete.")
+    print("Download spawn egg textures complete.")
+
+def create_animation_controllers():
+    print("Creating animation controllers...")
+    if not os.path.exists(animationControllers): os.makedirs(animationControllers)
+    for pokemon in pokemons:
+        pokemonName = pokemon[pokemon.index("_")+1:]
+        fileName = f"{animationControllers}/{pokemon}.animation_controllers.json"
+        entity = {
+            "format_version": "1.10.0",
+            "animation_controllers": {
+                f"controller.animation.{pokemonName}.pose": {
+                    "initial_state": "idle",
+                    "states": {
+                        "idle" : {
+                            "animations" : [ "ground_idle" ],
+                            "transitions": [ {"moving": "q.modified_move_speed > 0.1"} ],
+                            "blend_transition": 0.2
+                        },
+                        "moving" : {
+                            "animations" : [ "ground_idle", "ground_walk" ],
+                            "transitions": [ {"idle": "q.modified_move_speed < 0.1"} ],
+                            "blend_transition": 0.2
+                        },
+                        "sleeping": {
+                            "animations": ["sleep"]
+                        },
+                        "fainting": {
+                            "animations": ["faint"]
+                        }
+                    }
+                }
+            }
+        }
+        jsonData = json.dumps(entity, indent=4)
+        with open(fileName, "w") as file:
+            file.write(jsonData)
+    print("Create animation controllers complete.")
 
 def create_client_entities():
-    print("Generating Client Entity files...")
+    print("Creating client entities...")
     if not os.path.exists(entityBedrock): os.makedirs(entityBedrock)
     for pokemon in pokemons:
         pokemonName = pokemon[pokemon.index("_")+1:]
@@ -132,13 +169,13 @@ def create_client_entities():
         jsonData = json.dumps(entity, indent=4)
         with open(fileName, "w") as file:
             file.write(jsonData)
-    print("Generate Client Entity files complete...")
+    print("Create client entities complete.")
 
-#copy_animations()
-#copy_models()
-#copy_textures()
-# Get a list of Pokemon
+copy_animations()
+copy_models()
+copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
-#create_texts()
-#download_spawn_egg_textures()
-create_client_entities()
+create_texts()
+download_spawn_egg_textures()
+create_animation_controllers()
+create_client_entities() # ToDo: Dynamic animations definition
