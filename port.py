@@ -85,6 +85,14 @@ def download_spawn_egg_textures():
                 spriteUrl = f"{spriteBaseUri2}/{pokemonName}.png"
                 opener.retrieve(spriteUrl, fileName)
             except Exception as e: print(f"Failed to download: {pokemon}")
+        # Update item_texture.json
+        with open(f"{pwd}//development_resource_packs/cobblemon/textures/item_texture.json", "r") as itemTexureFile:
+            itemTextureData = json.load(itemTexureFile)
+        itemTextureData["texture_data"][f"{pokemon}_spawn_egg"] = {}
+        itemTextureData["texture_data"][f"{pokemon}_spawn_egg"]["textures"] = [f"textures/items/{pokemon}_spawn_egg"]
+        itemTextureData = json.dumps(itemTextureData, indent=4)
+        with open(f"{pwd}//development_resource_packs/cobblemon/textures/item_texture.json", "w") as itemTexureFile:
+            itemTexureFile.write(itemTextureData)
     print("Download spawn egg textures complete.")
 
 def create_animation_controllers():
@@ -183,6 +191,7 @@ def create_behavior_entities():
             # Set entity as an ageable baby
             jsonTemplateFile = open("development_behavior_packs/cobblemon/entities/0000_template.behavior.json")
             jsonTemplateData = json.load(jsonTemplateFile)
+            jsonTemplateFile.close()
             jsonTemplateData["minecraft:entity"]["description"]["identifier"] = f"cobblemon:{pokemon}"
             # ToDo: Set ["minecraft:entity"]["component_groups"]["grow_up"]
             jsonData = json.dumps(jsonTemplateData, indent=4)
@@ -196,7 +205,7 @@ def create_behavior_entities():
 #copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
 #create_texts()
-#download_spawn_egg_textures()
+download_spawn_egg_textures()
 #create_animation_controllers()
 #create_client_entities()
-create_behavior_entities()
+#create_behavior_entities()
