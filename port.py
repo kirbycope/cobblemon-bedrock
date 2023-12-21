@@ -89,7 +89,6 @@ def download_spawn_egg_textures():
             except Exception as e: print(f"Failed to download: {pokemon}")
     print("Download sprites complete.")
 
-# Client Entity File
 def create_client_entities():
     print("Generating Client Entity files...")
     if not os.path.exists(entityBedrock): os.makedirs(entityBedrock)
@@ -97,7 +96,6 @@ def create_client_entities():
         pokemonName = pokemon[pokemon.index("_")+1:]
         fileName = f"{entityBedrock}/{pokemon}.entity.json"
         if os.path.exists(f"{textsBedrock}/en_US.lang"): os.remove(fileName)
-        # a Python object (dict):
         entity = {
             "format_version": "1.10.0",
             "minecraft:client_entity": {
@@ -131,10 +129,8 @@ def create_client_entities():
                 }
             }
         }
-        # convert into JSON:
         jsonData = json.dumps(entity, indent=4)
-        # Write to file
-        with open("sample.json", "w") as file:
+        with open(fileName, "w") as file:
             file.write(jsonData)
     print("Generate Client Entity files complete...")
 
