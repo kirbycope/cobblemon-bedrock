@@ -1,0 +1,43 @@
+{
+   "format_version": "1.10.0",
+   "animation_controllers": {
+      "controller.animation.cetoddle.pose": {
+         "initial_state": "idle",
+         "states": {
+            "idle": {
+               "animations": [
+                  "ground_idle"
+               ],
+               "transitions": [
+                  {
+                     "moving": "q.modified_move_speed > 0.1"
+                  }
+               ],
+               "blend_transition": 0.2
+            },
+            "moving": {
+               "animations": [
+                  "ground_idle",
+                  "ground_walk"
+               ],
+               "transitions": [
+                  {
+                     "idle": "q.modified_move_speed < 0.1"
+                  }
+               ],
+               "blend_transition": 0.2
+            },
+            "sleeping": {
+               "animations": [
+                  "sleep"
+               ]
+            },
+            "fainting": {
+               "animations": [
+                  "faint"
+               ]
+            }
+         }
+      }
+   }
+}

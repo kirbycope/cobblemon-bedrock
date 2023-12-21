@@ -1,0 +1,117 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.gastly.ground_idle": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"relative_to": {
+						"rotation": "entity"
+					},
+					"rotation": ["5+4*math.sin(q.anim_time*90*2-30)+math.clamp(3*math.sin(q.anim_time*90*2-30)*1,0,3)", 0, "0.4*math.sin(q.anim_time*90*15)"],
+					"position": [
+						"2.25*math.sin(q.anim_time*90*2)*0.4-2.25*math.sin(q.anim_time*90*2-30)*0.4+2.25*math.sin(q.anim_time*90*2-60)*0.4-2.25*math.sin(q.anim_time*90*2-90)*0.4",
+						"2.25*math.sin(q.anim_time*90*2)*0.4-2.25*math.sin(q.anim_time*90*2-30)*0.4-2.25*math.sin(q.anim_time*90*2-60)*0.4+2.25*math.sin(q.anim_time*90*2-90)*0.4",
+						0
+					]
+				},
+				"gastly": {
+					"position": [0, 0, 0]
+				}
+			},
+			"particle_effects": {
+				"0.0": [
+					{
+						"effect": "ghostly_smoke",
+						"locator": "gas"
+					},
+					{
+						"effect": "ghostly_smoke_center",
+						"locator": "gas"
+					}
+				]
+			}
+		},
+		"animation.gastly.ground_walk": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": ["5-4*math.sin(q.anim_time*90*3-30)+math.clamp(3*math.sin(q.anim_time*90*2-30)*1,0,3)", 0, "0.5*math.sin(q.anim_time*90*15)"],
+					"position": [
+						"0.5*math.sin(q.anim_time*90*3/2)-0.5*math.sin(q.anim_time*90*3/2-60)",
+						"1*math.sin(q.anim_time*90*3)*0.4-1*math.sin(q.anim_time*90*3-30)*0.4-1*math.sin(q.anim_time*90*3-60)*0.4+1*math.sin(q.anim_time*90*3-90)*0.4",
+						"1.25*math.sin(q.anim_time*90*3)*0.4-1.*math.sin(q.anim_time*90*3-30)*0.4+1*math.sin(q.anim_time*90*3-60)*0.4-1.25*math.sin(q.anim_time*90*3-90)*0.4"
+					]
+				}
+			},
+			"particle_effects": {
+				"0.0": [
+					{
+						"effect": "ghostly_smoke",
+						"locator": "gas"
+					},
+					{
+						"effect": "ghostly_smoke_center",
+						"locator": "gas"
+					}
+				]
+			}
+		},
+		"animation.gastly.sleep": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": ["27+4*math.sin(q.anim_time*90*2/3-30)+math.clamp(3*math.sin(q.anim_time*90*2/3-30)*1,0,3)", 4.8, "-11.5+0.2*math.sin(q.anim_time*90*15/3)"],
+					"position": [
+						"1*math.sin(q.anim_time*90*2/3)*0.4-1*math.sin(q.anim_time*90*2/3-30)*0.4+1*math.sin(q.anim_time*90*2/3-60)*0.4-1*math.sin(q.anim_time*90*2/3-90)*0.4",
+						"1*math.sin(q.anim_time*90*2/3)*0.4-1*math.sin(q.anim_time*90*2/3-30)*0.4-1*math.sin(q.anim_time*90*2/3-60)*0.4+1*math.sin(q.anim_time*90*2/3-90)*0.4",
+						0
+					]
+				},
+				"mouth_closed": {
+					"position": [0, "math.clamp(8*math.sin(q.anim_time*90*2/3-30)*0.5,0,0.5)", 0]
+				},
+				"eyes": {
+					"position": [0, "math.clamp(8*math.sin(q.anim_time*90*2/3-30)*0.5,0,0.5)", 0]
+				},
+				"eyelid_right": {
+					"position": [0, 0, -0.042]
+				},
+				"eyelid_left": {
+					"position": [0, 0, -0.042]
+				}
+			},
+			"particle_effects": {
+				"0.0": [
+					{
+						"effect": "ghostly_smoke",
+						"locator": "gas"
+					},
+					{
+						"effect": "ghostly_smoke_center",
+						"locator": "gas"
+					}
+				]
+			}
+		},
+		"animation.gastly.blink": {
+			"animation_length": 0.20833,
+			"bones": {
+				"eyelid_right": {
+					"position": {
+						"0.0": [0, 0, -0.042],
+						"0.125": [0, 0, -0.042],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"eyelid_left": {
+					"position": {
+						"0.0": [0, 0, -0.041],
+						"0.125": [0, 0, -0.041],
+						"0.1667": [0, 0, 0]
+					}
+				}
+			}
+		}
+	}
+}

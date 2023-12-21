@@ -1,0 +1,284 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.pichu.ground_idle": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"position": [0, "0 - (0/1) + math.abs(math.sin(((query.anim_time) - (1/2)) * 90 * 2) * (0/1))", 0]
+				},
+				"torso": {
+					"rotation": [1, "0 - math.sin(((query.anim_time) - (0.25/2)) * 90 * 2) * 3", 0]
+				},
+				"head": {
+					"rotation": ["0 - (1 * 1.5)", "math.sin(((query.anim_time) - (0.5/2)) * 90 * 2) * (3 * 1.5)", 0],
+					"position": [0, 0, "0 - (1 / 10)"]
+				},
+				"arm_left": {
+					"rotation": [15, "5 - math.sin(((query.anim_time) - (0.5/2)) * 90 * 2) * 4", 30]
+				},
+				"arm_left2": {
+					"rotation": [0, "math.clamp(math.sin(((query.anim_time) + (0.75/2)) * 90 * 2) * 4, 0, 4)", 0]
+				},
+				"arm_right": {
+					"rotation": [15, "-5 - math.sin(((query.anim_time) - (0.5/2)) * 90 * 2) * 4", -30]
+				},
+				"arm_right2": {
+					"rotation": [0, "0 - math.clamp(math.sin(((query.anim_time) - (0.75/2)) * 90 * 2) * 4, 0, 4)", 0]
+				},
+				"torso2": {
+					"rotation": [1, "0 - math.sin(((query.anim_time) - (0.5/2)) * 90 * 2) * 3", 0]
+				},
+				"leg_left": {
+					"rotation": [
+						"0 -math.sin((query.anim_time) * 90 * 2) * 0",
+						0,
+						"0 - 0 + (math.clamp((math.sin(((query.anim_time - (1.75 / 2))) * 180 * 2) * 1) - math.clamp((math.sin(((query.anim_time - (1.75 / 2))) * 90 * 2) * 2), 0, 1), 0, 1)) * 0"
+					],
+					"position": [0, "math.clamp(math.sin(((query.anim_time) + (1/2)) * 90 * 2) * 0, 0, 0)", 0]
+				},
+				"leg_left2": {
+					"rotation": ["0 - math.clamp(math.sin(((query.anim_time) - (0.75/2)) * 90 * 2) * 0, -0, 0)", 0, 0]
+				},
+				"leg_right": {
+					"rotation": [
+						"math.sin((query.anim_time) * 90 * 2) * 0",
+						0,
+						"0 - (math.clamp((math.sin(((query.anim_time + (0.25 / 2))) * 180 * 2) * 1) - math.clamp((math.sin(((query.anim_time + (0.25 / 2))) * 90 * 2) * 2), 0, 1), 0, 1)) * 0"
+					],
+					"position": [0, "math.clamp(math.sin(((query.anim_time) - (1/2)) * 90 * 2) * 0, 0, 0)", 0]
+				},
+				"leg_right2": {
+					"rotation": ["math.clamp(math.sin(((query.anim_time) - (0.75/2)) * 90 * 2) * 0, 0, 0)", 0, 0]
+				},
+				"foot_left": {
+					"rotation": ["0 - math.clamp(math.sin(((query.anim_time) - (0.75/2)) * 90 * 2) * 0, -0, 0)", 0, 0]
+				},
+				"foot_right": {
+					"rotation": ["math.clamp(math.sin(((query.anim_time) - (0.75/2)) * 90 * 2) * 0, 0, 0)", 0, 0]
+				},
+				"hand_right": {
+					"rotation": [0, 0, 0]
+				},
+				"hand_left": {
+					"rotation": [0, 0, 0]
+				},
+				"tail": {
+					"rotation": [0, "4*(math.sin(q.anim_time*90*3)*1)+0*(math.sin(q.anim_time*90*0/2)*1)", 0]
+				},
+				"tail2": {
+					"rotation": [0, "6*(math.sin(q.anim_time*90*3-90)*1)+0*(math.sin(q.anim_time*90*0/2-90)*1)", 0]
+				},
+				"tail3": {
+					"rotation": [0, "6*(math.sin(q.anim_time*90*3-90)*1)+0*(math.sin(q.anim_time*90*0/2-90)*1)", 0]
+				},
+				"leftforearm": {
+					"rotation": [0, 70, 0]
+				},
+				"rightforearm": {
+					"rotation": [0, -70, 0]
+				}
+			}
+		},
+		"animation.pichu.ground_walk": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"position": [0, "0 - (2/10) + math.abs(math.sin(((query.anim_time) - (1/3)) * 90 * 3) * (2/10))", 0]
+				},
+				"torso": {
+					"rotation": [3, "0 - math.sin(((query.anim_time) - (0.25/3)) * 90 * 3) * 3", 0]
+				},
+				"head": {
+					"rotation": ["0 - (3 * 1.5)", "math.sin(((query.anim_time) - (0.5/3)) * 90 * 3) * (3 * 1.5)", 0],
+					"position": [0, 0, "0 - (3 / 10)"]
+				},
+				"arm_left": {
+					"rotation": [15, "5 - math.sin(((query.anim_time) - (0.5/3)) * 90 * 3) * 6", 30]
+				},
+				"arm_left2": {
+					"rotation": [0, "math.clamp(math.sin(((query.anim_time) + (0.75/3)) * 90 * 3) * 6, 0, 6)", 0]
+				},
+				"arm_right": {
+					"rotation": [15, "-5 - math.sin(((query.anim_time) - (0.5/3)) * 90 * 3) * 6", -30]
+				},
+				"arm_right2": {
+					"rotation": [0, "0 - math.clamp(math.sin(((query.anim_time) - (0.75/3)) * 90 * 3) * 6, 0, 6)", 0]
+				},
+				"torso2": {
+					"rotation": [3, "0 - math.sin(((query.anim_time) - (0.5/3)) * 90 * 3) * 3", 0]
+				},
+				"leg_left": {
+					"rotation": [
+						"0 -math.sin((query.anim_time) * 90 * 3) * 2",
+						0,
+						"0 - 2 + (math.clamp((math.sin(((query.anim_time - (1.75 / 3))) * 180 * 3) * 1) - math.clamp((math.sin(((query.anim_time - (1.75 / 3))) * 90 * 3) * 2), 0, 1), 0, 1)) * 2"
+					],
+					"position": [0, "math.clamp(math.sin(((query.anim_time) + (1/3)) * 90 * 3) * 0.5, 0, 0.5)", 0]
+				},
+				"leg_left2": {
+					"rotation": ["0 - math.clamp(math.sin(((query.anim_time) - (0.75/3)) * 90 * 3) * 0, -0, 0)", 0, 0]
+				},
+				"leg_right": {
+					"rotation": [
+						"math.sin((query.anim_time) * 90 * 3) * 2",
+						0,
+						"2 - (math.clamp((math.sin(((query.anim_time + (0.25 / 3))) * 180 * 3) * 1) - math.clamp((math.sin(((query.anim_time + (0.25 / 3))) * 90 * 3) * 2), 0, 1), 0, 1)) * 2"
+					],
+					"position": [0, "math.clamp(math.sin(((query.anim_time) - (1/3)) * 90 * 3) * 0.5, 0, 0.5)", 0]
+				},
+				"leg_right2": {
+					"rotation": ["math.clamp(math.sin(((query.anim_time) - (0.75/3)) * 90 * 3) * 0, 0, 0)", 0, 0]
+				},
+				"foot_left": {
+					"rotation": ["0 - math.clamp(math.sin(((query.anim_time) - (0.75/3)) * 90 * 3) * 8, -8, 0)", 0, 0]
+				},
+				"foot_right": {
+					"rotation": ["math.clamp(math.sin(((query.anim_time) - (0.75/3)) * 90 * 3) * 8, 0, 8)", 0, 0]
+				},
+				"hand_right": {
+					"rotation": [0, -70, 0]
+				},
+				"hand_left": {
+					"rotation": [0, 70, 0]
+				},
+				"tail": {
+					"rotation": [0, "4*(math.sin(q.anim_time*90*3)*1)+0*(math.sin(q.anim_time*90*0/2)*1)", 0]
+				},
+				"tail2": {
+					"rotation": [0, "6*(math.sin(q.anim_time*90*3-90)*1)+0*(math.sin(q.anim_time*90*0/2-90)*1)", 0]
+				},
+				"tail3": {
+					"rotation": [0, "6*(math.sin(q.anim_time*90*3-90)*1)+0*(math.sin(q.anim_time*90*0/2-90)*1)", 0]
+				},
+				"leftforearm": {
+					"rotation": [0, 70, 0]
+				},
+				"rightforearm": {
+					"rotation": [0, -70, 0]
+				}
+			}
+		},
+		"animation.pichu.blink": {
+			"animation_length": 0.16667,
+			"bones": {
+				"eyelid_right": {
+					"position": {
+						"0.0": [0, 0, -0.1],
+						"0.125": [0, 0, -0.1],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"eyelid_left": {
+					"position": {
+						"0.0": [0, 0, -0.1],
+						"0.125": [0, 0, -0.1],
+						"0.1667": [0, 0, 0]
+					}
+				}
+			}
+		},
+		"education": {
+			"loop": true,
+			"bones": {
+				"pichu": {
+					"position": [0, 4, 0]
+				},
+				"head": {
+					"rotation": [5, 0, 0]
+				},
+				"arm_right": {
+					"rotation": [90, -70, -90]
+				},
+				"arm_left": {
+					"rotation": [90, 70, 90]
+				},
+				"leg_right": {
+					"rotation": [-55, 0, 0],
+					"position": [0, 0, -2]
+				},
+				"leg_left": {
+					"rotation": [-55, 0, 0],
+					"position": [0, 0, -2]
+				}
+			}
+		},
+		"render": {
+			"loop": true,
+			"bones": {
+				"pichu": {
+					"rotation": [0, 12.5, 0]
+				},
+				"torso": {
+					"rotation": [0, 2.5, 0]
+				},
+				"head": {
+					"rotation": [0, -12.5, 0]
+				},
+				"eyelid_left": {
+					"position": [0, 0, -0.1]
+				},
+				"arm_right": {
+					"rotation": [0, 0, -37.5]
+				},
+				"arm_left": {
+					"rotation": [0, 0, 40]
+				},
+				"tail1": {
+					"rotation": [0, 35, 0]
+				},
+				"tail2": {
+					"rotation": [0, 0, 0]
+				},
+				"leg_right": {
+					"rotation": [0, 17.5, 0]
+				},
+				"leg_left": {
+					"rotation": [0, -7.5, 0]
+				},
+				"openmouth": {
+					"position": [0, 0, -0.1]
+				}
+			}
+		},
+		"animation.pichu.cry": {
+			"animation_length": 0.75,
+			"bones": {
+				"head": {
+					"rotation": {
+						"0.0": {
+							"post": [0, 0, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.125": {
+							"post": [-2.5, 0, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.25": {
+							"post": [-7.5, 0, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.75": {
+							"post": [0, 0, 0],
+							"lerp_mode": "catmullrom"
+						}
+					}
+				},
+				"openmouth": {
+					"position": {
+						"0.0": [0, 0, 0],
+						"0.125": [0, 0, 0],
+						"0.1667": [0, 0, -0.1],
+						"0.4583": [0, 0, -0.1],
+						"0.5": [0, 0, 0]
+					}
+				}
+			},
+			"sound_effects": {
+				"0.1667": {
+					"effect": "pokemon.pichu.cry"
+				}
+			}
+		}
+	}
+}

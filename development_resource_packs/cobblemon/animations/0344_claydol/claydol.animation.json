@@ -1,0 +1,184 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.claydol.air_idle": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": [
+						"Math.cos((query.anim_time + 0.3) * 90) * 2.5",
+						"Math.cos((query.anim_time + 0.3) * 45) * 1",
+						"Math.cos((query.anim_time + 1.3) * 90) * 2.5"
+					],
+					"position": [0, "0.5 + Math.cos((query.anim_time + 0.3) * 90) * 0.75", 0]
+				},
+				"hand_left": {
+					"rotation": [0, 0, "55+ Math.cos((query.anim_time + 0.3) * 90) * 10"]
+				},
+				"hand_right": {
+					"rotation": [0, 0, "-55 + Math.cos((query.anim_time + 0.3) * 90) * -10"]
+				}
+			}
+		},
+		"animation.claydol.air_fly": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": ["15 + Math.cos((query.anim_time + 0.8) * 90 * 2.5) * -2.5", 0, "Math.cos((query.anim_time + 1.3) * 90) * 0.5"],
+					"position": [0, "0.5 + Math.cos((query.anim_time + 0.3) * 90 * 2.5) * 0.4", 0]
+				},
+				"hand_left": {
+					"rotation": [0, "-22.5+ Math.cos((query.anim_time + 1.5) * 90 * 2.5) * -6", 55]
+				},
+				"hand_right": {
+					"rotation": [0, "22.5 + Math.cos((query.anim_time + 1.5) * 90 * 2.5) * 6", -55]
+				}
+			}
+		},
+		"animation.claydol.sleep": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": [
+						"Math.cos((query.anim_time + 0.3) * 90 * 0.5) * 2.5",
+						"Math.cos((query.anim_time + 0.3) * 45 * 0.5) * 1",
+						"Math.cos((query.anim_time + 1.3) * 90 * 0.5) * 2.5"
+					],
+					"position": [0, "0.5 + Math.cos((query.anim_time + 0.3) * 90 * 0.5) * 0.4", 0]
+				},
+				"hand_left": {
+					"rotation": [0, 0, "55+ Math.cos((query.anim_time + 0.3) * 90 * 0.25) * 10"]
+				},
+				"hand_right": {
+					"rotation": [0, 0, "-55 + Math.cos((query.anim_time + 0.3) * 90 * 0.25) * -10"]
+				},
+				"pupil_closed1": {
+					"position": [0, 0, -0.5]
+				},
+				"pupil_closed3": {
+					"position": [-0.5, 0, 0]
+				},
+				"pupil_closed4": {
+					"position": [-0.5, 0, 0.5]
+				},
+				"pupil_closed5": {
+					"position": [0, 0, 0.5]
+				},
+				"pupil_closed6": {
+					"position": [0.5, 0, 0.5]
+				},
+				"pupil_closed7": {
+					"position": [0.5, 0, 0]
+				},
+				"pupil1": {
+					"position": [0, 0, 0.25]
+				},
+				"pupil3": {
+					"position": [0.25, 0, 0]
+				},
+				"pupil4": {
+					"position": [0.25, 0, 0]
+				},
+				"pupil5": {
+					"position": [0, 0, -0.25]
+				},
+				"pupil6": {
+					"position": [0, 0, -0.25]
+				},
+				"pupil7": {
+					"position": [-0.25, 0, 0]
+				}
+			}
+		},
+		"animation.claydol.blink": {
+			"animation_length": 0.1667,
+			"bones": {
+				"pupil_closed1": {
+					"position": {
+						"0.0": [0, 0, -0.5],
+						"0.125": [0, 0, -0.5],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil_closed3": {
+					"position": {
+						"0.0": [-0.5, 0, 0],
+						"0.125": [-0.5, 0, 0],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil_closed4": {
+					"position": {
+						"0.0": [-0.5, 0, 0.5],
+						"0.125": [-0.5, 0, 0.5],
+						"0.1667": [-0.25, 0, 0]
+					}
+				},
+				"pupil_closed5": {
+					"position": {
+						"0.0": [0, 0, 0.5],
+						"0.125": [0, 0, 0.5],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil_closed6": {
+					"position": {
+						"0.0": [0.5, 0, 0.5],
+						"0.125": [0.5, 0, 0.5],
+						"0.1667": [0.25, 0, 0]
+					}
+				},
+				"pupil_closed7": {
+					"position": {
+						"0.0": [0.5, 0, 0],
+						"0.125": [0.5, 0, 0],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil1": {
+					"position": {
+						"0.0": [0, 0, 0.25],
+						"0.125": [0, 0, 0.25],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil3": {
+					"position": {
+						"0.0": [0.25, 0, 0],
+						"0.125": [0.25, 0, 0],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil4": {
+					"position": {
+						"0.0": [0.25, 0, 0],
+						"0.125": [0.25, 0, 0],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil5": {
+					"position": {
+						"0.0": [0, 0, -0.25],
+						"0.125": [0, 0, -0.25],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil6": {
+					"position": {
+						"0.0": [0, 0, -0.25],
+						"0.125": [0, 0, -0.25],
+						"0.1667": [0, 0, 0]
+					}
+				},
+				"pupil7": {
+					"position": {
+						"0.0": [-0.25, 0, 0],
+						"0.125": [-0.25, 0, 0],
+						"0.1667": [0, 0, 0]
+					}
+				}
+			}
+		}
+	},
+	"geckolib_format_version": 2
+}
