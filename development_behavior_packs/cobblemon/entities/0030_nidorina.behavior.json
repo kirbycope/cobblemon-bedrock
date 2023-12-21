@@ -1,0 +1,177 @@
+{
+    "format_version": "1.16.0",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "cobblemon:0030_nidorina",
+            "is_spawnable": true,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "component_groups": {
+            "minecraft:baby": {
+                "minecraft:is_baby": {},
+                "minecraft:scale": {
+                    "value": 1.0
+                },
+                "minecraft:ageable": {
+                    "duration": 1200,
+                    "feed_items": [
+                        "rotten_flesh"
+                    ],
+                    "grow_up": {
+                        "event": "minecraft:ageable_grow_up",
+                        "target": "self"
+                    }
+                }
+            },
+            "grow_up": {
+                "minecraft:transformation": {
+                    "into": "cobblemon:0001_template"
+                }
+            }
+        },
+        "components": {
+            "minecraft:nameable": {},
+            "minecraft:type_family": {
+                "family": [
+                    "mob"
+                ]
+            },
+            "minecraft:breathable": {
+                "total_supply": 15,
+                "suffocate_time": 0
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 0.8
+            },
+            "minecraft:health": {
+                "value": 8,
+                "max": 8
+            },
+            "minecraft:hurt_on_condition": {
+                "damage_conditions": [
+                    {
+                        "filters": {
+                            "test": "in_lava",
+                            "subject": "self",
+                            "operator": "==",
+                            "value": true
+                        },
+                        "cause": "lava",
+                        "damage_per_tick": 4
+                    }
+                ]
+            },
+            "minecraft:movement": {
+                "value": 0.3
+            },
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_damage_blocks": true
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:jump.static": {},
+            "minecraft:can_climb": {},
+            "minecraft:attack": {
+                "damage": 3
+            },
+            "minecraft:healable": {
+                "items": [
+                    {
+                        "item": "rotten_flesh",
+                        "heal_amount": 10
+                    }
+                ]
+            },
+            "minecraft:despawn": {
+                "despawn_from_distance": {}
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
+            },
+            "minecraft:behavior.mount_pathing": {
+                "priority": 1,
+                "speed_multiplier": 1.25,
+                "target_dist": 0,
+                "track_target": true
+            },
+            "minecraft:behavior.stay_while_sitting": {
+                "priority": 3
+            },
+            "minecraft:behavior.leap_at_target": {
+                "priority": 4,
+                "target_dist": 0.4
+            },
+            "minecraft:behavior.melee_attack": {
+                "priority": 5
+            },
+            "minecraft:behavior.random_stroll": {
+                "priority": 8,
+                "speed_multiplier": 1
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 6,
+                "target_distance": 6,
+                "probability": 0.02
+            },
+            "minecraft:behavior.beg": {
+                "priority": 9,
+                "look_distance": 8,
+                "look_time": [
+                    2,
+                    4
+                ],
+                "items": [
+                    "rotten_flesh"
+                ]
+            },
+            "minecraft:behavior.hurt_by_target": {
+                "priority": 3
+            },
+            "minecraft:physics": {},
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:conditional_bandwidth_optimization": {}
+        },
+        "events": {
+            "minecraft:entity_spawned": {
+                "add": {
+                    "component_groups": [
+                        "minecraft:baby"
+                    ]
+                }
+            },
+            "minecraft:entity_born": {
+                "remove": {},
+                "add": {
+                    "component_groups": [
+                        "minecraft:baby"
+                    ]
+                }
+            },
+            "minecraft:ageable_grow_up": {
+                "remove": {
+                    "component_groups": [
+                        "minecraft:baby"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "grow_up"
+                    ]
+                }
+            },
+            "minecraft:entity_transformed": {
+                "remove": {},
+                "add": {
+                    "component_groups": [
+                        "minecraft:baby"
+                    ]
+                }
+            }
+        }
+    }
+}
