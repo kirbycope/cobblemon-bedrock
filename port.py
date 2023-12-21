@@ -130,50 +130,55 @@ def create_client_entities():
     print("Creating client entities...")
     if not os.path.exists(entityBedrock): os.makedirs(entityBedrock)
     for pokemon in pokemons:
-        pokemonName = pokemon[pokemon.index("_")+1:]
-        fileName = f"{entityBedrock}/{pokemon}.entity.json"
-        if os.path.exists(f"{textsBedrock}/en_US.lang"): os.remove(fileName)
-        entity = {
-            "format_version": "1.10.0",
-            "minecraft:client_entity": {
-                "description": {
-                    "identifier": f"cobblemon:{pokemon}",
-                    "materials": {
-                        "default": "entity_alphatest"
-                    },
-                    "textures": {
-                        "default": f"textures/entity/{pokemon}/{pokemonName}"
-                    },
-                    "geometry": {
-                        "default": f"geometry.{pokemonName}"
-                    },
-                    "scripts": {
-                        "animate": ["pose"]
-                    },
-                    "animations": {
-                        "faint": f"animation.{pokemonName}.faint",
-                        "ground_idle": f"animation.{pokemonName}.ground_idle",
-                        "ground_walk": f"animation.{pokemonName}.ground_walk",
-                        "sleep": f"animation.{pokemonName}.sleep",
-                        "pose": f"controller.animation.{pokemonName}.pose"
-                    },
-                    "render_controllers": ["controller.render.agent"],
-                    "spawn_egg": {
-                        "texture": f"{pokemon}_spawn_egg"
+        try:
+            pokemonName = pokemon[pokemon.index("_")+1:]
+            fileName = f"{entityBedrock}/{pokemon}.entity.json"
+            if os.path.exists(fileName): os.remove(fileName)
+            entity = {
+                "format_version": "1.10.0",
+                "minecraft:client_entity": {
+                    "description": {
+                        "identifier": f"cobblemon:{pokemon}",
+                        "materials": {
+                            "default": "entity_alphatest"
+                        },
+                        "textures": {
+                            "default": f"textures/entity/{pokemon}/{pokemonName}"
+                        },
+                        "geometry": {
+                            "default": f"geometry.{pokemonName}"
+                        },
+                        "scripts": {
+                            "animate": ["pose"]
+                        },
+                        "animations": {
+                            "pose": f"controller.animation.{pokemonName}.pose"
+                        },
+                        "render_controllers": ["controller.render.agent"],
+                        "spawn_egg": {
+                            "texture": f"{pokemon}_spawn_egg"
+                        }
                     }
                 }
             }
-        }
-        jsonData = json.dumps(entity, indent=4)
-        with open(fileName, "w") as file:
-            file.write(jsonData)
+            animationFile = open(f"{animationsBedrock}/{pokemon}/{pokemonName}.animation.json")
+            animationData = json.load(animationFile)
+            animationFile.close()
+            for animation in animationData["animations"]:
+                shortName = animation[animation.rindex(".")+1:]
+                currentAnimations = entity["minecraft:client_entity"]["description"]["animations"]
+                entity["minecraft:client_entity"]["description"]["animations"] = currentAnimations | {shortName:animation}
+            jsonData = json.dumps(entity, indent=4)
+            with open(fileName, "w") as file:
+                file.write(jsonData)
+        except Exception as e: print(f"Failed to add animation for client entity: {pokemon}")
     print("Create client entities complete.")
 
 #copy_animations()
 #copy_models()
 #copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
-create_texts()
+#create_texts()
 #download_spawn_egg_textures()
-create_animation_controllers()
-create_client_entities() # ToDo: Dynamic animations definition
+#create_animation_controllers()
+create_client_entities()
