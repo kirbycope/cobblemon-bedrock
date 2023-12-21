@@ -63,6 +63,7 @@ print("Add text complete.")
 
 # Spawn Eggs
 print("Downloading sprites...")
+if not os.path.exists(texturesItemsBedrock): os.makedirs(texturesItemsBedrock)
 for pokemon in pokemons:
     if "_" in pokemon:
         spriteBaseUri1 = "https://img.pokemondb.net/sprites/sword-shield/icon"
