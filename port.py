@@ -174,11 +174,11 @@ def create_client_entities():
         except Exception as e: print(f"Failed to add animation for client entity: {pokemon}")
     print("Create client entities complete.")
 
-#copy_animations()
-#copy_models()
-#copy_textures()
+copy_animations()
+copy_models()
+copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
-#create_texts()
-#download_spawn_egg_textures()
-#create_animation_controllers()
+create_texts()
+download_spawn_egg_textures()
+create_animation_controllers()
 create_client_entities()
