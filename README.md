@@ -1,11 +1,11 @@
 ![Cobblemon](/cobblemon-bedrock.png)
 
 # cobblemon-bedrock
-An open-source Pokémon mod for Minecraft Bedrock Edition.
+An open-source Pokémon mod ported to Minecraft Bedrock Edition.
 
 ## Installation
 1. Download the [mcaddon](https://github.com/kirbycope/cobblemon-bedrock/raw/main/cobblemon-bedrock.mcaddon)
-1. Double-click the mctemplate file
+1. Double-click the mcaddon file
 1. Load world
 
 ## Important Links
@@ -17,4 +17,4 @@ An open-source Pokémon mod for Minecraft Bedrock Edition.
     - VS Code extensions
 
 ## Porting From Cobblemon
-The script [port.py](/port.py) handles copying the assets and creating the Bedrock exclusive files.
+The script [port.py](/port.py) handles copying the assets and creating the Bedrock-exclusive files.
