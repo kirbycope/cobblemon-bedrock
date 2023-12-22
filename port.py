@@ -224,13 +224,14 @@ def get_evolution(pokemonName):
     jsonData = response.json()
     for item in jsonData:
         pokemon_name = str(item["pokemon_name"]).lower()
+        evolution = None
         if  pokemon_name == pokemonName:
             evolution_id = item["evolutions"][0]["pokemon_id"]
             evolution_id = f"{evolution_id}".zfill(4)
             evolution_name = str(item["evolutions"][0]["pokemon_name"]).lower()
-            return f"{evolution_id}_{evolution_name}"
-        else:
-            return None
+            evolution = f"{evolution_id}_{evolution_name}"
+            break
+    return evolution
 
 
 def start_fresh():
