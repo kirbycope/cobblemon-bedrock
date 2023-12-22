@@ -51,7 +51,6 @@ def create_texts():
     if os.path.exists(f"{textsBedrock}/en_US.lang"): os.remove(fileName)
     with open(fileName, "w") as file:
         for pokemon in pokemons:
-            print(pokemon)
             pokemonName = pokemon[pokemon.index("_")+1:].capitalize()
             # Name "fixes" for Display Name
             pokemonName = pokemonName.replace("Nidoranf","Nidoran F")
@@ -234,22 +233,6 @@ def get_evolution(pokemonName):
     return evolution
 
 
-def start_fresh():
-    if os.path.exists(animationsBedrock): shutil.rmtree(animationsBedrock)
-    if os.path.exists(animationControllersBedrock): shutil.rmtree(animationControllersBedrock)
-    if os.path.exists(entityBedrock): shutil.rmtree(entityBedrock)
-    if os.path.exists(entitiesBedrock): shutil.rmtree(entitiesBedrock)
-    if os.path.exists(modelsBedrock): shutil.rmtree(modelsBedrock)
-    if os.path.exists(textsBedrock): shutil.rmtree(textsBedrock)
-    if os.path.exists(texturesEntityBedrock): shutil.rmtree(texturesEntityBedrock)
-    if os.path.exists(texturesItemsBedrock): shutil.rmtree(texturesItemsBedrock)
-    jsonData = { "texture_data": {} }
-    itemTextureData = json.dumps(jsonData, indent=4)
-    with open(f"{pwd}//development_resource_packs/cobblemon/textures/item_texture.json", "w") as itemTexureFile:
-        itemTexureFile.write(itemTextureData)
-
-
-#start_fresh()
 copy_animations()
 copy_models()
 copy_textures()
