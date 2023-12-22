@@ -250,12 +250,12 @@ def start_fresh():
 
 
 #start_fresh()
-#copy_animations()
-#copy_models()
-#copy_textures()
+copy_animations()
+copy_models()
+copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
-#create_texts()
-#download_spawn_egg_textures()
-#create_animation_controllers()
-#create_client_entities()
+create_texts()
+download_spawn_egg_textures()
+create_animation_controllers()
+create_client_entities()
 create_behavior_entities()
