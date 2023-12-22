@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 import shutil
 import urllib.request
 
@@ -21,11 +22,13 @@ animationsMain = "C:/Users/kirby/Downloads/cobblemon-main/cobblemon-main/common/
 modelsMain = "C:/Users/kirby/Downloads/cobblemon-main/cobblemon-main/common/src/main/resources/assets/cobblemon/bedrock/pokemon/models"
 texturesMain = "C:/Users/kirby/Downloads/cobblemon-main/cobblemon-main/common/src/main/resources/assets/cobblemon/textures/pokemon"
 
+
 def copy_animations():
     print("Copying animations...")
     if not os.path.exists(animationsBedrock): os.makedirs(animationsBedrock)
     shutil.copytree(src = animationsMain, dst = animationsBedrock, dirs_exist_ok=True)
     print("Copy animations complete.")
+
 
 def copy_models():
     print("Copying models...")
@@ -33,11 +36,13 @@ def copy_models():
     shutil.copytree(src = modelsMain, dst = modelsBedrock, dirs_exist_ok=True)
     print("Copy models complete.")
 
+
 def copy_textures():
     print("Copying textures...")
     if not os.path.exists(texturesEntityBedrock): os.makedirs(texturesEntityBedrock)
     shutil.copytree(src = texturesMain, dst = texturesEntityBedrock, dirs_exist_ok=True)
     print("Copy textures complete.")
+
 
 def create_texts():
     print("Creating texts...")
@@ -59,6 +64,7 @@ def create_texts():
             file.write(f"entity.cobblemon:{pokemon}.name={pokemonName}\n")
             file.write(f"item.spawn_egg.entity.cobblemon:{pokemon}.name=Spawn {pokemonName}\n")
     print("Create text complete.")
+
 
 def download_spawn_egg_textures():
     print("Downloading spawn egg textures...")
@@ -96,6 +102,7 @@ def download_spawn_egg_textures():
             itemTexureFile.write(itemTextureData)
     print("Download spawn egg textures complete.")
 
+
 def create_animation_controllers():
     print("Creating animation controllers...")
     if not os.path.exists(animationControllersBedrock): os.makedirs(animationControllersBedrock)
@@ -132,6 +139,7 @@ def create_animation_controllers():
         with open(fileName, "w") as file:
             file.write(jsonData)
     print("Create animation controllers complete.")
+
 
 def create_client_entities():
     print("Creating client entities...")
@@ -181,25 +189,49 @@ def create_client_entities():
         except Exception as e: print(e)
     print("Create client entities complete.")
 
+
 def create_behavior_entities():
     print("Creating behavior entities...")
     if not os.path.exists(entitiesBedrock): os.makedirs(entitiesBedrock)
     for pokemon in pokemons:
         try:
-            #pokemonName = pokemon[pokemon.index("_")+1:]
             fileName = f"{entitiesBedrock}/{pokemon}.behavior.json"
             if os.path.exists(fileName): os.remove(fileName)
-            # Set entity as an ageable baby
-            jsonTemplateFile = open("development_behavior_packs/cobblemon/entities/0000_template.behavior.json")
-            jsonTemplateData = json.load(jsonTemplateFile)
+            pokemonName = pokemon[pokemon.index("_")+1:]
+            evolution = get_evolution(pokemonName)
+            if evolution != None:
+                # Set entity as an ageable baby
+                jsonTemplateFile = open("development_behavior_packs/cobblemon/entities/0000_template.behavior.json")
+                jsonTemplateData = json.load(jsonTemplateFile)
+                jsonTemplateData["minecraft:entity"]["description"]["identifier"] = f"cobblemon:{pokemon}"
+                jsonTemplateData["minecraft:entity"]["component_groups"]["grow_up"]["minecraft:transformation"]["into"] = f"cobblemon:{evolution}"
+            else:
+                # Set entity as an adult
+                jsonTemplateFile = open("development_behavior_packs/cobblemon/entities/0001_template.behavior.json")
+                jsonTemplateData = json.load(jsonTemplateFile)
+                jsonTemplateData["minecraft:entity"]["description"]["identifier"] = f"cobblemon:{pokemon}"
             jsonTemplateFile.close()
-            jsonTemplateData["minecraft:entity"]["description"]["identifier"] = f"cobblemon:{pokemon}"
-            # ToDo: Set ["minecraft:entity"]["component_groups"]["grow_up"]
             jsonData = json.dumps(jsonTemplateData, indent=4)
             with open(fileName, "w") as file:
                 file.write(jsonData)
         except Exception as e: print(e)
     print("Create behavior entities complete.")
+
+
+def get_evolution(pokemonName):
+    url = "https://pogoapi.net/api/v1/pokemon_evolutions.json"
+    response = requests.get(url)
+    jsonData = response.json()
+    for item in jsonData:
+        pokemon_name = str(item["pokemon_name"]).lower()
+        if  pokemon_name == pokemonName:
+            evolution_id = item["evolutions"][0]["pokemon_id"]
+            evolution_id = f"{evolution_id}".zfill(4)
+            evolution_name = str(item["evolutions"][0]["pokemon_name"]).lower()
+            return f"{evolution_id}_{evolution_name}"
+        else:
+            return None
+
 
 def start_fresh():
     if os.path.exists(animationsBedrock): shutil.rmtree(animationsBedrock)
@@ -215,13 +247,14 @@ def start_fresh():
     with open(f"{pwd}//development_resource_packs/cobblemon/textures/item_texture.json", "w") as itemTexureFile:
         itemTexureFile.write(itemTextureData)
 
+
 #start_fresh()
-copy_animations()
-copy_models()
-copy_textures()
+#copy_animations()
+#copy_models()
+#copy_textures()
 pokemons = next(os.walk(texturesEntityBedrock))[1]
-create_texts()
-download_spawn_egg_textures()
-create_animation_controllers()
-create_client_entities()
+#create_texts()
+#download_spawn_egg_textures()
+#create_animation_controllers()
+#create_client_entities()
 create_behavior_entities()
