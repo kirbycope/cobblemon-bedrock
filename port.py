@@ -19,10 +19,10 @@ texturesEntityBedrock = f"{pwd}/development_resource_packs/cobblemon/textures/en
 texturesItemsBedrock = f"{pwd}/development_resource_packs/cobblemon/textures/items"
 
 # cobblemon-main
-assets = f"{pwd}/cobblemon-main/common/src/main/resources/assets/cobblemon"
-animationsMain = f"{assets}/bedrock/pokemon/animations"
-modelsMain = f"{assets}/cobblemon/bedrock/pokemon/models"
-texturesMain = f"{assets}/cobblemon/textures/pokemon"
+cobblemon = f"{pwd}/cobblemon-main/common/src/main/resources/assets/cobblemon"
+animationsMain = f"{cobblemon}/bedrock/pokemon/animations"
+modelsMain = f"{cobblemon}/bedrock/pokemon/models"
+texturesMain = f"{cobblemon}/textures/pokemon"
 
 
 def copy_animations():
@@ -218,11 +218,13 @@ def create_behavior_entities():
         except Exception as e: print(e)
     print("Create behavior entities complete.")
 
+
 def get_cobblemon():
     url = "https://gitlab.com/cable-mc/cobblemon/-/archive/main/cobblemon-main.zip"
     os.system(f"curl {url} -O -L")
     with ZipFile("cobblemon-main.zip", 'r') as zip:
         zip.extractall(f"{pwd}")
+
 
 def get_evolution(pokemonName):
     url = "https://pogoapi.net/api/v1/pokemon_evolutions.json"
@@ -241,12 +243,12 @@ def get_evolution(pokemonName):
 
 
 get_cobblemon()
-# copy_animations()
-# copy_models()
-# copy_textures()
-# pokemons = next(os.walk(texturesEntityBedrock))[1]
-# create_texts()
-# download_spawn_egg_textures()
-# create_animation_controllers()
-# create_client_entities()
-# create_behavior_entities()
+copy_animations()
+copy_models()
+copy_textures()
+pokemons = next(os.walk(texturesEntityBedrock))[1]
+create_texts()
+download_spawn_egg_textures()
+create_animation_controllers()
+create_client_entities()
+create_behavior_entities()
