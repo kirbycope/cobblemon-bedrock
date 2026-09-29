@@ -17,6 +17,7 @@ Screen positions are for the 1920x1200 desktop with the game maximised.
 import ctypes
 import os
 import sys
+import subprocess
 import time
 
 import pyautogui
@@ -79,21 +80,48 @@ def look(dx: int, dy: int) -> None:
     pydirectinput.moveRel(dx, dy, relative=True)
 
 
-def join() -> None:
-    """Main menu -> Play -> Worlds tab -> the LAN world tile, which is the server on this PC.
+SERVER_TILE_NAMES = ("dedicated server", "cobblemon")   # server-name and level-name in bedrock-server/server.properties
 
-    The Servers tab's Local BDS entry (127.0.0.1) fails with a NetherNet error on this build; the
-    LAN discovery route works. Call this from the main menu only: on the Play screen the first click
-    lands on a world tile instead."""
+
+def find_text(names):
+    """Where on screen a line of text containing one of names is, by Windows' OCR (tools/ocr.ps1), or None."""
+    path = shot("ocr")
+    out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", os.path.join(os.path.dirname(__file__), "ocr.ps1"), "-Path", path],
+                         capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout
+    for line in out.splitlines():
+        box, _, text = line.partition("	")
+        if any(n in text.lower() for n in names):
+            x, y, w, h = map(int, box.split(","))
+            return x + w // 2, y + h // 2, text
+    return None
+
+
+def join() -> None:
+    """Main menu -> Play -> Worlds tab -> the LAN tile named after this server, and nothing else.
+
+    Other LAN games on the network show up in the same list (a family member's world), so the tile is found
+    by its name with OCR, never by its position, and after the join the bridge must see the player on the
+    server; if it does not, the client leaves at once. The Servers tab's Local BDS entry (127.0.0.1) fails with
+    a NetherNet error on this build, which is why the LAN route is used. Call this from the main menu only."""
     click(950, 535); time.sleep(4)      # Play
     click(340, 172); time.sleep(3)      # Worlds tab
-    for _ in range(45):                 # the LAN tile shows up first only once discovery has found the server
-        r, g, b = pyautogui.pixel(125, 375)
-        if b > r + 40: break
+    spot = None
+    for _ in range(30):
+        spot = find_text(SERVER_TILE_NAMES)
+        if spot: break
         time.sleep(2)
-    else:
-        sys.exit("no LAN world tile appeared; is the server up?")
-    click(320, 520); time.sleep(40)     # LAN world tile
+    if not spot:
+        click(36, 58)                   # back to the main menu, touching no world
+        sys.exit("the server's LAN tile did not appear; is the server up?")
+    click(spot[0], spot[1]); time.sleep(40)
+    try:
+        sys.path.insert(0, os.path.dirname(__file__))
+        from bridge import Bridge, PLAYER
+        if PLAYER not in Bridge().tool("mc_player_list"):
+            leave()
+            sys.exit(f"joined something that is not the server (clicked '{spot[2]}'); left it")
+    except SystemExit: raise
+    except Exception as error: print("could not confirm the join through the bridge:", error)
 
 
 def recover() -> None:
