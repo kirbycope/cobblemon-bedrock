@@ -7,10 +7,11 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
-import { ActionFormData } from "@minecraft/server-ui";
+import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS } from "./data.js";
 import { BERRIES, FOSSILS } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
+import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -226,7 +227,7 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
 function findParty(player, near) {
     const found = [];
     for (const e of player.dimension.getEntities({ families: ["owned"], location: near, maxDistance: 64 })) {
-        if (!POKEMON[e.typeId] || prop(e, FAINTED)) continue;
+        if (!POKEMON[e.typeId] || prop(e, FAINTED) || prop(e, "cobblemon:pasture")) continue;
         const owner = prop(e, OWNER);
         if (owner && owner !== player.id) continue;
         const dx = e.location.x - player.location.x, dz = e.location.z - player.location.z;
@@ -537,6 +538,9 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const seconds = Math.max(1, parseInt(event.message) || 1);
         for (const st of machines.values()) if (st.left > 0) st.left = seconds;
         saveMachines();
+    } else if (event.id === "cobblemon:fish_now") {
+        // testing: /execute as <player> run scriptevent cobblemon:fish_now makes a floating bobber bite at once
+        for (const cast of fishing.values()) if (cast.phase === "waiting" || cast.phase === "travel") { cast.phase = "travel"; cast.travel = 1; }
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -742,18 +746,25 @@ system.runInterval(() => {
     if (changed && system.currentTick % 100 < 20) saveMachines();
 }, 20);
 
-// the tank's upper half comes with it, and goes with it
+// a two-block machine's upper half (the tank's, the PC's) comes with it, and goes with it
+const TWO_TALL = ["cobblemon:restoration_tank", "cobblemon:pc", "cobblemon:pasture"];
 world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
-    if (block.typeId !== "cobblemon:restoration_tank") return;
+    if (!TWO_TALL.includes(block.typeId)) return;
     const above = block.above();
     if (above?.isAir) {
         above.setPermutation(block.permutation.withState("cobblemon:part", "top"));
     }
 });
 world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
-    if (brokenBlockPermutation.type.id !== "cobblemon:restoration_tank") return;
+    const type = brokenBlockPermutation.type.id;
+    if (!TWO_TALL.includes(type)) return;
     const other = brokenBlockPermutation.getState("cobblemon:part") === "bottom" ? block.above() : block.below();
-    if (other?.typeId === "cobblemon:restoration_tank") other.setType("minecraft:air");
+    if (other?.typeId === type) other.setType("minecraft:air");
+    if (type === "cobblemon:pasture") {
+        const bottom = brokenBlockPermutation.getState("cobblemon:part") === "bottom" ? block : block.below();
+        emptyPasture(block.dimension, keyOf(block.dimension, bottom.location), bottom.location);
+    }
+    if (type !== "cobblemon:restoration_tank") return;
     loadMachines();
     const bottom = brokenBlockPermutation.getState("cobblemon:part") === "bottom" ? block : block.below();
     const key = keyOf(block.dimension, bottom.location), st = machines.get(key);
@@ -812,6 +823,411 @@ system.runInterval(() => {
     }
 }, 5);
 
+// The PC. Using it opens the player's storage: 40 boxes of 30, as Cobblemon's PC has, kept on the player as one
+// dynamic property per box. Deposit takes one of the player's Pokemon standing within 32 blocks into the first
+// free slot; Withdraw sends one out beside the player, while fewer than six of theirs are out; Release lets one
+// go for good. A stored Pokemon keeps its form, level, experience, moves, health and whether it has fainted.
+const PC_BOXES = 40, PER_BOX = 30, PARTY_SIZE = 6;   // CobblemonConfig.defaultBoxCount, PCBox.POKEMON_PER_BOX
+
+function box(player, n) {
+    try { const b = JSON.parse(player.getDynamicProperty(`cobblemon:pc_${n}`) ?? "[]"); return Array.from({ length: PER_BOX }, (_, i) => b[i] ?? null); }
+    catch (e) { return Array(PER_BOX).fill(null); }
+}
+function saveBox(player, n, contents) { player.setDynamicProperty(`cobblemon:pc_${n}`, JSON.stringify(contents)); }
+
+function mine(player, radius) {
+    return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: radius })
+        .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture"));   // pastured ones are not with the player
+}
+
+function describe(record) {
+    const species = POKEMON[record.t];
+    const name = record.n || species?.variants?.[record.v]?.name || species?.name || record.t;
+    return `${name}  Lv ${record.lv}${record.f ? "  §c(fainted)" : ""}${record.p ? "  §2(pastured)" : ""}`;
+}
+
+function snapshot(entity) {
+    const species = POKEMON[entity.typeId];
+    let variant = 0, hp = 1;
+    try { variant = entity.getComponent("minecraft:variant")?.value ?? 0; } catch (e) { }
+    try { const h = entity.getComponent(EntityComponentTypes.Health); hp = h.currentValue / h.effectiveMax; } catch (e) { }
+    return { t: entity.typeId, v: variant, lv: prop(entity, LEVEL) ?? species.level, xp: prop(entity, EXP) ?? 0,
+             mv: prop(entity, MOVESET) ?? null, f: !!prop(entity, FAINTED), hp,
+             n: entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "" };   // "NPC" is the name the panel component gives
+}
+
+function setPcScreen(block, on) {
+    const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
+    if (top?.typeId === "cobblemon:pc") setState(top, "cobblemon:on", on);
+}
+
+function openPc(block, player) {
+    if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
+    tidyPastured(player);
+    setPcScreen(block, true);
+    const done = () => { try { setPcScreen(block, false); } catch (e) { } };
+    let stored = 0;
+    for (let n = 0; n < PC_BOXES; n++) stored += box(player, n).filter(Boolean).length;
+    new ActionFormData().title("PC").body(`${stored} Pokemon stored in ${PC_BOXES} boxes.`)
+        .button("Deposit").button("Withdraw").button("Release").button("Close")
+        .show(player).then((r) => {
+            if (r.canceled || r.selection === 3) { done(); return; }
+            if (r.selection === 0) deposit(player, done);
+            else pickStored(player, r.selection === 1 ? "Withdraw" : "Release", (n, slot) => r.selection === 1 ? withdraw(player, n, slot, done) : release(player, n, slot, done), done);
+        }).catch(done);
+}
+
+function deposit(player, done) {
+    const party = mine(player, 32);
+    if (!party.length) { player.sendMessage("§7None of your Pokemon are nearby."); done(); return; }
+    const form = new ActionFormData().title("Deposit which Pokemon?");
+    for (const e of party) form.button(describe(snapshot(e)));
+    form.show(player).then((r) => {
+        if (r.canceled || !party[r.selection]?.isValid) { done(); return; }
+        const entity = party[r.selection];
+        for (let n = 0; n < PC_BOXES; n++) {
+            const contents = box(player, n), slot = contents.indexOf(null);
+            if (slot < 0) continue;
+            contents[slot] = snapshot(entity);
+            saveBox(player, n, contents);
+            player.sendMessage(`§a${describe(contents[slot])} went to Box ${n + 1}.`);
+            try { entity.remove(); } catch (e) { }
+            done();
+            return;
+        }
+        player.sendMessage("§cYour PC is full."); done();
+    }).catch(done);
+}
+
+function pickStored(player, action, then, done) {
+    const boxes = [];
+    for (let n = 0; n < PC_BOXES; n++) { const c = box(player, n).filter(Boolean).length; if (c) boxes.push([n, c]); }
+    if (!boxes.length) { player.sendMessage("§7Your PC is empty."); done(); return; }
+    const form = new ActionFormData().title(`${action}: which box?`);
+    for (const [n, c] of boxes) form.button(`Box ${n + 1}\n§7${c}/${PER_BOX}`);
+    form.show(player).then((r) => {
+        if (r.canceled) { done(); return; }
+        const n = boxes[r.selection][0], contents = box(player, n);
+        const slots = contents.map((rec, i) => [rec, i]).filter(([rec]) => rec);
+        const list = new ActionFormData().title(`Box ${n + 1}: ${action.toLowerCase()} which?`);
+        for (const [rec] of slots) list.button(describe(rec));
+        list.show(player).then((q) => { if (q.canceled) done(); else then(n, slots[q.selection][1]); }).catch(done);
+    }).catch(done);
+}
+
+function withdraw(player, n, slot, done) {
+    if (mine(player, 64).length >= PARTY_SIZE) { player.sendMessage(`§cYou already have ${PARTY_SIZE} Pokemon with you.`); done(); return; }
+    const contents = box(player, n), rec = contents[slot];
+    if (!rec) { done(); return; }
+    if (rec.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); done(); return; }
+    const d = player.getViewDirection(), at = { x: player.location.x + d.x * 2, y: player.location.y, z: player.location.z + d.z * 2 };
+    try { spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); done(); return; }
+    contents[slot] = null; saveBox(player, n, contents);
+    player.sendMessage(`§aGo, ${describe(rec)}!`);
+    done();
+}
+
+function release(player, n, slot, done) {
+    const contents = box(player, n), rec = contents[slot];
+    if (!rec) { done(); return; }
+    if (rec.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); done(); return; }
+    new MessageFormData().title("Release").body(`Release ${describe(rec)}? It will be gone for good.`).button1("Keep").button2("Release")
+        .show(player).then((r) => {
+            if (r.selection === 1) { contents[slot] = null; saveBox(player, n, contents); player.sendMessage(`§7${describe(rec)} was released. Bye-bye!`); }
+            done();
+        }).catch(done);
+}
+
+// The pasture. As in Cobblemon, a pastured Pokemon stays in its PC box and is out in the world at the same time,
+// wandering within 32 blocks of the pasture; up to 16 per pasture (defaultPasturedPokemonLimit). Using the pasture
+// lists the player's PC Pokemon to send out and the ones it already has to bring back; a PC slot that is out shows
+// as pastured and cannot be withdrawn or released until it is back. Breaking the pasture brings them all back.
+const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture";
+
+function pastureKey(block) {
+    const bottom = block.permutation.getState("cobblemon:part") === "top" ? block.below() : block;
+    return keyOf(bottom.dimension, bottom.location);
+}
+
+function pasturedHere(dimension, key, location) {
+    return dimension.getEntities({ families: ["owned"], location, maxDistance: 80 }).filter((e) => prop(e, PASTURE_AT) === key);
+}
+
+// a PC slot marked as pastured whose Pokemon is gone (its pasture broken while the player was away) comes back
+function tidyPastured(player) {
+    for (let n = 0; n < PC_BOXES; n++) {
+        const contents = box(player, n);
+        let changed = false;
+        contents.forEach((rec, i) => {
+            if (!rec?.p) return;
+            const [dimId, pos] = rec.p.split("|"), [x, y, z] = pos.split(",").map(Number);
+            let block;
+            try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { return; }   // unloaded: leave it
+            if (block && block.typeId !== "cobblemon:pasture") { delete rec.p; changed = true; }
+        });
+        if (changed) saveBox(player, n, contents);
+    }
+}
+
+// sends a stored Pokemon out as the player's own; used by the PC and the pasture
+function spawnStored(player, rec, at) {
+    const entity = player.dimension.spawnEntity(rec.t, at);
+    system.run(() => {
+        try { entity.triggerEvent(`cobblemon:set_variant_${rec.v}`); } catch (e) { }
+        try {
+            entity.triggerEvent("cobblemon:caught");
+            entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
+            setProp(entity, OWNER, player.id); setProp(entity, LEVEL, rec.lv); setProp(entity, EXP, rec.xp);
+            if (rec.mv) setProp(entity, MOVESET, rec.mv);
+            if (rec.f) setProp(entity, FAINTED, true);
+            if (rec.n) entity.nameTag = rec.n;
+            const h = entity.getComponent(EntityComponentTypes.Health);
+            if (h) h.setCurrentValue(Math.max(1, Math.round(h.effectiveMax * rec.hp)));
+        } catch (e) { }
+    });
+    return entity;
+}
+
+function setPastureLamp(block, on) {
+    const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
+    if (top?.typeId === "cobblemon:pasture") setState(top, "cobblemon:on", on);
+}
+
+function openPasture(block, player) {
+    if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a pasture while in battle!"); return; }
+    tidyPastured(player);
+    const key = pastureKey(block), here = pasturedHere(block.dimension, key, block.location);
+    const mineHere = here.filter((e) => prop(e, OWNER) === player.id);
+    new ActionFormData().title("Pasture").body(`${here.length}/${PASTURE_LIMIT} Pokemon out in this pasture.`)
+        .button("Send out from PC").button("Bring back").button("Close")
+        .show(player).then((r) => {
+            if (r.canceled || r.selection === 2) return;
+            if (r.selection === 1) {
+                if (!mineHere.length) { player.sendMessage("§7None of your Pokemon are out in this pasture."); return; }
+                const form = new ActionFormData().title("Bring back which Pokemon?");
+                for (const e of mineHere) form.button(describe(snapshot(e)));
+                form.show(player).then((q) => { if (!q.canceled) recall(player, mineHere[q.selection], block); });
+                return;
+            }
+            if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); return; }
+            pickStored(player, "Pasture", (n, slot) => {
+                const contents = box(player, n), rec = contents[slot];
+                if (!rec || rec.p) { player.sendMessage("§7That Pokemon is already out in a pasture."); return; }
+                const at = { x: block.location.x + 0.5 + (Math.random() * 4 - 2), y: block.location.y, z: block.location.z + 0.5 + (Math.random() * 4 - 2) };
+                let entity;
+                try { entity = spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); return; }
+                system.run(() => {
+                    try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${n}:${slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
+                });
+                rec.p = key; saveBox(player, n, contents);
+                setPastureLamp(block, true);
+                player.sendMessage(`§a${describe(rec)} is out in the pasture.`);
+            }, () => { });
+        });
+}
+
+// back into its PC slot, carrying what changed while it was out (its health, a name given to it)
+function recall(player, entity, block) {
+    const [n, slot] = String(prop(entity, PASTURE_SLOT) ?? "").split(":").map(Number);
+    if (!(n >= 0) || !(slot >= 0)) { try { entity.remove(); } catch (e) { } return; }
+    const contents = box(player, n);
+    contents[slot] = { ...snapshot(entity) };
+    saveBox(player, n, contents);
+    player.sendMessage(`§a${describe(contents[slot])} is back in Box ${n + 1}.`);
+    try { entity.remove(); } catch (e) { }
+    if (block && !pasturedHere(block.dimension, pastureKey(block), block.location).filter((e) => e.isValid).length) setPastureLamp(block, false);
+}
+
+// a broken pasture brings its Pokemon back: into their owners' PCs if they are online, and otherwise the next
+// time they use a PC or pasture (tidyPastured)
+function emptyPasture(dimension, key, location) {
+    for (const e of pasturedHere(dimension, key, location)) {
+        const owner = world.getPlayers().find((p) => p.id === prop(e, OWNER));
+        if (owner) recall(owner, e); else { try { e.remove(); } catch (err) { } }
+    }
+}
+
+// Fishing with a Poke Rod, after PokeRodFishingBobberEntity. Using the rod casts its ball as a bobber; using it
+// again reels in. Once the bobber floats, a wait of 100 to 600 ticks runs down (faster by the rod's Lure level),
+// then something swims up for 20 to 80 ticks and bites: 85 times in 100 a Pokemon, chosen by rarity bucket and
+// then weight from the fishing spawns this biome, depth, sky, weather, time and Lure allow; otherwise an item.
+// Reeling in during the bite (a Pokemon's window is 15 to 40 ticks by rarity, an item's 20 to 40) lands it: the
+// Pokemon comes out of the water at the level its spawn gives, pulled to the player unless it weighs 90 kg or
+// more; an item comes from the Poke Rod table, junk 66, Cobblemon treasure 17, vanilla treasure 17.
+const fishing = new Map();   // player id -> cast
+const ri = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+function filterPasses(filter, tags) {
+    if (!filter) return true;
+    if (filter.all_of) return filter.all_of.every((f) => filterPasses(f, tags));
+    if (filter.any_of) return filter.any_of.some((f) => filterPasses(f, tags));
+    if (filter.none_of) return !filter.none_of.some((f) => filterPasses(f, tags));
+    if (filter.test === "has_biome_tag") return tags.includes(filter.value) === (filter.operator !== "!=");
+    return true;
+}
+
+function lureLevel(item) {
+    try { return item.getComponent("minecraft:enchantable")?.getEnchantment("lure")?.level ?? 0; } catch (e) { return 0; }
+}
+
+// Cobblemon's time ranges, in ticks of the day
+const TIME_RANGES = { day: [[23460, 24000], [0, 12541]], night: [[12542, 23459]], noon: [[5000, 6999]], midnight: [[17000, 18999]],
+    morning: [[23460, 24000], [0, 4999]], afternoon: [[7000, 12039]], dawn: [[22300, 23999]], dusk: [[12040, 13800]] };
+
+function spawnAllowed(spawn, cast, bobber, tags) {
+    const at = bobber.location;
+    if (!filterPasses(spawn.biome, tags) || (spawn.notBiome && filterPasses(spawn.notBiome, tags))) return false;
+    if (spawn.minLureLevel !== undefined && cast.lure < spawn.minLureLevel) return false;
+    if (spawn.maxLureLevel !== undefined && cast.lure > spawn.maxLureLevel) return false;
+    if (spawn.minY !== undefined && at.y < spawn.minY) return false;
+    if (spawn.maxY !== undefined && at.y > spawn.maxY) return false;
+    if (spawn.bait) return false;   // bait is not ported
+    if (spawn.rodType && ![].concat(spawn.rodType).some((r) => cast.rod === r || cast.rod === `cobblemon:${r}`)) return false;
+    if (spawn.isRaining !== undefined) {
+        let raining = false;
+        try { raining = bobber.dimension.getWeather() !== "Clear"; } catch (e) { }
+        if (raining !== spawn.isRaining) return false;
+    }
+    if (spawn.canSeeSky !== undefined) {
+        let sky = true;
+        try { const top = bobber.dimension.getTopmostBlock({ x: at.x, z: at.z }); sky = !top || top.location.y <= at.y + 1; } catch (e) { }
+        if (sky !== spawn.canSeeSky) return false;
+    }
+    if (spawn.timeRange) {
+        const t = world.getTimeOfDay(), ranges = [].concat(spawn.timeRange).flatMap((r) => TIME_RANGES[r] ?? []);
+        if (ranges.length && !ranges.some(([a, b]) => t >= a && t <= b)) return false;
+    }
+    if (spawn.moonPhase !== undefined) {
+        const phase = world.getMoonPhase();
+        const ok = String(spawn.moonPhase).split(",").some((part) => {
+            const [a, b] = part.split("-").map(Number);
+            return b === undefined ? phase === a : phase >= a && phase <= b;
+        });
+        if (!ok) return false;
+    }
+    return true;
+}
+
+// the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight
+function planSpawn(cast, bobber) {
+    let tags = [];
+    try { tags = BIOME_TAGS[bobber.dimension.getBiome(bobber.location).id] ?? []; } catch (e) { }
+    const allowed = FISHING_SPAWNS.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
+    if (!allowed.length) return undefined;
+    const present = Object.entries(BUCKETS).filter(([b]) => allowed.some((sp) => sp.bucket === b));
+    const bucket = pick(present)[0];
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]);
+    return { spawn: pick(inBucket)[0], bucketWeight: BUCKETS[bucket] };
+}
+
+function castRod(player, item) {
+    const eye = player.getHeadLocation(), d = player.getViewDirection();
+    let bobber;
+    try { bobber = player.dimension.spawnEntity("cobblemon:poke_bobber", { x: eye.x + d.x * 0.6, y: eye.y + d.y * 0.6, z: eye.z + d.z * 0.6 }); } catch (e) { return; }
+    system.run(() => {
+        try {
+            bobber.triggerEvent(`cobblemon:ball_${RODS[item.typeId] ?? 0}`);
+            bobber.applyImpulse({ x: d.x * 0.9, y: d.y * 0.9 + 0.2, z: d.z * 0.9 });
+        } catch (e) { }
+    });
+    try { player.playSound("random.bow", { pitch: 0.6 }); } catch (e) { }
+    fishing.set(player.id, { player, bobber, rod: item.typeId, lure: lureLevel(item), phase: "flying", wait: ri(100, 600), travel: 0, hook: 0, catch: null, age: 0 });
+}
+
+function endCast(cast) {
+    fishing.delete(cast.player.id);
+    try { if (cast.bobber.isValid) cast.bobber.remove(); } catch (e) { }
+}
+
+function damageRod(player) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
+    const dur = item?.getComponent("minecraft:durability");
+    if (!dur) return;
+    if (dur.damage + 1 >= dur.maxDurability) { inv.setItem(slot, undefined); try { player.playSound("random.break"); } catch (e) { } }
+    else { dur.damage += 1; inv.setItem(slot, item); }
+}
+
+function reel(cast) {
+    const { player, bobber } = cast;
+    if (cast.phase !== "bite" || !bobber.isValid) { endCast(cast); return; }
+    const at = { ...bobber.location }, dim = bobber.dimension;
+    endCast(cast);
+    damageRod(player);
+    if (cast.catch) {
+        const { spawn } = cast.catch;
+        let pokemon;
+        try { pokemon = dim.spawnEntity(spawn.entity, { x: at.x, y: at.y + 0.5, z: at.z }); } catch (e) { return; }
+        const level = ri(spawn.level[0], spawn.level[1]);
+        system.run(() => {
+            try {
+                setProp(pokemon, LEVEL, level);
+                if ((POKEMON[spawn.entity]?.weight ?? 0) < 900) {   // lighter than 90 kg: pulled to the player
+                    const p = player.location, dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz) || 1;
+                    pokemon.applyImpulse({ x: (dx / len) * Math.min(1.6, len * 0.12), y: 0.55, z: (dz / len) * Math.min(1.6, len * 0.12) });
+                }
+            } catch (e) { }
+        });
+        player.sendMessage(`§bYou fished up a wild ${POKEMON[spawn.entity]?.name ?? "Pokemon"}! §7(Lv ${level})`);
+        try { player.playSound("random.splash"); } catch (e) { }
+        return;
+    }
+    // an item: the Poke Rod table
+    const p = player.location, roll = Math.random() * 100;
+    try {
+        if (roll < 66) dim.runCommand(`loot spawn ${p.x} ${p.y} ${p.z} loot "gameplay/fishing/junk"`);
+        else if (roll < 83) dim.spawnItem(new ItemStack(ROD_TREASURE[Math.floor(Math.random() * ROD_TREASURE.length)], 1), p);
+        else {
+            dim.runCommand(`loot spawn ${p.x} ${p.y} ${p.z} loot "gameplay/fishing/treasure"`);
+            if (Math.random() < 0.167) dim.spawnItem(new ItemStack("cobblemon:pokerod_smithing_template", 1), p);
+        }
+        dim.spawnEntity("minecraft:xp_orb", p);
+    } catch (e) { }
+}
+
+// a rod's use is long so that a click counts; the cast or reel happens as the use starts, and the use is cut short
+// each click on a rod starts a use (its long use_duration makes the click count as one); that start casts or reels
+world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
+    if (!itemStack || RODS[itemStack.typeId] === undefined) return;
+    const cast = fishing.get(player.id);
+    if (cast) reel(cast); else castRod(player, itemStack);
+});
+
+system.runInterval(() => {
+    for (const cast of fishing.values()) {
+        const { player, bobber } = cast;
+        cast.age++;
+        let held;
+        try { held = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex)?.typeId; } catch (e) { }
+        if (!player.isValid || !bobber.isValid || held !== cast.rod || cast.age > 20 * 300) { endCast(cast); continue; }
+        const b = bobber.location, p = player.location;
+        if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) > 32) { endCast(cast); continue; }
+        if (cast.phase === "flying") { if (bobber.isInWater) cast.phase = "waiting"; else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
+        if (cast.phase === "waiting") {
+            cast.wait -= 1 + cast.lure;
+            if (cast.wait <= 0) { cast.phase = "travel"; cast.travel = ri(20, 80); }
+        } else if (cast.phase === "travel") {
+            if (--cast.travel <= 0) {
+                cast.catch = Math.random() * 100 < 85 ? planSpawn(cast, bobber) : null;
+                if (cast.catch) {
+                    const w = cast.catch.bucketWeight;
+                    cast.hook = ri(Math.max(15, Math.min(20, Math.floor(15 + 0.05 * w))), Math.max(20, Math.min(40, Math.floor(20 + 0.2 * w))));
+                } else cast.hook = ri(20, 40);
+                cast.phase = "bite";
+                try {
+                    bobber.teleport({ x: b.x, y: b.y - 0.25, z: b.z });
+                    bobber.dimension.playSound("random.splash", b, { volume: 0.6 });
+                    bobber.dimension.spawnParticle("minecraft:water_splash_particle_manual", { x: b.x, y: b.y + 0.1, z: b.z });
+                } catch (e) { }
+            }
+        } else if (cast.phase === "bite") {
+            if (--cast.hook <= 0) { cast.phase = "waiting"; cast.wait = ri(100, 600); cast.catch = null; }
+        }
+        if (cast.phase === "bite" && cast.hook % 5 === 0) {
+            try { bobber.dimension.spawnParticle("minecraft:water_splash_particle_manual", { x: b.x, y: b.y + 0.1, z: b.z }); } catch (e) { }
+        }
+    }
+}, 1);
+
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
 // drops Cobblemon's base yield of its berry and goes back to flowering. The healing machine restores the
 // Pokemon around it that belong to the player using it.
@@ -833,6 +1249,12 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
         onPlayerInteract({ block, player }) { if (player) useMachine(block, player); }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:pasture", {
+        onPlayerInteract({ block, player }) { if (player) openPasture(block, player); }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:pc", {
+        onPlayerInteract({ block, player }) { if (player) openPc(block, player); }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:healing_machine", {
         onPlayerInteract({ block, player }) {

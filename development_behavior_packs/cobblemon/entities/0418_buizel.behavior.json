@@ -185,6 +185,16 @@
                     ]
                 }
             },
+            "cobblemon:pastured": {
+                "minecraft:home": {
+                    "restriction_radius": 32,
+                    "restriction_type": "random_movement"
+                },
+                "minecraft:behavior.random_stroll": {
+                    "priority": 6,
+                    "speed_multiplier": 0.8
+                }
+            },
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
@@ -645,7 +655,7 @@
                     {
                         "randomize": [
                             {
-                                "weight": 2047500,
+                                "weight": 4095500,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_0"
@@ -661,7 +671,7 @@
                                 }
                             },
                             {
-                                "weight": 2047500,
+                                "weight": 4095500,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_2"
@@ -719,6 +729,18 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:sleepy"
+                    ]
+                }
+            },
+            "cobblemon:pasture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pastured"
                     ]
                 }
             },

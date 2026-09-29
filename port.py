@@ -211,10 +211,13 @@ def create_texts():
             file.write(f"tile.cobblemon:{berry}_bush.name={name} Bush\n")
         for name in sorted({f.split(":")[1] for _, fs in fossil_recipes() for f in fs}):
             file.write(f"item.cobblemon:{name}.name={lang.get('item.cobblemon.' + name, name.replace('_', ' ').title())}\n")
-        for name, title in (("fossil_analyzer", "Fossil Analyzer"), ("restoration_tank", "Restoration Tank"), ("monitor", "Monitor")):
+        for name, title in (("fossil_analyzer", "Fossil Analyzer"), ("restoration_tank", "Restoration Tank"), ("monitor", "Monitor"), ("pc", "PC"), ("pasture", "Pasture")):
             file.write(f"tile.cobblemon:{name}.name={lang.get('block.cobblemon.' + name, title)}\n")
         file.write("entity.cobblemon:fossil_display.name=Fossil\n")
         file.write("tile.cobblemon:healing_machine.name=Healing Machine\n")
+        for rod, _ in poke_rods(): file.write(f"item.cobblemon:{rod}.name={lang.get('item.cobblemon.' + rod, rod.replace('_', ' ').title())}\n")
+        file.write(f"item.cobblemon:pokerod_smithing_template.name={lang.get('item.cobblemon.pokerod_smithing_template', 'Poke Rod Smithing Template')}\n")
+        file.write("entity.cobblemon:poke_bobber.name=Bobber\n")
         file.write("action.interact.use=Use\n")
         file.write("action.interact.evolve=Evolve\n")
         for npc, info in NPCS.items():
@@ -480,7 +483,7 @@ def texture_for(pokemon, pokemonName):
 
 VARIANT_FORMS = ("alolan", "galarian", "hisuian", "paldean")
 VARIANT_ASPECTS = {"shiny", "female", *VARIANT_FORMS}
-SHINY_ODDS = 4096
+SHINY_ODDS = 8192   # CobblemonConfig.shinyRate
 _variation_cache = {}
 
 
@@ -1908,6 +1911,10 @@ def add_capture(entity, species, pokemon, kind):
         "minecraft:behavior.melee_attack": {"priority": 3, "track_target": True},
         "minecraft:behavior.nearest_attackable_target": {"priority": 4, "must_see": True, "reselect_targets": True, "entity_types": [{"filters": {"test": "is_family", "subject": "other", "value": "monster"}, "max_dist": 12}]}
     }
+    # pastured (PokemonPastureBlockEntity): roams within pastureMaxWanderDistance, 32 blocks, of where it was sent out
+    groups["cobblemon:pastured"] = {"minecraft:home": {"restriction_radius": 32, "restriction_type": "random_movement"},
+                                    "minecraft:behavior.random_stroll": {"priority": 6, "speed_multiplier": 0.8}}
+    events["cobblemon:pasture"] = {"remove": {"component_groups": ["cobblemon:following"]}, "add": {"component_groups": ["cobblemon:pastured"]}}
     groups["cobblemon:following"] = {"minecraft:behavior.follow_owner": {"priority": 5, "speed_multiplier": 1.2, "start_distance": 5, "stop_distance": 2, "can_teleport": True}}
     groups["cobblemon:captured"] = {
         "minecraft:spawn_entity": {"entities": [{"spawn_item": f"cobblemon:poke_ball_{pokemon}", "min_wait_time": 0, "max_wait_time": 0, "num_to_spawn": 1, "single_use": True}]},
@@ -1939,7 +1946,8 @@ def create_items():
             "minecraft:display_name": {"value": "item.cobblemon:poke_ball.name"},
             "minecraft:max_stack_size": 16,
             "minecraft:throwable": {"do_swing_animation": True, "launch_power_scale": 1.0, "max_launch_power": 1.0},
-            "minecraft:projectile": {"projectile_entity": "cobblemon:poke_ball"}
+            "minecraft:projectile": {"projectile_entity": "cobblemon:poke_ball"},
+            "minecraft:tags": {"tags": ["minecraft:transform_materials"]}
         }}}
     with open(f"{itemsBedrock}/poke_ball.json", "w") as file: file.write(json.dumps(ball, indent=4))
     # every other ball: the same throwable with its own icon and projectile
@@ -2706,6 +2714,16 @@ def create_blocks():
     with open(f"{blocksBedrock}/healing_machine.json", "w") as file: file.write(json.dumps(machine, indent=2))
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     fossil_items = create_fossil_blocks()
+    # the PC, two blocks tall like the tank, its screen lit while someone uses it
+    machine_block("pc", "PC", {"cobblemon:part": ["bottom", "top"], "cobblemon:on": [False, True]},
+                  [("q.block_state('cobblemon:part') == 'bottom'", ["pc_bottom"]),
+                   ("q.block_state('cobblemon:part') == 'top' && !q.block_state('cobblemon:on')", ["pc_top"]),
+                   ("q.block_state('cobblemon:part') == 'top' && q.block_state('cobblemon:on')", ["pc_top_on"])], component="cobblemon:pc")
+    # the pasture, the same shape, its lamp lit while it has Pokemon out
+    machine_block("pasture", "Pasture", {"cobblemon:part": ["bottom", "top"], "cobblemon:on": [False, True]},
+                  [("q.block_state('cobblemon:part') == 'bottom'", ["pasture_bottom"]),
+                   ("q.block_state('cobblemon:part') == 'top' && !q.block_state('cobblemon:on')", ["pasture_top_off"]),
+                   ("q.block_state('cobblemon:part') == 'top' && q.block_state('cobblemon:on')", ["pasture_top_on"])], component="cobblemon:pasture")
     fossils = create_fossil_display()
     create_machine_recipes()
     with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file:
@@ -2729,7 +2747,7 @@ def create_blocks():
 
 fossilsMain = f"{cobblemonData}/fossils"
 fossilModelsMain = f"{cobblemon}/bedrock/fossils"
-MAX_FOSSILS = 3                      # FossilMultiblockStructure: insertFossil refuses a fourth
+MAX_FOSSILS = 2                      # CobblemonConfig.maxInsertedFossilItems
 MATERIAL_TO_START = 128
 REVIVE_SECONDS = 12 * 60             # TIME_TO_TAKE, twelve minutes
 PROTECTION_SECONDS = 5 * 60          # the reviver alone may take the Pokemon for five minutes
@@ -2789,7 +2807,7 @@ def combine_models(*names):
     return {"textures": textures, "elements": elements}
 
 
-def machine_block(name, display, states, variants, extra=None, collision=(16, 16)):
+def machine_block(name, display, states, variants, extra=None, collision=(16, 16), component="cobblemon:fossil_machine"):
     """A facing machine block: one geometry per state combination named in variants [(condition, [model names])]."""
     permutations = []
     base = None
@@ -2818,7 +2836,7 @@ def machine_block(name, display, states, variants, extra=None, collision=(16, 16
             "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 16, 16]},
             "minecraft:destructible_by_mining": {"seconds_to_destroy": 1.5},
             "minecraft:light_dampening": 0, "minecraft:light_emission": 3,
-            "cobblemon:fossil_machine": {}, **(extra or {})},
+            component: {}, **(extra or {})},
         "permutations": permutations}}
     with open(f"{blocksBedrock}/{name}.json", "w") as file: file.write(json.dumps(definition, indent=2))
 
@@ -2912,12 +2930,14 @@ def create_machine_recipes():
     Revive is not an item here, so the Revival Herb takes its place."""
     os.makedirs(f"{behaviorPack}/recipes", exist_ok=True)
     tags = {"c:ingots/iron": "minecraft:iron_ingot", "c:ingots/copper": "minecraft:copper_ingot", "c:dusts/redstone": "minecraft:redstone",
-            "c:gems/amethyst": "minecraft:amethyst_shard"}
+            "c:gems/amethyst": "minecraft:amethyst_shard", "c:crops/wheat": "minecraft:wheat"}
+    bedrock_tags = {"minecraft:planks", "minecraft:logs", "minecraft:wool"}   # item tags Bedrock recipes take as they are
     swaps = {"cobblemon:revive": "cobblemon:revival_herb"}
-    for name in ("fossil_analyzer", "restoration_tank", "monitor"):
+    for name in ("fossil_analyzer", "restoration_tank", "monitor", "pc", "pasture"):
         with open(f"{cobblemonData}/recipe/{name}.json", encoding="utf-8") as file: recipe = json.load(file)
         key = {}
         for letter, ingredient in recipe["key"].items():
+            if ingredient.get("tag") in bedrock_tags: key[letter] = {"tag": ingredient["tag"]}; continue
             item = tags.get(ingredient.get("tag", ""), ingredient.get("item"))
             key[letter] = {"item": swaps.get(item, item)}
         with open(f"{behaviorPack}/recipes/{name}.json", "w") as file:
@@ -2925,7 +2945,7 @@ def create_machine_recipes():
                 "description": {"identifier": f"cobblemon:{name}"}, "tags": ["crafting_table"],
                 "pattern": recipe["pattern"], "key": key, "result": {"item": f"cobblemon:{name}"},
                 # the recipe book shows it once the player holds any of its ingredients
-                "unlock": [{"item": v["item"]} for v in key.values()]}}, indent=2))
+                "unlock": [{"item": v["item"]} for v in key.values() if "item" in v]}}, indent=2))
 
 
 # ---------------------------------------------------------------------------
@@ -3062,6 +3082,148 @@ def create_fossil_formations(convert, parse_processors, invalid, unmapped):
     return count
 
 
+# ---------------------------------------------------------------------------
+# Fishing. Cobblemon's Poke Rods (data/cobblemon/pokerods, one per ball) cast a bobber that is that ball; after a
+# wait (100 to 600 ticks, shortened by Lure) something bites, and 85 times in 100 it is a Pokemon from the fishing
+# spawns (spawnablePositionType "fishing") of the biome, otherwise the Poke Rod loot table: junk 66, Cobblemon
+# treasure 17, vanilla treasure 17, which carries the Poke Rod Smithing Template one time in six.
+# PokeRodFishingBobberEntity.kt has the timings; scripts/main.js runs the cast, the bite and the catch from
+# scripts/fishing.js, which this writes, with the vanilla biome tags the spawns' biome filters are tested against.
+# ---------------------------------------------------------------------------
+
+rodsMain = f"{cobblemonData}/pokerods"
+vanillaBiomes = "C:/GitHub/bedrock-server/behavior_packs/vanilla/biomes"
+
+
+def poke_rods():
+    """[(rod name, ball item)] with the plain Poke Rod first."""
+    rods = []
+    for path in sorted(glob.glob(f"{rodsMain}/*.json")):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        rods.append((os.path.basename(path)[:-len(".json")], data.get("pokeBallId", "cobblemon:poke_ball")))
+    rods.sort(key=lambda r: r[0] != "poke_rod")
+    return rods
+
+
+def vanilla_biome_tags():
+    """{biome id: [tags]} from the server's vanilla biome definitions."""
+    tags = {}
+    for path in glob.glob(f"{vanillaBiomes}/*.json"):
+        with open(path, encoding="utf-8") as file: text = re.sub(r"//[^\n]*", "", file.read())
+        try: data = json.loads(text)["minecraft:biome"]
+        except Exception: continue
+        tags[data["description"]["identifier"]] = data.get("components", {}).get("minecraft:tags", {}).get("tags", [])
+    return tags
+
+
+def fishing_spawns():
+    """Cobblemon's fishing spawns as the script tests them; those that need a structure, nearby blocks or a slime
+    chunk are left out, as the spawn rules leave them out."""
+    spawns = []
+    for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        for spawn in pool.get("spawns", []):
+            if spawn.get("spawnablePositionType") != "fishing": continue
+            condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
+            if condition.get("structures") or condition.get("neededNearbyBlocks") or condition.get("isSlimeChunk"): continue
+            pokemon = pokemon_for_species_name(spawn.get("pokemon", ""))
+            biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
+            if not pokemon or not biome: continue
+            not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
+            low, _, high = str(spawn.get("level", "5-30")).partition("-")
+            entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
+                     "level": [int(low), int(high or low)], "biome": biome}
+            if not_biome: entry["notBiome"] = not_biome
+            for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait"):
+                if key in condition: entry[key] = condition[key]
+            spawns.append(entry)
+    return spawns
+
+
+def create_fishing():
+    print("Creating fishing...")
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    os.makedirs(f"{itemsBedrock}/rods", exist_ok=True)
+    balls = poke_balls(); ball_index = {b["item"]: n for n, b in enumerate(balls)}
+    rods = {}
+    for rod, ball in poke_rods():
+        icon = f"{cobblemon}/textures/item/fishing/{rod}.png"
+        if os.path.exists(icon):
+            shutil.copyfile(icon, f"{texturesItemsBedrock}/{rod}.png")
+            itemTextureData["texture_data"][rod] = {"textures": [f"textures/items/{rod}"]}
+        item = {"format_version": "1.21.90", "minecraft:item": {
+            "description": {"identifier": f"cobblemon:{rod}", "menu_category": {"category": "equipment"}},
+            "components": {
+                "minecraft:icon": rod, "minecraft:display_name": {"value": f"item.cobblemon:{rod}.name"},
+                "minecraft:max_stack_size": 1, "minecraft:hand_equipped": True,
+                "minecraft:durability": {"max_durability": 64},
+                "minecraft:enchantable": {"slot": "fishing_rod", "value": 1},
+                # a long use that the script cuts short, so a click registers as a use (Bedrock ignores use on a plain item)
+                "minecraft:use_modifiers": {"use_duration": 3600, "movement_modifier": 1.0},
+                "minecraft:use_animation": "none"}}}
+        with open(f"{itemsBedrock}/rods/{rod}.json", "w") as file: file.write(json.dumps(item, indent=2))
+        rods[f"cobblemon:{rod}"] = ball_index.get(ball, 0)
+    # the template that makes them
+    shutil.copyfile(f"{cobblemon}/textures/item/pokerod_smithing_template.png", f"{texturesItemsBedrock}/pokerod_smithing_template.png")
+    itemTextureData["texture_data"]["pokerod_smithing_template"] = {"textures": ["textures/items/pokerod_smithing_template"]}
+    with open(f"{itemsBedrock}/pokerod_smithing_template.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
+            "description": {"identifier": "cobblemon:pokerod_smithing_template", "menu_category": {"category": "items"}},
+            "components": {"minecraft:icon": "pokerod_smithing_template", "minecraft:display_name": {"value": "item.cobblemon:pokerod_smithing_template.name"},
+                           "minecraft:max_stack_size": 64, "minecraft:tags": {"tags": ["minecraft:transform_templates"]}}}}, indent=2))
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    # recipes: each rod is a smithing transform of a fishing rod with its ball; the template copies itself
+    for rod, ball in poke_rods():
+        with open(f"{behaviorPack}/recipes/{rod}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.20.10", "minecraft:recipe_smithing_transform": {
+                "description": {"identifier": f"cobblemon:{rod}"}, "tags": ["smithing_table"],
+                "template": "cobblemon:pokerod_smithing_template", "base": "minecraft:fishing_rod", "addition": ball, "result": f"cobblemon:{rod}"}}, indent=2))
+    with open(f"{behaviorPack}/recipes/pokerod_smithing_template.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.20.10", "minecraft:recipe_shaped": {
+            "description": {"identifier": "cobblemon:pokerod_smithing_template"}, "tags": ["crafting_table"],
+            "pattern": ["#S#", "#C#", "###"], "key": {"#": {"item": "minecraft:gold_ingot"}, "C": {"item": "minecraft:prismarine_shard"}, "S": {"item": "cobblemon:pokerod_smithing_template"}},
+            "result": {"item": "cobblemon:pokerod_smithing_template", "count": 2}, "unlock": [{"item": "cobblemon:pokerod_smithing_template"}]}}, indent=2))
+    # the bobber: the rod's ball, half size, floating
+    textures = {f"b{n}": f"textures/entity/poke_ball/{b['texture']}" for n, b in enumerate(balls)}
+    client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+        "identifier": "cobblemon:poke_bobber", "materials": {"default": "entity_alphatest"}, "textures": textures,
+        "geometry": {"poke_ball": "geometry.poke_ball", "ancient_poke_ball": "geometry.ancient_poke_ball"},
+        "scripts": {"scale": "0.5"}, "render_controllers": ["controller.render.poke_bobber"]}}}
+    with open(f"{entityBedrock}/poke_bobber.entity.json", "w") as file: file.write(json.dumps(client, indent=2))
+    with open(f"{renderControllersBedrock}/poke_bobber.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.poke_bobber": {
+            "arrays": {"textures": {"Array.skin": [f"Texture.b{n}" for n in range(len(balls))]},
+                       "geometries": {"Array.geo": [f"Geometry.{b['model']}" for b in balls]}},
+            "geometry": "Array.geo[query.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[query.variant]"]}}}, indent=2))
+    groups = {f"cobblemon:ball_{n}": {"minecraft:variant": {"value": n}} for n in range(len(balls))}
+    events = {f"cobblemon:ball_{n}": {"add": {"component_groups": [f"cobblemon:ball_{n}"]}} for n in range(len(balls))}
+    behavior = {"format_version": "1.16.0", "minecraft:entity": {
+        "description": {"identifier": "cobblemon:poke_bobber", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+        "component_groups": groups, "events": events,
+        "components": {
+            "minecraft:type_family": {"family": ["poke_bobber", "inanimate"]},
+            "minecraft:collision_box": {"width": 0.25, "height": 0.25},
+            "minecraft:physics": {}, "minecraft:buoyant": {"base_buoyancy": 1.0, "apply_gravity": True, "simulate_waves": True, "big_wave_probability": 0.03, "big_wave_speed": 10.0,
+                                                          "liquid_blocks": ["minecraft:water", "minecraft:flowing_water"]},
+            "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+            "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
+            "minecraft:health": {"value": 1, "max": 1}, "minecraft:variant": {"value": 0},
+            "minecraft:conditional_bandwidth_optimization": {}}}}
+    with open(f"{entitiesBedrock}/poke_bobber.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=2))
+    with open(f"{cobblemonData}/loot_table/fishing/pokerod_treasure.json", encoding="utf-8") as file:
+        treasure = [e["name"] for p in json.load(file)["pools"] for e in p["entries"] if e.get("name")]
+    spawns = fishing_spawns()
+    with open(f"{scriptsBedrock}/fishing.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: Poke Rods and their bobber ball, Cobblemon's fishing spawns, the vanilla biome tags" + chr(10))
+        file.write("export const RODS = " + json.dumps(rods) + ";" + chr(10))
+        file.write("export const FISHING_SPAWNS = " + json.dumps(spawns) + ";" + chr(10))
+        file.write("export const BIOME_TAGS = " + json.dumps(vanilla_biome_tags()) + ";" + chr(10))
+        file.write("export const BUCKETS = " + json.dumps(BUCKET_WEIGHTS) + ";" + chr(10))
+        file.write("export const ROD_TREASURE = " + json.dumps(treasure) + ";" + chr(10))
+    print(f"Create fishing complete: {len(rods)} rods, {len(spawns)} fishing spawns.")
+
+
 def main():
     global pokemons
     fix_only = "--fix" in sys.argv
@@ -3093,6 +3255,7 @@ def main():
     create_poke_ball_entity()
     create_npcs()
     create_blocks()
+    create_fishing()
     create_structures()
     create_battle_data()
     ensure_script_module()

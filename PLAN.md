@@ -19,10 +19,12 @@ All eight phases are in. What each carries and leaves out is in README.md's gene
 | 4 evolution beyond level-up | Item and trade evolutions done; biome-gated regional evolutions left out |
 | 5 Pokemon interactions | Done: 150 drops |
 | 6 structures | 65 of 67 worldgen structures, start piece only |
-| 7 berries and blocks | 70 berry bushes, the healing machine, and fossils (the revival machine, 15 fossils, 23 fossil formations with brushing); PC and pasture not started |
+| 7 berries and blocks | 70 berry bushes, the healing machine, and fossils (the revival machine, 15 fossils, 23 fossil formations with brushing) the PC (40 boxes of 30) and the pasture |
 | 8 battle depth | Done: stages, statuses, abilities table, experience, PP, party and switching |
 
 Regenerate with the full `python port.py --fix`. Rebuilding blocks alone once left every custom block invisible on the client with nothing in its log.
+
+After the plan: the PC (40 boxes of 30), the pasture, and fishing with the 48 Poke Rods are in. Cobblemon's config defaults are used where they apply: shiny odds 1 in 8192, two fossils in the analyzer, 40 PC boxes.
 
 ## Ground rules
 
@@ -85,7 +87,7 @@ Bedrock has no aspects; use **entity variants**.
    species' `maleRatio` (a female variant is chosen with probability `1 - maleRatio` when a female
    variation exists), regional forms only in their biome (use `species.forms[].labels` and the spawn
    pool's biome; simplest first cut: regional variants weight 0 at spawn, only via `/event`), and
-   `shiny` with weight 1 in 4096 scaled to the randomize's total.
+   `shiny` with weight 1 in 8192 scaled to the randomize's total.
 4. Names and panels: a shiny keeps the species name; regional forms display
    `<Form> <Name>` (lang key `cobblemon.species.<key>.<form>.name` if present, else prefix the form
    label capitalised). The dialogue scene is per species, so add a `Form` line to the panel text only
