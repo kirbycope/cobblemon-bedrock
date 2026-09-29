@@ -15,6 +15,7 @@ The generated files come from Cobblemon's own data rather than from a template:
 - its interaction panel is a Bedrock NPC dialogue scene, so right-clicking a Pokemon opens a panel
   with its dex entry, its types and stats and a button that plays its cry
 """
+import collections
 import glob
 import json
 import math
@@ -3743,7 +3744,14 @@ COMMON_TAGS = {"c:ingots/iron": "minecraft:iron_ingot", "c:ingots/copper": "mine
                "c:leathers": "minecraft:leather", "c:slimeballs": "minecraft:slime_ball", "c:eggs": "minecraft:egg", "c:bones": "minecraft:bone",
                "c:feathers": "minecraft:feather", "c:obsidians": "minecraft:obsidian", "c:chests": "minecraft:chest",
                "minecraft:wool": "minecraft:white_wool", "minecraft:logs": "minecraft:oak_log", "c:glass_blocks": "minecraft:glass",
-               "c:cobblestones": "minecraft:cobblestone", "c:stones": "minecraft:stone", "c:sands": "minecraft:sand", "c:gravels": "minecraft:gravel"}
+               "c:cobblestones": "minecraft:cobblestone", "c:stones": "minecraft:stone", "c:sands": "minecraft:sand", "c:gravels": "minecraft:gravel",
+               "c:concretes": "minecraft:white_concrete", "c:nuggets/iron": "minecraft:iron_nugget", "c:nuggets/gold": "minecraft:gold_nugget",
+               "c:gems/lapis": "minecraft:lapis_lazuli", "c:fertilizers": "minecraft:bone_meal", "c:slime_balls": "minecraft:slime_ball",
+               "c:tools/shield": "minecraft:shield", "c:seeds": "minecraft:wheat_seeds", "c:rods/blaze": "minecraft:blaze_rod",
+               "c:raw_materials/gold": "minecraft:raw_gold", "c:raw_materials/iron": "minecraft:raw_iron", "c:bricks/normal": "minecraft:brick",
+               "c:buckets/empty": "minecraft:bucket", "c:ender_pearls": "minecraft:ender_pearl", "c:gunpowders": "minecraft:gunpowder",
+               **{f"c:dyes/{colour}": f"minecraft:{colour}_dye" for colour in ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+                                                                            "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")}}
 BEDROCK_TAGS = {"minecraft:planks", "minecraft:logs", "minecraft:wool", "minecraft:wooden_slabs", "minecraft:stone_crafting_materials"}
 
 
@@ -3785,6 +3793,7 @@ def create_recipes():
         if not item_id or not (item_id.startswith("minecraft:") or item_id in items): return None
         return {"item": item_id}
     made, skipped = 0, 0
+    missing = collections.Counter()
     for path in sorted(glob.glob(f"{cobblemonData}/recipe/*.json")):
         name = os.path.basename(path)[:-len(".json")]
         if os.path.exists(f"{behaviorPack}/recipes/{name}.json"): continue   # written by its own feature
@@ -3792,7 +3801,7 @@ def create_recipes():
         kind = recipe.get("type", "")
         result = recipe.get("result", {})
         result_id = result if isinstance(result, str) else result.get("id") or result.get("item")
-        if not result_id or not (result_id.startswith("minecraft:") or result_id in items): skipped += 1; continue
+        if not result_id or not (result_id.startswith("minecraft:") or result_id in items): skipped += 1; missing[f"result {result_id}"] += 1; continue
         out = {"item": result_id, **({"count": result["count"]} if isinstance(result, dict) and result.get("count", 1) > 1 else {})}
         description = {"identifier": f"cobblemon:{name}"}
         body = None
@@ -3816,10 +3825,16 @@ def create_recipes():
             if source and "item" in source:
                 body = {"minecraft:recipe_shapeless": {"description": description, "tags": ["stonecutter"], "ingredients": [source],
                                                        "result": {"item": result_id, "count": recipe.get("count", 1)}, "unlock": [source]}}
-        if not body: skipped += 1; continue
+        if not body:
+            skipped += 1
+            raw = json.dumps(recipe.get("key", recipe.get("ingredients", recipe.get("ingredient", {}))))
+            for key, ref in re.findall(r'"(item|id|tag)": "([^"]+)"', raw):
+                if not ingredient({"tag": ref} if key == "tag" else {"item": ref}): missing[f"ingredient {'#' if key == 'tag' else ''}{ref}"] += 1
+            continue
         with open(f"{behaviorPack}/recipes/{name}.json", "w") as file: file.write(json.dumps({"format_version": "1.20.10", **body}, indent=2))
         made += 1
     print(f"Create recipes complete: {made} Cobblemon recipes, {skipped} left out for items the pack does not have.")
+    print("  missing: " + ", ".join(f"{k} ({n})" for k, n in missing.most_common(40)))
 
 
 # ---------------------------------------------------------------------------
