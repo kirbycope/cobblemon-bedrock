@@ -1650,6 +1650,35 @@ function toggleOpen(block, sound) {
     return open;
 }
 
+// a click on a button does not always reach its component, as with bone meal, so the interaction event presses it too
+function pressButton(block) {
+    if (!block?.typeId.endsWith("_button") || !block.typeId.startsWith("cobblemon:") || block.permutation.getState("cobblemon:powered")) return;
+    const type = block.typeId, where = block.location, dim = block.dimension;
+    block.setPermutation(block.permutation.withState("cobblemon:powered", true));
+    try { dim.playSound("click_on.wooden_button", where); } catch (e) { }
+    system.runTimeout(() => {
+        const b = dim.getBlock(where);
+        if (b?.typeId !== type) return;
+        b.setPermutation(b.permutation.withState("cobblemon:powered", false));
+        try { dim.playSound("click_off.wooden_button", where); } catch (e) { }
+    }, 30);
+}
+
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (!event.isFirstEvent || !event.block.typeId.endsWith("_button") || !event.block.typeId.startsWith("cobblemon:")) return;
+    const block = event.block;
+    system.run(() => pressButton(block));
+});
+
+function plateCheck(block) {
+    const { x, y, z } = block.location;
+    let on = false;
+    try { on = block.dimension.getEntities({ location: { x: x + 0.5, y: y + 0.1, z: z + 0.5 }, maxDistance: 0.7 }).some((e) => e.typeId !== "minecraft:item"); } catch (e) { }
+    if (on === block.permutation.getState("cobblemon:powered")) return;
+    block.setPermutation(block.permutation.withState("cobblemon:powered", on));
+    try { block.dimension.playSound(on ? "click_on.wooden_pressure_plate" : "click_off.wooden_pressure_plate", block.location); } catch (e) { }
+}
+
 function registerWoodComponents(registry) {
     registry.registerCustomComponent("cobblemon:door", {
         onPlayerInteract({ block }) {
@@ -1660,31 +1689,16 @@ function registerWoodComponents(registry) {
     });
     registry.registerCustomComponent("cobblemon:trapdoor", { onPlayerInteract({ block }) { toggleOpen(block, "wooden_trapdoor"); } });
     registry.registerCustomComponent("cobblemon:fence_gate", { onPlayerInteract({ block }) { toggleOpen(block, "fence_gate"); } });
-    registry.registerCustomComponent("cobblemon:button", {
-        onPlayerInteract({ block }) {
-            if (block.permutation.getState("cobblemon:powered")) return;
-            const type = block.typeId, where = block.location, dim = block.dimension;
-            block.setPermutation(block.permutation.withState("cobblemon:powered", true));
-            try { dim.playSound("click_on.wooden_button", where); } catch (e) { }
-            system.runTimeout(() => {
-                const b = dim.getBlock(where);
-                if (b?.typeId !== type) return;
-                b.setPermutation(b.permutation.withState("cobblemon:powered", false));
-                try { dim.playSound("click_off.wooden_button", where); } catch (e) { }
-            }, 30);
-        }
-    });
+    registry.registerCustomComponent("cobblemon:button", { onPlayerInteract({ block }) { pressButton(block); } });
     registry.registerCustomComponent("cobblemon:pressure_plate", {
         onStepOn({ block }) {
             if (block.permutation.getState("cobblemon:powered")) return;
             block.setPermutation(block.permutation.withState("cobblemon:powered", true));
             try { block.dimension.playSound("click_on.wooden_pressure_plate", block.location); } catch (e) { }
         },
-        onStepOff({ block }) {
-            if (!block.permutation.getState("cobblemon:powered")) return;
-            block.setPermutation(block.permutation.withState("cobblemon:powered", false));
-            try { block.dimension.playSound("click_off.wooden_pressure_plate", block.location); } catch (e) { }
-        }
+        onStepOff({ block }) { plateCheck(block); },
+        // every half second, as Java checks a pressed plate: pressed while any entity stands on it
+        onTick({ block }) { plateCheck(block); }
     });
 }
 

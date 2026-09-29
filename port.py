@@ -4056,7 +4056,8 @@ def create_wood_pieces():
         write_bone_geometry("geometry.cobblemon_button", {"up": [([-3, 0, -2], [6, 2, 4])], "down": [([-3, 0, -2], [6, 1, 4])]})
         faces = {"up": [0, 0, 0], "down": [180, 0, 0], "north": [-90, 0, 0], "south": [90, 0, 0], "east": [0, 0, 90], "west": [0, 0, -90]}
         perms = [{"condition": f"q.block_state('minecraft:block_face') == '{f}'", "components": {"minecraft:transformation": {"rotation": rot}}} for f, rot in faces.items()]
-        perms.append({"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15}}})
+        # pressed, it powers redstone around it and strongly powers the block it is on, as a vanilla button does
+        perms.append({"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15, "strongly_powered_face": "down", "transform_relative": True}}})
         wood_piece(f"cobblemon:{name}", {"menu_category": {"category": "items", "group": "minecraft:itemGroup.name.buttons"}, "states": {"cobblemon:powered": [False, True]}, "traits": {
             "minecraft:placement_position": {"enabled_states": ["minecraft:block_face"]}}},
             {"minecraft:geometry": {"identifier": "geometry.cobblemon_button", "bone_visibility": {"up": "!q.block_state('cobblemon:powered')", "down": "q.block_state('cobblemon:powered')"}},
@@ -4072,8 +4073,8 @@ def create_wood_pieces():
             {"minecraft:geometry": {"identifier": "geometry.cobblemon_pressure_plate", "bone_visibility": {"up": "!q.block_state('cobblemon:powered')", "down": "q.block_state('cobblemon:powered')"}},
              "minecraft:material_instances": {"*": {"texture": planks}}, "minecraft:collision_box": {"origin": [-7, 0, -7], "size": [14, 1, 14]},
              "minecraft:selection_box": {"origin": [-7, 0, -7], "size": [14, 1, 14]}, "minecraft:light_dampening": 0,
-             "cobblemon:pressure_plate": {}, "minecraft:redstone_producer": {"power": 0}, **wood_base(name), "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}},
-            [{"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15}}}])
+             "cobblemon:pressure_plate": {}, "minecraft:tick": {"interval_range": [10, 10], "looping": True}, "minecraft:redstone_producer": {"power": 0}, **wood_base(name), "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}},
+            [{"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15, "strongly_powered_face": "down"}}}])
         made.append(name)
     return made
 
