@@ -642,6 +642,20 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
             else:
                 if cond: report.append(f"{pose['name']}: {kind} plays always, its condition is dropped: {cond}")
                 procedural(anim, bones)
+        # Where Cobblemon leaves a plain walking pose on its idle clip (Druddigon, Audino, Kingambit), the Pokemon
+        # would slide; the port gives it Cobblemon's own biped or quadruped walk at its defaults, on the model's legs
+        moves = [a for a, _ in pose["animations"] if a[0] not in ("bedrock", "bedrock_choice", "look", "unknown", "dropped_by_cobblemon", "pitch_tilt")]
+        clip_names = [a[2] for a, _ in pose["animations"] if a[0] == "bedrock" and a[2]]
+        walking = "WALK" in pose["types"] and "has_rider" not in pose["condition"] and "is_on_ground" not in pose["condition"]
+        if walking and not moves and not any(w in n for n in clip_names for w in ("walk", "run", "move", "swim", "fly", "crawl", "hop", "slither")):
+            quad = ["leg_front_left", "leg_front_right", "leg_back_left", "leg_back_right"]
+            if all(b in model_bones for b in quad): procedural(("quadruped", 0.6662, 1.4, *quad), bones); report.append(f"{pose['name']}: the port adds Cobblemon's quadruped walk")
+            else:
+                pair = next(((l, r) for l, r in (("leg_left", "leg_right"), ("leg_left1", "leg_right1")) if l in model_bones and r in model_bones), None)
+                if pair: procedural(("biped", 0.6662, 1.4, *pair), bones); report.append(f"{pose['name']}: the port adds Cobblemon's biped walk")
+                # and the arm swing Cobblemon's humanoid models walk with (BimanualSwingAnimation at its defaults)
+                arms = next(((l, r) for l, r in (("arm_left", "arm_right"), ("arm_left1", "arm_right1")) if l in model_bones and r in model_bones), None)
+                if pair and arms: procedural(("bimanual", 0.6662, 1, *arms), bones)
         static_parts(found.get("parts", []) + pose["parts"], bones)
         # "root" is the model's root part: the poser's rootBone
         if "root" in bones and "root" not in model_bones and found.get("root") in model_bones:

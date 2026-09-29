@@ -1816,6 +1816,26 @@ function toggleOpen(block, sound) {
     return open;
 }
 
+// Shears or Silk Touch keep Cobblemon's leaves as the leaves block, as its loot tables say; Bedrock loot cannot
+// tell those tools from the rest, so the break is taken over here
+function silkTouch(item) {
+    try { return (item?.getComponent("minecraft:enchantable")?.getEnchantment("silk_touch")?.level ?? 0) > 0; } catch (e) { return false; }
+}
+world.beforeEvents.playerBreakBlock.subscribe((event) => {
+    const { block, player, itemStack } = event, id = block.typeId;
+    if (!id.startsWith("cobblemon:") || !id.endsWith("_leaves")) return;
+    if (itemStack?.typeId !== "minecraft:shears" && !silkTouch(itemStack)) return;
+    event.cancel = true;
+    const where = block.location, dim = block.dimension;
+    system.run(() => {
+        const b = dim.getBlock(where);
+        if (b?.typeId !== id) return;
+        b.setType("minecraft:air");
+        try { dim.playSound("dig.grass", where); } catch (e) { }
+        if (player.getGameMode?.() !== "Creative") dim.spawnItem(new ItemStack(id, 1), { x: where.x + 0.5, y: where.y + 0.5, z: where.z + 0.5 });
+    });
+});
+
 // a click on a button does not always reach its component, as with bone meal, so the interaction event presses it too
 function pressButton(block) {
     if (!block?.typeId.endsWith("_button") || !block.typeId.startsWith("cobblemon:") || block.permutation.getState("cobblemon:powered")) return;
@@ -1839,10 +1859,40 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 function plateCheck(block) {
     const { x, y, z } = block.location;
     let on = false;
-    try { on = block.dimension.getEntities({ location: { x: x + 0.5, y: y + 0.1, z: z + 0.5 }, maxDistance: 0.7 }).some((e) => e.typeId !== "minecraft:item"); } catch (e) { }
+    // anything standing over the plate, anywhere on its 14 pixels, in a box the height of a step
+    try { on = block.dimension.getEntities({ location: { x: x + 0.0625, y, z: z + 0.0625 }, volume: { x: 0.875, y: 0.5, z: 0.875 } }).some((e) => e.typeId !== "minecraft:item"); } catch (e) { }
     if (on === block.permutation.getState("cobblemon:powered")) return;
     block.setPermutation(block.permutation.withState("cobblemon:powered", on));
     try { block.dimension.playSound(on ? "click_on.wooden_pressure_plate" : "click_off.wooden_pressure_plate", block.location); } catch (e) { }
+}
+
+// Model blocks: a stack of placed items grows when the same item is used on it (up to the blockstate's amounts),
+// a crop grows a stage on random ticks as Cobblemon's mints and grains do, and an open state toggles on a click
+function registerModelBlockComponents(registry) {
+    registry.registerCustomComponent("cobblemon:stackable", {
+        onPlayerInteract({ block, player }) {
+            if (!player) return;
+            const item = block.typeId.replace(/_block$/, ""), hand = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand?.typeId !== item) return;
+            const amount = block.permutation.getState("cobblemon:amount");
+            let next;
+            try { next = block.permutation.withState("cobblemon:amount", amount + 1); } catch (e) { return; }   // already a full stack
+            block.setPermutation(next); consumeHand(player);
+        }
+    });
+    registry.registerCustomComponent("cobblemon:grows", {
+        onRandomTick({ block }) {
+            const age = block.permutation.getState("cobblemon:age");
+            if (Math.random() < 0.2) { try { block.setPermutation(block.permutation.withState("cobblemon:age", age + 1)); } catch (e) { } }
+        }
+    });
+    registry.registerCustomComponent("cobblemon:openable", {
+        onPlayerInteract({ block }) {
+            const open = !block.permutation.getState("cobblemon:open");
+            block.setPermutation(block.permutation.withState("cobblemon:open", open));
+            try { block.dimension.playSound(open ? "random.chestopen" : "random.chestclosed", block.location); } catch (e) { }
+        }
+    });
 }
 
 function registerWoodComponents(registry) {
@@ -1857,11 +1907,7 @@ function registerWoodComponents(registry) {
     registry.registerCustomComponent("cobblemon:fence_gate", { onPlayerInteract({ block }) { toggleOpen(block, "fence_gate"); } });
     registry.registerCustomComponent("cobblemon:button", { onPlayerInteract({ block }) { pressButton(block); } });
     registry.registerCustomComponent("cobblemon:pressure_plate", {
-        onStepOn({ block }) {
-            if (block.permutation.getState("cobblemon:powered")) return;
-            block.setPermutation(block.permutation.withState("cobblemon:powered", true));
-            try { block.dimension.playSound("click_on.wooden_pressure_plate", block.location); } catch (e) { }
-        },
+        onStepOn({ block }) { plateCheck(block); },
         onStepOff({ block }) { plateCheck(block); },
         // every half second, as Java checks a pressed plate: pressed while any entity stands on it
         onTick({ block }) { plateCheck(block); }
@@ -2232,6 +2278,7 @@ function chooseBagItem(battle) {
 system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
+    registerModelBlockComponents(blockComponentRegistry);
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");

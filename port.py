@@ -3639,11 +3639,13 @@ def create_apricorns():
     pillar_block("cobblemon:apricorn_wood", wood + "apricorn_log", wood + "apricorn_log", {"cobblemon:strippable": {}, "minecraft:loot": self_loot("apricorn_wood")})
     pillar_block("cobblemon:stripped_apricorn_wood", wood + "stripped_apricorn_log", wood + "stripped_apricorn_log", {"minecraft:loot": self_loot("stripped_apricorn_wood")})
     full_block("cobblemon:apricorn_planks", {"*": wood + "apricorn_planks"}, loot=self_loot("apricorn_planks"))
-    # leaves: shears or silk touch keep them, anything else drops nothing
+    # leaves: Cobblemon's table drops 1 or 2 sticks one time in fifty; shears or Silk Touch keep the leaves, which
+    # Bedrock loot cannot tell apart from other tools, so the script does that when they break. They draw one side
+    # of each face, so two leaves side by side do not fight over the face they share
     with open(f"{lootBlocksBedrock}/apricorn_leaves.json", "w") as file:
-        file.write(json.dumps({"pools": [{"rolls": 1, "conditions": [{"condition": "match_tool", "item": "minecraft:shears"}],
-                                          "entries": [{"type": "item", "name": "cobblemon:apricorn_leaves"}]}]}))
-    full_block("cobblemon:apricorn_leaves", {"*": wood + "apricorn_leaves"}, render="alpha_test", category="nature", loot="loot_tables/blocks/apricorn_leaves.json",
+        file.write(json.dumps({"pools": [{"rolls": 1, "conditions": [{"condition": "random_chance", "chance": 0.02}],
+                                          "entries": [{"type": "item", "name": "minecraft:stick", "functions": [{"function": "set_count", "count": {"min": 1, "max": 2}}]}]}]}))
+    full_block("cobblemon:apricorn_leaves", {"*": wood + "apricorn_leaves"}, render="alpha_test_single_sided", category="nature", loot="loot_tables/blocks/apricorn_leaves.json",
                extra={"minecraft:light_dampening": 1, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.3}})
     for colour in APRICORN_COLOURS:
         item(f"{colour}_apricorn", f"{cobblemon}/textures/item/{colour}_apricorn.png")
@@ -3749,7 +3751,7 @@ COMMON_TAGS = {"c:ingots/iron": "minecraft:iron_ingot", "c:ingots/copper": "mine
                "c:gems/lapis": "minecraft:lapis_lazuli", "c:fertilizers": "minecraft:bone_meal", "c:slime_balls": "minecraft:slime_ball",
                "c:tools/shield": "minecraft:shield", "c:seeds": "minecraft:wheat_seeds", "c:rods/blaze": "minecraft:blaze_rod",
                "c:raw_materials/gold": "minecraft:raw_gold", "c:raw_materials/iron": "minecraft:raw_iron", "c:bricks/normal": "minecraft:brick",
-               "c:buckets/empty": "minecraft:bucket", "c:ender_pearls": "minecraft:ender_pearl", "c:gunpowders": "minecraft:gunpowder",
+               "c:buckets/empty": "minecraft:bucket", "c:chains": "minecraft:chain", "c:chests/wooden": "minecraft:chest", "minecraft:buttons": "minecraft:wooden_button", "c:ender_pearls": "minecraft:ender_pearl", "c:gunpowders": "minecraft:gunpowder",
                **{f"c:dyes/{colour}": f"minecraft:{colour}_dye" for colour in ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
                                                                             "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")}}
 BEDROCK_TAGS = {"minecraft:planks", "minecraft:logs", "minecraft:wool", "minecraft:wooden_slabs", "minecraft:stone_crafting_materials"}
@@ -4289,6 +4291,140 @@ def create_held_display():
     print(f"Create held item display complete: {len(order)} item icons on {made} Pokemon.")
 
 
+# ---------------------------------------------------------------------------
+# Model blocks. Every other Cobblemon block with a Java element model: placed medicine, vitamins and held items,
+# plaques, gilded chests, teacups, the display case, campfire pots, mints and the rest. Each blockstate variant
+# becomes a permutation with its own geometry and the variant's rotation; facing is the placement direction, a
+# floor, wall or ceiling face the face placed on, amount grows when the same item is used on the block, age grows
+# on random ticks, and open toggles on a click. An item that places its block (Cobblemon's ItemNameBlockItem)
+# keeps its identifier and places cobblemon:<name>_block.
+# ---------------------------------------------------------------------------
+
+FACE_OF = {"up": "floor", "down": "ceiling"}
+
+
+def blockstate_variants(name):
+    path = f"{cobblemon}/blockstates/{name}.json"
+    if not os.path.exists(path): return None
+    with open(path, encoding="utf-8") as file: state = json.load(file)
+    if "variants" not in state: return None
+    out = []
+    for key, value in state["variants"].items():
+        v = value if isinstance(value, dict) else value[0]
+        props = dict(kv.split("=", 1) for kv in key.split(",") if "=" in kv)
+        out.append((props, v["model"], v.get("x", 0), v.get("y", 0)))
+    return out
+
+
+def state_value(text):
+    return True if text == "true" else False if text == "false" else int(text) if text.isdigit() else text
+
+
+def model_block(name, identifier, items, category="items"):
+    """A block from a Cobblemon blockstate of element models, or False when its models are not elements."""
+    variants = blockstate_variants(name)
+    if not variants: return False
+    props = sorted({k for p, *_ in variants for k in p})
+    horizontal = "facing" in props and all(p.get("facing") in ("north", "south", "east", "west") for p, *_ in variants)
+    placed_on_face = "face" in props
+    custom = [k for k in props if k not in ("facing", "face") or (k == "facing" and not horizontal)]
+    states = {}
+    for k in custom:
+        values = sorted({state_value(p[k]) for p, *_ in variants if k in p}, key=lambda v: (str(type(v)), v))
+        if k in ("waterlogged", "powered", "lit", "open", "occupied", "active", "dispensed", "empty"):
+            values = sorted(values, key=lambda v: v is not False)
+        states[f"cobblemon:{k}"] = values
+    geometries, permutations, base = {}, [], None
+    for props_v, model_ref, rx, ry in variants:
+        model = java_model(model_ref)
+        if not model or not model.get("elements"): continue
+        if model_ref not in geometries:
+            cubes, instances = java_model_cubes(model)
+            if not cubes: continue
+            gid = f"geometry.cobblemon_{name}_{len(geometries)}"
+            write_block_geometry(gid, cubes)
+            geometries[model_ref] = (gid, material_instances(instances))
+        gid, materials = geometries[model_ref]
+        conds = []
+        for k, v in props_v.items():
+            if k == "facing" and horizontal:
+                if placed_on_face and props_v.get("face") == "wall": conds.append(f"q.block_state('minecraft:block_face') == '{v}'")
+                else: conds.append(f"q.block_state('minecraft:cardinal_direction') == '{v}'")
+            elif k == "face":
+                if v == "wall": conds.append("q.block_state('minecraft:block_face') != 'up' && q.block_state('minecraft:block_face') != 'down'")
+                else: conds.append(f"q.block_state('minecraft:block_face') == '{'up' if v == 'floor' else 'down'}'")
+            else:
+                sv = state_value(v)
+                conds.append(f"q.block_state('cobblemon:{k}') == {json.dumps(sv) if isinstance(sv, str) else str(sv).lower()}".replace('"', "'"))
+        # Java turns a variant clockwise seen from above; Bedrock turns the other way
+        components = {"minecraft:geometry": gid, "minecraft:material_instances": materials,
+                      "minecraft:transformation": {"rotation": [-rx % 360, -ry % 360, 0]}}
+        if "amount" in props_v:
+            components["minecraft:loot"] = block_loot_count(name, int(props_v["amount"]), items)
+        if base is None: base = components
+        permutations.append({"condition": " && ".join(conds) or "1", "components": components})
+    if not permutations: return False
+    traits = {}
+    if horizontal: traits["minecraft:placement_direction"] = {"enabled_states": ["minecraft:cardinal_direction"]}
+    if placed_on_face: traits["minecraft:placement_position"] = {"enabled_states": ["minecraft:block_face"]}
+    extra = {}
+    if "amount" in props: extra["cobblemon:stackable"] = {}
+    if "age" in props: extra["cobblemon:grows"] = {}
+    if "open" in props: extra["cobblemon:openable"] = {}
+    definition = {"format_version": "1.21.90", "minecraft:block": {
+        "description": {"identifier": identifier, "menu_category": {"category": category}, "states": states, **({"traits": traits} if traits else {})},
+        "components": {**{k: v for k, v in base.items() if k != "minecraft:transformation"},
+                       "minecraft:collision_box": {"origin": [-6, 0, -6], "size": [12, 8, 12]}, "minecraft:selection_box": {"origin": [-7, 0, -7], "size": [14, 12, 14]},
+                       "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, "minecraft:light_dampening": 0,
+                       "minecraft:loot": block_loot(name) if "amount" not in props else base["minecraft:loot"], **extra},
+        "permutations": [pm for pm in permutations if pm["condition"] != "1"] or permutations}}
+    with open(f"{blocksBedrock}/{identifier.split(':', 1)[1]}.json", "w") as file: file.write(json.dumps(definition, indent=2))
+    return True
+
+
+def block_loot_count(name, count, items):
+    """A loot table dropping count of the block's item, for a stack of placed items."""
+    table = {"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{name}", "functions": [{"function": "set_count", "count": count}]}]}]}
+    with open(f"{lootBlocksBedrock}/{name}_{count}.json", "w") as file: file.write(json.dumps(table))
+    return f"loot_tables/blocks/{name}_{count}.json"
+
+
+def create_model_blocks():
+    """The Cobblemon blocks with element models the pack has not made elsewhere."""
+    made, placers = [], 0
+    existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
+    items = defined_items()
+    for path in sorted(glob.glob(f"{cobblemon}/blockstates/*.json")):
+        name = os.path.basename(path)[:-len(".json")]
+        if name in existing or name.startswith("potted_") or f"{name}_block" in existing: continue
+        backed = f"cobblemon:{name}" in items
+        identifier = f"cobblemon:{name}_block" if backed else f"cobblemon:{name}"
+        try:
+            if not model_block(name, identifier, items, "items" if backed else "construction"): continue
+        except Exception as error:
+            print(f"  {name}: {error}"); continue
+        made.append(identifier.split(":", 1)[1])
+        if backed:
+            # the item places its block, as Cobblemon's ItemNameBlockItem does
+            for item_path in glob.glob(f"{itemsBedrock}/**/{name}.json", recursive=True):
+                with open(item_path, encoding="utf-8") as file: item = json.load(file)
+                components = item["minecraft:item"]["components"]
+                if "minecraft:block_placer" in components: continue
+                components["minecraft:block_placer"] = {"block": identifier}
+                with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+                placers += 1
+    with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file:
+        file.write(json.dumps({"resource_pack_name": "cobblemon", "texture_name": "atlas.terrain", "padding": 8, "num_mip_levels": 4,
+                               "texture_data": terrain_textures}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for block in made:
+            name = block[:-len("_block")] if block.endswith("_block") else block
+            label = lang.get(f"block.cobblemon.{name}") or lang.get(f"item.cobblemon.{name}") or name.replace("_", " ").title()
+            file.write(f"tile.cobblemon:{block}.name={label}" + chr(10))
+    print(f"Create model blocks complete: {len(made)} blocks, {placers} items that place theirs.")
+    return made
+
+
 def create_building_blocks():
     made = create_wood_pieces()
     existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
@@ -4301,7 +4437,7 @@ def create_building_blocks():
         base = {"minecraft:destructible_by_mining": {"seconds_to_destroy": 1.5}, "minecraft:loot": block_loot(name)}
         try:
             if parent in ("block/cube_all",) and "all" in tex:
-                render = "alpha_test" if "leaves" in name else "opaque"
+                render = "alpha_test_single_sided" if "leaves" in name else "opaque"
                 full_block(identifier, {"*": tex["all"]}, extra=base, render=render)
             elif parent in ("block/cube_column", "block/cube_column_horizontal") and "side" in tex and "end" in tex:
                 full_block(identifier, {"*": tex["side"], "up": tex["end"], "down": tex["end"]}, extra=base)
@@ -4400,6 +4536,7 @@ def main():
     general_items = create_general_items()
     create_held_display()
     write_item_names(general_items)
+    create_model_blocks()
     create_recipes()
     create_structures()
     create_battle_data()

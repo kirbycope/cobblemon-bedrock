@@ -1,0 +1,2149 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:tm_machine",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {
+        "cobblemon:active": [
+          false,
+          true
+        ],
+        "cobblemon:dispensed": [
+          false,
+          true
+        ],
+        "cobblemon:empty": [
+          false,
+          true
+        ],
+        "cobblemon:open": [
+          false,
+          true
+        ]
+      },
+      "traits": {
+        "minecraft:placement_direction": {
+          "enabled_states": [
+            "minecraft:cardinal_direction"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_tm_machine_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_block_functional_tm_machine",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_block_functional_tm_machine",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          8,
+          12
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          12,
+          14
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.5
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/tm_machine.json",
+      "cobblemon:openable": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == false && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == false && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:empty') == true && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:active') == true && q.block_state('cobblemon:dispensed') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_tm_machine_11",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_tm_machine_disc",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_functional_tm_machine_disc_dispensed",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_tm_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
