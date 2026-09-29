@@ -20,26 +20,35 @@
                 "g_rockruff": "geometry.rockruff"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.rockruff.pose",
+                "pose": "controller.animation.rockruff.pose",
                 "blink_quirk": "controller.animation.rockruff.blink",
                 "look_at_target": "animation.0744_rockruff.look",
                 "ground_idle": "animation.rockruff.ground_idle",
                 "blink": "animation.rockruff.blink",
                 "ditto_face": "animation.rockruff.ditto_face",
+                "pose_animation": "animation.rockruff.pose",
                 "pose2": "animation.rockruff.pose2",
                 "pose3": "animation.rockruff.pose3",
                 "angry": "animation.rockruff.angry",
                 "sad": "animation.rockruff.sad",
                 "happy": "animation.rockruff.happy",
                 "hurt": "animation.rockruff.hurt",
-                "cry": "animation.rockruff.cry"
+                "cry": "animation.rockruff.cry",
+                "pose_standing": "animation.0744_rockruff.pose_standing",
+                "pose_walking": "animation.0744_rockruff.pose_walking"
             },
             "render_controllers": [
                 "controller.render.rockruff"

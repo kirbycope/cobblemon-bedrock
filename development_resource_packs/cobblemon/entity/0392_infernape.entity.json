@@ -20,28 +20,37 @@
                 "g_infernape": "geometry.infernape"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.infernape.pose",
                 "blink_quirk": "controller.animation.infernape.blink",
-                "quirk": "animation.infernape.quirk",
+                "quirk": "controller.animation.infernape.quirk",
                 "quirk_0": "animation.infernape.quirk",
                 "look_at_target": "animation.0392_infernape.look",
                 "idle": "animation.infernape.idle",
                 "ground_run": "animation.infernape.ground_run",
+                "quirk_animation": "animation.infernape.quirk",
                 "sleep": "animation.infernape.sleep",
                 "blink": "animation.infernape.blink",
                 "battle_idle": "animation.infernape.battle_idle",
                 "ground_idle": "animation.infernape.ground_idle",
                 "ground_walk": "animation.infernape.ground_walk",
                 "faint": "animation.infernape.faint",
-                "cry": "animation.infernape.cry"
+                "cry": "animation.infernape.cry",
+                "pose_standing": "animation.0392_infernape.pose_standing",
+                "pose_walk": "animation.0392_infernape.pose_walk"
             },
             "render_controllers": [
                 "controller.render.infernape",

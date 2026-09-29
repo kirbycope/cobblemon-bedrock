@@ -18,15 +18,21 @@
                 "g_carvanha": "geometry.carvanha"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 2) && (!q.is_in_water)) ? 4 : (((v.pose_type == 2) && (q.is_in_water)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.carvanha.pose",
+                "pose": "controller.animation.carvanha.pose",
                 "blink_quirk": "controller.animation.carvanha.blink",
                 "quirk": "controller.animation.carvanha.quirk",
                 "quirk_0": "animation.carvanha.quirk_bite",
@@ -40,7 +46,8 @@
                 "ground_idle": "animation.carvanha.ground_idle",
                 "ground_sleep": "animation.carvanha.ground_sleep",
                 "blink": "animation.carvanha.blink",
-                "pose2": "animation.carvanha.pose2"
+                "pose2": "animation.carvanha.pose2",
+                "pose_animation": "animation.carvanha.pose"
             },
             "render_controllers": [
                 "controller.render.carvanha"

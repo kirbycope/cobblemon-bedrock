@@ -18,14 +18,20 @@
                 "g_dewgong": "geometry.dewgong"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 5 || v.pose_type == 6) && (!q.is_in_water && (q.has_rider))) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 4 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 5) && (q.is_in_water)) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.dewgong.pose",
+                "pose": "controller.animation.dewgong.pose",
                 "blink_quirk": "controller.animation.dewgong.blink",
                 "look_at_target": "animation.0087_dewgong.look",
                 "ground_idle": "animation.dewgong.ground_idle",
@@ -40,9 +46,17 @@
                 "happy": "animation.dewgong.happy",
                 "hurt": "animation.dewgong.hurt",
                 "neckdemo": "animation.dewgong.neckdemo",
+                "pose_animation": "animation.dewgong.pose",
                 "test_walkspeed": "animation.dewgong.test_walkspeed",
                 "basepose": "animation.dewgong.basepose",
-                "basepose_water": "animation.dewgong.basepose_water"
+                "basepose_water": "animation.dewgong.basepose_water",
+                "pose_water_jump": "animation.0087_dewgong.pose_water_jump",
+                "pose_standing": "animation.0087_dewgong.pose_standing",
+                "pose_walking": "animation.0087_dewgong.pose_walking",
+                "pose_swim": "animation.0087_dewgong.pose_swim",
+                "pose_surface_swim": "animation.0087_dewgong.pose_surface_swim",
+                "pose_surface_float": "animation.0087_dewgong.pose_surface_float",
+                "pose_float": "animation.0087_dewgong.pose_float"
             },
             "render_controllers": [
                 "controller.render.dewgong"

@@ -18,14 +18,20 @@
                 "g_banette": "geometry.banette"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 3 || v.pose_type == 5)) ? 2 : (((v.pose_type == 4 || v.pose_type == 6)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.banette.pose",
+                "pose": "controller.animation.banette.pose",
                 "blink_quirk": "controller.animation.banette.blink",
                 "look_at_target": "animation.0354_banette.look",
                 "ground_idle_placeholder": "animation.banette.ground_idle_placeholder",
@@ -33,7 +39,12 @@
                 "ditto_face": "animation.banette.ditto_face",
                 "mouth_opening_test": "animation.banette.mouth_opening_test",
                 "scale": "animation.banette.scale",
-                "cry": "animation.banette.cry"
+                "pose_animation": "animation.banette.pose",
+                "cry": "animation.banette.cry",
+                "pose_standing": "animation.0354_banette.pose_standing",
+                "pose_walking": "animation.0354_banette.pose_walking",
+                "pose_hover": "animation.0354_banette.pose_hover",
+                "pose_fly": "animation.0354_banette.pose_fly"
             },
             "render_controllers": [
                 "controller.render.banette"

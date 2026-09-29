@@ -4,49 +4,89 @@
         "controller.animation.vanillite.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "sleep": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "fly": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "sleep": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "sleep": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "sleep": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
                         }
                     ]
                 }

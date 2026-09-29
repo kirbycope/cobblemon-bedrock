@@ -18,18 +18,25 @@
                 "g_volcarona": "geometry.volcarona"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1) && ((!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2)) ? 4 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 4) && ((!0))) ? 6 : (((v.pose_type == 4) && ((0))) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.volcarona.pose",
-                "quirk": "animation.volcarona.quirk",
+                "quirk": "controller.animation.volcarona.quirk",
                 "quirk_0": "animation.volcarona.quirk",
                 "look_at_target": "animation.0637_volcarona.look",
                 "cry": "animation.volcarona.cry",
+                "quirk_animation": "animation.volcarona.quirk",
                 "ground_idle": "animation.volcarona.ground_idle",
                 "ground_walk": "animation.volcarona.ground_walk",
                 "ground_run": "animation.volcarona.ground_run",
@@ -47,7 +54,14 @@
                 "recoil": "animation.volcarona.recoil",
                 "sleep": "animation.volcarona.sleep",
                 "walkspeed_test": "animation.volcarona.walkspeed_test",
-                "runspeed_test": "animation.volcarona.runspeed_test"
+                "runspeed_test": "animation.volcarona.runspeed_test",
+                "pose_standing": "animation.0637_volcarona.pose_standing",
+                "pose_battle_standing": "animation.0637_volcarona.pose_battle_standing",
+                "pose_walking": "animation.0637_volcarona.pose_walking",
+                "pose_running": "animation.0637_volcarona.pose_running",
+                "pose_hover": "animation.0637_volcarona.pose_hover",
+                "pose_fly": "animation.0637_volcarona.pose_fly",
+                "pose_glide": "animation.0637_volcarona.pose_glide"
             },
             "render_controllers": [
                 "controller.render.volcarona"

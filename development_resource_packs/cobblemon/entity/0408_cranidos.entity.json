@@ -18,15 +18,21 @@
                 "g_cranidos": "geometry.cranidos"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.cranidos.pose",
+                "pose": "controller.animation.cranidos.pose",
                 "blink_quirk": "controller.animation.cranidos.blink",
                 "quirk": "controller.animation.cranidos.quirk",
                 "quirk_0": "animation.cranidos.quirk_idle",
@@ -44,7 +50,12 @@
                 "quirk_shake": "animation.cranidos.quirk_shake",
                 "walk_speed_test": "animation.cranidos.walk_speed_test",
                 "run_speed_test": "animation.cranidos.run_speed_test",
-                "idle_copy": "animation.cranidos.idle_copy"
+                "idle_copy": "animation.cranidos.idle_copy",
+                "pose_animation": "animation.cranidos.pose",
+                "pose_battle_standing": "animation.0408_cranidos.pose_battle_standing",
+                "pose_standing": "animation.0408_cranidos.pose_standing",
+                "pose_walking": "animation.0408_cranidos.pose_walking",
+                "pose_run": "animation.0408_cranidos.pose_run"
             },
             "render_controllers": [
                 "controller.render.cranidos"

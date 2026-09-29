@@ -4,32 +4,61 @@
         "controller.animation.klefki.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "battle_idle": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "battle_idle": {
                     "animations": [
-                        "ground_idle"
+                        "battle_idle",
+                        "pose_battle_idle"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_idle": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_idle": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ]
                 }

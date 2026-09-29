@@ -21,26 +21,38 @@
                 "g_scyther_female": "geometry.scyther_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 3 || v.pose_type == 5)) ? 3 : (((v.pose_type == 4 || v.pose_type == 6)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.scyther.pose",
+                "pose": "controller.animation.scyther.pose",
                 "blink_quirk": "controller.animation.scyther.blink",
                 "quirk": "controller.animation.scyther.quirk",
                 "quirk_0": "animation.scyther.wing_quirk",
                 "look_at_target": "animation.0123_scyther.look",
+                "pose_animation": "animation.scyther.pose",
                 "ground_idle": "animation.scyther.ground_idle",
                 "battle_idle": "animation.scyther.battle_idle",
                 "air_idle": "animation.scyther.air_idle",
                 "wing_quirk": "animation.scyther.wing_quirk",
                 "blink": "animation.scyther.blink",
                 "cry": "animation.scyther.cry",
-                "hold_item": "animation.scyther.hold_item"
+                "hold_item": "animation.scyther.hold_item",
+                "pose_battle_idle": "animation.0123_scyther.pose_battle_idle",
+                "pose_standing": "animation.0123_scyther.pose_standing",
+                "pose_walk": "animation.0123_scyther.pose_walk",
+                "pose_hover": "animation.0123_scyther.pose_hover",
+                "pose_fly": "animation.0123_scyther.pose_fly"
             },
             "render_controllers": [
                 "controller.render.scyther"

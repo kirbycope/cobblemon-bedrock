@@ -29,10 +29,16 @@
                 "g_braviary_hisuian": "geometry.braviary_hisuian"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4) && ((!0))) ? 3 : (((v.pose_type == 4) && ((0))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -53,7 +59,12 @@
                 "recoil": "animation.braviary.recoil",
                 "blink": "animation.braviary.blink",
                 "walkspeedtest": "animation.braviary.walkspeedtest",
-                "scaletest": "animation.braviary.scaletest"
+                "scaletest": "animation.braviary.scaletest",
+                "pose_standing": "animation.0628_braviary.pose_standing",
+                "pose_walking": "animation.0628_braviary.pose_walking",
+                "pose_hover": "animation.0628_braviary.pose_hover",
+                "pose_fly": "animation.0628_braviary.pose_fly",
+                "pose_glide": "animation.0628_braviary.pose_glide"
             },
             "render_controllers": [
                 "controller.render.braviary",

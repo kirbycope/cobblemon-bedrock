@@ -18,10 +18,16 @@
                 "g_slaking": "geometry.slaking"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -42,7 +48,12 @@
                 "blink": "animation.slaking.blink",
                 "cry": "animation.slaking.cry",
                 "ride_ground": "animation.slaking.ride_ground",
-                "ride_jump": "animation.slaking.ride_jump"
+                "ride_jump": "animation.slaking.ride_jump",
+                "pose_battle_standing": "animation.0289_slaking.pose_battle_standing",
+                "pose_jump": "animation.0289_slaking.pose_jump",
+                "pose_running": "animation.0289_slaking.pose_running",
+                "pose_standing": "animation.0289_slaking.pose_standing",
+                "pose_walking": "animation.0289_slaking.pose_walking"
             },
             "render_controllers": [
                 "controller.render.slaking"

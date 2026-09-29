@@ -26,6 +26,8 @@ import urllib.request
 
 from PIL import Image
 
+import poses
+
 pokemons = None
 pwd = os.getcwd()
 
@@ -477,6 +479,46 @@ def look_animation(pokemon, pokemonName):
     return None
 
 
+def model_bones(pokemon, pokemonName):
+    geometry = geometry_for(pokemon, pokemonName)[len("geometry."):]
+    path = f"{modelsBedrock}/{pokemon}/{geometry}.geo.json"
+    if not os.path.exists(path): return set()
+    with open(path, encoding="utf-8") as file: data = json.load(file)
+    return {bone["name"] for geo in data.get("minecraft:geometry", []) for bone in geo.get("bones", [])}
+
+
+_animation_ids = None
+
+
+def animation_ids():
+    """Every animation id the pack's Pokemon animation files define."""
+    global _animation_ids
+    if _animation_ids is None:
+        _animation_ids = set()
+        for path in glob.glob(f"{animationsBedrock}/*/*.animation.json"):
+            if os.path.basename(path) == "poses.animation.json": continue
+            with open(path, encoding="utf-8") as file: _animation_ids |= set(json.load(file).get("animations", {}))
+    return _animation_ids
+
+
+pose_plans = {}
+
+
+def pose_plan(pokemon, pokemonName):
+    """The Pokemon's poses from Cobblemon's poser as controller states, or None when it has no poser."""
+    if pokemon in pose_plans: return pose_plans[pokemon]
+    found = poses.poser(pokemon)
+    plan = None
+    if found and poses.world_poses(found):
+        has_look = bool(look_animation(pokemon, pokemonName)) or model_has_head(pokemon, pokemonName)
+        flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
+        plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
+                                ambient_particles(pokemon, pokemonName))
+        plan["source"] = found["source"]
+    pose_plans[pokemon] = plan
+    return plan
+
+
 def model_has_head(pokemon, pokemonName):
     geometry = geometry_for(pokemon, pokemonName)[len("geometry."):]
     path = f"{modelsBedrock}/{pokemon}/{geometry}.geo.json"
@@ -743,10 +785,26 @@ def create_animation_controllers():
     """One pose controller per Pokemon from the animations it actually has, plus a blink quirk controller."""
     print("Creating animation controllers...")
     fresh(animationControllersBedrock)
+    report = {}
     for pokemon in pokemons:
         pokemonName = pokemon[pokemon.index("_")+1:]
         names = animation_names(pokemon, pokemonName)
         kind = movement_kind(species_for(pokemon))
+        plan = pose_plan(pokemon, pokemonName)
+        if plan:
+            # Cobblemon's own poses: one state per pose, chosen as its PosableModel chooses them
+            controllers = {f"controller.animation.{pokemonName}.pose": {"initial_state": "spawn", "states": plan["states"]}}
+            generated = f"{animationsBedrock}/{pokemon}/poses.animation.json"
+            if plan["animations"]:
+                os.makedirs(f"{animationsBedrock}/{pokemon}", exist_ok=True)
+                with open(generated, "w", encoding="utf-8") as file:
+                    file.write(json.dumps({"format_version": "1.8.0", "animations": plan["animations"]}, indent=1))
+            elif os.path.exists(generated): os.remove(generated)   # Bedrock rejects an empty animations list
+            report[pokemon] = {"source": plan["source"], "poses": plan["names"], "issues": plan["report"]}
+            add_quirk_controllers(controllers, pokemonName, names)
+            with open(f"{animationControllersBedrock}/{pokemon}.animation_controllers.json", "w") as file:
+                file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": controllers}, indent=4))
+            continue
         def first(*candidates):
             return next((c for c in candidates if c in names), None)
         idle = first("ground_idle", "idle", "water_idle", "air_idle") or next(iter(names), None)
@@ -807,6 +865,17 @@ def create_animation_controllers():
         # Bedrock does not run the initial state's entry effects, so a throwaway first state hands over to idle
         states["spawn"] = {"transitions": [{"idle": "1"}]}
         controllers = {f"controller.animation.{pokemonName}.pose": {"initial_state": "spawn", "states": states}}
+        add_quirk_controllers(controllers, pokemonName, names)
+        with open(f"{animationControllersBedrock}/{pokemon}.animation_controllers.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": controllers}, indent=4))
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "poses_report.json"), "w", encoding="utf-8") as file:
+        file.write(json.dumps(report, indent=1))
+    print(f"Create animation controllers complete: {len(report)} from Cobblemon's posers.")
+
+
+def add_quirk_controllers(controllers, pokemonName, names):
+    """The quirk and blink controllers, which run beside the pose controller."""
+    if True:
         quirks = [n for n in names if "quirk" in n and "sleep" not in n and "battle" not in n]
         if quirks:
             controllers[f"controller.animation.{pokemonName}.quirk"] = {
@@ -826,9 +895,6 @@ def create_animation_controllers():
                     "blink": {"animations": ["blink"], "transitions": [{"open": "q.all_animations_finished"}]}
                 }
             }
-        with open(f"{animationControllersBedrock}/{pokemon}.animation_controllers.json", "w") as file:
-            file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": controllers}, indent=4))
-    print("Create animation controllers complete.")
 
 
 def create_client_entities():
@@ -856,7 +922,14 @@ def create_client_entities():
             look_animations[f"animation.{pokemon}.look"] = {"loop": True, "bones": {"head": {"rotation": [
                 "math.clamp(query.target_x_rotation, -45, 70)", "math.clamp(query.target_y_rotation, -45, 45)", 0]}}}
             animations["look_at_target"] = f"animation.{pokemon}.look"; animate.append("look_at_target")
-        for short, full in names.items(): animations[short] = full
+        # a species' own animation named like a controller key (Arbok's "pose") must not replace the controller
+        for short, full in names.items(): animations[short if short not in animations else f"{short}_animation"] = full
+        scripts = {"animate": animate}
+        plan = pose_plan(pokemon, pokemonName)
+        if plan:
+            # the pose controller picks the pose each frame and plays the look inside the poses that have it
+            animations.update(plan["keys"])
+            scripts = {"initialize": plan["initialize"], "pre_animation": plan["pre_animation"], "animate": [a for a in animate if a != "look_at_target"]}
         entity = {
             "format_version": "1.10.0",
             "minecraft:client_entity": {
@@ -869,7 +942,7 @@ def create_client_entities():
                     },
                     "textures": variant_textures(pokemon),
                     "geometry": variant_geometries(pokemon),
-                    "scripts": {"animate": animate},
+                    "scripts": scripts,
                     "animations": animations,
                     "render_controllers": render_controller_names(pokemon, pokemonName),
                     "spawn_egg": {"texture": f"{pokemon}_spawn_egg"}
@@ -1002,6 +1075,10 @@ def create_behavior_entities():
                 "description": {
                     "identifier": entity_id(pokemon), "is_spawnable": True, "is_summonable": True, "is_experimental": False,
                     "spawn_category": "water_creature" if kind == "fish" else "creature",
+                    # read by the client's pose choice: in battle, and under water (Molang can only tell touching it)
+                    "properties": {"cobblemon:battle": {"type": "bool", "default": False, "client_sync": True},
+                                   "cobblemon:submerged": {"type": "bool", "default": False, "client_sync": True},
+                                   "cobblemon:holding": {"type": "bool", "default": False, "client_sync": True}},
                     "animations": {"dialogue": f"controller.animation.{pokemon}.dialogue"},
                     "scripts": {"animate": ["dialogue"]}
                 },
@@ -3819,8 +3896,190 @@ def block_loot(name):
     return f"loot_tables/blocks/{name}.json"
 
 
-def create_building_blocks():
+# ---------------------------------------------------------------------------
+# Wood pieces and joining fences. Fences and walls carry a state per side that the script sets from their
+# neighbours, and each side is a bone the state shows. Apricorn and saccharine doors (a two-part block), trapdoors,
+# fence gates, buttons and pressure plates, from Cobblemon's textures and vanilla's shapes; buttons and plates give
+# a redstone signal while pressed.
+# ---------------------------------------------------------------------------
+
+SIDES = ("north", "east", "south", "west")
+TURN = {"north": 0, "west": 90, "south": 180, "east": 270}
+
+
+def cube_uv(origin, size):
+    (x, y, z), (w, h, d) = origin, size
+    v = max(0, 16 - (y + h))
+    return {"north": {"uv": [x + 8, v], "uv_size": [w, h]}, "south": {"uv": [x + 8, v], "uv_size": [w, h]},
+            "east": {"uv": [z + 8, v], "uv_size": [d, h]}, "west": {"uv": [z + 8, v], "uv_size": [d, h]},
+            "up": {"uv": [x + 8, z + 8], "uv_size": [w, d]}, "down": {"uv": [x + 8, z + 8], "uv_size": [w, d]}}
+
+
+def write_bone_geometry(identifier, bones):
+    """A block geometry of named bones, each a list of (origin, size) boxes in block space, -8..8 across."""
+    os.makedirs(blockModelsBedrock, exist_ok=True)
+    out = [{"name": name, "pivot": [0, 0, 0], "cubes": [{"origin": o, "size": sz, "uv": cube_uv(o, sz)} for o, sz in boxes]} for name, boxes in bones.items()]
+    with open(f"{blockModelsBedrock}/{identifier.split('.', 1)[1]}.geo.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+            "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
+                            "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1, 0]},
+            "bones": out}]}, indent=1))
+
+
+def union_box(boxes):
+    lo = [min(o[i] for o, sz in boxes) for i in range(3)]
+    hi = [max(o[i] + sz[i] for o, sz in boxes) for i in range(3)]
+    return {"origin": lo, "size": [hi[i] - lo[i] for i in range(3)]}
+
+
+def connecting_block(name, texture, wide, base):
+    """A fence or wall: a post, and an arm to each side the script finds something to join."""
+    if wide:
+        post = [([-4, 0, -4], [8, 16, 8])]
+        arms = {"north": [([-3, 0, -8], [6, 14, 4])], "east": [([4, 0, -3], [4, 14, 6])], "south": [([-3, 0, 4], [6, 14, 4])], "west": [([-8, 0, -3], [4, 14, 6])]}
+    else:
+        post = [([-2, 0, -2], [4, 16, 4])]
+        arms = {"north": [([-1, 6, -8], [2, 3, 6]), ([-1, 12, -8], [2, 3, 6])], "east": [([2, 6, -1], [6, 3, 2]), ([2, 12, -1], [6, 3, 2])],
+                "south": [([-1, 6, 2], [2, 3, 6]), ([-1, 12, 2], [2, 3, 6])], "west": [([-8, 6, -1], [6, 3, 2]), ([-8, 12, -1], [6, 3, 2])]}
+    geometry = f"geometry.cobblemon_{'wall' if wide else 'fence'}"
+    write_bone_geometry(geometry, {"post": post, **arms})
+    permutations = []
+    for mask in range(1, 16):
+        on = [side for i, side in enumerate(SIDES) if mask & (1 << i)]
+        box = union_box(post + [b for side in on for b in arms[side]])
+        condition = " && ".join(f"q.block_state('cobblemon:{side}') == {'true' if side in on else 'false'}" for side in SIDES)
+        permutations.append({"condition": condition, "components": {"minecraft:collision_box": dict(box, size=[box["size"][0], 16, box["size"][2]]), "minecraft:selection_box": box}})
+    post_box = union_box(post)
+    with open(f"{blocksBedrock}/{name}.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.26.40", "minecraft:block": {
+            "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.walls" if wide else "minecraft:itemGroup.name.fence"},
+                            "states": {f"cobblemon:{side}": [False, True] for side in SIDES}},
+            "components": {"minecraft:geometry": {"identifier": geometry, "bone_visibility": {side: f"q.block_state('cobblemon:{side}')" for side in SIDES}},
+                           "minecraft:material_instances": {"*": {"texture": java_texture(texture)}},
+                           "minecraft:collision_box": post_box, "minecraft:selection_box": post_box, "minecraft:light_dampening": 0, **base},
+            "permutations": permutations}}, indent=2))
+
+
+def wood_piece(identifier, description, components, permutations):
+    name = identifier.split(":", 1)[1]
+    with open(f"{blocksBedrock}/{name}.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.26.40", "minecraft:block": {"description": {"identifier": identifier, **description},
+                                                                                 "components": components, "permutations": permutations}}, indent=2))
+
+
+def placer_item(name, block):
+    """An item that places a block and stands in for its own item, with Cobblemon's flat icon."""
+    icon = flat_icon(name)
+    if icon is None: return
+    icon.save(f"{texturesItemsBedrock}/{name}.png")
+    path = f"{resourcePack}/textures/item_texture.json"
+    with open(path, encoding="utf-8") as file: data = json.load(file)
+    data["texture_data"][name] = {"textures": [f"textures/items/{name}"]}
+    with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=4))
+    os.makedirs(f"{itemsBedrock}/wood", exist_ok=True)
+    with open(f"{itemsBedrock}/wood/{name}.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
+            "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.door"}},
+            "components": {"minecraft:icon": name, "minecraft:display_name": {"value": f"tile.cobblemon:{name}.name"},
+                           "minecraft:block_placer": {"block": block, "replace_block_item": True}}}}, indent=2))
+
+
+def create_wood_pieces():
     made = []
+    for wood in ("apricorn", "saccharine"):
+        planks = java_texture(f"cobblemon:block/wood/{wood}_planks")
+        wood_base = lambda n: {"minecraft:destructible_by_mining": {"seconds_to_destroy": 1.5}, "minecraft:loot": block_loot(n),
+                               "minecraft:flammable": {"catch_chance_modifier": 5, "destroy_chance_modifier": 20}}
+        open_state = {"cobblemon:open": [False, True]}
+
+        # door: part 0 the bottom, part 1 the top; closed it stands on the side toward whoever placed it, open it
+        # swings a quarter turn against its hinge
+        name = f"{wood}_door"
+        write_bone_geometry("geometry.cobblemon_door", {"door": [([-8, 0, -8], [16, 16, 3])]})
+        bottom, top = java_texture(f"cobblemon:block/wood/{wood}_door_bottom"), java_texture(f"cobblemon:block/wood/{wood}_door_top")
+        perms = []
+        for d, r in TURN.items():
+            for opened in (False, True):
+                perms.append({"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('cobblemon:open') == {str(opened).lower()}",
+                              "components": {"minecraft:transformation": {"rotation": [0, (r + (90 if opened else 0)) % 360, 0]}}})
+        perms.append({"condition": "q.block_state('minecraft:multi_block_part') == 1",
+                      "components": {"minecraft:material_instances": {"*": {"texture": top, "render_method": "alpha_test"}}}})
+        wood_piece(f"cobblemon:{name}", {"states": open_state, "traits": {
+            "minecraft:multi_block": {"enabled_states": ["minecraft:multi_block_part"], "parts": 2, "direction": "up"},
+            "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
+            {"minecraft:geometry": "geometry.cobblemon_door", "minecraft:material_instances": {"*": {"texture": bottom, "render_method": "alpha_test"}},
+             "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 16, 3]}, "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 16, 3]},
+             "minecraft:movable": {"movement_type": "popped"}, "minecraft:light_dampening": 0, "cobblemon:door": {}, **wood_base(name)}, perms)
+        placer_item(name, f"cobblemon:{name}")
+        made.append(name)
+
+        # trapdoor: a slab-thin board in the lower or upper half; open, it stands against its hinge side
+        name = f"{wood}_trapdoor"
+        write_bone_geometry("geometry.cobblemon_trapdoor", {"low": [([-8, 0, -8], [16, 3, 16])], "high": [([-8, 13, -8], [16, 3, 16])], "open": [([-8, 0, -8], [16, 16, 3])]})
+        perms = []
+        for d, r in TURN.items():
+            for half in ("bottom", "top"):
+                for opened in (False, True):
+                    box = {"origin": [-8, 0, -8], "size": [16, 16, 3]} if opened else {"origin": [-8, 0 if half == "bottom" else 13, -8], "size": [16, 3, 16]}
+                    perms.append({"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('minecraft:vertical_half') == '{half}' && q.block_state('cobblemon:open') == {str(opened).lower()}",
+                                  "components": {"minecraft:transformation": {"rotation": [0, r, 0]}, "minecraft:collision_box": box, "minecraft:selection_box": box}})
+        wood_piece(f"cobblemon:{name}", {"menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.trapdoor"}, "states": open_state, "traits": {
+            "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]},
+            "minecraft:placement_position": {"enabled_states": ["minecraft:vertical_half"]}}},
+            {"minecraft:geometry": {"identifier": "geometry.cobblemon_trapdoor", "bone_visibility": {
+                "low": "!q.block_state('cobblemon:open') && q.block_state('minecraft:vertical_half') == 'bottom'",
+                "high": "!q.block_state('cobblemon:open') && q.block_state('minecraft:vertical_half') == 'top'",
+                "open": "q.block_state('cobblemon:open')"}},
+             "minecraft:material_instances": {"*": {"texture": java_texture(f"cobblemon:block/wood/{wood}_trapdoor"), "render_method": "alpha_test"}},
+             "minecraft:light_dampening": 0, "cobblemon:trapdoor": {}, **wood_base(name)}, perms)
+        made.append(name)
+
+        # fence gate: two posts and the rails between them, which swing back to the posts when it opens
+        name = f"{wood}_fence_gate"
+        posts = [([-8, 5, -1], [2, 11, 2]), ([6, 5, -1], [2, 11, 2])]
+        rails = [([-6, 6, -1], [12, 3, 2]), ([-6, 12, -1], [12, 3, 2]), ([-2, 9, -1], [4, 3, 2])]
+        swung = [([-8, 6, 1], [2, 3, 6]), ([-8, 12, 1], [2, 3, 6]), ([6, 6, 1], [2, 3, 6]), ([6, 12, 1], [2, 3, 6])]
+        write_bone_geometry("geometry.cobblemon_fence_gate", {"posts": posts, "shut": rails, "swung": swung})
+        perms = [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('cobblemon:open') == {str(opened).lower()}",
+                  "components": {"minecraft:transformation": {"rotation": [0, r, 0]},
+                                 "minecraft:collision_box": False if opened else {"origin": [-8, 0, -2], "size": [16, 16, 4]}}}
+                 for d, r in TURN.items() for opened in (False, True)]
+        wood_piece(f"cobblemon:{name}", {"menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.fenceGate"}, "states": open_state, "traits": {
+            "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
+            {"minecraft:geometry": {"identifier": "geometry.cobblemon_fence_gate", "bone_visibility": {"shut": "!q.block_state('cobblemon:open')", "swung": "q.block_state('cobblemon:open')"}},
+             "minecraft:material_instances": {"*": {"texture": planks}}, "minecraft:selection_box": {"origin": [-8, 0, -2], "size": [16, 16, 4]},
+             "minecraft:light_dampening": 0, "cobblemon:fence_gate": {}, **wood_base(name)}, perms)
+        made.append(name)
+
+        # button: on the face it was placed against, pressed for 30 ticks by a click, powering redstone meanwhile
+        name = f"{wood}_button"
+        write_bone_geometry("geometry.cobblemon_button", {"up": [([-3, 0, -2], [6, 2, 4])], "down": [([-3, 0, -2], [6, 1, 4])]})
+        faces = {"up": [0, 0, 0], "down": [180, 0, 0], "north": [-90, 0, 0], "south": [90, 0, 0], "east": [0, 0, 90], "west": [0, 0, -90]}
+        perms = [{"condition": f"q.block_state('minecraft:block_face') == '{f}'", "components": {"minecraft:transformation": {"rotation": rot}}} for f, rot in faces.items()]
+        perms.append({"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15}}})
+        wood_piece(f"cobblemon:{name}", {"menu_category": {"category": "items", "group": "minecraft:itemGroup.name.buttons"}, "states": {"cobblemon:powered": [False, True]}, "traits": {
+            "minecraft:placement_position": {"enabled_states": ["minecraft:block_face"]}}},
+            {"minecraft:geometry": {"identifier": "geometry.cobblemon_button", "bone_visibility": {"up": "!q.block_state('cobblemon:powered')", "down": "q.block_state('cobblemon:powered')"}},
+             "minecraft:material_instances": {"*": {"texture": planks}}, "minecraft:collision_box": False,
+             "minecraft:selection_box": {"origin": [-3, 0, -2], "size": [6, 2, 4]}, "minecraft:light_dampening": 0,
+             "cobblemon:button": {}, "minecraft:redstone_producer": {"power": 0}, **wood_base(name), "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}}, perms)
+        made.append(name)
+
+        # pressure plate: pressed while something stands on it
+        name = f"{wood}_pressure_plate"
+        write_bone_geometry("geometry.cobblemon_pressure_plate", {"up": [([-7, 0, -7], [14, 1, 14])], "down": [([-7, 0, -7], [14, 0.5, 14])]})
+        wood_piece(f"cobblemon:{name}", {"menu_category": {"category": "items", "group": "minecraft:itemGroup.name.pressurePlate"}, "states": {"cobblemon:powered": [False, True]}},
+            {"minecraft:geometry": {"identifier": "geometry.cobblemon_pressure_plate", "bone_visibility": {"up": "!q.block_state('cobblemon:powered')", "down": "q.block_state('cobblemon:powered')"}},
+             "minecraft:material_instances": {"*": {"texture": planks}}, "minecraft:collision_box": {"origin": [-7, 0, -7], "size": [14, 1, 14]},
+             "minecraft:selection_box": {"origin": [-7, 0, -7], "size": [14, 1, 14]}, "minecraft:light_dampening": 0,
+             "cobblemon:pressure_plate": {}, "minecraft:redstone_producer": {"power": 0}, **wood_base(name), "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}},
+            [{"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15}}}])
+        made.append(name)
+    return made
+
+
+def create_building_blocks():
+    made = create_wood_pieces()
     existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
     for path in sorted(glob.glob(f"{cobblemon}/blockstates/*.json")):
         name = os.path.basename(path)[:-len(".json")]
@@ -3885,18 +4144,7 @@ def create_building_blocks():
                                           "components": {"minecraft:transformation": {"rotation": [180 if h == "top" else 0, r, 0]}}}
                                          for d, r in turns.items() for h in ("bottom", "top")]}}, indent=2))
             elif (name.endswith("_wall") or name.endswith("_fence")) and ("wall" in tex or "texture" in tex or "all" in tex):
-                texture = tex.get("wall", tex.get("texture", tex.get("all")))
-                wide = name.endswith("_wall")
-                post = {"origin": [-4 if wide else -2, 0, -4 if wide else -2], "size": [8 if wide else 4, 16, 8 if wide else 4]}
-                cubes = [dict(post, uv={f: {"uv": [0, 0], "uv_size": [16, 16]} for f in ("north", "south", "east", "west", "up", "down")})]
-                geometry = f"geometry.cobblemon_{'wall' if wide else 'fence'}_post"
-                write_block_geometry(geometry, cubes)
-                with open(f"{blocksBedrock}/{name}.json", "w") as file:
-                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
-                        "description": {"identifier": identifier, "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.walls" if wide else "minecraft:itemGroup.name.fence"}},
-                        "components": {"minecraft:geometry": geometry, "minecraft:material_instances": {"*": {"texture": java_texture(texture)}},
-                                       "minecraft:collision_box": {"origin": [post["origin"][0], 0, post["origin"][2]], "size": [post["size"][0], 16, post["size"][2]]},
-                                       "minecraft:light_dampening": 0, **base}}}, indent=2))
+                connecting_block(name, tex.get("wall", tex.get("texture", tex.get("all"))), name.endswith("_wall"), base)
             else:
                 continue
         except Exception as error:

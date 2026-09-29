@@ -4,78 +4,93 @@
         "controller.animation.clamperl.pose": {
             "initial_state": "spawn",
             "states": {
-                "float": {
+                "standing": {
                     "animations": [
-                        "water_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "floating": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "swimming": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "swim": {
+                "walk": {
                     "animations": [
-                        "water_swim"
+                        "ground_idle",
+                        "ground_walk",
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "floating": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "swimming": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
+                "floating": {
                     "animations": [
-                        "ground_idle"
+                        "water_idle",
+                        "pose_floating"
                     ],
                     "transitions": [
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "swimming": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "swimming": {
                     "animations": [
-                        "ground_walk"
+                        "water_swim",
+                        "water_idle",
+                        "pose_swimming"
                     ],
                     "transitions": [
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "floating": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
                         }
                     ]
                 }

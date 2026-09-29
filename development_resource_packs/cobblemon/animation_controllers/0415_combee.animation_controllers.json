@@ -4,22 +4,33 @@
         "controller.animation.combee.pose": {
             "initial_state": "spawn",
             "states": {
+                "sleep": {
+                    "animations": [
+                        "air_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "hover": {
                     "animations": [
                         "air_idle"
                     ],
                     "transitions": [
                         {
-                            "fly": "q.modified_move_speed > 0.1"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "fly": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "fly": {
                     "animations": [
@@ -27,62 +38,24 @@
                     ],
                     "transitions": [
                         {
-                            "hover": "q.modified_move_speed <= 0.1"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "hover": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
-                    ],
-                    "transitions": [],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
                         }
                     ]
                 }

@@ -21,10 +21,16 @@
                 "g_buizel_female": "geometry.buizel_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 2) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.is_in_water)) ? 3 : (((v.pose_type == 1 || v.pose_type == 4) && (!q.is_in_water)) ? 4 : (((v.pose_type == 5)) ? 5 : (((v.pose_type == 6)) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -42,7 +48,13 @@
                 "surfacewater_swim": "animation.buizel.surfacewater_swim",
                 "surfacewater_sleep": "animation.buizel.surfacewater_sleep",
                 "surfacewater_sleep2": "animation.buizel.surfacewater_sleep2",
-                "cry": "animation.buizel.cry"
+                "cry": "animation.buizel.cry",
+                "pose_standing": "animation.0418_buizel.pose_standing",
+                "pose_walking": "animation.0418_buizel.pose_walking",
+                "pose_float": "animation.0418_buizel.pose_float",
+                "pose_swim": "animation.0418_buizel.pose_swim",
+                "pose_surface_water_idle": "animation.0418_buizel.pose_surface_water_idle",
+                "pose_surface_water_swim": "animation.0418_buizel.pose_surface_water_swim"
             },
             "render_controllers": [
                 "controller.render.buizel"

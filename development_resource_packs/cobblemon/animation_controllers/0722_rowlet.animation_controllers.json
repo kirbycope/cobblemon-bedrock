@@ -4,32 +4,91 @@
         "controller.animation.rowlet.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "hover": {
                     "animations": [
-                        "ground_idle"
+                        "flying_idle",
+                        "pose_hover"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "flying_idle",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ]
                 }

@@ -21,11 +21,17 @@
                 "g_steelix_female": "geometry.steelix_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -43,7 +49,10 @@
                 "quirk_jawjitter": "animation.steelix.quirk_jawjitter",
                 "sleep": "animation.steelix.sleep",
                 "faint_WIP": "animation.steelix.faint_WIP",
-                "ditto_face": "animation.steelix.ditto_face"
+                "ditto_face": "animation.steelix.ditto_face",
+                "pose_battle_standing": "animation.0208_steelix.pose_battle_standing",
+                "pose_standing": "animation.0208_steelix.pose_standing",
+                "pose_walking": "animation.0208_steelix.pose_walking"
             },
             "render_controllers": [
                 "controller.render.steelix"

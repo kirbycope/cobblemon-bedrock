@@ -1,0 +1,174 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.alakazam.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "battle_standing": {
+                    "animations": [
+                        "alakazam_male__battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "alakazam_male__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "alakazam_male__ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "alakazam_male__ground_run",
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "alakazam_male__sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "wild_sleep": {
+                    "animations": [
+                        "alakazam_male__wild_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

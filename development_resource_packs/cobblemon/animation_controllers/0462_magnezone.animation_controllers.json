@@ -6,176 +6,62 @@
             "states": {
                 "hover": {
                     "animations": [
-                        "air_idle"
+                        "air_idle",
+                        {
+                            "ride_air_fly": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "fly": "v.pose == 1"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "fly": "q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "sleep": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "fly": {
                     "animations": [
-                        "air_fly"
+                        "air_fly",
+                        {
+                            "ride_air_fly": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "hover": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "hover": "q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "sleep": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
+                "sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "hover": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_sleeping"
+                            "fly": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_idle": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "ride_fly": "!q.is_on_ground && !q.is_in_water"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_move": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "ride_fly": "!q.is_on_ground && !q.is_in_water"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_fly": {
-                    "animations": [
-                        "ride_air_fly"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "ride_move": "q.is_on_ground && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "hover": "v.pose == 0"
+                        },
+                        {
+                            "fly": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 2"
                         }
                     ]
                 }

@@ -23,22 +23,29 @@
                 "g_shellos_east": "geometry.shellos_east"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.shellos.pose",
                 "blink_quirk": "controller.animation.shellos.blink",
-                "quirk": "animation.shellos.quirk",
+                "quirk": "controller.animation.shellos.quirk",
                 "quirk_0": "animation.shellos.quirk",
                 "look_at_target": "animation.0422_shellos.look",
                 "cry": "animation.shellos.cry",
                 "blink": "animation.shellos.blink",
                 "ground_idle": "animation.shellos.ground_idle",
+                "quirk_animation": "animation.shellos.quirk",
                 "battle_idle": "animation.shellos.battle_idle",
                 "ground_walk": "animation.shellos.ground_walk",
                 "walkspeed": "animation.shellos.walkspeed",
@@ -50,7 +57,10 @@
                 "sad": "animation.shellos.sad",
                 "happy": "animation.shellos.happy",
                 "angry": "animation.shellos.angry",
-                "recoilexpression": "animation.shellos.recoilexpression"
+                "recoilexpression": "animation.shellos.recoilexpression",
+                "pose_standing": "animation.0422_shellos.pose_standing",
+                "pose_battle_standing": "animation.0422_shellos.pose_battle_standing",
+                "pose_walking": "animation.0422_shellos.pose_walking"
             },
             "render_controllers": [
                 "controller.render.shellos"

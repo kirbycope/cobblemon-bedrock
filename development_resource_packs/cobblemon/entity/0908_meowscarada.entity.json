@@ -18,10 +18,16 @@
                 "g_meowscarada": "geometry.meowscarada"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -37,7 +43,10 @@
                 "sleep_quirk": "animation.meowscarada.sleep_quirk",
                 "sleep_quirk2": "animation.meowscarada.sleep_quirk2",
                 "sleep_quirk3": "animation.meowscarada.sleep_quirk3",
-                "sleep_quirk4": "animation.meowscarada.sleep_quirk4"
+                "sleep_quirk4": "animation.meowscarada.sleep_quirk4",
+                "pose_battle_idle": "animation.0908_meowscarada.pose_battle_idle",
+                "pose_standing": "animation.0908_meowscarada.pose_standing",
+                "pose_walking": "animation.0908_meowscarada.pose_walking"
             },
             "render_controllers": [
                 "controller.render.meowscarada"

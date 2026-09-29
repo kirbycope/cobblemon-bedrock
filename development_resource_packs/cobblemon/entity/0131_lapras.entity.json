@@ -18,17 +18,23 @@
                 "g_lapras": "geometry.lapras"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water && !q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water && q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 3 : (((v.pose_type == 1) && (!q.is_in_water)) ? 4 : (((v.pose_type == 5 || v.pose_type == 6) && (!q.is_in_water && (q.has_rider))) ? 5 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 6 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 8 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 9 : (((v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 10 : (((v.pose_type == 2) && (!q.is_in_water)) ? 11 : (((v.pose_type == 2) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 12 : (((v.pose_type == 2) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 13 : (0))))))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.lapras.pose",
                 "blink_quirk": "controller.animation.lapras.blink",
-                "quirk": "animation.lapras.quirk",
+                "quirk": "controller.animation.lapras.quirk",
                 "quirk_0": "animation.lapras.quirk",
                 "quirk_1": "animation.lapras.quirk2",
                 "quirk_2": "animation.lapras.water_quirk",
@@ -48,6 +54,7 @@
                 "water_sleep": "animation.lapras.water_sleep",
                 "cry": "animation.lapras.cry",
                 "blink": "animation.lapras.blink",
+                "quirk_animation": "animation.lapras.quirk",
                 "quirk2": "animation.lapras.quirk2",
                 "water_quirk": "animation.lapras.water_quirk",
                 "recoil": "animation.lapras.recoil",
@@ -59,7 +66,18 @@
                 "water_status": "animation.lapras.water_status",
                 "battle_cry": "animation.lapras.battle_cry",
                 "surfacewater_battle_cry": "animation.lapras.surfacewater_battle_cry",
-                "water_battle_cry": "animation.lapras.water_battle_cry"
+                "water_battle_cry": "animation.lapras.water_battle_cry",
+                "pose_battle_standing": "animation.0131_lapras.pose_battle_standing",
+                "pose_surfacewater_battle_standing": "animation.0131_lapras.pose_surfacewater_battle_standing",
+                "pose_underwater_battle_standing": "animation.0131_lapras.pose_underwater_battle_standing",
+                "pose_standing": "animation.0131_lapras.pose_standing",
+                "pose_walking": "animation.0131_lapras.pose_walking",
+                "pose_water_jump": "animation.0131_lapras.pose_water_jump",
+                "pose_land_jump": "animation.0131_lapras.pose_land_jump",
+                "pose_surfacewater_float": "animation.0131_lapras.pose_surfacewater_float",
+                "pose_float": "animation.0131_lapras.pose_float",
+                "pose_surfacewater_swim": "animation.0131_lapras.pose_surfacewater_swim",
+                "pose_swim": "animation.0131_lapras.pose_swim"
             },
             "render_controllers": [
                 "controller.render.lapras"

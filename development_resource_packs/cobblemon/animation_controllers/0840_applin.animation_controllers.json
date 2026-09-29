@@ -4,32 +4,126 @@
         "controller.animation.applin.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "battle_standing": {
                     "animations": [
-                        "ground_idle_placeholder"
+                        "ground_idle_placeholder",
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surfacewater_float": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_idle_placeholder"
+                        "ground_idle_placeholder",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surfacewater_float": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "surfacewater_float": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surfacewater_float": {
+                    "animations": [
+                        "surfacewater_idle_placeholder",
+                        "pose_surfacewater_float"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "float": {
+                    "animations": [
+                        "surfacewater_idle_placeholder",
+                        "pose_float"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surfacewater_float": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surfacewater_float": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
                         }
                     ]
                 }

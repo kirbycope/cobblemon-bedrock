@@ -18,11 +18,17 @@
                 "g_totodile": "geometry.totodile"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.is_in_water)) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && !q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 1) && (!q.is_in_water && !q.property('cobblemon:submerged'))) ? 3 : (((v.pose_type == 5) && (q.property('cobblemon:submerged'))) ? 4 : (((v.pose_type == 6) && (q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:submerged') && q.is_in_water)) ? 7 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (!q.property('cobblemon:submerged') && q.is_in_water)) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -52,7 +58,14 @@
                 "shoulder_left": "animation.totodile.shoulder_left",
                 "shoulder_right": "animation.totodile.shoulder_right",
                 "walkspeedtest": "animation.totodile.walkspeedtest",
-                "runspeedtest": "animation.totodile.runspeedtest"
+                "runspeedtest": "animation.totodile.runspeedtest",
+                "pose_standing": "animation.0158_totodile.pose_standing",
+                "pose_walk": "animation.0158_totodile.pose_walk",
+                "pose_floating": "animation.0158_totodile.pose_floating",
+                "pose_swimming": "animation.0158_totodile.pose_swimming",
+                "pose_battle_idle": "animation.0158_totodile.pose_battle_idle",
+                "pose_surface_idle": "animation.0158_totodile.pose_surface_idle",
+                "pose_surface_swim": "animation.0158_totodile.pose_surface_swim"
             },
             "render_controllers": [
                 "controller.render.totodile"

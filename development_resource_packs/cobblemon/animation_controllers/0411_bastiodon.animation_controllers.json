@@ -4,97 +4,195 @@
         "controller.animation.bastiodon.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "battle_standing": {
                     "animations": [
-                        "ground_idle"
+                        "battle_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "ride_jump": "v.pose == 2"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_walk"
+                        "ground_idle",
+                        {
+                            "ride_ground_walk": "1 && q.has_rider"
+                        },
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "ride_jump": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "sleeping": {
+                "ride_jump": {
                     "animations": [
-                        "sleep"
+                        "ride_jump",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_ride_jump"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_sleeping"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "ride_move": {
+                "walk": {
                     "animations": [
-                        "ride_ground_run"
+                        "ground_walk",
+                        {
+                            "ride_ground_walk": "1 && q.has_rider"
+                        },
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "ride_jump": "v.pose == 2"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
+                },
+                "run": {
+                    "animations": [
+                        "ground_run",
+                        {
+                            "ride_ground_walk": "1 && q.has_rider"
+                        },
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_run"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "ride_jump": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "sleep": {
+                    "animations": [
+                        "sleep",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "ride_jump": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "ride_jump": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "run": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ]
                 }

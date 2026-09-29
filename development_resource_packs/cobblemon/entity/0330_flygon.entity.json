@@ -20,11 +20,17 @@
                 "g_flygon": "geometry.flygon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 1 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && (q.is_on_ground))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && !(q.has_rider && q.ground_speed > 7))))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && (q.has_rider && q.ground_speed > 7))))) ? 4 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 6 : (((v.pose_type == 4) && ((!0))) ? 7 : (((v.pose_type == 4) && ((0))) ? 8 : (((v.pose_type == 2)) ? 9 : (0))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -66,7 +72,15 @@
                 "happy": "animation.flygon.happy",
                 "hurt": "animation.flygon.hurt",
                 "look_back": "animation.flygon.look_back",
-                "air_pose": "animation.flygon.air_pose"
+                "air_pose": "animation.flygon.air_pose",
+                "pose_standing": "animation.0330_flygon.pose_standing",
+                "pose_battle_standing": "animation.0330_flygon.pose_battle_standing",
+                "pose_walking": "animation.0330_flygon.pose_walking",
+                "pose_running": "animation.0330_flygon.pose_running",
+                "pose_hover": "animation.0330_flygon.pose_hover",
+                "pose_battle_hover": "animation.0330_flygon.pose_battle_hover",
+                "pose_fly": "animation.0330_flygon.pose_fly",
+                "pose_glide": "animation.0330_flygon.pose_glide"
             },
             "render_controllers": [
                 "controller.render.flygon",

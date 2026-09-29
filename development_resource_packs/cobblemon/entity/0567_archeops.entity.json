@@ -18,17 +18,23 @@
                 "g_archeops": "geometry.archeops"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 5 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 6 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (!0))) ? 7 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (0))) ? 8 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 9 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 10 : (((v.pose_type == 2)) ? 11 : (0))))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.archeops.pose",
                 "blink_quirk": "controller.animation.archeops.blink",
-                "quirk": "animation.archeops.quirk",
+                "quirk": "controller.animation.archeops.quirk",
                 "quirk_0": "animation.archeops.quirk",
                 "quirk_1": "animation.archeops.quirk2",
                 "look_at_target": "animation.0567_archeops.look",
@@ -51,9 +57,21 @@
                 "surfacewater_idle": "animation.archeops.surfacewater_idle",
                 "surfacewater_swim": "animation.archeops.surfacewater_swim",
                 "sleep": "animation.archeops.sleep",
+                "quirk_animation": "animation.archeops.quirk",
                 "quirk2": "animation.archeops.quirk2",
                 "air_cry": "animation.archeops.air_cry",
-                "blink": "animation.archeops.blink"
+                "blink": "animation.archeops.blink",
+                "pose_battle_standing": "animation.0567_archeops.pose_battle_standing",
+                "pose_battle_flying": "animation.0567_archeops.pose_battle_flying",
+                "pose_jump": "animation.0567_archeops.pose_jump",
+                "pose_running": "animation.0567_archeops.pose_running",
+                "pose_standing": "animation.0567_archeops.pose_standing",
+                "pose_walking": "animation.0567_archeops.pose_walking",
+                "pose_hover": "animation.0567_archeops.pose_hover",
+                "pose_fly": "animation.0567_archeops.pose_fly",
+                "pose_glide": "animation.0567_archeops.pose_glide",
+                "pose_surface_idle": "animation.0567_archeops.pose_surface_idle",
+                "pose_surface_swim": "animation.0567_archeops.pose_surface_swim"
             },
             "render_controllers": [
                 "controller.render.archeops"

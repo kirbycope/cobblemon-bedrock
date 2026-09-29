@@ -18,17 +18,24 @@
                 "g_pansear": "geometry.pansear"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.pansear.pose",
+                "pose": "controller.animation.pansear.pose",
                 "blink_quirk": "controller.animation.pansear.blink",
                 "look_at_target": "animation.0513_pansear.look",
                 "ground_idle": "animation.pansear.ground_idle",
+                "pose_animation": "animation.pansear.pose",
                 "shocked": "animation.pansear.shocked",
                 "angry": "animation.pansear.angry",
                 "sad": "animation.pansear.sad",
@@ -37,7 +44,9 @@
                 "smile": "animation.pansear.smile",
                 "recoil": "animation.pansear.recoil",
                 "blink": "animation.pansear.blink",
-                "cry": "animation.pansear.cry"
+                "cry": "animation.pansear.cry",
+                "pose_standing": "animation.0513_pansear.pose_standing",
+                "pose_walking": "animation.0513_pansear.pose_walking"
             },
             "render_controllers": [
                 "controller.render.pansear"

@@ -18,20 +18,29 @@
                 "g_absol": "geometry.absol"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.absol.pose",
+                "pose": "controller.animation.absol.pose",
                 "blink_quirk": "controller.animation.absol.blink",
                 "look_at_target": "animation.0359_absol.look",
                 "ground_idle": "animation.absol.ground_idle",
                 "blink": "animation.absol.blink",
                 "ditto_face": "animation.absol.ditto_face",
-                "cry": "animation.absol.cry"
+                "pose_animation": "animation.absol.pose",
+                "cry": "animation.absol.cry",
+                "pose_standing": "animation.0359_absol.pose_standing",
+                "pose_walking": "animation.0359_absol.pose_walking"
             },
             "render_controllers": [
                 "controller.render.absol"

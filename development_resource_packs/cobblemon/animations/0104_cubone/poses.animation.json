@@ -1,0 +1,43 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0104_cubone.pose_standing": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0104_cubone.pose_walk": {
+   "loop": true,
+   "bones": {
+    "right_leg": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 63.0254 + 180) * q.modified_move_speed * 65.8901",
+      "0",
+      "0"
+     ]
+    },
+    "left_leg": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 63.0254) * q.modified_move_speed * 65.8901",
+      "0",
+      "0"
+     ]
+    },
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  }
+ }
+}

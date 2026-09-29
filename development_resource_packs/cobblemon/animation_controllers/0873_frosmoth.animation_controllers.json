@@ -4,32 +4,172 @@
         "controller.animation.frosmoth.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "battle_standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "wing_flap",
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "wing_flap",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_idle",
+                        "wing_flap"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "ground_idle",
+                        "wing_flap"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "ground_idle",
+                        "wing_flap",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "ground_idle",
+                        "wing_flap"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
                         }
                     ]
                 }

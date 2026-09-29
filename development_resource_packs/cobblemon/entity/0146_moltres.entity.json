@@ -20,14 +20,20 @@
                 "g_moltres": "geometry.moltres"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 3 || v.pose_type == 5)) ? 2 : (((v.pose_type == 4 || v.pose_type == 6)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.moltres.pose",
+                "pose": "controller.animation.moltres.pose",
                 "blink_quirk": "controller.animation.moltres.blink",
                 "look_at_target": "animation.0146_moltres.look",
                 "ground_idle": "animation.moltres.ground_idle",
@@ -35,7 +41,12 @@
                 "air_fly": "animation.moltres.air_fly",
                 "blink": "animation.moltres.blink",
                 "hold_item": "animation.moltres.hold_item",
-                "hurt": "animation.moltres.hurt"
+                "pose_animation": "animation.moltres.pose",
+                "hurt": "animation.moltres.hurt",
+                "pose_standing": "animation.0146_moltres.pose_standing",
+                "pose_walk": "animation.0146_moltres.pose_walk",
+                "pose_hover": "animation.0146_moltres.pose_hover",
+                "pose_fly": "animation.0146_moltres.pose_fly"
             },
             "render_controllers": [
                 "controller.render.moltres",

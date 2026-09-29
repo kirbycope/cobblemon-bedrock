@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.eiscue.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "sleep": {
+                    "animations": [
+                        "eiscue_ice__sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "eiscue_ice__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "eiscue_ice__ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

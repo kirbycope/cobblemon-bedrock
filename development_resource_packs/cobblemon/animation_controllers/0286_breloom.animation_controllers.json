@@ -4,33 +4,41 @@
         "controller.animation.breloom.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battlestanding": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "sleeping": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "battlestanding": {
                     "animations": [
-                        "ground_walk"
+                        "battle_idle",
+                        "pose_battlestanding"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "sleeping": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "sleeping": {
                     "animations": [
@@ -38,22 +46,49 @@
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battlestanding": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "fainting": {
+                "walk": {
                     "animations": [
-                        "faint"
+                        "ground_idle",
+                        "ground_walk",
+                        "pose_walk"
                     ],
-                    "transitions": [],
-                    "blend_transition": 0.2
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battlestanding": "v.pose == 1"
+                        },
+                        {
+                            "sleeping": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battlestanding": "v.pose == 1"
+                        },
+                        {
+                            "sleeping": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
                         }
                     ]
                 }

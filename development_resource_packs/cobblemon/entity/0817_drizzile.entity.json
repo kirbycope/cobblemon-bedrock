@@ -18,10 +18,16 @@
                 "g_drizzile": "geometry.drizzile"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 2)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -39,7 +45,9 @@
                 "happy": "animation.drizzile.happy",
                 "hurt": "animation.drizzile.hurt",
                 "smile": "animation.drizzile.smile",
-                "ground_walk": "animation.drizzile.ground_walk"
+                "ground_walk": "animation.drizzile.ground_walk",
+                "pose_standing": "animation.0817_drizzile.pose_standing",
+                "pose_walking": "animation.0817_drizzile.pose_walking"
             },
             "render_controllers": [
                 "controller.render.drizzile"

@@ -18,14 +18,20 @@
                 "g_quaxwell": "geometry.quaxwell"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 5 || v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.quaxwell.pose",
+                "pose": "controller.animation.quaxwell.pose",
                 "blink_quirk": "controller.animation.quaxwell.blink",
                 "look_at_target": "animation.0913_quaxwell.look",
                 "ground_idle": "animation.quaxwell.ground_idle",
@@ -39,7 +45,12 @@
                 "walk_test": "animation.quaxwell.walk_test",
                 "run_test": "animation.quaxwell.run_test",
                 "water_idle": "animation.quaxwell.water_idle",
-                "water_battle_idle_WIP": "animation.quaxwell.water_battle_idle_WIP"
+                "pose_animation": "animation.quaxwell.pose",
+                "water_battle_idle_WIP": "animation.quaxwell.water_battle_idle_WIP",
+                "pose_standing": "animation.0913_quaxwell.pose_standing",
+                "pose_walking": "animation.0913_quaxwell.pose_walking",
+                "pose_floating": "animation.0913_quaxwell.pose_floating",
+                "pose_battle_idle": "animation.0913_quaxwell.pose_battle_idle"
             },
             "render_controllers": [
                 "controller.render.quaxwell"

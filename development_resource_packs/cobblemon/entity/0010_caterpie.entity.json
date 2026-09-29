@@ -18,10 +18,16 @@
                 "g_caterpie": "geometry.caterpie"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -34,7 +40,9 @@
                 "faint": "animation.caterpie.faint",
                 "blink": "animation.caterpie.blink",
                 "cry": "animation.caterpie.cry",
-                "render": "animation.caterpie.render"
+                "render": "animation.caterpie.render",
+                "pose_standing": "animation.0010_caterpie.pose_standing",
+                "pose_walking": "animation.0010_caterpie.pose_walking"
             },
             "render_controllers": [
                 "controller.render.caterpie"

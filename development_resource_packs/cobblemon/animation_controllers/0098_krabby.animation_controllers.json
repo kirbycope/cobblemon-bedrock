@@ -4,32 +4,122 @@
         "controller.animation.krabby.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "standing_bubbles": "v.pose == 1"
+                        },
+                        {
+                            "standing_rain": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "battle_idle": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing_bubbles": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_rain": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "battle_idle": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing_rain": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "battle_idle": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
                     "animations": [
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 1"
+                        },
+                        {
+                            "standing_rain": "v.pose == 2"
+                        },
+                        {
+                            "battle_idle": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "battle_idle": {
+                    "animations": [
+                        "battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 1"
+                        },
+                        {
+                            "standing_rain": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 1"
+                        },
+                        {
+                            "standing_rain": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "battle_idle": "v.pose == 4"
                         }
                     ]
                 }

@@ -18,10 +18,16 @@
                 "g_orthworm": "geometry.orthworm"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground && 1))) ? 1 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && (1))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && !q.has_rider && 0))) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && !q.has_rider && 0))) ? 4 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground && q.has_rider))) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water && (q.is_on_ground && q.has_rider && !(q.has_rider && q.ground_speed > 7)))) ? 6 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water && (q.is_on_ground && q.has_rider && (q.has_rider && q.ground_speed > 7)))) ? 7 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water && (q.is_on_ground && !q.has_rider && !(q.has_rider && q.ground_speed > 7) && 1))) ? 8 : (((v.pose_type == 1) && (!q.is_in_water && (q.is_on_ground && !q.has_rider && (q.has_rider && q.ground_speed > 7) && 1))) ? 9 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (0))) ? 10 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (1))) ? 11 : (0))))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -48,7 +54,11 @@
                 "blink": "animation.orthworm.blink",
                 "recoil": "animation.orthworm.recoil",
                 "cry": "animation.orthworm.cry",
-                "render": "animation.orthworm.render"
+                "render": "animation.orthworm.render",
+                "pose_jump": "animation.0968_orthworm.pose_jump",
+                "pose_standing": "animation.0968_orthworm.pose_standing",
+                "pose_battle_idle": "animation.0968_orthworm.pose_battle_idle",
+                "pose_mount_standing": "animation.0968_orthworm.pose_mount_standing"
             },
             "render_controllers": [
                 "controller.render.orthworm"

@@ -21,11 +21,17 @@
                 "g_venusaur_female": "geometry.venusaur_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (!q.is_on_ground && 1))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7) && 1))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -50,7 +56,12 @@
                 "rider_overlay": "animation.venusaur.rider_overlay",
                 "ride_jump": "animation.venusaur.ride_jump",
                 "ride_ground_walk": "animation.venusaur.ride_ground_walk",
-                "ride_ground_run": "animation.venusaur.ride_ground_run"
+                "ride_ground_run": "animation.venusaur.ride_ground_run",
+                "pose_ride_jump": "animation.0003_venusaur.pose_ride_jump",
+                "pose_battle_standing": "animation.0003_venusaur.pose_battle_standing",
+                "pose_standing": "animation.0003_venusaur.pose_standing",
+                "pose_walking": "animation.0003_venusaur.pose_walking",
+                "pose_run": "animation.0003_venusaur.pose_run"
             },
             "render_controllers": [
                 "controller.render.venusaur"

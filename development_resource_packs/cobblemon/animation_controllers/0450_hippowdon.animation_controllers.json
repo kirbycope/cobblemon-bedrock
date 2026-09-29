@@ -4,49 +4,469 @@
         "controller.animation.hippowdon.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "sleep",
+                        "pose_sleep"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "sleepsand": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "sleepsand": {
                     "animations": [
-                        "sleep"
+                        "sand_sleep",
+                        "pose_sleepsand"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standingsand": {
+                    "animations": [
+                        "sand_idle",
+                        "pose_standingsand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standingredsand": {
+                    "animations": [
+                        "sand_idle",
+                        "pose_standingredsand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walksand": {
+                    "animations": [
+                        "sand_swim",
+                        "pose_walksand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walkredsand": {
+                    "animations": [
+                        "sand_swim",
+                        "pose_walkredsand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battleidle": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battleidle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battleidlesand": {
+                    "animations": [
+                        "sand_battle_idle",
+                        "pose_battleidlesand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battleidleredsand": {
+                    "animations": [
+                        "sand_battle_idle",
+                        "pose_battleidleredsand"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "sleepsand": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "standingsand": "v.pose == 4"
+                        },
+                        {
+                            "standingredsand": "v.pose == 5"
+                        },
+                        {
+                            "walksand": "v.pose == 6"
+                        },
+                        {
+                            "walkredsand": "v.pose == 7"
+                        },
+                        {
+                            "battleidle": "v.pose == 8"
+                        },
+                        {
+                            "battleidlesand": "v.pose == 9"
+                        },
+                        {
+                            "battleidleredsand": "v.pose == 10"
                         }
                     ]
                 }

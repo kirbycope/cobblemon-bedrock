@@ -18,9 +18,15 @@
                 "g_beedrill": "geometry.beedrill"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
@@ -30,7 +36,10 @@
                 "air_fly": "animation.beedrill.air_fly",
                 "sleep": "animation.beedrill.sleep",
                 "cry": "animation.beedrill.cry",
-                "render": "animation.beedrill.render"
+                "render": "animation.beedrill.render",
+                "pose_sleep": "animation.0015_beedrill.pose_sleep",
+                "pose_standing": "animation.0015_beedrill.pose_standing",
+                "pose_walk": "animation.0015_beedrill.pose_walk"
             },
             "render_controllers": [
                 "controller.render.beedrill"

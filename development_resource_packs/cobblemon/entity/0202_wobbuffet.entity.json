@@ -21,15 +21,21 @@
                 "g_wobbuffet_female": "geometry.wobbuffet_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.wobbuffet.pose",
+                "pose": "controller.animation.wobbuffet.pose",
                 "blink_quirk": "controller.animation.wobbuffet.blink",
                 "quirk": "controller.animation.wobbuffet.quirk",
                 "quirk_0": "animation.wobbuffet.look_quirk_left",
@@ -50,7 +56,11 @@
                 "battle_cry": "animation.wobbuffet.battle_cry",
                 "faint": "animation.wobbuffet.faint",
                 "walkspeed": "animation.wobbuffet.walkspeed",
-                "faint_old": "animation.wobbuffet.faint_old"
+                "faint_old": "animation.wobbuffet.faint_old",
+                "pose_animation": "animation.wobbuffet.pose",
+                "pose_battle_standing": "animation.0202_wobbuffet.pose_battle_standing",
+                "pose_standing": "animation.0202_wobbuffet.pose_standing",
+                "pose_walking": "animation.0202_wobbuffet.pose_walking"
             },
             "render_controllers": [
                 "controller.render.wobbuffet"

@@ -18,10 +18,16 @@
                 "g_cramorant": "geometry.cramorant"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 2 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -29,7 +35,11 @@
                 "blink_quirk": "controller.animation.cramorant.blink",
                 "look_at_target": "animation.0845_cramorant.look",
                 "ground_idle": "animation.cramorant.ground_idle",
-                "blink": "animation.cramorant.blink"
+                "blink": "animation.cramorant.blink",
+                "pose_standing": "animation.0845_cramorant.pose_standing",
+                "pose_walking": "animation.0845_cramorant.pose_walking",
+                "pose_hover": "animation.0845_cramorant.pose_hover",
+                "pose_flying": "animation.0845_cramorant.pose_flying"
             },
             "render_controllers": [
                 "controller.render.cramorant"

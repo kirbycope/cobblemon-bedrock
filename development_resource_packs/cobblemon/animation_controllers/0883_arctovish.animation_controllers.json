@@ -4,25 +4,120 @@
         "controller.animation.arctovish.pose": {
             "initial_state": "spawn",
             "states": {
+                "sleep": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "water_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "water_sleep": {
+                    "animations": [
+                        "water_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_sleep": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "float": {
                     "animations": [
                         "water_idle"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "water_sleep": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "swim": {
                     "animations": [
@@ -30,75 +125,42 @@
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "water_sleep": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.is_sleeping"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
                         }
                     ]
                 }

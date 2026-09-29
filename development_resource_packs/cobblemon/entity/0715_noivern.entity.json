@@ -18,10 +18,16 @@
                 "g_noivern": "geometry.noivern"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (((q.is_on_ground)))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && (((!q.is_on_ground && q.has_rider)))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && !(q.has_rider && q.ground_speed > 7))))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && (q.has_rider && q.ground_speed > 7))))) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4) && ((!0))) ? 5 : (((v.pose_type == 4) && ((0))) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -46,7 +52,13 @@
                 "wing3": "animation.noivern.wing3",
                 "blink": "animation.noivern.blink",
                 "ground_pose": "animation.noivern.ground_pose",
-                "runspeed": "animation.noivern.runspeed"
+                "runspeed": "animation.noivern.runspeed",
+                "pose_standing": "animation.0715_noivern.pose_standing",
+                "pose_walking": "animation.0715_noivern.pose_walking",
+                "pose_running": "animation.0715_noivern.pose_running",
+                "pose_hover": "animation.0715_noivern.pose_hover",
+                "pose_fly": "animation.0715_noivern.pose_fly",
+                "pose_glide": "animation.0715_noivern.pose_glide"
             },
             "render_controllers": [
                 "controller.render.noivern"

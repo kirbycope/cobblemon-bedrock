@@ -4,49 +4,91 @@
         "controller.animation.gardevoir.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "sleep",
+                        "pose_sleep"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "battleidle": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "standing": {
                     "animations": [
-                        "sleep"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "battleidle": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "battleidle": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battleidle": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battleidle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "battleidle": "v.pose == 3"
                         }
                     ]
                 }

@@ -1,0 +1,224 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.unfezant.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "unfezant_male__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_standing": {
+                    "animations": [
+                        "unfezant_male__battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "unfezant_male__ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "unfezant_male__ground_run",
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "unfezant_male__air_idle",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "unfezant_male__air_fly",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "unfezant_male__sleep",
+                        "pose_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

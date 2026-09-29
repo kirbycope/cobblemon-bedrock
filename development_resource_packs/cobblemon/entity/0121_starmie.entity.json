@@ -20,9 +20,15 @@
                 "g_starmie": "geometry.starmie"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 1) && (!q.is_in_water && ((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2) && (!q.is_in_water)) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 6 : (((v.pose_type == 6) && (q.property('cobblemon:submerged'))) ? 7 : (0))))))));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
@@ -42,7 +48,13 @@
                 "faint": "animation.starmie.faint",
                 "cry": "animation.starmie.cry",
                 "surfacewater_location": "animation.starmie.surfacewater_location",
-                "battle_base": "animation.starmie.battle_base"
+                "battle_base": "animation.starmie.battle_base",
+                "pose_battle_standing": "animation.0121_starmie.pose_battle_standing",
+                "pose_standing": "animation.0121_starmie.pose_standing",
+                "pose_walking": "animation.0121_starmie.pose_walking",
+                "pose_sprinting": "animation.0121_starmie.pose_sprinting",
+                "pose_float": "animation.0121_starmie.pose_float",
+                "pose_swim": "animation.0121_starmie.pose_swim"
             },
             "render_controllers": [
                 "controller.render.starmie",

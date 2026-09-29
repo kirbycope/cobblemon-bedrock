@@ -18,14 +18,20 @@
                 "g_houndour": "geometry.houndour"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.houndour.pose",
+                "pose": "controller.animation.houndour.pose",
                 "blink_quirk": "controller.animation.houndour.blink",
                 "look_at_target": "animation.0228_houndour.look",
                 "ground_idle": "animation.houndour.ground_idle",
@@ -33,12 +39,15 @@
                 "cry": "animation.houndour.cry",
                 "hold_item": "animation.houndour.hold_item",
                 "scale": "animation.houndour.scale",
+                "pose_animation": "animation.houndour.pose",
                 "pose2": "animation.houndour.pose2",
                 "happy": "animation.houndour.happy",
                 "angry": "animation.houndour.angry",
                 "sad": "animation.houndour.sad",
                 "hurt": "animation.houndour.hurt",
-                "surprised": "animation.houndour.surprised"
+                "surprised": "animation.houndour.surprised",
+                "pose_standing": "animation.0228_houndour.pose_standing",
+                "pose_walking": "animation.0228_houndour.pose_walking"
             },
             "render_controllers": [
                 "controller.render.houndour"

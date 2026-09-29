@@ -18,21 +18,34 @@
                 "g_lugia": "geometry.lugia"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 5)) ? 2 : (((v.pose_type == 6)) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4)) ? 5 : (((v.pose_type == 2)) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.lugia.pose",
+                "pose": "controller.animation.lugia.pose",
                 "blink_quirk": "controller.animation.lugia.blink",
                 "look_at_target": "animation.0249_lugia.look",
                 "ground_idle": "animation.lugia.ground_idle",
                 "air_idle": "animation.lugia.air_idle",
                 "air_fly": "animation.lugia.air_fly",
                 "sleep": "animation.lugia.sleep",
-                "blink": "animation.lugia.blink"
+                "blink": "animation.lugia.blink",
+                "pose_animation": "animation.lugia.pose",
+                "pose_standing": "animation.0249_lugia.pose_standing",
+                "pose_walking": "animation.0249_lugia.pose_walking",
+                "pose_floating": "animation.0249_lugia.pose_floating",
+                "pose_swimming": "animation.0249_lugia.pose_swimming",
+                "pose_hover": "animation.0249_lugia.pose_hover",
+                "pose_fly": "animation.0249_lugia.pose_fly"
             },
             "render_controllers": [
                 "controller.render.lugia"

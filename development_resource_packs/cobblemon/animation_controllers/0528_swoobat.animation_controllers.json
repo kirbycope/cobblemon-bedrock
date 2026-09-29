@@ -4,78 +4,61 @@
         "controller.animation.swoobat.pose": {
             "initial_state": "spawn",
             "states": {
-                "hover": {
+                "standing": {
                     "animations": [
-                        "air_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "fly": "q.modified_move_speed > 0.1"
+                            "hovering": "v.pose == 1"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "fly": {
+                "hovering": {
                     "animations": [
-                        "air_fly"
+                        "air_idle",
+                        "pose_hovering"
                     ],
                     "transitions": [
                         {
-                            "hover": "q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
+                "walk": {
                     "animations": [
-                        "ground_idle"
+                        "air_fly",
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
+                            "hovering": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hovering": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ]
                 }

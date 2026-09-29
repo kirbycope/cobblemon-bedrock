@@ -18,10 +18,16 @@
                 "g_gallade": "geometry.gallade"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -38,7 +44,10 @@
                 "blink": "animation.gallade.blink",
                 "cry": "animation.gallade.cry",
                 "battle_cry": "animation.gallade.battle_cry",
-                "battle_quirk": "animation.gallade.battle_quirk"
+                "battle_quirk": "animation.gallade.battle_quirk",
+                "pose_standing": "animation.0475_gallade.pose_standing",
+                "pose_walking": "animation.0475_gallade.pose_walking",
+                "pose_battle_idle": "animation.0475_gallade.pose_battle_idle"
             },
             "render_controllers": [
                 "controller.render.gallade"

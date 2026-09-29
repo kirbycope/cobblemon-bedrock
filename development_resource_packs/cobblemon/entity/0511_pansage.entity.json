@@ -18,17 +18,24 @@
                 "g_pansage": "geometry.pansage"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.pansage.pose",
+                "pose": "controller.animation.pansage.pose",
                 "blink_quirk": "controller.animation.pansage.blink",
                 "look_at_target": "animation.0511_pansage.look",
                 "ground_idle": "animation.pansage.ground_idle",
+                "pose_animation": "animation.pansage.pose",
                 "shocked": "animation.pansage.shocked",
                 "angry": "animation.pansage.angry",
                 "sad": "animation.pansage.sad",
@@ -37,7 +44,9 @@
                 "smile": "animation.pansage.smile",
                 "recoil": "animation.pansage.recoil",
                 "blink": "animation.pansage.blink",
-                "cry": "animation.pansage.cry"
+                "cry": "animation.pansage.cry",
+                "pose_standing": "animation.0511_pansage.pose_standing",
+                "pose_walking": "animation.0511_pansage.pose_walking"
             },
             "render_controllers": [
                 "controller.render.pansage"

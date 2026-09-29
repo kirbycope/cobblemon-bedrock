@@ -18,14 +18,20 @@
                 "g_poliwhirl": "geometry.poliwhirl"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 5)) ? 3 : (((v.pose_type == 6)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.poliwhirl.pose",
+                "pose": "controller.animation.poliwhirl.pose",
                 "blink_quirk": "controller.animation.poliwhirl.blink",
                 "look_at_target": "animation.0061_poliwhirl.look",
                 "ground_idle": "animation.poliwhirl.ground_idle",
@@ -36,6 +42,7 @@
                 "sleep": "animation.poliwhirl.sleep",
                 "recoil": "animation.poliwhirl.recoil",
                 "blink": "animation.poliwhirl.blink",
+                "pose_animation": "animation.poliwhirl.pose",
                 "render": "animation.poliwhirl.render",
                 "walk_test": "animation.poliwhirl.walk_test",
                 "sleep2": "animation.poliwhirl.sleep2",

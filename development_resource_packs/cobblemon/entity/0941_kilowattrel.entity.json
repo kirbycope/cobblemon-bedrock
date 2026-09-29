@@ -20,15 +20,21 @@
                 "g_kilowattrel": "geometry.kilowattrel"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.has_rider && q.ground_speed > 7) && !q.has_rider))) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4) && ((!0))) ? 5 : (((v.pose_type == 4) && ((0))) ? 6 : (((v.pose_type == 2) && ((q.is_on_ground))) ? 7 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.kilowattrel.pose",
+                "pose": "controller.animation.kilowattrel.pose",
                 "blink_quirk": "controller.animation.kilowattrel.blink",
                 "quirk": "controller.animation.kilowattrel.quirk",
                 "quirk_0": "animation.kilowattrel.air_glide_quirk",
@@ -57,9 +63,19 @@
                 "run_speed": "animation.kilowattrel.run_speed",
                 "new": "animation.kilowattrel.new",
                 "new2": "animation.kilowattrel.new2",
+                "pose_animation": "animation.kilowattrel.pose",
                 "new3": "animation.kilowattrel.new3",
                 "new4": "animation.kilowattrel.new4",
-                "portrait_pose": "animation.kilowattrel.portrait_pose"
+                "portrait_pose": "animation.kilowattrel.portrait_pose",
+                "pose_standing": "animation.0941_kilowattrel.pose_standing",
+                "pose_battle_standing": "animation.0941_kilowattrel.pose_battle_standing",
+                "pose_walking": "animation.0941_kilowattrel.pose_walking",
+                "pose_running": "animation.0941_kilowattrel.pose_running",
+                "pose_hover": "animation.0941_kilowattrel.pose_hover",
+                "pose_fly": "animation.0941_kilowattrel.pose_fly",
+                "pose_glide": "animation.0941_kilowattrel.pose_glide",
+                "pose_sleep": "animation.0941_kilowattrel.pose_sleep",
+                "pose_air_sleep": "animation.0941_kilowattrel.pose_air_sleep"
             },
             "render_controllers": [
                 "controller.render.kilowattrel",

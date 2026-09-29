@@ -4,32 +4,87 @@
         "controller.animation.kingler.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing_bubbles": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
                     "animations": [
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "standing_bubbles": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
                         }
                     ]
                 }

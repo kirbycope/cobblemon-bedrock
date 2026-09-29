@@ -4,86 +4,134 @@
         "controller.animation.revavroom.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "run": "v.pose == 2"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "walk": {
                     "animations": [
-                        "ground_walk"
+                        "ground_walk",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "run": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "run": {
+                    "animations": [
+                        "ground_run",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_sleeping"
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_idle": {
+                "in_air": {
                     "animations": [
-                        "ground_idle"
+                        "ride_jump",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_move": {
-                    "animations": [
-                        "ride_ground"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
                         }
                     ]
                 }

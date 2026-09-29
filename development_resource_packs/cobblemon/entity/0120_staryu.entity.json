@@ -20,9 +20,15 @@
                 "g_staryu": "geometry.staryu"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 1) && (!q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water && ((q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 2) && (!q.is_in_water)) ? 3 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
@@ -37,7 +43,10 @@
                 "surfacewater_idle": "animation.staryu.surfacewater_idle",
                 "surfacewater_swim": "animation.staryu.surfacewater_swim",
                 "sleep": "animation.staryu.sleep",
-                "cry": "animation.staryu.cry"
+                "cry": "animation.staryu.cry",
+                "pose_standing": "animation.0120_staryu.pose_standing",
+                "pose_float": "animation.0120_staryu.pose_float",
+                "pose_swim": "animation.0120_staryu.pose_swim"
             },
             "render_controllers": [
                 "controller.render.staryu",

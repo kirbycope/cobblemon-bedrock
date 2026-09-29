@@ -4,153 +4,263 @@
         "controller.animation.wingull.pose": {
             "initial_state": "spawn",
             "states": {
-                "hover": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "fly": "q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "fly": {
-                    "animations": [
-                        "air_fly"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "hover": "q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "float": {
-                    "animations": [
-                        "surfacewater_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "swim": {
-                    "animations": [
-                        "surfacewater_swim"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
+                "non_water_sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "water_surface_sleep": {
+                    "animations": [
+                        "surfacewater_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "pelipper__air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "pelipper__air_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_idle": {
+                    "animations": [
+                        "surfacewater_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_swim": {
+                    "animations": [
+                        "surfacewater_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
                         }
                     ]
                 }

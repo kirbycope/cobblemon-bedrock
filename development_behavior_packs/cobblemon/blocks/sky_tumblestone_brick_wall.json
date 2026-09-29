@@ -1,15 +1,41 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.26.40",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:sky_tumblestone_brick_wall",
       "menu_category": {
         "category": "construction",
         "group": "minecraft:itemGroup.name.walls"
+      },
+      "states": {
+        "cobblemon:north": [
+          false,
+          true
+        ],
+        "cobblemon:east": [
+          false,
+          true
+        ],
+        "cobblemon:south": [
+          false,
+          true
+        ],
+        "cobblemon:west": [
+          false,
+          true
+        ]
       }
     },
     "components": {
-      "minecraft:geometry": "geometry.cobblemon_wall_post",
+      "minecraft:geometry": {
+        "identifier": "geometry.cobblemon_wall",
+        "bone_visibility": {
+          "north": "q.block_state('cobblemon:north')",
+          "east": "q.block_state('cobblemon:east')",
+          "south": "q.block_state('cobblemon:south')",
+          "west": "q.block_state('cobblemon:west')"
+        }
+      },
       "minecraft:material_instances": {
         "*": {
           "texture": "cobblemon_block_tumblestone_sky_tumblestone_bricks"
@@ -27,11 +53,460 @@
           8
         ]
       },
+      "minecraft:selection_box": {
+        "origin": [
+          -4,
+          0,
+          -4
+        ],
+        "size": [
+          8,
+          16,
+          8
+        ]
+      },
       "minecraft:light_dampening": 0,
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 1.5
       },
       "minecraft:loot": "loot_tables/blocks/sky_tumblestone_brick_wall.json"
-    }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              8,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              8,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              8
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              8
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              8,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              8,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              8,
+              16,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              8,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == false",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -4,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              8
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              8
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              16,
+              16,
+              8
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              16,
+              16,
+              8
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == false && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == false && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              12,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == false && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              16,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -4
+            ],
+            "size": [
+              16,
+              16,
+              12
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:north') == true && q.block_state('cobblemon:east') == true && q.block_state('cobblemon:south') == true && q.block_state('cobblemon:west') == true",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          }
+        }
+      }
+    ]
   }
 }

@@ -18,10 +18,16 @@
                 "g_pidgeot": "geometry.pidgeot"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1) && ((!q.has_rider))) ? 2 : (((v.pose_type == 3 || v.pose_type == 5) && ((!q.has_rider))) ? 3 : (((v.pose_type == 4 || v.pose_type == 6) && ((!q.has_rider))) ? 4 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 5 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 6 : (((v.pose_type == 2) && (q.property('cobblemon:battle') && (q.is_on_ground))) ? 7 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (1 && q.has_rider && q.is_on_ground))) ? 8 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.has_rider && q.is_on_ground && 1))) ? 9 : (((v.pose_type == 3) && ((!0 && q.has_rider && 1))) ? 10 : (((v.pose_type == 4) && ((!0 && q.has_rider && 1))) ? 11 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (0))) ? 12 : (0)))))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -54,7 +60,20 @@
                 "recoil": "animation.pidgeot.recoil",
                 "blink": "animation.pidgeot.blink",
                 "ditto_face": "animation.pidgeot.ditto_face",
-                "scaletest": "animation.pidgeot.scaletest"
+                "scaletest": "animation.pidgeot.scaletest",
+                "pose_standing": "animation.0018_pidgeot.pose_standing",
+                "pose_battle_standing": "animation.0018_pidgeot.pose_battle_standing",
+                "pose_walk": "animation.0018_pidgeot.pose_walk",
+                "pose_hover": "animation.0018_pidgeot.pose_hover",
+                "pose_fly": "animation.0018_pidgeot.pose_fly",
+                "pose_sleep": "animation.0018_pidgeot.pose_sleep",
+                "pose_air_sleep": "animation.0018_pidgeot.pose_air_sleep",
+                "pose_battle_sleep": "animation.0018_pidgeot.pose_battle_sleep",
+                "pose_mount_idle": "animation.0018_pidgeot.pose_mount_idle",
+                "pose_mount_walk": "animation.0018_pidgeot.pose_mount_walk",
+                "pose_mount_hovering": "animation.0018_pidgeot.pose_mount_hovering",
+                "pose_mount_fly": "animation.0018_pidgeot.pose_mount_fly",
+                "pose_glide": "animation.0018_pidgeot.pose_glide"
             },
             "render_controllers": [
                 "controller.render.pidgeot"

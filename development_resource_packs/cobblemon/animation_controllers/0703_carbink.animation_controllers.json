@@ -4,78 +4,37 @@
         "controller.animation.carbink.pose": {
             "initial_state": "spawn",
             "states": {
-                "hover": {
+                "standing": {
                     "animations": [
-                        "air_idle"
+                        "air_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "fly": "q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "fly": {
+                "walk": {
                     "animations": [
-                        "air_idle"
+                        "air_walk",
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "hover": "q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 0"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "air_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
                         }
                     ]
                 }

@@ -4,16 +4,16 @@
         "controller.animation.gastly.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2,
+                    "blend_transition": 0.5,
                     "particle_effects": [
                         {
                             "effect": "ghostly_smoke",
@@ -25,16 +25,16 @@
                         }
                     ]
                 },
-                "moving": {
+                "walking": {
                     "animations": [
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 0"
                         }
                     ],
-                    "blend_transition": 0.2,
+                    "blend_transition": 0.5,
                     "particle_effects": [
                         {
                             "effect": "ghostly_smoke",
@@ -49,7 +49,10 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
                         }
                     ]
                 }

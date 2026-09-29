@@ -18,10 +18,16 @@
                 "g_drampa": "geometry.drampa"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -38,7 +44,12 @@
                 "ride_ground_walk": "animation.drampa.ride_ground_walk",
                 "ride_air_fly": "animation.drampa.ride_air_fly",
                 "recoil": "animation.drampa.recoil",
-                "cry": "animation.drampa.cry"
+                "cry": "animation.drampa.cry",
+                "pose_battle_standing": "animation.0780_drampa.pose_battle_standing",
+                "pose_standing": "animation.0780_drampa.pose_standing",
+                "pose_walking": "animation.0780_drampa.pose_walking",
+                "pose_hovering": "animation.0780_drampa.pose_hovering",
+                "pose_flying": "animation.0780_drampa.pose_flying"
             },
             "render_controllers": [
                 "controller.render.drampa"

@@ -18,20 +18,29 @@
                 "g_minccino": "geometry.minccino"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.minccino.pose",
+                "pose": "controller.animation.minccino.pose",
                 "blink_quirk": "controller.animation.minccino.blink",
                 "look_at_target": "animation.0572_minccino.look",
                 "ground_idle": "animation.minccino.ground_idle",
                 "blink": "animation.minccino.blink",
                 "ditto_face": "animation.minccino.ditto_face",
-                "shaved": "animation.minccino.shaved"
+                "shaved": "animation.minccino.shaved",
+                "pose_animation": "animation.minccino.pose",
+                "pose_standing": "animation.0572_minccino.pose_standing",
+                "pose_walking": "animation.0572_minccino.pose_walking"
             },
             "render_controllers": [
                 "controller.render.minccino"

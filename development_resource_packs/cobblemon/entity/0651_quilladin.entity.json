@@ -18,6 +18,13 @@
                 "g_quilladin": "geometry.quilladin"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (((v.pose_type == 2)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk"
@@ -30,7 +37,9 @@
                 "ground_walk": "animation.quilladin.ground_walk",
                 "sleep": "animation.quilladin.sleep",
                 "blink": "animation.quilladin.blink",
-                "cry": "animation.quilladin.cry"
+                "cry": "animation.quilladin.cry",
+                "pose_standing": "animation.0651_quilladin.pose_standing",
+                "pose_walk": "animation.0651_quilladin.pose_walk"
             },
             "render_controllers": [
                 "controller.render.quilladin"

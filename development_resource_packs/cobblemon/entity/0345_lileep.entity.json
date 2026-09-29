@@ -18,10 +18,16 @@
                 "g_lileep": "geometry.lileep"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4)) ? 2 : (((v.pose_type == 5)) ? 3 : (((v.pose_type == 6)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -34,7 +40,11 @@
                 "cry": "animation.lileep.cry",
                 "water_idle": "animation.lileep.water_idle",
                 "water_swim": "animation.lileep.water_swim",
-                "blink": "animation.lileep.blink"
+                "blink": "animation.lileep.blink",
+                "pose_standing": "animation.0345_lileep.pose_standing",
+                "pose_walk": "animation.0345_lileep.pose_walk",
+                "pose_water_idle": "animation.0345_lileep.pose_water_idle",
+                "pose_water_swim": "animation.0345_lileep.pose_water_swim"
             },
             "render_controllers": [
                 "controller.render.lileep"

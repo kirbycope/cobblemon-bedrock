@@ -20,15 +20,21 @@
                 "g_beheeyem": "geometry.beheeyem"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.beheeyem.pose",
+                "pose": "controller.animation.beheeyem.pose",
                 "blink_quirk": "controller.animation.beheeyem.blink",
                 "quirk": "controller.animation.beheeyem.quirk",
                 "quirk_0": "animation.beheeyem.lights_quirk1",
@@ -41,12 +47,16 @@
                 "sleep": "animation.beheeyem.sleep",
                 "alt_sleep": "animation.beheeyem.alt_sleep",
                 "blink": "animation.beheeyem.blink",
+                "pose_animation": "animation.beheeyem.pose",
                 "lights_quirk1": "animation.beheeyem.lights_quirk1",
                 "lights_quirk2": "animation.beheeyem.lights_quirk2",
                 "lights_quirk3": "animation.beheeyem.lights_quirk3",
                 "cry": "animation.beheeyem.cry",
                 "new": "animation.beheeyem.new",
-                "pose2": "animation.beheeyem.pose2"
+                "pose2": "animation.beheeyem.pose2",
+                "pose_battle_standing": "animation.0606_beheeyem.pose_battle_standing",
+                "pose_standing": "animation.0606_beheeyem.pose_standing",
+                "pose_walking": "animation.0606_beheeyem.pose_walking"
             },
             "render_controllers": [
                 "controller.render.beheeyem",

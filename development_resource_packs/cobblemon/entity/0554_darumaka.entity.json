@@ -18,17 +18,23 @@
                 "g_darumaka": "geometry.darumaka"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.darumaka.pose",
                 "blink_quirk": "controller.animation.darumaka.blink",
-                "quirk": "animation.darumaka.quirk",
+                "quirk": "controller.animation.darumaka.quirk",
                 "quirk_0": "animation.darumaka.quirk",
                 "quirk_1": "animation.darumaka.quirk2",
                 "look_at_target": "animation.0554_darumaka.look",
@@ -40,9 +46,13 @@
                 "blink": "animation.darumaka.blink",
                 "cry": "animation.darumaka.cry",
                 "sleep": "animation.darumaka.sleep",
+                "quirk_animation": "animation.darumaka.quirk",
                 "quirk2": "animation.darumaka.quirk2",
                 "move": "animation.darumaka.move",
-                "move_run": "animation.darumaka.move_run"
+                "move_run": "animation.darumaka.move_run",
+                "pose_battle_standing": "animation.0554_darumaka.pose_battle_standing",
+                "pose_standing": "animation.0554_darumaka.pose_standing",
+                "pose_walking": "animation.0554_darumaka.pose_walking"
             },
             "render_controllers": [
                 "controller.render.darumaka"

@@ -18,19 +18,26 @@
                 "g_furret": "geometry.furret"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.furret.pose",
+                "pose": "controller.animation.furret.pose",
                 "blink_quirk": "controller.animation.furret.blink",
                 "look_at_target": "animation.0162_furret.look",
                 "ground_idle": "animation.furret.ground_idle",
                 "ground_walk": "animation.furret.ground_walk",
                 "blink": "animation.furret.blink",
+                "pose_animation": "animation.furret.pose",
                 "cry": "animation.furret.cry"
             },
             "render_controllers": [

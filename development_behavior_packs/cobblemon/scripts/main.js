@@ -359,10 +359,30 @@ function heldBerry(battle, f) {
 function freeze(entity, on) {
     try {
         entity.triggerEvent(on ? "cobblemon:battle_start" : "cobblemon:battle_end");
+        entity.setProperty("cobblemon:battle", on);   // the client's battle poses
         if (on) entity.addEffect("slowness", 20 * 600, { amplifier: 255, showParticles: false });
         else entity.removeEffect("slowness");
     } catch (e) { }
 }
+
+// Under water, as Cobblemon's poses mean it: the head in water. Molang on the client only knows whether a Pokemon
+// touches water, so the server looks at the block at each Pokemon's eyes, four times a second, near players; and
+// whether it holds an item, which the client cannot read from a dynamic property.
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near;
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 96 }); } catch (e) { continue; }
+        for (const e of near) {
+            try {
+                const block = e.dimension.getBlock(e.getHeadLocation());
+                const under = !!block && (block.typeId === "minecraft:water" || block.typeId === "minecraft:flowing_water" || block.isWaterlogged);
+                if (e.getProperty("cobblemon:submerged") !== under) e.setProperty("cobblemon:submerged", under);
+                const holding = !!prop(e, "cobblemon:held");   // the poses that show a held item
+                if (e.getProperty("cobblemon:holding") !== holding) e.setProperty("cobblemon:holding", holding);
+            } catch (err) { }
+        }
+    }
+}, 5);
 
 function endBattle(battle, text) {
     battles.delete(battle.player.id);
@@ -760,6 +780,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (const cast of fishing.values()) if (cast.phase === "waiting" || cast.phase === "travel") { cast.phase = "travel"; cast.travel = 1; }
     } else if (event.id === "cobblemon:take_item") {
         takeHeld(source);
+    } else if (event.id === "cobblemon:join_fences") {
+        // for testing and for fences placed by commands or structures: join every fence and wall within 8 blocks
+        const { x, y, z } = source.location;
+        for (let dx = -8; dx <= 8; dx++) for (let dy = -4; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) {
+            try { joinFence(source.dimension.getBlock({ x: Math.floor(x) + dx, y: Math.floor(y) + dy, z: Math.floor(z) + dz })); } catch (e) { }
+        }
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -1587,6 +1613,84 @@ function useBoneMeal(player) {
     if (item.amount > 1) { item.amount--; inv.setItem(slot, item); } else inv.setItem(slot, undefined);
 }
 
+// Wood pieces. Fences and walls join whatever they touch that they would join in Java: their own kind, fence
+// gates for a fence, and full solid blocks; each side is a block state the model shows as an arm. Doors, trapdoors
+// and fence gates open and shut on a click; a button stays pressed for 30 ticks and a pressure plate while something
+// stands on it, powering redstone meanwhile.
+const JOINING = /^cobblemon:.*_(fence|wall)$/;
+const NOT_SOLID = /(slab|stairs|door|button|pressure_plate|sign|torch|flower|sapling|carpet|rail|ladder|vine|leaves|glass_pane|bars|bush|berry|apricorn$|grass$|fern|air|water|lava|snow_layer|chain|lantern|candle)/;
+
+function joins(kind, other) {
+    if (!other || other.isAir || other.isLiquid) return false;
+    const t = other.typeId;
+    if (kind === "fence" && (t.endsWith("_fence") || t.endsWith("fence_gate"))) return true;
+    if (kind === "wall" && t.endsWith("_wall")) return true;
+    if (t.startsWith("cobblemon:")) return false;
+    return !NOT_SOLID.test(t);
+}
+
+function joinFence(block) {
+    if (!block || !JOINING.test(block.typeId)) return;
+    const kind = block.typeId.endsWith("_wall") ? "wall" : "fence";
+    let perm = block.permutation;
+    for (const [side, other] of [["north", block.north()], ["east", block.east()], ["south", block.south()], ["west", block.west()]]) {
+        perm = perm.withState(`cobblemon:${side}`, joins(kind, other));
+    }
+    block.setPermutation(perm);
+}
+
+function joinAround(block) {
+    for (const b of [block, block.north(), block.east(), block.south(), block.west()]) { try { joinFence(b); } catch (e) { } }
+}
+
+function toggleOpen(block, sound) {
+    const open = !block.permutation.getState("cobblemon:open");
+    block.setPermutation(block.permutation.withState("cobblemon:open", open));
+    try { block.dimension.playSound(open ? `open.${sound}` : `close.${sound}`, block.location); } catch (e) { }
+    return open;
+}
+
+function registerWoodComponents(registry) {
+    registry.registerCustomComponent("cobblemon:door", {
+        onPlayerInteract({ block }) {
+            const open = toggleOpen(block, "wooden_door");
+            const other = block.permutation.getState("minecraft:multi_block_part") === 0 ? block.above() : block.below();
+            if (other?.typeId === block.typeId) other.setPermutation(other.permutation.withState("cobblemon:open", open));
+        }
+    });
+    registry.registerCustomComponent("cobblemon:trapdoor", { onPlayerInteract({ block }) { toggleOpen(block, "wooden_trapdoor"); } });
+    registry.registerCustomComponent("cobblemon:fence_gate", { onPlayerInteract({ block }) { toggleOpen(block, "fence_gate"); } });
+    registry.registerCustomComponent("cobblemon:button", {
+        onPlayerInteract({ block }) {
+            if (block.permutation.getState("cobblemon:powered")) return;
+            const type = block.typeId, where = block.location, dim = block.dimension;
+            block.setPermutation(block.permutation.withState("cobblemon:powered", true));
+            try { dim.playSound("click_on.wooden_button", where); } catch (e) { }
+            system.runTimeout(() => {
+                const b = dim.getBlock(where);
+                if (b?.typeId !== type) return;
+                b.setPermutation(b.permutation.withState("cobblemon:powered", false));
+                try { dim.playSound("click_off.wooden_button", where); } catch (e) { }
+            }, 30);
+        }
+    });
+    registry.registerCustomComponent("cobblemon:pressure_plate", {
+        onStepOn({ block }) {
+            if (block.permutation.getState("cobblemon:powered")) return;
+            block.setPermutation(block.permutation.withState("cobblemon:powered", true));
+            try { block.dimension.playSound("click_on.wooden_pressure_plate", block.location); } catch (e) { }
+        },
+        onStepOff({ block }) {
+            if (!block.permutation.getState("cobblemon:powered")) return;
+            block.setPermutation(block.permutation.withState("cobblemon:powered", false));
+            try { block.dimension.playSound("click_off.wooden_pressure_plate", block.location); } catch (e) { }
+        }
+    });
+}
+
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => joinAround(block));
+world.afterEvents.playerBreakBlock.subscribe(({ block }) => joinAround(block));
+
 function registerApricornComponents(registry) {
     registry.registerCustomComponent("cobblemon:apricorn", {
         onRandomTick({ block }) {
@@ -1791,6 +1895,7 @@ function chooseBagItem(battle) {
 // Pokemon around it that belong to the player using it.
 system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     registerApricornComponents(blockComponentRegistry);
+    registerWoodComponents(blockComponentRegistry);
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");

@@ -4,141 +4,91 @@
         "controller.animation.moltres.pose": {
             "initial_state": "spawn",
             "states": {
-                "hover": {
+                "standing": {
                     "animations": [
-                        "air_idle"
+                        "ground_idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "fly": "q.modified_move_speed > 0.1"
+                            "hover": "v.pose == 2"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "fly": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "fly": {
                     "animations": [
-                        "air_fly"
+                        "air_fly",
+                        "pose_fly"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "hover": "q.modified_move_speed <= 0.1"
+                            "walk": "v.pose == 1"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "hover": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "ride_fly": "!q.is_on_ground && !q.is_in_water"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_move": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "ride_fly": "!q.is_on_ground && !q.is_in_water"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_fly": {
-                    "animations": [
-                        "air_fly"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "ride_move": "q.is_on_ground && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
                         }
                     ]
                 }

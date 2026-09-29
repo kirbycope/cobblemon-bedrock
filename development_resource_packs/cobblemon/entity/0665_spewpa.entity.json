@@ -18,15 +18,21 @@
                 "g_spewpa": "geometry.spewpa"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.spewpa.pose",
+                "pose": "controller.animation.spewpa.pose",
                 "blink_quirk": "controller.animation.spewpa.blink",
                 "quirk": "controller.animation.spewpa.quirk",
                 "quirk_0": "animation.spewpa.quirk_fluff",
@@ -36,9 +42,11 @@
                 "ground_run": "animation.spewpa.ground_run",
                 "blink": "animation.spewpa.blink",
                 "cry": "animation.spewpa.cry",
+                "pose_animation": "animation.spewpa.pose",
                 "faint": "animation.spewpa.faint",
                 "sleep": "animation.spewpa.sleep",
-                "quirk_fluff": "animation.spewpa.quirk_fluff"
+                "quirk_fluff": "animation.spewpa.quirk_fluff",
+                "pose_standing": "animation.0665_spewpa.pose_standing"
             },
             "render_controllers": [
                 "controller.render.spewpa"

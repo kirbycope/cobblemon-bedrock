@@ -18,11 +18,17 @@
                 "g_cacnea": "geometry.cacnea"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 2 : (((v.pose_type == 1) && (!q.is_in_water)) ? 3 : (((v.pose_type == 1) && (!q.is_in_water && ((q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 6 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -56,7 +62,12 @@
                 "unamused": "animation.cacnea.unamused",
                 "happy": "animation.cacnea.happy",
                 "ditto_face2": "animation.cacnea.ditto_face2",
-                "water_position": "animation.cacnea.water_position"
+                "water_position": "animation.cacnea.water_position",
+                "pose_standing": "animation.0331_cacnea.pose_standing",
+                "pose_walk": "animation.0331_cacnea.pose_walk",
+                "pose_battle_idle": "animation.0331_cacnea.pose_battle_idle",
+                "pose_swim": "animation.0331_cacnea.pose_swim",
+                "pose_float": "animation.0331_cacnea.pose_float"
             },
             "render_controllers": [
                 "controller.render.cacnea"

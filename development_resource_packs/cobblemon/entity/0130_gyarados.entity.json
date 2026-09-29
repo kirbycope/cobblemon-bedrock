@@ -29,11 +29,17 @@
                 "g_gyarados_female": "geometry.gyarados_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water && !q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water && q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 3 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground && q.has_rider))) ? 4 : (((v.pose_type == 5 || v.pose_type == 6) && (!q.is_in_water && (q.has_rider))) ? 5 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 6 : (((v.pose_type == 1) && (!q.is_in_water)) ? 7 : (((v.pose_type == 5) && (q.property('cobblemon:submerged'))) ? 8 : (((v.pose_type == 6) && (q.property('cobblemon:submerged'))) ? 9 : (((v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 10 : (((v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 11 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 12 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 13 : (((v.pose_type == 3)) ? 14 : (((v.pose_type == 4)) ? 15 : (((v.pose_type == 2) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 16 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 17 : (((v.pose_type == 2) && (q.property('cobblemon:battle') && q.is_in_water)) ? 18 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 19 : (0))))))))))))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -78,7 +84,23 @@
                 "ride_surface_water": "animation.gyarados.ride_surface_water",
                 "ride_water_swim": "animation.gyarados.ride_water_swim",
                 "ride_air_fly": "animation.gyarados.ride_air_fly",
-                "ride_surface_water_jump": "animation.gyarados.ride_surface_water_jump"
+                "ride_surface_water_jump": "animation.gyarados.ride_surface_water_jump",
+                "pose_battle_standing": "animation.0130_gyarados.pose_battle_standing",
+                "pose_battle_surface_swimming": "animation.0130_gyarados.pose_battle_surface_swimming",
+                "pose_battle_swimming": "animation.0130_gyarados.pose_battle_swimming",
+                "pose_battle_flying": "animation.0130_gyarados.pose_battle_flying",
+                "pose_ground_jump": "animation.0130_gyarados.pose_ground_jump",
+                "pose_water_jump": "animation.0130_gyarados.pose_water_jump",
+                "pose_standing": "animation.0130_gyarados.pose_standing",
+                "pose_walking": "animation.0130_gyarados.pose_walking",
+                "pose_float": "animation.0130_gyarados.pose_float",
+                "pose_swim": "animation.0130_gyarados.pose_swim",
+                "pose_mount_surface_idle": "animation.0130_gyarados.pose_mount_surface_idle",
+                "pose_mount_surface_swim": "animation.0130_gyarados.pose_mount_surface_swim",
+                "pose_surface_idle": "animation.0130_gyarados.pose_surface_idle",
+                "pose_surface_swim": "animation.0130_gyarados.pose_surface_swim",
+                "pose_hovering": "animation.0130_gyarados.pose_hovering",
+                "pose_flying": "animation.0130_gyarados.pose_flying"
             },
             "render_controllers": [
                 "controller.render.gyarados",

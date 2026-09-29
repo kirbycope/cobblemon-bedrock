@@ -18,14 +18,20 @@
                 "g_wattrel": "geometry.wattrel"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water && (!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4)) ? 5 : (((v.pose_type == 2) && (!q.is_in_water && (q.is_on_ground))) ? 6 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 7 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 8 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 9 : (((v.pose_type == 2) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 10 : (0)))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.wattrel.pose",
+                "pose": "controller.animation.wattrel.pose",
                 "blink_quirk": "controller.animation.wattrel.blink",
                 "look_at_target": "animation.0940_wattrel.look",
                 "ground_idle": "animation.wattrel.ground_idle",
@@ -44,9 +50,21 @@
                 "mad": "animation.wattrel.mad",
                 "sad": "animation.wattrel.sad",
                 "happy": "animation.wattrel.happy",
+                "pose_animation": "animation.wattrel.pose",
                 "pose_wings": "animation.wattrel.pose_wings",
                 "walk_speed": "animation.wattrel.walk_speed",
-                "run_speed": "animation.wattrel.run_speed"
+                "run_speed": "animation.wattrel.run_speed",
+                "pose_battle_standing": "animation.0940_wattrel.pose_battle_standing",
+                "pose_standing": "animation.0940_wattrel.pose_standing",
+                "pose_walking": "animation.0940_wattrel.pose_walking",
+                "pose_running": "animation.0940_wattrel.pose_running",
+                "pose_hover": "animation.0940_wattrel.pose_hover",
+                "pose_fly": "animation.0940_wattrel.pose_fly",
+                "pose_sleep": "animation.0940_wattrel.pose_sleep",
+                "pose_air_sleep": "animation.0940_wattrel.pose_air_sleep",
+                "pose_surface_idle": "animation.0940_wattrel.pose_surface_idle",
+                "pose_surface_swim": "animation.0940_wattrel.pose_surface_swim",
+                "pose_surface_sleep": "animation.0940_wattrel.pose_surface_sleep"
             },
             "render_controllers": [
                 "controller.render.wattrel"

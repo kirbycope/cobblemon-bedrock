@@ -18,10 +18,16 @@
                 "g_cyclizar": "geometry.cyclizar"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (!q.is_on_ground && q.has_rider && 1))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && ((!q.has_rider))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.has_rider && q.is_on_ground))) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.has_rider && !(q.has_rider && q.ground_speed > 7) && q.is_on_ground && 1))) ? 4 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7) && q.has_rider && 1))) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -37,7 +43,13 @@
                 "ride_ground_run": "animation.cyclizar.ride_ground_run",
                 "ride_jump": "animation.cyclizar.ride_jump",
                 "blink": "animation.cyclizar.blink",
-                "cry": "animation.cyclizar.cry"
+                "cry": "animation.cyclizar.cry",
+                "pose_ride_jump": "animation.0967_cyclizar.pose_ride_jump",
+                "pose_standing": "animation.0967_cyclizar.pose_standing",
+                "pose_walking": "animation.0967_cyclizar.pose_walking",
+                "pose_mount_idle": "animation.0967_cyclizar.pose_mount_idle",
+                "pose_mount_walk": "animation.0967_cyclizar.pose_mount_walk",
+                "pose_mount_run": "animation.0967_cyclizar.pose_mount_run"
             },
             "render_controllers": [
                 "controller.render.cyclizar"

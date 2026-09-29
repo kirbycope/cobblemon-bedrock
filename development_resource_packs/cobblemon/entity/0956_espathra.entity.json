@@ -20,10 +20,16 @@
                 "g_espathra": "geometry.espathra"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (((q.is_on_ground)))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && (((!q.is_on_ground && q.has_rider)))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && !(q.has_rider && q.ground_speed > 7))))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && (q.has_rider && q.ground_speed > 7))))) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -42,7 +48,11 @@
                 "cry": "animation.espathra.cry",
                 "test_walkspeed": "animation.espathra.test_walkspeed",
                 "test_runspeed": "animation.espathra.test_runspeed",
-                "basepose": "animation.espathra.basepose"
+                "basepose": "animation.espathra.basepose",
+                "pose_standing": "animation.0956_espathra.pose_standing",
+                "pose_in_air": "animation.0956_espathra.pose_in_air",
+                "pose_walking": "animation.0956_espathra.pose_walking",
+                "pose_running": "animation.0956_espathra.pose_running"
             },
             "render_controllers": [
                 "controller.render.espathra",

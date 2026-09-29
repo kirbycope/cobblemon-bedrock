@@ -21,15 +21,21 @@
                 "g_farfetchd_galar": "geometry.farfetchd_galar"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.farfetchd.pose",
+                "pose": "controller.animation.farfetchd.pose",
                 "blink_quirk": "controller.animation.farfetchd.blink",
                 "quirk": "controller.animation.farfetchd.quirk",
                 "quirk_0": "animation.farfetchd.quirk_leakflip_idle",
@@ -38,6 +44,7 @@
                 "look_at_target": "animation.0083_farfetchd.look",
                 "ground_idle": "animation.farfetchd.ground_idle",
                 "ground_walk": "animation.farfetchd.ground_walk",
+                "pose_animation": "animation.farfetchd.pose",
                 "blink": "animation.farfetchd.blink",
                 "cry": "animation.farfetchd.cry",
                 "air_fly": "animation.farfetchd.air_fly",
@@ -45,7 +52,9 @@
                 "sleep": "animation.farfetchd.sleep",
                 "quirk_leakflip_idle": "animation.farfetchd.quirk_leakflip_idle",
                 "quirk_leakflip_walk": "animation.farfetchd.quirk_leakflip_walk",
-                "quirk_wink": "animation.farfetchd.quirk_wink"
+                "quirk_wink": "animation.farfetchd.quirk_wink",
+                "pose_standing": "animation.0083_farfetchd.pose_standing",
+                "pose_walk": "animation.0083_farfetchd.pose_walk"
             },
             "render_controllers": [
                 "controller.render.farfetchd"

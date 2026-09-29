@@ -18,11 +18,17 @@
                 "g_ninjask": "geometry.ninjask"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -46,7 +52,12 @@
                 "physical": "animation.ninjask.physical",
                 "battle_cry": "animation.ninjask.battle_cry",
                 "recoil": "animation.ninjask.recoil",
-                "run_quirk": "animation.ninjask.run_quirk"
+                "run_quirk": "animation.ninjask.run_quirk",
+                "pose_battle_standing": "animation.0291_ninjask.pose_battle_standing",
+                "pose_standing": "animation.0291_ninjask.pose_standing",
+                "pose_walking": "animation.0291_ninjask.pose_walking",
+                "pose_hover": "animation.0291_ninjask.pose_hover",
+                "pose_fly": "animation.0291_ninjask.pose_fly"
             },
             "render_controllers": [
                 "controller.render.ninjask"

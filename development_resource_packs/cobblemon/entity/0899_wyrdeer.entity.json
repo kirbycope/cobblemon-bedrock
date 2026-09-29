@@ -18,11 +18,17 @@
                 "g_wyrdeer": "geometry.wyrdeer"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 1 : (((v.pose_type == 0 || v.pose_type == 1) && (!q.property('cobblemon:battle') && (!q.is_on_ground && q.has_rider))) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 0 || v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -40,7 +46,12 @@
                 "quirk_idle": "animation.wyrdeer.quirk_idle",
                 "ground_run": "animation.wyrdeer.ground_run",
                 "ride_jump": "animation.wyrdeer.ride_jump",
-                "ride_ground_run": "animation.wyrdeer.ride_ground_run"
+                "ride_ground_run": "animation.wyrdeer.ride_ground_run",
+                "pose_battle_standing": "animation.0899_wyrdeer.pose_battle_standing",
+                "pose_standing": "animation.0899_wyrdeer.pose_standing",
+                "pose_in_air": "animation.0899_wyrdeer.pose_in_air",
+                "pose_walk": "animation.0899_wyrdeer.pose_walk",
+                "pose_run": "animation.0899_wyrdeer.pose_run"
             },
             "render_controllers": [
                 "controller.render.wyrdeer"

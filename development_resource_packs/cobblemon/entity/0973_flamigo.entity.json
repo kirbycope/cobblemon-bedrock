@@ -18,11 +18,17 @@
                 "g_flamigo": "geometry.flamigo"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 6 : (((v.pose_type == 2)) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -47,7 +53,14 @@
                 "shock": "animation.flamigo.shock",
                 "angry": "animation.flamigo.angry",
                 "sad": "animation.flamigo.sad",
-                "happy": "animation.flamigo.happy"
+                "happy": "animation.flamigo.happy",
+                "pose_battle_standing": "animation.0973_flamigo.pose_battle_standing",
+                "pose_standing": "animation.0973_flamigo.pose_standing",
+                "pose_walking": "animation.0973_flamigo.pose_walking",
+                "pose_hover": "animation.0973_flamigo.pose_hover",
+                "pose_fly": "animation.0973_flamigo.pose_fly",
+                "pose_float": "animation.0973_flamigo.pose_float",
+                "pose_swim": "animation.0973_flamigo.pose_swim"
             },
             "render_controllers": [
                 "controller.render.flamigo"

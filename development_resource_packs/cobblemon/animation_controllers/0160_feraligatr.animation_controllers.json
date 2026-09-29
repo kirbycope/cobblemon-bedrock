@@ -4,108 +4,356 @@
         "controller.animation.feraligatr.pose": {
             "initial_state": "spawn",
             "states": {
-                "float": {
+                "standing": {
                     "animations": [
-                        "water_idle"
+                        "ground_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "surface_float": "v.pose == 3"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_float": {
+                    "animations": [
+                        "watersurface_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_surface_float"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_swim": {
+                    "animations": [
+                        "watersurface_swim",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_surface_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "float": {
+                    "animations": [
+                        "water_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_float"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "swim": {
                     "animations": [
-                        "water_swim"
+                        "water_swim",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_swim"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "sleep",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        }
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "water_sleep": {
                     "animations": [
-                        "ground_walk"
+                        "water_sleep",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        }
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.is_sleeping"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
-                    ],
-                    "transitions": [],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_float": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        },
+                        {
+                            "water_sleep": "v.pose == 8"
                         }
                     ]
                 }

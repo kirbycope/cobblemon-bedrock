@@ -4,78 +4,142 @@
         "controller.animation.scyther.pose": {
             "initial_state": "spawn",
             "states": {
-                "hover": {
+                "battle_idle": {
                     "animations": [
-                        "air_idle"
+                        "battle_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_battle_idle"
                     ],
                     "transitions": [
                         {
-                            "fly": "q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_idle": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_idle": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_idle": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "fly": {
                     "animations": [
-                        "air_idle"
+                        "air_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_fly"
                     ],
                     "transitions": [
                         {
-                            "hover": "q.modified_move_speed <= 0.1"
+                            "battle_idle": "v.pose == 0"
                         },
                         {
-                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        },
-                        {
-                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_idle": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
                         }
                     ]
                 }

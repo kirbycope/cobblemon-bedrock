@@ -4,32 +4,17 @@
         "controller.animation.spoink.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "everything": {
                     "animations": [
                         "ground_idle"
                     ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "transitions": [],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "everything": "v.pose == 0"
                         }
                     ]
                 }

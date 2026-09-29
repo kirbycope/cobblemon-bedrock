@@ -18,13 +18,20 @@
                 "g_hitmonlee": "geometry.hitmonlee"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.hitmonlee.pose",
+                "pose": "controller.animation.hitmonlee.pose",
                 "blink_quirk": "controller.animation.hitmonlee.blink",
                 "ground_idle": "animation.hitmonlee.ground_idle",
                 "ground_walk": "animation.hitmonlee.ground_walk",
@@ -32,7 +39,8 @@
                 "sleep": "animation.hitmonlee.sleep",
                 "faint": "animation.hitmonlee.faint",
                 "blink": "animation.hitmonlee.blink",
-                "cry": "animation.hitmonlee.cry"
+                "cry": "animation.hitmonlee.cry",
+                "pose_animation": "animation.hitmonlee.pose"
             },
             "render_controllers": [
                 "controller.render.hitmonlee"

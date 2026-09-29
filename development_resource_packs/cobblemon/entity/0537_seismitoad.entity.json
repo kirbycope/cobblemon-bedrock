@@ -18,19 +18,28 @@
                 "g_seismitoad": "geometry.seismitoad"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.seismitoad.pose",
+                "pose": "controller.animation.seismitoad.pose",
                 "blink_quirk": "controller.animation.seismitoad.blink",
                 "look_at_target": "animation.0537_seismitoad.look",
                 "ground_idle": "animation.seismitoad.ground_idle",
                 "blink": "animation.seismitoad.blink",
-                "ditto_face": "animation.seismitoad.ditto_face"
+                "ditto_face": "animation.seismitoad.ditto_face",
+                "pose_animation": "animation.seismitoad.pose",
+                "pose_battle_standing": "animation.0537_seismitoad.pose_battle_standing",
+                "pose_standing": "animation.0537_seismitoad.pose_standing"
             },
             "render_controllers": [
                 "controller.render.seismitoad"

@@ -18,22 +18,31 @@
                 "g_sirfetchd": "geometry.sirfetchd"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.sirfetchd.pose",
                 "blink_quirk": "controller.animation.sirfetchd.blink",
-                "quirk": "animation.sirfetchd.quirk",
+                "quirk": "controller.animation.sirfetchd.quirk",
                 "quirk_0": "animation.sirfetchd.quirk",
                 "look_at_target": "animation.0865_sirfetchd.look",
                 "ground_idle": "animation.sirfetchd.ground_idle",
                 "cry": "animation.sirfetchd.cry",
-                "blink": "animation.sirfetchd.blink"
+                "blink": "animation.sirfetchd.blink",
+                "quirk_animation": "animation.sirfetchd.quirk",
+                "pose_standing": "animation.0865_sirfetchd.pose_standing",
+                "pose_walk": "animation.0865_sirfetchd.pose_walk"
             },
             "render_controllers": [
                 "controller.render.sirfetchd"

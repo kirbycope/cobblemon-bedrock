@@ -18,10 +18,16 @@
                 "g_arcanine": "geometry.arcanine"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 2 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 2) && (!q.property('cobblemon:battle'))) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -43,7 +49,12 @@
                 "cry_water_surface": "animation.arcanine.cry_water_surface",
                 "blink": "animation.arcanine.blink",
                 "recoil": "animation.arcanine.recoil",
-                "recoil_water_surface": "animation.arcanine.recoil_water_surface"
+                "recoil_water_surface": "animation.arcanine.recoil_water_surface",
+                "pose_battle_standing": "animation.0059_arcanine.pose_battle_standing",
+                "pose_jump": "animation.0059_arcanine.pose_jump",
+                "pose_standing": "animation.0059_arcanine.pose_standing",
+                "pose_running": "animation.0059_arcanine.pose_running",
+                "pose_walking": "animation.0059_arcanine.pose_walking"
             },
             "render_controllers": [
                 "controller.render.arcanine"

@@ -21,14 +21,20 @@
                 "g_seaking_female": "geometry.seaking_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water)) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water)) ? 3 : (((v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 4 : (((v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 6 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 7 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 8 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 9 : (0))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.seaking.pose",
+                "pose": "controller.animation.seaking.pose",
                 "blink_quirk": "controller.animation.seaking.blink",
                 "look_at_target": "animation.0119_seaking.look",
                 "ground_idle": "animation.seaking.ground_idle",
@@ -43,7 +49,10 @@
                 "water_swim": "animation.seaking.water_swim",
                 "movement_test": "animation.seaking.movement_test",
                 "blink": "animation.seaking.blink",
-                "cry": "animation.seaking.cry"
+                "pose_animation": "animation.seaking.pose",
+                "cry": "animation.seaking.cry",
+                "pose_surface_idle": "animation.0119_seaking.pose_surface_idle",
+                "pose_surface_swim": "animation.0119_seaking.pose_surface_swim"
             },
             "render_controllers": [
                 "controller.render.seaking"

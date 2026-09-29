@@ -20,11 +20,17 @@
                 "g_noctowl": "geometry.noctowl"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 4 : (((v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 4 || v.pose_type == 6)) ? 6 : (((v.pose_type == 2) && ((q.is_on_ground))) ? 7 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -53,7 +59,16 @@
                 "sad": "animation.noctowl.sad",
                 "angry": "animation.noctowl.angry",
                 "happy": "animation.noctowl.happy",
-                "scaletest": "animation.noctowl.scaletest"
+                "scaletest": "animation.noctowl.scaletest",
+                "pose_standing": "animation.0164_noctowl.pose_standing",
+                "pose_battle_standing": "animation.0164_noctowl.pose_battle_standing",
+                "pose_walking": "animation.0164_noctowl.pose_walking",
+                "pose_run": "animation.0164_noctowl.pose_run",
+                "pose_hover": "animation.0164_noctowl.pose_hover",
+                "pose_battle_hover": "animation.0164_noctowl.pose_battle_hover",
+                "pose_flying": "animation.0164_noctowl.pose_flying",
+                "pose_sleep": "animation.0164_noctowl.pose_sleep",
+                "pose_air_sleep": "animation.0164_noctowl.pose_air_sleep"
             },
             "render_controllers": [
                 "controller.render.noctowl",

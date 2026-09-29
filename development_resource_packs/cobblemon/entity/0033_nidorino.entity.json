@@ -18,10 +18,16 @@
                 "g_nidorino": "geometry.nidorino"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -30,7 +36,9 @@
                 "look_at_target": "animation.0033_nidorino.look",
                 "ground_idle": "animation.nidorino.ground_idle",
                 "cry": "animation.nidorino.cry",
-                "blink": "animation.nidorino.blink"
+                "blink": "animation.nidorino.blink",
+                "pose_standing": "animation.0033_nidorino.pose_standing",
+                "pose_walk": "animation.0033_nidorino.pose_walk"
             },
             "render_controllers": [
                 "controller.render.nidorino"

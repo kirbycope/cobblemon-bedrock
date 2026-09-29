@@ -18,11 +18,17 @@
                 "g_aerodactyl": "geometry.aerodactyl"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && ((q.is_on_ground)))) ? 2 : (((v.pose_type == 0 || v.pose_type == 1) && (((!q.is_on_ground && q.has_rider)))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && !(q.has_rider && q.ground_speed > 7))))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.is_on_ground && (q.has_rider && q.ground_speed > 7))))) ? 5 : (((v.pose_type == 3) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 6 : (((v.pose_type == 3) && (!q.property('cobblemon:battle') && (q.has_rider))) ? 7 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (!0 && !q.has_rider))) ? 8 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (!0 && q.has_rider))) ? 9 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (0))) ? 10 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 11 : (((v.pose_type == 2) && (q.property('cobblemon:battle') && (q.is_on_ground))) ? 12 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 13 : (0))))))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -63,7 +69,17 @@
                 "walk_test": "animation.aerodactyl.walk_test",
                 "run_test": "animation.aerodactyl.run_test",
                 "run_testFAST": "animation.aerodactyl.run_testFAST",
-                "demon": "animation.aerodactyl.demon"
+                "demon": "animation.aerodactyl.demon",
+                "pose_battle_standing": "animation.0142_aerodactyl.pose_battle_standing",
+                "pose_battle_flying": "animation.0142_aerodactyl.pose_battle_flying",
+                "pose_standing": "animation.0142_aerodactyl.pose_standing",
+                "pose_walking": "animation.0142_aerodactyl.pose_walking",
+                "pose_running": "animation.0142_aerodactyl.pose_running",
+                "pose_hover": "animation.0142_aerodactyl.pose_hover",
+                "pose_mount_hover": "animation.0142_aerodactyl.pose_mount_hover",
+                "pose_fly": "animation.0142_aerodactyl.pose_fly",
+                "pose_mount_fly": "animation.0142_aerodactyl.pose_mount_fly",
+                "pose_glide": "animation.0142_aerodactyl.pose_glide"
             },
             "render_controllers": [
                 "controller.render.aerodactyl"

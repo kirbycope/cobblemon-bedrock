@@ -18,10 +18,16 @@
                 "g_nidoqueen": "geometry.nidoqueen"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 2)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -32,7 +38,9 @@
                 "blink": "animation.nidoqueen.blink",
                 "cry": "animation.nidoqueen.cry",
                 "spgs_happy_place": "animation.nidoqueen.spgs_happy_place",
-                "spgs_happy_place_loop": "animation.nidoqueen.spgs_happy_place_loop"
+                "spgs_happy_place_loop": "animation.nidoqueen.spgs_happy_place_loop",
+                "pose_standing": "animation.0031_nidoqueen.pose_standing",
+                "pose_walk": "animation.0031_nidoqueen.pose_walk"
             },
             "render_controllers": [
                 "controller.render.nidoqueen"

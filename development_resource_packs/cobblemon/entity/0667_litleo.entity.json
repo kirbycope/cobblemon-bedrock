@@ -18,23 +18,32 @@
                 "g_litleo": "geometry.litleo"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.litleo.pose",
+                "pose": "controller.animation.litleo.pose",
                 "blink_quirk": "controller.animation.litleo.blink",
                 "look_at_target": "animation.0667_litleo.look",
+                "pose_animation": "animation.litleo.pose",
                 "shocked": "animation.litleo.shocked",
                 "sad": "animation.litleo.sad",
                 "angry": "animation.litleo.angry",
                 "happy": "animation.litleo.happy",
                 "blink": "animation.litleo.blink",
                 "ground_idle": "animation.litleo.ground_idle",
-                "cry": "animation.litleo.cry"
+                "cry": "animation.litleo.cry",
+                "pose_standing": "animation.0667_litleo.pose_standing",
+                "pose_walking": "animation.0667_litleo.pose_walking"
             },
             "render_controllers": [
                 "controller.render.litleo"

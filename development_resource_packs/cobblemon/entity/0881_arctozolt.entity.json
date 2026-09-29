@@ -18,17 +18,23 @@
                 "g_arctozolt": "geometry.arctozolt"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (!q.property('cobblemon:submerged') && q.is_in_water)) ? 1 : (((v.pose_type == 2) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 3 : (((v.pose_type == 1 || v.pose_type == 4) && (!q.is_in_water)) ? 4 : (((v.pose_type == 5) && (q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 6) && (q.property('cobblemon:submerged'))) ? 6 : (((v.pose_type == 0) && (!q.property('cobblemon:submerged') && q.is_in_water)) ? 7 : (((v.pose_type == 1) && (!q.property('cobblemon:submerged') && q.is_in_water)) ? 8 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 9 : (0))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.arctozolt.pose",
                 "blink_quirk": "controller.animation.arctozolt.blink",
-                "quirk": "animation.arctozolt.quirk",
+                "quirk": "controller.animation.arctozolt.quirk",
                 "quirk_0": "animation.arctozolt.quirk",
                 "look_at_target": "animation.0881_arctozolt.look",
                 "ground_idle": "animation.arctozolt.ground_idle",
@@ -43,7 +49,16 @@
                 "sleep": "animation.arctozolt.sleep",
                 "blink": "animation.arctozolt.blink",
                 "cry": "animation.arctozolt.cry",
-                "walkspeedtest": "animation.arctozolt.walkspeedtest"
+                "quirk_animation": "animation.arctozolt.quirk",
+                "walkspeedtest": "animation.arctozolt.walkspeedtest",
+                "pose_water_sleep": "animation.0881_arctozolt.pose_water_sleep",
+                "pose_standing": "animation.0881_arctozolt.pose_standing",
+                "pose_walk": "animation.0881_arctozolt.pose_walk",
+                "pose_float": "animation.0881_arctozolt.pose_float",
+                "pose_swim": "animation.0881_arctozolt.pose_swim",
+                "pose_surfacefloat": "animation.0881_arctozolt.pose_surfacefloat",
+                "pose_surfaceswim": "animation.0881_arctozolt.pose_surfaceswim",
+                "pose_battleidle": "animation.0881_arctozolt.pose_battleidle"
             },
             "render_controllers": [
                 "controller.render.arctozolt"

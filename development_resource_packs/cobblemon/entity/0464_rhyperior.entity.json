@@ -21,10 +21,16 @@
                 "g_rhyperior_female": "geometry.rhyperior_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6) && ((q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 3 : (((v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -62,7 +68,12 @@
                 "physicalgood": "animation.rhyperior.physicalgood",
                 "test": "animation.rhyperior.test",
                 "new": "animation.rhyperior.new",
-                "hecanspeak": "animation.rhyperior.hecanspeak"
+                "hecanspeak": "animation.rhyperior.hecanspeak",
+                "pose_battle_standing": "animation.0464_rhyperior.pose_battle_standing",
+                "pose_jump": "animation.0464_rhyperior.pose_jump",
+                "pose_running": "animation.0464_rhyperior.pose_running",
+                "pose_standing": "animation.0464_rhyperior.pose_standing",
+                "pose_walking": "animation.0464_rhyperior.pose_walking"
             },
             "render_controllers": [
                 "controller.render.rhyperior"

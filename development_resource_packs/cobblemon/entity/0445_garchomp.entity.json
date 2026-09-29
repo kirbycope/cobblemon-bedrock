@@ -21,11 +21,17 @@
                 "g_garchomp_female": "geometry.garchomp_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && 1))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && q.has_rider))) ? 3 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water && (1))) ? 4 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && !q.has_rider && 0))) ? 5 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && !q.has_rider && 0))) ? 6 : (((v.pose_type == 1) && (!q.is_in_water && (q.is_on_ground && !q.has_rider && 1))) ? 7 : (((v.pose_type == 1) && (!q.is_in_water && (q.is_on_ground && !q.has_rider && 1))) ? 8 : (((v.pose_type == 1) && (!q.is_in_water && (q.is_on_ground && q.has_rider && !(q.has_rider && q.ground_speed > 7)))) ? 9 : (((v.pose_type == 1) && (!q.is_in_water && (q.is_on_ground && q.has_rider && (q.has_rider && q.ground_speed > 7)))) ? 10 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && q.is_in_water && !q.property('cobblemon:submerged'))) ? 11 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && q.is_in_water && !q.property('cobblemon:submerged'))) ? 12 : (((v.pose_type == 6) && (!q.property('cobblemon:battle') && q.is_in_water && q.property('cobblemon:submerged'))) ? 13 : (((v.pose_type == 5) && (!q.property('cobblemon:battle') && q.is_in_water && q.property('cobblemon:submerged'))) ? 14 : (((v.pose_type == 4) && ((q.has_rider))) ? 15 : (((v.pose_type == 4) && ((!q.has_rider))) ? 16 : (((v.pose_type == 3) && ((!q.has_rider))) ? 17 : (((v.pose_type == 3) && ((q.has_rider))) ? 18 : (((v.pose_type == 2)) ? 19 : (0))))))))))))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -77,7 +83,24 @@
                 "sleep_WIP": "animation.garchomp.sleep_WIP",
                 "bite_WIP": "animation.garchomp.bite_WIP",
                 "faint_WIP": "animation.garchomp.faint_WIP",
-                "sleep_transition_WIP": "animation.garchomp.sleep_transition_WIP"
+                "sleep_transition_WIP": "animation.garchomp.sleep_transition_WIP",
+                "pose_boat_jump": "animation.0445_garchomp.pose_boat_jump",
+                "pose_land_jump": "animation.0445_garchomp.pose_land_jump",
+                "pose_standing": "animation.0445_garchomp.pose_standing",
+                "pose_mount_standing": "animation.0445_garchomp.pose_mount_standing",
+                "pose_battle_idle": "animation.0445_garchomp.pose_battle_idle",
+                "pose_walking": "animation.0445_garchomp.pose_walking",
+                "pose_running": "animation.0445_garchomp.pose_running",
+                "pose_mount_walking": "animation.0445_garchomp.pose_mount_walking",
+                "pose_mount_running": "animation.0445_garchomp.pose_mount_running",
+                "pose_surface_swimming": "animation.0445_garchomp.pose_surface_swimming",
+                "pose_surface_floating": "animation.0445_garchomp.pose_surface_floating",
+                "pose_swimming": "animation.0445_garchomp.pose_swimming",
+                "pose_floating": "animation.0445_garchomp.pose_floating",
+                "pose_mount_flying": "animation.0445_garchomp.pose_mount_flying",
+                "pose_flying": "animation.0445_garchomp.pose_flying",
+                "pose_hovering": "animation.0445_garchomp.pose_hovering",
+                "pose_mount_hovering": "animation.0445_garchomp.pose_mount_hovering"
             },
             "render_controllers": [
                 "controller.render.garchomp"

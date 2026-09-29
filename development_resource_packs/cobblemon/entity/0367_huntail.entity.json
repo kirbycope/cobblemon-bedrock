@@ -20,10 +20,16 @@
                 "g_huntail": "geometry.huntail"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1)) ? 0 : (((v.pose_type == 5)) ? 1 : (((v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -34,7 +40,10 @@
                 "ground_idle": "animation.huntail.ground_idle",
                 "water_idle": "animation.huntail.water_idle",
                 "water_swim": "animation.huntail.water_swim",
-                "blink": "animation.huntail.blink"
+                "blink": "animation.huntail.blink",
+                "pose_standing": "animation.0367_huntail.pose_standing",
+                "pose_floating": "animation.0367_huntail.pose_floating",
+                "pose_swimming": "animation.0367_huntail.pose_swimming"
             },
             "render_controllers": [
                 "controller.render.huntail",

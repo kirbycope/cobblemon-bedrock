@@ -18,20 +18,29 @@
                 "g_vanillish": "geometry.vanillish"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.vanillish.pose",
+                "pose": "controller.animation.vanillish.pose",
                 "blink_quirk": "controller.animation.vanillish.blink",
                 "look_at_target": "animation.0583_vanillish.look",
                 "ground_idle": "animation.vanillish.ground_idle",
                 "blink": "animation.vanillish.blink",
                 "ditto_face": "animation.vanillish.ditto_face",
-                "scale": "animation.vanillish.scale"
+                "scale": "animation.vanillish.scale",
+                "pose_animation": "animation.vanillish.pose",
+                "pose_standing": "animation.0583_vanillish.pose_standing",
+                "pose_fly": "animation.0583_vanillish.pose_fly"
             },
             "render_controllers": [
                 "controller.render.vanillish"

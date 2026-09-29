@@ -18,17 +18,23 @@
                 "g_archen": "geometry.archen"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!(!q.is_on_ground && q.vertical_speed < -0.5) && !q.is_in_water && !q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4) && (!(!q.is_on_ground && q.vertical_speed < -0.5) && !q.is_in_water)) ? 2 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water)) ? 4 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 5 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && ((!q.is_on_ground && q.vertical_speed < -0.5))) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.archen.pose",
                 "blink_quirk": "controller.animation.archen.blink",
-                "quirk": "animation.archen.quirk",
+                "quirk": "controller.animation.archen.quirk",
                 "quirk_0": "animation.archen.idle_quirk",
                 "quirk_1": "animation.archen.quirk",
                 "look_at_target": "animation.0566_archen.look",
@@ -39,13 +45,19 @@
                 "surfacewater_idle": "animation.archen.surfacewater_idle",
                 "surfacewater_swim": "animation.archen.surfacewater_swim",
                 "idle_quirk": "animation.archen.idle_quirk",
+                "quirk_animation": "animation.archen.quirk",
                 "cry": "animation.archen.cry",
                 "battle_cry": "animation.archen.battle_cry",
                 "blink": "animation.archen.blink",
                 "chicken_fall": "animation.archen.chicken_fall",
                 "shoulder_right": "animation.archen.shoulder_right",
                 "shoulder_left": "animation.archen.shoulder_left",
-                "walkspeedtest": "animation.archen.walkspeedtest"
+                "walkspeedtest": "animation.archen.walkspeedtest",
+                "pose_standing": "animation.0566_archen.pose_standing",
+                "pose_walking": "animation.0566_archen.pose_walking",
+                "pose_swim": "animation.0566_archen.pose_swim",
+                "pose_float": "animation.0566_archen.pose_float",
+                "pose_battle_idle": "animation.0566_archen.pose_battle_idle"
             },
             "render_controllers": [
                 "controller.render.archen"

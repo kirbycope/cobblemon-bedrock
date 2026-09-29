@@ -78,10 +78,16 @@
                 "g_gholdengo": "geometry.gholdengo"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water && (!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1) && (!q.is_in_water && ((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2) && (!q.is_in_water)) ? 4 : (((v.pose_type == 3) && (!q.is_in_water)) ? 5 : (((v.pose_type == 4) && (!q.is_in_water)) ? 6 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 7 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 8 : (((v.pose_type == 2) && (q.is_in_water)) ? 9 : (0))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -105,7 +111,16 @@
                 "unamused": "animation.gholdengo.unamused",
                 "hurt": "animation.gholdengo.hurt",
                 "worried": "animation.gholdengo.worried",
-                "render": "animation.gholdengo.render"
+                "render": "animation.gholdengo.render",
+                "pose_battle_standing": "animation.1000_gholdengo.pose_battle_standing",
+                "pose_standing": "animation.1000_gholdengo.pose_standing",
+                "pose_walking": "animation.1000_gholdengo.pose_walking",
+                "pose_running": "animation.1000_gholdengo.pose_running",
+                "pose_hover": "animation.1000_gholdengo.pose_hover",
+                "pose_fly": "animation.1000_gholdengo.pose_fly",
+                "pose_surfacewater_standing": "animation.1000_gholdengo.pose_surfacewater_standing",
+                "pose_surfacewater_walking": "animation.1000_gholdengo.pose_surfacewater_walking",
+                "pose_surfacewater_sleep": "animation.1000_gholdengo.pose_surfacewater_sleep"
             },
             "render_controllers": [
                 "controller.render.gholdengo",

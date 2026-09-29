@@ -18,15 +18,21 @@
                 "g_poliwrath": "geometry.poliwrath"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 5)) ? 3 : (((v.pose_type == 6)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.poliwrath.pose",
+                "pose": "controller.animation.poliwrath.pose",
                 "blink_quirk": "controller.animation.poliwrath.blink",
                 "quirk": "controller.animation.poliwrath.quirk",
                 "quirk_0": "animation.poliwrath.stretch_quirk",
@@ -38,10 +44,13 @@
                 "water_swim": "animation.poliwrath.water_swim",
                 "blink": "animation.poliwrath.blink",
                 "sleep": "animation.poliwrath.sleep",
+                "pose_animation": "animation.poliwrath.pose",
                 "physical": "animation.poliwrath.physical",
                 "recoil": "animation.poliwrath.recoil",
                 "stretch_quirk": "animation.poliwrath.stretch_quirk",
-                "cry": "animation.poliwrath.cry"
+                "cry": "animation.poliwrath.cry",
+                "pose_float": "animation.0062_poliwrath.pose_float",
+                "pose_swim": "animation.0062_poliwrath.pose_swim"
             },
             "render_controllers": [
                 "controller.render.poliwrath"

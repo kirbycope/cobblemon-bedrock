@@ -4,56 +4,66 @@
         "controller.animation.charcadet.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "sleep",
+                        "eye_flame_overlay",
+                        "head_flame_overlay"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_walk"
+                        "ground_idle",
+                        "eye_flame_overlay",
+                        "head_flame_overlay",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walking": {
                     "animations": [
-                        "sleep"
+                        "ground_walk",
+                        "eye_flame_overlay",
+                        "head_flame_overlay",
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
-                    ],
-                    "transitions": [],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
                         }
                     ]
                 }

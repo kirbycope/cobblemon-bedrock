@@ -18,17 +18,23 @@
                 "g_porygon": "geometry.porygon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.porygon.pose",
                 "blink_quirk": "controller.animation.porygon.blink",
-                "quirk": "animation.porygon.quirk",
+                "quirk": "controller.animation.porygon.quirk",
                 "quirk_0": "animation.porygon.idle_quirk",
                 "quirk_1": "animation.porygon.idle_quirk2",
                 "quirk_2": "animation.porygon.quirk",
@@ -43,6 +49,7 @@
                 "status": "animation.porygon.status",
                 "battle_cry": "animation.porygon.battle_cry",
                 "recoil": "animation.porygon.recoil",
+                "quirk_animation": "animation.porygon.quirk",
                 "ground_walk": "animation.porygon.ground_walk",
                 "ground_run": "animation.porygon.ground_run",
                 "sleep": "animation.porygon.sleep",
@@ -50,7 +57,10 @@
                 "faint": "animation.porygon.faint",
                 "faint2": "animation.porygon.faint2",
                 "blink": "animation.porygon.blink",
-                "ditto_face": "animation.porygon.ditto_face"
+                "ditto_face": "animation.porygon.ditto_face",
+                "pose_battle_standing": "animation.0137_porygon.pose_battle_standing",
+                "pose_standing": "animation.0137_porygon.pose_standing",
+                "pose_walking": "animation.0137_porygon.pose_walking"
             },
             "render_controllers": [
                 "controller.render.porygon"

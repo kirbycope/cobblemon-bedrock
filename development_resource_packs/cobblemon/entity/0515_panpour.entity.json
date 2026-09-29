@@ -18,17 +18,24 @@
                 "g_panpour": "geometry.panpour"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.panpour.pose",
+                "pose": "controller.animation.panpour.pose",
                 "blink_quirk": "controller.animation.panpour.blink",
                 "look_at_target": "animation.0515_panpour.look",
                 "ground_idle": "animation.panpour.ground_idle",
+                "pose_animation": "animation.panpour.pose",
                 "shocked": "animation.panpour.shocked",
                 "angry": "animation.panpour.angry",
                 "sad": "animation.panpour.sad",
@@ -37,7 +44,9 @@
                 "smile": "animation.panpour.smile",
                 "recoil": "animation.panpour.recoil",
                 "blink": "animation.panpour.blink",
-                "cry": "animation.panpour.cry"
+                "cry": "animation.panpour.cry",
+                "pose_standing": "animation.0515_panpour.pose_standing",
+                "pose_walking": "animation.0515_panpour.pose_walking"
             },
             "render_controllers": [
                 "controller.render.panpour"

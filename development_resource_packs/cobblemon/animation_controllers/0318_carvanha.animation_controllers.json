@@ -4,101 +4,163 @@
         "controller.animation.carvanha.pose": {
             "initial_state": "spawn",
             "states": {
-                "float": {
+                "battle_standing": {
+                    "animations": [
+                        "water_battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
+                        },
+                        {
+                            "ground_sleep": "v.pose == 4"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
+                        },
+                        {
+                            "ground_sleep": "v.pose == 4"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "floating": {
                     "animations": [
                         "water_idle"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "swimming": "v.pose == 3"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "ground_sleep": "v.pose == 4"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "swim": {
+                "swimming": {
                     "animations": [
                         "water_swim"
                     ],
                     "transitions": [
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "floating": "v.pose == 2"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "ground_sleep": "v.pose == 4"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
+                "ground_sleep": {
                     "animations": [
                         "ground_sleep"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "water_sleep": {
+                    "animations": [
+                        "water_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
+                        },
+                        {
+                            "ground_sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "floating": "v.pose == 2"
+                        },
+                        {
+                            "swimming": "v.pose == 3"
+                        },
+                        {
+                            "ground_sleep": "v.pose == 4"
+                        },
+                        {
+                            "water_sleep": "v.pose == 5"
                         }
                     ]
                 }

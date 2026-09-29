@@ -186,9 +186,15 @@
                 "g_spinda": "geometry.spinda"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
@@ -205,7 +211,9 @@
                 "status": "animation.spinda.status",
                 "battle_cry": "animation.spinda.battle_cry",
                 "recoil": "animation.spinda.recoil",
-                "faint": "animation.spinda.faint"
+                "faint": "animation.spinda.faint",
+                "pose_standing": "animation.0327_spinda.pose_standing",
+                "pose_walking": "animation.0327_spinda.pose_walking"
             },
             "render_controllers": [
                 "controller.render.spinda",

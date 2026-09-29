@@ -21,14 +21,20 @@
                 "g_houndoom_female": "geometry.houndoom_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.houndoom.pose",
+                "pose": "controller.animation.houndoom.pose",
                 "blink_quirk": "controller.animation.houndoom.blink",
                 "look_at_target": "animation.0229_houndoom.look",
                 "ground_idle": "animation.houndoom.ground_idle",
@@ -36,13 +42,16 @@
                 "cry": "animation.houndoom.cry",
                 "hold_item": "animation.houndoom.hold_item",
                 "scale": "animation.houndoom.scale",
+                "pose_animation": "animation.houndoom.pose",
                 "pose2": "animation.houndoom.pose2",
                 "happy": "animation.houndoom.happy",
                 "angry": "animation.houndoom.angry",
                 "sad": "animation.houndoom.sad",
                 "hurt": "animation.houndoom.hurt",
                 "surprised": "animation.houndoom.surprised",
-                "thinking": "animation.houndoom.thinking"
+                "thinking": "animation.houndoom.thinking",
+                "pose_standing": "animation.0229_houndoom.pose_standing",
+                "pose_walking": "animation.0229_houndoom.pose_walking"
             },
             "render_controllers": [
                 "controller.render.houndoom"

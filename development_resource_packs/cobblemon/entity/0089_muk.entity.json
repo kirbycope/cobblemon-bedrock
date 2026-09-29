@@ -21,10 +21,16 @@
                 "g_muk_alola": "geometry.muk_alola"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water)) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -38,7 +44,11 @@
                 "sad": "animation.muk.sad",
                 "happy": "animation.muk.happy",
                 "hurt": "animation.muk.hurt",
-                "cry": "animation.muk.cry"
+                "cry": "animation.muk.cry",
+                "pose_standing": "animation.0089_muk.pose_standing",
+                "pose_walking": "animation.0089_muk.pose_walking",
+                "pose_surface_idle": "animation.0089_muk.pose_surface_idle",
+                "pose_surface_swimming": "animation.0089_muk.pose_surface_swimming"
             },
             "render_controllers": [
                 "controller.render.muk"

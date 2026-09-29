@@ -18,10 +18,16 @@
                 "g_brionne": "geometry.brionne"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 5)) ? 3 : (((v.pose_type == 6)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -43,7 +49,12 @@
                 "sad": "animation.brionne.sad",
                 "unamused": "animation.brionne.unamused",
                 "happy": "animation.brionne.happy",
-                "hurt": "animation.brionne.hurt"
+                "hurt": "animation.brionne.hurt",
+                "pose_battle_standing": "animation.0729_brionne.pose_battle_standing",
+                "pose_standing": "animation.0729_brionne.pose_standing",
+                "pose_walking": "animation.0729_brionne.pose_walking",
+                "pose_float": "animation.0729_brionne.pose_float",
+                "pose_swim": "animation.0729_brionne.pose_swim"
             },
             "render_controllers": [
                 "controller.render.brionne"

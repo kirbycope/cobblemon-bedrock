@@ -4,66 +4,100 @@
         "controller.animation.camerupt.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "jump": {
                     "animations": [
-                        "ground_idle"
+                        "ride_jump",
+                        "pose_jump"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.15
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_walk"
+                        "ground_idle",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_idle": {
+                "walking": {
                     "animations": [
-                        "ground_idle"
+                        "ground_walk",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_move": {
+                "running": {
                     "animations": [
-                        "ride_ground_run"
+                        "ground_run",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_running"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
                         }
                     ]
                 }

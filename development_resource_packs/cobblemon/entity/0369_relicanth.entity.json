@@ -25,20 +25,29 @@
                 "g_relicanth_female": "geometry.relicanth_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 3 : (((v.pose_type == 0) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 5 : (((v.pose_type == 1) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 6 : (((v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 8 : (0)))))))));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
-                "pose": "animation.relicanth.pose",
+                "pose": "controller.animation.relicanth.pose",
                 "look_at_target": "animation.0369_relicanth.look",
+                "pose_animation": "animation.relicanth.pose",
                 "ground_idle": "animation.relicanth.ground_idle",
                 "ground_walk": "animation.relicanth.ground_walk",
                 "water_idle": "animation.relicanth.water_idle",
                 "water_swim": "animation.relicanth.water_swim",
                 "ground_speed_test": "animation.relicanth.ground_speed_test",
-                "cry": "animation.relicanth.cry"
+                "cry": "animation.relicanth.cry",
+                "pose_surface_floating": "animation.0369_relicanth.pose_surface_floating",
+                "pose_surface_swimming": "animation.0369_relicanth.pose_surface_swimming"
             },
             "render_controllers": [
                 "controller.render.relicanth",

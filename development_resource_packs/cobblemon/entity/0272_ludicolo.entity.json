@@ -21,6 +21,13 @@
                 "g_ludicolo_female": "geometry.ludicolo_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 5)) ? 2 : (((v.pose_type == 6)) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk"
@@ -37,7 +44,9 @@
                 "cry": "animation.ludicolo.cry",
                 "sleep": "animation.ludicolo.sleep",
                 "blink": "animation.ludicolo.blink",
-                "dance": "animation.ludicolo.dance"
+                "dance": "animation.ludicolo.dance",
+                "pose_standing": "animation.0272_ludicolo.pose_standing",
+                "pose_walk": "animation.0272_ludicolo.pose_walk"
             },
             "render_controllers": [
                 "controller.render.ludicolo"

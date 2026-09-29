@@ -18,19 +18,28 @@
                 "g_flareon": "geometry.flareon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.flareon.pose",
+                "pose": "controller.animation.flareon.pose",
                 "blink_quirk": "controller.animation.flareon.blink",
                 "look_at_target": "animation.0136_flareon.look",
                 "ground_idle": "animation.flareon.ground_idle",
                 "blink": "animation.flareon.blink",
-                "cry": "animation.flareon.cry"
+                "pose_animation": "animation.flareon.pose",
+                "cry": "animation.flareon.cry",
+                "pose_standing": "animation.0136_flareon.pose_standing",
+                "pose_walking": "animation.0136_flareon.pose_walking"
             },
             "render_controllers": [
                 "controller.render.flareon"

@@ -20,15 +20,21 @@
                 "g_hippowdon": "geometry.hippowdon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 2) && (0)) ? 1 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && 1)) ? 2 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 3 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && 0)) ? 4 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && 0)) ? 5 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (0)) ? 6 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (0)) ? 7 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && 1)) ? 8 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (0 && q.property('cobblemon:battle'))) ? 9 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (0 && q.property('cobblemon:battle'))) ? 10 : (0)))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.hippowdon.pose",
+                "pose": "controller.animation.hippowdon.pose",
                 "blink_quirk": "controller.animation.hippowdon.blink",
                 "quirk": "controller.animation.hippowdon.quirk",
                 "quirk_0": "animation.hippowdon.quirk_idle",
@@ -48,7 +54,19 @@
                 "sand_battle_cry": "animation.hippowdon.sand_battle_cry",
                 "quirk_idle": "animation.hippowdon.quirk_idle",
                 "quirk_sleep": "animation.hippowdon.quirk_sleep",
-                "walkspeedtest": "animation.hippowdon.walkspeedtest"
+                "pose_animation": "animation.hippowdon.pose",
+                "walkspeedtest": "animation.hippowdon.walkspeedtest",
+                "pose_sleep": "animation.0450_hippowdon.pose_sleep",
+                "pose_sleepsand": "animation.0450_hippowdon.pose_sleepsand",
+                "pose_standing": "animation.0450_hippowdon.pose_standing",
+                "pose_walk": "animation.0450_hippowdon.pose_walk",
+                "pose_standingsand": "animation.0450_hippowdon.pose_standingsand",
+                "pose_standingredsand": "animation.0450_hippowdon.pose_standingredsand",
+                "pose_walksand": "animation.0450_hippowdon.pose_walksand",
+                "pose_walkredsand": "animation.0450_hippowdon.pose_walkredsand",
+                "pose_battleidle": "animation.0450_hippowdon.pose_battleidle",
+                "pose_battleidlesand": "animation.0450_hippowdon.pose_battleidlesand",
+                "pose_battleidleredsand": "animation.0450_hippowdon.pose_battleidleredsand"
             },
             "render_controllers": [
                 "controller.render.hippowdon"

@@ -18,15 +18,21 @@
                 "g_skitty": "geometry.skitty"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.skitty.pose",
+                "pose": "controller.animation.skitty.pose",
                 "blink_quirk": "controller.animation.skitty.blink",
                 "quirk": "controller.animation.skitty.quirk",
                 "quirk_0": "animation.skitty.WIP_quirk",
@@ -44,6 +50,7 @@
                 "battle_cry": "animation.skitty.battle_cry",
                 "faint": "animation.skitty.faint",
                 "sleep": "animation.skitty.sleep",
+                "pose_animation": "animation.skitty.pose",
                 "scale": "animation.skitty.scale",
                 "suprised": "animation.skitty.suprised",
                 "happy": "animation.skitty.happy",
@@ -53,7 +60,10 @@
                 "shoulder_right": "animation.skitty.shoulder_right",
                 "walkspeed_test": "animation.skitty.walkspeed_test",
                 "runspeed_test": "animation.skitty.runspeed_test",
-                "WIP_quirk": "animation.skitty.WIP_quirk"
+                "WIP_quirk": "animation.skitty.WIP_quirk",
+                "pose_standing": "animation.0300_skitty.pose_standing",
+                "pose_battle_standing": "animation.0300_skitty.pose_battle_standing",
+                "pose_walking": "animation.0300_skitty.pose_walking"
             },
             "render_controllers": [
                 "controller.render.skitty"

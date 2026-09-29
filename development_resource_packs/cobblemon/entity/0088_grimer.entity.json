@@ -21,10 +21,16 @@
                 "g_grimer_alola": "geometry.grimer_alola"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 2) && (!q.is_in_water)) ? 3 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 4 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water)) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 6 : (((v.pose_type == 2) && (q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -48,7 +54,14 @@
                 "swim_test": "animation.grimer.swim_test",
                 "run_test": "animation.grimer.run_test",
                 "walk_test": "animation.grimer.walk_test",
-                "water_placement": "animation.grimer.water_placement"
+                "water_placement": "animation.grimer.water_placement",
+                "pose_battle_standing": "animation.0088_grimer.pose_battle_standing",
+                "pose_standing": "animation.0088_grimer.pose_standing",
+                "pose_walking": "animation.0088_grimer.pose_walking",
+                "pose_surface_idle": "animation.0088_grimer.pose_surface_idle",
+                "pose_surface_battle_idle": "animation.0088_grimer.pose_surface_battle_idle",
+                "pose_surface_swimming": "animation.0088_grimer.pose_surface_swimming",
+                "pose_surface_sleep": "animation.0088_grimer.pose_surface_sleep"
             },
             "render_controllers": [
                 "controller.render.grimer"

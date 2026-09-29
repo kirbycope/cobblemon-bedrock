@@ -18,11 +18,17 @@
                 "g_skarmory": "geometry.skarmory"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && !q.is_in_water && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 3 : (((v.pose_type == 1) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 3)) ? 5 : (((v.pose_type == 4) && ((!0))) ? 6 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (0))) ? 7 : (((v.pose_type == 2)) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -57,7 +63,15 @@
                 "cry": "animation.skarmory.cry",
                 "recoil": "animation.skarmory.recoil",
                 "blink": "animation.skarmory.blink",
-                "ditto_face": "animation.skarmory.ditto_face"
+                "ditto_face": "animation.skarmory.ditto_face",
+                "pose_battle_standing": "animation.0227_skarmory.pose_battle_standing",
+                "pose_jump": "animation.0227_skarmory.pose_jump",
+                "pose_running": "animation.0227_skarmory.pose_running",
+                "pose_standing": "animation.0227_skarmory.pose_standing",
+                "pose_walking": "animation.0227_skarmory.pose_walking",
+                "pose_hover": "animation.0227_skarmory.pose_hover",
+                "pose_fly": "animation.0227_skarmory.pose_fly",
+                "pose_glide": "animation.0227_skarmory.pose_glide"
             },
             "render_controllers": [
                 "controller.render.skarmory"

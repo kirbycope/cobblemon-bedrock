@@ -4,86 +4,137 @@
         "controller.animation.mudsdale.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "in_air": {
                     "animations": [
-                        "ground_idle"
+                        "ride_jump",
+                        "ride_ground_run",
+                        "blink",
+                        "pose_in_air"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "run": "v.pose == 2"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "moving": {
+                "standing": {
                     "animations": [
-                        "ground_walk"
+                        "ground_idle",
+                        "blink",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "in_air": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "run": "v.pose == 2"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "sleeping": {
+                "run": {
+                    "animations": [
+                        "ground_run",
+                        "blink",
+                        {
+                            "ride_ground_run": "q.has_rider && 1 && q.is_on_ground"
+                        },
+                        "pose_run"
+                    ],
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        "blink",
+                        {
+                            "ride_ground_walk": "q.has_rider && 1 && q.is_on_ground"
+                        },
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "in_air": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_sleeping"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "ride_move": {
-                    "animations": [
-                        "ride_ground_run"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
+                            "run": "v.pose == 2"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walk": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ]
                 }

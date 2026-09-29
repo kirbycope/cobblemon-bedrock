@@ -26,11 +26,17 @@
                 "g_wartortle": "geometry.wartortle"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1)) ? 3 : (((v.pose_type == 5)) ? 4 : (((v.pose_type == 6)) ? 5 : (((v.pose_type == 0) && (q.is_in_water)) ? 6 : (((v.pose_type == 1) && (q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -55,7 +61,14 @@
                 "physical": "animation.wartortle.physical",
                 "special": "animation.wartortle.special",
                 "status": "animation.wartortle.status",
-                "recoil": "animation.wartortle.recoil"
+                "recoil": "animation.wartortle.recoil",
+                "pose_standing": "animation.0008_wartortle.pose_standing",
+                "pose_battle_standing": "animation.0008_wartortle.pose_battle_standing",
+                "pose_walk": "animation.0008_wartortle.pose_walk",
+                "pose_floating": "animation.0008_wartortle.pose_floating",
+                "pose_swimming": "animation.0008_wartortle.pose_swimming",
+                "pose_surface_idle": "animation.0008_wartortle.pose_surface_idle",
+                "pose_surface_swim": "animation.0008_wartortle.pose_surface_swim"
             },
             "render_controllers": [
                 "controller.render.wartortle",

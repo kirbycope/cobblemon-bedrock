@@ -18,17 +18,24 @@
                 "g_simipour": "geometry.simipour"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.simipour.pose",
+                "pose": "controller.animation.simipour.pose",
                 "blink_quirk": "controller.animation.simipour.blink",
                 "look_at_target": "animation.0516_simipour.look",
                 "ground_idle": "animation.simipour.ground_idle",
+                "pose_animation": "animation.simipour.pose",
                 "shocked": "animation.simipour.shocked",
                 "angry": "animation.simipour.angry",
                 "sad": "animation.simipour.sad",
@@ -37,7 +44,9 @@
                 "smile": "animation.simipour.smile",
                 "recoil": "animation.simipour.recoil",
                 "blink": "animation.simipour.blink",
-                "cry": "animation.simipour.cry"
+                "cry": "animation.simipour.cry",
+                "pose_standing": "animation.0516_simipour.pose_standing",
+                "pose_walking": "animation.0516_simipour.pose_walking"
             },
             "render_controllers": [
                 "controller.render.simipour"

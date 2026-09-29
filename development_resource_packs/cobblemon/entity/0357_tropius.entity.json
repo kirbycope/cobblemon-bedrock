@@ -18,11 +18,17 @@
                 "g_tropius": "geometry.tropius"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 4) && ((!0))) ? 2 : (((v.pose_type == 4) && ((0))) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && ((!(q.has_rider && q.ground_speed > 7)))) ? 5 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 6 : (((v.pose_type == 2) && ((!q.is_on_ground))) ? 7 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 8 : (((v.pose_type == 2) && (q.property('cobblemon:battle') && (q.is_on_ground))) ? 9 : (0))))))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -50,7 +56,14 @@
                 "battle_sleep": "animation.tropius.battle_sleep",
                 "sleep": "animation.tropius.sleep",
                 "recoil": "animation.tropius.recoil",
-                "faint": "animation.tropius.faint"
+                "faint": "animation.tropius.faint",
+                "pose_battle_standing": "animation.0357_tropius.pose_battle_standing",
+                "pose_standing": "animation.0357_tropius.pose_standing",
+                "pose_flying": "animation.0357_tropius.pose_flying",
+                "pose_glide": "animation.0357_tropius.pose_glide",
+                "pose_hovering": "animation.0357_tropius.pose_hovering",
+                "pose_walking": "animation.0357_tropius.pose_walking",
+                "pose_running": "animation.0357_tropius.pose_running"
             },
             "render_controllers": [
                 "controller.render.tropius"

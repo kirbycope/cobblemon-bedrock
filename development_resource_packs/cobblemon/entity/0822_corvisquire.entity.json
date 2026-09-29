@@ -18,10 +18,16 @@
                 "g_corvisquire": "geometry.corvisquire"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (((q.is_on_ground)))) ? 0 : (((v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 1) && ((q.is_on_ground))) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -39,7 +45,11 @@
                 "cry": "animation.corvisquire.cry",
                 "recoil": "animation.corvisquire.recoil",
                 "walkspeed_test": "animation.corvisquire.walkspeed_test",
-                "fly_speed_test": "animation.corvisquire.fly_speed_test"
+                "fly_speed_test": "animation.corvisquire.fly_speed_test",
+                "pose_standing": "animation.0822_corvisquire.pose_standing",
+                "pose_hover": "animation.0822_corvisquire.pose_hover",
+                "pose_fly": "animation.0822_corvisquire.pose_fly",
+                "pose_walking": "animation.0822_corvisquire.pose_walking"
             },
             "render_controllers": [
                 "controller.render.corvisquire"

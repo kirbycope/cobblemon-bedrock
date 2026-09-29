@@ -20,10 +20,16 @@
                 "g_bellossom": "geometry.bellossom"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -32,7 +38,9 @@
                 "look_at_target": "animation.0182_bellossom.look",
                 "ground_idle": "animation.bellossom.ground_idle",
                 "ground_walk": "animation.bellossom.ground_walk",
-                "blink": "animation.bellossom.blink"
+                "blink": "animation.bellossom.blink",
+                "pose_standing": "animation.0182_bellossom.pose_standing",
+                "pose_walk": "animation.0182_bellossom.pose_walk"
             },
             "render_controllers": [
                 "controller.render.bellossom"

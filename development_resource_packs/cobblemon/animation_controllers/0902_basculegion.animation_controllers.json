@@ -4,32 +4,37 @@
         "controller.animation.basculegion.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "float": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_float"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "swim": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "swim": {
                     "animations": [
-                        "ground_idle"
+                        "ground_idle",
+                        "pose_swim"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "float": "v.pose == 0"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "float": "v.pose == 0"
+                        },
+                        {
+                            "swim": "v.pose == 1"
                         }
                     ]
                 }

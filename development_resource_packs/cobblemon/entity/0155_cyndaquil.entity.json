@@ -20,10 +20,16 @@
                 "g_cyndaquil": "geometry.cyndaquil"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose",
-                    "quirk",
-                    "look_at_target"
+                    "quirk"
                 ]
             },
             "animations": {
@@ -41,7 +47,10 @@
                 "sleep": "animation.cyndaquil.sleep",
                 "render": "animation.cyndaquil.render",
                 "sneeze_quirk_WIP": "animation.cyndaquil.sneeze_quirk_WIP",
-                "faint_WIP": "animation.cyndaquil.faint_WIP"
+                "faint_WIP": "animation.cyndaquil.faint_WIP",
+                "pose_standing": "animation.0155_cyndaquil.pose_standing",
+                "pose_walking": "animation.0155_cyndaquil.pose_walking",
+                "pose_battle_idle": "animation.0155_cyndaquil.pose_battle_idle"
             },
             "render_controllers": [
                 "controller.render.cyndaquil",

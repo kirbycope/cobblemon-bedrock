@@ -18,10 +18,16 @@
                 "g_togetic": "geometry.togetic"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 5 : (((v.pose_type == 2)) ? 6 : (0)))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -48,7 +54,13 @@
                 "happy": "animation.togetic.happy",
                 "hurt": "animation.togetic.hurt",
                 "render": "animation.togetic.render",
-                "cry_placeholder": "animation.togetic.cry_placeholder"
+                "cry_placeholder": "animation.togetic.cry_placeholder",
+                "pose_battle_standing": "animation.0176_togetic.pose_battle_standing",
+                "pose_standing": "animation.0176_togetic.pose_standing",
+                "pose_walking": "animation.0176_togetic.pose_walking",
+                "pose_hover": "animation.0176_togetic.pose_hover",
+                "pose_fly": "animation.0176_togetic.pose_fly",
+                "pose_run": "animation.0176_togetic.pose_run"
             },
             "render_controllers": [
                 "controller.render.togetic"

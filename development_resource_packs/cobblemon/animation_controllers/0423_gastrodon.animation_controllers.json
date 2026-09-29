@@ -1,0 +1,181 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.gastrodon.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "battle_standing": {
+                    "animations": [
+                        "gastrodon_east__battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "jump": {
+                    "animations": [
+                        "gastrodon_east__ride_jump",
+                        "pose_jump"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.1
+                },
+                "running": {
+                    "animations": [
+                        "gastrodon_east__ground_run",
+                        {
+                            "gastrodon_east__ride_ground_run": "q.has_rider"
+                        },
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "gastrodon_east__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "gastrodon_east__ground_walk",
+                        {
+                            "gastrodon_east__ride_ground_walk": "q.has_rider"
+                        },
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "gastrodon_east__sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -20,6 +20,13 @@
                 "g_finneon": "geometry.finneon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water)) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1)) ? 3 : (((v.pose_type == 5)) ? 4 : (((v.pose_type == 6)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
@@ -29,11 +36,12 @@
             "animations": {
                 "pose": "controller.animation.finneon.pose",
                 "blink_quirk": "controller.animation.finneon.blink",
-                "quirk": "animation.finneon.quirk",
+                "quirk": "controller.animation.finneon.quirk",
                 "quirk_0": "animation.finneon.quirk",
                 "blink": "animation.finneon.blink",
                 "water_idle": "animation.finneon.water_idle",
                 "water_swim": "animation.finneon.water_swim",
+                "quirk_animation": "animation.finneon.quirk",
                 "water_faint": "animation.finneon.water_faint",
                 "ground_idle": "animation.finneon.ground_idle",
                 "ground_walk": "animation.finneon.ground_walk",

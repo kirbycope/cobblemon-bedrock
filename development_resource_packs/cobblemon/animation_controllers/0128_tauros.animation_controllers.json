@@ -4,66 +4,135 @@
         "controller.animation.tauros.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
+                "jump": {
                     "animations": [
-                        "ground_idle"
+                        "ride_jump",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_jump"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "running": "v.pose == 1"
                         },
                         {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "moving": {
+                "running": {
                     "animations": [
-                        "ground_walk"
+                        "ground_run",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_running"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_idle": {
+                "walking": {
                     "animations": [
-                        "ground_idle"
+                        "ground_walk",
+                        {
+                            "ride_ground_walk": "q.has_rider"
+                        },
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "running": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_move": {
+                "standing": {
                     "animations": [
-                        "ride_ground_run"
+                        "ground_idle",
+                        {
+                            "ride_ground_walk": "q.has_rider"
+                        },
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "jump": "v.pose == 0"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "running": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "running": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "running": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "standing": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ]
                 }

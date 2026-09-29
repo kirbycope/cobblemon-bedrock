@@ -4,28 +4,165 @@
         "controller.animation.dondozo.pose": {
             "initial_state": "spawn",
             "states": {
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_swimming": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_swimming": {
+                    "animations": [
+                        "water_battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_swimming": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_swimming": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "float": {
                     "animations": [
                         "water_idle"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battle_swimming": "v.pose == 1"
                         },
                         {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 2"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "walking": "v.pose == 3"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "swim": {
                     "animations": [
@@ -33,138 +170,158 @@
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleeping": "q.is_sleeping"
+                            "battle_swimming": "v.pose == 1"
                         },
                         {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                            "standing": "v.pose == 2"
                         },
                         {
-                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                            "walking": "v.pose == 3"
                         },
                         {
-                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "ride_idle": "q.has_rider"
-                        },
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
+                "sleep": {
                     "animations": [
                         "ground_sleep"
                     ],
                     "transitions": [
                         {
-                            "ride_idle": "q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "idle": "!q.is_sleeping"
+                            "battle_swimming": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_idle": {
+                "surface_idle": {
                     "animations": [
-                        "ground_idle"
+                        "water_idle",
+                        "pose_surface_idle"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                            "battle_swimming": "v.pose == 1"
                         },
                         {
-                            "ride_swim": "q.is_in_water"
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "ride_move": {
+                "surface_swim": {
                     "animations": [
-                        "ground_walk"
+                        "water_swim",
+                        "pose_surface_swim"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.has_rider"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                            "battle_swimming": "v.pose == 1"
                         },
                         {
-                            "ride_swim": "q.is_in_water"
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
                         }
                     ],
-                    "blend_transition": 0.2
-                },
-                "ride_swim": {
-                    "animations": [
-                        "water_swim"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "!q.has_rider"
-                        },
-                        {
-                            "ride_idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
-                        },
-                        {
-                            "ride_move": "!q.is_in_water && q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_swimming": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 6"
+                        },
+                        {
+                            "surface_idle": "v.pose == 7"
+                        },
+                        {
+                            "surface_swim": "v.pose == 8"
                         }
                     ]
                 }

@@ -21,10 +21,16 @@
                 "g_sandslash_alolan": "geometry.sandslash_alolan"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 2)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -44,7 +50,12 @@
                 "angry": "animation.sandslash.angry",
                 "annoyed": "animation.sandslash.annoyed",
                 "happy": "animation.sandslash.happy",
-                "hurt": "animation.sandslash.hurt"
+                "hurt": "animation.sandslash.hurt",
+                "sandslash_alolan__ground_idle": "animation.sandslash_alolan.ground_idle",
+                "pose_standing": "animation.0028_sandslash.pose_standing",
+                "sandslash_alolan__ground_walk": "animation.sandslash_alolan.ground_walk",
+                "pose_walk": "animation.0028_sandslash.pose_walk",
+                "sandslash_alolan__sleep": "animation.sandslash_alolan.sleep"
             },
             "render_controllers": [
                 "controller.render.sandslash"

@@ -1,0 +1,275 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.mrmime.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "battle_standing": {
+                    "animations": [
+                        "mr_mime__battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "jump": {
+                    "animations": [
+                        "mr_mime__ride_jump",
+                        "pose_jump"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.15
+                },
+                "standing": {
+                    "animations": [
+                        "mr_mime__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_standing": {
+                    "animations": [
+                        "mr_mime__mount_idle",
+                        "pose_mount_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "mr_mime__ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_walking": {
+                    "animations": [
+                        "mr_mime__mount_run",
+                        "mr_mime__ride_mount_run",
+                        "pose_mount_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "mr_mime__ground_run",
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "mount_standing": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 4"
+                        },
+                        {
+                            "mount_walking": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

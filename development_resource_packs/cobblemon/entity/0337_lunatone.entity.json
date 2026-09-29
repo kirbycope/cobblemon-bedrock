@@ -18,6 +18,13 @@
                 "g_lunatone": "geometry.lunatone"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 4) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 2) && ((0))) ? 3 : (((v.pose_type == 2) && ((1))) ? 4 : (0)))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk",
@@ -27,7 +34,7 @@
             "animations": {
                 "pose": "controller.animation.lunatone.pose",
                 "blink_quirk": "controller.animation.lunatone.blink",
-                "quirk": "animation.lunatone.quirk",
+                "quirk": "controller.animation.lunatone.quirk",
                 "quirk_0": "animation.lunatone.quirk",
                 "ground_idle": "animation.lunatone.ground_idle",
                 "ground_walk": "animation.lunatone.ground_walk",
@@ -35,6 +42,7 @@
                 "sleep": "animation.lunatone.sleep",
                 "sleep_alt": "animation.lunatone.sleep_alt",
                 "cry": "animation.lunatone.cry",
+                "quirk_animation": "animation.lunatone.quirk",
                 "battle_idle": "animation.lunatone.battle_idle",
                 "battle_cry": "animation.lunatone.battle_cry",
                 "physical": "animation.lunatone.physical",

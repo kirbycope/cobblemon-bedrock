@@ -18,18 +18,27 @@
                 "g_hariyama": "geometry.hariyama"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.hariyama.pose",
+                "pose": "controller.animation.hariyama.pose",
                 "blink_quirk": "controller.animation.hariyama.blink",
                 "look_at_target": "animation.0297_hariyama.look",
+                "pose_animation": "animation.hariyama.pose",
                 "ground_idle": "animation.hariyama.ground_idle",
-                "blink": "animation.hariyama.blink"
+                "blink": "animation.hariyama.blink",
+                "pose_standing": "animation.0297_hariyama.pose_standing",
+                "pose_walk": "animation.0297_hariyama.pose_walk"
             },
             "render_controllers": [
                 "controller.render.hariyama"

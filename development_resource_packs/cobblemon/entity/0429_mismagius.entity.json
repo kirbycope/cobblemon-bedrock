@@ -20,10 +20,16 @@
                 "g_mismagius": "geometry.mismagius"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -33,7 +39,9 @@
                 "ground_idle": "animation.mismagius.ground_idle",
                 "blink": "animation.mismagius.blink",
                 "mouth_open": "animation.mismagius.mouth_open",
-                "cry": "animation.mismagius.cry"
+                "cry": "animation.mismagius.cry",
+                "pose_standing": "animation.0429_mismagius.pose_standing",
+                "pose_walk": "animation.0429_mismagius.pose_walk"
             },
             "render_controllers": [
                 "controller.render.mismagius",

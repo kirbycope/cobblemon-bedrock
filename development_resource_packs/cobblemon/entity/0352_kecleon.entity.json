@@ -18,22 +18,31 @@
                 "g_kecleon": "geometry.kecleon"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 2)) ? 2 : (0)));"
+                ],
                 "animate": [
-                    "pose",
-                    "look_at_target"
+                    "pose"
                 ]
             },
             "animations": {
-                "pose": "animation.kecleon.pose",
+                "pose": "controller.animation.kecleon.pose",
                 "look_at_target": "animation.0352_kecleon.look",
                 "ground_idle": "animation.kecleon.ground_idle",
                 "ground_walk": "animation.kecleon.ground_walk",
                 "sleep": "animation.kecleon.sleep",
+                "pose_animation": "animation.kecleon.pose",
                 "sleep_test": "animation.kecleon.sleep_test",
                 "tongue_n_tail": "animation.kecleon.tongue_n_tail",
                 "expressions": "animation.kecleon.expressions",
                 "walk_speed": "animation.kecleon.walk_speed",
-                "cry": "animation.kecleon.cry"
+                "cry": "animation.kecleon.cry",
+                "pose_standing": "animation.0352_kecleon.pose_standing",
+                "pose_walking": "animation.0352_kecleon.pose_walking"
             },
             "render_controllers": [
                 "controller.render.kecleon"

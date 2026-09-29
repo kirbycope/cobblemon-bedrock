@@ -18,10 +18,16 @@
                 "g_feraligatr": "geometry.feraligatr"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water && !q.property('cobblemon:submerged'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water && !q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 4 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 6 : (((v.pose_type == 2) && (!q.is_in_water)) ? 7 : (((v.pose_type == 2) && (q.is_in_water)) ? 8 : (0)))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -44,7 +50,14 @@
                 "water_swim": "animation.feraligatr.water_swim",
                 "walkspeedtest": "animation.feraligatr.walkspeedtest",
                 "runspeedtest": "animation.feraligatr.runspeedtest",
-                "hold_item": "animation.feraligatr.hold_item"
+                "hold_item": "animation.feraligatr.hold_item",
+                "pose_standing": "animation.0160_feraligatr.pose_standing",
+                "pose_battle_standing": "animation.0160_feraligatr.pose_battle_standing",
+                "pose_walking": "animation.0160_feraligatr.pose_walking",
+                "pose_surface_float": "animation.0160_feraligatr.pose_surface_float",
+                "pose_surface_swim": "animation.0160_feraligatr.pose_surface_swim",
+                "pose_float": "animation.0160_feraligatr.pose_float",
+                "pose_swim": "animation.0160_feraligatr.pose_swim"
             },
             "render_controllers": [
                 "controller.render.feraligatr"

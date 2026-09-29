@@ -18,10 +18,16 @@
                 "g_nidoking": "geometry.nidoking"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -44,7 +50,10 @@
                 "walk_test": "animation.nidoking.walk_test",
                 "run_test": "animation.nidoking.run_test",
                 "quad_run_test": "animation.nidoking.quad_run_test",
-                "run_final": "animation.nidoking.run_final"
+                "run_final": "animation.nidoking.run_final",
+                "pose_battle_standing": "animation.0034_nidoking.pose_battle_standing",
+                "pose_standing": "animation.0034_nidoking.pose_standing",
+                "pose_walking": "animation.0034_nidoking.pose_walking"
             },
             "render_controllers": [
                 "controller.render.nidoking"

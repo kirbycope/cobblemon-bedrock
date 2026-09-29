@@ -1,0 +1,68 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.mimejr.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "mime_jr__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "mime_jr__ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "mime_jr__ground_run",
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 2"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

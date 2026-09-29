@@ -4,56 +4,60 @@
         "controller.animation.magcargo.pose": {
             "initial_state": "spawn",
             "states": {
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2,
-                    "particle_effects": [
-                        {
-                            "effect": "magcargo_lava_bubble",
-                            "locator": "torso"
-                        }
-                    ]
-                },
-                "moving": {
-                    "animations": [
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "sleeping": "q.is_sleeping"
-                        },
-                        {
-                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
-                        }
-                    ],
-                    "blend_transition": 0.2,
-                    "particle_effects": [
-                        {
-                            "effect": "magcargo_lava_bubble",
-                            "locator": "torso"
-                        }
-                    ]
-                },
-                "sleeping": {
+                "sleep": {
                     "animations": [
                         "sleep"
                     ],
                     "transitions": [
                         {
-                            "idle": "!q.is_sleeping"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ],
-                    "blend_transition": 0.2,
+                    "blend_transition": 0.5,
+                    "particle_effects": [
+                        {
+                            "effect": "magcargo_lava_bubble",
+                            "locator": "torso"
+                        }
+                    ]
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5,
+                    "particle_effects": [
+                        {
+                            "effect": "magcargo_lava_bubble",
+                            "locator": "torso"
+                        }
+                    ]
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5,
                     "particle_effects": [
                         {
                             "effect": "magcargo_lava_bubble",
@@ -64,7 +68,13 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "idle": "1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
                         }
                     ]
                 }

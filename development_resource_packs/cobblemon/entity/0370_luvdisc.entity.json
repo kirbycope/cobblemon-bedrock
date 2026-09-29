@@ -18,6 +18,13 @@
                 "g_luvdisc": "geometry.luvdisc"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 0) && (!q.is_in_water)) ? 0 : (((v.pose_type == 1) && (!q.is_in_water)) ? 1 : (((v.pose_type == 5) && (q.is_in_water)) ? 2 : (((v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 2) && (!q.is_in_water)) ? 4 : (((v.pose_type == 2) && (q.is_in_water)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
                     "blink_quirk"
@@ -36,7 +43,9 @@
                 "ground_sleep": "animation.luvdisc.ground_sleep",
                 "physical_attack": "animation.luvdisc.physical_attack",
                 "blink": "animation.luvdisc.blink",
-                "special_attack": "animation.luvdisc.special_attack"
+                "special_attack": "animation.luvdisc.special_attack",
+                "pose_float": "animation.0370_luvdisc.pose_float",
+                "pose_swim": "animation.0370_luvdisc.pose_swim"
             },
             "render_controllers": [
                 "controller.render.luvdisc"

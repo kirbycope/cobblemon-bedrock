@@ -18,10 +18,16 @@
                 "g_dracovish": "geometry.dracovish"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.is_in_water)) ? 1 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1 || v.pose_type == 4)) ? 3 : (((v.pose_type == 5)) ? 4 : (((v.pose_type == 6)) ? 5 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -38,7 +44,13 @@
                 "water_swim": "animation.dracovish.water_swim",
                 "watersleep": "animation.dracovish.watersleep",
                 "water_cry": "animation.dracovish.water_cry",
-                "blink": "animation.dracovish.blink"
+                "blink": "animation.dracovish.blink",
+                "pose_standing": "animation.0882_dracovish.pose_standing",
+                "pose_walk": "animation.0882_dracovish.pose_walk",
+                "pose_float": "animation.0882_dracovish.pose_float",
+                "pose_swim": "animation.0882_dracovish.pose_swim",
+                "pose_battleidle": "animation.0882_dracovish.pose_battleidle",
+                "pose_waterbattleidle": "animation.0882_dracovish.pose_waterbattleidle"
             },
             "render_controllers": [
                 "controller.render.dracovish"

@@ -18,14 +18,20 @@
                 "g_dragapult": "geometry.dragapult"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 5 || v.pose_type == 6) && (!q.is_in_water && (q.has_rider))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1) && ((q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.ground_speed / 20) > 0.75))) ? 6 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && ((q.ground_speed / 20) < 0.75))) ? 7 : (((v.pose_type == 5) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 8 : (((v.pose_type == 6) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 9 : (((v.pose_type == 2)) ? 10 : (0)))))))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.dragapult.pose",
+                "pose": "controller.animation.dragapult.pose",
                 "blink_quirk": "controller.animation.dragapult.blink",
                 "look_at_target": "animation.0887_dragapult.look",
                 "ground_idle": "animation.dragapult.ground_idle",
@@ -46,9 +52,20 @@
                 "blink": "animation.dragapult.blink",
                 "blink2": "animation.dragapult.blink2",
                 "blink3": "animation.dragapult.blink3",
+                "pose_animation": "animation.dragapult.pose",
                 "new2": "animation.dragapult.new2",
                 "physical_old": "animation.dragapult.physical_old",
-                "special_old": "animation.dragapult.special_old"
+                "special_old": "animation.dragapult.special_old",
+                "pose_battle_standing": "animation.0887_dragapult.pose_battle_standing",
+                "pose_water_jump": "animation.0887_dragapult.pose_water_jump",
+                "pose_standing": "animation.0887_dragapult.pose_standing",
+                "pose_walking": "animation.0887_dragapult.pose_walking",
+                "pose_running": "animation.0887_dragapult.pose_running",
+                "pose_hover": "animation.0887_dragapult.pose_hover",
+                "pose_fly_fast": "animation.0887_dragapult.pose_fly_fast",
+                "pose_fly": "animation.0887_dragapult.pose_fly",
+                "pose_float": "animation.0887_dragapult.pose_float",
+                "pose_swim": "animation.0887_dragapult.pose_swim"
             },
             "render_controllers": [
                 "controller.render.dragapult"

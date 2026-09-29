@@ -18,10 +18,16 @@
                 "g_ducklett": "geometry.ducklett"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4)) ? 3 : (((v.pose_type == 5)) ? 4 : (((v.pose_type == 6)) ? 5 : (0))))));"
+                ],
                 "animate": [
                     "pose",
-                    "blink_quirk",
-                    "look_at_target"
+                    "blink_quirk"
                 ]
             },
             "animations": {
@@ -34,7 +40,13 @@
                 "water_idle": "animation.ducklett.water_idle",
                 "surfacewater_idle": "animation.ducklett.surfacewater_idle",
                 "blink": "animation.ducklett.blink",
-                "cry": "animation.ducklett.cry"
+                "cry": "animation.ducklett.cry",
+                "pose_standing": "animation.0580_ducklett.pose_standing",
+                "pose_walking": "animation.0580_ducklett.pose_walking",
+                "pose_hover": "animation.0580_ducklett.pose_hover",
+                "pose_fly": "animation.0580_ducklett.pose_fly",
+                "pose_float": "animation.0580_ducklett.pose_float",
+                "pose_swim": "animation.0580_ducklett.pose_swim"
             },
             "render_controllers": [
                 "controller.render.ducklett"
