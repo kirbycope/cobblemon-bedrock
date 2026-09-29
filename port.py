@@ -2429,7 +2429,8 @@ def create_structures():
     """Convert the start pieces and write a feature and feature rule per worldgen structure."""
     print("Creating structures...")
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
-    from nbt_to_mcstructure import convert, load_invalid, parse_processors
+    from nbt_to_mcstructure import convert, load_invalid, parse_processors, PACK_BLOCKS
+    PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
     # the folders start fresh in create_blocks, which writes the apricorn trees into them first
     invalid = load_invalid(); unmapped = {}; odds = structure_spacing()
     placed, skipped = 0, []
@@ -2732,6 +2733,7 @@ def create_blocks():
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     fossil_items = create_fossil_blocks()
     apricorn_trees = create_apricorns()
+    building_blocks = create_building_blocks()
     # the PC, two blocks tall like the tank, its screen lit while someone uses it
     machine_block("pc", "PC", {"cobblemon:part": ["bottom", "top"], "cobblemon:on": [False, True]},
                   [("q.block_state('cobblemon:part') == 'bottom'", ["pc_bottom"]),
@@ -2752,7 +2754,10 @@ def create_blocks():
         file.write("export const BERRIES = " + json.dumps(berries) + ";\n")
         file.write("export const FOSSILS = " + json.dumps(fossils) + ";\n")
         file.write("export const APRICORN_TREES = " + json.dumps({"variants": TREE_VARIANTS, "origins": apricorn_trees}) + ";\n")
-    print(f"Create blocks complete: {len(berries)} berry bushes, the healing machine, the fossil machine and {len(fossil_items)} fossils.")
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for name in building_blocks:
+            file.write(f"tile.cobblemon:{name}.name={lang.get('block.cobblemon.' + name, name.replace('_', ' ').title())}" + chr(10))
+    print(f"Create blocks complete: {len(berries)} berry bushes, the healing machine, the fossil machine, {len(fossil_items)} fossils and {len(building_blocks)} building blocks.")
 
 
 # ---------------------------------------------------------------------------
@@ -3008,7 +3013,7 @@ FORMATION_BIOME_IDS = {
 brush_loot = {}
 # what a buried formation may replace: the ground it is buried in
 FORMATION_REPLACEABLE = [f"minecraft:{b}" for b in ("air", "stone", "dirt", "grass_block", "coarse_dirt", "rooted_dirt", "podzol", "mud", "clay",
-    "gravel", "sand", "red_sand", "sandstone", "red_sandstone", "terracotta", "granite", "diorite", "andesite", "tuff", "deepslate",
+    "gravel", "sand", "red_sand", "sandstone", "red_sandstone", "hardened_clay", "granite", "diorite", "andesite", "tuff", "deepslate",
     "calcite", "dripstone_block", "moss_block", "snow", "snow_layer", "ice", "packed_ice", "blue_ice", "water", "seagrass", "kelp",
     "short_grass", "tall_grass", "fern", "mycelium", "coal_ore", "iron_ore", "copper_ore", "cobblestone", "mossy_cobblestone")]
 
@@ -3748,6 +3753,137 @@ def create_general_items():
         file.write("export const MEDICINE = " + json.dumps(medicine) + ";" + chr(10))
         file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
     print(f"Create items complete: {len(made)} items, {len(held)} held items, {len(medicine)} medicines.")
+    return made
+
+
+# ---------------------------------------------------------------------------
+# Building blocks. Every Cobblemon block whose model is one of the standard shapes, and which the pack has not
+# made elsewhere: cubes, columns, cross plants (clusters, flowers), slabs, stairs, walls and fences. Tumblestone
+# blocks, bricks and polished stone, the type gem blocks, the evolution stone ores and blocks, apricorn and
+# saccharine wood. Each drops what Cobblemon's block loot table gives, or itself.
+# ---------------------------------------------------------------------------
+
+def block_model_of(name):
+    """(parent, textures) of the first model a Cobblemon block's blockstate uses, with its parents' textures merged."""
+    path = f"{cobblemon}/blockstates/{name}.json"
+    if not os.path.exists(path): return None, {}
+    with open(path, encoding="utf-8") as file: state = json.load(file)
+    ref = None
+    for v in state.get("variants", {}).values(): ref = (v if isinstance(v, dict) else v[0])["model"]; break
+    if ref is None:
+        for m in state.get("multipart", []): a = m["apply"]; ref = (a if isinstance(a, dict) else a[0])["model"]; break
+    if not ref: return None, {}
+    model_path = f"{cobblemon}/models/{ref.split(':', 1)[-1]}.json"
+    if not os.path.exists(model_path): return None, {}
+    with open(model_path, encoding="utf-8") as file: model = json.load(file)
+    textures = dict(model.get("textures", {}))
+    parent = model.get("parent", "")
+    # a Cobblemon parent (a slab's full variant, a wall's post) lends its textures
+    while parent.startswith("cobblemon:"):
+        pp = f"{cobblemon}/models/{parent.split(':', 1)[-1]}.json"
+        if not os.path.exists(pp): break
+        with open(pp, encoding="utf-8") as file: pm = json.load(file)
+        textures = {**pm.get("textures", {}), **textures}
+        parent = pm.get("parent", "")
+    return parent, textures
+
+
+def block_loot(name):
+    """A Bedrock loot table path for the block: Cobblemon's, converted, or the block itself."""
+    path = f"{cobblemonData}/loot_table/blocks/{name}.json"
+    table = None
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        table = convert_loot_table(data, defined_items() | {f"cobblemon:{name}"})
+        if not table["pools"]: table = None
+    if table is None: table = {"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{name}"}]}]}
+    with open(f"{lootBlocksBedrock}/{name}.json", "w") as file: file.write(json.dumps(table))
+    return f"loot_tables/blocks/{name}.json"
+
+
+def create_building_blocks():
+    made = []
+    existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
+    for path in sorted(glob.glob(f"{cobblemon}/blockstates/*.json")):
+        name = os.path.basename(path)[:-len(".json")]
+        if name in existing or name.startswith("potted_"): continue
+        parent, tex = block_model_of(name)
+        parent = (parent or "").split(":", 1)[-1]
+        identifier = f"cobblemon:{name}"
+        base = {"minecraft:destructible_by_mining": {"seconds_to_destroy": 1.5}, "minecraft:loot": block_loot(name)}
+        try:
+            if parent in ("block/cube_all",) and "all" in tex:
+                render = "alpha_test" if "leaves" in name else "opaque"
+                full_block(identifier, {"*": tex["all"]}, extra=base, render=render)
+            elif parent in ("block/cube_column", "block/cube_column_horizontal") and "side" in tex and "end" in tex:
+                full_block(identifier, {"*": tex["side"], "up": tex["end"], "down": tex["end"]}, extra=base)
+            elif parent == "block/cross" and "cross" in tex:
+                with open(f"{blocksBedrock}/{name}.json", "w") as file:
+                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                        "description": {"identifier": identifier, "menu_category": {"category": "nature"}},
+                        "components": {"minecraft:geometry": "minecraft:geometry.cross",
+                                       "minecraft:material_instances": {"*": {"texture": java_texture(tex["cross"]), "render_method": "alpha_test", "face_dimming": False, "ambient_occlusion": False}},
+                                       "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 13, 12]},
+                                       "minecraft:light_dampening": 0, **base, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}}}}, indent=2))
+            elif name.endswith("_slab") and ("bottom" in tex or "side" in tex or "all" in tex):
+                side = tex.get("side", tex.get("all", tex.get("bottom"))); top = tex.get("top", side); bottom = tex.get("bottom", top)
+                for half, y in (("bottom", 0), ("top", 8)):
+                    cube = {"origin": [-8, y, -8], "size": [16, 8, 16], "uv": {
+                        f: {"uv": [0, 8 - y], "uv_size": [16, 8], "material_instance": "side"} for f in ("north", "south", "east", "west")}}
+                    cube["uv"]["up"] = {"uv": [0, 0], "uv_size": [16, 16], "material_instance": "top"}
+                    cube["uv"]["down"] = {"uv": [0, 0], "uv_size": [16, 16], "material_instance": "bottom"}
+                    write_block_geometry(f"geometry.cobblemon_slab_{half}", [cube])
+                instances = {"*": {"texture": java_texture(side)}, "side": {"texture": java_texture(side)}, "top": {"texture": java_texture(top)}, "bottom": {"texture": java_texture(bottom)}}
+                with open(f"{blocksBedrock}/{name}.json", "w") as file:
+                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                        "description": {"identifier": identifier, "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.slab"},
+                                        "traits": {"minecraft:placement_position": {"enabled_states": ["minecraft:vertical_half"]}}},
+                        "components": {"minecraft:geometry": "geometry.cobblemon_slab_bottom", "minecraft:material_instances": instances,
+                                       "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 8, 16]}, "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 8, 16]},
+                                       "minecraft:light_dampening": 0, **base},
+                        "permutations": [{"condition": "q.block_state('minecraft:vertical_half') == 'top'", "components": {
+                            "minecraft:geometry": "geometry.cobblemon_slab_top",
+                            "minecraft:collision_box": {"origin": [-8, 8, -8], "size": [16, 8, 16]}, "minecraft:selection_box": {"origin": [-8, 8, -8], "size": [16, 8, 16]}}}]}}, indent=2))
+            elif name.endswith("_stairs") and ("side" in tex or "all" in tex or "bottom" in tex):
+                side = tex.get("side", tex.get("all", tex.get("bottom"))); top = tex.get("top", side); bottom = tex.get("bottom", top)
+                cubes = [{"origin": [-8, 0, -8], "size": [16, 8, 16]}, {"origin": [-8, 8, 0], "size": [16, 8, 8]}]
+                for cube in cubes:
+                    (x, y, z), (w, h, d) = cube["origin"], cube["size"]
+                    u, v = x + 8, 16 - (y + h)
+                    cube["uv"] = {"north": {"uv": [u, v], "uv_size": [w, h], "material_instance": "side"}, "south": {"uv": [u, v], "uv_size": [w, h], "material_instance": "side"},
+                                  "east": {"uv": [z + 8, v], "uv_size": [d, h], "material_instance": "side"}, "west": {"uv": [z + 8, v], "uv_size": [d, h], "material_instance": "side"},
+                                  "up": {"uv": [u, z + 8], "uv_size": [w, d], "material_instance": "top"}, "down": {"uv": [u, z + 8], "uv_size": [w, d], "material_instance": "bottom"}}
+                write_block_geometry("geometry.cobblemon_stairs", cubes)
+                turns = {"north": 180, "south": 0, "east": 90, "west": 270}
+                with open(f"{blocksBedrock}/{name}.json", "w") as file:
+                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                        "description": {"identifier": identifier, "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.stairs"},
+                                        "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"], "y_rotation_offset": 180},
+                                                   "minecraft:placement_position": {"enabled_states": ["minecraft:vertical_half"]}}},
+                        "components": {"minecraft:geometry": "geometry.cobblemon_stairs",
+                                       "minecraft:material_instances": {"*": {"texture": java_texture(side)}, "side": {"texture": java_texture(side)}, "top": {"texture": java_texture(top)}, "bottom": {"texture": java_texture(bottom)}},
+                                       "minecraft:light_dampening": 0, **base},
+                        "permutations": [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('minecraft:vertical_half') == '{h}'",
+                                          "components": {"minecraft:transformation": {"rotation": [180 if h == "top" else 0, r, 0]}}}
+                                         for d, r in turns.items() for h in ("bottom", "top")]}}, indent=2))
+            elif (name.endswith("_wall") or name.endswith("_fence")) and ("wall" in tex or "texture" in tex or "all" in tex):
+                texture = tex.get("wall", tex.get("texture", tex.get("all")))
+                wide = name.endswith("_wall")
+                post = {"origin": [-4 if wide else -2, 0, -4 if wide else -2], "size": [8 if wide else 4, 16, 8 if wide else 4]}
+                cubes = [dict(post, uv={f: {"uv": [0, 0], "uv_size": [16, 16]} for f in ("north", "south", "east", "west", "up", "down")})]
+                geometry = f"geometry.cobblemon_{'wall' if wide else 'fence'}_post"
+                write_block_geometry(geometry, cubes)
+                with open(f"{blocksBedrock}/{name}.json", "w") as file:
+                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                        "description": {"identifier": identifier, "menu_category": {"category": "construction", "group": "minecraft:itemGroup.name.walls" if wide else "minecraft:itemGroup.name.fence"}},
+                        "components": {"minecraft:geometry": geometry, "minecraft:material_instances": {"*": {"texture": java_texture(texture)}},
+                                       "minecraft:collision_box": {"origin": [post["origin"][0], 0, post["origin"][2]], "size": [post["size"][0], 16, post["size"][2]]},
+                                       "minecraft:light_dampening": 0, **base}}}, indent=2))
+            else:
+                continue
+        except Exception as error:
+            print(f"  {name}: {error}"); continue
+        made.append(name)
     return made
 
 

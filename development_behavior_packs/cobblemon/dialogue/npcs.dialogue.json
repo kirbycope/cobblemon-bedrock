@@ -1,0 +1,68 @@
+{
+    "format_version": "1.17",
+    "minecraft:npc_dialogue": {
+        "scenes": [
+            {
+                "scene_tag": "cobblemon:npc_trainer",
+                "npc_name": "Trainer",
+                "text": "Hello! I am a Cobblemon trainer. Would you like to challenge me?",
+                "buttons": [
+                    {
+                        "name": "Weedle",
+                        "commands": [
+                            "/scriptevent cobblemon:trainer p0013_weedle"
+                        ]
+                    },
+                    {
+                        "name": "Caterpie",
+                        "commands": [
+                            "/scriptevent cobblemon:trainer p0010_caterpie"
+                        ]
+                    },
+                    {
+                        "name": "Wurmple",
+                        "commands": [
+                            "/scriptevent cobblemon:trainer p0265_wurmple"
+                        ]
+                    },
+                    {
+                        "name": "Not now",
+                        "commands": []
+                    }
+                ]
+            },
+            {
+                "scene_tag": "cobblemon:npc_trainer.battle",
+                "npc_name": "Trainer",
+                "text": "Go! Show them what you've got!",
+                "buttons": []
+            },
+            {
+                "scene_tag": "cobblemon:npc_sacchi",
+                "npc_name": "Professor Sacchi",
+                "text": "Hello! You can call me Professor Sacchi, or just 'the professor' as many do!\nWould you like me to heal your Pokémon?",
+                "buttons": [
+                    {
+                        "name": "Yes please",
+                        "commands": [
+                            "/effect @e[family=pokemon,r=8] instant_health 1 3 true",
+                            "/effect @e[family=pokemon,r=8] regeneration 5 2 true",
+                            "/scriptevent cobblemon:heal go",
+                            "/dialogue open @s @initiator cobblemon:npc_sacchi.healed"
+                        ]
+                    },
+                    {
+                        "name": "No thanks",
+                        "commands": []
+                    }
+                ]
+            },
+            {
+                "scene_tag": "cobblemon:npc_sacchi.healed",
+                "npc_name": "Professor Sacchi",
+                "text": "There! Your Pokémon are fighting fit. Take care out there!",
+                "buttons": []
+            }
+        ]
+    }
+}

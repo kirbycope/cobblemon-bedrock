@@ -124,6 +124,7 @@ BLOCK_NAMES = {
 }
 # Cobblemon blocks with a vanilla stand-in; the rest (berries, relic coins) become air until they are ported
 COBBLEMON_BLOCKS = {"gilded_chest": "chest", "gimmighoul_chest": "chest", "apricorn_planks": "oak_planks", "habitat_block": "grass_block"}
+PACK_BLOCKS = set()   # names of Cobblemon blocks the pack defines; port.py fills it before converting
 FACING_WEIRDO = {"east": 0, "west": 1, "south": 2, "north": 3}
 FACING_DIRECTION = {"down": 0, "up": 1, "north": 2, "south": 3, "west": 4, "east": 5}
 TORCH_FACING = {"east": "west", "west": "east", "south": "north", "north": "south"}   # Bedrock names the side it hangs from
@@ -132,6 +133,7 @@ TORCH_FACING = {"east": "west", "west": "east", "south": "north", "north": "sout
 def bedrock_name(java):
     name = java.split(":", 1)[1] if ":" in java else java
     if java.startswith("cobblemon:"):
+        if name in PACK_BLOCKS: return f"cobblemon:{name}"   # a block the pack has: Cobblemon's own
         if name.endswith("_ore"): return "deepslate" if name.startswith("deepslate") else "stone"
         if name.endswith("_berry"): return f"cobblemon:{name}_bush"
         return COBBLEMON_BLOCKS.get(name)
@@ -147,6 +149,7 @@ def convert_states(java_name, name, props):
     """The Bedrock states for the few Java properties that matter to how a ruin looks."""
     states = {}
     if name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
+    if name.startswith("cobblemon:"): return {}   # the pack's blocks keep their default states
     if "axis" in props: states["pillar_axis"] = Tag(STRING, props["axis"])
     if name.endswith("_stairs"):
         states["weirdo_direction"] = Tag(INT, FACING_WEIRDO.get(props.get("facing", "east"), 0))

@@ -1,0 +1,97 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:polished_tumblestone_slab",
+      "menu_category": {
+        "category": "construction",
+        "group": "minecraft:itemGroup.name.slab"
+      },
+      "traits": {
+        "minecraft:placement_position": {
+          "enabled_states": [
+            "minecraft:vertical_half"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_slab_bottom",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "cobblemon_block_tumblestone_polished_tumblestone_slab"
+        },
+        "side": {
+          "texture": "cobblemon_block_tumblestone_polished_tumblestone_slab"
+        },
+        "top": {
+          "texture": "cobblemon_block_tumblestone_polished_tumblestone"
+        },
+        "bottom": {
+          "texture": "cobblemon_block_tumblestone_polished_tumblestone"
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          8,
+          16
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          8,
+          16
+        ]
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.5
+      },
+      "minecraft:loot": "loot_tables/blocks/polished_tumblestone_slab.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:vertical_half') == 'top'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_slab_top",
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              8,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              8,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
