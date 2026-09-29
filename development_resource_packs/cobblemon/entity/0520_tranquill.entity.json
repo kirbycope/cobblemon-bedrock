@@ -2,32 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0520_tranquill",
+            "identifier": "cobblemon:p0520_tranquill",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0520_tranquill/tranquill"
+                "default": "textures/entity/0520_tranquill/tranquill",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0520_tranquill/tranquill",
+                "v1": "textures/entity/0520_tranquill/tranquill_shiny"
             },
             "geometry": {
-                "default": "geometry.tranquill"
+                "g_tranquill": "geometry.tranquill"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.tranquill.pose",
-                "ground_idle": "animation.tranquill.ground_idle",
+                "pose": "animation.tranquill.pose",
+                "blink_quirk": "controller.animation.tranquill.blink",
+                "look_at_target": "animation.0520_tranquill.look",
+                "blink": "animation.tranquill.blink",
                 "cry": "animation.tranquill.cry",
-                "blink": "animation.tranquill.blink"
+                "ground_idle": "animation.tranquill.ground_idle",
+                "ground_walk": "animation.tranquill.ground_walk",
+                "walkspeed_test": "animation.tranquill.walkspeed_test",
+                "air_idle": "animation.tranquill.air_idle",
+                "air_fly": "animation.tranquill.air_fly",
+                "recoil": "animation.tranquill.recoil",
+                "sleep": "animation.tranquill.sleep",
+                "angry": "animation.tranquill.angry",
+                "sad": "animation.tranquill.sad",
+                "unamused": "animation.tranquill.unamused",
+                "happy": "animation.tranquill.happy",
+                "shock": "animation.tranquill.shock",
+                "wangs": "animation.tranquill.wangs"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.tranquill"
             ],
             "spawn_egg": {
                 "texture": "0520_tranquill_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.tranquill.cry": "cobblemon.tranquill.cry"
             }
         }
     }

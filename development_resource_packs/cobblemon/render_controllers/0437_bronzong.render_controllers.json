@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.bronzong": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_bronzong",
+                        "Geometry.g_bronzong"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.bronzong_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_bronzong",
+                        "Geometry.g_bronzong"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.tadbulb": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_tadbulb",
+                        "Geometry.g_tadbulb"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.tadbulb_layer0": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.layer0": [
+                        "Texture.layer0_0_0",
+                        "Texture.layer0_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_tadbulb",
+                        "Geometry.g_tadbulb"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.layer0[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

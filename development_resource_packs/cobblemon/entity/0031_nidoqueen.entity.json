@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0031_nidoqueen",
+            "identifier": "cobblemon:p0031_nidoqueen",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0031_nidoqueen/nidoqueen"
+                "default": "textures/entity/0031_nidoqueen/nidoqueen",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0031_nidoqueen/nidoqueen",
+                "v1": "textures/entity/0031_nidoqueen/nidoqueen_shiny"
             },
             "geometry": {
-                "default": "geometry.nidoqueen"
+                "g_nidoqueen": "geometry.nidoqueen"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.nidoqueen.pose",
+                "blink_quirk": "controller.animation.nidoqueen.blink",
+                "look_at_target": "animation.0031_nidoqueen.look",
                 "ground_idle": "animation.nidoqueen.ground_idle",
                 "blink": "animation.nidoqueen.blink",
                 "cry": "animation.nidoqueen.cry",
@@ -26,10 +35,13 @@
                 "spgs_happy_place_loop": "animation.nidoqueen.spgs_happy_place_loop"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.nidoqueen"
             ],
             "spawn_egg": {
                 "texture": "0031_nidoqueen_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.nidoqueen.cry": "cobblemon.nidoqueen.cry"
             }
         }
     }

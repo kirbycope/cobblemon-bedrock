@@ -2,31 +2,67 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0311_plusle",
+            "identifier": "cobblemon:p0311_plusle",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0311_plusle/plusle"
+                "default": "textures/entity/0311_plusle/plusle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0311_plusle/plusle",
+                "v1": "textures/entity/0311_plusle/plusle_shiny"
             },
             "geometry": {
-                "default": "geometry.plusle"
+                "g_plusle": "geometry.plusle"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.plusle.pose",
+                "blink_quirk": "controller.animation.plusle.blink",
+                "quirk": "controller.animation.plusle.quirk",
+                "quirk_0": "animation.plusle.look_quirk",
+                "look_at_target": "animation.0311_plusle.look",
                 "ground_idle": "animation.plusle.ground_idle",
-                "blink": "animation.plusle.blink"
+                "battle_idle": "animation.plusle.battle_idle",
+                "ground_walk": "animation.plusle.ground_walk",
+                "sleep": "animation.plusle.sleep",
+                "shoulder_left": "animation.plusle.shoulder_left",
+                "shoulder_right": "animation.plusle.shoulder_right",
+                "special": "animation.plusle.special",
+                "status": "animation.plusle.status",
+                "battle_cry": "animation.plusle.battle_cry",
+                "recoil": "animation.plusle.recoil",
+                "faint": "animation.plusle.faint",
+                "cry": "animation.plusle.cry",
+                "look_quirk": "animation.plusle.look_quirk",
+                "blink": "animation.plusle.blink",
+                "dance": "animation.plusle.dance",
+                "expression_test": "animation.plusle.expression_test",
+                "render": "animation.plusle.render",
+                "SCALE": "animation.plusle.SCALE",
+                "WALK_TEST": "animation.plusle.WALK_TEST",
+                "angry": "animation.plusle.angry",
+                "sad": "animation.plusle.sad",
+                "happy": "animation.plusle.happy",
+                "airplane": "animation.plusle.airplane"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.plusle"
             ],
             "spawn_egg": {
                 "texture": "0311_plusle_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.plusle.cry": "cobblemon.plusle.cry"
             }
         }
     }

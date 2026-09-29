@@ -2,27 +2,50 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0319_sharpedo",
+            "identifier": "cobblemon:p0319_sharpedo",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0319_sharpedo/sharpedo"
+                "default": "textures/entity/0319_sharpedo/sharpedo",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0319_sharpedo/sharpedo",
+                "emissive_0_0": "textures/entity/0319_sharpedo/sharpedo_emissive",
+                "v1": "textures/entity/0319_sharpedo/sharpedo_shiny",
+                "emissive_1_0": "textures/entity/0319_sharpedo/sharpedo_emissive"
             },
             "geometry": {
-                "default": "geometry.sharpedo"
+                "g_sharpedo": "geometry.sharpedo"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.sharpedo.pose",
-                "water_idle": "animation.sharpedo.water_idle"
+                "quirk": "controller.animation.sharpedo.quirk",
+                "quirk_0": "animation.sharpedo.quirk_surfacewater_swim",
+                "look_at_target": "animation.0319_sharpedo.look",
+                "ground_idle": "animation.sharpedo.ground_idle",
+                "ground_walk": "animation.sharpedo.ground_walk",
+                "water_idle": "animation.sharpedo.water_idle",
+                "water_swim": "animation.sharpedo.water_swim",
+                "surfacewater_idle": "animation.sharpedo.surfacewater_idle",
+                "surfacewater_swim": "animation.sharpedo.surfacewater_swim",
+                "quirk_surfacewater_swim": "animation.sharpedo.quirk_surfacewater_swim",
+                "ride_water_swim": "animation.sharpedo.ride_water_swim",
+                "test_walkspeed": "animation.sharpedo.test_walkspeed",
+                "mouth_open": "animation.sharpedo.mouth_open",
+                "basepose": "animation.sharpedo.basepose"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sharpedo",
+                "controller.render.sharpedo_emissive"
             ],
             "spawn_egg": {
                 "texture": "0319_sharpedo_spawn_egg"

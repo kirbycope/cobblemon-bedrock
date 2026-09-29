@@ -2,36 +2,57 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0035_clefairy",
+            "identifier": "cobblemon:p0035_clefairy",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0035_clefairy/clefairy"
+                "default": "textures/entity/0035_clefairy/clefairy",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0035_clefairy/clefairy",
+                "v1": "textures/entity/0035_clefairy/clefairy_shiny"
             },
             "geometry": {
-                "default": "geometry.clefairy"
+                "g_clefairy": "geometry.clefairy"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.clefairy.pose",
+                "blink_quirk": "controller.animation.clefairy.blink",
+                "look_at_target": "animation.0035_clefairy.look",
                 "ground_idle": "animation.clefairy.ground_idle",
                 "ground_walk": "animation.clefairy.ground_walk",
-                "special_attack": "animation.clefairy.special_attack",
-                "faint": "animation.clefairy.faint",
-                "sleep": "animation.clefairy.sleep",
                 "blink": "animation.clefairy.blink",
-                "cry": "animation.clefairy.cry"
+                "render": "animation.clefairy.render",
+                "cry": "animation.clefairy.cry",
+                "mouth_test": "animation.clefairy.mouth_test",
+                "special": "animation.clefairy.special",
+                "faint": "animation.clefairy.faint",
+                "size_test": "animation.clefairy.size_test",
+                "sitting_pose": "animation.clefairy.sitting_pose",
+                "sleep": "animation.clefairy.sleep",
+                "angry": "animation.clefairy.angry",
+                "sad": "animation.clefairy.sad",
+                "surprised": "animation.clefairy.surprised",
+                "happy": "animation.clefairy.happy",
+                "hurt": "animation.clefairy.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.clefairy"
             ],
             "spawn_egg": {
                 "texture": "0035_clefairy_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.clefairy.cry": "cobblemon.clefairy.cry"
             }
         }
     }

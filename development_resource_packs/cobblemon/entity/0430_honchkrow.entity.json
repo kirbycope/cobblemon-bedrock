@@ -2,31 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0430_honchkrow",
+            "identifier": "cobblemon:p0430_honchkrow",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0430_honchkrow/honchkrow"
+                "default": "textures/entity/0430_honchkrow/honchkrow",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0430_honchkrow/honchkrow",
+                "v1": "textures/entity/0430_honchkrow/honchkrow_shiny"
             },
             "geometry": {
-                "default": "geometry.honchkrow"
+                "g_honchkrow": "geometry.honchkrow"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.honchkrow.pose",
+                "blink_quirk": "controller.animation.honchkrow.blink",
+                "look_at_target": "animation.0430_honchkrow.look",
                 "ground_idle": "animation.honchkrow.ground_idle",
+                "battle_idle": "animation.honchkrow.battle_idle",
+                "ground_walk": "animation.honchkrow.ground_walk",
+                "ride_ground_walk": "animation.honchkrow.ride_ground_walk",
                 "air_idle": "animation.honchkrow.air_idle",
                 "air_fly": "animation.honchkrow.air_fly",
-                "sleep": "animation.honchkrow.sleep",
-                "blink": "animation.honchkrow.blink"
+                "air_glide": "animation.honchkrow.air_glide",
+                "ride_air_fly": "animation.honchkrow.ride_air_fly",
+                "ride_air_glide": "animation.honchkrow.ride_air_glide",
+                "ride_dive": "animation.honchkrow.ride_dive",
+                "blink": "animation.honchkrow.blink",
+                "hold_item": "animation.honchkrow.hold_item",
+                "wangs": "animation.honchkrow.wangs",
+                "folded_wangs": "animation.honchkrow.folded_wangs",
+                "test_flyspeed": "animation.honchkrow.test_flyspeed",
+                "test_walkspeed": "animation.honchkrow.test_walkspeed",
+                "angry": "animation.honchkrow.angry",
+                "sad": "animation.honchkrow.sad",
+                "surprised": "animation.honchkrow.surprised",
+                "disintrested": "animation.honchkrow.disintrested",
+                "happy": "animation.honchkrow.happy",
+                "hurt": "animation.honchkrow.hurt",
+                "battle_idle_test": "animation.honchkrow.battle_idle_test"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.honchkrow"
             ],
             "spawn_egg": {
                 "texture": "0430_honchkrow_spawn_egg"

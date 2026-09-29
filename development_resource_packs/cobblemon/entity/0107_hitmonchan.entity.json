@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0107_hitmonchan",
+            "identifier": "cobblemon:p0107_hitmonchan",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0107_hitmonchan/hitmonchan"
+                "default": "textures/entity/0107_hitmonchan/hitmonchan",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0107_hitmonchan/hitmonchan",
+                "v1": "textures/entity/0107_hitmonchan/hitmonchan_shiny"
             },
             "geometry": {
-                "default": "geometry.hitmonchan"
+                "g_hitmonchan": "geometry.hitmonchan"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.hitmonchan.pose",
+                "blink_quirk": "controller.animation.hitmonchan.blink",
+                "look_at_target": "animation.0107_hitmonchan.look",
                 "ground_idle": "animation.hitmonchan.ground_idle",
                 "ground_walk": "animation.hitmonchan.ground_walk",
                 "battle_idle": "animation.hitmonchan.battle_idle",
@@ -30,10 +39,13 @@
                 "cry": "animation.hitmonchan.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.hitmonchan"
             ],
             "spawn_egg": {
                 "texture": "0107_hitmonchan_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.hitmonchan.cry": "cobblemon.hitmonchan.cry"
             }
         }
     }

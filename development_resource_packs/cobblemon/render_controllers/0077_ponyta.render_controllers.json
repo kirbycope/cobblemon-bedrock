@@ -1,0 +1,75 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.ponyta": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1",
+                        "Texture.v2",
+                        "Texture.v3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_ponyta",
+                        "Geometry.g_ponyta",
+                        "Geometry.g_ponyta_galar",
+                        "Geometry.g_ponyta_galar"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.ponyta_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_0_1",
+                        "Texture.emissive_0_2",
+                        "Texture.emissive_0_3",
+                        "Texture.emissive_1_0",
+                        "Texture.emissive_1_1",
+                        "Texture.emissive_1_2",
+                        "Texture.emissive_1_3",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_3_0",
+                        "Texture.emissive_3_0",
+                        "Texture.emissive_3_0",
+                        "Texture.emissive_3_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_ponyta",
+                        "Geometry.g_ponyta",
+                        "Geometry.g_ponyta_galar",
+                        "Geometry.g_ponyta_galar"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 4 + math.mod(math.floor(q.life_time * 10), 4)]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

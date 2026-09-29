@@ -2,32 +2,60 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0440_happiny",
+            "identifier": "cobblemon:p0440_happiny",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0440_happiny/happiny"
+                "default": "textures/entity/0440_happiny/happiny",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0440_happiny/happiny",
+                "v1": "textures/entity/0440_happiny/happiny_shiny"
             },
             "geometry": {
-                "default": "geometry.happiny"
+                "g_happiny": "geometry.happiny"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.happiny.pose",
+                "blink_quirk": "controller.animation.happiny.blink",
+                "quirk": "controller.animation.happiny.quirk",
+                "quirk_0": "animation.happiny.happy_quirk",
+                "quirk_1": "animation.happiny.hairshake_quirk",
+                "look_at_target": "animation.0440_happiny.look",
                 "ground_idle": "animation.happiny.ground_idle",
+                "ground_walk": "animation.happiny.ground_walk",
+                "ground_run": "animation.happiny.ground_run",
+                "battle_idle": "animation.happiny.battle_idle",
+                "sleep": "animation.happiny.sleep",
+                "faint": "animation.happiny.faint",
                 "blink": "animation.happiny.blink",
-                "cry": "animation.happiny.cry"
+                "cry": "animation.happiny.cry",
+                "battle_cry": "animation.happiny.battle_cry",
+                "recoil": "animation.happiny.recoil",
+                "physical": "animation.happiny.physical",
+                "special": "animation.happiny.special",
+                "status": "animation.happiny.status",
+                "happy_quirk": "animation.happiny.happy_quirk",
+                "hairshake_quirk": "animation.happiny.hairshake_quirk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.happiny"
             ],
             "spawn_egg": {
                 "texture": "0440_happiny_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.happiny.cry": "cobblemon.happiny.cry"
             }
         }
     }

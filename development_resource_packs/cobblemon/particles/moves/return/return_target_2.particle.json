@@ -1,0 +1,74 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:return_target_2",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/fadeheart_white"
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 5
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					"math.random(-10,10)",
+					10,
+					"math.random(-10,10)"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.9
+			},
+			"minecraft:particle_initial_speed": 10,
+			"minecraft:particle_motion_dynamic": {
+				"linear_drag_coefficient": 7
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.2,
+					0.2
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 88,
+					"texture_height": 11,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							11,
+							11
+						],
+						"step_UV": [
+							11,
+							0
+						],
+						"frames_per_second": 8,
+						"max_frame": 8,
+						"stretch_to_lifetime": true
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"expire_on_contact": true,
+				"collision_radius": 0.1
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": [
+					"math.ceil(v.particle_age * 1.2)",
+					"v.particle_age * 0.1",
+					"v.particle_age * 0.75",
+					1
+				]
+			}
+		}
+	}
+}

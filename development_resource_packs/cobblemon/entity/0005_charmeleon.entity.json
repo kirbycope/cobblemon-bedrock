@@ -2,37 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0005_charmeleon",
+            "identifier": "cobblemon:p0005_charmeleon",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0005_charmeleon/charmeleon"
+                "default": "textures/entity/0005_charmeleon/charmeleon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0005_charmeleon/charmeleon",
+                "flame_0_0": "textures/entity/0005_charmeleon/charmeleon_flame1",
+                "flame_0_1": "textures/entity/0005_charmeleon/charmeleon_flame2",
+                "flame_0_2": "textures/entity/0005_charmeleon/charmeleon_flame3",
+                "flame_0_3": "textures/entity/0005_charmeleon/charmeleon_flame4",
+                "v1": "textures/entity/0005_charmeleon/charmeleon_shiny",
+                "flame_1_0": "textures/entity/0005_charmeleon/charmeleon_shiny_flame1",
+                "flame_1_1": "textures/entity/0005_charmeleon/charmeleon_shiny_flame2",
+                "flame_1_2": "textures/entity/0005_charmeleon/charmeleon_shiny_flame3",
+                "flame_1_3": "textures/entity/0005_charmeleon/charmeleon_shiny_flame4"
             },
             "geometry": {
-                "default": "geometry.charmeleon"
+                "g_charmeleon": "geometry.charmeleon"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.charmeleon.pose",
+                "blink_quirk": "controller.animation.charmeleon.blink",
+                "look_at_target": "animation.0005_charmeleon.look",
                 "ground_idle": "animation.charmeleon.ground_idle",
                 "ground_walk": "animation.charmeleon.ground_walk",
-                "special_attack": "animation.charmeleon.special_attack",
-                "sleep": "animation.charmeleon.sleep",
-                "faint": "animation.charmeleon.faint",
                 "blink": "animation.charmeleon.blink",
                 "cry": "animation.charmeleon.cry",
-                "render": "animation.charmeleon.render"
+                "battle_idle": "animation.charmeleon.battle_idle",
+                "sleep": "animation.charmeleon.sleep"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.charmeleon",
+                "controller.render.charmeleon_flame"
             ],
             "spawn_egg": {
                 "texture": "0005_charmeleon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.charmeleon.cry": "cobblemon.charmeleon.cry"
             }
         }
     }

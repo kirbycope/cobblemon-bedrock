@@ -2,7 +2,7 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.camerupt.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
                 "idle": {
                     "animations": [
@@ -10,31 +10,83 @@
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
                         }
                     ],
                     "blend_transition": 0.2
                 },
                 "moving": {
                     "animations": [
-                        "ground_idle",
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
                         }
                     ],
                     "blend_transition": 0.2
                 },
-                "sleeping": {
+                "ride_idle": {
                     "animations": [
-                        "sleep"
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.has_rider"
+                        },
+                        {
+                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "ride_move": {
+                    "animations": [
+                        "ride_ground_run"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.has_rider"
+                        },
+                        {
+                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.camerupt.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

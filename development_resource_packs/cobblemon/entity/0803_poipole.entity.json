@@ -2,29 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0803_poipole",
+            "identifier": "cobblemon:p0803_poipole",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0803_poipole/poipole"
+                "default": "textures/entity/0803_poipole/poipole",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0803_poipole/poipole",
+                "v1": "textures/entity/0803_poipole/poipole_shiny"
             },
             "geometry": {
-                "default": "geometry.poipole"
+                "g_poipole": "geometry.poipole"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.poipole.pose",
+                "blink_quirk": "controller.animation.poipole.blink",
+                "look_at_target": "animation.0803_poipole.look",
                 "ground_idle": "animation.poipole.ground_idle",
                 "ground_walk": "animation.poipole.ground_walk",
                 "blink": "animation.poipole.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.poipole"
             ],
             "spawn_egg": {
                 "texture": "0803_poipole_spawn_egg"

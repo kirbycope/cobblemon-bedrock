@@ -2,33 +2,47 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0865_sirfetchd",
+            "identifier": "cobblemon:p0865_sirfetchd",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0865_sirfetchd/sirfetchd"
+                "default": "textures/entity/0865_sirfetchd/sirfetchd",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0865_sirfetchd/sirfetchd",
+                "v1": "textures/entity/0865_sirfetchd/sirfetchd_shiny"
             },
             "geometry": {
-                "default": "geometry.sirfetchd"
+                "g_sirfetchd": "geometry.sirfetchd"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.sirfetchd.pose",
+                "blink_quirk": "controller.animation.sirfetchd.blink",
+                "quirk": "animation.sirfetchd.quirk",
+                "quirk_0": "animation.sirfetchd.quirk",
+                "look_at_target": "animation.0865_sirfetchd.look",
                 "ground_idle": "animation.sirfetchd.ground_idle",
                 "cry": "animation.sirfetchd.cry",
-                "blink": "animation.sirfetchd.blink",
-                "quirk": "animation.sirfetchd.quirk"
+                "blink": "animation.sirfetchd.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sirfetchd"
             ],
             "spawn_egg": {
                 "texture": "0865_sirfetchd_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.sirfetchd.cry": "cobblemon.sirfetchd.cry"
             }
         }
     }

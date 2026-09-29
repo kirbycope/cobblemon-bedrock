@@ -1,0 +1,197 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:rindo_berry_bush",
+      "menu_category": {
+        "category": "nature",
+        "is_hidden_in_commands": false
+      },
+      "states": {
+        "cobblemon:stage": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_rindo_berry_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_vanilla_block_farmland_moist",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "t1": {
+          "texture": "cobblemon_block_berries_rindo_sprout",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_vanilla_block_farmland_moist",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          16,
+          14
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.2
+      },
+      "minecraft:destructible_by_explosion": {
+        "explosion_resistance": 0
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/rindo_berry_bush.json",
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ],
+            "block_filter": [
+              "minecraft:grass_block",
+              "minecraft:dirt",
+              "minecraft:farmland",
+              "minecraft:podzol",
+              "minecraft:coarse_dirt",
+              "minecraft:rooted_dirt",
+              "minecraft:moss_block",
+              "minecraft:mud",
+              "minecraft:muddy_mangrove_roots"
+            ]
+          }
+        ]
+      },
+      "cobblemon:berry_growth": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:stage') == 0",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_rindo_berry_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_farmland_moist",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_berries_rindo_sprout",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_farmland_moist",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 1",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_rindo_berry_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_berries_rindo_leaves",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 2",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_rindo_berry_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_berries_rindo_leaves",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 3",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_rindo_berry_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_berries_rindo_leaves",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "fruit": {
+              "texture": "cobblemon_berries_rindo",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_berries_rindo_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -2,29 +2,43 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0185_sudowoodo",
+            "identifier": "cobblemon:p0185_sudowoodo",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0185_sudowoodo/sudowoodo"
+                "default": "textures/entity/0185_sudowoodo/sudowoodo",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0185_sudowoodo/sudowoodo",
+                "v1": "textures/entity/0185_sudowoodo/sudowoodo_shiny",
+                "v2": "textures/entity/0185_sudowoodo/sudowoodo",
+                "golden_2_0": "textures/entity/0185_sudowoodo/sudowoodo_golden",
+                "v3": "textures/entity/0185_sudowoodo/sudowoodo_shiny",
+                "golden_3_0": "textures/entity/0185_sudowoodo/sudowoodo_golden"
             },
             "geometry": {
-                "default": "geometry.sudowoodo"
+                "g_sudowoodo": "geometry.sudowoodo"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.sudowoodo.pose",
+                "blink_quirk": "controller.animation.sudowoodo.blink",
+                "look_at_target": "animation.0185_sudowoodo.look",
                 "ground_idle": "animation.sudowoodo.ground_idle",
                 "blink": "animation.sudowoodo.blink",
                 "cry": "animation.sudowoodo.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sudowoodo",
+                "controller.render.sudowoodo_golden"
             ],
             "spawn_egg": {
                 "texture": "0185_sudowoodo_spawn_egg"

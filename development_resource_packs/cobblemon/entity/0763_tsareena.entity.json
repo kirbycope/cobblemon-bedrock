@@ -2,28 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0763_tsareena",
+            "identifier": "cobblemon:p0763_tsareena",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0763_tsareena/tsareena"
+                "default": "textures/entity/0763_tsareena/tsareena",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0763_tsareena/tsareena",
+                "v1": "textures/entity/0763_tsareena/tsareena_shiny"
             },
             "geometry": {
-                "default": "geometry.tsareena"
+                "g_tsareena": "geometry.tsareena"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.tsareena.pose",
+                "blink_quirk": "controller.animation.tsareena.blink",
+                "look_at_target": "animation.0763_tsareena.look",
                 "ground_idle": "animation.tsareena.ground_idle",
                 "blink": "animation.tsareena.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.tsareena"
             ],
             "spawn_egg": {
                 "texture": "0763_tsareena_spawn_egg"

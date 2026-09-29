@@ -2,31 +2,55 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0607_litwick",
+            "identifier": "cobblemon:p0607_litwick",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0607_litwick/litwick"
+                "default": "textures/entity/0607_litwick/litwick",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0607_litwick/litwick",
+                "emissive_0_0": "textures/entity/0607_litwick/litwick_emissive",
+                "v1": "textures/entity/0607_litwick/litwick_shiny",
+                "emissive_1_0": "textures/entity/0607_litwick/litwick_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.litwick"
+                "g_litwick": "geometry.litwick"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "animation.litwick.pose",
-                "idle": "animation.litwick.idle",
-                "blink": "animation.litwick.blink"
+                "pose": "controller.animation.litwick.pose",
+                "blink_quirk": "controller.animation.litwick.blink",
+                "look_at_target": "animation.0607_litwick.look",
+                "ground_idle": "animation.litwick.ground_idle",
+                "ground_walk": "animation.litwick.ground_walk",
+                "battle_idle": "animation.litwick.battle_idle",
+                "sleep": "animation.litwick.sleep",
+                "blink": "animation.litwick.blink",
+                "shock": "animation.litwick.shock",
+                "angry": "animation.litwick.angry",
+                "sad": "animation.litwick.sad",
+                "happy": "animation.litwick.happy",
+                "hurt": "animation.litwick.hurt",
+                "cry": "animation.litwick.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.litwick",
+                "controller.render.litwick_emissive"
             ],
             "spawn_egg": {
                 "texture": "0607_litwick_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.litwick.cry": "cobblemon.litwick.cry"
             }
         }
     }

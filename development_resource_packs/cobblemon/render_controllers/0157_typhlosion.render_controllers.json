@@ -1,0 +1,63 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.typhlosion": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1",
+                        "Texture.v2",
+                        "Texture.v3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_typhlosion",
+                        "Geometry.g_typhlosion",
+                        "Geometry.g_typhlosion_hisuian",
+                        "Geometry.g_typhlosion_hisuian"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.typhlosion_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_1_0",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_3_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_typhlosion",
+                        "Geometry.g_typhlosion",
+                        "Geometry.g_typhlosion_hisuian",
+                        "Geometry.g_typhlosion_hisuian"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0615_cryogonal",
+            "identifier": "cobblemon:p0615_cryogonal",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0615_cryogonal/cryogonal"
+                "default": "textures/entity/0615_cryogonal/cryogonal",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0615_cryogonal/cryogonal",
+                "emissive_0_0": "textures/entity/0615_cryogonal/cryogonal_emissive",
+                "v1": "textures/entity/0615_cryogonal/cryogonal_shiny",
+                "emissive_1_0": "textures/entity/0615_cryogonal/cryogonal_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.cryogonal"
+                "g_cryogonal": "geometry.cryogonal"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.cryogonal.pose",
+                "blink_quirk": "controller.animation.cryogonal.blink",
                 "ground_idle": "animation.cryogonal.ground_idle",
                 "ground_walk": "animation.cryogonal.ground_walk",
                 "faint": "animation.cryogonal.faint",
@@ -26,7 +35,8 @@
                 "blink": "animation.cryogonal.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.cryogonal",
+                "controller.render.cryogonal_emissive"
             ],
             "spawn_egg": {
                 "texture": "0615_cryogonal_spawn_egg"

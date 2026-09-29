@@ -2,30 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0740_crabominable",
+            "identifier": "cobblemon:p0740_crabominable",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0740_crabominable/crabominable"
+                "default": "textures/entity/0740_crabominable/crabominable",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0740_crabominable/crabominable",
+                "v1": "textures/entity/0740_crabominable/crabominable_shiny"
             },
             "geometry": {
-                "default": "geometry.crabominable"
+                "g_crabominable": "geometry.crabominable"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.crabominable.pose",
+                "blink_quirk": "controller.animation.crabominable.blink",
+                "look_at_target": "animation.0740_crabominable.look",
                 "ground_idle": "animation.crabominable.ground_idle",
                 "ground_walk": "animation.crabominable.ground_walk",
                 "blink": "animation.crabominable.blink",
                 "cry": "animation.crabominable.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.crabominable"
             ],
             "spawn_egg": {
                 "texture": "0740_crabominable_spawn_egg"

@@ -2,36 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0524_roggenrola",
+            "identifier": "cobblemon:p0524_roggenrola",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0524_roggenrola/roggenrola"
+                "default": "textures/entity/0524_roggenrola/roggenrola",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0524_roggenrola/roggenrola",
+                "v1": "textures/entity/0524_roggenrola/roggenrola_shiny"
             },
             "geometry": {
-                "default": "geometry.roggenrola"
+                "g_roggenrola": "geometry.roggenrola"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.roggenrola.pose",
+                "quirk": "controller.animation.roggenrola.quirk",
+                "quirk_0": "animation.roggenrola.quirk_twitch",
                 "ground_idle": "animation.roggenrola.ground_idle",
                 "faint": "animation.roggenrola.faint",
                 "battle_idle": "animation.roggenrola.battle_idle",
                 "ground_walk": "animation.roggenrola.ground_walk",
                 "cry": "animation.roggenrola.cry",
                 "sleep": "animation.roggenrola.sleep",
-                "quirk_twitch": "animation.roggenrola.quirk_twitch"
+                "quirk_twitch": "animation.roggenrola.quirk_twitch",
+                "shoulder_left": "animation.roggenrola.shoulder_left",
+                "shoulder_right": "animation.roggenrola.shoulder_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.roggenrola"
             ],
             "spawn_egg": {
                 "texture": "0524_roggenrola_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.roggenrola.cry": "cobblemon.roggenrola.cry"
             }
         }
     }

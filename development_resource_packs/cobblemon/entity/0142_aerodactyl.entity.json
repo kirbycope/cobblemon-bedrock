@@ -2,36 +2,77 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0142_aerodactyl",
+            "identifier": "cobblemon:p0142_aerodactyl",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0142_aerodactyl/aerodactyl"
+                "default": "textures/entity/0142_aerodactyl/aerodactyl",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0142_aerodactyl/aerodactyl",
+                "v1": "textures/entity/0142_aerodactyl/aerodactyl_shiny"
             },
             "geometry": {
-                "default": "geometry.aerodactyl"
+                "g_aerodactyl": "geometry.aerodactyl"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.aerodactyl.pose",
+                "blink_quirk": "controller.animation.aerodactyl.blink",
+                "quirk": "controller.animation.aerodactyl.quirk",
+                "quirk_0": "animation.aerodactyl.rider_quirk_left",
+                "quirk_1": "animation.aerodactyl.rider_quirk_right",
+                "look_at_target": "animation.0142_aerodactyl.look",
                 "ground_idle": "animation.aerodactyl.ground_idle",
-                "ground_walk": "animation.aerodactyl.ground_walk",
-                "air_idle": "animation.aerodactyl.air_idle",
-                "air_fly": "animation.aerodactyl.air_fly",
+                "rider_quirk_left": "animation.aerodactyl.rider_quirk_left",
+                "rider_quirk_right": "animation.aerodactyl.rider_quirk_right",
+                "battle_idle": "animation.aerodactyl.battle_idle",
+                "recoil": "animation.aerodactyl.recoil",
+                "air_recoil": "animation.aerodactyl.air_recoil",
+                "battle_cry": "animation.aerodactyl.battle_cry",
+                "battle_sleep": "animation.aerodactyl.battle_sleep",
                 "sleep": "animation.aerodactyl.sleep",
+                "ground_walk": "animation.aerodactyl.ground_walk",
+                "ground_run": "animation.aerodactyl.ground_run",
+                "battle_air_idle": "animation.aerodactyl.battle_air_idle",
+                "fly_test": "animation.aerodactyl.fly_test",
+                "air_glide": "animation.aerodactyl.air_glide",
+                "cry": "animation.aerodactyl.cry",
+                "item_hold": "animation.aerodactyl.item_hold",
                 "blink": "animation.aerodactyl.blink",
-                "cry": "animation.aerodactyl.cry"
+                "air_idle": "animation.aerodactyl.air_idle",
+                "air_sleep": "animation.aerodactyl.air_sleep",
+                "air_fly": "animation.aerodactyl.air_fly",
+                "angry": "animation.aerodactyl.angry",
+                "sad": "animation.aerodactyl.sad",
+                "ride_ground_walk": "animation.aerodactyl.ride_ground_walk",
+                "ride_ground_run": "animation.aerodactyl.ride_ground_run",
+                "ride_air_fly": "animation.aerodactyl.ride_air_fly",
+                "ride_air_glide": "animation.aerodactyl.ride_air_glide",
+                "ride_dive": "animation.aerodactyl.ride_dive",
+                "ride_jump": "animation.aerodactyl.ride_jump",
+                "walk_test": "animation.aerodactyl.walk_test",
+                "run_test": "animation.aerodactyl.run_test",
+                "run_testFAST": "animation.aerodactyl.run_testFAST",
+                "demon": "animation.aerodactyl.demon"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.aerodactyl"
             ],
             "spawn_egg": {
                 "texture": "0142_aerodactyl_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.aerodactyl.cry": "cobblemon.aerodactyl.cry"
             }
         }
     }

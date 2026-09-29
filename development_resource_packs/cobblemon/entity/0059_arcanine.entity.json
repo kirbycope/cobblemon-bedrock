@@ -2,32 +2,57 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0059_arcanine",
+            "identifier": "cobblemon:p0059_arcanine",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0059_arcanine/arcanine"
+                "default": "textures/entity/0059_arcanine/arcanine",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0059_arcanine/arcanine",
+                "v1": "textures/entity/0059_arcanine/arcanine_shiny"
             },
             "geometry": {
-                "default": "geometry.arcanine"
+                "g_arcanine": "geometry.arcanine"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.arcanine.pose",
-                "blink": "animation.arcanine.blink",
+                "blink_quirk": "controller.animation.arcanine.blink",
+                "look_at_target": "animation.0059_arcanine.look",
                 "ground_idle": "animation.arcanine.ground_idle",
-                "sleep": "animation.arcanine.sleep"
+                "battle_idle": "animation.arcanine.battle_idle",
+                "ground_walk": "animation.arcanine.ground_walk",
+                "ride_ground_walk": "animation.arcanine.ride_ground_walk",
+                "ground_run": "animation.arcanine.ground_run",
+                "ride_ground_run": "animation.arcanine.ride_ground_run",
+                "ride_jump": "animation.arcanine.ride_jump",
+                "water_surface_idle": "animation.arcanine.water_surface_idle",
+                "water_surface_swim": "animation.arcanine.water_surface_swim",
+                "sleep": "animation.arcanine.sleep",
+                "wild_sleep": "animation.arcanine.wild_sleep",
+                "cry": "animation.arcanine.cry",
+                "cry_water_surface": "animation.arcanine.cry_water_surface",
+                "blink": "animation.arcanine.blink",
+                "recoil": "animation.arcanine.recoil",
+                "recoil_water_surface": "animation.arcanine.recoil_water_surface"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.arcanine"
             ],
             "spawn_egg": {
                 "texture": "0059_arcanine_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.arcanine.cry": "cobblemon.arcanine.cry"
             }
         }
     }

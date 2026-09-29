@@ -2,32 +2,67 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0725_litten",
+            "identifier": "cobblemon:p0725_litten",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0725_litten/litten"
+                "default": "textures/entity/0725_litten/litten",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0725_litten/litten",
+                "v1": "textures/entity/0725_litten/litten_shiny"
             },
             "geometry": {
-                "default": "geometry.litten"
+                "g_litten": "geometry.litten"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.litten.pose",
+                "blink_quirk": "controller.animation.litten.blink",
+                "quirk": "controller.animation.litten.quirk",
+                "quirk_0": "animation.litten.lefteartwitch_quirk",
+                "quirk_1": "animation.litten.righteartwitch_quirk",
+                "quirk_2": "animation.litten.tailtwitch_quirk",
+                "quirk_3": "animation.litten.look_quirk",
+                "quirk_4": "animation.litten.lick_quirk",
+                "quirk_5": "animation.litten.yawn_quirk",
+                "look_at_target": "animation.0725_litten.look",
                 "ground_idle": "animation.litten.ground_idle",
+                "ground_walk": "animation.litten.ground_walk",
+                "battle_idle": "animation.litten.battle_idle",
+                "sleep": "animation.litten.sleep",
+                "cry": "animation.litten.cry",
                 "blink": "animation.litten.blink",
-                "cry": "animation.litten.cry"
+                "recoil": "animation.litten.recoil",
+                "battle_recoil": "animation.litten.battle_recoil",
+                "shoulder_left": "animation.litten.shoulder_left",
+                "shoulder_right": "animation.litten.shoulder_right",
+                "lefteartwitch_quirk": "animation.litten.lefteartwitch_quirk",
+                "righteartwitch_quirk": "animation.litten.righteartwitch_quirk",
+                "tailtwitch_quirk": "animation.litten.tailtwitch_quirk",
+                "look_quirk": "animation.litten.look_quirk",
+                "lick_quirk": "animation.litten.lick_quirk",
+                "yawn_quirk": "animation.litten.yawn_quirk",
+                "happy": "animation.litten.happy",
+                "angry": "animation.litten.angry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.litten"
             ],
             "spawn_egg": {
                 "texture": "0725_litten_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.litten.cry": "cobblemon.litten.cry"
             }
         }
     }

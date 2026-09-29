@@ -2,33 +2,54 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0123_scyther",
+            "identifier": "cobblemon:p0123_scyther",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0123_scyther/scyther"
+                "default": "textures/entity/0123_scyther/scyther",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0123_scyther/scyther",
+                "v1": "textures/entity/0123_scyther/scyther_shiny",
+                "v2": "textures/entity/0123_scyther/scyther",
+                "v3": "textures/entity/0123_scyther/scyther_shiny"
             },
             "geometry": {
-                "default": "geometry.scyther"
+                "g_scyther_male": "geometry.scyther_male",
+                "g_scyther_female": "geometry.scyther_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.scyther.pose",
+                "blink_quirk": "controller.animation.scyther.blink",
+                "quirk": "controller.animation.scyther.quirk",
+                "quirk_0": "animation.scyther.wing_quirk",
+                "look_at_target": "animation.0123_scyther.look",
                 "ground_idle": "animation.scyther.ground_idle",
+                "battle_idle": "animation.scyther.battle_idle",
                 "air_idle": "animation.scyther.air_idle",
+                "wing_quirk": "animation.scyther.wing_quirk",
                 "blink": "animation.scyther.blink",
-                "cry": "animation.scyther.cry"
+                "cry": "animation.scyther.cry",
+                "hold_item": "animation.scyther.hold_item"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.scyther"
             ],
             "spawn_egg": {
                 "texture": "0123_scyther_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.scyther.cry": "cobblemon.scyther.cry"
             }
         }
     }

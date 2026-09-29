@@ -2,34 +2,51 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0476_probopass",
+            "identifier": "cobblemon:p0476_probopass",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0476_probopass/probopass"
+                "default": "textures/entity/0476_probopass/probopass",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0476_probopass/probopass",
+                "v1": "textures/entity/0476_probopass/probopass_shiny"
             },
             "geometry": {
-                "default": "geometry.probopass"
+                "g_probopass": "geometry.probopass"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.probopass.pose",
+                "blink_quirk": "controller.animation.probopass.blink",
                 "ground_idle": "animation.probopass.ground_idle",
                 "ground_walk": "animation.probopass.ground_walk",
-                "ground_sleep": "animation.probopass.ground_sleep",
+                "sleep": "animation.probopass.sleep",
+                "battle_idle": "animation.probopass.battle_idle",
                 "faint": "animation.probopass.faint",
-                "blink": "animation.probopass.blink"
+                "special": "animation.probopass.special",
+                "physical": "animation.probopass.physical",
+                "battle_cry": "animation.probopass.battle_cry",
+                "status": "animation.probopass.status",
+                "blink": "animation.probopass.blink",
+                "recoil": "animation.probopass.recoil",
+                "cry": "animation.probopass.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.probopass"
             ],
             "spawn_egg": {
                 "texture": "0476_probopass_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.probopass.cry": "cobblemon.probopass.cry"
             }
         }
     }

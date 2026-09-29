@@ -1,0 +1,43 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0972_houndstone",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0972_houndstone/houndstone",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0972_houndstone/houndstone",
+                "v1": "textures/entity/0972_houndstone/houndstone_shiny"
+            },
+            "geometry": {
+                "g_houndstone": "geometry.houndstone"
+            },
+            "scripts": {
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
+                ]
+            },
+            "animations": {
+                "pose": "animation.houndstone.pose",
+                "blink_quirk": "controller.animation.houndstone.blink",
+                "look_at_target": "animation.0972_houndstone.look",
+                "ground_idle": "animation.houndstone.ground_idle",
+                "blink": "animation.houndstone.blink",
+                "ditto_face": "animation.houndstone.ditto_face"
+            },
+            "render_controllers": [
+                "controller.render.houndstone"
+            ],
+            "spawn_egg": {
+                "texture": "0972_houndstone_spawn_egg"
+            }
+        }
+    }
+}

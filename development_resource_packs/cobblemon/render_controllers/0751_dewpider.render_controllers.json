@@ -1,0 +1,80 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.dewpider": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_dewpider",
+                        "Geometry.g_dewpider"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.dewpider_glow": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.glow": [
+                        "Texture.glow_0_0",
+                        "Texture.glow_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_dewpider",
+                        "Geometry.g_dewpider"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.glow[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        },
+        "controller.render.dewpider_translucent": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.translucent": [
+                        "Texture.translucent_0_0",
+                        "Texture.translucent_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_dewpider",
+                        "Geometry.g_dewpider"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.translucent[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

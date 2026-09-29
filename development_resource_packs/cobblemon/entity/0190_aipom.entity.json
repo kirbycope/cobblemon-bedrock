@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0190_aipom",
+            "identifier": "cobblemon:p0190_aipom",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0190_aipom/aipom"
+                "default": "textures/entity/0190_aipom/aipom",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0190_aipom/aipom",
+                "v1": "textures/entity/0190_aipom/aipom_shiny",
+                "v2": "textures/entity/0190_aipom/aipom",
+                "v3": "textures/entity/0190_aipom/aipom_shiny"
             },
             "geometry": {
-                "default": "geometry.aipom"
+                "g_aipom_male": "geometry.aipom_male",
+                "g_aipom_female": "geometry.aipom_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.aipom.pose",
+                "blink_quirk": "controller.animation.aipom.blink",
+                "look_at_target": "animation.0190_aipom.look",
                 "sleep": "animation.aipom.sleep",
                 "ground_idle": "animation.aipom.ground_idle",
                 "ground_walk": "animation.aipom.ground_walk",
@@ -32,10 +44,13 @@
                 "expressions": "animation.aipom.expressions"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.aipom"
             ],
             "spawn_egg": {
                 "texture": "0190_aipom_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.aipom.cry": "cobblemon.aipom.cry"
             }
         }
     }

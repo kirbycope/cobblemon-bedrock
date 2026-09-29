@@ -2,15 +2,27 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0044_gloom",
+            "identifier": "cobblemon:p0044_gloom",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0044_gloom/gloom"
+                "default": "textures/entity/0044_gloom/gloom",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0044_gloom/gloom",
+                "v1": "textures/entity/0044_gloom/gloom_shiny",
+                "v2": "textures/entity/0044_gloom/gloom",
+                "v3": "textures/entity/0044_gloom/gloom_shiny",
+                "v4": "textures/entity/0044_gloom/gloom_valencian",
+                "v5": "textures/entity/0044_gloom/gloom_valencian_shiny",
+                "v6": "textures/entity/0044_gloom/gloom_valencian",
+                "v7": "textures/entity/0044_gloom/gloom_valencian_shiny"
             },
             "geometry": {
-                "default": "geometry.gloom"
+                "g_gloom_male": "geometry.gloom_male",
+                "g_gloom_female": "geometry.gloom_female"
             },
             "scripts": {
                 "animate": [
@@ -23,13 +35,17 @@
                 "ground_idle": "animation.gloom.ground_idle",
                 "special_attack": "animation.gloom.special_attack",
                 "faint": "animation.gloom.faint",
-                "sleep": "animation.gloom.sleep"
+                "sleep": "animation.gloom.sleep",
+                "cry": "animation.gloom.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gloom"
             ],
             "spawn_egg": {
                 "texture": "0044_gloom_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gloom.cry": "cobblemon.gloom.cry"
             }
         }
     }

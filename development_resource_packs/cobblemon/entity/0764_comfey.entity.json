@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0764_comfey",
+            "identifier": "cobblemon:p0764_comfey",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0764_comfey/comfey"
+                "default": "textures/entity/0764_comfey/comfey",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0764_comfey/comfey",
+                "v1": "textures/entity/0764_comfey/comfey_shiny"
             },
             "geometry": {
-                "default": "geometry.comfey"
+                "g_comfey": "geometry.comfey"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.comfey.pose",
+                "blink_quirk": "controller.animation.comfey.blink",
+                "look_at_target": "animation.0764_comfey.look",
                 "ground_idle": "animation.comfey.ground_idle",
                 "ground_walk": "animation.comfey.ground_walk",
                 "blink": "animation.comfey.blink",
@@ -28,7 +37,7 @@
                 "shoulder_left": "animation.comfey.shoulder_left"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.comfey"
             ],
             "spawn_egg": {
                 "texture": "0764_comfey_spawn_egg"

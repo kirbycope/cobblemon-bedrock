@@ -2,29 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0756_shiinotic",
+            "identifier": "cobblemon:p0756_shiinotic",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0756_shiinotic/shiinotic"
+                "default": "textures/entity/0756_shiinotic/shiinotic",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0756_shiinotic/shiinotic",
+                "v1": "textures/entity/0756_shiinotic/shiinotic_shiny"
             },
             "geometry": {
-                "default": "geometry.shiinotic"
+                "g_shiinotic": "geometry.shiinotic"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.shiinotic.pose",
+                "blink_quirk": "controller.animation.shiinotic.blink",
+                "look_at_target": "animation.0756_shiinotic.look",
                 "ground_idle": "animation.shiinotic.ground_idle",
                 "blink": "animation.shiinotic.blink",
                 "cry": "animation.shiinotic.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.shiinotic"
             ],
             "spawn_egg": {
                 "texture": "0756_shiinotic_spawn_egg"

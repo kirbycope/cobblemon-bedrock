@@ -2,38 +2,89 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0006_charizard",
+            "identifier": "cobblemon:p0006_charizard",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0006_charizard/charizard"
+                "default": "textures/entity/0006_charizard/charizard",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0006_charizard/charizard",
+                "flame_0_0": "textures/entity/0006_charizard/charizard_flame1",
+                "flame_0_1": "textures/entity/0006_charizard/charizard_flame2",
+                "flame_0_2": "textures/entity/0006_charizard/charizard_flame3",
+                "flame_0_3": "textures/entity/0006_charizard/charizard_flame4",
+                "v1": "textures/entity/0006_charizard/charizard_shiny",
+                "flame_1_0": "textures/entity/0006_charizard/charizard_flame1",
+                "flame_1_1": "textures/entity/0006_charizard/charizard_flame2",
+                "flame_1_2": "textures/entity/0006_charizard/charizard_flame3",
+                "flame_1_3": "textures/entity/0006_charizard/charizard_flame4"
             },
             "geometry": {
-                "default": "geometry.charizard"
+                "g_charizard": "geometry.charizard"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.charizard.pose",
+                "blink_quirk": "controller.animation.charizard.blink",
+                "quirk": "controller.animation.charizard.quirk",
+                "quirk_0": "animation.charizard.idle_quirk",
+                "quirk_1": "animation.charizard.ground_quirk",
+                "quirk_2": "animation.charizard.air_fly_quirk",
+                "look_at_target": "animation.0006_charizard.look",
                 "ground_idle": "animation.charizard.ground_idle",
                 "ground_walk": "animation.charizard.ground_walk",
+                "ground_run": "animation.charizard.ground_run",
+                "cry": "animation.charizard.cry",
+                "idle_quirk": "animation.charizard.idle_quirk",
+                "ground_quirk": "animation.charizard.ground_quirk",
+                "battle_idle": "animation.charizard.battle_idle",
+                "battle_quirk": "animation.charizard.battle_quirk",
+                "battle_cry": "animation.charizard.battle_cry",
+                "physical": "animation.charizard.physical",
+                "special": "animation.charizard.special",
+                "status": "animation.charizard.status",
+                "recoil": "animation.charizard.recoil",
+                "sleep_quirk": "animation.charizard.sleep_quirk",
                 "air_idle": "animation.charizard.air_idle",
                 "air_fly": "animation.charizard.air_fly",
-                "sleep": "animation.charizard.sleep",
-                "faint": "animation.charizard.faint",
+                "air_fly_quirk": "animation.charizard.air_fly_quirk",
+                "air_battle_cry": "animation.charizard.air_battle_cry",
+                "air_physical": "animation.charizard.air_physical",
+                "air_special": "animation.charizard.air_special",
+                "air_status": "animation.charizard.air_status",
+                "air_recoil": "animation.charizard.air_recoil",
+                "surfacewater_idle": "animation.charizard.surfacewater_idle",
+                "surfacewater_swim": "animation.charizard.surfacewater_swim",
                 "blink": "animation.charizard.blink",
-                "cry": "animation.charizard.cry",
-                "render": "animation.charizard.render"
+                "runspeed": "animation.charizard.runspeed",
+                "ground_run_unbaked": "animation.charizard.ground_run_unbaked",
+                "air_glide": "animation.charizard.air_glide",
+                "ride_air_fly": "animation.charizard.ride_air_fly",
+                "ride_air_dive": "animation.charizard.ride_air_dive",
+                "hold_item": "animation.charizard.hold_item",
+                "ride_ground_run": "animation.charizard.ride_ground_run",
+                "ride_jump": "animation.charizard.ride_jump",
+                "sleep": "animation.charizard.sleep"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.charizard",
+                "controller.render.charizard_flame"
             ],
             "spawn_egg": {
                 "texture": "0006_charizard_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.charizard.cry": "cobblemon.charizard.cry"
             }
         }
     }

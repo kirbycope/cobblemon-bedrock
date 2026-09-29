@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.nincada": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_nincada",
+                        "Geometry.g_nincada"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.nincada_wings": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.wings": [
+                        "Texture.wings_0_0",
+                        "Texture.wings_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_nincada",
+                        "Geometry.g_nincada"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.wings[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

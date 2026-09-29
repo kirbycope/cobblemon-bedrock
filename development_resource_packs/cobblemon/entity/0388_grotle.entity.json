@@ -2,37 +2,51 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0388_grotle",
+            "identifier": "cobblemon:p0388_grotle",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0388_grotle/grotle"
+                "default": "textures/entity/0388_grotle/grotle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0388_grotle/grotle",
+                "v1": "textures/entity/0388_grotle/grotle_shiny"
             },
             "geometry": {
-                "default": "geometry.grotle"
+                "g_grotle": "geometry.grotle"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.grotle.pose",
+                "blink_quirk": "controller.animation.grotle.blink",
+                "quirk": "animation.grotle.quirk",
+                "quirk_0": "animation.grotle.quirk",
+                "look_at_target": "animation.0388_grotle.look",
                 "ground_idle": "animation.grotle.ground_idle",
                 "battle_idle": "animation.grotle.battle_idle",
                 "ground_walk": "animation.grotle.ground_walk",
                 "sleep": "animation.grotle.sleep",
                 "faint": "animation.grotle.faint",
                 "blink": "animation.grotle.blink",
-                "cry": "animation.grotle.cry",
-                "quirk": "animation.grotle.quirk"
+                "cry": "animation.grotle.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.grotle"
             ],
             "spawn_egg": {
                 "texture": "0388_grotle_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.grotle.cry": "cobblemon.grotle.cry"
             }
         }
     }

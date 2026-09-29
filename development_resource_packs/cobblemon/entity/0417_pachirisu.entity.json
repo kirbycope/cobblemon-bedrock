@@ -2,28 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0417_pachirisu",
+            "identifier": "cobblemon:p0417_pachirisu",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0417_pachirisu/pachirisu"
+                "default": "textures/entity/0417_pachirisu/pachirisu",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0417_pachirisu/pachirisu",
+                "v1": "textures/entity/0417_pachirisu/pachirisu_shiny",
+                "v2": "textures/entity/0417_pachirisu/pachirisu",
+                "v3": "textures/entity/0417_pachirisu/pachirisu_shiny"
             },
             "geometry": {
-                "default": "geometry.pachirisu"
+                "g_pachirisu_male": "geometry.pachirisu_male",
+                "g_pachirisu_female": "geometry.pachirisu_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.pachirisu.pose",
-                "ground_idle": "animation.pachirisu.ground_idle",
-                "blink": "animation.pachirisu.blink"
+                "look_at_target": "animation.0417_pachirisu.look",
+                "render": "animation.pachirisu.render",
+                "ground_idle": "animation.pachirisu.ground_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.pachirisu"
             ],
             "spawn_egg": {
                 "texture": "0417_pachirisu_spawn_egg"

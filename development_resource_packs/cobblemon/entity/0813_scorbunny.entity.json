@@ -2,34 +2,52 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0813_scorbunny",
+            "identifier": "cobblemon:p0813_scorbunny",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0813_scorbunny/scorbunny"
+                "default": "textures/entity/0813_scorbunny/scorbunny",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0813_scorbunny/scorbunny",
+                "v1": "textures/entity/0813_scorbunny/scorbunny_shiny"
             },
             "geometry": {
-                "default": "geometry.scorbunny"
+                "g_scorbunny": "geometry.scorbunny"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.scorbunny.pose",
+                "blink_quirk": "controller.animation.scorbunny.blink",
+                "look_at_target": "animation.0813_scorbunny.look",
                 "ground_idle": "animation.scorbunny.ground_idle",
                 "ground_walk": "animation.scorbunny.ground_walk",
                 "battle_idle": "animation.scorbunny.battle_idle",
                 "blink": "animation.scorbunny.blink",
-                "cry": "animation.scorbunny.cry"
+                "cry": "animation.scorbunny.cry",
+                "ditto_face": "animation.scorbunny.ditto_face",
+                "shocked": "animation.scorbunny.shocked",
+                "angry": "animation.scorbunny.angry",
+                "worried": "animation.scorbunny.worried",
+                "drowsy": "animation.scorbunny.drowsy",
+                "happy": "animation.scorbunny.happy"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.scorbunny"
             ],
             "spawn_egg": {
                 "texture": "0813_scorbunny_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.scorbunny.cry": "cobblemon.scorbunny.cry"
             }
         }
     }

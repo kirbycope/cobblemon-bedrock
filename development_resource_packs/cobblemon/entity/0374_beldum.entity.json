@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0374_beldum",
+            "identifier": "cobblemon:p0374_beldum",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0374_beldum/beldum"
+                "default": "textures/entity/0374_beldum/beldum",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0374_beldum/beldum",
+                "v1": "textures/entity/0374_beldum/beldum_shiny"
             },
             "geometry": {
-                "default": "geometry.beldum"
+                "g_beldum": "geometry.beldum"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.beldum.pose",
+                "blink_quirk": "controller.animation.beldum.blink",
+                "quirk": "controller.animation.beldum.quirk",
+                "quirk_0": "animation.beldum.quirk_spin",
+                "look_at_target": "animation.0374_beldum.look",
                 "ground_idle": "animation.beldum.ground_idle",
                 "ground_walk": "animation.beldum.ground_walk",
                 "air_idle": "animation.beldum.air_idle",
@@ -27,13 +39,23 @@
                 "blink": "animation.beldum.blink",
                 "sleep": "animation.beldum.sleep",
                 "cry": "animation.beldum.cry",
-                "quirk_spin": "animation.beldum.quirk_spin"
+                "quirk_spin": "animation.beldum.quirk_spin",
+                "physical": "animation.beldum.physical",
+                "special": "animation.beldum.special",
+                "status": "animation.beldum.status",
+                "battle_cry": "animation.beldum.battle_cry",
+                "recoil": "animation.beldum.recoil",
+                "shoulder_left": "animation.beldum.shoulder_left",
+                "shoulder_right": "animation.beldum.shoulder_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.beldum"
             ],
             "spawn_egg": {
                 "texture": "0374_beldum_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.beldum.cry": "cobblemon.beldum.cry"
             }
         }
     }

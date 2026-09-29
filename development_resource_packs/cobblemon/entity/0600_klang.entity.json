@@ -2,15 +2,20 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0600_klang",
+            "identifier": "cobblemon:p0600_klang",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0600_klang/klang"
+                "default": "textures/entity/0600_klang/klang",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0600_klang/klang",
+                "v1": "textures/entity/0600_klang/klang_shiny"
             },
             "geometry": {
-                "default": "geometry.klang"
+                "g_klang": "geometry.klang"
             },
             "scripts": {
                 "animate": [
@@ -20,15 +25,26 @@
             "animations": {
                 "pose": "controller.animation.klang.pose",
                 "ground_idle": "animation.klang.ground_idle",
+                "battle_idle": "animation.klang.battle_idle",
                 "ground_walk": "animation.klang.ground_walk",
+                "physical": "animation.klang.physical",
+                "special": "animation.klang.special",
+                "status": "animation.klang.status",
+                "battle_cry": "animation.klang.battle_cry",
+                "cry": "animation.klang.cry",
                 "faint": "animation.klang.faint",
-                "sleep": "animation.klang.sleep"
+                "sleep": "animation.klang.sleep",
+                "recoil": "animation.klang.recoil",
+                "render": "animation.klang.render"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.klang"
             ],
             "spawn_egg": {
                 "texture": "0600_klang_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.klang.cry": "cobblemon.klang.cry"
             }
         }
     }

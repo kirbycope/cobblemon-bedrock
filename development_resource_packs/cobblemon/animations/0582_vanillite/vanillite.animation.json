@@ -1,0 +1,384 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.vanillite.ground_idle": {
+			"loop": true,
+			"animation_length": 2,
+			"bones": {
+				"head_snow": {
+					"rotation": [
+						"5-2*math.cos((query.anim_time-0.75) * 90 * 4) *1",
+						0,
+						0
+					]
+				},
+				"arm_right": {
+					"rotation": [
+						0,
+						0,
+						-10
+					]
+				},
+				"head_snow2": {
+					"rotation": [
+						"-22.5-2*math.cos((query.anim_time-0.0) * 90 * 4) *1",
+						22.5,
+						0
+					]
+				},
+				"arm_left": {
+					"rotation": [
+						0,
+						0,
+						10
+					]
+				},
+				"body": {
+					"rotation": [
+						"2.5-2*math.cos((query.anim_time-0.5) * 90 * 4) *1",
+						"2*math.cos((query.anim_time-0.5) * 90 * 2) *1",
+						"4*math.cos((query.anim_time-0.0) * 90 * 2) *1"
+					],
+					"position": [
+						0,
+						"1.5+1*math.cos((query.anim_time-0.25) * 90 * 4) *0.5",
+						0
+					]
+				}
+			}
+		},
+		"animation.vanillite.sleep": {
+			"loop": true,
+			"bones": {
+				"mouth_smile": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"head_snow": {
+					"rotation": [
+						22.5,
+						0,
+						0
+					]
+				},
+				"head_snow2": {
+					"rotation": [
+						45,
+						22.5,
+						0
+					]
+				},
+				"body": {
+					"rotation": [
+						90,
+						0,
+						0
+					],
+					"position": [
+						0,
+						-2,
+						0
+					]
+				},
+				"arm_right": {
+					"rotation": [
+						0,
+						-22.5,
+						-25
+					]
+				},
+				"eye_left": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"eye_right": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"neck": {
+					"rotation": [
+						35,
+						0,
+						0
+					]
+				},
+				"arm_left": {
+					"rotation": [
+						0,
+						22.5,
+						25
+					]
+				},
+				"torso": {
+					"rotation": [
+						-35,
+						0,
+						0
+					]
+				},
+				"eyelid_left": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"eyelid_right": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"mouth_small": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"head": {
+					"scale": [
+						1,
+						1,
+						0.9
+					]
+				}
+			}
+		},
+		"animation.vanillite.blink": {
+			"animation_length": 0.1667,
+			"bones": {
+				"eye_left": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eye_right": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eyelid_right": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							-0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								-0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eyelid_left": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							-0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								-0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eyes_ditto": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eyes_blink_ditto": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							-0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								-0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				}
+			}
+		},
+		"animation.vanillite.ditto_face": {
+			"loop": true,
+			"bones": {
+				"face": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"face_ditto": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				}
+			}
+		},
+		"animation.vanillite.pose": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": [
+						0,
+						12.5,
+						-10
+					]
+				},
+				"mouth_smile": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"eye_left": {
+					"position": [
+						0,
+						0,
+						0.1
+					]
+				},
+				"pupil_right": {
+					"position": [
+						-0.5,
+						0,
+						0
+					]
+				},
+				"head_snow": {
+					"rotation": [
+						-5,
+						0,
+						-5
+					]
+				},
+				"head_snow2": {
+					"rotation": [
+						-12.5,
+						30,
+						0
+					]
+				},
+				"arm_right": {
+					"rotation": [
+						0,
+						0,
+						22.5
+					]
+				},
+				"arm_left": {
+					"rotation": [
+						0,
+						0,
+						-22.5
+					]
+				},
+				"mouth_open": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"eyelid_happy_left": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				}
+			}
+		}
+	}
+}

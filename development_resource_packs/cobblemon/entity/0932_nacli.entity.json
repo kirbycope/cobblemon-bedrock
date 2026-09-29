@@ -2,33 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0932_nacli",
+            "identifier": "cobblemon:p0932_nacli",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0932_nacli/nacli"
+                "default": "textures/entity/0932_nacli/nacli",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0932_nacli/nacli",
+                "glow_0_0": "textures/entity/0932_nacli/nacli_emissive",
+                "v1": "textures/entity/0932_nacli/nacli_shiny",
+                "glow_1_0": "textures/entity/0932_nacli/nacli_emissive"
             },
             "geometry": {
-                "default": "geometry.nacli"
+                "g_nacli": "geometry.nacli"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.nacli.pose",
+                "blink_quirk": "controller.animation.nacli.blink",
                 "ground_idle": "animation.nacli.ground_idle",
                 "ground_walk": "animation.nacli.ground_walk",
+                "cry": "animation.nacli.cry",
+                "blink": "animation.nacli.blink",
                 "sleep": "animation.nacli.sleep",
-                "cry": "animation.nacli.cry"
+                "ditto_face": "animation.nacli.ditto_face",
+                "red_eyes": "animation.nacli.red_eyes"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.nacli",
+                "controller.render.nacli_glow"
             ],
             "spawn_egg": {
                 "texture": "0932_nacli_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.nacli.cry": "cobblemon.nacli.cry"
             }
         }
     }

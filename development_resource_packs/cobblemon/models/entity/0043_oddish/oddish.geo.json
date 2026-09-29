@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.unknown",
+				"identifier": "geometry.oddish",
 				"texture_width": 64,
 				"texture_height": 32,
 				"visible_bounds_width": 3,
@@ -50,6 +50,14 @@
 					]
 				},
 				{
+					"name": "locator_mouth",
+					"parent": "mouth",
+					"pivot": [0, 4, -3],
+					"locators": {
+						"mouth": [0, 4, -3]
+					}
+				},
+				{
 					"name": "eyes",
 					"parent": "torso",
 					"pivot": [0, 5.5, -3.025]
@@ -71,6 +79,14 @@
 					]
 				},
 				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-2, 5.5, -3],
+					"locators": {
+						"eye1": [-2, 5.5, -3]
+					}
+				},
+				{
 					"name": "eye_left",
 					"parent": "eyes",
 					"pivot": [2, 5.5, -3.01],
@@ -87,8 +103,21 @@
 					]
 				},
 				{
-					"name": "leaf_center",
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [2, 5.5, -3],
+					"locators": {
+						"eye2": [2, 5.5, -3]
+					}
+				},
+				{
+					"name": "leaves",
 					"parent": "torso",
+					"pivot": [0, 5.5, 0]
+				},
+				{
+					"name": "leaf_center",
+					"parent": "leaves",
 					"pivot": [0, 9, -1.5],
 					"cubes": [
 						{"origin": [-2.5, 9, -1.5], "size": [5, 5, 0], "uv": [30, 17]}
@@ -105,8 +134,16 @@
 					]
 				},
 				{
+					"name": "locator_special",
+					"parent": "leaf_center2",
+					"pivot": [0, 15.5, -1.5],
+					"locators": {
+						"special": [0, 15.5, -1.5]
+					}
+				},
+				{
 					"name": "leaf_front_right",
-					"parent": "torso",
+					"parent": "leaves",
 					"pivot": [-2.75, 9, -1.25],
 					"rotation": [0, 22.5, -30],
 					"cubes": [
@@ -124,7 +161,7 @@
 				},
 				{
 					"name": "leaf_front_left",
-					"parent": "torso",
+					"parent": "leaves",
 					"pivot": [2.75, 9, -1.25],
 					"rotation": [0, -22.5, 30],
 					"cubes": [
@@ -142,7 +179,7 @@
 				},
 				{
 					"name": "leaf_back_right",
-					"parent": "torso",
+					"parent": "leaves",
 					"pivot": [-1.25, 9, 0],
 					"rotation": [-5, -7.5, -10],
 					"cubes": [
@@ -160,7 +197,7 @@
 				},
 				{
 					"name": "leaf_back_left",
-					"parent": "torso",
+					"parent": "leaves",
 					"pivot": [1.25, 9, 0.5],
 					"rotation": [-5, 7.5, 10],
 					"cubes": [
@@ -177,8 +214,67 @@
 					]
 				},
 				{
-					"name": "leg_right",
+					"name": "head_locators",
+					"parent": "torso",
+					"pivot": [0, 9, -1.5]
+				},
+				{
+					"name": "locator_head",
+					"parent": "head_locators",
+					"pivot": [0, 9, -1.5],
+					"locators": {
+						"head": [0, 9, -1.5]
+					}
+				},
+				{
+					"name": "locator_item_hat",
+					"parent": "head_locators",
+					"pivot": [0, 9, 0],
+					"locators": {
+						"item_hat": [0, 9, 0]
+					}
+				},
+				{
+					"name": "locator_face",
+					"parent": "head_locators",
+					"pivot": [0, 5.5, -3],
+					"locators": {
+						"face": [0, 5.5, -3]
+					}
+				},
+				{
+					"name": "locator_item_face",
+					"parent": "head_locators",
+					"pivot": [0, 5.5, -3],
+					"locators": {
+						"item_face": [0, 5.5, -3]
+					}
+				},
+				{
+					"name": "locator_physical",
+					"parent": "head_locators",
+					"pivot": [0, 7.5, -3],
+					"locators": {
+						"physical": [0, 7.5, -3]
+					}
+				},
+				{
+					"name": "locator_item",
+					"parent": "torso",
+					"pivot": [-4.5, 5.5, 0],
+					"rotation": [0, 180, -90],
+					"locators": {
+						"item": [-4.5, 5.5, 0]
+					}
+				},
+				{
+					"name": "legs",
 					"parent": "body",
+					"pivot": [0, 5.5, 0]
+				},
+				{
+					"name": "leg_right",
+					"parent": "legs",
 					"pivot": [-2, 2, 0.25],
 					"cubes": [
 						{"origin": [-2.5, 0.5, -0.25], "size": [1, 2, 1], "uv": [0, 2]}
@@ -202,8 +298,17 @@
 					]
 				},
 				{
+					"name": "locator_foot_primary",
+					"parent": "foot_right2",
+					"pivot": [-2, 0.5, -2],
+					"rotation": [90, 0, 0],
+					"locators": {
+						"foot_primary": [-2, 0.5, -2]
+					}
+				},
+				{
 					"name": "leg_left",
-					"parent": "body",
+					"parent": "legs",
 					"pivot": [2, 2, 0.25],
 					"cubes": [
 						{"origin": [1.5, 0.5, -0.25], "size": [1, 2, 1], "uv": [0, 2]}
@@ -225,6 +330,47 @@
 					"cubes": [
 						{"origin": [0.5, 0, -3.25], "size": [3, 1, 2], "inflate": 0.01, "uv": [16, 18]}
 					]
+				},
+				{
+					"name": "locator_foot_secondary",
+					"parent": "foot_left2",
+					"pivot": [2, 0.5, -2],
+					"rotation": [90, 0, 0],
+					"locators": {
+						"foot_secondary": [2, 0.5, -2]
+					}
+				},
+				{
+					"name": "locator_middle",
+					"parent": "body",
+					"pivot": [0, 9, 0],
+					"locators": {
+						"middle": [0, 9, 0]
+					}
+				},
+				{
+					"name": "locator_target",
+					"parent": "body",
+					"pivot": [0, 5.5, -4],
+					"locators": {
+						"target": [0, 5.5, -4]
+					}
+				},
+				{
+					"name": "locator_root",
+					"parent": "oddish",
+					"pivot": [0, 0, 0],
+					"locators": {
+						"root": [0, 0, 0]
+					}
+				},
+				{
+					"name": "locator_top",
+					"parent": "oddish",
+					"pivot": [0, 18, 0],
+					"locators": {
+						"top": [0, 18, 0]
+					}
 				}
 			]
 		}

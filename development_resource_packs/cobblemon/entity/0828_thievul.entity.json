@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0828_thievul",
+            "identifier": "cobblemon:p0828_thievul",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0828_thievul/thievul"
+                "default": "textures/entity/0828_thievul/thievul",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0828_thievul/thievul",
+                "v1": "textures/entity/0828_thievul/thievul_shiny"
             },
             "geometry": {
-                "default": "geometry.thievul"
+                "g_thievul": "geometry.thievul"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.thievul.pose",
+                "blink_quirk": "controller.animation.thievul.blink",
+                "look_at_target": "animation.0828_thievul.look",
                 "ground_idle": "animation.thievul.ground_idle",
                 "ground_walk": "animation.thievul.ground_walk",
                 "battle_idle": "animation.thievul.battle_idle",
@@ -26,14 +35,18 @@
                 "sleep": "animation.thievul.sleep",
                 "quirk_sleep": "animation.thievul.quirk_sleep",
                 "cry": "animation.thievul.cry",
+                "item_hold": "animation.thievul.item_hold",
                 "faint_WIP": "animation.thievul.faint_WIP",
                 "attack": "animation.thievul.attack"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.thievul"
             ],
             "spawn_egg": {
                 "texture": "0828_thievul_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.thievul.cry": "cobblemon.thievul.cry"
             }
         }
     }

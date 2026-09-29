@@ -2,30 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0150_mewtwo",
+            "identifier": "cobblemon:p0150_mewtwo",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0150_mewtwo/mewtwo"
+                "default": "textures/entity/0150_mewtwo/mewtwo",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0150_mewtwo/mewtwo",
+                "v1": "textures/entity/0150_mewtwo/mewtwo_shiny"
             },
             "geometry": {
-                "default": "geometry.mewtwo"
+                "g_mewtwo": "geometry.mewtwo"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.mewtwo.pose",
+                "pose": "animation.mewtwo.pose",
+                "blink_quirk": "controller.animation.mewtwo.blink",
+                "look_at_target": "animation.0150_mewtwo.look",
                 "ground_idle": "animation.mewtwo.ground_idle",
+                "ground_walk": "animation.mewtwo.ground_walk",
                 "air_idle": "animation.mewtwo.air_idle",
                 "air_fly": "animation.mewtwo.air_fly",
-                "blink": "animation.mewtwo.blink"
+                "blink": "animation.mewtwo.blink",
+                "surprised": "animation.mewtwo.surprised",
+                "unamused": "animation.mewtwo.unamused",
+                "hurt": "animation.mewtwo.hurt",
+                "tubed": "animation.mewtwo.tubed"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.mewtwo"
             ],
             "spawn_egg": {
                 "texture": "0150_mewtwo_spawn_egg"

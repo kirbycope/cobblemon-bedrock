@@ -1,0 +1,99 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.rolycoly.ground_idle": {
+			"loop": true
+		},
+		"animation.rolycoly.ground_walk_wip": {
+			"loop": true,
+			"animation_length": 1,
+			"bones": {
+				"body": {
+					"position": {
+						"0.0": [0, 1, 0],
+						"0.1667": [0, 1.2, 0],
+						"0.3333": {
+							"pre": [0, 1, 0],
+							"post": [0, 1, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.5": {
+							"post": [0, 2, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.7083": {
+							"post": [0, 0, 0],
+							"lerp_mode": "catmullrom"
+						},
+						"0.875": [0, 1, 0],
+						"1.0": [0, 1, 0]
+					}
+				},
+				"wheel": {
+					"rotation": {
+						"0.0": [0, 0, 0],
+						"1.0": [360, 0, 0]
+					},
+					"position": ["math.sin(q.anim_time*90*4-20)*3", 0, 0]
+				},
+				"torso": {
+					"rotation": [0, "math.sin(q.anim_time*90*4-80)*7", "math.sin(q.anim_time*90*4-50)*-7"],
+					"position": ["math.sin(q.anim_time*90*4-20)*3", 0, 0]
+				}
+			}
+		},
+		"animation.rolycoly.blink": {
+			"animation_length": 0.1667,
+			"bones": {
+				"pupil": {
+					"rotation": {
+						"0.0": [0, 0, -90],
+						"0.1667": {"pre": [0, 0, -90], "post": [0, 0, 0]}
+					},
+					"position": {
+						"0.0": [0, -0.7, 0],
+						"0.1667": {"pre": [0, -0.7, 0], "post": [0, 0, 0]}
+					}
+				},
+				"eye_ditto": {
+					"position": {
+						"0.0": [0, 0, 0.1],
+						"0.1667": {"pre": [0, 0, 0.1], "post": [0, 0, 0.1]}
+					}
+				},
+				"eye_blink_ditto": {
+					"position": {
+						"0.0": [0, 0, -0.1],
+						"0.1667": {"pre": [0, 0, -0.1], "post": [0, 0, -0.1]}
+					}
+				}
+			}
+		},
+		"animation.rolycoly.ditto_face": {
+			"loop": true,
+			"bones": {
+				"eye": {
+					"position": [0, 0, 0.1],
+					"scale": 0
+				},
+				"face_ditto": {
+					"position": [0, 0, -0.1]
+				}
+			}
+		},
+		"animation.rolycoly.walkspeed_test": {
+			"animation_length": 4,
+			"bones": {
+				"body": {
+					"position": {
+						"0.0": [0, 0, 0],
+						"4.0": [0, 0, -164]
+					}
+				}
+			}
+		},
+		"animation.rolycoly.new": {
+			"loop": true
+		}
+	}
+}

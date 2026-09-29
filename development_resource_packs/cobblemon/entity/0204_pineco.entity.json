@@ -2,23 +2,30 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0204_pineco",
+            "identifier": "cobblemon:p0204_pineco",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0204_pineco/pineco"
+                "default": "textures/entity/0204_pineco/pineco",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0204_pineco/pineco",
+                "v1": "textures/entity/0204_pineco/pineco_shiny"
             },
             "geometry": {
-                "default": "geometry.pineco"
+                "g_pineco": "geometry.pineco"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.pineco.pose",
+                "blink_quirk": "controller.animation.pineco.blink",
                 "ground_walk": "animation.pineco.ground_walk",
                 "ground_idle": "animation.pineco.ground_idle",
                 "sleep": "animation.pineco.sleep",
@@ -26,7 +33,7 @@
                 "blink": "animation.pineco.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.pineco"
             ],
             "spawn_egg": {
                 "texture": "0204_pineco_spawn_egg"

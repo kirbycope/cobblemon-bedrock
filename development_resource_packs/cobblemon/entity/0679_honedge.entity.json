@@ -2,33 +2,54 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0679_honedge",
+            "identifier": "cobblemon:p0679_honedge",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0679_honedge/honedge"
+                "default": "textures/entity/0679_honedge/honedge",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0679_honedge/honedge",
+                "v1": "textures/entity/0679_honedge/honedge_shiny"
             },
             "geometry": {
-                "default": "geometry.honedge"
+                "g_honedge": "geometry.honedge"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "animation.honedge.pose",
+                "pose": "controller.animation.honedge.pose",
+                "blink_quirk": "controller.animation.honedge.blink",
+                "look_at_target": "animation.0679_honedge.look",
                 "ground_idle": "animation.honedge.ground_idle",
                 "ground_walk": "animation.honedge.ground_walk",
-                "cry": "animation.honedge.cry",
-                "blink": "animation.honedge.blink"
+                "battle_idle": "animation.honedge.battle_idle",
+                "sleep": "animation.honedge.sleep",
+                "blink": "animation.honedge.blink",
+                "shock": "animation.honedge.shock",
+                "angry": "animation.honedge.angry",
+                "sad": "animation.honedge.sad",
+                "unamused": "animation.honedge.unamused",
+                "happy": "animation.honedge.happy",
+                "hurt": "animation.honedge.hurt",
+                "render": "animation.honedge.render",
+                "cry": "animation.honedge.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.honedge"
             ],
             "spawn_egg": {
                 "texture": "0679_honedge_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.honedge.cry": "cobblemon.honedge.cry"
             }
         }
     }

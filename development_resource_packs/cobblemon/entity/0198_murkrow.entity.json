@@ -2,37 +2,52 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0198_murkrow",
+            "identifier": "cobblemon:p0198_murkrow",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0198_murkrow/murkrow"
+                "default": "textures/entity/0198_murkrow/murkrow",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0198_murkrow/murkrow",
+                "v1": "textures/entity/0198_murkrow/murkrow_shiny",
+                "v2": "textures/entity/0198_murkrow/murkrow",
+                "v3": "textures/entity/0198_murkrow/murkrow_shiny"
             },
             "geometry": {
-                "default": "geometry.murkrow"
+                "g_murkrow_male": "geometry.murkrow_male",
+                "g_murkrow_female": "geometry.murkrow_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.murkrow.pose",
+                "blink_quirk": "controller.animation.murkrow.blink",
+                "look_at_target": "animation.0198_murkrow.look",
                 "ground_idle": "animation.murkrow.ground_idle",
                 "ground_walk": "animation.murkrow.ground_walk",
                 "air_idle": "animation.murkrow.air_idle",
                 "air_fly": "animation.murkrow.air_fly",
                 "sleep": "animation.murkrow.sleep",
-                "quirk": "animation.murkrow.quirk",
                 "cry": "animation.murkrow.cry",
-                "blink": "animation.murkrow.blink"
+                "blink": "animation.murkrow.blink",
+                "hold_item": "animation.murkrow.hold_item"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.murkrow"
             ],
             "spawn_egg": {
                 "texture": "0198_murkrow_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.murkrow.cry": "cobblemon.murkrow.cry"
             }
         }
     }

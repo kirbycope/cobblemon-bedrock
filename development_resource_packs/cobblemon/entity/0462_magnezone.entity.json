@@ -2,31 +2,54 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0462_magnezone",
+            "identifier": "cobblemon:p0462_magnezone",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0462_magnezone/magnezone"
+                "default": "textures/entity/0462_magnezone/magnezone",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0462_magnezone/magnezone",
+                "emissive_0_0": "textures/entity/0462_magnezone/magnezone_emissive",
+                "v1": "textures/entity/0462_magnezone/magnezone_shiny",
+                "emissive_1_0": "textures/entity/0462_magnezone/magnezone_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.magnezone"
+                "g_magnezone": "geometry.magnezone"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.magnezone.pose",
-                "ground_idle": "animation.magnezone.ground_idle",
-                "blink": "animation.magnezone.blink"
+                "blink_quirk": "controller.animation.magnezone.blink",
+                "air_idle": "animation.magnezone.air_idle",
+                "air_fly": "animation.magnezone.air_fly",
+                "faint": "animation.magnezone.faint",
+                "blink": "animation.magnezone.blink",
+                "sleep": "animation.magnezone.sleep",
+                "ride_air_fly": "animation.magnezone.ride_air_fly",
+                "cry": "animation.magnezone.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.magnezone",
+                "controller.render.magnezone_emissive"
             ],
             "spawn_egg": {
                 "texture": "0462_magnezone_spawn_egg"
+            },
+            "particle_effects": {
+                "metal_sparks": "cobblemon:metal_sparks",
+                "heavy_collapse_smoke": "cobblemon:heavy_collapse_smoke",
+                "heavy_collapse_lines": "cobblemon:heavy_collapse_lines"
+            },
+            "sound_effects": {
+                "pokemon.magnezone.cry": "cobblemon.magnezone.cry"
             }
         }
     }

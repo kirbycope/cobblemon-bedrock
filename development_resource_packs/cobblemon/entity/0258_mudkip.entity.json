@@ -2,33 +2,50 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0258_mudkip",
+            "identifier": "cobblemon:p0258_mudkip",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0258_mudkip/mudkip"
+                "default": "textures/entity/0258_mudkip/mudkip",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0258_mudkip/mudkip",
+                "v1": "textures/entity/0258_mudkip/mudkip_shiny"
             },
             "geometry": {
-                "default": "geometry.mudkip"
+                "g_mudkip": "geometry.mudkip"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.mudkip.pose",
-                "water_idle": "animation.mudkip.water_idle",
-                "water_swim": "animation.mudkip.water_swim",
+                "blink_quirk": "controller.animation.mudkip.blink",
+                "look_at_target": "animation.0258_mudkip.look",
+                "ground_idle": "animation.mudkip.ground_idle",
+                "cry": "animation.mudkip.cry",
                 "blink": "animation.mudkip.blink",
-                "cry": "animation.mudkip.cry"
+                "shock": "animation.mudkip.shock",
+                "angry": "animation.mudkip.angry",
+                "sad": "animation.mudkip.sad",
+                "happy": "animation.mudkip.happy",
+                "hurt": "animation.mudkip.hurt",
+                "render": "animation.mudkip.render"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.mudkip"
             ],
             "spawn_egg": {
                 "texture": "0258_mudkip_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.mudkip.cry": "cobblemon.mudkip.cry"
             }
         }
     }

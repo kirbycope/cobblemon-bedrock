@@ -2,27 +2,84 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.magnemite.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "hover": {
                     "animations": [
-                        "ground_idle"
+                        "air_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "fly": "q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "fly": {
+                    "animations": [
+                        "air_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "hover": "q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "idle": {
+                    "animations": [
+                        "air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
                         }
                     ],
                     "blend_transition": 0.2
                 },
                 "moving": {
                     "animations": [
-                        "ground_idle",
-                        "ground_walk"
+                        "air_idle"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
                         }
                     ],
                     "blend_transition": 0.2
@@ -30,11 +87,48 @@
                 "sleeping": {
                     "animations": [
                         "sleep"
-                    ]
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.is_sleeping"
+                        }
+                    ],
+                    "blend_transition": 0.2
                 },
                 "fainting": {
                     "animations": [
                         "faint"
+                    ],
+                    "transitions": [],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.magnemite.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

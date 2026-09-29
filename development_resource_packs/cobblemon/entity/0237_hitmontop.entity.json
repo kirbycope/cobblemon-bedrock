@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0237_hitmontop",
+            "identifier": "cobblemon:p0237_hitmontop",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0237_hitmontop/hitmontop"
+                "default": "textures/entity/0237_hitmontop/hitmontop",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0237_hitmontop/hitmontop",
+                "v1": "textures/entity/0237_hitmontop/hitmontop_shiny"
             },
             "geometry": {
-                "default": "geometry.hitmontop"
+                "g_hitmontop": "geometry.hitmontop"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.hitmontop.pose",
+                "blink_quirk": "controller.animation.hitmontop.blink",
+                "look_at_target": "animation.0237_hitmontop.look",
                 "ground_idle": "animation.hitmontop.ground_idle",
                 "ground_walk": "animation.hitmontop.ground_walk",
                 "ground_run": "animation.hitmontop.ground_run",
@@ -30,10 +39,13 @@
                 "demon": "animation.hitmontop.demon"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.hitmontop"
             ],
             "spawn_egg": {
                 "texture": "0237_hitmontop_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.hitmontop.cry": "cobblemon.hitmontop.cry"
             }
         }
     }

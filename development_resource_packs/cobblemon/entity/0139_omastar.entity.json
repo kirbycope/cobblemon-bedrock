@@ -2,32 +2,51 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0139_omastar",
+            "identifier": "cobblemon:p0139_omastar",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0139_omastar/omastar"
+                "default": "textures/entity/0139_omastar/omastar",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0139_omastar/omastar",
+                "v1": "textures/entity/0139_omastar/omastar_shiny"
             },
             "geometry": {
-                "default": "geometry.omastar"
+                "g_omastar": "geometry.omastar"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.omastar.pose",
+                "blink_quirk": "controller.animation.omastar.blink",
                 "ground_idle": "animation.omastar.ground_idle",
+                "battle_idle": "animation.omastar.battle_idle",
+                "ground_walk": "animation.omastar.ground_walk",
                 "water_idle": "animation.omastar.water_idle",
-                "water_swim": "animation.omastar.water_swim"
+                "water_swim": "animation.omastar.water_swim",
+                "sleep": "animation.omastar.sleep",
+                "cry": "animation.omastar.cry",
+                "blink": "animation.omastar.blink",
+                "render": "animation.omastar.render",
+                "shell_test": "animation.omastar.shell_test",
+                "walkspeedtest": "animation.omastar.walkspeedtest",
+                "new": "animation.omastar.new"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.omastar"
             ],
             "spawn_egg": {
                 "texture": "0139_omastar_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.omastar.cry": "cobblemon.omastar.cry"
             }
         }
     }

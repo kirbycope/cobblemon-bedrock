@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0665_spewpa",
+            "identifier": "cobblemon:p0665_spewpa",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0665_spewpa/spewpa"
+                "default": "textures/entity/0665_spewpa/spewpa",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0665_spewpa/spewpa",
+                "v1": "textures/entity/0665_spewpa/spewpa_shiny"
             },
             "geometry": {
-                "default": "geometry.spewpa"
+                "g_spewpa": "geometry.spewpa"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.spewpa.pose",
+                "blink_quirk": "controller.animation.spewpa.blink",
+                "quirk": "controller.animation.spewpa.quirk",
+                "quirk_0": "animation.spewpa.quirk_fluff",
+                "look_at_target": "animation.0665_spewpa.look",
                 "ground_idle": "animation.spewpa.ground_idle",
                 "ground_walk": "animation.spewpa.ground_walk",
                 "ground_run": "animation.spewpa.ground_run",
@@ -29,10 +41,16 @@
                 "quirk_fluff": "animation.spewpa.quirk_fluff"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.spewpa"
             ],
             "spawn_egg": {
                 "texture": "0665_spewpa_spawn_egg"
+            },
+            "particle_effects": {
+                "confetti": "cobblemon:confetti"
+            },
+            "sound_effects": {
+                "pokemon.spewpa.cry": "cobblemon.spewpa.cry"
             }
         }
     }

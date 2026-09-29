@@ -2,34 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0050_diglett",
+            "identifier": "cobblemon:p0050_diglett",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0050_diglett/diglett"
+                "default": "textures/entity/0050_diglett/diglett",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0050_diglett/diglett",
+                "v1": "textures/entity/0050_diglett/diglett_shiny",
+                "v2": "textures/entity/0050_diglett/diglett_alolan",
+                "v3": "textures/entity/0050_diglett/diglett_alolan_shiny"
             },
             "geometry": {
-                "default": "geometry.diglett"
+                "g_diglett": "geometry.diglett",
+                "g_diglett_alolan": "geometry.diglett_alolan"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.diglett.pose",
+                "blink_quirk": "controller.animation.diglett.blink",
+                "quirk": "controller.animation.diglett.quirk",
+                "quirk_0": "animation.diglett.quirk_idle",
+                "look_at_target": "animation.0050_diglett.look",
                 "ground_idle": "animation.diglett.ground_idle",
+                "battle_idle": "animation.diglett.battle_idle",
+                "physical": "animation.diglett.physical",
                 "ground_walk": "animation.diglett.ground_walk",
                 "faint": "animation.diglett.faint",
                 "sleep": "animation.diglett.sleep",
-                "blink": "animation.diglett.blink"
+                "blink": "animation.diglett.blink",
+                "quirk_idle": "animation.diglett.quirk_idle",
+                "cry": "animation.diglett.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.diglett"
             ],
             "spawn_egg": {
                 "texture": "0050_diglett_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.diglett.cry": "cobblemon.diglett.cry"
             }
         }
     }

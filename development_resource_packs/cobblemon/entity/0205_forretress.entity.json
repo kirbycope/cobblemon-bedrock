@@ -2,31 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0205_forretress",
+            "identifier": "cobblemon:p0205_forretress",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0205_forretress/forretress"
+                "default": "textures/entity/0205_forretress/forretress",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0205_forretress/forretress",
+                "v1": "textures/entity/0205_forretress/forretress_shiny"
             },
             "geometry": {
-                "default": "geometry.forretress"
+                "g_forretress": "geometry.forretress"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.forretress.pose",
+                "blink_quirk": "controller.animation.forretress.blink",
                 "ground_idle": "animation.forretress.ground_idle",
                 "ground_walk": "animation.forretress.ground_walk",
+                "ground_run": "animation.forretress.ground_run",
+                "ride_ground_walk": "animation.forretress.ride_ground_walk",
+                "ride_ground_run": "animation.forretress.ride_ground_run",
+                "sleep": "animation.forretress.sleep",
                 "faint": "animation.forretress.faint",
                 "blink": "animation.forretress.blink",
-                "sleep": "animation.forretress.sleep"
+                "exploded": "animation.forretress.exploded"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.forretress"
             ],
             "spawn_egg": {
                 "texture": "0205_forretress_spawn_egg"

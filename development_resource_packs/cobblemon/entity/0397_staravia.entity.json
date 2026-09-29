@@ -2,29 +2,43 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0397_staravia",
+            "identifier": "cobblemon:p0397_staravia",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0397_staravia/staravia"
+                "default": "textures/entity/0397_staravia/staravia",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0397_staravia/staravia",
+                "v1": "textures/entity/0397_staravia/staravia_shiny",
+                "v2": "textures/entity/0397_staravia/staravia",
+                "v3": "textures/entity/0397_staravia/staravia_shiny"
             },
             "geometry": {
-                "default": "geometry.staravia"
+                "g_staravia_male": "geometry.staravia_male",
+                "g_staravia_female": "geometry.staravia_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.staravia.pose",
+                "blink_quirk": "controller.animation.staravia.blink",
+                "look_at_target": "animation.0397_staravia.look",
                 "ground_idle": "animation.staravia.ground_idle",
+                "air_idle": "animation.staravia.air_idle",
+                "air_fly": "animation.staravia.air_fly",
                 "cry": "animation.staravia.cry",
                 "blink": "animation.staravia.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.staravia"
             ],
             "spawn_egg": {
                 "texture": "0397_staravia_spawn_egg"

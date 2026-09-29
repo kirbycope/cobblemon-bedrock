@@ -2,34 +2,52 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0230_kingdra",
+            "identifier": "cobblemon:p0230_kingdra",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0230_kingdra/kingdra"
+                "default": "textures/entity/0230_kingdra/kingdra",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0230_kingdra/kingdra",
+                "v1": "textures/entity/0230_kingdra/kingdra_shiny"
             },
             "geometry": {
-                "default": "geometry.kingdra"
+                "g_kingdra": "geometry.kingdra"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.kingdra.pose",
+                "blink_quirk": "controller.animation.kingdra.blink",
+                "look_at_target": "animation.0230_kingdra.look",
                 "ground_idle": "animation.kingdra.ground_idle",
-                "ground_walk": "animation.kingdra.ground_walk",
                 "water_idle": "animation.kingdra.water_idle",
-                "water_swim": "animation.kingdra.water_swim",
-                "blink": "animation.kingdra.blink"
+                "blink": "animation.kingdra.blink",
+                "surprise": "animation.kingdra.surprise",
+                "angry": "animation.kingdra.angry",
+                "sad": "animation.kingdra.sad",
+                "happy": "animation.kingdra.happy",
+                "unamused": "animation.kingdra.unamused",
+                "hurt": "animation.kingdra.hurt",
+                "blush": "animation.kingdra.blush",
+                "cry": "animation.kingdra.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.kingdra"
             ],
             "spawn_egg": {
                 "texture": "0230_kingdra_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.kingdra.cry": "cobblemon.kingdra.cry"
             }
         }
     }

@@ -2,35 +2,48 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0622_golett",
+            "identifier": "cobblemon:p0622_golett",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0622_golett/golett"
+                "default": "textures/entity/0622_golett/golett",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0622_golett/golett",
+                "color_0_0": "textures/entity/0622_golett/golett_emissive",
+                "v1": "textures/entity/0622_golett/golett_shiny",
+                "color_1_0": "textures/entity/0622_golett/golett_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.golett"
+                "g_golett": "geometry.golett"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.golett.pose",
+                "look_at_target": "animation.0622_golett.look",
                 "ground_walk": "animation.golett.ground_walk",
                 "ground_idle": "animation.golett.ground_idle",
                 "sleep": "animation.golett.sleep",
                 "faint": "animation.golett.faint",
-                "blink": "animation.golett.blink",
-                "cry": "animation.golett.cry"
+                "cry": "animation.golett.cry",
+                "off": "animation.golett.off"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.golett",
+                "controller.render.golett_color"
             ],
             "spawn_egg": {
                 "texture": "0622_golett_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.golett.cry": "cobblemon.golett.cry"
             }
         }
     }

@@ -2,34 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0219_magcargo",
+            "identifier": "cobblemon:p0219_magcargo",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0219_magcargo/magcargo"
+                "default": "textures/entity/0219_magcargo/magcargo",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0219_magcargo/magcargo",
+                "glow_0_0": "textures/entity/0219_magcargo/magcargo_emissive",
+                "flame_0_0": "textures/entity/0219_magcargo/magcargo_flame_0",
+                "flame_0_1": "textures/entity/0219_magcargo/magcargo_flame_1",
+                "flame_0_2": "textures/entity/0219_magcargo/magcargo_flame_2",
+                "flame_0_3": "textures/entity/0219_magcargo/magcargo_flame_3",
+                "v1": "textures/entity/0219_magcargo/magcargo_shiny",
+                "glow_1_0": "textures/entity/0219_magcargo/magcargo_shiny_emissive",
+                "flame_1_0": "textures/entity/0219_magcargo/magcargo_shiny_flame_0",
+                "flame_1_1": "textures/entity/0219_magcargo/magcargo_shiny_flame_1",
+                "flame_1_2": "textures/entity/0219_magcargo/magcargo_shiny_flame_2",
+                "flame_1_3": "textures/entity/0219_magcargo/magcargo_shiny_flame_3"
             },
             "geometry": {
-                "default": "geometry.magcargo"
+                "g_magcargo": "geometry.magcargo"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.magcargo.pose",
+                "blink_quirk": "controller.animation.magcargo.blink",
+                "look_at_target": "animation.0219_magcargo.look",
                 "ground_idle": "animation.magcargo.ground_idle",
                 "ground_walk": "animation.magcargo.ground_walk",
-                "ground_sleep": "animation.magcargo.ground_sleep",
+                "sleep": "animation.magcargo.sleep",
                 "cry": "animation.magcargo.cry",
                 "blink": "animation.magcargo.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.magcargo",
+                "controller.render.magcargo_glow",
+                "controller.render.magcargo_flame"
             ],
             "spawn_egg": {
                 "texture": "0219_magcargo_spawn_egg"
+            },
+            "particle_effects": {
+                "magcargo_lava_bubble": "cobblemon:magcargo_lava_bubble"
             }
         }
     }

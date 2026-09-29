@@ -2,36 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0253_grovyle",
+            "identifier": "cobblemon:p0253_grovyle",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0253_grovyle/grovyle"
+                "default": "textures/entity/0253_grovyle/grovyle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0253_grovyle/grovyle",
+                "v1": "textures/entity/0253_grovyle/grovyle_shiny",
+                "v2": "textures/entity/0253_grovyle/grovyle",
+                "layer0_2_0": "textures/entity/0253_grovyle/grovyle_stick",
+                "v3": "textures/entity/0253_grovyle/grovyle_shiny",
+                "layer0_3_0": "textures/entity/0253_grovyle/grovyle_stick"
             },
             "geometry": {
-                "default": "geometry.grovyle"
+                "g_grovyle": "geometry.grovyle"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.grovyle.pose",
+                "blink_quirk": "controller.animation.grovyle.blink",
+                "look_at_target": "animation.0253_grovyle.look",
                 "ground_idle": "animation.grovyle.ground_idle",
-                "ground_walk": "animation.grovyle.ground_walk",
-                "ground_run": "animation.grovyle.ground_run",
-                "sleep": "animation.grovyle.sleep",
-                "faint": "animation.grovyle.faint",
                 "blink": "animation.grovyle.blink",
                 "cry": "animation.grovyle.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.grovyle",
+                "controller.render.grovyle_layer0"
             ],
             "spawn_egg": {
                 "texture": "0253_grovyle_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.grovyle.cry": "cobblemon.grovyle.cry"
             }
         }
     }

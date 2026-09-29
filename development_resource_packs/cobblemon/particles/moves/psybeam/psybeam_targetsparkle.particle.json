@@ -1,0 +1,116 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:psybeam_targetsparkle",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/vanilla/spiral"
+			}
+		},
+		"curves": {
+			"variable.fun": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0.35,
+					0.81,
+					0.98,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					0.98,
+					0.9,
+					0.6
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 12,
+				"max_particles": 2000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.9
+			},
+			"minecraft:emitter_shape_sphere": {
+				"radius": 0.75,
+				"surface_only": true,
+				"direction": [
+					"v.particle_random_1-0.5",
+					0,
+					"v.particle_random_3-0.5"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 1
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_4*4)*90"
+			},
+			"minecraft:particle_initial_speed": 0.5,
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					1,
+					0
+				],
+				"linear_drag_coefficient": 1
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.1+(v.particle_random_1+0.5)*0.03)*v.fun",
+					"(0.1+(v.particle_random_1+0.5)*0.03)*v.fun"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 64,
+					"texture_height": 8,
+					"flipbook": {
+						"base_UV": [
+							56,
+							0
+						],
+						"size_UV": [
+							8,
+							8
+						],
+						"step_UV": [
+							-8,
+							0
+						],
+						"frames_per_second": 8,
+						"max_frame": 8
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "(v.particle_age/v.particle_lifetime)*0.6",
+					"gradient": {
+						"0.0": "#FFFF6DD0",
+						"0.1": "#FFFF6588",
+						"0.15": "#FFFF8271",
+						"0.2": "#FFFFC48D",
+						"0.3": "#FFA1BBFF",
+						"0.35": "#FF8E5CFF",
+						"0.43": "#FFC960FF",
+						"0.5": "#FFFF6DD0",
+						"0.6": "#FFFF6588",
+						"0.65": "#FFFF8271",
+						"0.7": "#FFFFC48D",
+						"0.8": "#FFA1BBFF",
+						"0.85": "#FF8E5CFF",
+						"0.93": "#FFC960FF",
+						"1.0": "#FFFF6DD0"
+					}
+				}
+			}
+		}
+	}
+}

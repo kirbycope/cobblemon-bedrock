@@ -6,7 +6,7 @@
 				"identifier": "geometry.annihilape",
 				"texture_width": 128,
 				"texture_height": 64,
-				"visible_bounds_width": 3,
+				"visible_bounds_width": 5,
 				"visible_bounds_height": 3.5,
 				"visible_bounds_offset": [0, 1.25, 0]
 			},
@@ -69,6 +69,14 @@
 					]
 				},
 				{
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [2.25, 15, -5],
+					"locators": {
+						"eye_left": [2.25, 15, -5]
+					}
+				},
+				{
 					"name": "eye_right",
 					"parent": "eyes",
 					"pivot": [-2.5, 15, -5.01],
@@ -92,6 +100,14 @@
 					"cubes": [
 						{"origin": [-4, 14.5, -4.92], "size": [3, 1, 1], "uv": [52, 33], "mirror": true}
 					]
+				},
+				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-2.25, 15, -5],
+					"locators": {
+						"eye_right": [-2.25, 15, -5]
+					}
 				},
 				{
 					"name": "ears",
@@ -215,6 +231,14 @@
 					]
 				},
 				{
+					"name": "locator_hand_secondary",
+					"parent": "hand_left",
+					"pivot": [22, 14.5, -0.5],
+					"locators": {
+						"hand_secondary": [22, 14.5, -0.5]
+					}
+				},
+				{
 					"name": "arm_right",
 					"parent": "arms",
 					"pivot": [-5.5, 14, 0],
@@ -271,6 +295,33 @@
 					"cubes": [
 						{"origin": [-23.5, 13, -3], "size": [2, 2, 1], "uv": [22, 54], "mirror": true}
 					]
+				},
+				{
+					"name": "locator_hand_primary",
+					"parent": "hand_right",
+					"pivot": [-22, 14.5, -0.5],
+					"rotation": [0, 90, 0],
+					"locators": {
+						"hand_primary": [-22, 14.5, -0.5],
+						"physical": [-22, 14.5, -0.5]
+					}
+				},
+				{
+					"name": "locator_special",
+					"parent": "hand_right",
+					"pivot": [-22, 15.5, -0.5],
+					"locators": {
+						"special": [-22, 15.5, -0.5]
+					}
+				},
+				{
+					"name": "locator_item",
+					"parent": "hand_right",
+					"pivot": [-21, 13.5, -0.5],
+					"rotation": [90, 0, 0],
+					"locators": {
+						"item": [-21, 13.5, -0.5]
+					}
 				},
 				{
 					"name": "hair",
@@ -770,6 +821,43 @@
 					]
 				},
 				{
+					"name": "head_locators",
+					"parent": "torso",
+					"pivot": [0, 15, 0]
+				},
+				{
+					"name": "locator_item_face",
+					"parent": "head_locators",
+					"pivot": [0, 15, 0],
+					"locators": {
+						"item_face": [0, 15, 0]
+					}
+				},
+				{
+					"name": "locator_head",
+					"parent": "head_locators",
+					"pivot": [0, 19, -2.5],
+					"locators": {
+						"head": [0, 19, -2.5]
+					}
+				},
+				{
+					"name": "locator_item_hat",
+					"parent": "head_locators",
+					"pivot": [0, 19, -2.5],
+					"locators": {
+						"item_hat": [0, 19, -2.5]
+					}
+				},
+				{
+					"name": "locator_face",
+					"parent": "head_locators",
+					"pivot": [0, 15, -6],
+					"locators": {
+						"face": [0, 15, -6]
+					}
+				},
+				{
 					"name": "legs",
 					"parent": "body",
 					"pivot": [0, 8.25, 0.25]
@@ -845,6 +933,56 @@
 					"cubes": [
 						{"origin": [-5.5, -0.75, -4], "size": [3, 2, 6], "uv": [12, 33], "mirror": true}
 					]
+				},
+				{
+					"name": "locator_foot_primary",
+					"parent": "foot_right",
+					"pivot": [-4, 0.25, -2],
+					"rotation": [90, 0, 0],
+					"locators": {
+						"foot_primary": [-4, 0.25, -2]
+					}
+				},
+				{
+					"name": "locator_foot_secondary",
+					"parent": "foot_right",
+					"pivot": [4, 0.25, -2],
+					"rotation": [90, 0, 0],
+					"locators": {
+						"foot_secondary": [4, 0.25, -2]
+					}
+				},
+				{
+					"name": "locator_middle",
+					"parent": "body",
+					"pivot": [0, 15.5, 0],
+					"locators": {
+						"middle": [0, 15.5, 0]
+					}
+				},
+				{
+					"name": "locator_target",
+					"parent": "body",
+					"pivot": [0, 14.5, -7],
+					"locators": {
+						"target": [0, 14.5, -7]
+					}
+				},
+				{
+					"name": "locator_root",
+					"parent": "annihilape",
+					"pivot": [0, 0, 0],
+					"locators": {
+						"root": [0, 0, 0]
+					}
+				},
+				{
+					"name": "locator_top",
+					"parent": "annihilape",
+					"pivot": [0, 31, 0],
+					"locators": {
+						"top": [0, 31, 0]
+					}
 				}
 			]
 		}

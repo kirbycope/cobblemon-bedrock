@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0163_hoothoot",
+            "identifier": "cobblemon:p0163_hoothoot",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0163_hoothoot/hoothoot"
+                "default": "textures/entity/0163_hoothoot/hoothoot",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0163_hoothoot/hoothoot",
+                "emissive_0_0": "textures/entity/0163_hoothoot/hoothoot_emissive",
+                "v1": "textures/entity/0163_hoothoot/hoothoot_shiny",
+                "emissive_1_0": "textures/entity/0163_hoothoot/hoothoot_emissive"
             },
             "geometry": {
-                "default": "geometry.hoothoot"
+                "g_hoothoot": "geometry.hoothoot"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.hoothoot.pose",
+                "blink_quirk": "controller.animation.hoothoot.blink",
+                "quirk": "controller.animation.hoothoot.quirk",
+                "quirk_0": "animation.hoothoot.quirk_foot",
                 "ground_idle": "animation.hoothoot.ground_idle",
                 "battle_idle": "animation.hoothoot.battle_idle",
                 "ground_walk": "animation.hoothoot.ground_walk",
@@ -31,13 +43,21 @@
                 "demo": "animation.hoothoot.demo",
                 "quirk_foot": "animation.hoothoot.quirk_foot",
                 "move_walk": "animation.hoothoot.move_walk",
-                "move_run": "animation.hoothoot.move_run"
+                "move_run": "animation.hoothoot.move_run",
+                "unamused": "animation.hoothoot.unamused",
+                "angry": "animation.hoothoot.angry",
+                "sad": "animation.hoothoot.sad",
+                "happy": "animation.hoothoot.happy"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.hoothoot",
+                "controller.render.hoothoot_emissive"
             ],
             "spawn_egg": {
                 "texture": "0163_hoothoot_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.hoothoot.cry": "cobblemon.hoothoot.cry"
             }
         }
     }

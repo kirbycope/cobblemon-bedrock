@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0264_linoone",
+            "identifier": "cobblemon:p0264_linoone",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0264_linoone/linoone"
+                "default": "textures/entity/0264_linoone/linoone",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0264_linoone/linoone",
+                "v1": "textures/entity/0264_linoone/linoone_shiny",
+                "v2": "textures/entity/0264_linoone/linoone_galarian",
+                "v3": "textures/entity/0264_linoone/linoone_galarian_shiny"
             },
             "geometry": {
-                "default": "geometry.linoone"
+                "g_linoone": "geometry.linoone",
+                "g_linoone_galarian": "geometry.linoone_galarian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.linoone.pose",
+                "blink_quirk": "controller.animation.linoone.blink",
+                "look_at_target": "animation.0264_linoone.look",
                 "ground_idle": "animation.linoone.ground_idle",
                 "battle_idle": "animation.linoone.battle_idle",
                 "ground_run": "animation.linoone.ground_run",
@@ -29,7 +41,7 @@
                 "cry": "animation.linoone.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.linoone"
             ],
             "spawn_egg": {
                 "texture": "0264_linoone_spawn_egg"

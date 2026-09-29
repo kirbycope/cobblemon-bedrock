@@ -1,0 +1,39 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.crawdaunt.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "idle": {
+                    "animations": [
+                        "ground_idle_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "moving": {
+                    "animations": [
+                        "ground_idle_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

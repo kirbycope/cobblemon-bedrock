@@ -1,0 +1,99 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:icebeam_targetfrost",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/ice/iceshard"
+			}
+		},
+		"curves": {
+			"variable.iw3sizing": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.56,
+					0.85,
+					0.97,
+					1,
+					1
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_initialization": {
+				"creation_expression": ""
+			},
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 10,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1.1
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					"(math.sin(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6)",
+					"(math.cos(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6)",
+					"math.sin(v.emitter_age*1990)*0.25"
+				],
+				"direction": [
+					"math.random(-12.5,12.5)",
+					"math.random(-12.5,12.5)",
+					"math.random(-12.5,12.5)"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(1.2,1.5)*0.65"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_1*2)*180"
+			},
+			"minecraft:particle_initial_speed": "math.random(2.25,3.25)*0.05",
+			"minecraft:particle_motion_dynamic": {
+				"linear_drag_coefficient": 0.75
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.15*v.iw3sizing",
+					"0.15*v.iw3sizing"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 42,
+					"texture_height": 14,
+					"uv": [
+						"math.round(v.particle_random_4*2)*14",
+						0
+					],
+					"uv_size": [
+						14,
+						14
+					]
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#00FFFFFF",
+						"0.37": "#FFFFFFFF",
+						"0.5": "#FFFFFFFF",
+						"0.55": "#00FFFFFF",
+						"0.6": "#ffffffff",
+						"0.65": "#00FFFFFF",
+						"0.7": "#ffffffff",
+						"0.75": "#00FFFFFF",
+						"0.8": "#ffffffff",
+						"0.85": "#00FFFFFF",
+						"0.9": "#ffffffff",
+						"0.95": "#00316BFF"
+					}
+				}
+			}
+		}
+	}
+}

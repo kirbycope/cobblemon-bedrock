@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0263_zigzagoon",
+            "identifier": "cobblemon:p0263_zigzagoon",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0263_zigzagoon/zigzagoon"
+                "default": "textures/entity/0263_zigzagoon/zigzagoon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0263_zigzagoon/zigzagoon",
+                "v1": "textures/entity/0263_zigzagoon/zigzagoon_shiny",
+                "v2": "textures/entity/0263_zigzagoon/zigzagoon_galarian",
+                "v3": "textures/entity/0263_zigzagoon/zigzagoon_galarian_shiny"
             },
             "geometry": {
-                "default": "geometry.zigzagoon"
+                "g_zigzagoon": "geometry.zigzagoon",
+                "g_zigzagoon_galarian": "geometry.zigzagoon_galarian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.zigzagoon.pose",
+                "blink_quirk": "controller.animation.zigzagoon.blink",
+                "look_at_target": "animation.0263_zigzagoon.look",
                 "ground_idle": "animation.zigzagoon.ground_idle",
                 "ground_walk": "animation.zigzagoon.ground_walk",
                 "ground_run": "animation.zigzagoon.ground_run",
@@ -31,7 +43,7 @@
                 "shoulder_left": "animation.zigzagoon.shoulder_left"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.zigzagoon"
             ],
             "spawn_egg": {
                 "texture": "0263_zigzagoon_spawn_egg"

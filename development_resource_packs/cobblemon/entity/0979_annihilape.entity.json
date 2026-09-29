@@ -2,38 +2,68 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0979_annihilape",
+            "identifier": "cobblemon:p0979_annihilape",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0979_annihilape/annihilape"
+                "default": "textures/entity/0979_annihilape/annihilape",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0979_annihilape/annihilape",
+                "color_0_0": "textures/entity/0979_annihilape/annihilape_emissive",
+                "v1": "textures/entity/0979_annihilape/annihilape_shiny",
+                "color_1_0": "textures/entity/0979_annihilape/annihilape_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.annihilape"
+                "g_annihilape": "geometry.annihilape"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.annihilape.pose",
+                "blink_quirk": "controller.animation.annihilape.blink",
                 "ground_idle": "animation.annihilape.ground_idle",
                 "ground_walk": "animation.annihilape.ground_walk",
                 "ground_run": "animation.annihilape.ground_run",
-                "battle_idle": "animation.annihilape.battle_idle",
                 "sleep": "animation.annihilape.sleep",
+                "battle_idle": "animation.annihilape.battle_idle",
+                "battle_basepose": "animation.annihilape.battle_basepose",
+                "battle_intro": "animation.annihilape.battle_intro",
+                "battle_cry": "animation.annihilape.battle_cry",
+                "status": "animation.annihilape.status",
+                "physical": "animation.annihilape.physical",
+                "special": "animation.annihilape.special",
+                "signature": "animation.annihilape.signature",
                 "faint": "animation.annihilape.faint",
                 "blink": "animation.annihilape.blink",
                 "cry": "animation.annihilape.cry",
-                "hair_overlay": "animation.annihilape.hair_overlay"
+                "recoil": "animation.annihilape.recoil",
+                "hair_overlay": "animation.annihilape.hair_overlay",
+                "hair_overlay_battle": "animation.annihilape.hair_overlay_battle",
+                "battle_idle_OLD": "animation.annihilape.battle_idle_OLD",
+                "signature_old": "animation.annihilape.signature_old",
+                "battle_cry_BAD": "animation.annihilape.battle_cry_BAD",
+                "test_walkspeed": "animation.annihilape.test_walkspeed",
+                "test_runspeed": "animation.annihilape.test_runspeed"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.annihilape",
+                "controller.render.annihilape_color"
             ],
             "spawn_egg": {
                 "texture": "0979_annihilape_spawn_egg"
+            },
+            "particle_effects": {
+                "annihilapeglare": "cobblemon:annihilapeglare"
+            },
+            "sound_effects": {
+                "pokemon.annihilape.cry": "cobblemon.annihilape.cry"
             }
         }
     }

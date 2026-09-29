@@ -1,0 +1,99 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:hydropump_target",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/water/giantsplash"
+			}
+		},
+		"curves": {
+			"variable.s": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.85,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					0.95,
+					0.75
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 90,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.5
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					"(v.particle_random_1-0.5)*2",
+					"(v.particle_random_2-0.5)*2",
+					"-(v.particle_random_3-0.1)*0.75"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.5
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.random_integer(0,3)*90"
+			},
+			"minecraft:particle_initial_speed": "((v.particle_random_4*0.25)+1.75)*6",
+			"minecraft:particle_motion_dynamic": {
+				"linear_drag_coefficient": 4
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.55*v.s",
+					"0.55*v.s"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 12,
+					"texture_height": 96,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							12,
+							12
+						],
+						"step_UV": [
+							0,
+							12
+						],
+						"frames_per_second": 20,
+						"max_frame": 8
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_radius": 0.01
+			},
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FFFFFFFF",
+						"0.65": "#ffffffff",
+						"1.0": "#00FFFFFF"
+					}
+				}
+			}
+		}
+	}
+}

@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0108_lickitung",
+            "identifier": "cobblemon:p0108_lickitung",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0108_lickitung/lickitung"
+                "default": "textures/entity/0108_lickitung/lickitung",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0108_lickitung/lickitung",
+                "v1": "textures/entity/0108_lickitung/lickitung_shiny"
             },
             "geometry": {
-                "default": "geometry.lickitung"
+                "g_lickitung": "geometry.lickitung"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.lickitung.pose",
+                "blink_quirk": "controller.animation.lickitung.blink",
+                "look_at_target": "animation.0108_lickitung.look",
                 "test": "animation.lickitung.test",
                 "ground_idle": "animation.lickitung.ground_idle",
                 "battle_idle": "animation.lickitung.battle_idle",
@@ -28,7 +37,7 @@
                 "blink": "animation.lickitung.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.lickitung"
             ],
             "spawn_egg": {
                 "texture": "0108_lickitung_spawn_egg"

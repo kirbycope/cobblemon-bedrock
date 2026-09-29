@@ -1,0 +1,75 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.braviary": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1",
+                        "Texture.v2",
+                        "Texture.v3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_braviary",
+                        "Geometry.g_braviary",
+                        "Geometry.g_braviary_hisuian",
+                        "Geometry.g_braviary_hisuian"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.braviary_mane": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.mane": [
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.blank",
+                        "Texture.mane_2_0",
+                        "Texture.mane_2_1",
+                        "Texture.mane_2_2",
+                        "Texture.mane_2_3",
+                        "Texture.mane_3_0",
+                        "Texture.mane_3_1",
+                        "Texture.mane_3_2",
+                        "Texture.mane_3_3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_braviary",
+                        "Geometry.g_braviary",
+                        "Geometry.g_braviary_hisuian",
+                        "Geometry.g_braviary_hisuian"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.mane[query.variant * 4 + math.mod(math.floor(q.life_time * 10), 4)]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

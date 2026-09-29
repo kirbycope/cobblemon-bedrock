@@ -2,27 +2,45 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0124_jynx",
+            "identifier": "cobblemon:p0124_jynx",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0124_jynx/jynx"
+                "default": "textures/entity/0124_jynx/jynx",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0124_jynx/jynx",
+                "v1": "textures/entity/0124_jynx/jynx_shiny"
             },
             "geometry": {
-                "default": "geometry.jynx"
+                "g_jynx": "geometry.jynx"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.jynx.pose",
-                "ground_idle": "animation.jynx.ground_idle"
+                "pose": "animation.jynx.pose",
+                "blink_quirk": "controller.animation.jynx.blink",
+                "look_at_target": "animation.0124_jynx.look",
+                "happy": "animation.jynx.happy",
+                "angry": "animation.jynx.angry",
+                "sad": "animation.jynx.sad",
+                "shock": "animation.jynx.shock",
+                "hurt": "animation.jynx.hurt",
+                "kiss": "animation.jynx.kiss",
+                "ground_idle": "animation.jynx.ground_idle",
+                "sleep": "animation.jynx.sleep",
+                "blink": "animation.jynx.blink",
+                "ditto_face": "animation.jynx.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.jynx"
             ],
             "spawn_egg": {
                 "texture": "0124_jynx_spawn_egg"

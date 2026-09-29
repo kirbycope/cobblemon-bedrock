@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0847_barraskewda",
+            "identifier": "cobblemon:p0847_barraskewda",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0847_barraskewda/barraskewda"
+                "default": "textures/entity/0847_barraskewda/barraskewda",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0847_barraskewda/barraskewda",
+                "v1": "textures/entity/0847_barraskewda/barraskewda_shiny"
             },
             "geometry": {
-                "default": "geometry.barraskewda"
+                "g_barraskewda": "geometry.barraskewda"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.barraskewda.pose",
+                "blink_quirk": "controller.animation.barraskewda.blink",
+                "look_at_target": "animation.0847_barraskewda.look",
                 "water_idle": "animation.barraskewda.water_idle",
                 "water_battle_idle": "animation.barraskewda.water_battle_idle",
                 "water_swim": "animation.barraskewda.water_swim",
@@ -31,7 +40,7 @@
                 "blink": "animation.barraskewda.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.barraskewda"
             ],
             "spawn_egg": {
                 "texture": "0847_barraskewda_spawn_egg"

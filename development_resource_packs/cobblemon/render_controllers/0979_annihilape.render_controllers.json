@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.annihilape": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_annihilape",
+                        "Geometry.g_annihilape"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.annihilape_color": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.color": [
+                        "Texture.color_0_0",
+                        "Texture.color_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_annihilape",
+                        "Geometry.g_annihilape"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.color[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

@@ -2,34 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0966_revavroom",
+            "identifier": "cobblemon:p0966_revavroom",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0966_revavroom/revavroom"
+                "default": "textures/entity/0966_revavroom/revavroom",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0966_revavroom/revavroom",
+                "v1": "textures/entity/0966_revavroom/revavroom_shiny"
             },
             "geometry": {
-                "default": "geometry.revavroom"
+                "g_revavroom": "geometry.revavroom"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "animation.revavroom.pose",
+                "pose": "controller.animation.revavroom.pose",
+                "blink_quirk": "controller.animation.revavroom.blink",
                 "ground_walk": "animation.revavroom.ground_walk",
+                "ground_run": "animation.revavroom.ground_run",
                 "ground_idle": "animation.revavroom.ground_idle",
+                "ride_ground": "animation.revavroom.ride_ground",
+                "ride_jump": "animation.revavroom.ride_jump",
                 "sleep": "animation.revavroom.sleep",
                 "cry": "animation.revavroom.cry",
-                "blink": "animation.revavroom.blink"
+                "blink": "animation.revavroom.blink",
+                "scale": "animation.revavroom.scale",
+                "sad": "animation.revavroom.sad",
+                "angry": "animation.revavroom.angry",
+                "happy": "animation.revavroom.happy",
+                "hurt": "animation.revavroom.hurt",
+                "surprised": "animation.revavroom.surprised",
+                "disinterested": "animation.revavroom.disinterested",
+                "ride_drift_idk": "animation.revavroom.ride_drift_idk",
+                "run_test": "animation.revavroom.run_test"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.revavroom"
             ],
             "spawn_egg": {
                 "texture": "0966_revavroom_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.revavroom.cry": "cobblemon.revavroom.cry"
             }
         }
     }

@@ -2,34 +2,48 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0197_umbreon",
+            "identifier": "cobblemon:p0197_umbreon",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0197_umbreon/umbreon"
+                "default": "textures/entity/0197_umbreon/umbreon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0197_umbreon/umbreon",
+                "emissive_0_0": "textures/entity/0197_umbreon/umbreon_emissive",
+                "v1": "textures/entity/0197_umbreon/umbreon_shiny",
+                "emissive_1_0": "textures/entity/0197_umbreon/umbreon_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.umbreon"
+                "g_umbreon": "geometry.umbreon"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.umbreon.pose",
+                "pose": "animation.umbreon.pose",
+                "blink_quirk": "controller.animation.umbreon.blink",
+                "look_at_target": "animation.0197_umbreon.look",
                 "ground_idle": "animation.umbreon.ground_idle",
-                "ground_walk": "animation.umbreon.ground_walk",
-                "ground_run": "animation.umbreon.ground_run",
                 "blink": "animation.umbreon.blink",
+                "glow": "animation.umbreon.glow",
                 "cry": "animation.umbreon.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.umbreon",
+                "controller.render.umbreon_emissive"
             ],
             "spawn_egg": {
                 "texture": "0197_umbreon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.umbreon.cry": "cobblemon.umbreon.cry"
             }
         }
     }

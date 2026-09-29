@@ -2,45 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0870_falinks",
+            "identifier": "cobblemon:p0870_falinks",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0870_falinks/falinks"
+                "default": "textures/entity/0870_falinks/falinks",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0870_falinks/falinks",
+                "v1": "textures/entity/0870_falinks/falinks_shiny"
             },
             "geometry": {
-                "default": "geometry.falinks"
+                "g_falinks": "geometry.falinks"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.falinks.pose",
+                "blink_quirk": "controller.animation.falinks.blink",
                 "ground_idle": "animation.falinks.ground_idle",
                 "summary_idle": "animation.falinks.summary_idle",
                 "ground_walk": "animation.falinks.ground_walk",
                 "ground_run": "animation.falinks.ground_run",
                 "cry": "animation.falinks.cry",
+                "faint": "animation.falinks.faint",
+                "battle_idle": "animation.falinks.battle_idle",
+                "battle_idle2": "animation.falinks.battle_idle2",
+                "sleep": "animation.falinks.sleep",
+                "physical": "animation.falinks.physical",
                 "blink": "animation.falinks.blink",
                 "blink2": "animation.falinks.blink2",
                 "blink3": "animation.falinks.blink3",
                 "blink4": "animation.falinks.blink4",
                 "blink5": "animation.falinks.blink5",
                 "blink6": "animation.falinks.blink6",
-                "faint": "animation.falinks.faint",
-                "battle_idle": "animation.falinks.battle_idle",
-                "battle_idle2": "animation.falinks.battle_idle2",
-                "sleep": "animation.falinks.sleep",
-                "physical_attack": "animation.falinks.physical_attack"
+                "ditto_face": "animation.falinks.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.falinks"
             ],
             "spawn_egg": {
                 "texture": "0870_falinks_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.falinks.cry": "cobblemon.falinks.cry"
             }
         }
     }

@@ -2,36 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0823_corviknight",
+            "identifier": "cobblemon:p0823_corviknight",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0823_corviknight/corviknight"
+                "default": "textures/entity/0823_corviknight/corviknight",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0823_corviknight/corviknight",
+                "v1": "textures/entity/0823_corviknight/corviknight_shiny"
             },
             "geometry": {
-                "default": "geometry.corviknight"
+                "g_corviknight": "geometry.corviknight"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.corviknight.pose",
+                "blink_quirk": "controller.animation.corviknight.blink",
+                "look_at_target": "animation.0823_corviknight.look",
+                "wangs": "animation.corviknight.wangs",
+                "folded_wangs": "animation.corviknight.folded_wangs",
                 "ground_idle": "animation.corviknight.ground_idle",
+                "battle_idle": "animation.corviknight.battle_idle",
                 "ground_walk": "animation.corviknight.ground_walk",
-                "blink": "animation.corviknight.blink",
+                "ground_run": "animation.corviknight.ground_run",
                 "air_idle": "animation.corviknight.air_idle",
+                "air_glide": "animation.corviknight.air_glide",
                 "air_fly": "animation.corviknight.air_fly",
                 "cry": "animation.corviknight.cry",
-                "sleep": "animation.corviknight.sleep"
+                "sleep": "animation.corviknight.sleep",
+                "blink": "animation.corviknight.blink",
+                "ride_ground_walk": "animation.corviknight.ride_ground_walk",
+                "ride_ground_run": "animation.corviknight.ride_ground_run",
+                "ride_air_fly": "animation.corviknight.ride_air_fly",
+                "ride_dive": "animation.corviknight.ride_dive",
+                "ride_jump": "animation.corviknight.ride_jump"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.corviknight"
             ],
             "spawn_egg": {
                 "texture": "0823_corviknight_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.corviknight.cry": "cobblemon.corviknight.cry"
             }
         }
     }

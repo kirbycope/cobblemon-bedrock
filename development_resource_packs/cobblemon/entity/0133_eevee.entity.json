@@ -2,34 +2,47 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0133_eevee",
+            "identifier": "cobblemon:p0133_eevee",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0133_eevee/eevee"
+                "default": "textures/entity/0133_eevee/eevee",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0133_eevee/eevee",
+                "v1": "textures/entity/0133_eevee/eevee_shiny",
+                "v2": "textures/entity/0133_eevee/eevee",
+                "v3": "textures/entity/0133_eevee/eevee_shiny"
             },
             "geometry": {
-                "default": "geometry.eevee"
+                "g_eevee_male": "geometry.eevee_male",
+                "g_eevee_female": "geometry.eevee_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.eevee.pose",
+                "pose": "animation.eevee.pose",
+                "blink_quirk": "controller.animation.eevee.blink",
+                "look_at_target": "animation.0133_eevee.look",
                 "ground_idle": "animation.eevee.ground_idle",
-                "ground_walk": "animation.eevee.ground_walk",
-                "special_attack": "animation.eevee.special_attack",
                 "blink": "animation.eevee.blink",
                 "cry": "animation.eevee.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.eevee"
             ],
             "spawn_egg": {
                 "texture": "0133_eevee_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.eevee.cry": "cobblemon.eevee.cry"
             }
         }
     }

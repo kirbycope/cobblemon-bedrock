@@ -2,40 +2,74 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0007_squirtle",
+            "identifier": "cobblemon:p0007_squirtle",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0007_squirtle/squirtle"
+                "default": "textures/entity/0007_squirtle/squirtle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0007_squirtle/squirtle",
+                "v1": "textures/entity/0007_squirtle/squirtle_shiny",
+                "v2": "textures/entity/0007_squirtle/squirtle",
+                "layer0_2_0": "textures/entity/0007_squirtle/squirtle_triangleglasses",
+                "v3": "textures/entity/0007_squirtle/squirtle_shiny",
+                "layer0_3_0": "textures/entity/0007_squirtle/squirtle_triangleglasses",
+                "v4": "textures/entity/0007_squirtle/squirtle",
+                "layer0_4_0": "textures/entity/0007_squirtle/squirtle_circleglasses",
+                "v5": "textures/entity/0007_squirtle/squirtle_shiny",
+                "layer0_5_0": "textures/entity/0007_squirtle/squirtle_circleglasses"
             },
             "geometry": {
-                "default": "geometry.squirtle"
+                "g_squirtle": "geometry.squirtle"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.squirtle.pose",
+                "blink_quirk": "controller.animation.squirtle.blink",
+                "quirk": "controller.animation.squirtle.quirk",
+                "quirk_0": "animation.squirtle.quirk_ground_idle",
+                "quirk_1": "animation.squirtle.quirk_water",
+                "look_at_target": "animation.0007_squirtle.look",
                 "ground_idle": "animation.squirtle.ground_idle",
+                "battle_idle": "animation.squirtle.battle_idle",
                 "ground_walk": "animation.squirtle.ground_walk",
+                "ground_run": "animation.squirtle.ground_run",
                 "water_idle": "animation.squirtle.water_idle",
                 "water_swim": "animation.squirtle.water_swim",
+                "surfacewater_idle": "animation.squirtle.surfacewater_idle",
+                "surfacewater_swim": "animation.squirtle.surfacewater_swim",
                 "sleep": "animation.squirtle.sleep",
-                "faint": "animation.squirtle.faint",
-                "water_physical_attack": "animation.squirtle.water_physical_attack",
-                "water_special_attack": "animation.squirtle.water_special_attack",
                 "blink": "animation.squirtle.blink",
                 "cry": "animation.squirtle.cry",
-                "render": "animation.squirtle.render"
+                "faint": "animation.squirtle.faint",
+                "shoulder_left": "animation.squirtle.shoulder_left",
+                "shoulder_right": "animation.squirtle.shoulder_right",
+                "quirk_ground_idle": "animation.squirtle.quirk_ground_idle",
+                "quirk_water": "animation.squirtle.quirk_water",
+                "physical": "animation.squirtle.physical",
+                "special": "animation.squirtle.special",
+                "status": "animation.squirtle.status",
+                "recoil": "animation.squirtle.recoil"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.squirtle",
+                "controller.render.squirtle_layer0"
             ],
             "spawn_egg": {
                 "texture": "0007_squirtle_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.squirtle.cry": "cobblemon.squirtle.cry"
             }
         }
     }

@@ -2,37 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0102_exeggcute",
+            "identifier": "cobblemon:p0102_exeggcute",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0102_exeggcute/exeggcute"
+                "default": "textures/entity/0102_exeggcute/exeggcute",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0102_exeggcute/exeggcute",
+                "v1": "textures/entity/0102_exeggcute/exeggcute_shiny"
             },
             "geometry": {
-                "default": "geometry.exeggcute"
+                "g_exeggcute": "geometry.exeggcute"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.exeggcute.pose",
+                "blink_quirk": "controller.animation.exeggcute.blink",
                 "ground_idle": "animation.exeggcute.ground_idle",
                 "ground_walk": "animation.exeggcute.ground_walk",
                 "sleep": "animation.exeggcute.sleep",
                 "faint": "animation.exeggcute.faint",
+                "portrait": "animation.exeggcute.portrait",
                 "blink": "animation.exeggcute.blink",
                 "blink2": "animation.exeggcute.blink2",
                 "blink3": "animation.exeggcute.blink3",
                 "blink4": "animation.exeggcute.blink4",
                 "blink5": "animation.exeggcute.blink5",
-                "blink6": "animation.exeggcute.blink6",
-                "portrait": "animation.exeggcute.portrait"
+                "blink6": "animation.exeggcute.blink6"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.exeggcute"
             ],
             "spawn_egg": {
                 "texture": "0102_exeggcute_spawn_egg"

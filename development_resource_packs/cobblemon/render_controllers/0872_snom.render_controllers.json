@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.snom": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_snom",
+                        "Geometry.g_snom"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.snom_transparency": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.transparency": [
+                        "Texture.transparency_0_0",
+                        "Texture.transparency_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_snom",
+                        "Geometry.g_snom"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.transparency[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

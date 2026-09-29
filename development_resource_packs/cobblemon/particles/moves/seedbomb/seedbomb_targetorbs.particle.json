@@ -1,0 +1,90 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:seedbomb_targetorbs",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/orb/xsfadeorblite"
+			}
+		},
+		"curves": {
+			"variable.upwards": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					1080
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 100,
+				"max_particles": 10
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.1
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					"(v.particle_random_1-0.5)*2",
+					"(v.particle_random_2-0.5)*2",
+					"(v.particle_random_3-0.5)*2"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.5
+			},
+			"minecraft:particle_initial_speed": "math.random(3.51,6.51)*1.85",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-4,
+					0
+				],
+				"linear_drag_coefficient": 3
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.05,
+					0.05
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 45,
+					"texture_height": 5,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							5,
+							5
+						],
+						"step_UV": [
+							5,
+							0
+						],
+						"frames_per_second": 18,
+						"max_frame": 9
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_radius": 0.1
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FFCEFFAB",
+						"0.7": "#FF4BB538"
+					}
+				}
+			}
+		}
+	}
+}

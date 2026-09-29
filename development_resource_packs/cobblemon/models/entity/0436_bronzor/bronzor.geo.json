@@ -1,0 +1,168 @@
+{
+	"format_version": "1.12.0",
+	"minecraft:geometry": [
+		{
+			"description": {
+				"identifier": "geometry.bronzor",
+				"texture_width": 64,
+				"texture_height": 32,
+				"visible_bounds_width": 3,
+				"visible_bounds_height": 2.5,
+				"visible_bounds_offset": [0, 0.75, 0]
+			},
+			"bones": [
+				{
+					"name": "bronzor",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "body",
+					"parent": "bronzor",
+					"pivot": [0, 9, 0],
+					"cubes": [
+						{"origin": [-7, 2, -0.5], "size": [14, 14, 1], "uv": [0, 12]},
+						{"origin": [-5, 4, -1], "size": [10, 10, 2], "uv": [0, 0]},
+						{"origin": [-3.5, 5.5, -1.01], "size": [7, 7, 0], "uv": [30, 15]},
+						{"origin": [-0.5, 5, 1.01], "size": [1, 6, 0], "uv": [30, 22]},
+						{"origin": [-4, 9.5, 1.01], "size": [8, 2, 0], "uv": [0, 27]},
+						{"origin": [-4, 6.5, 1.01], "size": [8, 2, 0], "uv": [0, 29]}
+					]
+				},
+				{
+					"name": "eyes",
+					"parent": "body",
+					"pivot": [0, 9, -1.01]
+				},
+				{
+					"name": "eye_left",
+					"parent": "eyes",
+					"pivot": [4, 9, -1.01],
+					"cubes": [
+						{"origin": [1.75, 7.5, -1.01], "size": [3, 3, 0], "uv": [33, 0]}
+					]
+				},
+				{
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [3.25, 9, -1],
+					"locators": {
+						"eye2": [3.25, 9, -1]
+					}
+				},
+				{
+					"name": "pupil_left",
+					"parent": "eye_left",
+					"pivot": [3.25, 9, -1.02],
+					"cubes": [
+						{"origin": [2.75, 8, -1.02], "size": [1, 2, 0], "uv": [22, 0]}
+					]
+				},
+				{
+					"name": "pupil_closed_left",
+					"parent": "eye_left",
+					"pivot": [3.25, 9, -0.92],
+					"cubes": [
+						{"origin": [2.25, 8.5, -0.92], "size": [2, 1, 0], "uv": [51, 0]}
+					]
+				},
+				{
+					"name": "eye_right",
+					"parent": "eyes",
+					"pivot": [-4, 9, -1.01],
+					"cubes": [
+						{"origin": [-4.75, 7.5, -1.01], "size": [3, 3, 0], "uv": [39, 0], "mirror": true}
+					]
+				},
+				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-3.25, 9, -1],
+					"locators": {
+						"eye1": [-3.25, 9, -1]
+					}
+				},
+				{
+					"name": "pupil_right",
+					"parent": "eye_right",
+					"pivot": [-3.25, 9, -1.02],
+					"cubes": [
+						{"origin": [-3.75, 8, -1.02], "size": [1, 2, 0], "uv": [24, 0], "mirror": true}
+					]
+				},
+				{
+					"name": "pupil_closed_right",
+					"parent": "eye_right",
+					"pivot": [-3.25, 9, -0.92],
+					"cubes": [
+						{"origin": [-4.25, 8.5, -0.92], "size": [2, 1, 0], "uv": [51, 1], "mirror": true}
+					]
+				},
+				{
+					"name": "orbs",
+					"parent": "body",
+					"pivot": [0, 0, 0]
+				},
+				{
+					"name": "orb_top",
+					"parent": "orbs",
+					"pivot": [0, 1, 0],
+					"cubes": [
+						{"origin": [-1.5, 15, -1.5], "size": [3, 3, 3], "uv": [24, 0]}
+					]
+				},
+				{
+					"name": "orb_bottom",
+					"parent": "orbs",
+					"pivot": [0, 0, 0],
+					"cubes": [
+						{"origin": [-1.5, 0, -1.5], "size": [3, 3, 3], "uv": [24, 6]}
+					]
+				},
+				{
+					"name": "orb_left",
+					"parent": "orbs",
+					"pivot": [6.5, 13, 0],
+					"rotation": [0, 0, -10],
+					"cubes": [
+						{"origin": [5.5, 11.5, -1.5], "size": [3, 3, 3], "uv": [33, 3]}
+					]
+				},
+				{
+					"name": "orb_left2",
+					"parent": "orbs",
+					"pivot": [6.5, 5, 0],
+					"rotation": [0, 0, 10],
+					"cubes": [
+						{"origin": [5.5, 3.5, -1.5], "size": [3, 3, 3], "uv": [33, 9]}
+					]
+				},
+				{
+					"name": "orb_right",
+					"parent": "orbs",
+					"pivot": [-6.5, 13, 0],
+					"rotation": [0, 0, 10],
+					"cubes": [
+						{"origin": [-8.5, 11.5, -1.5], "size": [3, 3, 3], "uv": [42, 0], "mirror": true}
+					]
+				},
+				{
+					"name": "orb_right2",
+					"parent": "orbs",
+					"pivot": [-6.5, 5, 0],
+					"rotation": [0, 0, -10],
+					"cubes": [
+						{"origin": [-8.5, 3.5, -1.5], "size": [3, 3, 3], "uv": [42, 6], "mirror": true}
+					]
+				},
+				{
+					"name": "nose",
+					"parent": "body",
+					"pivot": [0, 9, -1],
+					"cubes": [
+						{"origin": [-1.5, 7.5, -2.5], "size": [3, 3, 2], "inflate": -0.1, "uv": [54, 0]}
+					]
+				}
+			]
+		}
+	]
+}

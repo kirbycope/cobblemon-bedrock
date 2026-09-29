@@ -2,23 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0313_volbeat",
+            "identifier": "cobblemon:p0313_volbeat",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0313_volbeat/volbeat"
+                "default": "textures/entity/0313_volbeat/volbeat",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0313_volbeat/volbeat",
+                "emissive_0_0": "textures/entity/0313_volbeat/volbeat_emissive",
+                "v1": "textures/entity/0313_volbeat/volbeat_shiny",
+                "emissive_1_0": "textures/entity/0313_volbeat/volbeat_emissive"
             },
             "geometry": {
-                "default": "geometry.volbeat"
+                "g_volbeat": "geometry.volbeat"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.volbeat.pose",
+                "blink_quirk": "controller.animation.volbeat.blink",
+                "quirk": "controller.animation.volbeat.quirk",
+                "quirk_0": "animation.volbeat.flicker_quirk",
+                "look_at_target": "animation.0313_volbeat.look",
                 "ground_idle": "animation.volbeat.ground_idle",
                 "ground_walk": "animation.volbeat.ground_walk",
                 "ground_run": "animation.volbeat.ground_run",
@@ -28,11 +42,13 @@
                 "sleep": "animation.volbeat.sleep",
                 "blink": "animation.volbeat.blink",
                 "cry": "animation.volbeat.cry",
+                "flicker_quirk": "animation.volbeat.flicker_quirk",
                 "move": "animation.volbeat.move",
                 "move_run": "animation.volbeat.move_run"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.volbeat",
+                "controller.render.volbeat_emissive"
             ],
             "spawn_egg": {
                 "texture": "0313_volbeat_spawn_egg"

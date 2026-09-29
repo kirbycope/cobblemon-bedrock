@@ -2,32 +2,45 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0068_machamp",
+            "identifier": "cobblemon:p0068_machamp",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0068_machamp/machamp"
+                "default": "textures/entity/0068_machamp/machamp",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0068_machamp/machamp",
+                "v1": "textures/entity/0068_machamp/machamp_shiny"
             },
             "geometry": {
-                "default": "geometry.machamp"
+                "g_machamp": "geometry.machamp"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.machamp.pose",
+                "blink_quirk": "controller.animation.machamp.blink",
+                "look_at_target": "animation.0068_machamp.look",
                 "ground_idle": "animation.machamp.ground_idle",
                 "ground_walk": "animation.machamp.ground_walk",
-                "blink": "animation.machamp.blink"
+                "blink": "animation.machamp.blink",
+                "cry": "animation.machamp.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.machamp"
             ],
             "spawn_egg": {
                 "texture": "0068_machamp_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.machamp.cry": "cobblemon.machamp.cry"
             }
         }
     }

@@ -2,27 +2,84 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.chinchou.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
+                "float": {
+                    "animations": [
+                        "water_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "swim": {
+                    "animations": [
+                        "water_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
                 "idle": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
                         }
                     ],
                     "blend_transition": 0.2
                 },
                 "moving": {
                     "animations": [
-                        "ground_idle",
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
                         }
                     ],
                     "blend_transition": 0.2
@@ -30,11 +87,71 @@
                 "sleeping": {
                     "animations": [
                         "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.is_sleeping"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.chinchou.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "play": {
                     "animations": [
-                        "faint"
+                        {
+                            "quirk_0": "v.quirk == 0"
+                        },
+                        {
+                            "quirk_1": "v.quirk == 1"
+                        }
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 2));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.chinchou.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

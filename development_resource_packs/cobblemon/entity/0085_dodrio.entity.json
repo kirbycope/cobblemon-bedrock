@@ -2,23 +2,36 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0085_dodrio",
+            "identifier": "cobblemon:p0085_dodrio",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0085_dodrio/dodrio"
+                "default": "textures/entity/0085_dodrio/dodrio",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0085_dodrio/dodrio",
+                "v1": "textures/entity/0085_dodrio/dodrio_shiny",
+                "v2": "textures/entity/0085_dodrio/dodrio",
+                "v3": "textures/entity/0085_dodrio/dodrio_shiny"
             },
             "geometry": {
-                "default": "geometry.dodrio"
+                "g_dodrio_male": "geometry.dodrio_male",
+                "g_dodrio_female": "geometry.dodrio_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.dodrio.pose",
+                "quirk": "controller.animation.dodrio.quirk",
+                "quirk_0": "animation.dodrio.bite_quirk1",
+                "quirk_1": "animation.dodrio.bite_quirk2",
+                "quirk_2": "animation.dodrio.bite_quirk3",
                 "ground_idle": "animation.dodrio.ground_idle",
                 "battle_idle": "animation.dodrio.battle_idle",
                 "ground_walk": "animation.dodrio.ground_walk",
@@ -29,13 +42,17 @@
                 "blink1": "animation.dodrio.blink1",
                 "blink2": "animation.dodrio.blink2",
                 "blink3": "animation.dodrio.blink3",
-                "faint_WIP": "animation.dodrio.faint_WIP"
+                "faint_WIP": "animation.dodrio.faint_WIP",
+                "cry": "animation.dodrio.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.dodrio"
             ],
             "spawn_egg": {
                 "texture": "0085_dodrio_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.dodrio.cry": "cobblemon.dodrio.cry"
             }
         }
     }

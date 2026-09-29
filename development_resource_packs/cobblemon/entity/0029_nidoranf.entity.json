@@ -2,30 +2,54 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0029_nidoranf",
+            "identifier": "cobblemon:p0029_nidoranf",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0029_nidoranf/nidoranf"
+                "default": "textures/entity/0029_nidoranf/nidoranf",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0029_nidoranf/nidoranf",
+                "v1": "textures/entity/0029_nidoranf/nidoranf_shiny"
             },
             "geometry": {
-                "default": "geometry.nidoranf"
+                "g_nidoranf": "geometry.nidoranf"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.nidoranf.pose",
-                "sleep": "animation.nidoranf.sleep"
+                "blink_quirk": "controller.animation.nidoranf.blink",
+                "look_at_target": "animation.0029_nidoranf.look",
+                "ground_idle": "animation.nidoranf.ground_idle",
+                "ground_walk": "animation.nidoranf.ground_walk",
+                "ground_run": "animation.nidoranf.ground_run",
+                "battle_idle": "animation.nidoranf.battle_idle",
+                "recoil": "animation.nidoranf.recoil",
+                "cry": "animation.nidoranf.cry",
+                "blink": "animation.nidoranf.blink",
+                "sleep": "animation.nidoranf.sleep",
+                "shoulder_left": "animation.nidoranf.shoulder_left",
+                "shoulder_right": "animation.nidoranf.shoulder_right",
+                "walkspeedtest": "animation.nidoranf.walkspeedtest",
+                "runspeedtest": "animation.nidoranf.runspeedtest",
+                "scaletest": "animation.nidoranf.scaletest"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.nidoranf"
             ],
             "spawn_egg": {
                 "texture": "0029_nidoranf_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.nidoranf.cry": "cobblemon.nidoranf.cry"
             }
         }
     }

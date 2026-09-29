@@ -2,34 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0173_cleffa",
+            "identifier": "cobblemon:p0173_cleffa",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0173_cleffa/cleffa"
+                "default": "textures/entity/0173_cleffa/cleffa",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0173_cleffa/cleffa",
+                "v1": "textures/entity/0173_cleffa/cleffa_shiny"
             },
             "geometry": {
-                "default": "geometry.cleffa"
+                "g_cleffa": "geometry.cleffa"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.cleffa.pose",
+                "blink_quirk": "controller.animation.cleffa.blink",
+                "look_at_target": "animation.0173_cleffa.look",
                 "ground_idle": "animation.cleffa.ground_idle",
                 "ground_walk": "animation.cleffa.ground_walk",
-                "faint": "animation.cleffa.faint",
                 "blink": "animation.cleffa.blink",
-                "cry": "animation.cleffa.cry"
+                "faint": "animation.cleffa.faint",
+                "render": "animation.cleffa.render",
+                "size_test": "animation.cleffa.size_test",
+                "angry": "animation.cleffa.angry",
+                "sad": "animation.cleffa.sad",
+                "happy": "animation.cleffa.happy",
+                "surprise": "animation.cleffa.surprise",
+                "cry": "animation.cleffa.cry",
+                "hurt": "animation.cleffa.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.cleffa"
             ],
             "spawn_egg": {
                 "texture": "0173_cleffa_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.cleffa.cry": "cobblemon.cleffa.cry"
             }
         }
     }

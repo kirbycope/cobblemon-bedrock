@@ -2,40 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0004_charmander",
+            "identifier": "cobblemon:p0004_charmander",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0004_charmander/charmander"
+                "default": "textures/entity/0004_charmander/charmander",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0004_charmander/charmander",
+                "flame_0_0": "textures/entity/0004_charmander/charmander_flame1",
+                "flame_0_1": "textures/entity/0004_charmander/charmander_flame2",
+                "flame_0_2": "textures/entity/0004_charmander/charmander_flame3",
+                "flame_0_3": "textures/entity/0004_charmander/charmander_flame4",
+                "v1": "textures/entity/0004_charmander/charmander_shiny",
+                "flame_1_0": "textures/entity/0004_charmander/charmander_shiny_flame1",
+                "flame_1_1": "textures/entity/0004_charmander/charmander_shiny_flame2",
+                "flame_1_2": "textures/entity/0004_charmander/charmander_shiny_flame3",
+                "flame_1_3": "textures/entity/0004_charmander/charmander_shiny_flame4"
             },
             "geometry": {
-                "default": "geometry.charmander"
+                "g_charmander": "geometry.charmander"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.charmander.pose",
+                "blink_quirk": "controller.animation.charmander.blink",
+                "look_at_target": "animation.0004_charmander.look",
                 "ground_idle": "animation.charmander.ground_idle",
                 "ground_walk": "animation.charmander.ground_walk",
-                "special_attack": "animation.charmander.special_attack",
-                "physical_attack": "animation.charmander.physical_attack",
-                "faint": "animation.charmander.faint",
                 "sleep": "animation.charmander.sleep",
-                "damage": "animation.charmander.damage",
-                "blink": "animation.charmander.blink",
-                "ground_pulse1": "animation.charmander.ground_pulse1",
+                "battle_idle": "animation.charmander.battle_idle",
+                "special": "animation.charmander.special",
                 "cry": "animation.charmander.cry",
-                "render": "animation.charmander.render"
+                "blink": "animation.charmander.blink",
+                "surfacewater_idle": "animation.charmander.surfacewater_idle",
+                "surfacewater_swim": "animation.charmander.surfacewater_swim"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.charmander",
+                "controller.render.charmander_flame"
             ],
             "spawn_egg": {
                 "texture": "0004_charmander_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.charmander.cry": "cobblemon.charmander.cry"
             }
         }
     }

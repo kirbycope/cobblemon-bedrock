@@ -2,29 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0396_starly",
+            "identifier": "cobblemon:p0396_starly",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0396_starly/starly"
+                "default": "textures/entity/0396_starly/starly",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0396_starly/starly",
+                "v1": "textures/entity/0396_starly/starly_shiny",
+                "v2": "textures/entity/0396_starly/starly",
+                "v3": "textures/entity/0396_starly/starly_shiny"
             },
             "geometry": {
-                "default": "geometry.starly"
+                "g_starly_male": "geometry.starly_male",
+                "g_starly_female": "geometry.starly_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.starly.pose",
-                "blink": "animation.starly.blink",
+                "blink_quirk": "controller.animation.starly.blink",
+                "look_at_target": "animation.0396_starly.look",
                 "ground_idle": "animation.starly.ground_idle",
+                "air_idle": "animation.starly.air_idle",
+                "air_fly": "animation.starly.air_fly",
+                "blink": "animation.starly.blink",
+                "render": "animation.starly.render",
                 "cry": "animation.starly.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.starly"
             ],
             "spawn_egg": {
                 "texture": "0396_starly_spawn_egg"

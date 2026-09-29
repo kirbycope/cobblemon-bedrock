@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0401_kricketot",
+            "identifier": "cobblemon:p0401_kricketot",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0401_kricketot/kricketot"
+                "default": "textures/entity/0401_kricketot/kricketot",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0401_kricketot/kricketot",
+                "v1": "textures/entity/0401_kricketot/kricketot_shiny",
+                "v2": "textures/entity/0401_kricketot/kricketot",
+                "v3": "textures/entity/0401_kricketot/kricketot_shiny"
             },
             "geometry": {
-                "default": "geometry.kricketot"
+                "g_kricketot_male": "geometry.kricketot_male",
+                "g_kricketot_female": "geometry.kricketot_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.kricketot.pose",
+                "blink_quirk": "controller.animation.kricketot.blink",
+                "look_at_target": "animation.0401_kricketot.look",
                 "ground_walk": "animation.kricketot.ground_walk",
                 "ground_idle": "animation.kricketot.ground_idle",
                 "battle_idle": "animation.kricketot.battle_idle",
@@ -32,7 +44,7 @@
                 "special_attack": "animation.kricketot.special_attack"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.kricketot"
             ],
             "spawn_egg": {
                 "texture": "0401_kricketot_spawn_egg"

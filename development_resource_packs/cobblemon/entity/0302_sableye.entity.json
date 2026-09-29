@@ -2,30 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0302_sableye",
+            "identifier": "cobblemon:p0302_sableye",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0302_sableye/sableye"
+                "default": "textures/entity/0302_sableye/sableye",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0302_sableye/sableye",
+                "v1": "textures/entity/0302_sableye/sableye_shiny"
             },
             "geometry": {
-                "default": "geometry.sableye"
+                "g_sableye": "geometry.sableye"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.sableye.pose",
+                "pose": "animation.sableye.pose",
+                "blink_quirk": "controller.animation.sableye.blink",
+                "look_at_target": "animation.0302_sableye.look",
                 "ground_idle": "animation.sableye.ground_idle",
                 "ground_walk": "animation.sableye.ground_walk",
+                "blink": "animation.sableye.blink",
                 "shoulder_left": "animation.sableye.shoulder_left",
-                "shoulder_right": "animation.sableye.shoulder_right"
+                "shoulder_right": "animation.sableye.shoulder_right",
+                "ditto_face": "animation.sableye.ditto_face",
+                "open_mouth": "animation.sableye.open_mouth",
+                "smile": "animation.sableye.smile",
+                "frown": "animation.sableye.frown"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sableye"
             ],
             "spawn_egg": {
                 "texture": "0302_sableye_spawn_egg"

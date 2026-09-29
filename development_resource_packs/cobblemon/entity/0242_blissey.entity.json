@@ -2,33 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0242_blissey",
+            "identifier": "cobblemon:p0242_blissey",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0242_blissey/blissey"
+                "default": "textures/entity/0242_blissey/blissey",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0242_blissey/blissey",
+                "v1": "textures/entity/0242_blissey/blissey_shiny"
             },
             "geometry": {
-                "default": "geometry.blissey"
+                "g_blissey": "geometry.blissey"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.blissey.pose",
+                "blink_quirk": "controller.animation.blissey.blink",
+                "quirk": "controller.animation.blissey.quirk",
+                "quirk_0": "animation.blissey.eggadjust_quirk",
+                "look_at_target": "animation.0242_blissey.look",
                 "ground_idle": "animation.blissey.ground_idle",
-                "blink": "animation.blissey.blink",
+                "ground_walk": "animation.blissey.ground_walk",
+                "ground_run": "animation.blissey.ground_run",
+                "sleep": "animation.blissey.sleep",
+                "battle_idle": "animation.blissey.battle_idle",
+                "faint": "animation.blissey.faint",
                 "cry": "animation.blissey.cry",
-                "test": "animation.blissey.test"
+                "battle_cry": "animation.blissey.battle_cry",
+                "blink": "animation.blissey.blink",
+                "recoil": "animation.blissey.recoil",
+                "physical": "animation.blissey.physical",
+                "special": "animation.blissey.special",
+                "status": "animation.blissey.status",
+                "eggadjust_quirk": "animation.blissey.eggadjust_quirk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.blissey"
             ],
             "spawn_egg": {
                 "texture": "0242_blissey_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.blissey.cry": "cobblemon.blissey.cry"
             }
         }
     }

@@ -2,32 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0075_graveler",
+            "identifier": "cobblemon:p0075_graveler",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0075_graveler/graveler"
+                "default": "textures/entity/0075_graveler/graveler",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0075_graveler/graveler",
+                "v1": "textures/entity/0075_graveler/graveler_shiny",
+                "v2": "textures/entity/0075_graveler/graveler_alolan",
+                "v3": "textures/entity/0075_graveler/graveler_alolan_shiny"
             },
             "geometry": {
-                "default": "geometry.graveler"
+                "g_graveler": "geometry.graveler",
+                "g_graveler_alolan": "geometry.graveler_alolan"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.graveler.pose",
+                "blink_quirk": "controller.animation.graveler.blink",
+                "quirk": "controller.animation.graveler.quirk",
+                "quirk_0": "animation.graveler.look_quirk_WIP",
                 "ground_idle": "animation.graveler.ground_idle",
-                "test": "animation.graveler.test",
-                "blink": "animation.graveler.blink"
+                "battle_idle": "animation.graveler.battle_idle",
+                "physical": "animation.graveler.physical",
+                "ground_walk": "animation.graveler.ground_walk",
+                "ground_run": "animation.graveler.ground_run",
+                "blink": "animation.graveler.blink",
+                "sleep": "animation.graveler.sleep",
+                "wild_sleep": "animation.graveler.wild_sleep",
+                "cry": "animation.graveler.cry",
+                "battle_cry": "animation.graveler.battle_cry",
+                "status": "animation.graveler.status",
+                "recoil": "animation.graveler.recoil",
+                "battle_recoil": "animation.graveler.battle_recoil",
+                "look_quirk_WIP": "animation.graveler.look_quirk_WIP"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.graveler"
             ],
             "spawn_egg": {
                 "texture": "0075_graveler_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.graveler.cry": "cobblemon.graveler.cry"
             }
         }
     }

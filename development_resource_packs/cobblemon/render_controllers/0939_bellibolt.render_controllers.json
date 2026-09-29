@@ -1,0 +1,80 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.bellibolt": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_bellibolt",
+                        "Geometry.g_bellibolt"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.bellibolt_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_bellibolt",
+                        "Geometry.g_bellibolt"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        },
+        "controller.render.bellibolt_transparent": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.transparent": [
+                        "Texture.transparent_0_0",
+                        "Texture.transparent_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_bellibolt",
+                        "Geometry.g_bellibolt"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.transparent[query.variant * 1]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

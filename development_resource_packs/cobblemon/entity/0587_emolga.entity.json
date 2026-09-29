@@ -2,31 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0587_emolga",
+            "identifier": "cobblemon:p0587_emolga",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0587_emolga/emolga"
+                "default": "textures/entity/0587_emolga/emolga",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0587_emolga/emolga",
+                "v1": "textures/entity/0587_emolga/emolga_shiny"
             },
             "geometry": {
-                "default": "geometry.emolga"
+                "g_emolga": "geometry.emolga"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.emolga.pose",
+                "blink_quirk": "controller.animation.emolga.blink",
+                "look_at_target": "animation.0587_emolga.look",
                 "ground_idle": "animation.emolga.ground_idle",
                 "air_idle": "animation.emolga.air_idle",
                 "air_fly": "animation.emolga.air_fly",
                 "blink": "animation.emolga.blink",
-                "render": "animation.emolga.render"
+                "render": "animation.emolga.render",
+                "shoulder_left": "animation.emolga.shoulder_left",
+                "shoulder_right": "animation.emolga.shoulder_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.emolga"
             ],
             "spawn_egg": {
                 "texture": "0587_emolga_spawn_egg"

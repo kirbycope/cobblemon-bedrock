@@ -2,36 +2,61 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0499_pignite",
+            "identifier": "cobblemon:p0499_pignite",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0499_pignite/pignite"
+                "default": "textures/entity/0499_pignite/pignite",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0499_pignite/pignite",
+                "v1": "textures/entity/0499_pignite/pignite_shiny"
             },
             "geometry": {
-                "default": "geometry.pignite"
+                "g_pignite": "geometry.pignite"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.pignite.pose",
+                "blink_quirk": "controller.animation.pignite.blink",
+                "quirk": "controller.animation.pignite.quirk",
+                "quirk_0": "animation.pignite.look_quirk",
+                "quirk_1": "animation.pignite.sniff_quirk",
+                "quirk_2": "animation.pignite.flex_quirk",
+                "look_at_target": "animation.0499_pignite.look",
                 "ground_idle": "animation.pignite.ground_idle",
+                "battle_idle": "animation.pignite.battle_idle",
                 "ground_walk": "animation.pignite.ground_walk",
-                "ground_run": "animation.pignite.ground_run",
+                "sleep": "animation.pignite.sleep",
                 "cry": "animation.pignite.cry",
                 "blink": "animation.pignite.blink",
-                "faint": "animation.pignite.faint",
-                "sleep": "animation.pignite.sleep"
+                "recoil": "animation.pignite.recoil",
+                "look_quirk": "animation.pignite.look_quirk",
+                "sniff_quirk": "animation.pignite.sniff_quirk",
+                "flex_quirk": "animation.pignite.flex_quirk",
+                "unamused": "animation.pignite.unamused",
+                "sad": "animation.pignite.sad",
+                "angry": "animation.pignite.angry",
+                "happy": "animation.pignite.happy",
+                "surprise": "animation.pignite.surprise"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.pignite"
             ],
             "spawn_egg": {
                 "texture": "0499_pignite_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.pignite.cry": "cobblemon.pignite.cry"
             }
         }
     }

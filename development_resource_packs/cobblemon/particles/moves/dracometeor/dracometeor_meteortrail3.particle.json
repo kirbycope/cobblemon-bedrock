@@ -1,0 +1,127 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:dracometeor_meteortrail3",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/fire/cloudyfire_white"
+			}
+		},
+		"curves": {
+			"variable.size": {
+				"type": "linear",
+				"input": "v.emitter_age",
+				"horizontal_range": "v.emitter_lifetime",
+				"nodes": [
+					0,
+					0,
+					0.24,
+					0.66,
+					0.94,
+					1,
+					1,
+					1
+				]
+			},
+			"variable.motion": {
+				"type": "bezier_chain",
+				"input": "v.emitter_age",
+				"nodes": {
+					"0.0": {
+						"value": 0.13,
+						"slope": 0.05
+					},
+					"1.0": {
+						"value": 1,
+						"slope": 0
+					},
+					"0.69": {
+						"value": 1,
+						"slope": 0
+					},
+					"0.4": {
+						"value": 0.55,
+						"slope": 1.55
+					}
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": "60*(((v.motion*-1)+1)+1)",
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.75
+			},
+			"minecraft:emitter_shape_sphere": {
+				"offset": [
+					"(v.target_deltax*v.emitter_age*v.motion/v.emitter_lifetime)+1",
+					"(10*(((v.emitter_age*v.motion/v.emitter_lifetime)*-1)+1))+(v.target_deltay*v.emitter_age*v.motion/v.emitter_lifetime)-0.5",
+					"((v.target_deltaz*v.emitter_age*v.motion/v.emitter_lifetime)+2)+(-6*(((v.emitter_age*v.motion/v.emitter_lifetime)*-1)+1))"
+				],
+				"radius": "1*v.size",
+				"direction": [
+					0,
+					"(v.target_deltay-10)/4/math.sqrt((math.pow((v.target_deltay-10),2))+(math.pow((v.target_deltaz+6),2)))",
+					"(v.target_deltaz+6)/4/math.sqrt((math.pow((v.target_deltay-10),2))+(math.pow((v.target_deltaz-6),2)))"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "0.75*v.motion"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "90*math.random_integer(0,3)"
+			},
+			"minecraft:particle_initial_speed": "18*v.size",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					"((v.particle_random_1*2)-1)",
+					"((v.particle_random_2*2)-1)",
+					"((v.particle_random_4*2)-1)"
+				],
+				"linear_drag_coefficient": "1*v.size*(v.particle_random_3+1)"
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"1*v.motion",
+					"1*v.motion"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 160,
+					"texture_height": 16,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							16,
+							16
+						],
+						"step_UV": [
+							16,
+							0
+						],
+						"frames_per_second": 1,
+						"max_frame": 10,
+						"stretch_to_lifetime": true
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FF8BB6FF",
+						"0.32": "#FF9B4BFE",
+						"0.61": "#FFE938FF",
+						"0.9": "#FFCF156A"
+					}
+				}
+			}
+		}
+	}
+}

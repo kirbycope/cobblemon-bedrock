@@ -2,31 +2,274 @@
     "format_version": "1.16.0",
     "minecraft:entity": {
         "description": {
-            "identifier": "cobblemon:0401_kricketot",
+            "identifier": "cobblemon:p0401_kricketot",
             "is_spawnable": true,
             "is_summonable": true,
-            "is_experimental": false
+            "is_experimental": false,
+            "spawn_category": "creature",
+            "animations": {
+                "dialogue": "controller.animation.0401_kricketot.dialogue"
+            },
+            "scripts": {
+                "animate": [
+                    "dialogue"
+                ]
+            }
         },
         "component_groups": {
-            "minecraft:baby": {
+            "cobblemon:growing": {
                 "minecraft:is_baby": {},
-                "minecraft:scale": {
-                    "value": 1.0
-                },
                 "minecraft:ageable": {
-                    "duration": 1200,
-                    "feed_items": [
-                        "rotten_flesh"
-                    ],
+                    "duration": 600,
                     "grow_up": {
-                        "event": "minecraft:ageable_grow_up",
+                        "event": "cobblemon:evolve",
                         "target": "self"
                     }
                 }
             },
-            "grow_up": {
+            "cobblemon:evolve": {
                 "minecraft:transformation": {
-                    "into": "cobblemon:0402_kricketune"
+                    "into": "cobblemon:p0402_kricketune",
+                    "keep_level": true
+                }
+            },
+            "cobblemon:sleepy": {
+                "minecraft:behavior.nap": {
+                    "priority": 8,
+                    "cooldown_min": 20.0,
+                    "cooldown_max": 120.0,
+                    "mob_detect_dist": 6.0,
+                    "mob_detect_height": 4.0,
+                    "can_nap_filters": {
+                        "all_of": [
+                            {
+                                "test": "in_water",
+                                "subject": "self",
+                                "operator": "==",
+                                "value": false
+                            },
+                            {
+                                "test": "on_ground",
+                                "subject": "self",
+                                "operator": "==",
+                                "value": true
+                            },
+                            {
+                                "test": "is_weather",
+                                "subject": "self",
+                                "operator": "!=",
+                                "value": "thunderstorm"
+                            }
+                        ]
+                    },
+                    "wake_mob_exceptions": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "==",
+                                "value": "pokemon"
+                            },
+                            {
+                                "test": "is_sneaking",
+                                "subject": "other",
+                                "operator": "==",
+                                "value": true
+                            }
+                        ]
+                    }
+                }
+            },
+            "cobblemon:wild": {
+                "minecraft:despawn": {
+                    "despawn_from_distance": {}
+                }
+            },
+            "cobblemon:released": {
+                "minecraft:tameable": {
+                    "probability": 1.0,
+                    "tame_items": [
+                        "cobblemon:poke_ball",
+                        "cobblemon:ancient_azure_ball",
+                        "cobblemon:ancient_citrine_ball",
+                        "cobblemon:ancient_feather_ball",
+                        "cobblemon:ancient_gigaton_ball",
+                        "cobblemon:ancient_great_ball",
+                        "cobblemon:ancient_heavy_ball",
+                        "cobblemon:ancient_ivory_ball",
+                        "cobblemon:ancient_jet_ball",
+                        "cobblemon:ancient_leaden_ball",
+                        "cobblemon:ancient_origin_ball",
+                        "cobblemon:ancient_poke_ball",
+                        "cobblemon:ancient_roseate_ball",
+                        "cobblemon:ancient_slate_ball",
+                        "cobblemon:ancient_ultra_ball",
+                        "cobblemon:ancient_verdant_ball",
+                        "cobblemon:ancient_wing_ball",
+                        "cobblemon:azure_ball",
+                        "cobblemon:beast_ball",
+                        "cobblemon:cherish_ball",
+                        "cobblemon:citrine_ball",
+                        "cobblemon:dive_ball",
+                        "cobblemon:dream_ball",
+                        "cobblemon:dusk_ball",
+                        "cobblemon:fast_ball",
+                        "cobblemon:friend_ball",
+                        "cobblemon:great_ball",
+                        "cobblemon:heal_ball",
+                        "cobblemon:heavy_ball",
+                        "cobblemon:level_ball",
+                        "cobblemon:love_ball",
+                        "cobblemon:lure_ball",
+                        "cobblemon:luxury_ball",
+                        "cobblemon:master_ball",
+                        "cobblemon:moon_ball",
+                        "cobblemon:nest_ball",
+                        "cobblemon:net_ball",
+                        "cobblemon:park_ball",
+                        "cobblemon:premier_ball",
+                        "cobblemon:quick_ball",
+                        "cobblemon:repeat_ball",
+                        "cobblemon:roseate_ball",
+                        "cobblemon:safari_ball",
+                        "cobblemon:slate_ball",
+                        "cobblemon:sport_ball",
+                        "cobblemon:strange_ball",
+                        "cobblemon:timer_ball",
+                        "cobblemon:ultra_ball",
+                        "cobblemon:verdant_ball"
+                    ],
+                    "tame_event": {
+                        "event": "cobblemon:caught",
+                        "target": "self"
+                    }
+                },
+                "minecraft:persistent": {}
+            },
+            "cobblemon:owned": {
+                "minecraft:is_tamed": {},
+                "minecraft:type_family": {
+                    "family": [
+                        "mob",
+                        "pokemon",
+                        "npc",
+                        "bug",
+                        "owned"
+                    ]
+                },
+                "minecraft:persistent": {},
+                "minecraft:leashable": {},
+                "minecraft:behavior.owner_hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.owner_hurt_target": {
+                    "priority": 2
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 3,
+                    "track_target": true
+                },
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 4,
+                    "must_see": true,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "monster"
+                            },
+                            "max_dist": 12
+                        }
+                    ]
+                }
+            },
+            "cobblemon:following": {
+                "minecraft:behavior.follow_owner": {
+                    "priority": 5,
+                    "speed_multiplier": 1.2,
+                    "start_distance": 5,
+                    "stop_distance": 2,
+                    "can_teleport": true
+                }
+            },
+            "cobblemon:captured": {
+                "minecraft:spawn_entity": {
+                    "entities": [
+                        {
+                            "spawn_item": "cobblemon:poke_ball_0401_kricketot",
+                            "min_wait_time": 0,
+                            "max_wait_time": 0,
+                            "num_to_spawn": 1,
+                            "single_use": true
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": 1.0,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:vanish",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:gone": {
+                "minecraft:instant_despawn": {}
+            },
+            "cobblemon:battling": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 1,
+                    "must_see": false,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 24
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 2,
+                    "track_target": true
+                },
+                "minecraft:timer": {
+                    "time": 60,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:vanish",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:in_battle": {
+                "minecraft:movement": {
+                    "value": 0.0
+                }
+            },
+            "cobblemon:variant_0": {
+                "minecraft:variant": {
+                    "value": 0
+                }
+            },
+            "cobblemon:variant_1": {
+                "minecraft:variant": {
+                    "value": 1
+                }
+            },
+            "cobblemon:variant_2": {
+                "minecraft:variant": {
+                    "value": 2
+                }
+            },
+            "cobblemon:variant_3": {
+                "minecraft:variant": {
+                    "value": 3
                 }
             }
         },
@@ -34,20 +277,98 @@
             "minecraft:nameable": {},
             "minecraft:type_family": {
                 "family": [
-                    "mob"
+                    "mob",
+                    "pokemon",
+                    "npc",
+                    "bug"
                 ]
             },
-            "minecraft:breathable": {
-                "total_supply": 15,
-                "suffocate_time": 0
-            },
             "minecraft:collision_box": {
-                "width": 0.6,
-                "height": 0.8
+                "width": 0.36,
+                "height": 0.54
+            },
+            "minecraft:scale": {
+                "value": 0.6
             },
             "minecraft:health": {
-                "value": 8,
-                "max": 8
+                "value": 12,
+                "max": 12
+            },
+            "minecraft:attack": {
+                "damage": 2
+            },
+            "minecraft:loot": {
+                "table": "loot_tables/entities/0401_kricketot.json"
+            },
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:conditional_bandwidth_optimization": {},
+            "minecraft:npc": {
+                "npc_data": {
+                    "skin_list": [
+                        {
+                            "variant": 0
+                        }
+                    ],
+                    "portrait_offsets": {
+                        "scale": [
+                            1.75,
+                            1.75,
+                            1.75
+                        ],
+                        "translate": [
+                            0,
+                            -3,
+                            0
+                        ]
+                    },
+                    "picker_offsets": {
+                        "scale": [
+                            1.7,
+                            1.7,
+                            1.7
+                        ],
+                        "translate": [
+                            0,
+                            20,
+                            0
+                        ]
+                    }
+                }
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 6,
+                "look_distance": 6,
+                "probability": 0.02
+            },
+            "minecraft:movement": {
+                "value": 0.25
+            },
+            "minecraft:underwater_movement": {
+                "value": 0.1
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true,
+                "avoid_damage_blocks": true
+            },
+            "minecraft:jump.static": {},
+            "minecraft:breathable": {
+                "total_supply": 15,
+                "suffocate_time": 0,
+                "breathes_air": true,
+                "breathes_water": false
+            },
+            "minecraft:physics": {},
+            "minecraft:behavior.random_stroll": {
+                "priority": 8,
+                "speed_multiplier": 1
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -63,112 +384,1585 @@
                     }
                 ]
             },
-            "minecraft:movement": {
-                "value": 0.3
-            },
-            "minecraft:navigation.walk": {
-                "can_path_over_water": true,
-                "avoid_damage_blocks": true
-            },
-            "minecraft:movement.basic": {},
-            "minecraft:jump.static": {},
-            "minecraft:can_climb": {},
-            "minecraft:attack": {
-                "damage": 3
-            },
-            "minecraft:healable": {
-                "items": [
+            "minecraft:environment_sensor": {
+                "triggers": [
                     {
-                        "item": "rotten_flesh",
-                        "heal_amount": 10
+                        "filters": {
+                            "test": "is_daytime",
+                            "value": true
+                        },
+                        "event": "cobblemon:bedtime"
+                    },
+                    {
+                        "filters": {
+                            "test": "is_daytime",
+                            "value": false
+                        },
+                        "event": "cobblemon:wake_up"
                     }
                 ]
             },
-            "minecraft:despawn": {
-                "despawn_from_distance": {}
-            },
-            "minecraft:behavior.float": {
-                "priority": 0
-            },
-            "minecraft:behavior.mount_pathing": {
-                "priority": 1,
-                "speed_multiplier": 1.25,
-                "target_dist": 0,
-                "track_target": true
-            },
-            "minecraft:behavior.stay_while_sitting": {
-                "priority": 3
-            },
-            "minecraft:behavior.leap_at_target": {
-                "priority": 4,
-                "target_dist": 0.4
-            },
-            "minecraft:behavior.melee_attack": {
-                "priority": 5
-            },
-            "minecraft:behavior.random_stroll": {
-                "priority": 8,
-                "speed_multiplier": 1
-            },
-            "minecraft:behavior.look_at_player": {
-                "priority": 6,
-                "target_distance": 6,
-                "probability": 0.02
-            },
-            "minecraft:behavior.beg": {
-                "priority": 9,
-                "look_distance": 8,
-                "look_time": [
-                    2,
-                    4
+            "minecraft:tameable": {
+                "probability": 1.0,
+                "tame_items": [
+                    "cobblemon:poke_ball",
+                    "cobblemon:ancient_azure_ball",
+                    "cobblemon:ancient_citrine_ball",
+                    "cobblemon:ancient_feather_ball",
+                    "cobblemon:ancient_gigaton_ball",
+                    "cobblemon:ancient_great_ball",
+                    "cobblemon:ancient_heavy_ball",
+                    "cobblemon:ancient_ivory_ball",
+                    "cobblemon:ancient_jet_ball",
+                    "cobblemon:ancient_leaden_ball",
+                    "cobblemon:ancient_origin_ball",
+                    "cobblemon:ancient_poke_ball",
+                    "cobblemon:ancient_roseate_ball",
+                    "cobblemon:ancient_slate_ball",
+                    "cobblemon:ancient_ultra_ball",
+                    "cobblemon:ancient_verdant_ball",
+                    "cobblemon:ancient_wing_ball",
+                    "cobblemon:azure_ball",
+                    "cobblemon:beast_ball",
+                    "cobblemon:cherish_ball",
+                    "cobblemon:citrine_ball",
+                    "cobblemon:dive_ball",
+                    "cobblemon:dream_ball",
+                    "cobblemon:dusk_ball",
+                    "cobblemon:fast_ball",
+                    "cobblemon:friend_ball",
+                    "cobblemon:great_ball",
+                    "cobblemon:heal_ball",
+                    "cobblemon:heavy_ball",
+                    "cobblemon:level_ball",
+                    "cobblemon:love_ball",
+                    "cobblemon:lure_ball",
+                    "cobblemon:luxury_ball",
+                    "cobblemon:master_ball",
+                    "cobblemon:moon_ball",
+                    "cobblemon:nest_ball",
+                    "cobblemon:net_ball",
+                    "cobblemon:park_ball",
+                    "cobblemon:premier_ball",
+                    "cobblemon:quick_ball",
+                    "cobblemon:repeat_ball",
+                    "cobblemon:roseate_ball",
+                    "cobblemon:safari_ball",
+                    "cobblemon:slate_ball",
+                    "cobblemon:sport_ball",
+                    "cobblemon:strange_ball",
+                    "cobblemon:timer_ball",
+                    "cobblemon:ultra_ball",
+                    "cobblemon:verdant_ball"
                 ],
-                "items": [
-                    "rotten_flesh"
+                "tame_event": {
+                    "event": "cobblemon:caught",
+                    "target": "self"
+                }
+            },
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_beast"
+                            },
+                            "event": "cobblemon:catch_attempt_beast",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_dive"
+                            },
+                            "event": "cobblemon:catch_attempt_dive",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_dream"
+                            },
+                            "event": "cobblemon:catch_attempt_dream",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_dusk"
+                            },
+                            "event": "cobblemon:catch_attempt_dusk",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_fast"
+                            },
+                            "event": "cobblemon:catch_attempt_fast",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_heavy"
+                            },
+                            "event": "cobblemon:catch_attempt_heavy",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_master"
+                            },
+                            "event": "cobblemon:catch_attempt_master",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_nest"
+                            },
+                            "event": "cobblemon:catch_attempt_nest",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_net"
+                            },
+                            "event": "cobblemon:catch_attempt_net",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_park"
+                            },
+                            "event": "cobblemon:catch_attempt_park",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_x1"
+                            },
+                            "event": "cobblemon:catch_attempt_x1",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_x1_5"
+                            },
+                            "event": "cobblemon:catch_attempt_x1_5",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "catch_x2"
+                            },
+                            "event": "cobblemon:catch_attempt_x2",
+                            "target": "self"
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "poke_ball"
+                            }
+                        },
+                        "deals_damage": false
+                    }
                 ]
-            },
-            "minecraft:behavior.hurt_by_target": {
-                "priority": 3
-            },
-            "minecraft:physics": {},
-            "minecraft:pushable": {
-                "is_pushable": true,
-                "is_pushable_by_piston": true
-            },
-            "minecraft:conditional_bandwidth_optimization": {}
+            }
         },
         "events": {
             "minecraft:entity_spawned": {
-                "add": {
-                    "component_groups": [
-                        "minecraft:baby"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:growing",
+                                "cobblemon:wild"
+                            ]
+                        }
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 2047500,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_0"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 500,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_1"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 2047500,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_2"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 500,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_3"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
             },
             "minecraft:entity_born": {
-                "remove": {},
                 "add": {
                     "component_groups": [
-                        "minecraft:baby"
-                    ]
-                }
-            },
-            "minecraft:ageable_grow_up": {
-                "remove": {
-                    "component_groups": [
-                        "minecraft:baby"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "grow_up"
+                        "cobblemon:growing",
+                        "cobblemon:wild"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
-                "remove": {},
                 "add": {
                     "component_groups": [
-                        "minecraft:baby"
+                        "cobblemon:growing",
+                        "cobblemon:wild"
+                    ]
+                }
+            },
+            "cobblemon:evolve": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:growing"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:evolve"
+                    ]
+                }
+            },
+            "cobblemon:bedtime": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:sleepy"
+                    ]
+                }
+            },
+            "cobblemon:wake_up": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:sleepy"
+                    ]
+                }
+            },
+            "cobblemon:released": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:released"
+                    ]
+                }
+            },
+            "cobblemon:caught": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:released"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:owned",
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:stay": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:vanish": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gone"
+                    ]
+                }
+            },
+            "cobblemon:catch_attempt_beast": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 510
+                            },
+                            {
+                                "weight": 2050
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 255
+                            },
+                            {
+                                "weight": 2305
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_dive": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_underwater",
+                                    "subject": "self",
+                                    "value": true
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_underwater",
+                                    "subject": "self",
+                                    "value": true
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_underwater",
+                                    "subject": "self",
+                                    "value": false
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_underwater",
+                                    "subject": "self",
+                                    "value": false
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_dream": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_dusk": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": "<",
+                                    "value": 0.05
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": "<",
+                                    "value": 0.05
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": ">=",
+                                    "value": 0.05
+                                },
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": "<",
+                                    "value": 0.5
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": ">=",
+                                    "value": 0.05
+                                },
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": "<",
+                                    "value": 0.5
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": ">=",
+                                    "value": 0.5
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_brightness",
+                                    "subject": "self",
+                                    "operator": ">=",
+                                    "value": 0.5
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_fast": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_heavy": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_master": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:captured"
+                    ]
+                }
+            },
+            "cobblemon:catch_attempt_nest": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_net": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_park": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "plains"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "plains"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "none_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "plains"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "none_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "subject": "self",
+                                            "value": "plains"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_x1": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_x1_5": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt_x2": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:catch_attempt": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2560
+                            }
+                        ]
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "is_sleeping",
+                                    "subject": "self",
+                                    "value": false
+                                }
+                            ]
+                        },
+                        "randomize": [
+                            {
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:wild"
+                                    ]
+                                },
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:captured"
+                                    ]
+                                },
+                                "weight": 2550
+                            },
+                            {
+                                "weight": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "cobblemon:battle": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:battling"
+                    ]
+                }
+            },
+            "cobblemon:battle_start": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:in_battle"
+                    ]
+                }
+            },
+            "cobblemon:battle_end": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:in_battle"
+                    ]
+                }
+            },
+            "cobblemon:capture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:in_battle"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:captured"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_0": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_1",
+                        "cobblemon:variant_2",
+                        "cobblemon:variant_3"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_0"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_1": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_0",
+                        "cobblemon:variant_2",
+                        "cobblemon:variant_3"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_1"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_2": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_0",
+                        "cobblemon:variant_1",
+                        "cobblemon:variant_3"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_2"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_3": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_0",
+                        "cobblemon:variant_1",
+                        "cobblemon:variant_2"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_3"
                     ]
                 }
             }

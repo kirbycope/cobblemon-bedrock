@@ -2,29 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0804_naganadel",
+            "identifier": "cobblemon:p0804_naganadel",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0804_naganadel/naganadel"
+                "default": "textures/entity/0804_naganadel/naganadel",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0804_naganadel/naganadel",
+                "v1": "textures/entity/0804_naganadel/naganadel_shiny"
             },
             "geometry": {
-                "default": "geometry.naganadel"
+                "g_naganadel": "geometry.naganadel"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.naganadel.pose",
+                "blink_quirk": "controller.animation.naganadel.blink",
+                "look_at_target": "animation.0804_naganadel.look",
                 "ground_idle": "animation.naganadel.ground_idle",
                 "ground_walk": "animation.naganadel.ground_walk",
                 "blink": "animation.poipole.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.naganadel"
             ],
             "spawn_egg": {
                 "texture": "0804_naganadel_spawn_egg"

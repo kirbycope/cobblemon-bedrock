@@ -2,31 +2,99 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0532_timburr",
+            "identifier": "cobblemon:p0532_timburr",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0532_timburr/timburr"
+                "default": "textures/entity/0532_timburr/timburr",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0532_timburr/timburr",
+                "v1": "textures/entity/0532_timburr/timburr_shiny",
+                "v2": "textures/entity/0532_timburr/timburr",
+                "layer0_2_0": "textures/entity/0532_timburr/timburr_acacia",
+                "v3": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_3_0": "textures/entity/0532_timburr/timburr_acacia",
+                "v4": "textures/entity/0532_timburr/timburr",
+                "layer0_4_0": "textures/entity/0532_timburr/timburr_birch",
+                "v5": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_5_0": "textures/entity/0532_timburr/timburr_birch",
+                "v6": "textures/entity/0532_timburr/timburr",
+                "layer0_6_0": "textures/entity/0532_timburr/timburr_cherry",
+                "v7": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_7_0": "textures/entity/0532_timburr/timburr_cherry",
+                "v8": "textures/entity/0532_timburr/timburr",
+                "layer0_8_0": "textures/entity/0532_timburr/timburr_crimson",
+                "v9": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_9_0": "textures/entity/0532_timburr/timburr_crimson",
+                "v10": "textures/entity/0532_timburr/timburr",
+                "layer0_10_0": "textures/entity/0532_timburr/timburr_dark_oak",
+                "v11": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_11_0": "textures/entity/0532_timburr/timburr_dark_oak",
+                "v12": "textures/entity/0532_timburr/timburr",
+                "layer0_12_0": "textures/entity/0532_timburr/timburr_jungle",
+                "v13": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_13_0": "textures/entity/0532_timburr/timburr_jungle",
+                "v14": "textures/entity/0532_timburr/timburr",
+                "layer0_14_0": "textures/entity/0532_timburr/timburr_mangrove",
+                "v15": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_15_0": "textures/entity/0532_timburr/timburr_mangrove",
+                "v16": "textures/entity/0532_timburr/timburr",
+                "layer0_16_0": "textures/entity/0532_timburr/timburr_oak",
+                "v17": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_17_0": "textures/entity/0532_timburr/timburr_oak",
+                "v18": "textures/entity/0532_timburr/timburr",
+                "layer0_18_0": "textures/entity/0532_timburr/timburr_saccharine",
+                "v19": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_19_0": "textures/entity/0532_timburr/timburr_saccharine",
+                "v20": "textures/entity/0532_timburr/timburr",
+                "layer0_20_0": "textures/entity/0532_timburr/timburr_spruce",
+                "v21": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_21_0": "textures/entity/0532_timburr/timburr_spruce",
+                "v22": "textures/entity/0532_timburr/timburr",
+                "layer0_22_0": "textures/entity/0532_timburr/timburr_warped",
+                "v23": "textures/entity/0532_timburr/timburr_shiny",
+                "layer0_23_0": "textures/entity/0532_timburr/timburr_warped"
             },
             "geometry": {
-                "default": "geometry.timburr"
+                "g_timburr": "geometry.timburr"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.timburr.pose",
+                "blink_quirk": "controller.animation.timburr.blink",
+                "quirk": "controller.animation.timburr.quirk",
+                "quirk_0": "animation.timburr.idle_quirk",
+                "look_at_target": "animation.0532_timburr.look",
                 "ground_idle": "animation.timburr.ground_idle",
-                "blink": "animation.timburr.blink"
+                "ground_walk": "animation.timburr.ground_walk",
+                "battle_idle": "animation.timburr.battle_idle",
+                "blink": "animation.timburr.blink",
+                "cry": "animation.timburr.cry",
+                "sleep": "animation.timburr.sleep",
+                "faint": "animation.timburr.faint",
+                "walkspeedtest": "animation.timburr.walkspeedtest",
+                "demon": "animation.timburr.demon",
+                "idle_quirk": "animation.timburr.idle_quirk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.timburr",
+                "controller.render.timburr_layer0"
             ],
             "spawn_egg": {
                 "texture": "0532_timburr_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.timburr.cry": "cobblemon.timburr.cry"
             }
         }
     }

@@ -2,29 +2,36 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0177_natu",
+            "identifier": "cobblemon:p0177_natu",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0177_natu/natu"
+                "default": "textures/entity/0177_natu/natu",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0177_natu/natu",
+                "v1": "textures/entity/0177_natu/natu_shiny"
             },
             "geometry": {
-                "default": "geometry.natu"
+                "g_natu": "geometry.natu"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.natu.pose",
+                "blink_quirk": "controller.animation.natu.blink",
                 "ground_idle": "animation.natu.ground_idle",
                 "sleep": "animation.natu.sleep",
                 "blink": "animation.natu.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.natu"
             ],
             "spawn_egg": {
                 "texture": "0177_natu_spawn_egg"

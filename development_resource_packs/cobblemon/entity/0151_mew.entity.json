@@ -2,29 +2,43 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0151_mew",
+            "identifier": "cobblemon:p0151_mew",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0151_mew/mew"
+                "default": "textures/entity/0151_mew/mew",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0151_mew/mew",
+                "v1": "textures/entity/0151_mew/mew_shiny"
             },
             "geometry": {
-                "default": "geometry.mew"
+                "g_mew": "geometry.mew"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.mew.pose",
+                "pose": "animation.mew.pose",
+                "blink_quirk": "controller.animation.mew.blink",
+                "look_at_target": "animation.0151_mew.look",
                 "ground_idle": "animation.mew.ground_idle",
                 "ground_walk": "animation.mew.ground_walk",
-                "blink": "animation.mew.blink"
+                "blink": "animation.mew.blink",
+                "angry": "animation.mew.angry",
+                "annoyed": "animation.mew.annoyed",
+                "sad": "animation.mew.sad",
+                "happy": "animation.mew.happy",
+                "hurt": "animation.mew.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.mew"
             ],
             "spawn_egg": {
                 "texture": "0151_mew_spawn_egg"

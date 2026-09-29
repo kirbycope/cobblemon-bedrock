@@ -1,0 +1,125 @@
+"""Drive the Minecraft Bedrock client on this PC and capture what it shows.
+
+The game window is found by its title, brought to the front, and driven with real input
+(pydirectinput sends scancodes, which the game reads while it has the mouse captured).
+
+    python tools/client_drive.py shot menu            captures/menu.png
+    python tools/client_drive.py click 960 543        click a screen position
+    python tools/client_drive.py key t                press a key
+    python tools/client_drive.py interact             right-click whatever is in the crosshair
+    python tools/client_drive.py chat "/summon cobblemon:p0004_charmander ~ ~ ~2"
+    python tools/client_drive.py look 200 0           turn the view by a mouse delta
+    python tools/client_drive.py join                 main menu -> Play -> Worlds -> LAN world (the server)
+    python tools/client_drive.py leave                pause menu -> Save & Quit (lands on the Worlds list)
+
+Screen positions are for the 1920x1200 desktop with the game maximised.
+"""
+import ctypes
+import os
+import sys
+import time
+
+import pyautogui
+import pydirectinput
+
+pydirectinput.PAUSE = 0.05
+# the game parks the cursor in a corner while it captures the mouse, which trips the corner fail-safe
+pydirectinput.FAILSAFE = False
+pyautogui.FAILSAFE = False
+CAPTURES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "captures")
+
+
+def focus() -> None:
+    user32 = ctypes.windll.user32
+    handle = user32.FindWindowW(None, "Minecraft")
+    if not handle:
+        sys.exit("no window titled 'Minecraft'; is the game running?")
+    user32.ShowWindow(handle, 9)
+    user32.SetForegroundWindow(handle)
+    time.sleep(0.5)
+
+
+def shot(name: str) -> str:
+    os.makedirs(CAPTURES, exist_ok=True)
+    path = os.path.join(CAPTURES, f"{name}.png")
+    pyautogui.screenshot(path)
+    print(path)
+    return path
+
+
+def click(x: int, y: int) -> None:
+    """A press held briefly; a plain click is too quick for the game's UI to register."""
+    pydirectinput.moveTo(x, y)
+    time.sleep(0.3)
+    pydirectinput.mouseDown(); time.sleep(0.12); pydirectinput.mouseUp()
+
+
+def interact() -> None:
+    """A held right press; the game ignores a click shorter than about a tenth of a second."""
+    pydirectinput.mouseDown(button="right"); time.sleep(0.15); pydirectinput.mouseUp(button="right")
+
+
+def key(name: str, hold: float = 0.0) -> None:
+    if hold:
+        pydirectinput.keyDown(name); time.sleep(hold); pydirectinput.keyUp(name)
+    else:
+        pydirectinput.press(name)
+
+
+def chat(text: str) -> None:
+    key("t")
+    time.sleep(0.4)
+    pyautogui.typewrite(text, interval=0.02)
+    time.sleep(0.2)
+    key("enter")
+    time.sleep(0.5)
+
+
+def look(dx: int, dy: int) -> None:
+    pydirectinput.moveRel(dx, dy, relative=True)
+
+
+def join() -> None:
+    """Main menu -> Play -> Worlds tab -> the LAN world tile, which is the server on this PC.
+
+    The Servers tab's Local BDS entry (127.0.0.1) fails with a NetherNet error on this build; the
+    LAN discovery route works. Call this from the main menu only: on the Play screen the first click
+    lands on a world tile instead."""
+    click(950, 535); time.sleep(4)      # Play
+    click(340, 172); time.sleep(3)      # Worlds tab
+    for _ in range(45):                 # the LAN tile shows up first only once discovery has found the server
+        r, g, b = pyautogui.pixel(125, 375)
+        if b > r + 40: break
+        time.sleep(2)
+    else:
+        sys.exit("no LAN world tile appeared; is the server up?")
+    click(320, 520); time.sleep(40)     # LAN world tile
+
+
+def recover() -> None:
+    """After a server restart the client shows a disconnect dialog whose Back to menu lands on the Play
+    screen; back out to the main menu from there so join() starts where it expects."""
+    click(396, 808); time.sleep(4)
+    click(36, 58); time.sleep(3)
+
+
+def leave() -> None:
+    """Pause menu -> Save & Quit lands on the Worlds list, so back out once more to the main menu."""
+    key("escape"); time.sleep(2)
+    click(555, 775); time.sleep(12)
+    click(36, 58); time.sleep(3)
+
+
+if __name__ == "__main__":
+    cmd, args = sys.argv[1], sys.argv[2:]
+    focus()
+    if cmd == "shot": time.sleep(float(args[1]) if len(args) > 1 else 0); shot(args[0])
+    elif cmd == "click": click(int(args[0]), int(args[1]))
+    elif cmd == "key": key(args[0], float(args[1]) if len(args) > 1 else 0)
+    elif cmd == "interact": interact()
+    elif cmd == "chat": chat(args[0])
+    elif cmd == "look": look(int(args[0]), int(args[1]))
+    elif cmd == "join": join()
+    elif cmd == "leave": leave()
+    elif cmd == "recover": recover()
+    else: sys.exit(f"unknown command {cmd}")

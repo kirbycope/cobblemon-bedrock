@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0321_wailord",
+            "identifier": "cobblemon:p0321_wailord",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0321_wailord/wailord"
+                "default": "textures/entity/0321_wailord/wailord",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0321_wailord/wailord",
+                "v1": "textures/entity/0321_wailord/wailord_shiny"
             },
             "geometry": {
-                "default": "geometry.wailord"
+                "g_wailord": "geometry.wailord"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.wailord.pose",
+                "blink_quirk": "controller.animation.wailord.blink",
+                "look_at_target": "animation.0321_wailord.look",
                 "ground_idle": "animation.wailord.ground_idle",
                 "ground_walk": "animation.wailord.ground_walk",
                 "sleep": "animation.wailord.sleep",
@@ -31,7 +40,7 @@
                 "faint": "animation.wailord.faint"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.wailord"
             ],
             "spawn_egg": {
                 "texture": "0321_wailord_spawn_egg"

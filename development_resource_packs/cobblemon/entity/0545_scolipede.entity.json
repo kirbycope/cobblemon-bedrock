@@ -2,36 +2,68 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0545_scolipede",
+            "identifier": "cobblemon:p0545_scolipede",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0545_scolipede/scolipede"
+                "default": "textures/entity/0545_scolipede/scolipede",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0545_scolipede/scolipede",
+                "v1": "textures/entity/0545_scolipede/scolipede_shiny"
             },
             "geometry": {
-                "default": "geometry.scolipede"
+                "g_scolipede": "geometry.scolipede"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.scolipede.pose",
+                "blink_quirk": "controller.animation.scolipede.blink",
+                "quirk": "controller.animation.scolipede.quirk",
+                "quirk_0": "animation.scolipede.idle_quirk",
+                "quirk_1": "animation.scolipede.idle_quirk2",
+                "look_at_target": "animation.0545_scolipede.look",
                 "ground_idle": "animation.scolipede.ground_idle",
                 "ground_walk": "animation.scolipede.ground_walk",
+                "ground_run": "animation.scolipede.ground_run",
                 "battle_idle": "animation.scolipede.battle_idle",
+                "idle_quirk": "animation.scolipede.idle_quirk",
+                "idle_quirk2": "animation.scolipede.idle_quirk2",
+                "sleep_wild": "animation.scolipede.sleep_wild",
                 "sleep": "animation.scolipede.sleep",
-                "blink": "animation.scolipede.blink",
+                "recoil": "animation.scolipede.recoil",
+                "cry_idle": "animation.scolipede.cry_idle",
                 "cry": "animation.scolipede.cry",
-                "steamroller": "animation.scolipede.steamroller"
+                "ride_ground_walk": "animation.scolipede.ride_ground_walk",
+                "ride_ground_run": "animation.scolipede.ride_ground_run",
+                "ride_jump": "animation.scolipede.ride_jump",
+                "blink": "animation.scolipede.blink",
+                "shock": "animation.scolipede.shock",
+                "angry": "animation.scolipede.angry",
+                "sad": "animation.scolipede.sad",
+                "happy": "animation.scolipede.happy",
+                "hurt": "animation.scolipede.hurt",
+                "worried": "animation.scolipede.worried",
+                "walkspeedtest": "animation.scolipede.walkspeedtest",
+                "runtest_speed": "animation.scolipede.runtest_speed"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.scolipede"
             ],
             "spawn_egg": {
                 "texture": "0545_scolipede_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.scolipede.cry": "cobblemon.scolipede.cry"
             }
         }
     }

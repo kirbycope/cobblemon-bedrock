@@ -2,29 +2,55 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0171_lanturn",
+            "identifier": "cobblemon:p0171_lanturn",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0171_lanturn/lanturn"
+                "default": "textures/entity/0171_lanturn/lanturn",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0171_lanturn/lanturn",
+                "emissive_0_0": "textures/entity/0171_lanturn/lanturn_emissive",
+                "emissive2_0_0": "textures/entity/0171_lanturn/lanturn_emissive",
+                "v1": "textures/entity/0171_lanturn/lanturn_shiny",
+                "emissive_1_0": "textures/entity/0171_lanturn/lanturn_emissive_shiny",
+                "emissive2_1_0": "textures/entity/0171_lanturn/lanturn_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.lanturn"
+                "g_lanturn": "geometry.lanturn"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.lanturn.pose",
+                "blink_quirk": "controller.animation.lanturn.blink",
+                "look_at_target": "animation.0171_lanturn.look",
                 "ground_idle": "animation.lanturn.ground_idle",
+                "ground_walk": "animation.lanturn.ground_walk",
+                "ground_battle_idle": "animation.lanturn.ground_battle_idle",
+                "ground_faint_WIP": "animation.lanturn.ground_faint_WIP",
+                "water_idle": "animation.lanturn.water_idle",
+                "water_battle_idle": "animation.lanturn.water_battle_idle",
+                "water_swim": "animation.lanturn.water_swim",
+                "water_sleep": "animation.lanturn.water_sleep",
+                "water_faint": "animation.lanturn.water_faint",
+                "sleep": "animation.lanturn.sleep",
+                "cry": "animation.lanturn.cry",
                 "blink": "animation.lanturn.blink",
-                "cry": "animation.lanturn.cry"
+                "ground_walk_speed_test": "animation.lanturn.ground_walk_speed_test",
+                "water_swim_speed_test": "animation.lanturn.water_swim_speed_test"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.lanturn",
+                "controller.render.lanturn_emissive",
+                "controller.render.lanturn_emissive2"
             ],
             "spawn_egg": {
                 "texture": "0171_lanturn_spawn_egg"

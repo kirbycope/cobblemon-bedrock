@@ -1,0 +1,96 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:closecombat_target2",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/swipe"
+			}
+		},
+		"events": {
+			"impact": {
+				"particle_effect": {
+					"effect": "cobblemon:closecombat_targetimpact",
+					"type": "particle"
+				}
+			},
+			"sparks": {
+				"particle_effect": {
+					"effect": "cobblemon:closecombat_targetsparks",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 20,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1.4
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					"math.sin((v.emitter_age*1180)-500)*math.clamp(1*0.5,0.5,0.8)",
+					"0.2+math.clamp(1-1,0,1)+math.cos((v.emitter_age*1750)-500)*math.clamp(1*0.5,0.5,0.8)",
+					"-2+(v.particle_random_3-0.5)*0.5"
+				],
+				"direction": [
+					"(((v.particle_random_1-0.5)*4)+((v.particle_random_2-0.5)*3))*0.6",
+					"(((v.particle_random_2-0.5)*4)+((v.particle_random_3-0.5)*3))*0.6",
+					10
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.3
+			},
+			"minecraft:particle_lifetime_events": {
+				"timeline": {
+					"0.18": "impact",
+					"0.19": "sparks"
+				}
+			},
+			"minecraft:particle_initial_speed": 8,
+			"minecraft:particle_motion_dynamic": {
+				"linear_drag_coefficient": 4
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					1,
+					1
+				],
+				"facing_camera_mode": "lookat_direction",
+				"uv": {
+					"texture_width": 32,
+					"texture_height": 192,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							32,
+							32
+						],
+						"step_UV": [
+							0,
+							32
+						],
+						"frames_per_second": 21,
+						"max_frame": 6
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FFFFFAC3",
+						"1.0": "#FFFFBB23"
+					}
+				}
+			}
+		}
+	}
+}

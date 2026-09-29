@@ -2,29 +2,46 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0900_kleavor",
+            "identifier": "cobblemon:p0900_kleavor",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0900_kleavor/kleavor"
+                "default": "textures/entity/0900_kleavor/kleavor",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0900_kleavor/kleavor",
+                "v1": "textures/entity/0900_kleavor/kleavor_shiny"
             },
             "geometry": {
-                "default": "geometry.kleavor"
+                "g_kleavor": "geometry.kleavor"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.kleavor.pose",
+                "blink_quirk": "controller.animation.kleavor.blink",
+                "look_at_target": "animation.0900_kleavor.look",
                 "ground_idle": "animation.kleavor.ground_idle",
-                "test": "animation.kleavor.test",
-                "blink": "animation.kleavor.blink"
+                "battle_idle": "animation.kleavor.battle_idle",
+                "ground_walk": "animation.kleavor.ground_walk",
+                "ground_run": "animation.kleavor.ground_run",
+                "sleep": "animation.kleavor.sleep",
+                "blink": "animation.kleavor.blink",
+                "physical": "animation.kleavor.physical",
+                "special": "animation.kleavor.special",
+                "status": "animation.kleavor.status",
+                "recoil": "animation.kleavor.recoil",
+                "test": "animation.kleavor.test"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.kleavor"
             ],
             "spawn_egg": {
                 "texture": "0900_kleavor_spawn_egg"

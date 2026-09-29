@@ -2,34 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0495_snivy",
+            "identifier": "cobblemon:p0495_snivy",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0495_snivy/snivy"
+                "default": "textures/entity/0495_snivy/snivy",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0495_snivy/snivy",
+                "v1": "textures/entity/0495_snivy/snivy_shiny"
             },
             "geometry": {
-                "default": "geometry.snivy"
+                "g_snivy": "geometry.snivy"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.snivy.pose",
-                "ground_idle": "animation.snivy.ground_idle",
-                "sleep": "animation.snivy.sleep",
+                "blink_quirk": "controller.animation.snivy.blink",
+                "look_at_target": "animation.0495_snivy.look",
                 "blink": "animation.snivy.blink",
                 "cry": "animation.snivy.cry",
-                "ground_walk": "animation.snivy.ground_walk"
+                "ground_idle": "animation.snivy.ground_idle",
+                "ground_walk": "animation.snivy.ground_walk",
+                "sleep": "animation.snivy.sleep",
+                "shock": "animation.snivy.shock",
+                "angry": "animation.snivy.angry",
+                "sad": "animation.snivy.sad",
+                "unamused": "animation.snivy.unamused",
+                "happy": "animation.snivy.happy",
+                "recoil": "animation.snivy.recoil",
+                "looking_back": "animation.snivy.looking_back"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.snivy"
             ],
             "spawn_egg": {
                 "texture": "0495_snivy_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.snivy.cry": "cobblemon.snivy.cry"
             }
         }
     }

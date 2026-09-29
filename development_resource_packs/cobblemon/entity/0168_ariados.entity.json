@@ -2,32 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0168_ariados",
+            "identifier": "cobblemon:p0168_ariados",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0168_ariados/ariados"
+                "default": "textures/entity/0168_ariados/ariados",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0168_ariados/ariados",
+                "v1": "textures/entity/0168_ariados/ariados_shiny"
             },
             "geometry": {
-                "default": "geometry.ariados"
+                "g_ariados": "geometry.ariados"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.ariados.pose",
+                "blink_quirk": "controller.animation.ariados.blink",
+                "quirk": "controller.animation.ariados.quirk",
+                "quirk_0": "animation.ariados.fang_quirk",
+                "quirk_1": "animation.ariados.look_quirk_WIP",
+                "look_at_target": "animation.0168_ariados.look",
                 "ground_idle": "animation.ariados.ground_idle",
+                "battle_idle": "animation.ariados.battle_idle",
                 "ground_walk": "animation.ariados.ground_walk",
-                "blink": "animation.ariados.blink"
+                "ground_run": "animation.ariados.ground_run",
+                "ride_ground_walk": "animation.ariados.ride_ground_walk",
+                "ride_ground_run": "animation.ariados.ride_ground_run",
+                "ride_jump": "animation.ariados.ride_jump",
+                "fang_quirk": "animation.ariados.fang_quirk",
+                "blink": "animation.ariados.blink",
+                "sleep": "animation.ariados.sleep",
+                "battle_sleep": "animation.ariados.battle_sleep",
+                "cry": "animation.ariados.cry",
+                "recoil": "animation.ariados.recoil",
+                "look_quirk_WIP": "animation.ariados.look_quirk_WIP"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.ariados"
             ],
             "spawn_egg": {
                 "texture": "0168_ariados_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.ariados.cry": "cobblemon.ariados.cry"
             }
         }
     }

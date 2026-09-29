@@ -2,23 +2,34 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0367_huntail",
+            "identifier": "cobblemon:p0367_huntail",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0367_huntail/huntail"
+                "default": "textures/entity/0367_huntail/huntail",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0367_huntail/huntail",
+                "emissive_0_0": "textures/entity/0367_huntail/huntail_emissive",
+                "v1": "textures/entity/0367_huntail/huntail_shiny",
+                "emissive_1_0": "textures/entity/0367_huntail/huntail_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.huntail"
+                "g_huntail": "geometry.huntail"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.huntail.pose",
+                "blink_quirk": "controller.animation.huntail.blink",
+                "look_at_target": "animation.0367_huntail.look",
                 "sleep": "animation.huntail.sleep",
                 "ground_idle": "animation.huntail.ground_idle",
                 "water_idle": "animation.huntail.water_idle",
@@ -26,7 +37,8 @@
                 "blink": "animation.huntail.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.huntail",
+                "controller.render.huntail_emissive"
             ],
             "spawn_egg": {
                 "texture": "0367_huntail_spawn_egg"

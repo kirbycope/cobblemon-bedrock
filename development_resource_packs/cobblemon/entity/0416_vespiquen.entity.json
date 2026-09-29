@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0416_vespiquen",
+            "identifier": "cobblemon:p0416_vespiquen",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0416_vespiquen/vespiquen"
+                "default": "textures/entity/0416_vespiquen/vespiquen",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0416_vespiquen/vespiquen",
+                "emissive_0_0": "textures/entity/0416_vespiquen/vespiquen_emissive",
+                "v1": "textures/entity/0416_vespiquen/vespiquen_shiny",
+                "emissive_1_0": "textures/entity/0416_vespiquen/vespiquen_emissive"
             },
             "geometry": {
-                "default": "geometry.vespiquen"
+                "g_vespiquen": "geometry.vespiquen"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "animation.vespiquen.pose",
+                "blink_quirk": "controller.animation.vespiquen.blink",
                 "ground_idle": "animation.vespiquen.ground_idle",
                 "air_idle": "animation.vespiquen.air_idle",
                 "air_fly": "animation.vespiquen.air_fly",
@@ -29,7 +38,8 @@
                 "blink": "animation.vespiquen.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.vespiquen",
+                "controller.render.vespiquen_emissive"
             ],
             "spawn_egg": {
                 "texture": "0416_vespiquen_spawn_egg"

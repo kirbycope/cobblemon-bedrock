@@ -2,33 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0601_klinklang",
+            "identifier": "cobblemon:p0601_klinklang",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0601_klinklang/klinklang"
+                "default": "textures/entity/0601_klinklang/klinklang",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0601_klinklang/klinklang",
+                "v1": "textures/entity/0601_klinklang/klinklang_shiny"
             },
             "geometry": {
-                "default": "geometry.klinklang"
+                "g_klinklang": "geometry.klinklang"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.klinklang.pose",
+                "quirk": "animation.klinklang.quirk",
+                "quirk_0": "animation.klinklang.idle_quirk",
+                "quirk_1": "animation.klinklang.quirk",
                 "ground_idle": "animation.klinklang.ground_idle",
+                "battle_idle": "animation.klinklang.battle_idle",
                 "ground_walk": "animation.klinklang.ground_walk",
+                "ground_run": "animation.klinklang.ground_run",
+                "mount_walk": "animation.klinklang.mount_walk",
+                "mount_run": "animation.klinklang.mount_run",
+                "idle_quirk": "animation.klinklang.idle_quirk",
+                "physical": "animation.klinklang.physical",
+                "special": "animation.klinklang.special",
+                "status": "animation.klinklang.status",
+                "battle_cry": "animation.klinklang.battle_cry",
+                "cry": "animation.klinklang.cry",
                 "faint": "animation.klinklang.faint",
-                "sleep": "animation.klinklang.sleep"
+                "sleep": "animation.klinklang.sleep",
+                "recoil": "animation.klinklang.recoil",
+                "render": "animation.klinklang.render",
+                "ride_mount_walk": "animation.klinklang.ride_mount_walk",
+                "ride_mount_run": "animation.klinklang.ride_mount_run"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.klinklang"
             ],
             "spawn_egg": {
                 "texture": "0601_klinklang_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.klinklang.cry": "cobblemon.klinklang.cry"
             }
         }
     }

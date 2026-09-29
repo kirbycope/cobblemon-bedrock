@@ -2,33 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0093_haunter",
+            "identifier": "cobblemon:p0093_haunter",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0093_haunter/haunter"
+                "default": "textures/entity/0093_haunter/haunter",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0093_haunter/haunter",
+                "v1": "textures/entity/0093_haunter/haunter_shiny"
             },
             "geometry": {
-                "default": "geometry.haunter"
+                "g_haunter": "geometry.haunter"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.haunter.pose",
+                "blink_quirk": "controller.animation.haunter.blink",
                 "ground_idle": "animation.haunter.ground_idle",
-                "mouth_closed": "animation.haunter.mouth_closed",
+                "render": "animation.haunter.render",
                 "blink": "animation.haunter.blink",
+                "toungue_test": "animation.haunter.toungue_test",
                 "cry": "animation.haunter.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.haunter"
             ],
             "spawn_egg": {
                 "texture": "0093_haunter_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.haunter.cry": "cobblemon.haunter.cry"
             }
         }
     }

@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0153_bayleef",
+            "identifier": "cobblemon:p0153_bayleef",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0153_bayleef/bayleef"
+                "default": "textures/entity/0153_bayleef/bayleef",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0153_bayleef/bayleef",
+                "v1": "textures/entity/0153_bayleef/bayleef_shiny"
             },
             "geometry": {
-                "default": "geometry.bayleef"
+                "g_bayleef": "geometry.bayleef"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.bayleef.pose",
+                "blink_quirk": "controller.animation.bayleef.blink",
+                "look_at_target": "animation.0153_bayleef.look",
                 "ground_idle": "animation.bayleef.ground_idle",
                 "battle_idle": "animation.bayleef.battle_idle",
                 "ground_walk": "animation.bayleef.ground_walk",
@@ -27,10 +36,13 @@
                 "blink": "animation.bayleef.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.bayleef"
             ],
             "spawn_egg": {
                 "texture": "0153_bayleef_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.bayleef.cry": "cobblemon.bayleef.cry"
             }
         }
     }

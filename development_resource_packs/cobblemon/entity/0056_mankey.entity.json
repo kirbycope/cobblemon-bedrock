@@ -2,23 +2,30 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0056_mankey",
+            "identifier": "cobblemon:p0056_mankey",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0056_mankey/mankey"
+                "default": "textures/entity/0056_mankey/mankey",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0056_mankey/mankey",
+                "v1": "textures/entity/0056_mankey/mankey_shiny"
             },
             "geometry": {
-                "default": "geometry.mankey"
+                "g_mankey": "geometry.mankey"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.mankey.pose",
+                "blink_quirk": "controller.animation.mankey.blink",
                 "ground_idle": "animation.mankey.ground_idle",
                 "ground_walk": "animation.mankey.ground_walk",
                 "physical_attack": "animation.mankey.physical_attack",
@@ -28,10 +35,13 @@
                 "cry": "animation.mankey.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.mankey"
             ],
             "spawn_egg": {
                 "texture": "0056_mankey_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.mankey.cry": "cobblemon.mankey.cry"
             }
         }
     }

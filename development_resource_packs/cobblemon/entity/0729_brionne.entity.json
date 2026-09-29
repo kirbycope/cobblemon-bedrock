@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0729_brionne",
+            "identifier": "cobblemon:p0729_brionne",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0729_brionne/brionne"
+                "default": "textures/entity/0729_brionne/brionne",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0729_brionne/brionne",
+                "v1": "textures/entity/0729_brionne/brionne_shiny"
             },
             "geometry": {
-                "default": "geometry.brionne"
+                "g_brionne": "geometry.brionne"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.brionne.pose",
+                "blink_quirk": "controller.animation.brionne.blink",
+                "look_at_target": "animation.0729_brionne.look",
                 "ground_idle": "animation.brionne.ground_idle",
                 "ground_walk": "animation.brionne.ground_walk",
                 "battle_idle": "animation.brionne.battle_idle",
@@ -26,13 +35,24 @@
                 "cry": "animation.brionne.cry",
                 "water_idle": "animation.brionne.water_idle",
                 "water_swim": "animation.brionne.water_swim",
-                "faint": "animation.brionne.faint"
+                "faint": "animation.brionne.faint",
+                "hold_item": "animation.brionne.hold_item",
+                "hold_weapon": "animation.brionne.hold_weapon",
+                "shock": "animation.brionne.shock",
+                "angry": "animation.brionne.angry",
+                "sad": "animation.brionne.sad",
+                "unamused": "animation.brionne.unamused",
+                "happy": "animation.brionne.happy",
+                "hurt": "animation.brionne.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.brionne"
             ],
             "spawn_egg": {
                 "texture": "0729_brionne_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.brionne.cry": "cobblemon.brionne.cry"
             }
         }
     }

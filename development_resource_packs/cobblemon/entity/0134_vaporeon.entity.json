@@ -2,36 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0134_vaporeon",
+            "identifier": "cobblemon:p0134_vaporeon",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0134_vaporeon/vaporeon"
+                "default": "textures/entity/0134_vaporeon/vaporeon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0134_vaporeon/vaporeon",
+                "v1": "textures/entity/0134_vaporeon/vaporeon_shiny"
             },
             "geometry": {
-                "default": "geometry.vaporeon"
+                "g_vaporeon": "geometry.vaporeon"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.vaporeon.pose",
+                "pose": "animation.vaporeon.pose",
+                "blink_quirk": "controller.animation.vaporeon.blink",
+                "look_at_target": "animation.0134_vaporeon.look",
                 "ground_idle": "animation.vaporeon.ground_idle",
-                "ground_walk": "animation.vaporeon.ground_walk",
-                "ground_run": "animation.vaporeon.ground_run",
-                "water_idle": "animation.vaporeon.water_idle",
-                "water_swim": "animation.vaporeon.water_swim",
-                "cry": "animation.vaporeon.cry",
-                "blink": "animation.vaporeon.blink"
+                "blink": "animation.vaporeon.blink",
+                "cry": "animation.vaporeon.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.vaporeon"
             ],
             "spawn_egg": {
                 "texture": "0134_vaporeon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.vaporeon.cry": "cobblemon.vaporeon.cry"
             }
         }
     }

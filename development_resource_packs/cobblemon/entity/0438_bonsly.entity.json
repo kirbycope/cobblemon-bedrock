@@ -2,23 +2,30 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0438_bonsly",
+            "identifier": "cobblemon:p0438_bonsly",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0438_bonsly/bonsly"
+                "default": "textures/entity/0438_bonsly/bonsly",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0438_bonsly/bonsly",
+                "v1": "textures/entity/0438_bonsly/bonsly_shiny"
             },
             "geometry": {
-                "default": "geometry.bonsly"
+                "g_bonsly": "geometry.bonsly"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.bonsly.pose",
+                "blink_quirk": "controller.animation.bonsly.blink",
                 "ground_idle": "animation.bonsly.ground_idle",
                 "battle_idle": "animation.bonsly.battle_idle",
                 "ground_walk": "animation.bonsly.ground_walk",
@@ -28,7 +35,7 @@
                 "sleep_pot": "animation.bonsly.sleep_pot"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.bonsly"
             ],
             "spawn_egg": {
                 "texture": "0438_bonsly_spawn_egg"

@@ -2,32 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0742_cutiefly",
+            "identifier": "cobblemon:p0742_cutiefly",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0742_cutiefly/cutiefly"
+                "default": "textures/entity/0742_cutiefly/cutiefly",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0742_cutiefly/cutiefly",
+                "v1": "textures/entity/0742_cutiefly/cutiefly_shiny"
             },
             "geometry": {
-                "default": "geometry.cutiefly"
+                "g_cutiefly": "geometry.cutiefly"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.cutiefly.pose",
+                "look_at_target": "animation.0742_cutiefly.look",
                 "ground_idle": "animation.cutiefly.ground_idle",
                 "ground_walk": "animation.cutiefly.ground_walk",
                 "sleep": "animation.cutiefly.sleep",
                 "faint": "animation.cutiefly.faint",
-                "blink": "animation.cutiefly.blink",
-                "cry": "animation.cutiefly.cry"
+                "cry": "animation.cutiefly.cry",
+                "ditto_face": "animation.cutiefly.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.cutiefly"
             ],
             "spawn_egg": {
                 "texture": "0742_cutiefly_spawn_egg"

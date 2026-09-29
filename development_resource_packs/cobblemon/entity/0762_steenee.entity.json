@@ -2,28 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0762_steenee",
+            "identifier": "cobblemon:p0762_steenee",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0762_steenee/steenee"
+                "default": "textures/entity/0762_steenee/steenee",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0762_steenee/steenee",
+                "v1": "textures/entity/0762_steenee/steenee_shiny"
             },
             "geometry": {
-                "default": "geometry.steenee"
+                "g_steenee": "geometry.steenee"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.steenee.pose",
+                "blink_quirk": "controller.animation.steenee.blink",
+                "look_at_target": "animation.0762_steenee.look",
                 "ground_idle": "animation.steenee.ground_idle",
                 "blink": "animation.steenee.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.steenee"
             ],
             "spawn_egg": {
                 "texture": "0762_steenee_spawn_egg"

@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0739_crabrawler",
+            "identifier": "cobblemon:p0739_crabrawler",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0739_crabrawler/crabrawler"
+                "default": "textures/entity/0739_crabrawler/crabrawler",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0739_crabrawler/crabrawler",
+                "v1": "textures/entity/0739_crabrawler/crabrawler_shiny"
             },
             "geometry": {
-                "default": "geometry.crabrawler"
+                "g_crabrawler": "geometry.crabrawler"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.crabrawler.pose",
+                "blink_quirk": "controller.animation.crabrawler.blink",
+                "look_at_target": "animation.0739_crabrawler.look",
                 "ground_idle": "animation.crabrawler.ground_idle",
                 "ground_walk": "animation.crabrawler.ground_walk",
                 "portrait": "animation.crabrawler.portrait",
@@ -26,7 +35,7 @@
                 "blink": "animation.crabrawler.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.crabrawler"
             ],
             "spawn_egg": {
                 "texture": "0739_crabrawler_spawn_egg"

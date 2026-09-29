@@ -2,23 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0208_steelix",
+            "identifier": "cobblemon:p0208_steelix",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0208_steelix/steelix"
+                "default": "textures/entity/0208_steelix/steelix",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0208_steelix/steelix",
+                "v1": "textures/entity/0208_steelix/steelix_shiny",
+                "v2": "textures/entity/0208_steelix/steelix",
+                "v3": "textures/entity/0208_steelix/steelix_shiny"
             },
             "geometry": {
-                "default": "geometry.steelix"
+                "g_steelix_male": "geometry.steelix_male",
+                "g_steelix_female": "geometry.steelix_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.steelix.pose",
+                "blink_quirk": "controller.animation.steelix.blink",
+                "quirk": "controller.animation.steelix.quirk",
+                "quirk_0": "animation.steelix.quirk_jawjitter",
+                "look_at_target": "animation.0208_steelix.look",
                 "ground_idle": "animation.steelix.ground_idle",
                 "ground_walk": "animation.steelix.ground_walk",
                 "battle_idle": "animation.steelix.battle_idle",
@@ -27,13 +42,17 @@
                 "demon": "animation.steelix.demon",
                 "quirk_jawjitter": "animation.steelix.quirk_jawjitter",
                 "sleep": "animation.steelix.sleep",
-                "faint_WIP": "animation.steelix.faint_WIP"
+                "faint_WIP": "animation.steelix.faint_WIP",
+                "ditto_face": "animation.steelix.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.steelix"
             ],
             "spawn_egg": {
                 "texture": "0208_steelix_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.steelix.cry": "cobblemon.steelix.cry"
             }
         }
     }

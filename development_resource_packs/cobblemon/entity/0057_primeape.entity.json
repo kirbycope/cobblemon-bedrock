@@ -2,35 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0057_primeape",
+            "identifier": "cobblemon:p0057_primeape",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0057_primeape/primeape"
+                "default": "textures/entity/0057_primeape/primeape",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0057_primeape/primeape",
+                "v1": "textures/entity/0057_primeape/primeape_shiny"
             },
             "geometry": {
-                "default": "geometry.primeape"
+                "g_primeape": "geometry.primeape"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.primeape.pose",
+                "blink_quirk": "controller.animation.primeape.blink",
                 "ground_idle": "animation.primeape.ground_idle",
+                "battle_idle": "animation.primeape.battle_idle",
+                "physical": "animation.primeape.physical",
                 "ground_walk": "animation.primeape.ground_walk",
                 "faint": "animation.primeape.faint",
                 "sleep": "animation.primeape.sleep",
                 "blink": "animation.primeape.blink",
-                "cry": "animation.primeape.cry"
+                "cry": "animation.primeape.cry",
+                "recoil": "animation.primeape.recoil",
+                "cyclopsside": "animation.primeape.cyclopsside"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.primeape"
             ],
             "spawn_egg": {
                 "texture": "0057_primeape_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.primeape.cry": "cobblemon.primeape.cry"
             }
         }
     }

@@ -1,0 +1,61 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.vibrava.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "idle": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "moving": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.vibrava.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

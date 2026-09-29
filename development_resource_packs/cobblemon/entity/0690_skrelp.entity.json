@@ -2,32 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0690_skrelp",
+            "identifier": "cobblemon:p0690_skrelp",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0690_skrelp/skrelp"
+                "default": "textures/entity/0690_skrelp/skrelp",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0690_skrelp/skrelp",
+                "v1": "textures/entity/0690_skrelp/skrelp_shiny"
             },
             "geometry": {
-                "default": "geometry.skrelp"
+                "g_skrelp": "geometry.skrelp"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.skrelp.pose",
+                "blink_quirk": "controller.animation.skrelp.blink",
+                "look_at_target": "animation.0690_skrelp.look",
                 "water_idle": "animation.skrelp.water_idle",
                 "blink": "animation.skrelp.blink",
                 "cry": "animation.skrelp.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.skrelp"
             ],
             "spawn_egg": {
                 "texture": "0690_skrelp_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.skrelp.cry": "cobblemon.skrelp.cry"
             }
         }
     }

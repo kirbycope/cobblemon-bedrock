@@ -1,0 +1,77 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:hisuiafterspark",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/balls/hisuiafterspark"
+			}
+		},
+		"components": {
+			"minecraft:emitter_initialization": {
+				"creation_expression": "variable.funny = math.random(0.03,0.06);"
+			},
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 25,
+				"max_particles": 15
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_sphere": {
+				"offset": [
+					"-math.random(-0.25,0.25)*3.75",
+					"2.8-math.random(-0.25,0.25)*3.75",
+					"-math.random(-0.25,0.25)*3.75"
+				],
+				"direction": [
+					0,
+					1,
+					0
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 1
+			},
+			"minecraft:particle_initial_speed": 0.4,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.05+variable.funny",
+					"0.05+variable.funny"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 20,
+					"texture_height": 5,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							5,
+							5
+						],
+						"step_UV": [
+							5,
+							0
+						],
+						"frames_per_second": 12,
+						"max_frame": 4
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#ffffffff",
+						"0.53": "#FFFF0000"
+					}
+				}
+			}
+		}
+	}
+}

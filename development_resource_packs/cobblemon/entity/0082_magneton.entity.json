@@ -2,34 +2,48 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0082_magneton",
+            "identifier": "cobblemon:p0082_magneton",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0082_magneton/magneton"
+                "default": "textures/entity/0082_magneton/magneton",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0082_magneton/magneton",
+                "v1": "textures/entity/0082_magneton/magneton_shiny"
             },
             "geometry": {
-                "default": "geometry.magneton"
+                "g_magneton": "geometry.magneton"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.magneton.pose",
+                "blink_quirk": "controller.animation.magneton.blink",
                 "blink": "animation.magneton.blink",
                 "air_idle": "animation.magneton.air_idle",
                 "air_fly": "animation.magneton.air_fly",
                 "sleep": "animation.magneton.sleep",
-                "faint": "animation.magneton.faint"
+                "faint": "animation.magneton.faint",
+                "cry": "animation.magneton.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.magneton"
             ],
             "spawn_egg": {
                 "texture": "0082_magneton_spawn_egg"
+            },
+            "particle_effects": {
+                "metal_sparks": "cobblemon:metal_sparks"
+            },
+            "sound_effects": {
+                "pokemon.magneton.cry": "cobblemon.magneton.cry"
             }
         }
     }

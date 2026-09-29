@@ -2,23 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0314_illumise",
+            "identifier": "cobblemon:p0314_illumise",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0314_illumise/illumise"
+                "default": "textures/entity/0314_illumise/illumise",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0314_illumise/illumise",
+                "emissive_0_0": "textures/entity/0314_illumise/illumise_emissive",
+                "v1": "textures/entity/0314_illumise/illumise_shiny",
+                "emissive_1_0": "textures/entity/0314_illumise/illumise_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.illumise"
+                "g_illumise": "geometry.illumise"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.illumise.pose",
+                "blink_quirk": "controller.animation.illumise.blink",
+                "quirk": "controller.animation.illumise.quirk",
+                "quirk_0": "animation.illumise.flicker_quirk",
+                "look_at_target": "animation.0314_illumise.look",
                 "ground_idle": "animation.illumise.ground_idle",
                 "ground_walk": "animation.illumise.ground_walk",
                 "ground_run": "animation.illumise.ground_run",
@@ -28,11 +42,13 @@
                 "sleep": "animation.illumise.sleep",
                 "blink": "animation.illumise.blink",
                 "cry": "animation.illumise.cry",
+                "flicker_quirk": "animation.illumise.flicker_quirk",
                 "move": "animation.illumise.move",
                 "move_run": "animation.illumise.move_run"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.illumise",
+                "controller.render.illumise_emissive"
             ],
             "spawn_egg": {
                 "texture": "0314_illumise_spawn_egg"

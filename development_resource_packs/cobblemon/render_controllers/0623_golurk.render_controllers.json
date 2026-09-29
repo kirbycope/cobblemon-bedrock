@@ -1,0 +1,59 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.golurk": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_golurk",
+                        "Geometry.g_golurk"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.golurk_color": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.color": [
+                        "Texture.color_0_0",
+                        "Texture.color_0_1",
+                        "Texture.color_0_2",
+                        "Texture.color_1_0",
+                        "Texture.color_1_1",
+                        "Texture.color_1_2"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_golurk",
+                        "Geometry.g_golurk"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.color[query.variant * 3 + math.mod(math.floor(q.life_time * 10), 3)]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

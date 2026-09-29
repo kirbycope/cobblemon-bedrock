@@ -2,29 +2,64 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0274_nuzleaf",
+            "identifier": "cobblemon:p0274_nuzleaf",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0274_nuzleaf/nuzleaf"
+                "default": "textures/entity/0274_nuzleaf/nuzleaf",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0274_nuzleaf/nuzleaf",
+                "v1": "textures/entity/0274_nuzleaf/nuzleaf_shiny",
+                "v2": "textures/entity/0274_nuzleaf/nuzleaf",
+                "v3": "textures/entity/0274_nuzleaf/nuzleaf_shiny"
             },
             "geometry": {
-                "default": "geometry.nuzleaf"
+                "g_nuzleaf_male": "geometry.nuzleaf_male",
+                "g_nuzleaf_female": "geometry.nuzleaf_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.nuzleaf.pose",
+                "blink_quirk": "controller.animation.nuzleaf.blink",
+                "look_at_target": "animation.0274_nuzleaf.look",
                 "ground_idle": "animation.nuzleaf.ground_idle",
+                "battle_idle": "animation.nuzleaf.battle_idle",
+                "battle_idle2": "animation.nuzleaf.battle_idle2",
+                "sleep": "animation.nuzleaf.sleep",
                 "blink": "animation.nuzleaf.blink",
-                "cry": "animation.nuzleaf.cry"
+                "cry": "animation.nuzleaf.cry",
+                "smile_pmd": "animation.nuzleaf.smile_pmd",
+                "happy_pmd": "animation.nuzleaf.happy_pmd",
+                "pained_pmd": "animation.nuzleaf.pained_pmd",
+                "angry_pmd": "animation.nuzleaf.angry_pmd",
+                "surprised_pmd": "animation.nuzleaf.surprised_pmd",
+                "embarrassed_pmd": "animation.nuzleaf.embarrassed_pmd",
+                "teary_eyed_pmd": "animation.nuzleaf.teary_eyed_pmd",
+                "amazed_pmd": "animation.nuzleaf.amazed_pmd",
+                "confused_pmd": "animation.nuzleaf.confused_pmd",
+                "cheerful_pmd": "animation.nuzleaf.cheerful_pmd",
+                "sad_pmd": "animation.nuzleaf.sad_pmd",
+                "evil_pmd": "animation.nuzleaf.evil_pmd",
+                "pained_evil_pmd": "animation.nuzleaf.pained_evil_pmd",
+                "knee": "animation.nuzleaf.knee",
+                "happy": "animation.nuzleaf.happy",
+                "surprised_evil_pmd": "animation.nuzleaf.surprised_evil_pmd",
+                "hurt": "animation.nuzleaf.hurt",
+                "angry": "animation.nuzleaf.angry",
+                "surprised": "animation.nuzleaf.surprised",
+                "disintrested": "animation.nuzleaf.disintrested"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.nuzleaf"
             ],
             "spawn_egg": {
                 "texture": "0274_nuzleaf_spawn_egg"

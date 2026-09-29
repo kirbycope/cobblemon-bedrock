@@ -1,0 +1,76 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:iceshard_actorlaunch",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/ice/iceshard"
+			}
+		},
+		"events": {
+			"crash": {
+				"particle_effect": {
+					"effect": "cobblemon:iceshard_target",
+					"type": "particle"
+				}
+			},
+			"launch": {
+				"particle_effect": {
+					"effect": "cobblemon:iceshard_actormistlaunch",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_initialization": {
+				"creation_expression": "v.target_deltaz=5;"
+			},
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 1
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_point": {},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.4
+			},
+			"minecraft:particle_lifetime_events": {
+				"creation_event": "launch",
+				"expiration_event": "crash"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_4*3)*90",
+				"rotation_rate": "(math.random(12,16)*16)*((math.round(v.particle_random_1)*2)-1)"
+			},
+			"minecraft:particle_motion_parametric": {
+				"relative_position": [
+					"(-(v.target_deltax+(v.particle_random_1-0.5))*(v.particle_age / v.particle_lifetime))",
+					"((v.target_deltay+(v.particle_random_2-0.5))*(v.particle_age / v.particle_lifetime))",
+					"-v.target_deltaz*(v.particle_age / v.particle_lifetime)"
+				]
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.2,
+					0.2
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 42,
+					"texture_height": 14,
+					"uv": [
+						"math.round(v.particle_random_4*2)*14",
+						0
+					],
+					"uv_size": [
+						14,
+						14
+					]
+				}
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

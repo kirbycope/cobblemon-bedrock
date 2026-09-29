@@ -39,6 +39,18 @@
 				},
 				"tail4": {
 					"rotation": ["math.sin(q.anim_time*90*2.5-135)*2", 0, 0]
+				},
+				"head_ruff_left": {
+					"rotation": [0, -10, 0]
+				},
+				"head_ruff_right": {
+					"rotation": [0, 10, 0]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
 				}
 			}
 		},
@@ -57,7 +69,7 @@
 					"rotation": ["-20+math.sin(q.anim_time*90*10-90)*2", 0, 0]
 				},
 				"ear_ruff_right": {
-					"rotation": [-1, 5, "-math.sin(q.anim_time*90*10+45)*2"]
+					"rotation": [5, 15, "-math.sin(q.anim_time*90*10+45)*2"]
 				},
 				"ear_ruff_right2": {
 					"rotation": [0, 0, "-math.sin(q.anim_time*90*10)*2"]
@@ -66,7 +78,7 @@
 					"rotation": [0, 0, "-math.sin(q.anim_time*90*10-45)*2"]
 				},
 				"ear_ruff_left": {
-					"rotation": [-1, -5, "math.sin(q.anim_time*90*10+45)*2"]
+					"rotation": [5, -15, "math.sin(q.anim_time*90*10+45)*2"]
 				},
 				"ear_ruff_left2": {
 					"rotation": [0, 0, "math.sin(q.anim_time*90*10)*2"]
@@ -125,6 +137,12 @@
 				},
 				"leg_back_left3": {
 					"rotation": ["math.sin(q.anim_time*90*5+200)*10", 0, 0]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
 				}
 			}
 		},
@@ -179,11 +197,11 @@
 						"0.5833": [0, 0, 0]
 					}
 				},
-				"fangs": {
+				"mouth_top": {
 					"position": {
 						"0.0": [0, 0, 0],
-						"0.0417": [0, -0.6, 0],
-						"0.5": [0, -0.6, 0],
+						"0.0417": [0, -1, 0],
+						"0.5": [0, -1, 0],
 						"0.5417": [0, 0, 0]
 					}
 				}
@@ -191,6 +209,143 @@
 			"sound_effects": {
 				"0.0": {
 					"effect": "pokemon.fennekin.cry"
+				}
+			}
+		},
+		"animation.fennekin.surprise_hair": {
+			"loop": true,
+			"bones": {
+				"ear_ruff_left": {
+					"rotation": [0, 0, 2.5]
+				},
+				"ear_ruff_side_left": {
+					"rotation": [0, 10, 0]
+				},
+				"ear_ruff_left2": {
+					"rotation": [0, 0, 5]
+				},
+				"ear_ruff_left3": {
+					"rotation": [4.68159, -4.87252, 5.31614]
+				},
+				"ear_ruff_side_right": {
+					"rotation": [0, -10, 0]
+				},
+				"ear_ruff_right2": {
+					"rotation": [0, 0, -5]
+				},
+				"ear_ruff_right3": {
+					"rotation": [4.68159, 4.87252, -5.31614]
+				},
+				"ear_ruff_shock_left": {
+					"rotation": [0, 0, 0]
+				}
+			}
+		},
+		"animation.fennekin.shock": {
+			"loop": true,
+			"bones": {
+				"pupil_left2": {
+					"scale": [0.7, 0.7, 1]
+				},
+				"mouth_top": {
+					"position": [0, -1, 0]
+				},
+				"jaw": {
+					"rotation": [65, 0, 0]
+				},
+				"pupil_right2": {
+					"scale": [0.7, 0.7, 1]
+				}
+			}
+		},
+		"animation.fennekin.angry": {
+			"loop": true,
+			"bones": {
+				"eye_angry_left": {
+					"position": [0.1, 0, -0.1]
+				},
+				"eye_angry_right": {
+					"position": [-0.1, 0, -0.1]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
+				}
+			}
+		},
+		"animation.fennekin.sad": {
+			"loop": true,
+			"bones": {
+				"eye_sad_left": {
+					"position": [0.1, 0, -0.1]
+				},
+				"eye_sad_right": {
+					"position": [-0.1, 0, -0.1]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
+				}
+			}
+		},
+		"animation.fennekin.happy": {
+			"loop": true,
+			"bones": {
+				"eyelid_happy_left": {
+					"position": [0.1, 0, -0.1]
+				},
+				"mouth_top": {
+					"position": [0, -1, 0]
+				},
+				"jaw": {
+					"rotation": [65, 0, 0]
+				},
+				"eyelid_happy_right": {
+					"position": [-0.1, 0, -0.1]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
+				}
+			}
+		},
+		"animation.fennekin.blush": {
+			"loop": true,
+			"bones": {
+				"blush_left": {
+					"position": [0.1, 0, 0]
+				},
+				"blush_right": {
+					"position": [-0.1, 0, 0]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
+				}
+			}
+		},
+		"animation.fennekin.recoil": {
+			"loop": true,
+			"bones": {
+				"eyelid_recoil_left": {
+					"position": [0.1, 0, -0.1]
+				},
+				"eyelid_recoil_right": {
+					"position": [-0.1, 0, -0.1]
+				},
+				"ear_ruff_shock_left": {
+					"scale": 0
+				},
+				"ear_ruff_shock_right": {
+					"scale": 0
 				}
 			}
 		}

@@ -2,29 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0146_moltres",
+            "identifier": "cobblemon:p0146_moltres",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0146_moltres/moltres"
+                "default": "textures/entity/0146_moltres/moltres",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0146_moltres/moltres",
+                "emissive_0_0": "textures/entity/0146_moltres/moltres_emissive",
+                "v1": "textures/entity/0146_moltres/moltres_shiny",
+                "emissive_1_0": "textures/entity/0146_moltres/moltres_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.moltres"
+                "g_moltres": "geometry.moltres"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.moltres.pose",
+                "pose": "animation.moltres.pose",
+                "blink_quirk": "controller.animation.moltres.blink",
+                "look_at_target": "animation.0146_moltres.look",
                 "ground_idle": "animation.moltres.ground_idle",
                 "air_idle": "animation.moltres.air_idle",
-                "air_fly": "animation.moltres.air_fly"
+                "air_fly": "animation.moltres.air_fly",
+                "blink": "animation.moltres.blink",
+                "hold_item": "animation.moltres.hold_item",
+                "hurt": "animation.moltres.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.moltres",
+                "controller.render.moltres_emissive"
             ],
             "spawn_egg": {
                 "texture": "0146_moltres_spawn_egg"

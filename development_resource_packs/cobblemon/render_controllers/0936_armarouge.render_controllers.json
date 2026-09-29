@@ -1,0 +1,61 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.armarouge": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_armarouge",
+                        "Geometry.g_armarouge"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.armarouge_flame": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.flame": [
+                        "Texture.flame_0_0",
+                        "Texture.flame_0_1",
+                        "Texture.flame_0_2",
+                        "Texture.flame_0_3",
+                        "Texture.flame_1_0",
+                        "Texture.flame_1_1",
+                        "Texture.flame_1_2",
+                        "Texture.flame_1_3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_armarouge",
+                        "Geometry.g_armarouge"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.flame[query.variant * 4 + math.mod(math.floor(q.life_time * 8), 4)]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

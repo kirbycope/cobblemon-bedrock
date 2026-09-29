@@ -2,32 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0101_electrode",
+            "identifier": "cobblemon:p0101_electrode",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0101_electrode/electrode"
+                "default": "textures/entity/0101_electrode/electrode",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0101_electrode/electrode",
+                "v1": "textures/entity/0101_electrode/electrode_shiny",
+                "v2": "textures/entity/0101_electrode/electrode_hisuian",
+                "v3": "textures/entity/0101_electrode/electrode_hisuian_shiny",
+                "v4": "textures/entity/0101_electrode/electrode",
+                "green_4_0": "textures/entity/0101_electrode/electrode_watermelon_green",
+                "v5": "textures/entity/0101_electrode/electrode_shiny",
+                "green_5_0": "textures/entity/0101_electrode/electrode_watermelon_green",
+                "v6": "textures/entity/0101_electrode/electrode",
+                "lime_6_0": "textures/entity/0101_electrode/electrode_watermelon_lime",
+                "v7": "textures/entity/0101_electrode/electrode_shiny",
+                "lime_7_0": "textures/entity/0101_electrode/electrode_watermelon_lime"
             },
             "geometry": {
-                "default": "geometry.electrode"
+                "g_electrode": "geometry.electrode",
+                "g_electrode_hisuian": "geometry.electrode_hisuian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.electrode.pose",
+                "blink_quirk": "controller.animation.electrode.blink",
                 "ground_idle": "animation.electrode.ground_idle",
                 "ground_walk": "animation.electrode.ground_walk",
-                "blink": "animation.electrode.blink"
+                "blink": "animation.electrode.blink",
+                "cry": "animation.electrode.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.electrode",
+                "controller.render.electrode_green",
+                "controller.render.electrode_lime"
             ],
             "spawn_egg": {
                 "texture": "0101_electrode_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.electrode.cry": "cobblemon.electrode.cry"
             }
         }
     }

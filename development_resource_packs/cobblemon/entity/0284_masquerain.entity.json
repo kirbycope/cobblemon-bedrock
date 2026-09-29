@@ -2,30 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0284_masquerain",
+            "identifier": "cobblemon:p0284_masquerain",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0284_masquerain/masquerain"
+                "default": "textures/entity/0284_masquerain/masquerain",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0284_masquerain/masquerain",
+                "wings_0_0": "textures/entity/0284_masquerain/masquerain_wings",
+                "v1": "textures/entity/0284_masquerain/masquerain_shiny",
+                "wings_1_0": "textures/entity/0284_masquerain/masquerain_wings_shiny"
             },
             "geometry": {
-                "default": "geometry.masquerain"
+                "g_masquerain": "geometry.masquerain"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.masquerain.pose",
+                "blink_quirk": "controller.animation.masquerain.blink",
+                "look_at_target": "animation.0284_masquerain.look",
                 "ground_idle": "animation.masquerain.ground_idle",
                 "ground_walk": "animation.masquerain.ground_walk",
                 "blink": "animation.masquerain.blink",
                 "cry": "animation.masquerain.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.masquerain",
+                "controller.render.masquerain_wings"
             ],
             "spawn_egg": {
                 "texture": "0284_masquerain_spawn_egg"

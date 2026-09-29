@@ -2,23 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0052_meowth",
+            "identifier": "cobblemon:p0052_meowth",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0052_meowth/meowth"
+                "default": "textures/entity/0052_meowth/meowth",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0052_meowth/meowth",
+                "v1": "textures/entity/0052_meowth/meowth_shiny",
+                "v2": "textures/entity/0052_meowth/meowth_alolan",
+                "v3": "textures/entity/0052_meowth/meowth_alolan_shiny",
+                "v4": "textures/entity/0052_meowth/meowth_galarian",
+                "v5": "textures/entity/0052_meowth/meowth_galarian_shiny"
             },
             "geometry": {
-                "default": "geometry.meowth"
+                "g_meowth": "geometry.meowth",
+                "g_meowth_alolan": "geometry.meowth_alolan",
+                "g_meowth_galarian": "geometry.meowth_galarian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.meowth.pose",
+                "blink_quirk": "controller.animation.meowth.blink",
+                "look_at_target": "animation.0052_meowth.look",
                 "ground_idle": "animation.meowth.ground_idle",
                 "sleep": "animation.meowth.sleep",
                 "blink": "animation.meowth.blink",
@@ -26,10 +41,13 @@
                 "cry": "animation.meowth.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.meowth"
             ],
             "spawn_egg": {
                 "texture": "0052_meowth_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.meowth.cry": "cobblemon.meowth.cry"
             }
         }
     }

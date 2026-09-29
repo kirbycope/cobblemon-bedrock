@@ -2,29 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0275_shiftry",
+            "identifier": "cobblemon:p0275_shiftry",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0275_shiftry/shiftry"
+                "default": "textures/entity/0275_shiftry/shiftry",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0275_shiftry/shiftry",
+                "v1": "textures/entity/0275_shiftry/shiftry_shiny",
+                "v2": "textures/entity/0275_shiftry/shiftry",
+                "v3": "textures/entity/0275_shiftry/shiftry_shiny"
             },
             "geometry": {
-                "default": "geometry.shiftry"
+                "g_shiftry_male": "geometry.shiftry_male",
+                "g_shiftry_female": "geometry.shiftry_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.shiftry.pose",
-                "idle": "animation.shiftry.idle",
+                "blink_quirk": "controller.animation.shiftry.blink",
+                "look_at_target": "animation.0275_shiftry.look",
+                "ground_idle": "animation.shiftry.ground_idle",
+                "sleep": "animation.shiftry.sleep",
+                "mouth_open_example": "animation.shiftry.mouth_open_example",
+                "happy": "animation.shiftry.happy",
+                "sad": "animation.shiftry.sad",
+                "hurt": "animation.shiftry.hurt",
+                "surprised": "animation.shiftry.surprised",
+                "angry": "animation.shiftry.angry",
+                "disintrested": "animation.shiftry.disintrested",
                 "blink": "animation.shiftry.blink",
-                "call": "animation.shiftry.call"
+                "side_eye": "animation.shiftry.side_eye"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.shiftry"
             ],
             "spawn_egg": {
                 "texture": "0275_shiftry_spawn_egg"

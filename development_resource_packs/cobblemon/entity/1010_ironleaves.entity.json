@@ -2,30 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:1010_ironleaves",
+            "identifier": "cobblemon:p1010_ironleaves",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/1010_ironleaves/ironleaves"
+                "default": "textures/entity/1010_ironleaves/ironleaves",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/1010_ironleaves/ironleaves",
+                "emissive_0_0": "textures/entity/1010_ironleaves/ironleaves_emissive",
+                "v1": "textures/entity/1010_ironleaves/ironleaves_shiny",
+                "emissive_1_0": "textures/entity/1010_ironleaves/ironleaves_emissive"
             },
             "geometry": {
-                "default": "geometry.ironleaves"
+                "g_ironleaves": "geometry.ironleaves"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.ironleaves.pose",
+                "blink_quirk": "controller.animation.ironleaves.blink",
+                "look_at_target": "animation.1010_ironleaves.look",
                 "ground_idle": "animation.ironleaves.ground_idle",
                 "ground_walk": "animation.ironleaves.ground_walk",
                 "sleep": "animation.ironleaves.sleep",
                 "blink": "animation.ironleaves.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.ironleaves",
+                "controller.render.ironleaves_emissive"
             ],
             "spawn_egg": {
                 "texture": "1010_ironleaves_spawn_egg"

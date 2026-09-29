@@ -2,31 +2,72 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0533_gurdurr",
+            "identifier": "cobblemon:p0533_gurdurr",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0533_gurdurr/gurdurr"
+                "default": "textures/entity/0533_gurdurr/gurdurr",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0533_gurdurr/gurdurr",
+                "v1": "textures/entity/0533_gurdurr/gurdurr_shiny",
+                "v2": "textures/entity/0533_gurdurr/gurdurr",
+                "layer0_2_0": "textures/entity/0533_gurdurr/gurdurr_copper",
+                "v3": "textures/entity/0533_gurdurr/gurdurr_shiny",
+                "layer0_3_0": "textures/entity/0533_gurdurr/gurdurr_copper",
+                "v4": "textures/entity/0533_gurdurr/gurdurr",
+                "layer0_4_0": "textures/entity/0533_gurdurr/gurdurr_gold",
+                "v5": "textures/entity/0533_gurdurr/gurdurr_shiny",
+                "layer0_5_0": "textures/entity/0533_gurdurr/gurdurr_gold",
+                "v6": "textures/entity/0533_gurdurr/gurdurr",
+                "layer0_6_0": "textures/entity/0533_gurdurr/gurdurr_iron",
+                "v7": "textures/entity/0533_gurdurr/gurdurr_shiny",
+                "layer0_7_0": "textures/entity/0533_gurdurr/gurdurr_iron",
+                "v8": "textures/entity/0533_gurdurr/gurdurr",
+                "layer0_8_0": "textures/entity/0533_gurdurr/gurdurr_netherite",
+                "v9": "textures/entity/0533_gurdurr/gurdurr_shiny",
+                "layer0_9_0": "textures/entity/0533_gurdurr/gurdurr_netherite"
             },
             "geometry": {
-                "default": "geometry.gurdurr"
+                "g_gurdurr": "geometry.gurdurr"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.gurdurr.pose",
+                "blink_quirk": "controller.animation.gurdurr.blink",
+                "quirk": "controller.animation.gurdurr.quirk",
+                "quirk_0": "animation.gurdurr.quirk_idle",
+                "look_at_target": "animation.0533_gurdurr.look",
                 "ground_idle": "animation.gurdurr.ground_idle",
-                "blink": "animation.gurdurr.blink"
+                "ground_walk": "animation.gurdurr.ground_walk",
+                "battle_idle": "animation.gurdurr.battle_idle",
+                "quirk_idle": "animation.gurdurr.quirk_idle",
+                "sleep": "animation.gurdurr.sleep",
+                "blink": "animation.gurdurr.blink",
+                "cry": "animation.gurdurr.cry",
+                "battle_cry": "animation.gurdurr.battle_cry",
+                "faint": "animation.gurdurr.faint",
+                "battle_faint_WIP": "animation.gurdurr.battle_faint_WIP",
+                "walkspeedtest": "animation.gurdurr.walkspeedtest"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gurdurr",
+                "controller.render.gurdurr_layer0"
             ],
             "spawn_egg": {
                 "texture": "0533_gurdurr_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gurdurr.cry": "cobblemon.gurdurr.cry"
             }
         }
     }

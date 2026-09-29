@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0402_kricketune",
+            "identifier": "cobblemon:p0402_kricketune",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0402_kricketune/kricketune"
+                "default": "textures/entity/0402_kricketune/kricketune",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0402_kricketune/kricketune",
+                "v1": "textures/entity/0402_kricketune/kricketune_shiny",
+                "v2": "textures/entity/0402_kricketune/kricketune",
+                "v3": "textures/entity/0402_kricketune/kricketune_shiny"
             },
             "geometry": {
-                "default": "geometry.kricketune"
+                "g_kricketune_male": "geometry.kricketune_male",
+                "g_kricketune_female": "geometry.kricketune_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.kricketune.pose",
+                "blink_quirk": "controller.animation.kricketune.blink",
+                "look_at_target": "animation.0402_kricketune.look",
                 "ground_idle": "animation.kricketune.ground_idle",
                 "ground_walk": "animation.kricketune.ground_walk",
                 "battle_idle": "animation.kricketune.battle_idle",
@@ -32,7 +44,7 @@
                 "physical_attack": "animation.kricketune.physical_attack"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.kricketune"
             ],
             "spawn_egg": {
                 "texture": "0402_kricketune_spawn_egg"

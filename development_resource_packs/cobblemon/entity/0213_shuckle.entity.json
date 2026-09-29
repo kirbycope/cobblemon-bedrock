@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0213_shuckle",
+            "identifier": "cobblemon:p0213_shuckle",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0213_shuckle/shuckle"
+                "default": "textures/entity/0213_shuckle/shuckle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0213_shuckle/shuckle",
+                "v1": "textures/entity/0213_shuckle/shuckle_shiny"
             },
             "geometry": {
-                "default": "geometry.shuckle"
+                "g_shuckle": "geometry.shuckle"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.shuckle.pose",
+                "blink_quirk": "controller.animation.shuckle.blink",
+                "look_at_target": "animation.0213_shuckle.look",
                 "ground_idle": "animation.shuckle.ground_idle",
                 "ground_walk": "animation.shuckle.ground_walk",
                 "shell": "animation.shuckle.shell",
@@ -28,7 +37,7 @@
                 "cry": "animation.shuckle.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.shuckle"
             ],
             "spawn_egg": {
                 "texture": "0213_shuckle_spawn_egg"

@@ -2,23 +2,40 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0083_farfetchd",
+            "identifier": "cobblemon:p0083_farfetchd",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0083_farfetchd/farfetchd"
+                "default": "textures/entity/0083_farfetchd/farfetchd",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0083_farfetchd/farfetchd",
+                "v1": "textures/entity/0083_farfetchd/farfetchd_shiny",
+                "v2": "textures/entity/0083_farfetchd/farfetchd_galar",
+                "v3": "textures/entity/0083_farfetchd/farfetchd_galar_shiny"
             },
             "geometry": {
-                "default": "geometry.farfetchd"
+                "g_farfetchd": "geometry.farfetchd",
+                "g_farfetchd_galar": "geometry.farfetchd_galar"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.farfetchd.pose",
+                "blink_quirk": "controller.animation.farfetchd.blink",
+                "quirk": "controller.animation.farfetchd.quirk",
+                "quirk_0": "animation.farfetchd.quirk_leakflip_idle",
+                "quirk_1": "animation.farfetchd.quirk_leakflip_walk",
+                "quirk_2": "animation.farfetchd.quirk_wink",
+                "look_at_target": "animation.0083_farfetchd.look",
                 "ground_idle": "animation.farfetchd.ground_idle",
                 "ground_walk": "animation.farfetchd.ground_walk",
                 "blink": "animation.farfetchd.blink",
@@ -31,10 +48,13 @@
                 "quirk_wink": "animation.farfetchd.quirk_wink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.farfetchd"
             ],
             "spawn_egg": {
                 "texture": "0083_farfetchd_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.farfetchd.cry": "cobblemon.farfetchd.cry"
             }
         }
     }

@@ -1,0 +1,37 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:npc_trainer",
+            "materials": {
+                "default": "entity_alphatest"
+            },
+            "textures": {
+                "default": "textures/entity/npcs/npc_trainer/npc_trainer"
+            },
+            "geometry": {
+                "default": "geometry.npc_trainer"
+            },
+            "animations": {
+                "idle": "animation.trainer_generic.idle",
+                "blink": "animation.trainer_generic.blink",
+                "look_at_target": "animation.common.look_at_target",
+                "blink_quirk": "controller.animation.npc_trainer.blink"
+            },
+            "scripts": {
+                "animate": [
+                    "idle",
+                    "look_at_target",
+                    "blink_quirk"
+                ]
+            },
+            "render_controllers": [
+                "controller.render.npc_trainer"
+            ],
+            "spawn_egg": {
+                "base_color": "#d8a56f",
+                "overlay_color": "#c8102e"
+            }
+        }
+    }
+}

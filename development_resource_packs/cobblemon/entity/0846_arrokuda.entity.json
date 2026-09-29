@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0846_arrokuda",
+            "identifier": "cobblemon:p0846_arrokuda",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0846_arrokuda/arrokuda"
+                "default": "textures/entity/0846_arrokuda/arrokuda",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0846_arrokuda/arrokuda",
+                "v1": "textures/entity/0846_arrokuda/arrokuda_shiny"
             },
             "geometry": {
-                "default": "geometry.arrokuda"
+                "g_arrokuda": "geometry.arrokuda"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.arrokuda.pose",
+                "blink_quirk": "controller.animation.arrokuda.blink",
+                "quirk": "controller.animation.arrokuda.quirk",
+                "quirk_0": "animation.arrokuda.ground_quirk",
+                "look_at_target": "animation.0846_arrokuda.look",
                 "water_idle": "animation.arrokuda.water_idle",
                 "water_battle_idle": "animation.arrokuda.water_battle_idle",
                 "water_swim": "animation.arrokuda.water_swim",
@@ -33,7 +45,7 @@
                 "blink": "animation.arrokuda.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.arrokuda"
             ],
             "spawn_egg": {
                 "texture": "0846_arrokuda_spawn_egg"

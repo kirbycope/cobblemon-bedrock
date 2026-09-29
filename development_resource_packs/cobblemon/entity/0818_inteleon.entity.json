@@ -2,33 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0818_inteleon",
+            "identifier": "cobblemon:p0818_inteleon",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0818_inteleon/inteleon"
+                "default": "textures/entity/0818_inteleon/inteleon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0818_inteleon/inteleon",
+                "v1": "textures/entity/0818_inteleon/inteleon_shiny"
             },
             "geometry": {
-                "default": "geometry.inteleon"
+                "g_inteleon": "geometry.inteleon"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.inteleon.pose",
+                "blink_quirk": "controller.animation.inteleon.blink",
+                "look_at_target": "animation.0818_inteleon.look",
                 "ground_idle": "animation.inteleon.ground_idle",
+                "battle_idle": "animation.inteleon.battle_idle",
                 "ground_walk": "animation.inteleon.ground_walk",
+                "sleep": "animation.inteleon.sleep",
                 "blink": "animation.inteleon.blink",
-                "cry": "animation.inteleon.cry"
+                "cry": "animation.inteleon.cry",
+                "shock": "animation.inteleon.shock",
+                "angry": "animation.inteleon.angry",
+                "sad": "animation.inteleon.sad",
+                "happy": "animation.inteleon.happy",
+                "hurt": "animation.inteleon.hurt",
+                "lizard_eyelids": "animation.inteleon.lizard_eyelids"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.inteleon"
             ],
             "spawn_egg": {
                 "texture": "0818_inteleon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.inteleon.cry": "cobblemon.inteleon.cry"
             }
         }
     }

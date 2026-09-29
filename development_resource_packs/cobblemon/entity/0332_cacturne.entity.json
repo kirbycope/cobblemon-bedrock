@@ -2,35 +2,64 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0332_cacturne",
+            "identifier": "cobblemon:p0332_cacturne",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0332_cacturne/cacturne"
+                "default": "textures/entity/0332_cacturne/cacturne",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0332_cacturne/cacturne",
+                "emissive_0_0": "textures/entity/0332_cacturne/cacturne_emissive",
+                "v1": "textures/entity/0332_cacturne/cacturne_shiny",
+                "emissive_1_0": "textures/entity/0332_cacturne/cacturne_emissive_shiny",
+                "v2": "textures/entity/0332_cacturne/cacturne",
+                "emissive_2_0": "textures/entity/0332_cacturne/cacturne_emissive",
+                "v3": "textures/entity/0332_cacturne/cacturne_shiny",
+                "emissive_3_0": "textures/entity/0332_cacturne/cacturne_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.cacturne"
+                "g_cacturne_male": "geometry.cacturne_male",
+                "g_cacturne_female": "geometry.cacturne_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.cacturne.pose",
+                "blink_quirk": "controller.animation.cacturne.blink",
+                "look_at_target": "animation.0332_cacturne.look",
                 "ground_idle": "animation.cacturne.ground_idle",
-                "ground_walk": "animation.cacturne.ground_walk",
                 "battle_idle": "animation.cacturne.battle_idle",
                 "sleep": "animation.cacturne.sleep",
+                "ground_walk": "animation.cacturne.ground_walk",
+                "ground_run": "animation.cacturne.ground_run",
                 "cry": "animation.cacturne.cry",
-                "blink": "animation.cacturne.blink"
+                "blink": "animation.cacturne.blink",
+                "recoil": "animation.cacturne.recoil",
+                "ditto_face": "animation.cacturne.ditto_face",
+                "physical_wip": "animation.cacturne.physical_wip",
+                "angry": "animation.cacturne.angry",
+                "sad": "animation.cacturne.sad",
+                "shocked": "animation.cacturne.shocked",
+                "unamused": "animation.cacturne.unamused",
+                "happy": "animation.cacturne.happy"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.cacturne",
+                "controller.render.cacturne_emissive"
             ],
             "spawn_egg": {
                 "texture": "0332_cacturne_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.cacturne.cry": "cobblemon.cacturne.cry"
             }
         }
     }

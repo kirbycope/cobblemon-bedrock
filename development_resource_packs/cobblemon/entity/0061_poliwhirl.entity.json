@@ -2,35 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0061_poliwhirl",
+            "identifier": "cobblemon:p0061_poliwhirl",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0061_poliwhirl/poliwhirl"
+                "default": "textures/entity/0061_poliwhirl/poliwhirl",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0061_poliwhirl/poliwhirl",
+                "v1": "textures/entity/0061_poliwhirl/poliwhirl_shiny"
             },
             "geometry": {
-                "default": "geometry.poliwhirl"
+                "g_poliwhirl": "geometry.poliwhirl"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.poliwhirl.pose",
+                "pose": "animation.poliwhirl.pose",
+                "blink_quirk": "controller.animation.poliwhirl.blink",
+                "look_at_target": "animation.0061_poliwhirl.look",
                 "ground_idle": "animation.poliwhirl.ground_idle",
                 "ground_walk": "animation.poliwhirl.ground_walk",
                 "water_idle": "animation.poliwhirl.water_idle",
                 "water_swim": "animation.poliwhirl.water_swim",
+                "battle_idle": "animation.poliwhirl.battle_idle",
+                "sleep": "animation.poliwhirl.sleep",
+                "recoil": "animation.poliwhirl.recoil",
                 "blink": "animation.poliwhirl.blink",
-                "sleep": "animation.poliwhirl.sleep"
+                "render": "animation.poliwhirl.render",
+                "walk_test": "animation.poliwhirl.walk_test",
+                "sleep2": "animation.poliwhirl.sleep2",
+                "cry": "animation.poliwhirl.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.poliwhirl"
             ],
             "spawn_egg": {
                 "texture": "0061_poliwhirl_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.poliwhirl.cry": "cobblemon.poliwhirl.cry"
             }
         }
     }

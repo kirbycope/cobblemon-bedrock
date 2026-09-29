@@ -2,39 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0169_crobat",
+            "identifier": "cobblemon:p0169_crobat",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0169_crobat/crobat"
+                "default": "textures/entity/0169_crobat/crobat",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0169_crobat/crobat",
+                "emissive_0_0": "textures/entity/0169_crobat/crobat_emissive",
+                "v1": "textures/entity/0169_crobat/crobat_shiny",
+                "emissive_1_0": "textures/entity/0169_crobat/crobat_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.crobat"
+                "g_crobat": "geometry.crobat"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.crobat.pose",
+                "blink_quirk": "controller.animation.crobat.blink",
+                "look_at_target": "animation.0169_crobat.look",
                 "ground_idle": "animation.crobat.ground_idle",
                 "ground_walk": "animation.crobat.ground_walk",
                 "air_idle": "animation.crobat.air_idle",
                 "air_fly": "animation.crobat.air_fly",
+                "air_glide": "animation.crobat.air_glide",
+                "ride_air_idle": "animation.crobat.ride_air_idle",
+                "ride_air_fly": "animation.crobat.ride_air_fly",
+                "ride_air_glide": "animation.crobat.ride_air_glide",
+                "ride_dive": "animation.crobat.ride_dive",
                 "battle_idle": "animation.crobat.battle_idle",
                 "sleep": "animation.crobat.sleep",
+                "cry": "animation.crobat.cry",
                 "roost": "animation.crobat.roost",
                 "blink": "animation.crobat.blink",
-                "cry": "animation.crobat.cry",
-                "happy": "animation.crobat.happy"
+                "ditto_face": "animation.crobat.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.crobat",
+                "controller.render.crobat_emissive"
             ],
             "spawn_egg": {
                 "texture": "0169_crobat_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.crobat.cry": "cobblemon.crobat.cry"
             }
         }
     }

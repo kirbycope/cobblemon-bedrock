@@ -2,32 +2,48 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0174_igglybuff",
+            "identifier": "cobblemon:p0174_igglybuff",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0174_igglybuff/igglybuff"
+                "default": "textures/entity/0174_igglybuff/igglybuff",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0174_igglybuff/igglybuff",
+                "v1": "textures/entity/0174_igglybuff/igglybuff_shiny"
             },
             "geometry": {
-                "default": "geometry.igglybuff"
+                "g_igglybuff": "geometry.igglybuff"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.igglybuff.pose",
+                "blink_quirk": "controller.animation.igglybuff.blink",
                 "ground_idle": "animation.igglybuff.ground_idle",
-                "ground_walk": "animation.igglybuff.ground_walk",
-                "blink": "animation.igglybuff.blink"
+                "blink": "animation.igglybuff.blink",
+                "render": "animation.igglybuff.render",
+                "cry": "animation.igglybuff.cry",
+                "surprise": "animation.igglybuff.surprise",
+                "happy": "animation.igglybuff.happy",
+                "angry": "animation.igglybuff.angry",
+                "angry_mouth": "animation.igglybuff.angry_mouth",
+                "sad": "animation.igglybuff.sad"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.igglybuff"
             ],
             "spawn_egg": {
                 "texture": "0174_igglybuff_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.igglybuff.cry": "cobblemon.igglybuff.cry"
             }
         }
     }

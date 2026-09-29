@@ -2,23 +2,35 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0444_gabite",
+            "identifier": "cobblemon:p0444_gabite",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0444_gabite/gabite"
+                "default": "textures/entity/0444_gabite/gabite",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0444_gabite/gabite",
+                "v1": "textures/entity/0444_gabite/gabite_shiny",
+                "v2": "textures/entity/0444_gabite/gabite",
+                "v3": "textures/entity/0444_gabite/gabite_shiny"
             },
             "geometry": {
-                "default": "geometry.gabite"
+                "g_gabite_male": "geometry.gabite_male",
+                "g_gabite_female": "geometry.gabite_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "animation.gabite.pose",
+                "blink_quirk": "controller.animation.gabite.blink",
+                "look_at_target": "animation.0444_gabite.look",
                 "ground_idle": "animation.gabite.ground_idle",
                 "ground_walk": "animation.gabite.ground_walk",
                 "battle_idle": "animation.gabite.battle_idle",
@@ -26,10 +38,13 @@
                 "cry": "animation.gabite.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gabite"
             ],
             "spawn_egg": {
                 "texture": "0444_gabite_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gabite.cry": "cobblemon.gabite.cry"
             }
         }
     }

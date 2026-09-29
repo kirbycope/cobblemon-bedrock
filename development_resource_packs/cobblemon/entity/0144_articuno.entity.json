@@ -2,29 +2,41 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0144_articuno",
+            "identifier": "cobblemon:p0144_articuno",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0144_articuno/articuno"
+                "default": "textures/entity/0144_articuno/articuno",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0144_articuno/articuno",
+                "v1": "textures/entity/0144_articuno/articuno_shiny"
             },
             "geometry": {
-                "default": "geometry.articuno"
+                "g_articuno": "geometry.articuno"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.articuno.pose",
+                "pose": "animation.articuno.pose",
+                "blink_quirk": "controller.animation.articuno.blink",
+                "look_at_target": "animation.0144_articuno.look",
                 "ground_idle": "animation.articuno.ground_idle",
                 "air_idle": "animation.articuno.air_idle",
-                "air_fly": "animation.articuno.air_fly"
+                "air_fly": "animation.articuno.air_fly",
+                "blink": "animation.articuno.blink",
+                "hold_item": "animation.articuno.hold_item",
+                "hurt": "animation.articuno.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.articuno"
             ],
             "spawn_egg": {
                 "texture": "0144_articuno_spawn_egg"

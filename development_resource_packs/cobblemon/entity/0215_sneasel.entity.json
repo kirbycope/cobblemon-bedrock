@@ -2,33 +2,60 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0215_sneasel",
+            "identifier": "cobblemon:p0215_sneasel",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0215_sneasel/sneasel"
+                "default": "textures/entity/0215_sneasel/sneasel",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0215_sneasel/sneasel",
+                "v1": "textures/entity/0215_sneasel/sneasel_shiny",
+                "v2": "textures/entity/0215_sneasel/sneasel",
+                "v3": "textures/entity/0215_sneasel/sneasel_shiny",
+                "v4": "textures/entity/0215_sneasel/sneasel_hisuian",
+                "v5": "textures/entity/0215_sneasel/sneasel_hisuian_shiny",
+                "v6": "textures/entity/0215_sneasel/sneasel_hisuian",
+                "v7": "textures/entity/0215_sneasel/sneasel_hisuian_shiny"
             },
             "geometry": {
-                "default": "geometry.sneasel"
+                "g_sneasel_male": "geometry.sneasel_male",
+                "g_sneasel_female": "geometry.sneasel_female",
+                "g_sneasel_hisuian_male": "geometry.sneasel_hisuian_male",
+                "g_sneasel_hisuian_female": "geometry.sneasel_hisuian_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.sneasel.pose",
+                "blink_quirk": "controller.animation.sneasel.blink",
+                "look_at_target": "animation.0215_sneasel.look",
+                "cry": "animation.sneasel.cry",
                 "ground_idle": "animation.sneasel.ground_idle",
+                "battle_idle": "animation.sneasel.battle_idle",
+                "ground_walk": "animation.sneasel.ground_walk",
+                "ground_run": "animation.sneasel.ground_run",
+                "sleep": "animation.sneasel.sleep",
+                "battle_sleep": "animation.sneasel.battle_sleep",
+                "recoil": "animation.sneasel.recoil",
                 "blink": "animation.sneasel.blink",
-                "mouth_test": "animation.sneasel.mouth_test",
-                "cry": "animation.sneasel.cry"
+                "item_hold": "animation.sneasel.item_hold"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sneasel"
             ],
             "spawn_egg": {
                 "texture": "0215_sneasel_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.sneasel.cry": "cobblemon.sneasel.cry"
             }
         }
     }

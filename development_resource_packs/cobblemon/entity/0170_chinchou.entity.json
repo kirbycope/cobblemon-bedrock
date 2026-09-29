@@ -2,33 +2,67 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0170_chinchou",
+            "identifier": "cobblemon:p0170_chinchou",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0170_chinchou/chinchou"
+                "default": "textures/entity/0170_chinchou/chinchou",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0170_chinchou/chinchou",
+                "emissive_0_0": "textures/entity/0170_chinchou/chinchou_emissive",
+                "emissive2_0_0": "textures/entity/0170_chinchou/chinchou_emissive",
+                "v1": "textures/entity/0170_chinchou/chinchou_shiny",
+                "emissive_1_0": "textures/entity/0170_chinchou/chinchou_shiny_emissive",
+                "emissive2_1_0": "textures/entity/0170_chinchou/chinchou_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.chinchou"
+                "g_chinchou": "geometry.chinchou"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.chinchou.pose",
+                "blink_quirk": "controller.animation.chinchou.blink",
+                "quirk": "controller.animation.chinchou.quirk",
+                "quirk_0": "animation.chinchou.ground_quirk",
+                "quirk_1": "animation.chinchou.water_idle_quirk",
                 "ground_idle": "animation.chinchou.ground_idle",
-                "swim_idle": "animation.chinchou.swim_idle",
-                "cry": "animation.chinchou.cry",
-                "blink": "animation.chinchou.blink"
+                "battle_idle": "animation.chinchou.battle_idle",
+                "ground_walk": "animation.chinchou.ground_walk",
+                "ground_run": "animation.chinchou.ground_run",
+                "sleep": "animation.chinchou.sleep",
+                "ground_faint_WIP": "animation.chinchou.ground_faint_WIP",
+                "water_idle": "animation.chinchou.water_idle",
+                "water_battle_idle": "animation.chinchou.water_battle_idle",
+                "water_swim": "animation.chinchou.water_swim",
+                "water_sleep": "animation.chinchou.water_sleep",
+                "water_faint": "animation.chinchou.water_faint",
+                "ground_quirk": "animation.chinchou.ground_quirk",
+                "water_idle_quirk": "animation.chinchou.water_idle_quirk",
+                "blink": "animation.chinchou.blink",
+                "cry": "animation.chinchou.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.chinchou",
+                "controller.render.chinchou_emissive",
+                "controller.render.chinchou_emissive2"
             ],
             "spawn_egg": {
                 "texture": "0170_chinchou_spawn_egg"
+            },
+            "particle_effects": {
+                "impact_electric": "cobblemon:impact_electric"
+            },
+            "sound_effects": {
+                "pokemon.chinchou.cry": "cobblemon.chinchou.cry"
             }
         }
     }

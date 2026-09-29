@@ -2,29 +2,41 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0145_zapdos",
+            "identifier": "cobblemon:p0145_zapdos",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0145_zapdos/zapdos"
+                "default": "textures/entity/0145_zapdos/zapdos",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0145_zapdos/zapdos",
+                "v1": "textures/entity/0145_zapdos/zapdos_shiny"
             },
             "geometry": {
-                "default": "geometry.zapdos"
+                "g_zapdos": "geometry.zapdos"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.zapdos.pose",
+                "pose": "animation.zapdos.pose",
+                "blink_quirk": "controller.animation.zapdos.blink",
+                "look_at_target": "animation.0145_zapdos.look",
                 "ground_idle": "animation.zapdos.ground_idle",
                 "air_idle": "animation.zapdos.air_idle",
-                "air_fly": "animation.zapdos.air_fly"
+                "air_fly": "animation.zapdos.air_fly",
+                "blink": "animation.zapdos.blink",
+                "hold_item": "animation.zapdos.hold_item",
+                "hurt": "animation.zapdos.hurt"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.zapdos"
             ],
             "spawn_egg": {
                 "texture": "0145_zapdos_spawn_egg"

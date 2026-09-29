@@ -2,27 +2,38 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0238_smoochum",
+            "identifier": "cobblemon:p0238_smoochum",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0238_smoochum/smoochum"
+                "default": "textures/entity/0238_smoochum/smoochum",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0238_smoochum/smoochum",
+                "v1": "textures/entity/0238_smoochum/smoochum_shiny"
             },
             "geometry": {
-                "default": "geometry.smoochum"
+                "g_smoochum": "geometry.smoochum"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.smoochum.pose",
-                "ground_idle": "animation.smoochum.ground_idle"
+                "pose": "animation.smoochum.pose",
+                "blink_quirk": "controller.animation.smoochum.blink",
+                "look_at_target": "animation.0238_smoochum.look",
+                "ground_idle": "animation.smoochum.ground_idle",
+                "blink": "animation.smoochum.blink",
+                "ditto_face": "animation.smoochum.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.smoochum"
             ],
             "spawn_egg": {
                 "texture": "0238_smoochum_spawn_egg"

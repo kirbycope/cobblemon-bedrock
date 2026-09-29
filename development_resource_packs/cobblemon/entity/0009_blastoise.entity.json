@@ -2,38 +2,93 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0009_blastoise",
+            "identifier": "cobblemon:p0009_blastoise",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0009_blastoise/blastoise"
+                "default": "textures/entity/0009_blastoise/blastoise",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0009_blastoise/blastoise",
+                "v1": "textures/entity/0009_blastoise/blastoise_shiny",
+                "v2": "textures/entity/0009_blastoise/blastoise",
+                "layer0_2_0": "textures/entity/0009_blastoise/blastoise_triangleglasses",
+                "v3": "textures/entity/0009_blastoise/blastoise_shiny",
+                "layer0_3_0": "textures/entity/0009_blastoise/blastoise_triangleglasses",
+                "v4": "textures/entity/0009_blastoise/blastoise",
+                "layer0_4_0": "textures/entity/0009_blastoise/blastoise_circleglasses",
+                "v5": "textures/entity/0009_blastoise/blastoise_shiny",
+                "layer0_5_0": "textures/entity/0009_blastoise/blastoise_circleglasses"
             },
             "geometry": {
-                "default": "geometry.blastoise"
+                "g_blastoise": "geometry.blastoise"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.blastoise.pose",
+                "blink_quirk": "controller.animation.blastoise.blink",
+                "quirk": "controller.animation.blastoise.quirk",
+                "quirk_0": "animation.blastoise.quirk_ground_idle",
+                "look_at_target": "animation.0009_blastoise.look",
                 "ground_idle": "animation.blastoise.ground_idle",
                 "ground_walk": "animation.blastoise.ground_walk",
+                "ground_run": "animation.blastoise.ground_run",
+                "ride_run_jump": "animation.blastoise.ride_run_jump",
+                "battle_idle": "animation.blastoise.battle_idle",
+                "ride_walk_jump": "animation.blastoise.ride_walk_jump",
+                "ride_ground_walk": "animation.blastoise.ride_ground_walk",
+                "ride_ground_run": "animation.blastoise.ride_ground_run",
                 "water_idle": "animation.blastoise.water_idle",
                 "water_swim": "animation.blastoise.water_swim",
+                "surfacewater_idle": "animation.blastoise.surfacewater_idle",
+                "surfacewater_swim": "animation.blastoise.surfacewater_swim",
+                "ride_water_swim": "animation.blastoise.ride_water_swim",
+                "air_idle": "animation.blastoise.air_idle",
+                "air_fly": "animation.blastoise.air_fly",
+                "ride_air_idle": "animation.blastoise.ride_air_idle",
+                "ride_air_fly": "animation.blastoise.ride_air_fly",
+                "ride_jetstream_idle": "animation.blastoise.ride_jetstream_idle",
+                "ride_jetstream_fly": "animation.blastoise.ride_jetstream_fly",
                 "sleep": "animation.blastoise.sleep",
-                "faint": "animation.blastoise.faint",
                 "blink": "animation.blastoise.blink",
                 "cry": "animation.blastoise.cry",
-                "render": "animation.blastoise.render"
+                "faint": "animation.blastoise.faint",
+                "quirk_ground_idle": "animation.blastoise.quirk_ground_idle",
+                "quirk_battle_idle": "animation.blastoise.quirk_battle_idle",
+                "quirk_battle_idle2": "animation.blastoise.quirk_battle_idle2",
+                "physical": "animation.blastoise.physical",
+                "special": "animation.blastoise.special",
+                "status": "animation.blastoise.status",
+                "recoil": "animation.blastoise.recoil",
+                "uhoh": "animation.blastoise.uhoh",
+                "steal": "animation.blastoise.steal",
+                "dance": "animation.blastoise.dance",
+                "render": "animation.blastoise.render",
+                "cannon_test": "animation.blastoise.cannon_test",
+                "walkspeedtest": "animation.blastoise.walkspeedtest",
+                "surfacewaterlocation": "animation.blastoise.surfacewaterlocation"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.blastoise",
+                "controller.render.blastoise_layer0"
             ],
             "spawn_egg": {
                 "texture": "0009_blastoise_spawn_egg"
+            },
+            "particle_effects": {
+                "blastoise6": "cobblemon:blastoise6"
+            },
+            "sound_effects": {
+                "pokemon.blastoise.cry": "cobblemon.blastoise.cry"
             }
         }
     }

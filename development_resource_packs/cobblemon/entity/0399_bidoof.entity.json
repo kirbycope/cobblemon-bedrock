@@ -2,35 +2,52 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0399_bidoof",
+            "identifier": "cobblemon:p0399_bidoof",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0399_bidoof/bidoof"
+                "default": "textures/entity/0399_bidoof/bidoof",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0399_bidoof/bidoof",
+                "v1": "textures/entity/0399_bidoof/bidoof_shiny",
+                "v2": "textures/entity/0399_bidoof/bidoof",
+                "v3": "textures/entity/0399_bidoof/bidoof_shiny"
             },
             "geometry": {
-                "default": "geometry.bidoof"
+                "g_bidoof_male": "geometry.bidoof_male",
+                "g_bidoof_female": "geometry.bidoof_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.bidoof.pose",
+                "blink_quirk": "controller.animation.bidoof.blink",
+                "look_at_target": "animation.0399_bidoof.look",
                 "ground_walk": "animation.bidoof.ground_walk",
                 "ground_idle": "animation.bidoof.ground_idle",
                 "blink": "animation.bidoof.blink",
                 "faint": "animation.bidoof.faint",
                 "water_float": "animation.bidoof.water_float",
-                "sleep": "animation.bidoof.sleep"
+                "sleep": "animation.bidoof.sleep",
+                "cry": "animation.bidoof.cry",
+                "ditto_face": "animation.bidoof.ditto_face"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.bidoof"
             ],
             "spawn_egg": {
                 "texture": "0399_bidoof_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.bidoof.cry": "cobblemon.bidoof.cry"
             }
         }
     }

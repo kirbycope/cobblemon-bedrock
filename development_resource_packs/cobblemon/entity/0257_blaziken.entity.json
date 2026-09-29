@@ -2,32 +2,63 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0257_blaziken",
+            "identifier": "cobblemon:p0257_blaziken",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0257_blaziken/blaziken"
+                "default": "textures/entity/0257_blaziken/blaziken",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0257_blaziken/blaziken",
+                "v1": "textures/entity/0257_blaziken/blaziken_shiny",
+                "v2": "textures/entity/0257_blaziken/blaziken",
+                "v3": "textures/entity/0257_blaziken/blaziken_shiny"
             },
             "geometry": {
-                "default": "geometry.blaziken"
+                "g_blaziken_male": "geometry.blaziken_male",
+                "g_blaziken_female": "geometry.blaziken_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.blaziken.pose",
+                "blink_quirk": "controller.animation.blaziken.blink",
+                "look_at_target": "animation.0257_blaziken.look",
+                "ground_idle": "animation.blaziken.ground_idle",
+                "ground_walk": "animation.blaziken.ground_walk",
+                "ground_jog": "animation.blaziken.ground_jog",
+                "ground_run": "animation.blaziken.ground_run",
                 "blink": "animation.blaziken.blink",
                 "cry": "animation.blaziken.cry",
-                "ground_idle": "animation.blaziken.ground_idle"
+                "recoil": "animation.blaziken.recoil",
+                "sleep": "animation.blaziken.sleep",
+                "battle_idle": "animation.blaziken.battle_idle",
+                "physical": "animation.blaziken.physical",
+                "special": "animation.blaziken.special",
+                "status": "animation.blaziken.status",
+                "battle_cry": "animation.blaziken.battle_cry",
+                "battle_sleep": "animation.blaziken.battle_sleep",
+                "render": "animation.blaziken.render",
+                "walk_test": "animation.blaziken.walk_test",
+                "jog_test": "animation.blaziken.jog_test",
+                "run_test": "animation.blaziken.run_test",
+                "look": "animation.blaziken.look"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.blaziken"
             ],
             "spawn_egg": {
                 "texture": "0257_blaziken_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.blaziken.cry": "cobblemon.blaziken.cry"
             }
         }
     }

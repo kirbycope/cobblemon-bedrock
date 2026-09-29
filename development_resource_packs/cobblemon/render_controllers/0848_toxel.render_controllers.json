@@ -1,0 +1,59 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.toxel": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_toxel",
+                        "Geometry.g_toxel"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.toxel_mane": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.mane": [
+                        "Texture.mane_0_0",
+                        "Texture.mane_0_1",
+                        "Texture.mane_0_2",
+                        "Texture.mane_1_0",
+                        "Texture.mane_1_1",
+                        "Texture.mane_1_2"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_toxel",
+                        "Geometry.g_toxel"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.mane[query.variant * 3 + math.mod(math.floor(q.life_time * 10), 3)]"
+            ],
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

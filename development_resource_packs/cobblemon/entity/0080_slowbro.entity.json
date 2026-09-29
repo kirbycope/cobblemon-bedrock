@@ -2,23 +2,36 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0080_slowbro",
+            "identifier": "cobblemon:p0080_slowbro",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0080_slowbro/slowbro"
+                "default": "textures/entity/0080_slowbro/slowbro",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0080_slowbro/slowbro",
+                "v1": "textures/entity/0080_slowbro/slowbro_shiny",
+                "v2": "textures/entity/0080_slowbro/slowbro_galarian",
+                "v3": "textures/entity/0080_slowbro/slowbro_galarian_shiny"
             },
             "geometry": {
-                "default": "geometry.slowbro"
+                "g_slowbro": "geometry.slowbro",
+                "g_slowbro_galarian": "geometry.slowbro_galarian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.slowbro.pose",
+                "quirk": "controller.animation.slowbro.quirk",
+                "quirk_0": "animation.slowbro.bite_quirk",
+                "look_at_target": "animation.0080_slowbro.look",
                 "ground_idle": "animation.slowbro.ground_idle",
                 "battle_idle": "animation.slowbro.battle_idle",
                 "ground_walk": "animation.slowbro.ground_walk",
@@ -31,10 +44,13 @@
                 "bite_quirk": "animation.slowbro.bite_quirk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.slowbro"
             ],
             "spawn_egg": {
                 "texture": "0080_slowbro_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.slowbro.cry": "cobblemon.slowbro.cry"
             }
         }
     }

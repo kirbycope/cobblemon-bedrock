@@ -2,33 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0933_naclstack",
+            "identifier": "cobblemon:p0933_naclstack",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0933_naclstack/naclstack"
+                "default": "textures/entity/0933_naclstack/naclstack",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0933_naclstack/naclstack",
+                "glow_0_0": "textures/entity/0933_naclstack/naclstack_emissive",
+                "v1": "textures/entity/0933_naclstack/naclstack_shiny",
+                "glow_1_0": "textures/entity/0933_naclstack/naclstack_emissive"
             },
             "geometry": {
-                "default": "geometry.naclstack"
+                "g_naclstack": "geometry.naclstack"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.naclstack.pose",
+                "blink_quirk": "controller.animation.naclstack.blink",
                 "ground_idle": "animation.naclstack.ground_idle",
-                "sleep": "animation.naclstack.sleep",
                 "ground_walk": "animation.naclstack.ground_walk",
-                "cry": "animation.naclstack.cry"
+                "cry": "animation.naclstack.cry",
+                "sleep": "animation.naclstack.sleep",
+                "blink": "animation.naclstack.blink",
+                "ditto_face": "animation.naclstack.ditto_face",
+                "red_eyes": "animation.naclstack.red_eyes"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.naclstack",
+                "controller.render.naclstack_glow"
             ],
             "spawn_egg": {
                 "texture": "0933_naclstack_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.naclstack.cry": "cobblemon.naclstack.cry"
             }
         }
     }

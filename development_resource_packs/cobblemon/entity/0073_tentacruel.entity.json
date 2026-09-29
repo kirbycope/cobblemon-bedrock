@@ -2,23 +2,32 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0073_tentacruel",
+            "identifier": "cobblemon:p0073_tentacruel",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0073_tentacruel/tentacruel"
+                "default": "textures/entity/0073_tentacruel/tentacruel",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0073_tentacruel/tentacruel",
+                "glow_0_0": "textures/entity/0073_tentacruel/tentacruel_emissive",
+                "v1": "textures/entity/0073_tentacruel/tentacruel_shiny",
+                "glow_1_0": "textures/entity/0073_tentacruel/tentacruel_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.tentacruel"
+                "g_tentacruel": "geometry.tentacruel"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.tentacruel.pose",
+                "blink_quirk": "controller.animation.tentacruel.blink",
                 "render": "animation.tentacruel.render",
                 "water_idle": "animation.tentacruel.water_idle",
                 "water_swim": "animation.tentacruel.water_swim",
@@ -28,7 +37,8 @@
                 "blink": "animation.tentacruel.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.tentacruel",
+                "controller.render.tentacruel_glow"
             ],
             "spawn_egg": {
                 "texture": "0073_tentacruel_spawn_egg"

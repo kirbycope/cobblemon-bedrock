@@ -2,27 +2,40 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0070_weepinbell",
+            "identifier": "cobblemon:p0070_weepinbell",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0070_weepinbell/weepinbell"
+                "default": "textures/entity/0070_weepinbell/weepinbell",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0070_weepinbell/weepinbell",
+                "v1": "textures/entity/0070_weepinbell/weepinbell_shiny"
             },
             "geometry": {
-                "default": "geometry.weepinbell"
+                "g_weepinbell": "geometry.weepinbell"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.weepinbell.pose",
-                "ground_idle": "animation.weepinbell.ground_idle"
+                "blink_quirk": "controller.animation.weepinbell.blink",
+                "ground_idle": "animation.weepinbell.ground_idle",
+                "ground_walk": "animation.weepinbell.ground_walk",
+                "battle_idle": "animation.weepinbell.battle_idle",
+                "sleep": "animation.weepinbell.sleep",
+                "hang": "animation.weepinbell.hang",
+                "blink": "animation.weepinbell.blink",
+                "cry": "animation.weepinbell.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.weepinbell"
             ],
             "spawn_egg": {
                 "texture": "0070_weepinbell_spawn_egg"

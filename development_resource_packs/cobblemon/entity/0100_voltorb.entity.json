@@ -2,32 +2,46 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0100_voltorb",
+            "identifier": "cobblemon:p0100_voltorb",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0100_voltorb/voltorb"
+                "default": "textures/entity/0100_voltorb/voltorb",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0100_voltorb/voltorb",
+                "v1": "textures/entity/0100_voltorb/voltorb_shiny",
+                "v2": "textures/entity/0100_voltorb/voltorb_hisuian",
+                "v3": "textures/entity/0100_voltorb/voltorb_hisuian_shiny"
             },
             "geometry": {
-                "default": "geometry.voltorb"
+                "g_voltorb": "geometry.voltorb",
+                "g_voltorb_hisuian": "geometry.voltorb_hisuian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.voltorb.pose",
+                "blink_quirk": "controller.animation.voltorb.blink",
                 "ground_idle": "animation.voltorb.ground_idle",
                 "ground_walk": "animation.voltorb.ground_walk",
-                "blink": "animation.voltorb.blink"
+                "blink": "animation.voltorb.blink",
+                "cry": "animation.voltorb.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.voltorb"
             ],
             "spawn_egg": {
                 "texture": "0100_voltorb_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.voltorb.cry": "cobblemon.voltorb.cry"
             }
         }
     }

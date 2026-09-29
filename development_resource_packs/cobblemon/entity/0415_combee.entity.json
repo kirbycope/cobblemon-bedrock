@@ -2,23 +2,41 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0415_combee",
+            "identifier": "cobblemon:p0415_combee",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0415_combee/combee"
+                "default": "textures/entity/0415_combee/combee",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0415_combee/combee",
+                "v1": "textures/entity/0415_combee/combee_shiny",
+                "v2": "textures/entity/0415_combee/combee",
+                "v3": "textures/entity/0415_combee/combee_shiny",
+                "v4": "textures/entity/0415_combee/combee",
+                "nectar_4_0": "textures/entity/0415_combee/combee_pollinated",
+                "v5": "textures/entity/0415_combee/combee_shiny",
+                "nectar_5_0": "textures/entity/0415_combee/combee_pollinated",
+                "v6": "textures/entity/0415_combee/combee",
+                "nectar_6_0": "textures/entity/0415_combee/combee_pollinated",
+                "v7": "textures/entity/0415_combee/combee_shiny",
+                "nectar_7_0": "textures/entity/0415_combee/combee_pollinated"
             },
             "geometry": {
-                "default": "geometry.combee"
+                "g_combee_male": "geometry.combee_male",
+                "g_combee_female": "geometry.combee_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "animation.combee.pose",
+                "blink_quirk": "controller.animation.combee.blink",
                 "air_idle": "animation.combee.air_idle",
                 "air_fly": "animation.combee.air_fly",
                 "air_sleep": "animation.combee.air_sleep",
@@ -30,7 +48,8 @@
                 "cry": "animation.combee.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.combee",
+                "controller.render.combee_nectar"
             ],
             "spawn_egg": {
                 "texture": "0415_combee_spawn_egg"

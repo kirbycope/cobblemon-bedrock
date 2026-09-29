@@ -2,33 +2,54 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0092_gastly",
+            "identifier": "cobblemon:p0092_gastly",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0092_gastly/gastly"
+                "default": "textures/entity/0092_gastly/gastly",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0092_gastly/gastly",
+                "v1": "textures/entity/0092_gastly/gastly_shiny"
             },
             "geometry": {
-                "default": "geometry.gastly"
+                "g_gastly": "geometry.gastly"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.gastly.pose",
+                "pose": "animation.gastly.pose",
+                "blink_quirk": "controller.animation.gastly.blink",
                 "ground_idle": "animation.gastly.ground_idle",
                 "ground_walk": "animation.gastly.ground_walk",
-                "sleep": "animation.gastly.sleep",
-                "blink": "animation.gastly.blink"
+                "blink": "animation.gastly.blink",
+                "mouth_test": "animation.gastly.mouth_test",
+                "fully_extended": "animation.gastly.fully_extended",
+                "surprise": "animation.gastly.surprise",
+                "sad": "animation.gastly.sad",
+                "happy": "animation.gastly.happy",
+                "hurt": "animation.gastly.hurt",
+                "angry": "animation.gastly.angry",
+                "blush": "animation.gastly.blush",
+                "cry": "animation.gastly.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gastly"
             ],
             "spawn_egg": {
                 "texture": "0092_gastly_spawn_egg"
+            },
+            "particle_effects": {
+                "ghostly_smoke": "cobblemon:ghostly_smoke"
+            },
+            "sound_effects": {
+                "pokemon.gastly.cry": "cobblemon.gastly.cry"
             }
         }
     }

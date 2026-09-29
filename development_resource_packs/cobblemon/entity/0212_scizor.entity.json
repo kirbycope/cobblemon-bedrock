@@ -2,33 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0212_scizor",
+            "identifier": "cobblemon:p0212_scizor",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0212_scizor/scizor"
+                "default": "textures/entity/0212_scizor/scizor",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0212_scizor/scizor",
+                "v1": "textures/entity/0212_scizor/scizor_shiny",
+                "v2": "textures/entity/0212_scizor/scizor",
+                "v3": "textures/entity/0212_scizor/scizor_shiny"
             },
             "geometry": {
-                "default": "geometry.scizor"
+                "g_scizor_male": "geometry.scizor_male",
+                "g_scizor_female": "geometry.scizor_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "animation.scizor.pose",
+                "pose": "controller.animation.scizor.pose",
+                "blink_quirk": "controller.animation.scizor.blink",
+                "look_at_target": "animation.0212_scizor.look",
                 "ground_idle": "animation.scizor.ground_idle",
+                "battle_idle": "animation.scizor.battle_idle",
+                "portrait_pose": "animation.scizor.portrait_pose",
                 "air_idle": "animation.scizor.air_idle",
+                "air_fly": "animation.scizor.air_fly",
                 "blink": "animation.scizor.blink",
-                "cry": "animation.scizor.cry"
+                "cry": "animation.scizor.cry",
+                "hold_item": "animation.scizor.hold_item",
+                "angry": "animation.scizor.angry",
+                "sad": "animation.scizor.sad",
+                "unamused": "animation.scizor.unamused",
+                "happy": "animation.scizor.happy",
+                "shocked": "animation.scizor.shocked",
+                "new": "animation.scizor.new"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.scizor"
             ],
             "spawn_egg": {
                 "texture": "0212_scizor_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.scizor.cry": "cobblemon.scizor.cry"
             }
         }
     }

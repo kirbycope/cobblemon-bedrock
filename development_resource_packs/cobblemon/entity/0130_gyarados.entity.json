@@ -2,34 +2,93 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0130_gyarados",
+            "identifier": "cobblemon:p0130_gyarados",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0130_gyarados/gyarados"
+                "default": "textures/entity/0130_gyarados/gyarados",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0130_gyarados/gyarados",
+                "v1": "textures/entity/0130_gyarados/gyarados_shiny",
+                "v2": "textures/entity/0130_gyarados/gyarados",
+                "v3": "textures/entity/0130_gyarados/gyarados_shiny",
+                "v4": "textures/entity/0130_gyarados/gyarados",
+                "purple_eyes_4_0": "textures/entity/0130_gyarados/gyarados_eyes_purple",
+                "v5": "textures/entity/0130_gyarados/gyarados_shiny",
+                "purple_eyes_5_0": "textures/entity/0130_gyarados/gyarados_eyes_purple",
+                "v6": "textures/entity/0130_gyarados/gyarados",
+                "purple_eyes_6_0": "textures/entity/0130_gyarados/gyarados_eyes_purple",
+                "v7": "textures/entity/0130_gyarados/gyarados_shiny",
+                "purple_eyes_7_0": "textures/entity/0130_gyarados/gyarados_eyes_purple"
             },
             "geometry": {
-                "default": "geometry.gyarados"
+                "g_gyarados_male": "geometry.gyarados_male",
+                "g_gyarados_female": "geometry.gyarados_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.gyarados.pose",
+                "blink_quirk": "controller.animation.gyarados.blink",
+                "quirk": "controller.animation.gyarados.quirk",
+                "quirk_0": "animation.gyarados.idle_quirk",
+                "quirk_1": "animation.gyarados.look_quirk",
+                "quirk_2": "animation.gyarados.fin_quirk",
+                "quirk_3": "animation.gyarados.mouth_quirk",
+                "look_at_target": "animation.0130_gyarados.look",
                 "ground_idle": "animation.gyarados.ground_idle",
+                "ground_walk": "animation.gyarados.ground_walk",
+                "battle_idle": "animation.gyarados.battle_idle",
+                "wild_sleep": "animation.gyarados.wild_sleep",
+                "sleep": "animation.gyarados.sleep",
+                "surface_water_idle": "animation.gyarados.surface_water_idle",
+                "surface_water_swim": "animation.gyarados.surface_water_swim",
+                "surface_water_battle_idle": "animation.gyarados.surface_water_battle_idle",
                 "water_idle": "animation.gyarados.water_idle",
+                "water_battle_idle": "animation.gyarados.water_battle_idle",
                 "water_swim": "animation.gyarados.water_swim",
-                "surface_idle": "animation.gyarados.surface_idle",
-                "blink": "animation.gyarados.blink"
+                "air_idle": "animation.gyarados.air_idle",
+                "air_battle_idle": "animation.gyarados.air_battle_idle",
+                "air_fly": "animation.gyarados.air_fly",
+                "tail_slap_battle_quirk": "animation.gyarados.tail_slap_battle_quirk",
+                "idle_quirk": "animation.gyarados.idle_quirk",
+                "look_quirk": "animation.gyarados.look_quirk",
+                "fin_quirk": "animation.gyarados.fin_quirk",
+                "mouth_quirk": "animation.gyarados.mouth_quirk",
+                "cry": "animation.gyarados.cry",
+                "battle_cry": "animation.gyarados.battle_cry",
+                "water_cry": "animation.gyarados.water_cry",
+                "blink": "animation.gyarados.blink",
+                "recoil": "animation.gyarados.recoil",
+                "walk_test": "animation.gyarados.walk_test",
+                "swim_test": "animation.gyarados.swim_test",
+                "surface_swim_test": "animation.gyarados.surface_swim_test",
+                "water_placement": "animation.gyarados.water_placement",
+                "ride_ground_walk": "animation.gyarados.ride_ground_walk",
+                "ride_ground_jump": "animation.gyarados.ride_ground_jump",
+                "ride_surface_water": "animation.gyarados.ride_surface_water",
+                "ride_water_swim": "animation.gyarados.ride_water_swim",
+                "ride_air_fly": "animation.gyarados.ride_air_fly",
+                "ride_surface_water_jump": "animation.gyarados.ride_surface_water_jump"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gyarados",
+                "controller.render.gyarados_purple_eyes"
             ],
             "spawn_egg": {
                 "texture": "0130_gyarados_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gyarados.cry": "cobblemon.gyarados.cry"
             }
         }
     }

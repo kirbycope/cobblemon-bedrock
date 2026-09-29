@@ -2,34 +2,64 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0233_porygon2",
+            "identifier": "cobblemon:p0233_porygon2",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0233_porygon2/porygon2"
+                "default": "textures/entity/0233_porygon2/porygon2",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0233_porygon2/porygon2",
+                "v1": "textures/entity/0233_porygon2/porygon2_shiny"
             },
             "geometry": {
-                "default": "geometry.porygon2"
+                "g_porygon2": "geometry.porygon2"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.porygon2.pose",
+                "blink_quirk": "controller.animation.porygon2.blink",
+                "quirk": "animation.porygon2.quirk",
+                "quirk_0": "animation.porygon2.idle_quirk",
+                "quirk_1": "animation.porygon2.idle_quirk2",
+                "quirk_2": "animation.porygon2.quirk",
+                "look_at_target": "animation.0233_porygon2.look",
                 "ground_idle": "animation.porygon2.ground_idle",
+                "battle_idle": "animation.porygon2.battle_idle",
+                "idle_quirk": "animation.porygon2.idle_quirk",
+                "idle_quirk2": "animation.porygon2.idle_quirk2",
+                "battle_quirk": "animation.porygon2.battle_quirk",
                 "ground_walk": "animation.porygon2.ground_walk",
+                "ground_run": "animation.porygon2.ground_run",
+                "physical": "animation.porygon2.physical",
+                "special": "animation.porygon2.special",
+                "status": "animation.porygon2.status",
+                "battle_cry": "animation.porygon2.battle_cry",
+                "recoil": "animation.porygon2.recoil",
                 "sleep": "animation.porygon2.sleep",
                 "faint": "animation.porygon2.faint",
-                "blink": "animation.porygon2.blink"
+                "cry": "animation.porygon2.cry",
+                "blink": "animation.porygon2.blink",
+                "ditto_face": "animation.porygon2.ditto_face",
+                "portrait_idle": "animation.porygon2.portrait_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.porygon2"
             ],
             "spawn_egg": {
                 "texture": "0233_porygon2_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.porygon2.cry": "cobblemon.porygon2.cry"
             }
         }
     }

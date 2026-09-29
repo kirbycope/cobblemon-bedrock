@@ -1,0 +1,78 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:icefang_targetburst",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/ice/iceshard"
+			}
+		},
+		"curves": {
+			"variable.scale": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					1,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 20
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.5
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					"(v.particle_random_1-0.5)",
+					"(v.particle_random_2-0.25)",
+					"(v.particle_random_3-0.5)"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(0.4, 0.65)"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.random(0,45)*8"
+			},
+			"minecraft:particle_initial_speed": "math.random(9.5,13.5)",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-8,
+					0
+				],
+				"linear_drag_coefficient": 4
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.325-(v.particle_random_4*0.2)) * variable.scale",
+					"(0.325-(v.particle_random_4*0.2)) * variable.scale"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 42,
+					"texture_height": 14,
+					"uv": [
+						28,
+						0
+					],
+					"uv_size": [
+						14,
+						14
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 0.5,
+				"coefficient_of_restitution": 1.5,
+				"collision_radius": 0.05
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

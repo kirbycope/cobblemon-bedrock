@@ -2,33 +2,63 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0448_lucario",
+            "identifier": "cobblemon:p0448_lucario",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0448_lucario/lucario"
+                "default": "textures/entity/0448_lucario/lucario",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0448_lucario/lucario",
+                "v1": "textures/entity/0448_lucario/lucario_shiny"
             },
             "geometry": {
-                "default": "geometry.lucario"
+                "g_lucario": "geometry.lucario"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.lucario.pose",
+                "blink_quirk": "controller.animation.lucario.blink",
+                "quirk": "controller.animation.lucario.quirk",
+                "quirk_0": "animation.lucario.idle_quirk",
+                "quirk_1": "animation.lucario.idle_quirk2",
+                "look_at_target": "animation.0448_lucario.look",
                 "ground_idle": "animation.lucario.ground_idle",
+                "ground_walk": "animation.lucario.ground_walk",
+                "ground_run": "animation.lucario.ground_run",
+                "battle_idle": "animation.lucario.battle_idle",
+                "battle_quirk": "animation.lucario.battle_quirk",
+                "idle_quirk": "animation.lucario.idle_quirk",
+                "idle_quirk2": "animation.lucario.idle_quirk2",
+                "sleep": "animation.lucario.sleep",
+                "sleep_quirk": "animation.lucario.sleep_quirk",
+                "cry": "animation.lucario.cry",
+                "item_hold": "animation.lucario.item_hold",
                 "blink": "animation.lucario.blink",
-                "cute": "animation.lucario.cute",
-                "cry": "animation.lucario.cry"
+                "ditto_face": "animation.lucario.ditto_face",
+                "battle_idle_aura_left": "animation.lucario.battle_idle_aura_left",
+                "battle_idle_aura_right": "animation.lucario.battle_idle_aura_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.lucario"
             ],
             "spawn_egg": {
                 "texture": "0448_lucario_spawn_egg"
+            },
+            "particle_effects": {
+                "lucario_aura": "cobblemon:lucario_aura"
+            },
+            "sound_effects": {
+                "pokemon.lucario.cry": "cobblemon.lucario.cry"
             }
         }
     }

@@ -2,23 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0157_typhlosion",
+            "identifier": "cobblemon:p0157_typhlosion",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0157_typhlosion/typhlosion"
+                "default": "textures/entity/0157_typhlosion/typhlosion",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0157_typhlosion/typhlosion",
+                "emissive_0_0": "textures/entity/0157_typhlosion/typhlosion_emissive",
+                "v1": "textures/entity/0157_typhlosion/typhlosion_shiny",
+                "emissive_1_0": "textures/entity/0157_typhlosion/typhlosion_emissive",
+                "v2": "textures/entity/0157_typhlosion/typhlosion_hisuian",
+                "emissive_2_0": "textures/entity/0157_typhlosion/typhlosion_hisuian_emissive",
+                "v3": "textures/entity/0157_typhlosion/typhlosion_hisuian_shiny",
+                "emissive_3_0": "textures/entity/0157_typhlosion/typhlosion_hisuian_emissive"
             },
             "geometry": {
-                "default": "geometry.typhlosion"
+                "g_typhlosion": "geometry.typhlosion",
+                "g_typhlosion_hisuian": "geometry.typhlosion_hisuian"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.typhlosion.pose",
+                "blink_quirk": "controller.animation.typhlosion.blink",
+                "look_at_target": "animation.0157_typhlosion.look",
                 "ground_idle": "animation.typhlosion.ground_idle",
                 "battle_idle": "animation.typhlosion.battle_idle",
                 "ground_walk": "animation.typhlosion.ground_walk",
@@ -29,10 +45,14 @@
                 "render": "animation.typhlosion.render"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.typhlosion",
+                "controller.render.typhlosion_emissive"
             ],
             "spawn_egg": {
                 "texture": "0157_typhlosion_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.typhlosion.cry": "cobblemon.typhlosion.cry"
             }
         }
     }

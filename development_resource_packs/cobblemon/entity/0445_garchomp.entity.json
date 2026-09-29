@@ -2,35 +2,91 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0445_garchomp",
+            "identifier": "cobblemon:p0445_garchomp",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0445_garchomp/garchomp"
+                "default": "textures/entity/0445_garchomp/garchomp",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0445_garchomp/garchomp",
+                "v1": "textures/entity/0445_garchomp/garchomp_shiny",
+                "v2": "textures/entity/0445_garchomp/garchomp",
+                "v3": "textures/entity/0445_garchomp/garchomp_shiny"
             },
             "geometry": {
-                "default": "geometry.garchomp"
+                "g_garchomp_male": "geometry.garchomp_male",
+                "g_garchomp_female": "geometry.garchomp_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.garchomp.pose",
+                "blink_quirk": "controller.animation.garchomp.blink",
+                "quirk": "controller.animation.garchomp.quirk",
+                "quirk_0": "animation.garchomp.air_fly_quirk1",
+                "quirk_1": "animation.garchomp.air_fly_quirk2",
+                "look_at_target": "animation.0445_garchomp.look",
                 "ground_idle": "animation.garchomp.ground_idle",
+                "ground_walk": "animation.garchomp.ground_walk",
+                "ride_ground_walk": "animation.garchomp.ride_ground_walk",
                 "ground_run": "animation.garchomp.ground_run",
-                "air_idle": "animation.garchomp.air_idle",
+                "ride_ground_run": "animation.garchomp.ride_ground_run",
+                "ride_jump_land": "animation.garchomp.ride_jump_land",
+                "battle_intro": "animation.garchomp.battle_intro",
                 "blink": "animation.garchomp.blink",
                 "cry": "animation.garchomp.cry",
-                "battle_idle": "animation.garchomp.battle_idle"
+                "hold_item": "animation.garchomp.hold_item",
+                "battle_idle": "animation.garchomp.battle_idle",
+                "physical": "animation.garchomp.physical",
+                "physical_alt": "animation.garchomp.physical_alt",
+                "physical_blunt": "animation.garchomp.physical_blunt",
+                "special": "animation.garchomp.special",
+                "status": "animation.garchomp.status",
+                "battle_cry": "animation.garchomp.battle_cry",
+                "recoil": "animation.garchomp.recoil",
+                "battle_sleep": "animation.garchomp.battle_sleep",
+                "sand_idle": "animation.garchomp.sand_idle",
+                "sand_swim": "animation.garchomp.sand_swim",
+                "ride_sand_swim": "animation.garchomp.ride_sand_swim",
+                "surfacewater_idle": "animation.garchomp.surfacewater_idle",
+                "surfacewater_swim": "animation.garchomp.surfacewater_swim",
+                "ride_jump_liquid": "animation.garchomp.ride_jump_liquid",
+                "ride_surfacewater_swim": "animation.garchomp.ride_surfacewater_swim",
+                "air_fly": "animation.garchomp.air_fly",
+                "ride_air_fly": "animation.garchomp.ride_air_fly",
+                "air_fly_quirk1": "animation.garchomp.air_fly_quirk1",
+                "air_fly_quirk2": "animation.garchomp.air_fly_quirk2",
+                "walkspeedtest": "animation.garchomp.walkspeedtest",
+                "runspeedtest": "animation.garchomp.runspeedtest",
+                "sandspeedtest": "animation.garchomp.sandspeedtest",
+                "surprised": "animation.garchomp.surprised",
+                "unamused": "animation.garchomp.unamused",
+                "angry": "animation.garchomp.angry",
+                "sad": "animation.garchomp.sad",
+                "happy": "animation.garchomp.happy",
+                "jet": "animation.garchomp.jet",
+                "sleep_WIP": "animation.garchomp.sleep_WIP",
+                "bite_WIP": "animation.garchomp.bite_WIP",
+                "faint_WIP": "animation.garchomp.faint_WIP",
+                "sleep_transition_WIP": "animation.garchomp.sleep_transition_WIP"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.garchomp"
             ],
             "spawn_egg": {
                 "texture": "0445_garchomp_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.garchomp.cry": "cobblemon.garchomp.cry"
             }
         }
     }

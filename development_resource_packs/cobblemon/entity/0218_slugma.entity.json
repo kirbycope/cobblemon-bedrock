@@ -2,34 +2,68 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0218_slugma",
+            "identifier": "cobblemon:p0218_slugma",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0218_slugma/slugma"
+                "default": "textures/entity/0218_slugma/slugma",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0218_slugma/slugma",
+                "flame_0_0": "textures/entity/0218_slugma/slugma_flame_0",
+                "flame_0_1": "textures/entity/0218_slugma/slugma_flame_1",
+                "flame_0_2": "textures/entity/0218_slugma/slugma_flame_2",
+                "flame_0_3": "textures/entity/0218_slugma/slugma_flame_3",
+                "flame_emissive_0_0": "textures/entity/0218_slugma/slugma_emissive_flame_0",
+                "flame_emissive_0_1": "textures/entity/0218_slugma/slugma_emissive_flame_1",
+                "flame_emissive_0_2": "textures/entity/0218_slugma/slugma_emissive_flame_2",
+                "flame_emissive_0_3": "textures/entity/0218_slugma/slugma_emissive_flame_3",
+                "emissive_0_0": "textures/entity/0218_slugma/slugma_emissive",
+                "v1": "textures/entity/0218_slugma/slugma_shiny",
+                "flame_1_0": "textures/entity/0218_slugma/slugma_shiny_flame_0",
+                "flame_1_1": "textures/entity/0218_slugma/slugma_shiny_flame_1",
+                "flame_1_2": "textures/entity/0218_slugma/slugma_shiny_flame_2",
+                "flame_1_3": "textures/entity/0218_slugma/slugma_shiny_flame_3",
+                "flame_emissive_1_0": "textures/entity/0218_slugma/slugma_shiny_emissive_flame_0",
+                "flame_emissive_1_1": "textures/entity/0218_slugma/slugma_shiny_emissive_flame_1",
+                "flame_emissive_1_2": "textures/entity/0218_slugma/slugma_shiny_emissive_flame_2",
+                "flame_emissive_1_3": "textures/entity/0218_slugma/slugma_shiny_emissive_flame_3",
+                "emissive_1_0": "textures/entity/0218_slugma/slugma_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.slugma"
+                "g_slugma": "geometry.slugma",
+                "g_slugma_shiny": "geometry.slugma_shiny"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.slugma.pose",
+                "blink_quirk": "controller.animation.slugma.blink",
+                "look_at_target": "animation.0218_slugma.look",
                 "ground_idle": "animation.slugma.ground_idle",
                 "ground_walk": "animation.slugma.ground_walk",
-                "ground_sleep": "animation.slugma.ground_sleep",
+                "sleep": "animation.slugma.sleep",
                 "cry": "animation.slugma.cry",
                 "blink": "animation.slugma.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.slugma",
+                "controller.render.slugma_flame",
+                "controller.render.slugma_flame_emissive",
+                "controller.render.slugma_emissive"
             ],
             "spawn_egg": {
                 "texture": "0218_slugma_spawn_egg"
+            },
+            "particle_effects": {
+                "slugma_lava_bubble": "cobblemon:slugma_lava_bubble"
             }
         }
     }

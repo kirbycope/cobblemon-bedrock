@@ -1,0 +1,47 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0872_snom",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0872_snom/snom",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0872_snom/snom",
+                "transparency_0_0": "textures/entity/0872_snom/snom_transparency",
+                "v1": "textures/entity/0872_snom/snom_shiny",
+                "transparency_1_0": "textures/entity/0872_snom/snom_transparency_shiny"
+            },
+            "geometry": {
+                "g_snom": "geometry.snom"
+            },
+            "scripts": {
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
+                ]
+            },
+            "animations": {
+                "pose": "controller.animation.snom.pose",
+                "blink_quirk": "controller.animation.snom.blink",
+                "look_at_target": "animation.0872_snom.look",
+                "ground_idle": "animation.snom.ground_idle",
+                "blink": "animation.snom.blink",
+                "sleep": "animation.snom.sleep",
+                "ditto_face": "animation.snom.ditto_face"
+            },
+            "render_controllers": [
+                "controller.render.snom",
+                "controller.render.snom_transparency"
+            ],
+            "spawn_egg": {
+                "texture": "0872_snom_spawn_egg"
+            }
+        }
+    }
+}

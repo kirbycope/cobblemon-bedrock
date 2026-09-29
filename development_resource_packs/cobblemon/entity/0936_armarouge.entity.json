@@ -2,36 +2,80 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0936_armarouge",
+            "identifier": "cobblemon:p0936_armarouge",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0936_armarouge/armarouge"
+                "default": "textures/entity/0936_armarouge/armarouge_1",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0936_armarouge/armarouge_1",
+                "flame_0_0": "textures/entity/0936_armarouge/armarouge_emissive_1",
+                "flame_0_1": "textures/entity/0936_armarouge/armarouge_emissive_2",
+                "flame_0_2": "textures/entity/0936_armarouge/armarouge_emissive_3",
+                "flame_0_3": "textures/entity/0936_armarouge/armarouge_emissive_4",
+                "v1": "textures/entity/0936_armarouge/armarouge_1",
+                "flame_1_0": "textures/entity/0936_armarouge/armarouge_shiny_emissive_1",
+                "flame_1_1": "textures/entity/0936_armarouge/armarouge_shiny_emissive_2",
+                "flame_1_2": "textures/entity/0936_armarouge/armarouge_shiny_emissive_3",
+                "flame_1_3": "textures/entity/0936_armarouge/armarouge_shiny_emissive_4"
             },
             "geometry": {
-                "default": "geometry.armarouge"
+                "g_armarouge": "geometry.armarouge"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.armarouge.pose",
+                "blink_quirk": "controller.animation.armarouge.blink",
+                "quirk": "controller.animation.armarouge.quirk",
+                "quirk_0": "animation.armarouge.look_quirk",
+                "quirk_1": "animation.armarouge.tap_quirk",
+                "look_at_target": "animation.0936_armarouge.look",
                 "ground_idle": "animation.armarouge.ground_idle",
                 "ground_walk": "animation.armarouge.ground_walk",
+                "ground_run": "animation.armarouge.ground_run",
                 "battle_idle": "animation.armarouge.battle_idle",
-                "sleep": "animation.armarouge.sleep",
+                "physical": "animation.armarouge.physical",
+                "special": "animation.armarouge.special",
+                "battle_cry": "animation.armarouge.battle_cry",
+                "status": "animation.armarouge.status",
                 "faint": "animation.armarouge.faint",
+                "sleep": "animation.armarouge.sleep",
                 "blink": "animation.armarouge.blink",
-                "cry": "animation.armarouge.cry"
+                "recoil": "animation.armarouge.recoil",
+                "cry": "animation.armarouge.cry",
+                "look_quirk": "animation.armarouge.look_quirk",
+                "tap_quirk": "animation.armarouge.tap_quirk",
+                "eye_flame_overlay": "animation.armarouge.eye_flame_overlay",
+                "shock": "animation.armarouge.shock",
+                "angry": "animation.armarouge.angry",
+                "sad": "animation.armarouge.sad",
+                "unamused": "animation.armarouge.unamused",
+                "happy": "animation.armarouge.happy",
+                "hurt": "animation.armarouge.hurt",
+                "speedtest_walk": "animation.armarouge.speedtest_walk",
+                "speedtest_run": "animation.armarouge.speedtest_run",
+                "battle_idle_old": "animation.armarouge.battle_idle_old",
+                "special_backup": "animation.armarouge.special_backup"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.armarouge",
+                "controller.render.armarouge_flame"
             ],
             "spawn_egg": {
                 "texture": "0936_armarouge_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.armarouge.cry": "cobblemon.armarouge.cry"
             }
         }
     }

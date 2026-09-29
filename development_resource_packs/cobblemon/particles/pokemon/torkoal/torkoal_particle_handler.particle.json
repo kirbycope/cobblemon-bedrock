@@ -1,0 +1,67 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:torkoal_particle_handler",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/blocks/wool_colored_white"
+			}
+		},
+		"events": {
+			"event_smoke_top": {
+				"particle_effect": {
+					"effect": "cobblemon:torkoal_smoke_top",
+					"type": "emitter_bound"
+				}
+			},
+			"event_smoke_bottom": {
+				"particle_effect": {
+					"effect": "cobblemon:torkoal_smoke_bottom",
+					"type": "emitter_bound"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 4,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_looping": {
+				"active_time": 99999
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": [
+					"event_smoke_top",
+					"event_smoke_bottom"
+				]
+			},
+			"minecraft:emitter_shape_point": {},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.1,
+				"expiration_expression": 1
+			},
+			"minecraft:particle_initial_speed": 0,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.02,
+					0.02
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 16,
+					"texture_height": 16,
+					"uv": [
+						0,
+						0
+					],
+					"uv_size": [
+						16,
+						16
+					]
+				}
+			}
+		}
+	}
+}

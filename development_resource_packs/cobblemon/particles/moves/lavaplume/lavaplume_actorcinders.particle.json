@@ -1,0 +1,146 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:lavaplume_actorcinders",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/vanilla/lava"
+			}
+		},
+		"curves": {
+			"variable.quiver": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0.33,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9,
+					1,
+					0.9
+				]
+			},
+			"variable.shrink": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					1,
+					1,
+					0.99,
+					0.97,
+					0.93,
+					0.83,
+					0.54,
+					0
+				]
+			}
+		},
+		"events": {
+			"lavasmoke": {
+				"particle_effect": {
+					"effect": "cobblemon:lavaplume_actorsmoke",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 60,
+				"max_particles": 1000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					0,
+					-0.2,
+					0
+				],
+				"direction": [
+					"(v.particle_random_1-0.5)*0.3",
+					"(v.particle_random_2+0.55)*0.9",
+					"(v.particle_random_3-0.5)*0.3"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(1.2,1.8)"
+			},
+			"minecraft:particle_lifetime_events": {
+				"timeline": {
+					"0.30": "lavasmoke",
+					"0.60": "lavasmoke",
+					"0.90": "lavasmoke",
+					"1.15": "lavasmoke"
+				}
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_1*3)*90"
+			},
+			"minecraft:particle_initial_speed": "math.random(6,12)*1.65",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-12,
+					0
+				],
+				"linear_drag_coefficient": 1
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"((0.25-(v.particle_random_4*0.125))*v.quiver)*v.shrink",
+					"((0.25-(v.particle_random_4*0.125))*v.quiver)*v.shrink"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 8,
+					"uv": [
+						0,
+						0
+					],
+					"uv_size": [
+						8,
+						8
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 1,
+				"collision_radius": 0.1
+			}
+		}
+	}
+}

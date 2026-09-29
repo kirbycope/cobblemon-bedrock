@@ -2,29 +2,41 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0273_seedot",
+            "identifier": "cobblemon:p0273_seedot",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0273_seedot/seedot"
+                "default": "textures/entity/0273_seedot/seedot",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0273_seedot/seedot",
+                "v1": "textures/entity/0273_seedot/seedot_shiny"
             },
             "geometry": {
-                "default": "geometry.seedot"
+                "g_seedot": "geometry.seedot"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.seedot.pose",
-                "idle": "animation.seedot.idle",
+                "blink_quirk": "controller.animation.seedot.blink",
+                "ground_idle": "animation.seedot.ground_idle",
+                "sleep": "animation.seedot.sleep",
                 "blink": "animation.seedot.blink",
-                "call": "animation.seedot.call"
+                "cry": "animation.seedot.cry",
+                "happy": "animation.seedot.happy",
+                "hurt": "animation.seedot.hurt",
+                "judgy": "animation.seedot.judgy",
+                "new": "animation.seedot.new"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.seedot"
             ],
             "spawn_egg": {
                 "texture": "0273_seedot_spawn_egg"

@@ -2,36 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0934_garganacl",
+            "identifier": "cobblemon:p0934_garganacl",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0934_garganacl/garganacl"
+                "default": "textures/entity/0934_garganacl/garganacl",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0934_garganacl/garganacl",
+                "glow_0_0": "textures/entity/0934_garganacl/garganacl_emissive",
+                "v1": "textures/entity/0934_garganacl/garganacl_shiny",
+                "glow_1_0": "textures/entity/0934_garganacl/garganacl_emissive"
             },
             "geometry": {
-                "default": "geometry.garganacl"
+                "g_garganacl": "geometry.garganacl"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.garganacl.pose",
+                "blink_quirk": "controller.animation.garganacl.blink",
+                "look_at_target": "animation.0934_garganacl.look",
                 "ground_idle": "animation.garganacl.ground_idle",
-                "battle_idle": "animation.garganacl.battle_idle",
-                "faint": "animation.garganacl.faint",
-                "sleep": "animation.garganacl.sleep",
                 "ground_walk": "animation.garganacl.ground_walk",
+                "battle_idle": "animation.garganacl.battle_idle",
+                "sleep": "animation.garganacl.sleep",
+                "faint": "animation.garganacl.faint",
                 "cry": "animation.garganacl.cry",
-                "blink": "animation.garganacl.blink"
+                "blink": "animation.garganacl.blink",
+                "ditto_face": "animation.garganacl.ditto_face",
+                "red_eyes": "animation.garganacl.red_eyes"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.garganacl",
+                "controller.render.garganacl_glow"
             ],
             "spawn_egg": {
                 "texture": "0934_garganacl_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.garganacl.cry": "cobblemon.garganacl.cry"
             }
         }
     }

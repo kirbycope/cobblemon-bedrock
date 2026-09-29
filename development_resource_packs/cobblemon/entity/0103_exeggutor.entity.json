@@ -2,27 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0103_exeggutor",
+            "identifier": "cobblemon:p0103_exeggutor",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0103_exeggutor/exeggutor"
+                "default": "textures/entity/0103_exeggutor/exeggutor",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0103_exeggutor/exeggutor",
+                "v1": "textures/entity/0103_exeggutor/exeggutor_shiny",
+                "v2": "textures/entity/0103_exeggutor/exeggutor_alolan",
+                "v3": "textures/entity/0103_exeggutor/exeggutor_alolan_shiny"
             },
             "geometry": {
-                "default": "geometry.exeggutor"
+                "g_exeggutor": "geometry.exeggutor",
+                "g_exeggutor_alolan": "geometry.exeggutor_alolan"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.exeggutor.pose",
+                "blink_quirk": "controller.animation.exeggutor.blink",
+                "look_at_target": "animation.0103_exeggutor.look",
                 "ground_idle": "animation.exeggutor.ground_idle",
                 "ground_walk": "animation.exeggutor.ground_walk",
-                "cry": "animation.exeggutor.cry",
                 "battle_idle": "animation.exeggutor.battle_idle",
+                "cry": "animation.exeggutor.cry",
                 "sleep": "animation.exeggutor.sleep",
                 "blink": "animation.exeggutor.blink",
                 "blink2": "animation.exeggutor.blink2",
@@ -30,10 +42,13 @@
                 "faint_WIP": "animation.exeggutor.faint_WIP"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.exeggutor"
             ],
             "spawn_egg": {
                 "texture": "0103_exeggutor_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.exeggutor.cry": "cobblemon.exeggutor.cry"
             }
         }
     }

@@ -2,39 +2,81 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.fearow.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
+                "hover": {
+                    "animations": [
+                        "air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "fly": "q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "fly": {
+                    "animations": [
+                        "air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "hover": "q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "idle": "q.is_on_ground && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "q.is_on_ground && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
                 "idle": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
                         }
                     ],
                     "blend_transition": 0.2
                 },
                 "moving": {
                     "animations": [
-                        "ground_idle",
-                        "ground_walk"
+                        "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "hover": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "fly": "!q.is_on_ground && !q.is_in_water && q.modified_move_speed > 0.1"
                         }
                     ],
                     "blend_transition": 0.2
                 },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ]
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
                     ]
                 }
             }

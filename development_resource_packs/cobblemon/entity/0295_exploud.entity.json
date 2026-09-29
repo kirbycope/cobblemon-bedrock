@@ -2,27 +2,34 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0295_exploud",
+            "identifier": "cobblemon:p0295_exploud",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0295_exploud/exploud"
+                "default": "textures/entity/0295_exploud/exploud",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0295_exploud/exploud",
+                "v1": "textures/entity/0295_exploud/exploud_shiny"
             },
             "geometry": {
-                "default": "geometry.exploud"
+                "g_exploud": "geometry.exploud"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.exploud.pose",
+                "look_at_target": "animation.0295_exploud.look",
                 "idle": "animation.exploud.idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.exploud"
             ],
             "spawn_egg": {
                 "texture": "0295_exploud_spawn_egg"

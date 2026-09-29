@@ -2,30 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0178_xatu",
+            "identifier": "cobblemon:p0178_xatu",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0178_xatu/xatu"
+                "default": "textures/entity/0178_xatu/xatu",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0178_xatu/xatu",
+                "v1": "textures/entity/0178_xatu/xatu_shiny",
+                "v2": "textures/entity/0178_xatu/xatu",
+                "v3": "textures/entity/0178_xatu/xatu_shiny"
             },
             "geometry": {
-                "default": "geometry.xatu"
+                "g_xatu_male": "geometry.xatu_male",
+                "g_xatu_female": "geometry.xatu_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.xatu.pose",
+                "blink_quirk": "controller.animation.xatu.blink",
+                "look_at_target": "animation.0178_xatu.look",
                 "ground_idle": "animation.xatu.ground_idle",
-                "faint": "animation.xatu.faint",
-                "sleep": "animation.xatu.sleep",
-                "blink": "animation.xatu.blink"
+                "air_idle": "animation.xatu.air_idle",
+                "blink": "animation.xatu.blink",
+                "sleep": "animation.xatu.sleep"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.xatu"
             ],
             "spawn_egg": {
                 "texture": "0178_xatu_spawn_egg"

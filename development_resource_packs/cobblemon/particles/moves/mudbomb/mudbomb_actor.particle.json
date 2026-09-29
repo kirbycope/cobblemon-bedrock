@@ -1,0 +1,119 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:mudbomb_actor",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/moves/mudbomb"
+			}
+		},
+		"curves": {
+			"variable.blob": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.85,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"variable.warble": {
+				"type": "catmull_rom",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.09,
+					-0.07,
+					0.05,
+					-0.03,
+					0.01,
+					0,
+					0,
+					0
+				]
+			}
+		},
+		"events": {
+			"splats": {
+				"particle_effect": {
+					"effect": "cobblemon:mudbomb_actortrail",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 1
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_point": {},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.9
+			},
+			"minecraft:particle_lifetime_events": {
+				"expiration_event": "splats",
+				"timeline": {
+					"0.12": "splats",
+					"0.15": "splats",
+					"0.20": "splats",
+					"0.25": "splats",
+					"0.30": "splats",
+					"0.35": "splats",
+					"0.40": "splats",
+					"0.45": "splats",
+					"0.50": "splats",
+					"0.55": "splats",
+					"0.60": "splats",
+					"0.65": "splats",
+					"0.70": "splats",
+					"0.75": "splats",
+					"0.80": "splats",
+					"0.85": "splats"
+				}
+			},
+			"minecraft:particle_motion_parametric": {
+				"relative_position": [
+					"(-v.target_deltax * (v.particle_age / v.particle_lifetime))",
+					"(v.target_deltay * (v.particle_age / v.particle_lifetime))+math.sin(v.particle_age*207)*(0.65+(v.emitter_age*0.7))",
+					"(-((v.target_deltaz*1.16)-(v.particle_age*0.55)) * (v.particle_age / v.particle_lifetime))"
+				]
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.35*v.blob)+v.warble",
+					"(0.35*v.blob)-v.warble"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 13,
+					"texture_height": 13,
+					"uv": [
+						0,
+						0
+					],
+					"uv_size": [
+						13,
+						13
+					]
+				}
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

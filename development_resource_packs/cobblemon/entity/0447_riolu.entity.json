@@ -2,33 +2,66 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0447_riolu",
+            "identifier": "cobblemon:p0447_riolu",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0447_riolu/riolu"
+                "default": "textures/entity/0447_riolu/riolu",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0447_riolu/riolu",
+                "v1": "textures/entity/0447_riolu/riolu_shiny"
             },
             "geometry": {
-                "default": "geometry.riolu"
+                "g_riolu": "geometry.riolu"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
-                "pose": "controller.animation.riolu.pose",
+                "pose": "animation.riolu.pose",
+                "blink_quirk": "controller.animation.riolu.blink",
+                "quirk": "controller.animation.riolu.quirk",
+                "quirk_0": "animation.riolu.idle_quirk",
+                "look_at_target": "animation.0447_riolu.look",
                 "ground_idle": "animation.riolu.ground_idle",
+                "ground_walk": "animation.riolu.ground_walk",
+                "ground_run": "animation.riolu.ground_run",
+                "battle_idle": "animation.riolu.battle_idle",
+                "idle_quirk": "animation.riolu.idle_quirk",
+                "sleep": "animation.riolu.sleep",
                 "blink": "animation.riolu.blink",
-                "cute": "animation.riolu.cute",
-                "cry": "animation.riolu.cry"
+                "cry": "animation.riolu.cry",
+                "shoulder_left": "animation.riolu.shoulder_left",
+                "shoulder_right": "animation.riolu.shoulder_right",
+                "hold_item": "animation.riolu.hold_item",
+                "shock": "animation.riolu.shock",
+                "angry": "animation.riolu.angry",
+                "sad": "animation.riolu.sad",
+                "calm": "animation.riolu.calm",
+                "happy": "animation.riolu.happy",
+                "hurt": "animation.riolu.hurt",
+                "judgy": "animation.riolu.judgy",
+                "squint": "animation.riolu.squint",
+                "scale": "animation.riolu.scale",
+                "walkspeedtest": "animation.riolu.walkspeedtest",
+                "runspeedtest": "animation.riolu.runspeedtest"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.riolu"
             ],
             "spawn_egg": {
                 "texture": "0447_riolu_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.riolu.cry": "cobblemon.riolu.cry"
             }
         }
     }

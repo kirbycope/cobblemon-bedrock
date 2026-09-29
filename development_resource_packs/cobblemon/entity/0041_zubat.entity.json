@@ -2,40 +2,55 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0041_zubat",
+            "identifier": "cobblemon:p0041_zubat",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0041_zubat/zubat"
+                "default": "textures/entity/0041_zubat/zubat",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0041_zubat/zubat",
+                "v1": "textures/entity/0041_zubat/zubat_shiny",
+                "v2": "textures/entity/0041_zubat/zubat",
+                "v3": "textures/entity/0041_zubat/zubat_shiny"
             },
             "geometry": {
-                "default": "geometry.zubat"
+                "g_zubat_male": "geometry.zubat_male",
+                "g_zubat_female": "geometry.zubat_female"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.zubat.pose",
+                "look_at_target": "animation.0041_zubat.look",
                 "ground_idle": "animation.zubat.ground_idle",
                 "ground_walk": "animation.zubat.ground_walk",
                 "air_idle": "animation.zubat.air_idle",
                 "air_fly": "animation.zubat.air_fly",
+                "physical": "animation.zubat.physical",
                 "sleep": "animation.zubat.sleep",
-                "eartwitch": "animation.zubat.eartwitch",
-                "roost": "animation.zubat.roost",
-                "mouth_wide": "animation.zubat.mouth_wide",
                 "cry": "animation.zubat.cry",
+                "roost": "animation.zubat.roost",
+                "eartwitch": "animation.zubat.eartwitch",
+                "ditto_face": "animation.zubat.ditto_face",
                 "shoulder_left": "animation.zubat.shoulder_left",
-                "shoulder_right": "animation.zubat.shoulder_right"
+                "shoulder_right": "animation.zubat.shoulder_right",
+                "mouth_wide": "animation.zubat.mouth_wide"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.zubat"
             ],
             "spawn_egg": {
                 "texture": "0041_zubat_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.zubat.cry": "cobblemon.zubat.cry"
             }
         }
     }

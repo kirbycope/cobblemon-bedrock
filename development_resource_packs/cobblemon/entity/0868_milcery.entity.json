@@ -2,30 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0868_milcery",
+            "identifier": "cobblemon:p0868_milcery",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0868_milcery/milcery"
+                "default": "textures/entity/0868_milcery/milcery",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0868_milcery/milcery",
+                "v1": "textures/entity/0868_milcery/milcery_shiny"
             },
             "geometry": {
-                "default": "geometry.milcery"
+                "g_milcery": "geometry.milcery"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.milcery.pose",
+                "look_at_target": "animation.0868_milcery.look",
                 "ground_idle": "animation.milcery.ground_idle",
                 "ground_walk": "animation.milcery.ground_walk",
                 "sleep": "animation.milcery.sleep",
                 "faint": "animation.milcery.faint"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.milcery"
             ],
             "spawn_egg": {
                 "texture": "0868_milcery_spawn_egg"

@@ -2,23 +2,45 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0078_rapidash",
+            "identifier": "cobblemon:p0078_rapidash",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0078_rapidash/rapidash"
+                "default": "textures/entity/0078_rapidash/rapidash",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0078_rapidash/rapidash",
+                "emissive_0_0": "textures/entity/0078_rapidash/fire/normal/1",
+                "emissive_0_1": "textures/entity/0078_rapidash/fire/normal/2",
+                "emissive_0_2": "textures/entity/0078_rapidash/fire/normal/3",
+                "emissive_0_3": "textures/entity/0078_rapidash/fire/normal/4",
+                "v1": "textures/entity/0078_rapidash/rapidash_shiny",
+                "emissive_1_0": "textures/entity/0078_rapidash/fire/shiny/1",
+                "emissive_1_1": "textures/entity/0078_rapidash/fire/shiny/2",
+                "emissive_1_2": "textures/entity/0078_rapidash/fire/shiny/3",
+                "emissive_1_3": "textures/entity/0078_rapidash/fire/shiny/4",
+                "v2": "textures/entity/0078_rapidash/rapidash_galar",
+                "emissive_2_0": "textures/entity/0078_rapidash/rapidash_galar_emissive",
+                "v3": "textures/entity/0078_rapidash/rapidash_galar_shiny",
+                "emissive_3_0": "textures/entity/0078_rapidash/rapidash_galar_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.rapidash"
+                "g_rapidash": "geometry.rapidash",
+                "g_rapidash_galar": "geometry.rapidash_galar"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.rapidash.pose",
+                "blink_quirk": "controller.animation.rapidash.blink",
+                "look_at_target": "animation.0078_rapidash.look",
                 "ground_idle": "animation.rapidash.ground_idle",
                 "ground_walk": "animation.rapidash.ground_walk",
                 "ground_run": "animation.rapidash.ground_run",
@@ -29,10 +51,14 @@
                 "cry": "animation.rapidash.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.rapidash",
+                "controller.render.rapidash_emissive"
             ],
             "spawn_egg": {
                 "texture": "0078_rapidash_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.rapidash.cry": "cobblemon.rapidash.cry"
             }
         }
     }

@@ -2,38 +2,73 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0376_metagross",
+            "identifier": "cobblemon:p0376_metagross",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0376_metagross/metagross"
+                "default": "textures/entity/0376_metagross/metagross",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0376_metagross/metagross",
+                "v1": "textures/entity/0376_metagross/metagross_shiny"
             },
             "geometry": {
-                "default": "geometry.metagross"
+                "g_metagross": "geometry.metagross"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.metagross.pose",
+                "blink_quirk": "controller.animation.metagross.blink",
                 "ground_idle": "animation.metagross.ground_idle",
+                "ground_run": "animation.metagross.ground_run",
                 "ground_walk": "animation.metagross.ground_walk",
+                "ride_ground_run": "animation.metagross.ride_ground_run",
+                "ride_ground_walk": "animation.metagross.ride_ground_walk",
+                "ride_jump": "animation.metagross.ride_jump",
                 "battle_idle": "animation.metagross.battle_idle",
+                "physical": "animation.metagross.physical",
+                "special": "animation.metagross.special",
+                "status": "animation.metagross.status",
+                "battle_cry": "animation.metagross.battle_cry",
+                "air_battle_idle": "animation.metagross.air_battle_idle",
+                "air_physical": "animation.metagross.air_physical",
+                "air_special": "animation.metagross.air_special",
+                "air_status": "animation.metagross.air_status",
+                "air_battle_cry": "animation.metagross.air_battle_cry",
+                "recoil": "animation.metagross.recoil",
                 "blink": "animation.metagross.blink",
                 "air_idle": "animation.metagross.air_idle",
                 "air_fly": "animation.metagross.air_fly",
+                "ride_air_idle": "animation.metagross.ride_air_idle",
+                "ride_air_fly": "animation.metagross.ride_air_fly",
                 "cry": "animation.metagross.cry",
                 "sleep": "animation.metagross.sleep",
-                "walkspeedtest": "animation.metagross.walkspeedtest"
+                "walkspeedtest": "animation.metagross.walkspeedtest",
+                "runspeedtest": "animation.metagross.runspeedtest",
+                "shock": "animation.metagross.shock",
+                "angry": "animation.metagross.angry",
+                "sad": "animation.metagross.sad",
+                "happy": "animation.metagross.happy",
+                "hurt": "animation.metagross.hurt",
+                "scale": "animation.metagross.scale",
+                "render": "animation.metagross.render",
+                "behold_man": "animation.metagross.behold_man"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.metagross"
             ],
             "spawn_egg": {
                 "texture": "0376_metagross_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.metagross.cry": "cobblemon.metagross.cry"
             }
         }
     }

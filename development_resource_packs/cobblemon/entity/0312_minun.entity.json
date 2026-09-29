@@ -2,31 +2,70 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0312_minun",
+            "identifier": "cobblemon:p0312_minun",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0312_minun/minun"
+                "default": "textures/entity/0312_minun/minun",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0312_minun/minun",
+                "v1": "textures/entity/0312_minun/minun_shiny"
             },
             "geometry": {
-                "default": "geometry.minun"
+                "g_minun": "geometry.minun"
             },
             "scripts": {
                 "animate": [
-                    "pose"
+                    "pose",
+                    "blink_quirk",
+                    "quirk",
+                    "look_at_target"
                 ]
             },
             "animations": {
                 "pose": "controller.animation.minun.pose",
+                "blink_quirk": "controller.animation.minun.blink",
+                "quirk": "controller.animation.minun.quirk",
+                "quirk_0": "animation.minun.look_quirk",
+                "look_at_target": "animation.0312_minun.look",
                 "ground_idle": "animation.minun.ground_idle",
-                "blink": "animation.minun.blink"
+                "battle_idle": "animation.minun.battle_idle",
+                "ground_walk": "animation.minun.ground_walk",
+                "sleep": "animation.minun.sleep",
+                "shoulder_left": "animation.minun.shoulder_left",
+                "shoulder_right": "animation.minun.shoulder_right",
+                "special": "animation.minun.special",
+                "status": "animation.minun.status",
+                "battle_cry": "animation.minun.battle_cry",
+                "recoil": "animation.minun.recoil",
+                "faint": "animation.minun.faint",
+                "cry": "animation.minun.cry",
+                "look_quirk": "animation.minun.look_quirk",
+                "blink": "animation.minun.blink",
+                "dance": "animation.minun.dance",
+                "render": "animation.minun.render",
+                "status_old": "animation.minun.status_old",
+                "faint_old": "animation.minun.faint_old",
+                "special_old": "animation.minun.special_old",
+                "expression_test": "animation.minun.expression_test",
+                "SCALE": "animation.minun.SCALE",
+                "WALK_TEST": "animation.minun.WALK_TEST",
+                "angry": "animation.minun.angry",
+                "sad": "animation.minun.sad",
+                "happy": "animation.minun.happy",
+                "helicopter": "animation.minun.helicopter"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.minun"
             ],
             "spawn_egg": {
                 "texture": "0312_minun_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.minun.cry": "cobblemon.minun.cry"
             }
         }
     }

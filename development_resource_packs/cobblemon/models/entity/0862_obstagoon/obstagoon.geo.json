@@ -18,11 +18,19 @@
 				{
 					"name": "body",
 					"parent": "obstagoon",
-					"pivot": [0, 0, 0]
+					"pivot": [0, 2, -9]
 				},
 				{
-					"name": "torso",
+					"name": "torso1",
 					"parent": "body",
+					"pivot": [0, 23, 1],
+					"cubes": [
+						{"origin": [-6.5, 21, -4.5], "size": [13, 7, 11], "uv": [44, 58]}
+					]
+				},
+				{
+					"name": "torso2",
+					"parent": "torso1",
 					"pivot": [0, 28, 1],
 					"cubes": [
 						{"origin": [-7.5, 28, -6], "size": [15, 10, 14], "uv": [0, 0]}
@@ -30,7 +38,7 @@
 				},
 				{
 					"name": "right_arm",
-					"parent": "torso",
+					"parent": "torso2",
 					"pivot": [-10, 34, 0],
 					"rotation": [0, 0, 45],
 					"cubes": [
@@ -96,7 +104,7 @@
 				},
 				{
 					"name": "left_arm",
-					"parent": "torso",
+					"parent": "torso2",
 					"pivot": [10, 34, 0],
 					"rotation": [0, 0, -45],
 					"cubes": [
@@ -162,7 +170,7 @@
 				},
 				{
 					"name": "jacket",
-					"parent": "torso",
+					"parent": "torso2",
 					"pivot": [0.5, 6, -9],
 					"cubes": [
 						{"origin": [-5.5, 27.25, 5], "size": [11, 12, 4], "uv": [32, 93]},
@@ -192,7 +200,7 @@
 					]
 				},
 				{
-					"name": "bone5",
+					"name": "tuft_front_right",
 					"parent": "jacket_right_tuft",
 					"pivot": [-10, 42.5, -4],
 					"rotation": [-45, 0, 0],
@@ -201,7 +209,7 @@
 					]
 				},
 				{
-					"name": "bone6",
+					"name": "tuft_back_right",
 					"parent": "jacket_right_tuft",
 					"pivot": [-10, 42.5, 4],
 					"rotation": [45, 0, 0],
@@ -210,7 +218,7 @@
 					]
 				},
 				{
-					"name": "bone7",
+					"name": "tuft_side_right",
 					"parent": "jacket_right_tuft",
 					"pivot": [-14, 42.5, 0],
 					"rotation": [0, 0, 60],
@@ -241,7 +249,7 @@
 					]
 				},
 				{
-					"name": "bone2",
+					"name": "tuft_front_left",
 					"parent": "jacket_left_tuft",
 					"pivot": [10, 42.5, -4],
 					"rotation": [-45, 0, 0],
@@ -250,7 +258,7 @@
 					]
 				},
 				{
-					"name": "bone3",
+					"name": "tuft_back_left",
 					"parent": "jacket_left_tuft",
 					"pivot": [10, 42.5, 4],
 					"rotation": [45, 0, 0],
@@ -259,7 +267,7 @@
 					]
 				},
 				{
-					"name": "bone4",
+					"name": "tuft_side_left",
 					"parent": "jacket_left_tuft",
 					"pivot": [14, 42.5, 0],
 					"rotation": [0, 0, -60],
@@ -269,12 +277,12 @@
 				},
 				{
 					"name": "jacket_right2",
-					"parent": "torso",
+					"parent": "torso2",
 					"pivot": [-6, 34.5, -9]
 				},
 				{
 					"name": "neck",
-					"parent": "torso",
+					"parent": "torso2",
 					"pivot": [0.5, 37, 1],
 					"rotation": [-72.5, 0, 0],
 					"cubes": [
@@ -352,12 +360,30 @@
 					]
 				},
 				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-2.45, 38.6, -29.4],
+					"rotation": [0, 90, 0],
+					"locators": {
+						"eye1": [-2.45, 38.6, -29.4]
+					}
+				},
+				{
 					"name": "eye_left",
 					"parent": "head",
 					"pivot": [0, 38, -27],
 					"cubes": [
 						{"origin": [2.52, 37.5, -30.75], "size": [0, 2, 4], "pivot": [0, 38, -27], "rotation": [10, 0, 0], "uv": [44, 27]}
 					]
+				},
+				{
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [2.45, 38.6, -29.4],
+					"rotation": [0, -90, 0],
+					"locators": {
+						"eye2": [2.45, 38.6, -29.4]
+					}
 				},
 				{
 					"name": "eye_right_closed",
@@ -511,16 +537,8 @@
 					]
 				},
 				{
-					"name": "waist",
-					"parent": "body",
-					"pivot": [0, 28, 1],
-					"cubes": [
-						{"origin": [-6.5, 21, -4.5], "size": [13, 7, 11], "uv": [44, 58]}
-					]
-				},
-				{
 					"name": "tail",
-					"parent": "waist",
+					"parent": "torso1",
 					"pivot": [0, 23, 5.5],
 					"cubes": [
 						{"origin": [-2, 21.5, 5.5], "size": [4, 3, 5], "uv": [44, 0]}
@@ -534,6 +552,11 @@
 						{"origin": [-1.5, 22, 9.5], "size": [3, 2, 4], "uv": [88, 91]},
 						{"origin": [-1, 23, 13.5], "size": [2, 0, 2], "uv": [55, 0]}
 					]
+				},
+				{
+					"name": "waist",
+					"parent": "body",
+					"pivot": [0, 28, 1]
 				},
 				{
 					"name": "right_leg",

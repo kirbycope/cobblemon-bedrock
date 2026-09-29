@@ -1,0 +1,196 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.mantine.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "float": {
+                    "animations": [
+                        "water_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "swim": {
+                    "animations": [
+                        "water_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "moving": "!q.is_in_water && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "idle": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "moving": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "moving": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "sleeping": "q.is_sleeping"
+                        },
+                        {
+                            "float": "q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "swim": "q.is_in_water && q.modified_move_speed > 0.1"
+                        },
+                        {
+                            "idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "sleeping": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "ride_idle": "q.has_rider"
+                        },
+                        {
+                            "idle": "!q.is_sleeping"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "ride_idle": {
+                    "animations": [
+                        "ground_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.has_rider"
+                        },
+                        {
+                            "ride_move": "q.modified_move_speed > 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "ride_swim": "q.is_in_water"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "ride_move": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.has_rider"
+                        },
+                        {
+                            "ride_idle": "q.modified_move_speed <= 0.1 && q.is_on_ground"
+                        },
+                        {
+                            "ride_swim": "q.is_in_water"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "ride_swim": {
+                    "animations": [
+                        "ride_water_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "idle": "!q.has_rider"
+                        },
+                        {
+                            "ride_idle": "!q.is_in_water && q.modified_move_speed <= 0.1"
+                        },
+                        {
+                            "ride_move": "!q.is_in_water && q.modified_move_speed > 0.1"
+                        }
+                    ],
+                    "blend_transition": 0.2
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "idle": "1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.mantine.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}
