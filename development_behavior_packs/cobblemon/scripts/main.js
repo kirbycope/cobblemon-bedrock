@@ -90,7 +90,7 @@ function fighter(entity) {
     } catch (e) { }
     const moves = ids.filter((id) => MOVES[id]).map((id) => ({ id, ...MOVES[id], left: MOVES[id].pp }));
     let rolled = prop(entity, "cobblemon:ability");
-    if (!rolled || !(info.abilities ?? []).includes(rolled)) {
+    if (!rolled || !([...(info.abilities ?? []), ...(info.hidden ?? [])]).includes(rolled)) {
         const list = info.abilities?.length ? info.abilities : [info.ability];
         rolled = list[Math.floor(Math.random() * list.length)];
         setProp(entity, "cobblemon:ability", rolled);
@@ -106,7 +106,25 @@ function effectiveness(moveType, defenderTypes) {
     return mult;
 }
 
-function speedOf(f) { return f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1); }
+// Battle weather, as Showdown's: rain, sun, sand and snow for five turns (eight with the matching rock), from a move
+// or an ability on entry. The world's own weather does not carry into a battle, as in Cobblemon.
+const WEATHER_TEXT = { rain: ["It started to rain!", "The rain stopped."], sun: ["The sunlight turned harsh!", "The harsh sunlight faded."],
+    sand: ["A sandstorm kicked up!", "The sandstorm subsided."], snow: ["It started to snow!", "The snow stopped."] };
+const WEATHER_ROCKS = { rain: "damp_rock", sun: "heat_rock", sand: "smooth_rock", snow: "icy_rock" };
+const WEATHER_ABILITIES = { drizzle: "rain", drought: "sun", sandstream: "sand", snowwarning: "snow", orichalcumpulse: "sun" };
+const WEATHER_SPEED = { swiftswim: "rain", chlorophyll: "sun", sandrush: "sand", slushrush: "snow" };
+function weatherOf(battle) { return battle?.weather?.kind ?? null; }
+function setWeather(battle, kind, setter) {
+    if (weatherOf(battle) === kind) return false;
+    battle.weather = { kind, turns: held(setter) === WEATHER_ROCKS[kind] ? 8 : 5 };
+    say(battle, `§b${WEATHER_TEXT[kind][0]}`);
+    return true;
+}
+function speedOf(f, battle) {
+    let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
+    if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
+    return spe;
+}
 
 function say(battle, text) { battle.player.sendMessage(text); }
 
@@ -191,9 +209,15 @@ function useMove(battle, attacker, defender, move) {
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
         let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
         if (atkAb === "compoundeyes") chance *= 1.3;
+        if ((defAb === "sandveil" && weatherOf(battle) === "sand") || (defAb === "snowcloak" && weatherOf(battle) === "snow")) chance *= 0.8;
         if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
         if (move.ohko) chance = attacker.level >= defender.level ? 30 + attacker.level - defender.level : 0;
         if (Math.random() * 100 >= chance) { say(battle, `§7${name} used ${move.name}... it missed!`); return; }
+    }
+    if (move.weather) {
+        say(battle, `§e${name} used ${move.name}!`);
+        if (!setWeather(battle, move.weather, attacker)) say(battle, "§7But it failed!");
+        return;
     }
     if (self) { say(battle, `§e${name} used ${move.name}!`); boost(battle, attacker, move.boosts, attacker); return; }
     if ((ABILITY_IMMUNE[defAb] === move.type && move.category !== "Status") || (defAb === "soundproof" && move.flags?.includes("sound"))
@@ -234,6 +258,10 @@ function useMove(battle, attacker, defender, move) {
         if (physical && atkAb === "hustle") a *= 1.5;
         if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
         if (physical && defAb === "furcoat") d *= 2;
+        const w = weatherOf(battle);
+        if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
+        if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
+        if (!physical && w === "sun" && atkAb === "solarpower") a *= 1.5;
         if (physical && defAb === "marvelscale" && defender.status) d *= 1.5;
         if (held(defender) === "assault_vest" && !physical) d *= 1.5;
         if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
@@ -247,6 +275,8 @@ function useMove(battle, attacker, defender, move) {
         if (atkAb === "toughclaws" && move.contact) power *= 1.3;
         if (atkAb === "reckless" && move.recoil) power *= 1.2;
         if (sheer) power *= 1.3;
+        if (w === "rain") power *= move.type === "water" ? 1.5 : move.type === "fire" ? 0.5 : 1;
+        if (w === "sun") power *= move.type === "fire" ? 1.5 : move.type === "water" ? 0.5 : 1;
         if (atkAb === "flashfire" && attacker.flashFire && move.type === "fire") power *= 1.5;
         let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
         if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
@@ -342,6 +372,7 @@ function endBattle(battle, text) {
 
 // on entering battle: Intimidate
 function enter(battle, f, other) {
+    if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
         if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
@@ -588,7 +619,7 @@ function turn(battle) {
         if (held(ally)?.startsWith("choice_") && move !== STRUGGLE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
         const foeMove = pickFoeMove(foe);
-        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || ((move.priority || 0) === (foeMove.priority || 0) && speedOf(ally) >= speedOf(foe));
+        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || ((move.priority || 0) === (foeMove.priority || 0) && speedOf(ally, battle) >= speedOf(foe, battle));
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, m] of order) {
             if (a.hp <= 0 || d.hp <= 0) continue;
@@ -620,7 +651,16 @@ function endOfTurn(battle) {
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
+        const w = weatherOf(battle);
+        if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
+            && !["sandveil", "sandrush", "sandforce", "overcoat"].includes(f.ability) && held(f) !== "safety_goggles") {
+            hurt(battle, f, f.stats.hp / 16, `${f.info.name} is buffeted by the sandstorm!`);
+        }
+        const heal = (w === "rain" && (f.ability === "raindish" || f.ability === "dryskin")) ? (f.ability === "dryskin" ? 8 : 16) : (w === "snow" && f.ability === "icebody") ? 16 : 0;
+        if (heal && f.hp > 0 && f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / heal)); say(battle, `§a${f.info.name} restored HP with its ${abilityName(f.ability)}!`); syncHealth(f); }
+        if (w === "sun" && (f.ability === "dryskin" || f.ability === "solarpower")) hurt(battle, f, f.stats.hp / 8, `${f.info.name} is hurt by the sunlight!`);
     }
+    if (battle.weather && --battle.weather.turns <= 0) { say(battle, `§b${WEATHER_TEXT[battle.weather.kind][1]}`); battle.weather = null; }
     for (const f of [battle.ally, battle.foe]) {
         if (f.hp > 0 && f.hp < f.stats.hp && held(f) === "leftovers") {
             f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Leftovers!`); syncHealth(f);
@@ -1661,13 +1701,22 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target, itemStack } = event, id = itemStack?.typeId;
     if (!id || !POKEMON[target.typeId]) return;
     const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
-    if (!medicine && candy === undefined && !held) return;
+    const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
+    if (!medicine && candy === undefined && !held && !changer) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
     system.run(() => {
         if (!target.isValid) return;
         if (battles.has(player.id)) { player.sendMessage("§7Use items from the Bag during a battle."); return; }
-        if (medicine) {
+        if (changer) {
+            // Ability Capsule swaps between the two normal abilities; Ability Patch gives the hidden one
+            const info = POKEMON[target.typeId], current = fighter(target).ability;
+            const hidden = (info.hidden ?? []).includes(current);
+            const choices = id === "cobblemon:ability_patch" ? (hidden ? [] : info.hidden ?? []) : (hidden ? [] : (info.abilities ?? []).filter((a) => a !== current));
+            if (!choices.length) { player.sendMessage("§7It won't have any effect."); return; }
+            setProp(target, "cobblemon:ability", choices[0]); consumeHand(player);
+            player.sendMessage(`§a${info.name}'s ability became ${abilityName(choices[0])}!`);
+        } else if (medicine) {
             const message = applyMedicine(target, medicine);
             if (!message) { player.sendMessage("§7It won't have any effect."); return; }
             consumeHand(player); player.sendMessage(`§a${message}`);

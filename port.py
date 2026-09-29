@@ -2229,6 +2229,8 @@ def showdown_moves():
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
+        weather = re.search(r'^    weather: "(\w+)"', body, re.M)
+        if weather: move["weather"] = {"raindance": "rain", "sunnyday": "sun", "sandstorm": "sand", "hail": "snow", "snow": "snow"}[weather.group(1).lower()]
         crit = re.search(r"^    critRatio: (\d+)", body, re.M)
         if crit: move["critRatio"] = int(crit.group(1))
         # a chance of a status or stat change on hit
@@ -2292,7 +2294,7 @@ def create_battle_data():
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)},
             "moves": learned,
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []),
-            "ability": abilities[0] if abilities else None, "abilities": abilities, "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
+            "ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in species.get("abilities", []) if a.startswith("h:")], "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
             "variants": variant_battle_overrides(pokemon, species)
         }
