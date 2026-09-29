@@ -13,7 +13,8 @@ import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
-import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES } from "./items.js";
+import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST } from "./items.js";
+import { HELD_INDEX } from "./held_display.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -29,7 +30,7 @@ const ABILITY_CONTACT = { static: "par", flamebody: "brn", poisonpoint: "psn" };
 // Life Orb 1.3x for a tenth of HP, Expert Belt 1.2x on super effective hits, Leftovers a sixteenth a turn,
 // Focus Sash survives a knockout from full HP, Rocky Helmet a sixth back on contact, Assault Vest 1.5x Sp. Def,
 // Eviolite 1.5x defences on a Pokemon that can evolve, and the healing and curing berries once, when they apply
-const TYPE_ITEMS = { charcoal: "fire", mystic_water: "water", miracle_seed: "grass", magnet: "electric", never_melt_ice: "ice", black_belt: "fighting",
+const TYPE_ITEMS = { charcoal_stick: "fire", mystic_water: "water", miracle_seed: "grass", magnet: "electric", never_melt_ice: "ice", black_belt: "fighting",
     poison_barb: "poison", soft_sand: "ground", sharp_beak: "flying", twisted_spoon: "psychic", silver_powder: "bug", hard_stone: "rock",
     spell_tag: "ghost", dragon_fang: "dragon", black_glasses: "dark", metal_coat: "steel", silk_scarf: "normal", fairy_feather: "fairy" };
 const STATUS_BERRIES = { cheri_berry: ["par"], chesto_berry: ["slp"], pecha_berry: ["psn", "tox"], rawst_berry: ["brn"], aspear_berry: ["frz"], lum_berry: null };
@@ -414,6 +415,7 @@ system.runInterval(() => {
                 if (e.getProperty("cobblemon:submerged") !== under) e.setProperty("cobblemon:submerged", under);
                 const holding = !!prop(e, "cobblemon:held");   // the poses that show a held item
                 if (e.getProperty("cobblemon:holding") !== holding) e.setProperty("cobblemon:holding", holding);
+                if (e.getProperty("cobblemon:held_index") !== ((prop(e, "cobblemon:held") && HELD_INDEX[prop(e, "cobblemon:held")]) || 0)) showHeld(e);
             } catch (err) { }
         }
     }
@@ -1924,7 +1926,16 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     });
 });
 
-function itemName(id) { return id.slice("cobblemon:".length).split("_").map(cap).join(" "); }
+function itemName(id) { return id.slice(id.indexOf(":") + 1).split("_").map(cap).join(" "); }
+
+// The held item on the model, as HeldItemRenderer draws it: the client draws the icon HELD_INDEX names at the
+// model's item, item_face or item_hat locator, as Cobblemon's visibility tags say, and nothing for the hidden ones.
+function showHeld(entity) {
+    const id = prop(entity, "cobblemon:held");
+    try {
+        entity.setProperty("cobblemon:held_index", (id && HELD_INDEX[id]) || 0);   // the index follows the pack's icon list
+    } catch (e) { }
+}
 
 function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
 
@@ -1960,10 +1971,29 @@ function showSummary(source) {
         lines.push("", "§lBase stats§r", STAT_KEYS.map((k) => `${STAT_NAMES[k]} ${info.stats[k]}`).join("  "));
     }
     const form = new ActionFormData().title(info.name).body(lines.join("\n"));
-    const take = mine && heldItem(source);
-    if (take) form.button("Take Item");
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    const hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
+    const buttons = [];
+    if (mine && hand && !HOLD_BLACKLIST.includes(hand)) buttons.push(["give", `Give ${itemName(hand)}`]);
+    if (mine && heldItem(source)) buttons.push(["take", "Take Item"]);
+    for (const [, label] of buttons) form.button(label);
     form.button("Close");
-    form.show(player).then((r) => { if (!r.canceled && take && r.selection === 0) takeHeld(source); }).catch(() => { });
+    form.show(player).then((r) => {
+        const pick = r.canceled ? null : buttons[r.selection]?.[0];
+        if (pick === "take") takeHeld(source);
+        if (pick === "give") giveHeld(player, source);
+    }).catch(() => { });
+}
+
+// the summary's Give button: whatever the player holds, bar containers, as PokemonEntity.offerHeldItem allows
+function giveHeld(player, target) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, id = inv?.getItem(player.selectedSlotIndex)?.typeId;
+    if (!id || HOLD_BLACKLIST.includes(id) || !target.isValid) return;
+    const old = heldItem(target);
+    setProp(target, HELD, id); consumeHand(player);
+    if (old) giveOrDrop(player, old);
+    showHeld(target);
+    player.sendMessage(`§a${POKEMON[target.typeId].name} is now holding the ${itemName(id)}.`);
 }
 
 // the panel's Take Item button
