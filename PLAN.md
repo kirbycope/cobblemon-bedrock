@@ -3,9 +3,9 @@
 Written for an agent continuing this port. Everything below builds on `port.py` (1,687 lines, one
 generator per Bedrock file kind), `scripts/main.js` (turn-based battles, Script API) and the three
 tools under `tools/`. Read `README.md` first: it lists what each generator produces and from which
-Cobblemon file. The upstream repository is a sparse clone at `cobblemon-main/`
+Cobblemon file. The upstream repository is a sparse clone at `java/`
 (git-ignored), commit `6bc974f9`, and the paths below are relative to
-`cobblemon-main/common/src/main/resources`.
+`java/common/src/main/resources`.
 
 ## Status (September 2026)
 
@@ -24,7 +24,7 @@ All eight phases are in. What each carries and leaves out is in README.md's gene
 
 Regenerate with the full `python port.py --fix`. Rebuilding blocks alone once left every custom block invisible on the client with nothing in its log.
 
-After the plan: the PC (40 boxes of 30), the pasture, and fishing with the 48 Poke Rods are in. Cobblemon's config defaults are used where they apply: shiny odds 1 in 8192, two fossils in the analyzer, 40 PC boxes.
+After the plan: the PC (40 boxes of 30), the pasture, fishing with the 48 Poke Rods, the Pokedex, apricorn trees and 147 converted recipes are in. Cobblemon's config defaults are used where they apply: shiny odds 1 in 8192, two fossils in the analyzer, 40 PC boxes.
 
 ## Ground rules
 

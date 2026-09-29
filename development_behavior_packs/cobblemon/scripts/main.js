@@ -9,9 +9,10 @@
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS } from "./data.js";
-import { BERRIES, FOSSILS } from "./blocks.js";
+import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
+import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -216,6 +217,7 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
         try {
             if (target.isValid && target.hasComponent(EntityComponentTypes.IsTamed) && !target.getDynamicProperty(OWNER)) {
                 target.setDynamicProperty(OWNER, player.id);
+                register(player, target.typeId, 2);
                 player.sendMessage(`§a${POKEMON[target.typeId].name} is now yours!`);
             }
         } catch (e) { }
@@ -261,6 +263,7 @@ function startBattle(player, foeEntity, trainer) {
     battles.set(player.id, battle);
     freeze(foeEntity, true);
     say(battle, `§6A ${trainer ? "Trainer's " : "wild "}${foe.info.name} appeared! §7(Lv ${foe.level})`);
+    register(player, foeEntity.typeId, 1);
     if (!sendOut(battle, party[0], { x: battle.spot.x, y: party[0].location.y, z: battle.spot.z })) { endBattle(battle); return; }
     enter(battle, foe, battle.ally);
     system.runTimeout(() => turn(battle), 20);
@@ -323,7 +326,8 @@ function ballMultiplier(battle, id) {
             return /forest|plains/.test(biome) ? 2.5 : 1;
         }
         // Safari counts outside battle only; Dream needs sleep, Love a gender, Lure a rod, Repeat a Pokedex: 1x here
-        case "safari": case "dream": case "love": case "lure": case "repeat": return 1;
+        case "repeat": return dexStatus(battle.player, f.entity.typeId) === 2 ? 3.5 : 1;
+        case "safari": case "dream": case "love": case "lure": return 1;
         default: return ball.mult;
     }
 }
@@ -363,6 +367,7 @@ function throwBall(battle, id) {
         say(battle, `§7You threw a ${BALLS[id].name}!`);
         if (Math.random() < chance) {
             say(battle, `§aGotcha! ${f.info.name} was caught!`);
+            register(battle.player, f.entity.typeId, 2);
             try { f.entity.triggerEvent("cobblemon:capture"); } catch (e) { }
             endBattle(battle);
             return true;
@@ -577,6 +582,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
             if (!entity.isValid) return;
             if (player) entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
             entity.setDynamicProperty(OWNER, owner);
+            if (player) register(player, entity.typeId, 2);
             player?.sendMessage(`§aYour Pokemon evolved into ${POKEMON[entity.typeId].name}!`);
         } catch (e) { }
     });
@@ -688,6 +694,7 @@ function useMachine(block, player) {
                 pokemon.triggerEvent("cobblemon:caught");
                 pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player);
                 pokemon.setDynamicProperty(OWNER, player.id);
+                register(player, st.result, 2);
             } catch (e) { }
         });
         player.sendMessage(`§a${POKEMON[st.result]?.name ?? "The Pokemon"} was revived! It is yours.`);
@@ -1168,6 +1175,7 @@ function reel(cast) {
             } catch (e) { }
         });
         player.sendMessage(`§bYou fished up a wild ${POKEMON[spawn.entity]?.name ?? "Pokemon"}! §7(Lv ${level})`);
+        register(player, spawn.entity, 1);
         try { player.playSound("random.splash"); } catch (e) { }
         return;
     }
@@ -1228,10 +1236,205 @@ system.runInterval(() => {
     }
 }, 1);
 
+// The Pokedex. Each player's register is one dynamic property, a character per National dex entry: 0 unknown,
+// 1 seen, 2 caught. A Pokemon is seen when the player battles it, scans it with a Pokedex or fishes it up, and
+// caught when it becomes theirs (a claim, a capture, a revival, an evolution) or they hold it in a filled ball.
+// Using a Pokedex while looking at a Pokemon within 12 blocks scans it; otherwise it opens the register.
+const DEX = "cobblemon:dex", DEX_INDEX = new Map(NATIONAL.map((id, n) => [id, n]));
+
+function dexString(player) {
+    const s = String(player.getDynamicProperty(DEX) ?? "");
+    return s.length >= NATIONAL.length ? s : s.padEnd(NATIONAL.length, "0");
+}
+
+function dexStatus(player, typeId) {
+    const n = DEX_INDEX.get(typeId);
+    return n === undefined ? 0 : Number(dexString(player)[n]);
+}
+
+function register(player, typeId, status) {
+    const n = DEX_INDEX.get(typeId);
+    if (n === undefined || !player?.isValid) return;
+    const s = dexString(player);
+    if (Number(s[n]) >= status) return;
+    player.setDynamicProperty(DEX, s.slice(0, n) + status + s.slice(n + 1));
+    const name = POKEMON[typeId]?.name ?? typeId;
+    if (status === 2) player.sendMessage(`§b${name}'s data was added to the Pokedex.`);
+}
+
+// the owner of a Pokemon that just became theirs; used wherever ownership is set
+function registerOwned(entity) {
+    const owner = world.getPlayers().find((p) => p.id === prop(entity, OWNER));
+    if (owner) register(owner, entity.typeId, 2);
+}
+
+// filled balls in an inventory count as caught; checked every few seconds
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+        if (!inv) continue;
+        for (let i = 0; i < inv.size; i++) {
+            const id = inv.getItem(i)?.typeId;
+            if (id?.startsWith("cobblemon:poke_ball_")) register(player, `cobblemon:p${id.slice("cobblemon:poke_ball_".length)}`, 2);
+        }
+    }
+}, 60);
+
+const DEX_PAGE = 20;
+const STAT_LABELS = [["hp", "HP"], ["atk", "Atk"], ["def", "Def"], ["spa", "SpA"], ["spd", "SpD"], ["spe", "Spe"]];
+
+function dexEntry(player, typeId, back) {
+    const species = POKEMON[typeId], info = DEX_INFO[typeId] ?? {}, status = dexStatus(player, typeId);
+    const number = `#${String(info.n ?? 0).padStart(4, "0")}`;
+    let body;
+    if (!status) body = `${number} ???\n\nNot yet seen.`;
+    else {
+        body = `${number} ${species.name}\n${species.types.map(cap).join(" / ")} type\n`;
+        if (status === 2) {
+            body += `\n${info.d}\n\nHeight ${(info.h ?? 0) / 10} m   Weight ${(info.w ?? 0) / 10} kg\n`;
+            body += STAT_LABELS.map(([k, l]) => `${l} ${species.stats[k]}`).join("   ");
+        } else body += "\nSeen, not yet caught.";
+    }
+    new ActionFormData().title("Pokedex").body(body).button("Back").show(player).then((r) => { if (!r.canceled && back) back(); });
+}
+
+function dexRegion(player, region, page) {
+    const s = dexString(player), entries = region.entries, pages = Math.ceil(entries.length / DEX_PAGE);
+    const slice = entries.slice(page * DEX_PAGE, (page + 1) * DEX_PAGE);
+    const seen = entries.filter((n) => s[n] !== "0").length, caught = entries.filter((n) => s[n] === "2").length;
+    const form = new ActionFormData().title(`${region.name} Pokedex`).body(`Seen ${seen}   Caught ${caught}   of ${entries.length}\nPage ${page + 1} of ${pages}`);
+    const buttons = [];
+    if (page > 0) { form.button("Previous page"); buttons.push(() => dexRegion(player, region, page - 1)); }
+    for (const n of slice) {
+        const id = NATIONAL[n], st = s[n], num = String(DEX_INFO[id]?.n ?? 0).padStart(4, "0");
+        form.button(st === "0" ? `#${num} ???` : `#${num} ${POKEMON[id].name}${st === "2" ? "  §2caught" : "  §7seen"}`);
+        buttons.push(() => dexEntry(player, id, () => dexRegion(player, region, page)));
+    }
+    if (page + 1 < pages) { form.button("Next page"); buttons.push(() => dexRegion(player, region, page + 1)); }
+    form.show(player).then((r) => { if (!r.canceled) buttons[r.selection]?.(); });
+}
+
+function openDex(player) {
+    const s = dexString(player);
+    const form = new ActionFormData().title("Pokedex")
+        .body(`Seen ${[...s].filter((c) => c !== "0").length}   Caught ${[...s].filter((c) => c === "2").length}   of ${NATIONAL.length}`);
+    for (const region of REGIONS) form.button(region.name);
+    form.show(player).then((r) => { if (!r.canceled) dexRegion(player, REGIONS[r.selection], 0); });
+}
+
+function scan(player, entity) {
+    register(player, entity.typeId, prop(entity, OWNER) === player.id ? 2 : 1);
+    try { player.playSound("random.orb", { pitch: 1.5 }); } catch (e) { }
+    dexEntry(player, entity.typeId);
+}
+
+// right-clicking a Pokemon with a Pokedex scans it (in place of its panel); right-clicking anything else opens the register
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    if (!event.itemStack?.typeId.startsWith("cobblemon:pokedex_") || !POKEMON[event.target.typeId]) return;
+    event.cancel = true;
+    const { player, target } = event;
+    system.run(() => scan(player, target));
+});
+world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
+    if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
+    const hit = player.getEntitiesFromViewDirection({ maxDistance: 12 }).find((h) => POKEMON[h.entity.typeId]);
+    if (hit) scan(player, hit.entity); else openDex(player);
+});
+
+// Apricorns (ApricornBlock): a fruit ripens a stage on one random tick in five; used when ripe it drops its apricorn,
+// and a sprout one time in ten, and starts again; broken when ripe it drops the same; bone meal ripens it a stage.
+// A sapling grows into a tree on one random tick in seven, or at once from bone meal 45 times in 100, placing one
+// of the grown-tree structures of its colour. An axe strips an apricorn log or wood.
+function colourOf(typeId) { return typeId.slice("cobblemon:".length).split("_")[0]; }
+
+function holding(player, typeId) {
+    try { return player.getComponent(EntityComponentTypes.Inventory).container.getItem(player.selectedSlotIndex)?.typeId === typeId; } catch (e) { return false; }
+}
+
+function pickApricorn(block, dimension) {
+    const colour = colourOf(block.typeId), at = { x: block.location.x + 0.5, y: block.location.y + 0.3, z: block.location.z + 0.5 };
+    dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn`, 1), at);
+    if (Math.random() < 0.1) dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn_seed`, 1), at);
+}
+
+function growTree(block) {
+    const colour = colourOf(block.typeId), n = Math.floor(Math.random() * APRICORN_TREES.variants);
+    const name = `apricorn_tree_${colour}_grown_${n}`, [ox, oy, oz] = APRICORN_TREES.origins[name];
+    const { x, y, z } = block.location;
+    block.setType("minecraft:air");
+    try { world.structureManager.place(`cobblemon:${name}`, block.dimension, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
+    catch (e) { console.warn(`[cobblemon] apricorn tree: ${e}`); block.setType(`cobblemon:${colour}_apricorn_sapling`); }
+}
+
+function useBoneMeal(player) {
+    if (player.getGameMode?.() === "Creative") return;
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
+    if (!item) return;
+    if (item.amount > 1) { item.amount--; inv.setItem(slot, item); } else inv.setItem(slot, undefined);
+}
+
+function registerApricornComponents(registry) {
+    registry.registerCustomComponent("cobblemon:apricorn", {
+        onRandomTick({ block }) {
+            const age = block.permutation.getState("cobblemon:age");
+            if (age < 3 && Math.random() < 0.2) block.setPermutation(block.permutation.withState("cobblemon:age", age + 1));
+        },
+        onPlayerInteract({ block, player }) {
+            const age = block.permutation.getState("cobblemon:age");
+            if (age !== 3 || (player && holding(player, "minecraft:bone_meal"))) return;
+            pickApricorn(block, block.dimension);
+            block.setPermutation(block.permutation.withState("cobblemon:age", 0));
+            try { block.dimension.playSound("block.sweet_berry_bush.pick", block.location); } catch (e) { }
+        }
+    });
+    registry.registerCustomComponent("cobblemon:apricorn_sapling", {
+        onRandomTick({ block }) { if (Math.random() < 1 / 7) growTree(block); }
+    });
+    registry.registerCustomComponent("cobblemon:strippable", {
+        onPlayerInteract({ block, player }) {
+            if (!player) return;
+            let tool;
+            try { tool = player.getComponent(EntityComponentTypes.Inventory).container.getItem(player.selectedSlotIndex)?.typeId; } catch (e) { }
+            if (!tool?.endsWith("_axe")) return;
+            const stripped = block.typeId.replace("cobblemon:", "cobblemon:stripped_");
+            const face = block.permutation.getState("minecraft:block_face");
+            block.setType(stripped);
+            try { block.setPermutation(block.permutation.withState("minecraft:block_face", face)); } catch (e) { }
+            try { block.dimension.playSound("use.wood", block.location); } catch (e) { }
+        }
+    });
+}
+
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { player, block, itemStack } = event;
+    if (itemStack?.typeId !== "minecraft:bone_meal") return;
+    const sapling = /^cobblemon:[a-z]+_apricorn_sapling$/.test(block.typeId), fruit = /^cobblemon:[a-z]+_apricorn$/.test(block.typeId);
+    if (!sapling && !fruit) return;
+    if (fruit && block.permutation.getState("cobblemon:age") >= 3) return;
+    event.cancel = true;
+    system.run(() => {
+        if (!block.isValid) return;
+        useBoneMeal(player);
+        try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+        if (fruit) block.setPermutation(block.permutation.withState("cobblemon:age", block.permutation.getState("cobblemon:age") + 1));
+        else if (Math.random() < 0.45) growTree(block);
+    });
+});
+
+// a ripe fruit broken by a player drops its apricorn as it would have been picked
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    const id = brokenBlockPermutation.type.id;
+    if (!/^cobblemon:[a-z]+_apricorn$/.test(id) || brokenBlockPermutation.getState("cobblemon:age") !== 3) return;
+    const colour = colourOf(id), at = { x: block.location.x + 0.5, y: block.location.y + 0.3, z: block.location.z + 0.5 };
+    block.dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn`, 1), at);
+    if (Math.random() < 0.1) block.dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn_seed`, 1), at);
+});
+
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
 // drops Cobblemon's base yield of its berry and goes back to flowering. The healing machine restores the
 // Pokemon around it that belong to the player using it.
 system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
+    registerApricornComponents(blockComponentRegistry);
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");
