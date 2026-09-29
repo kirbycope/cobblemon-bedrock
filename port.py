@@ -2324,7 +2324,7 @@ def showdown_moves():
         if flags:
             names = re.findall(r"(\w+): 1", flags.group(1))
             if "contact" in names: move["contact"] = True
-            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet")]
+            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet", "powder")]
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
