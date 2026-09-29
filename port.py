@@ -186,6 +186,12 @@ def type_name(type_key):
     return lang.get(f"cobblemon.type.{type_key}", type_key.capitalize())
 
 
+def write_item_names(names):
+    """Names for the items create_general_items made; the lang file is written before them, so this appends."""
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for name in names: file.write(f"item.cobblemon:{name}.name={lang['item.cobblemon.' + name]}" + chr(10))
+
+
 def create_texts():
     print("Creating texts...")
     os.makedirs(textsBedrock, exist_ok=True)
@@ -1113,7 +1119,9 @@ def create_dialogues():
             "scene_tag": f"cobblemon:{pokemon}.stats",
             "npc_name": name,
             "text": f"Height {height:g} m, weight {weight:g} kg\n{stat_line}",
-            "buttons": [{"name": "Back", "commands": [f"/dialogue open @s @initiator cobblemon:{pokemon}"]}]
+            # Bedrock allows six buttons a scene, which the main page fills for a rideable Pokemon
+            "buttons": [{"name": "Take Item", "commands": ["/scriptevent cobblemon:take_item go"]},
+                        {"name": "Back", "commands": [f"/dialogue open @s @initiator cobblemon:{pokemon}"]}]
         })
     with open(f"{dialogueBedrock}/pokemon.dialogue.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": scenes}}, indent=4, ensure_ascii=False))
@@ -2275,7 +2283,7 @@ def create_battle_data():
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)},
             "moves": learned,
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []),
-            "ability": abilities[0] if abilities else None, "baseExp": species.get("baseExperienceYield", 50),
+            "ability": abilities[0] if abilities else None, "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
             "variants": variant_battle_overrides(pokemon, species)
         }
@@ -3627,6 +3635,122 @@ def create_recipes():
     print(f"Create recipes complete: {made} Cobblemon recipes, {skipped} left out for items the pack does not have.")
 
 
+# ---------------------------------------------------------------------------
+# Items. Every Cobblemon item the pack has not made elsewhere, with a flat icon (its layers composited) and a name
+# in the lang file, becomes an item: held items, medicine, candies, mints, food, gems, sweets and the rest.
+# CobblemonItems.kt says which are held items and what each food restores; data/cobblemon/mechanics has the heal
+# amounts. scripts/main.js gives medicine, candies and held items their use on a Pokemon and in battle, from
+# scripts/items.js, which this writes.
+# ---------------------------------------------------------------------------
+
+kotlinMain = f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common"
+FLAT_PARENTS = {"minecraft:item/generated", "item/generated", "minecraft:item/handheld", "item/handheld", "cobblemon:item/handheld_rotated"}
+# medicine by item: heal (HP, or "max"), revive (share of max HP), cures status, restores PP (per move, "all" moves)
+MEDICINE = {"potion": {"heal": "potionRestoreAmount"}, "super_potion": {"heal": "superPotionRestoreAmount"}, "hyper_potion": {"heal": "hyperPotionRestoreAmount"},
+            "max_potion": {"heal": "max"}, "full_restore": {"heal": "max", "cure": True}, "full_heal": {"cure": True},
+            "antidote": {"cure": ["psn", "tox"]}, "burn_heal": {"cure": ["brn"]}, "ice_heal": {"cure": ["frz"]}, "paralyze_heal": {"cure": ["par"]}, "awakening": {"cure": ["slp"]},
+            "revive": {"revive": 0.5}, "max_revive": {"revive": 1.0}, "revival_herb": {"revive": 1.0},
+            "ether": {"pp": 10}, "max_ether": {"pp": 999}, "elixir": {"pp": 10, "all": True}, "max_elixir": {"pp": 999, "all": True},
+            "remedy": {"heal": "normal"}, "fine_remedy": {"heal": "fine"}, "superb_remedy": {"heal": "superb"}, "energy_root": {"heal": "root"},
+            "heal_powder": {"cure": True}, "berry_juice": {"heal": 20}, "oran_berry": {"heal": 10}, "sitrus_berry": {"heal": "quarter"},
+            "lum_berry": {"cure": True}, "cheri_berry": {"cure": ["par"]}, "chesto_berry": {"cure": ["slp"]}, "pecha_berry": {"cure": ["psn", "tox"]},
+            "rawst_berry": {"cure": ["brn"]}, "aspear_berry": {"cure": ["frz"]}, "leppa_berry": {"pp": 10}}
+CANDIES = {"exp_candy_xs": 100, "exp_candy_s": 800, "exp_candy_m": 3000, "exp_candy_l": 10000, "exp_candy_xl": 30000, "rare_candy": "level"}
+
+
+def item_registry():
+    """{item name: {"factory", "food": [nutrition, saturation], "stack"}} from CobblemonItems.kt."""
+    path = f"{kotlinMain}/CobblemonItems.kt"
+    if not os.path.exists(path): return {}
+    with open(path, encoding="utf-8") as file: text = file.read()
+    registry = {}
+    for statement in re.split(r"\n    (?=val |private fun |fun |@JvmField)", text):
+        match = re.match(r"val \w+\s*(?::[^=]+)?=\s*(\w+)\(\s*\"([a-z0-9_]+)\"", statement)
+        if not match: continue
+        factory, name = match.groups()
+        entry = {"factory": factory}
+        nutrition = re.search(r"nutrition\((\d+)\)", statement); saturation = re.search(r"saturationModifier\(([\d.]+)[fF]?\)", statement)
+        regional = re.match(r"val \w+\s*(?::[^=]+)?=\s*regionalFoodItem\(\s*\"[a-z0-9_]+\",\s*(\d+),\s*(\d+),\s*([\d.]+)[fF]?", statement)
+        food_item = re.search(r"foodItem\((\d+),\s*([\d.]+)[fF]?\)", statement)
+        if regional: entry["stack"] = int(regional.group(1)); entry["food"] = [int(regional.group(2)), float(regional.group(3))]
+        elif nutrition and saturation: entry["food"] = [int(nutrition.group(1)), float(saturation.group(1))]
+        elif food_item: entry["food"] = [int(food_item.group(1)), float(food_item.group(2))]
+        stack = re.search(r"stacksTo\((\d+)\)", statement)
+        if stack: entry["stack"] = int(stack.group(1))
+        registry[name] = entry
+    return registry
+
+
+def flat_icon(name):
+    """The item's icon as one image: its model's layers drawn over each other. None for a model that is not flat."""
+    path = f"{cobblemon}/models/item/{name}.json"
+    if not os.path.exists(path): return None
+    with open(path, encoding="utf-8") as file: model = json.load(file)
+    if model.get("parent") not in FLAT_PARENTS: return None
+    layers = [v for k, v in sorted(model.get("textures", {}).items()) if k.startswith("layer")]
+    image = None
+    for ref in layers:
+        source = f"{cobblemon}/textures/{ref.split(':', 1)[-1]}.png"
+        if not os.path.exists(source): return None
+        layer = Image.open(source).convert("RGBA")
+        if layer.height > layer.width: layer = layer.crop((0, 0, layer.width, layer.width))   # an animated strip: its first frame
+        image = layer if image is None else Image.alpha_composite(image.resize(layer.size) if image.size != layer.size else image, layer)
+    return image
+
+
+def create_general_items():
+    print("Creating items...")
+    registry = item_registry()
+    have = defined_items()
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    os.makedirs(f"{itemsBedrock}/general", exist_ok=True)
+    made = []
+    for path in sorted(glob.glob(f"{cobblemon}/models/item/*.json")):
+        name = os.path.basename(path)[:-len(".json")]
+        if f"cobblemon:{name}" in have or f"item.cobblemon.{name}" not in lang: continue
+        icon = flat_icon(name)
+        if icon is None: continue
+        icon.save(f"{texturesItemsBedrock}/{name}.png")
+        itemTextureData["texture_data"][name] = {"textures": [f"textures/items/{name}"]}
+        info = registry.get(name, {})
+        components = {"minecraft:icon": name, "minecraft:display_name": {"value": f"item.cobblemon:{name}.name"},
+                      "minecraft:max_stack_size": info.get("stack", 64)}
+        if info.get("food"):
+            nutrition, saturation = info["food"]
+            components["minecraft:food"] = {"nutrition": nutrition, "saturation_modifier": saturation, "can_always_eat": False}
+            components["minecraft:use_modifiers"] = {"use_duration": 1.6, "movement_modifier": 0.35}
+            components["minecraft:use_animation"] = "eat"
+        category = "equipment" if "eldItem" in info.get("factory", "") or name in MEDICINE else "items"
+        with open(f"{itemsBedrock}/general/{name}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
+                "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": category}}, "components": components}}, indent=2))
+        made.append(name)
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    # what the script needs: held items, medicine with Cobblemon's amounts, candies
+    mechanics = {}
+    for f in ("potions", "remedies"):
+        with open(f"{cobblemonData}/mechanics/{f}.json", encoding="utf-8") as file: mechanics[f] = json.load(file)
+    defined = defined_items()
+    medicine = {}
+    for name, effect in MEDICINE.items():
+        if f"cobblemon:{name}" not in defined: continue
+        effect = dict(effect)
+        heal = effect.get("heal")
+        if heal in mechanics["potions"]: effect["heal"] = int(mechanics["potions"][heal])
+        elif heal in mechanics["remedies"]["remedies"]: effect["heal"] = int(mechanics["remedies"]["remedies"][heal]["healingAmount"])
+        medicine[f"cobblemon:{name}"] = effect
+    held = sorted({f"cobblemon:{n}" for n, e in registry.items() if "HeldItem" in e["factory"] or e["factory"] == "heldItem"} & defined
+                  | {i for i in defined if i.endswith("_berry")})
+    with open(f"{scriptsBedrock}/items.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: held items (CobblemonItems.kt), medicine with its amounts (mechanics), candies" + chr(10))
+        file.write("export const HELD_ITEMS = " + json.dumps(held) + ";" + chr(10))
+        file.write("export const MEDICINE = " + json.dumps(medicine) + ";" + chr(10))
+        file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
+    print(f"Create items complete: {len(made)} items, {len(held)} held items, {len(medicine)} medicines.")
+    return made
+
+
 def main():
     global pokemons
     fix_only = "--fix" in sys.argv
@@ -3660,6 +3784,8 @@ def main():
     create_blocks()
     create_fishing()
     create_pokedex()
+    general_items = create_general_items()
+    write_item_names(general_items)
     create_recipes()
     create_structures()
     create_battle_data()

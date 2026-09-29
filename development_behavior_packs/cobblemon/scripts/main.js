@@ -13,6 +13,7 @@ import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
+import { HELD_ITEMS, MEDICINE, CANDIES } from "./items.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -24,6 +25,15 @@ const STATUS_IMMUNE = { brn: ["fire"], par: ["electric"], psn: ["poison", "steel
 const ABILITY_IMMUNE = { levitate: "ground", flashfire: "fire", voltabsorb: "electric", lightningrod: "electric", motordrive: "electric", waterabsorb: "water", stormdrain: "water", dryskin: "water", sapsipper: "grass" };
 const ABILITY_PINCH = { blaze: "fire", torrent: "water", overgrow: "grass", swarm: "bug" };
 const ABILITY_CONTACT = { static: "par", flamebody: "brn", poisonpoint: "psn" };
+// held items in battle, as Showdown's item scripts: type boosts 1.2x, Choice items 1.5x a stat and lock the move,
+// Life Orb 1.3x for a tenth of HP, Expert Belt 1.2x on super effective hits, Leftovers a sixteenth a turn,
+// Focus Sash survives a knockout from full HP, Rocky Helmet a sixth back on contact, Assault Vest 1.5x Sp. Def,
+// Eviolite 1.5x defences on a Pokemon that can evolve, and the healing and curing berries once, when they apply
+const TYPE_ITEMS = { charcoal: "fire", mystic_water: "water", miracle_seed: "grass", magnet: "electric", never_melt_ice: "ice", black_belt: "fighting",
+    poison_barb: "poison", soft_sand: "ground", sharp_beak: "flying", twisted_spoon: "psychic", silver_powder: "bug", hard_stone: "rock",
+    spell_tag: "ghost", dragon_fang: "dragon", black_glasses: "dark", metal_coat: "steel", silk_scarf: "normal", fairy_feather: "fairy" };
+const STATUS_BERRIES = { cheri_berry: ["par"], chesto_berry: ["slp"], pecha_berry: ["psn", "tox"], rawst_berry: ["brn"], aspear_berry: ["frz"], lum_berry: null };
+function held(f) { return f.held ? f.held.slice("cobblemon:".length) : null; }
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
 
 function statAt(base, level) { return Math.floor(((2 * base + 31) * level) / 100) + 5; }
@@ -79,7 +89,9 @@ function fighter(entity) {
         if (health) hp = Math.max(1, Math.round((stats.hp * health.currentValue) / health.effectiveMax));
     } catch (e) { }
     const moves = ids.filter((id) => MOVES[id]).map((id) => ({ id, ...MOVES[id], left: MOVES[id].pp }));
-    return { entity, info, level, stats, hp, moves, ability: info.ability, status: null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
+    const f = { entity, info, level, stats, hp, moves, ability: info.ability, status: null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
+    f.held = prop(entity, "cobblemon:held") ?? null;
+    return f;
 }
 
 function effectiveness(moveType, defenderTypes) {
@@ -88,7 +100,7 @@ function effectiveness(moveType, defenderTypes) {
     return mult;
 }
 
-function speedOf(f) { return f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1); }
+function speedOf(f) { return f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1); }
 
 function say(battle, text) { battle.player.sendMessage(text); }
 
@@ -155,8 +167,11 @@ function useMove(battle, attacker, defender, move) {
         const crit = Math.random() < 1 / 24;
         // a critical hit ignores the attacker's drops and the defender's raises
         const atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
-        const a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
-        const d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
+        let a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
+        let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
+        if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
+        if (held(defender) === "assault_vest" && !physical) d *= 1.5;
+        if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
         let power = move.power;
         if (ABILITY_PINCH[attacker.ability] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
         let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
@@ -164,8 +179,16 @@ function useMove(battle, attacker, defender, move) {
         if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * 1.5);
         dmg = Math.floor(dmg * eff);
         if (physical && attacker.status === "brn") dmg = Math.floor(dmg / 2);
+        const item = held(attacker);
+        if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
+        if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
+        if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
+        if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
         dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
         dealt = Math.min(dmg, defender.hp);
+        if (held(defender) === "focus_sash" && defender.hp === defender.stats.hp && dealt >= defender.hp) {
+            dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`);
+        }
         defender.hp -= dealt;
         if (crit) note += " A critical hit!";
         if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective...";
@@ -180,10 +203,33 @@ function useMove(battle, attacker, defender, move) {
     }
     if (move.selfBoosts) boost(battle, attacker, move.selfBoosts);
     if (move === STRUGGLE) { attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 4))); say(battle, `§7${name} is damaged by recoil!`); syncHealth(attacker); }
+    if (dealt && held(attacker) === "life_orb" && attacker.hp > 0) {
+        attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 10))); say(battle, `§7${name} lost some of its HP!`); syncHealth(attacker);
+    }
+    if (dealt && move.contact && held(defender) === "rocky_helmet" && attacker.hp > 0) {
+        attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 6))); say(battle, `§7${name} was hurt by the Rocky Helmet!`); syncHealth(attacker);
+    }
+    for (const f of [attacker, defender]) heldBerry(battle, f);
     if (move.contact && ABILITY_CONTACT[defender.ability] && Math.random() < 0.3) {
         say(battle, `§7${defender.info.name}'s ${cap(defender.ability)}!`);
         inflict(battle, attacker, ABILITY_CONTACT[defender.ability], false);
     }
+}
+
+// berries eaten when they apply: Oran and Sitrus below half HP, the status berries on their status, Leppa on an empty move
+function heldBerry(battle, f) {
+    const item = held(f);
+    if (!item || f.hp <= 0) return;
+    let used = false;
+    if ((item === "oran_berry" || item === "sitrus_berry") && f.hp <= f.stats.hp / 2) {
+        f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4))); used = true; syncHealth(f);
+    } else if (item in STATUS_BERRIES && f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) {
+        f.status = null; used = true;
+    } else if (item === "leppa_berry") {
+        const empty = f.moves.find((m) => m.left === 0);
+        if (empty) { empty.left = Math.min(empty.pp, 10); used = true; }
+    }
+    if (used) { say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); }
 }
 
 function freeze(entity, on) {
@@ -283,6 +329,7 @@ function chooseSwitch(battle, forced) {
 }
 
 function switchTo(battle, entity) {
+    battle.choiceLock = null;
     const old = battle.ally.entity;
     battle.kept = battle.kept ?? {};
     battle.kept[old.id] = { moves: battle.ally.moves, status: battle.ally.status, sleep: battle.ally.sleep };
@@ -389,12 +436,17 @@ function turn(battle) {
     const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
     const canSwitch = findParty(battle.player, foe.entity.location).some((e) => e.id !== ally.entity.id);
     if (canSwitch) options.push({ kind: "switch" });
-    options.push({ kind: "ball" }, { kind: "run" });
+    options.push({ kind: "bag" }, { kind: "ball" }, { kind: "run" });
     const form = new ActionFormData().title(`${ally.info.name} vs ${foe.info.name}`)
         .body(`§l${foe.info.name}§r Lv ${foe.level}${statusTag(foe)}  ${bar(foe.hp, foe.stats.hp)} ${foe.hp}/${foe.stats.hp}\n§l${ally.info.name}§r Lv ${ally.level}${statusTag(ally)}  ${bar(ally.hp, ally.stats.hp)} ${ally.hp}/${ally.stats.hp}\n\nWhat will ${ally.info.name} do?`);
+    if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
+        for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
+    }
     for (const o of options) {
-        if (o.kind === "move") form.button(o.move === STRUGGLE ? "Struggle\n§7no PP left" : `${o.move.name}  ${o.move.left}/${o.move.pp}\n§7${cap(o.move.type)} ${o.move.power || "-"}${o.move.left ? "" : "  (no PP)"}`);
+        if (o.kind === "move" && o.locked) form.button(`§8${o.move.name}\n(locked by ${itemName(ally.held)})`);
+        else if (o.kind === "move") form.button(o.move === STRUGGLE ? "Struggle\n§7no PP left" : `${o.move.name}  ${o.move.left}/${o.move.pp}\n§7${cap(o.move.type)} ${o.move.power || "-"}${o.move.left ? "" : "  (no PP)"}`);
         else if (o.kind === "switch") form.button("Switch Pokemon");
+        else if (o.kind === "bag") form.button("Bag");
         else if (o.kind === "ball") form.button(battle.trainer ? "§8(no catching in trainer battles)" : "Throw Poke Ball");
         else form.button("Run");
     }
@@ -422,7 +474,17 @@ function turn(battle) {
             }).catch(() => endBattle(battle));
             return;
         }
+        if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
+        if (choice.kind === "bag") {
+            chooseBagItem(battle).then((id) => {
+                if (!battles.has(battle.player.id)) return;
+                if (!id || !useBagItem(battle, id)) { battle.turn--; turn(battle); return; }
+                foeTurn(battle);
+            }).catch(() => endBattle(battle));
+            return;
+        }
         const move = choice.move;
+        if (held(ally)?.startsWith("choice_") && move !== STRUGGLE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
         const foeMove = pickFoeMove(foe);
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || ((move.priority || 0) === (foeMove.priority || 0) && speedOf(ally) >= speedOf(foe));
@@ -455,14 +517,20 @@ function endOfTurn(battle) {
         say(battle, `§7${f.info.name} is hurt by its ${f.status === "brn" ? "burn" : "poison"}!`);
         syncHealth(f);
     }
+    for (const f of [battle.ally, battle.foe]) {
+        if (f.hp > 0 && f.hp < f.stats.hp && held(f) === "leftovers") {
+            f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Leftovers!`); syncHealth(f);
+        }
+        heldBerry(battle, f);
+    }
     if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
     system.runTimeout(() => turn(battle), 30);
 }
 
 // experience for beating a Pokemon, and the levels and moves it brings
-function gainExperience(battle, f, foe) {
-    const gain = Math.max(1, Math.floor(((foe.info.baseExp || 50) * foe.level * (battle.trainer ? 1.5 : 1)) / 7));
+function gainExperience(battle, f, foe, amount) {
+    const gain = amount ?? Math.max(1, Math.floor(((foe.info.baseExp || 50) * foe.level * (battle.trainer ? 1.5 : 1)) / 7));
     const group = f.info.expGroup;
     let exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, f.level)) + gain, level = f.level;
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
@@ -546,6 +614,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:fish_now") {
         // testing: /execute as <player> run scriptevent cobblemon:fish_now makes a floating bobber bite at once
         for (const cast of fishing.values()) if (cast.phase === "waiting" || cast.phase === "travel") { cast.phase = "travel"; cast.travel = 1; }
+    } else if (event.id === "cobblemon:take_item") {
+        takeHeld(source);
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -1429,6 +1499,139 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     block.dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn`, 1), at);
     if (Math.random() < 0.1) block.dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn_seed`, 1), at);
 });
+
+// Items used on a Pokemon, as Cobblemon's are from the hand: right-clicking one of your Pokemon with medicine heals,
+// revives or cures it; with a candy it gains experience (a Rare Candy a whole level); with a held item it takes
+// that item to hold, handing back what it held. Its panel's Take Item button gives the held item back. In battle,
+// the Bag button uses medicine on the Pokemon fighting, which costs the turn. Medicine amounts are Cobblemon's
+// (mechanics/potions.json and remedies.json).
+const HELD = "cobblemon:held", HELD_SET = new Set(HELD_ITEMS);
+
+function heldItem(entity) { return prop(entity, HELD) ?? null; }
+
+function consumeHand(player) {
+    if (player.getGameMode?.() === "Creative") return;
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
+    if (!item) return;
+    if (item.amount > 1) { item.amount--; inv.setItem(slot, item); } else inv.setItem(slot, undefined);
+}
+
+function giveOrDrop(player, id) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    const left = inv?.addItem(new ItemStack(id, 1));
+    if (left) player.dimension.spawnItem(left, player.location);
+}
+
+// medicine on a Pokemon in the world: returns a message, or undefined when it would do nothing
+function applyMedicine(entity, effect) {
+    const health = entity.getComponent(EntityComponentTypes.Health);
+    const fainted = !!prop(entity, FAINTED), name = POKEMON[entity.typeId]?.name ?? "The Pokemon";
+    if (effect.revive) {
+        if (!fainted) return undefined;
+        setProp(entity, FAINTED, undefined);
+        health?.setCurrentValue(Math.max(1, Math.round(health.effectiveMax * effect.revive)));
+        return `${name} was revived!`;
+    }
+    if (fainted) return undefined;
+    if (effect.heal) {
+        if (!health || health.currentValue >= health.effectiveMax) return effect.cure ? `${name} is already healthy.` : undefined;
+        // world health is a share of battle HP; scale the amount by the Pokemon's battle HP at its level
+        const f = fighter(entity), per = health.effectiveMax / Math.max(1, f.stats.hp);
+        const amount = effect.heal === "max" ? health.effectiveMax : effect.heal === "quarter" ? health.effectiveMax / 4 : effect.heal * per;
+        health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue + Math.max(1, Math.round(amount))));
+        return `${name} regained health.`;
+    }
+    return effect.cure || effect.pp ? `${name} is already in good shape.` : undefined;
+}
+
+function applyCandy(player, entity, candy) {
+    const f = fighter(entity);
+    if (!f || f.level >= 100) return undefined;
+    const group = f.info.expGroup;
+    const gain = candy === "level" ? expFor(group, f.level + 1) - Math.max(prop(entity, EXP) ?? 0, expFor(group, f.level)) : candy;
+    gainExperience({ player, trainer: false }, f, null, Math.max(1, gain));
+    return true;
+}
+
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event, id = itemStack?.typeId;
+    if (!id || !POKEMON[target.typeId]) return;
+    const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
+    if (!medicine && candy === undefined && !held) return;
+    if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
+    event.cancel = true;
+    system.run(() => {
+        if (!target.isValid) return;
+        if (battles.has(player.id)) { player.sendMessage("§7Use items from the Bag during a battle."); return; }
+        if (medicine) {
+            const message = applyMedicine(target, medicine);
+            if (!message) { player.sendMessage("§7It won't have any effect."); return; }
+            consumeHand(player); player.sendMessage(`§a${message}`);
+        } else if (candy !== undefined) {
+            if (applyCandy(player, target, candy)) consumeHand(player); else player.sendMessage("§7It won't have any effect.");
+        } else {
+            const old = heldItem(target);
+            setProp(target, HELD, id); consumeHand(player);
+            if (old) giveOrDrop(player, old);
+            player.sendMessage(`§a${POKEMON[target.typeId].name} is now holding the ${itemName(id)}.`);
+        }
+    });
+});
+
+function itemName(id) { return id.slice("cobblemon:".length).split("_").map(cap).join(" "); }
+
+// the panel's Take Item button
+function takeHeld(source) {
+    const owner = world.getPlayers().find((p) => p.id === prop(source, OWNER));
+    const player = owner ?? nearestPlayer(source), held = heldItem(source);
+    if (!player) return;
+    if (!held) { player.sendMessage("§7It isn't holding anything."); return; }
+    if (owner?.id !== player.id) { player.sendMessage("§7That isn't your Pokemon."); return; }
+    setProp(source, HELD, undefined); giveOrDrop(player, held);
+    player.sendMessage(`§aYou took the ${itemName(held)} from ${POKEMON[source.typeId].name}.`);
+}
+
+// the Bag in battle: medicine from the inventory, used on the Pokemon fighting
+function medicineHeld(player) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, found = new Map();
+    if (!inv) return found;
+    for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (it && MEDICINE[it.typeId]) found.set(it.typeId, (found.get(it.typeId) ?? 0) + it.amount); }
+    return found;
+}
+
+function useBagItem(battle, id) {
+    const f = battle.ally, effect = MEDICINE[id];
+    let used = false;
+    if (effect.heal && f.hp < f.stats.hp) {
+        const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "quarter" ? Math.floor(f.stats.hp / 4) : effect.heal;
+        const before = f.hp; f.hp = Math.min(f.stats.hp, f.hp + amount); syncHealth(f);
+        say(battle, `§a${f.info.name} regained ${f.hp - before} HP.`); used = true;
+    }
+    if (effect.cure && f.status && (effect.cure === true || effect.cure.includes(f.status))) { f.status = null; say(battle, `§a${f.info.name} was cured.`); used = true; }
+    if (effect.pp) {
+        const targets = effect.all ? f.moves : [f.moves.filter((m) => m.left < m.pp).sort((a, b) => a.left / a.pp - b.left / b.pp)[0]].filter(Boolean);
+        for (const m of targets) { if (m.left < m.pp) { m.left = Math.min(m.pp, m.left + effect.pp); used = true; } }
+        if (used) say(battle, `§a${f.info.name}'s PP was restored.`);
+    }
+    if (!used) { say(battle, "§7It won't have any effect."); return false; }
+    const inv = battle.player.getComponent(EntityComponentTypes.Inventory)?.container;
+    for (let i = 0; i < inv.size; i++) {
+        const it = inv.getItem(i);
+        if (it?.typeId !== id) continue;
+        if (it.amount > 1) { it.amount--; inv.setItem(i, it); } else inv.setItem(i, undefined);
+        break;
+    }
+    return true;
+}
+
+function chooseBagItem(battle) {
+    const held = [...medicineHeld(battle.player)];
+    if (!held.length) { say(battle, "§7You have no medicine."); return Promise.resolve(undefined); }
+    const form = new ActionFormData().title("Bag");
+    for (const [id, count] of held) form.button(`${itemName(id)} x${count}`);
+    form.button("Back");
+    return form.show(battle.player).then((r) => (r.canceled || r.selection >= held.length ? undefined : held[r.selection][0]));
+}
 
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
 // drops Cobblemon's base yield of its berry and goes back to flowering. The healing machine restores the
