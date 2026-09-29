@@ -2221,7 +2221,16 @@ def showdown_moves():
         if boosts(top): move["boosts"] = boosts(top)
         status = re.search(r'^    status: "(\w+)"', top, re.M)
         if status: move["status"] = status.group(1)
-        if "flags: {" in body and re.search(r"flags: \{[^}]*contact: 1", body): move["contact"] = True
+        flags = re.search(r"flags: \{([^}]*)\}", body)
+        if flags:
+            names = re.findall(r"(\w+): 1", flags.group(1))
+            if "contact" in names: move["contact"] = True
+            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet")]
+            if kept: move["flags"] = kept
+        if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
+        if "ohko:" in body: move["ohko"] = True
+        crit = re.search(r"^    critRatio: (\d+)", body, re.M)
+        if crit: move["critRatio"] = int(crit.group(1))
         # a chance of a status or stat change on hit
         secondary = re.search(r"^    secondary: \{(.*?)^    \}", body, re.S | re.M)
         own = re.search(r"^    self: \{(.*?)^    \}", body, re.S | re.M)
@@ -2283,7 +2292,7 @@ def create_battle_data():
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)},
             "moves": learned,
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []),
-            "ability": abilities[0] if abilities else None, "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
+            "ability": abilities[0] if abilities else None, "abilities": abilities, "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
             "variants": variant_battle_overrides(pokemon, species)
         }
@@ -2292,6 +2301,13 @@ def create_battle_data():
         file.write("export const POKEMON = " + json.dumps(table, ensure_ascii=False) + ";\n")
         file.write("export const MOVES = " + json.dumps({m: moves[m] for m in sorted(used)}, ensure_ascii=False) + ";\n")
         file.write("export const TYPES = " + json.dumps(chart) + ";\n")
+        import zipfile
+        with zipfile.ZipFile(f"{cobblemonData}/showdown.zip") as archive: ability_text = archive.read("data/abilities.js").decode("utf-8")
+        ability_names = {}
+        for block in re.finditer(r"^  (\w+): \{(.*?)^  \},?", ability_text, re.S | re.M):
+            found = re.search(r'name: "([^"]+)"', block.group(2))
+            if found: ability_names[block.group(1)] = found.group(1)
+        file.write("export const ABILITY_NAMES = " + json.dumps(ability_names) + ";" + chr(10))
         balls = {b["item"]: {"name": b["display"], "mult": b["mult"], "rule": b["rule"]} for b in poke_balls()}
         file.write("export const BALLS = " + json.dumps(balls, ensure_ascii=False) + ";\n")
     print(f"Create battle data complete: {len(table)} Pokemon, {len(used)} moves.")

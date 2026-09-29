@@ -8,7 +8,7 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
-import { POKEMON, MOVES, TYPES, BALLS } from "./data.js";
+import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES } from "./data.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
@@ -89,7 +89,13 @@ function fighter(entity) {
         if (health) hp = Math.max(1, Math.round((stats.hp * health.currentValue) / health.effectiveMax));
     } catch (e) { }
     const moves = ids.filter((id) => MOVES[id]).map((id) => ({ id, ...MOVES[id], left: MOVES[id].pp }));
-    const f = { entity, info, level, stats, hp, moves, ability: info.ability, status: null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
+    let rolled = prop(entity, "cobblemon:ability");
+    if (!rolled || !(info.abilities ?? []).includes(rolled)) {
+        const list = info.abilities?.length ? info.abilities : [info.ability];
+        rolled = list[Math.floor(Math.random() * list.length)];
+        setProp(entity, "cobblemon:ability", rolled);
+    }
+    const f = { entity, info, level, stats, hp, moves, ability: rolled, status: null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
     f.held = prop(entity, "cobblemon:held") ?? null;
     return f;
 }
@@ -111,31 +117,57 @@ function syncHealth(f) {
     } catch (e) { }
 }
 
-function boost(battle, target, boosts) {
+// Abilities, as Showdown's scripts have them, for those that act in a single battle without weather or terrain.
+// moldbreaker (and Teravolt, Turboblaze) ignore the defender's.
+const STAT_GUARD = { clearbody: null, whitesmoke: null, fullmetalbody: null, keeneye: ["accuracy"], hypercutter: ["atk"], bigpecks: ["def"], mirrorarmor: null };
+const STATUS_GUARD = { insomnia: ["slp"], vitalspirit: ["slp"], sweetveil: ["slp"], limber: ["par"], immunity: ["psn", "tox"], pastelveil: ["psn", "tox"],
+    waterveil: ["brn"], waterbubble: ["brn"], thermalexchange: ["brn"], magmaarmor: ["frz"], comatose: ["slp", "par", "psn", "tox", "brn", "frz"], purifyingsalt: ["slp", "par", "psn", "tox", "brn", "frz"] };
+const INTIMIDATE_GUARD = new Set(["innerfocus", "owntempo", "oblivious", "scrappy", "guarddog"]);
+const BREAKERS = new Set(["moldbreaker", "teravolt", "turboblaze"]);
+function abilityName(id) { return ABILITY_NAMES[id] ?? cap(id); }
+function ability(f, other) { return other && BREAKERS.has(other.ability) ? null : f.ability; }   // a defender's ability, unless the attacker breaks it
+
+function boost(battle, target, boosts, source) {
+    const guard = source && source !== target ? STAT_GUARD[target.ability] : undefined;
+    let lowered = false;
     for (const [stat, amount] of Object.entries(boosts ?? {})) {
+        if (amount < 0 && guard !== undefined && (guard === null || guard.includes(stat))) {
+            say(battle, `§7${target.info.name}'s ${abilityName(target.ability)} prevents its stats from being lowered!`); continue;
+        }
         const before = target.stages[stat];
-        target.stages[stat] = Math.max(-6, Math.min(6, before + amount));
-        const name = STAT_NAMES[stat] ?? stat;
-        if (target.stages[stat] === before) say(battle, `§7${target.info.name}'s ${name} won't go any ${amount > 0 ? "higher" : "lower"}!`);
-        else say(battle, `§7${target.info.name}'s ${name} ${amount > 0 ? "rose" : "fell"}${Math.abs(amount) >= 2 ? " sharply" : ""}!`);
+        target.stages[stat] = Math.max(-6, Math.min(6, before + (target.ability === "simple" ? amount * 2 : target.ability === "contrary" ? -amount : amount)));
+        const name = STAT_NAMES[stat] ?? stat, change = target.stages[stat] - before;
+        if (!change) say(battle, `§7${target.info.name}'s ${name} won't go any ${amount > 0 ? "higher" : "lower"}!`);
+        else say(battle, `§7${target.info.name}'s ${name} ${change > 0 ? "rose" : "fell"}${Math.abs(change) >= 2 ? " sharply" : ""}!`);
+        if (change < 0) lowered = true;
+    }
+    // Defiant and Competitive answer a drop from the foe
+    if (lowered && source && source !== target) {
+        if (target.ability === "defiant") { say(battle, `§7${target.info.name}'s Defiant!`); boost(battle, target, { atk: 2 }); }
+        if (target.ability === "competitive") { say(battle, `§7${target.info.name}'s Competitive!`); boost(battle, target, { spa: 2 }); }
     }
 }
 
-function inflict(battle, target, status, announceFailure) {
-    if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t))) {
-        if (announceFailure) say(battle, "§7But it failed!");
+function inflict(battle, target, status, announceFailure, source) {
+    const guard = STATUS_GUARD[ability(target, source)] ?? [];
+    if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
+        if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
         return;
     }
     target.status = status;
     if (status === "slp") target.sleep = 1 + Math.floor(Math.random() * 3);
     say(battle, `§d${target.info.name} ${STATUS_TEXT[status] ?? "was afflicted"}!`);
+    // Synchronize passes burn, paralysis and poison back
+    if (target.ability === "synchronize" && source && source !== target && ["brn", "par", "psn", "tox"].includes(status)) {
+        say(battle, `§7${target.info.name}'s Synchronize!`); inflict(battle, source, status === "tox" ? "psn" : status, false);
+    }
 }
 
 // whether a Pokemon can act this turn, given its status
 function canAct(battle, f) {
     if (f.status === "slp") {
-        if (f.sleep > 0) { f.sleep--; say(battle, `§7${f.info.name} is fast asleep.`); return false; }
-        f.status = null; say(battle, `§7${f.info.name} woke up!`);
+        if (f.sleep > 0) { f.sleep -= f.ability === "earlybird" ? 2 : 1; if (f.sleep >= 0) { say(battle, `§7${f.info.name} is fast asleep.`); return false; } }
+        f.status = null; f.sleep = 0; say(battle, `§7${f.info.name} woke up!`);
     }
     if (f.status === "frz") {
         if (Math.random() < 0.2) { f.status = null; say(battle, `§7${f.info.name} thawed out!`); }
@@ -145,40 +177,88 @@ function canAct(battle, f) {
     return true;
 }
 
+// indirect damage (status, recoil, items): Magic Guard ignores it
+function hurt(battle, f, amount, text) {
+    if (f.ability === "magicguard" || f.hp <= 0) return;
+    f.hp = Math.max(0, f.hp - Math.max(1, Math.floor(amount))); say(battle, `§7${text}`); syncHealth(f);
+}
+
 function useMove(battle, attacker, defender, move) {
-    const name = attacker.info.name;
+    const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
     if (!canAct(battle, attacker)) return;
-    if (move.left !== undefined) move.left--;
+    if (move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
     const self = move.target === "self" || move.target === "adjacentAllyOrSelf" || move.target === "allies";
-    if (!self && move.accuracy !== true) {
-        const chance = move.accuracy * accStage(attacker.stages.accuracy - defender.stages.evasion);
+    if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
+        let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
+        if (atkAb === "compoundeyes") chance *= 1.3;
+        if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
+        if (move.ohko) chance = attacker.level >= defender.level ? 30 + attacker.level - defender.level : 0;
         if (Math.random() * 100 >= chance) { say(battle, `§7${name} used ${move.name}... it missed!`); return; }
     }
-    if (self) { say(battle, `§e${name} used ${move.name}!`); boost(battle, attacker, move.boosts); return; }
-    if (ABILITY_IMMUNE[defender.ability] === move.type && move.category !== "Status") {
-        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (${cap(defender.ability)})`);
+    if (self) { say(battle, `§e${name} used ${move.name}!`); boost(battle, attacker, move.boosts, attacker); return; }
+    if ((ABILITY_IMMUNE[defAb] === move.type && move.category !== "Status") || (defAb === "soundproof" && move.flags?.includes("sound"))
+        || (defAb === "bulletproof" && move.flags?.includes("bullet"))) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (${abilityName(defender.ability)})`);
+        if (["voltabsorb", "waterabsorb", "dryskin"].includes(defAb) && defender.hp < defender.stats.hp) {
+            defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
+        }
+        if (defAb === "sapsipper") boost(battle, defender, { atk: 1 });
+        if (defAb === "motordrive") boost(battle, defender, { spe: 1 });
+        if (defAb === "lightningrod" || defAb === "stormdrain") boost(battle, defender, { spa: 1 });
+        if (defAb === "flashfire") defender.flashFire = true;
         return;
     }
+    if (move.ohko) {
+        if (defAb === "sturdy") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} endured it with Sturdy!`); return; }
+        say(battle, `§e${name} used ${move.name}!§r §cIt's a one-hit KO!`); defender.hp = 0; syncHealth(defender); return;
+    }
     let dealt = 0, note = "";
+    const sheer = atkAb === "sheerforce" && (move.secondary || move.selfBoosts);
     if (move.power) {
-        const eff = move.type === "???" ? 1 : effectiveness(move.type, defender.info.types);
+        let types = defender.info.types;
+        let eff = move.type === "???" ? 1 : effectiveness(move.type, types);
+        if (eff === 0 && atkAb === "scrappy" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
         if (eff === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
+        if (defAb === "wonderguard" && eff <= 1) { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s Wonder Guard protects it!`); return; }
         const physical = move.category === "Physical";
-        const crit = Math.random() < 1 / 24;
-        // a critical hit ignores the attacker's drops and the defender's raises
-        const atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
+        const noCrit = defAb === "shellarmor" || defAb === "battlearmor";
+        const crit = !noCrit && Math.random() < (move.critRatio > 1 || atkAb === "superluck" ? 1 / 8 : 1 / 24);
+        // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
+        let atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
+        if (defAb === "unaware") atkStage = 0;
+        if (atkAb === "unaware") defStage = 0;
         let a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
         let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
         if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
+        if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
+        if (physical && atkAb === "hustle") a *= 1.5;
+        if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
+        if (physical && defAb === "furcoat") d *= 2;
+        if (physical && defAb === "marvelscale" && defender.status) d *= 1.5;
         if (held(defender) === "assault_vest" && !physical) d *= 1.5;
         if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
         let power = move.power;
-        if (ABILITY_PINCH[attacker.ability] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
+        if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
+        if (atkAb === "technician" && power <= 60) power *= 1.5;
+        if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
+        if (atkAb === "ironfist" && move.flags?.includes("punch")) power *= 1.2;
+        if (atkAb === "megalauncher" && move.flags?.includes("pulse")) power *= 1.5;
+        if (atkAb === "sharpness" && move.flags?.includes("slicing")) power *= 1.5;
+        if (atkAb === "toughclaws" && move.contact) power *= 1.3;
+        if (atkAb === "reckless" && move.recoil) power *= 1.2;
+        if (sheer) power *= 1.3;
+        if (atkAb === "flashfire" && attacker.flashFire && move.type === "fire") power *= 1.5;
         let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
-        if (crit) dmg = Math.floor(dmg * 1.5);
-        if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * 1.5);
+        if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
+        if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
         dmg = Math.floor(dmg * eff);
-        if (physical && attacker.status === "brn") dmg = Math.floor(dmg / 2);
+        if (physical && attacker.status === "brn" && atkAb !== "guts") dmg = Math.floor(dmg / 2);
+        if (eff < 1 && atkAb === "tintedlens") dmg *= 2;
+        if (eff > 1 && (defAb === "filter" || defAb === "solidrock" || defAb === "prismarmor")) dmg = Math.floor(dmg * 0.75);
+        if (defAb === "thickfat" && (move.type === "fire" || move.type === "ice")) dmg = Math.floor(dmg / 2);
+        if (defAb === "heatproof" && move.type === "fire") dmg = Math.floor(dmg / 2);
+        if (defAb === "dryskin" && move.type === "fire") dmg = Math.floor(dmg * 1.25);
+        if ((defAb === "multiscale" || defAb === "shadowshield") && defender.hp === defender.stats.hp) dmg = Math.floor(dmg / 2);
         const item = held(attacker);
         if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
         if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
@@ -186,33 +266,47 @@ function useMove(battle, attacker, defender, move) {
         if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
         dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
         dealt = Math.min(dmg, defender.hp);
-        if (held(defender) === "focus_sash" && defender.hp === defender.stats.hp && dealt >= defender.hp) {
-            dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`);
+        if (dealt >= defender.hp && defender.hp === defender.stats.hp) {
+            if (defAb === "sturdy") { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit with Sturdy!`); }
+            else if (held(defender) === "focus_sash") { dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`); }
         }
         defender.hp -= dealt;
         if (crit) note += " A critical hit!";
         if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective...";
         say(battle, `§e${name} used ${move.name}!§r ${dmg} damage.${note}`);
         syncHealth(defender);
+        if (move.drain && attacker.hp < attacker.stats.hp) {
+            const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1]));
+            attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
+        }
+        if (move.recoil && atkAb !== "rockhead") hurt(battle, attacker, (dealt * move.recoil[0]) / move.recoil[1], `${name} is damaged by recoil!`);
     } else say(battle, `§e${name} used ${move.name}!`);
-    if (move.status) inflict(battle, defender, move.status, true);
-    if (move.boosts && defender.hp > 0) boost(battle, defender, move.boosts);
-    if (move.secondary && Math.random() * 100 < move.secondary.chance) {
-        if (move.secondary.status && defender.hp > 0) inflict(battle, defender, move.secondary.status, false);
-        if (move.secondary.boosts) boost(battle, move.secondary.self ? attacker : defender, move.secondary.boosts);
+    if (move.status) inflict(battle, defender, move.status, true, attacker);
+    if (move.boosts && defender.hp > 0) boost(battle, defender, move.boosts, attacker);
+    if (move.secondary && !sheer && defAb !== "shielddust" && Math.random() * 100 < move.secondary.chance * (atkAb === "serenegrace" ? 2 : 1)) {
+        if (move.secondary.status && defender.hp > 0) inflict(battle, defender, move.secondary.status, false, attacker);
+        if (move.secondary.boosts) boost(battle, move.secondary.self ? attacker : defender, move.secondary.boosts, attacker);
     }
-    if (move.selfBoosts) boost(battle, attacker, move.selfBoosts);
+    if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
     if (move === STRUGGLE) { attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 4))); say(battle, `§7${name} is damaged by recoil!`); syncHealth(attacker); }
-    if (dealt && held(attacker) === "life_orb" && attacker.hp > 0) {
-        attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 10))); say(battle, `§7${name} lost some of its HP!`); syncHealth(attacker);
-    }
-    if (dealt && move.contact && held(defender) === "rocky_helmet" && attacker.hp > 0) {
-        attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 6))); say(battle, `§7${name} was hurt by the Rocky Helmet!`); syncHealth(attacker);
-    }
+    if (dealt && held(attacker) === "life_orb" && !sheer) hurt(battle, attacker, attacker.stats.hp / 10, `${name} lost some of its HP!`);
+    if (dealt && move.contact && held(defender) === "rocky_helmet") hurt(battle, attacker, attacker.stats.hp / 6, `${name} was hurt by the Rocky Helmet!`);
+    if (dealt && move.contact && (defAb === "roughskin" || defAb === "ironbarbs")) hurt(battle, attacker, attacker.stats.hp / 8, `${name} was hurt by ${defender.info.name}'s ${abilityName(defender.ability)}!`);
     for (const f of [attacker, defender]) heldBerry(battle, f);
-    if (move.contact && ABILITY_CONTACT[defender.ability] && Math.random() < 0.3) {
-        say(battle, `§7${defender.info.name}'s ${cap(defender.ability)}!`);
-        inflict(battle, attacker, ABILITY_CONTACT[defender.ability], false);
+    if (dealt && move.contact && attacker.hp > 0) {
+        let status = ABILITY_CONTACT[defAb];
+        if (defAb === "effectspore") status = ["psn", "par", "slp"][Math.floor(Math.random() * 3)];
+        if (status && Math.random() < 0.3) { say(battle, `§7${defender.info.name}'s ${abilityName(defender.ability)}!`); inflict(battle, attacker, status, false); }
+    }
+    if (dealt && defAb === "stamina" && defender.hp > 0) boost(battle, defender, { def: 1 });
+    if (dealt && defAb === "weakarmor" && move.category === "Physical" && defender.hp > 0) boost(battle, defender, { def: -1, spe: 2 });
+    if (dealt && defAb === "justified" && move.type === "dark" && defender.hp > 0) boost(battle, defender, { atk: 1 });
+    if (dealt && defAb === "rattled" && ["dark", "bug", "ghost"].includes(move.type) && defender.hp > 0) boost(battle, defender, { spe: 1 });
+    if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh")) boost(battle, attacker, { atk: 1 });
+    if (defender.hp <= 0 && atkAb === "grimneigh") boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && atkAb === "beastboost") {
+        const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
+        boost(battle, attacker, { [best]: 1 });
     }
 }
 
@@ -248,7 +342,11 @@ function endBattle(battle, text) {
 
 // on entering battle: Intimidate
 function enter(battle, f, other) {
-    if (f.ability === "intimidate") { say(battle, `§7${f.info.name}'s Intimidate!`); boost(battle, other, { atk: -1 }); }
+    if (f.ability === "intimidate") {
+        say(battle, `§7${f.info.name}'s Intimidate!`);
+        if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
+        else boost(battle, other, { atk: -1 }, f);
+    }
 }
 
 // Ownership: the tameable component is not readable once a Pokemon is tamed, so the owner is
@@ -332,7 +430,10 @@ function switchTo(battle, entity) {
     battle.choiceLock = null;
     const old = battle.ally.entity;
     battle.kept = battle.kept ?? {};
-    battle.kept[old.id] = { moves: battle.ally.moves, status: battle.ally.status, sleep: battle.ally.sleep };
+    const leaving = battle.ally;
+    if (leaving.ability === "naturalcure") leaving.status = null;
+    if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
+    battle.kept[old.id] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep };
     const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
     if (old.isValid) {
         freeze(old, false);
@@ -511,11 +612,14 @@ function foeTurn(battle) {
 // burn and poison damage, then whoever fainted
 function endOfTurn(battle) {
     for (const f of [battle.ally, battle.foe]) {
-        if (f.hp <= 0 || !["brn", "psn", "tox"].includes(f.status)) continue;
-        const loss = Math.max(1, Math.floor(f.stats.hp / (f.status === "brn" ? 16 : 8)));
-        f.hp = Math.max(0, f.hp - loss);
-        say(battle, `§7${f.info.name} is hurt by its ${f.status === "brn" ? "burn" : "poison"}!`);
-        syncHealth(f);
+        if (f.hp <= 0) continue;
+        if ((f.status === "psn" || f.status === "tox") && f.ability === "poisonheal") {
+            if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / 8)); say(battle, `§a${f.info.name} is healed by its Poison Heal!`); syncHealth(f); }
+        } else if (["brn", "psn", "tox"].includes(f.status)) {
+            hurt(battle, f, f.stats.hp / (f.status === "brn" ? (f.ability === "heatproof" ? 32 : 16) : 8), `${f.info.name} is hurt by its ${f.status === "brn" ? "burn" : "poison"}!`);
+        }
+        if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
+        if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
     }
     for (const f of [battle.ally, battle.foe]) {
         if (f.hp > 0 && f.hp < f.stats.hp && held(f) === "leftovers") {
