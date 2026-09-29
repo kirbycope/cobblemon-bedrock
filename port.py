@@ -1120,23 +1120,8 @@ def create_behavior_entities():
                 "events": {}
             }
         }
-        # evolution: a Pokemon that evolves by level alone grows up into its evolution after its evolution level
-        # in minutes; stones, trades and the rest go through add_item_evolutions()
-        evolutions = [e for e in species.get("evolutions", []) if e.get("result") and e.get("variant") == "level_up"
-                      and all(r.get("variant") == "level" or (r.get("variant") == "biome" and "biomeCondition" not in r) for r in e.get("requirements", []))]
-        evolution = pokemon_for_species_name(evolutions[0]["result"]) if evolutions else None
-        if evolution:
-            min_level = next((r.get("minLevel") for r in evolutions[0].get("requirements", []) if r.get("variant") == "level"), 20)
-            entity["minecraft:entity"]["component_groups"] = {
-                "cobblemon:growing": {"minecraft:is_baby": {}, "minecraft:ageable": {"duration": min_level * 60, "grow_up": {"event": "cobblemon:evolve", "target": "self"}}},
-                "cobblemon:evolve": {"minecraft:transformation": {"into": entity_id(evolution), "keep_level": True}}
-            }
-            entity["minecraft:entity"]["events"] = {
-                "minecraft:entity_spawned": {"add": {"component_groups": ["cobblemon:growing"]}},
-                "minecraft:entity_born": {"add": {"component_groups": ["cobblemon:growing"]}},
-                "minecraft:entity_transformed": {"add": {"component_groups": ["cobblemon:growing"]}},
-                "cobblemon:evolve": {"remove": {"component_groups": ["cobblemon:growing"]}, "add": {"component_groups": ["cobblemon:evolve"]}}
-            }
+        # evolution: level-up evolutions are the script's (levelling up, with their requirements); stones, trades and
+        # the rest go through add_item_evolutions(), which also makes every evolution's transformation event
         add_sleep(entity, species, kind)
         if ambient_particles(pokemon, pokemon[pokemon.index("_")+1:]):
             entity["minecraft:entity"]["description"]["animations"]["ambient"] = f"controller.animation.{pokemon}.ambient"
@@ -1816,6 +1801,11 @@ def add_item_evolutions(entity, species, pokemon):
     variations = resolver_variations(pokemon)
     interactions = []
     for evolution in species.get("evolutions", []):
+        result = pokemon_for_species_name(evolution.get("result", ""))
+        if result:
+            group = f"cobblemon:evolve_{result}"
+            minecraft["component_groups"][group] = {"minecraft:transformation": {"into": entity_id(result), "keep_level": True}}
+            minecraft["events"][f"cobblemon:evolve_to_{result}"] = {"add": {"component_groups": [group]}}
         if evolution.get("variant") not in ("item_interact", "trade"): continue
         requirements = evolution.get("requirements", [])
         # a biome anticondition marks the everywhere-else evolution, which is the one kept
@@ -2365,6 +2355,49 @@ STAT_KEYS = {"hp": "hp", "attack": "atk", "defence": "def", "special_attack": "s
 KOTLIN_STATS = {"HP": "hp", "ATTACK": "atk", "DEFENCE": "def", "SPECIAL_ATTACK": "spa", "SPECIAL_DEFENCE": "spd", "SPEED": "spe"}
 
 
+def time_ranges():
+    """Cobblemon's named time ranges (TimeRange.kt) as {name: [[from, to], ...]} in day ticks."""
+    with open(f"{kotlinMain}/api/spawning/TimeRange.kt", encoding="utf-8") as file: text = file.read()
+    out = {}
+    for m in re.finditer(r'"(\w+)" to TimeRange\(([^)]*)\)', text):
+        out[m.group(1)] = [[int(a), int(b)] for a, b in re.findall(r"(\d+)\.\.(\d+)", m.group(2))]
+    return out
+
+
+def level_evolutions(species):
+    """A species' level-up evolutions with their requirements, as the script checks them when it levels up:
+    [{"to": entity id, "event": transformation event, "req": [...]}]. A requirement the port cannot check keeps the
+    evolution from happening, as {"t": "never"}; a biome anticondition (the everywhere-else form) always holds."""
+    out = []
+    for evolution in species.get("evolutions", []):
+        if evolution.get("variant") != "level_up": continue
+        result = pokemon_for_species_name(evolution.get("result", ""))
+        if not result: continue
+        req = []
+        for r in evolution.get("requirements", []):
+            v = r.get("variant")
+            if v == "level": req.append({"t": "level", "min": r.get("minLevel", 1)})
+            elif v == "friendship": req.append({"t": "friendship", "min": r.get("amount", 160)})
+            elif v == "time_range": req.append({"t": "time", "range": r.get("range", "any")})
+            elif v == "held_item" and not str(r.get("itemCondition", "")).startswith("#"): req.append({"t": "held", "item": r.get("itemCondition")})
+            elif v == "biome" and "biomeAnticondition" in r and "biomeCondition" not in r: pass
+            elif v == "has_move": req.append({"t": "move", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower())})
+            elif v == "has_move_type": req.append({"t": "move_type", "type": str(r.get("type", "")).lower()})
+            elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
+            elif v == "weather": req.append({"t": "weather", "rain": r.get("isRaining"), "thunder": r.get("isThundering")})
+            elif v == "moon_phase": req.append({"t": "moon", "phase": r.get("moonPhase")})
+            elif v == "stat_compare": req.append({"t": "stat_gt", "hi": STAT_KEYS.get(r.get("highStat")), "lo": STAT_KEYS.get(r.get("lowStat"))})
+            elif v == "stat_equal": req.append({"t": "stat_eq", "a": STAT_KEYS.get(r.get("statOne")), "b": STAT_KEYS.get(r.get("statTwo"))})
+            elif v == "properties":
+                target = str(r.get("target", ""))
+                m = re.search(r"(gender|nature|nickname|cocoon_species)=(\S+)", target)
+                if m: req.append({"t": "prop", "key": m.group(1), "value": m.group(2)})
+                else: req.append({"t": "never", "why": target})
+            else: req.append({"t": "never", "why": v})
+        out.append({"to": entity_id(result), "event": f"cobblemon:evolve_to_{result}", "req": req})
+    return out
+
+
 def natures():
     """{nature: [raised stat, lowered stat]} from Natures.kt; the neutral natures raise and lower nothing."""
     path = f"{kotlinMain}/api/pokemon/Natures.kt"
@@ -2424,6 +2457,7 @@ def create_battle_data():
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
             "evYield": {STAT_KEYS[k]: v for k, v in species.get("evYield", {}).items() if v and k in STAT_KEYS},
             "friendship": species.get("baseFriendship", 50), "height": species.get("height", 0),
+            "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
             "variants": variant_battle_overrides(pokemon, species)
         }
     with open(f"{scriptsBedrock}/data.js", "w", encoding="utf-8") as file:
@@ -2439,6 +2473,7 @@ def create_battle_data():
             if found: ability_names[block.group(1)] = found.group(1)
         file.write("export const ABILITY_NAMES = " + json.dumps(ability_names) + ";" + chr(10))
         file.write("export const NATURES = " + json.dumps(natures()) + ";" + chr(10))
+        file.write("export const TIME_RANGES = " + json.dumps(time_ranges()) + ";" + chr(10))
         balls = {b["item"]: {"name": b["display"], "mult": b["mult"], "rule": b["rule"]} for b in poke_balls()}
         file.write("export const BALLS = " + json.dumps(balls, ensure_ascii=False) + ";\n")
     print(f"Create battle data complete: {len(table)} Pokemon, {len(used)} moves.")

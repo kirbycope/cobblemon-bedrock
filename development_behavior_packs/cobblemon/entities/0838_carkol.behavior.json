@@ -43,22 +43,6 @@
             }
         },
         "component_groups": {
-            "cobblemon:growing": {
-                "minecraft:is_baby": {},
-                "minecraft:ageable": {
-                    "duration": 2040,
-                    "grow_up": {
-                        "event": "cobblemon:evolve",
-                        "target": "self"
-                    }
-                }
-            },
-            "cobblemon:evolve": {
-                "minecraft:transformation": {
-                    "into": "cobblemon:p0839_coalossal",
-                    "keep_level": true
-                }
-            },
             "cobblemon:wild": {
                 "minecraft:despawn": {
                     "despawn_from_distance": {}
@@ -232,6 +216,12 @@
             },
             "cobblemon:gone": {
                 "minecraft:instant_despawn": {}
+            },
+            "cobblemon:evolve_0839_coalossal": {
+                "minecraft:transformation": {
+                    "into": "cobblemon:p0839_coalossal",
+                    "keep_level": true
+                }
             },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
@@ -621,12 +611,23 @@
             }
         },
         "events": {
+            "cobblemon:pasture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pastured"
+                    ]
+                }
+            },
             "minecraft:entity_spawned": {
                 "sequence": [
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:growing",
                                 "cobblemon:wild"
                             ]
                         }
@@ -656,7 +657,6 @@
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:growing",
                         "cobblemon:wild"
                     ]
                 }
@@ -664,32 +664,7 @@
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:growing",
                         "cobblemon:wild"
-                    ]
-                }
-            },
-            "cobblemon:evolve": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:growing"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:evolve"
-                    ]
-                }
-            },
-            "cobblemon:pasture": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:following"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:pastured"
                     ]
                 }
             },
@@ -1874,6 +1849,13 @@
                         ]
                     }
                 ]
+            },
+            "cobblemon:evolve_to_0839_coalossal": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:evolve_0839_coalossal"
+                    ]
+                }
             },
             "cobblemon:battle": {
                 "remove": {

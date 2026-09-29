@@ -43,22 +43,6 @@
             }
         },
         "component_groups": {
-            "cobblemon:growing": {
-                "minecraft:is_baby": {},
-                "minecraft:ageable": {
-                    "duration": 1800,
-                    "grow_up": {
-                        "event": "cobblemon:evolve",
-                        "target": "self"
-                    }
-                }
-            },
-            "cobblemon:evolve": {
-                "minecraft:transformation": {
-                    "into": "cobblemon:p0160_feraligatr",
-                    "keep_level": true
-                }
-            },
             "cobblemon:sleepy": {
                 "minecraft:behavior.nap": {
                     "priority": 8,
@@ -253,6 +237,12 @@
             },
             "cobblemon:gone": {
                 "minecraft:instant_despawn": {}
+            },
+            "cobblemon:evolve_0160_feraligatr": {
+                "minecraft:transformation": {
+                    "into": "cobblemon:p0160_feraligatr",
+                    "keep_level": true
+                }
             },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
@@ -691,12 +681,23 @@
             }
         },
         "events": {
+            "cobblemon:pasture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pastured"
+                    ]
+                }
+            },
             "minecraft:entity_spawned": {
                 "sequence": [
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:growing",
                                 "cobblemon:wild"
                             ]
                         }
@@ -726,7 +727,6 @@
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:growing",
                         "cobblemon:wild"
                     ]
                 }
@@ -734,32 +734,7 @@
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:growing",
                         "cobblemon:wild"
-                    ]
-                }
-            },
-            "cobblemon:evolve": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:growing"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:evolve"
-                    ]
-                }
-            },
-            "cobblemon:pasture": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:following"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:pastured"
                     ]
                 }
             },
@@ -1968,6 +1943,13 @@
                         ]
                     }
                 ]
+            },
+            "cobblemon:evolve_to_0160_feraligatr": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:evolve_0160_feraligatr"
+                    ]
+                }
             },
             "cobblemon:battle": {
                 "remove": {

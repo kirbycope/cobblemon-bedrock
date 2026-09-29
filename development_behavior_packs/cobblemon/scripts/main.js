@@ -8,7 +8,7 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
-import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, NATURES } from "./data.js";
+import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, NATURES, TIME_RANGES } from "./data.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
@@ -453,6 +453,19 @@ function freeze(entity, on) {
     } catch (e) { }
 }
 
+// Friendship, as PlayerPartyStore does it: every two minutes a Pokemon out in the world gains one, up to 160
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near;
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 96 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (prop(e, OWNER) !== player.id) continue;
+            const f = friendshipOf(e);
+            if (f < 160) setProp(e, "cobblemon:friendship", f + 1);
+        }
+    }
+}, 20 * 120);
+
 // Under water, as Cobblemon's poses mean it: the head in water. Molang on the client only knows whether a Pokemon
 // touches water, so the server looks at the block at each Pokemon's eyes, four times a second, near players; and
 // whether it holds an item, which the client cannot read from a dynamic property.
@@ -475,6 +488,7 @@ system.runInterval(() => {
 
 function endBattle(battle, text) {
     battles.delete(battle.player.id);
+    system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
     if (text) say(battle, text);
 }
@@ -796,6 +810,12 @@ function endOfTurn(battle) {
 }
 
 // experience for beating a Pokemon, and the levels and moves it brings
+// Pokemon that levelled up, asked about evolving once the battle (or the candy) is done
+const leveled = new Set();
+function offerLevelEvolutions(player) {
+    for (const e of [...leveled]) { leveled.delete(e); if (e.isValid) offerEvolution(player, e); }
+}
+
 function gainExperience(battle, f, foe, amount) {
     // Cobblemon's config: a Lucky Egg gives 1.5 times the experience
     const gain = amount ?? Math.max(1, Math.floor(((foe.info.baseExp || 50) * foe.level * (battle.trainer ? 1.5 : 1)) / 7 * (held(f) === "lucky_egg" ? 1.5 : 1)));
@@ -811,6 +831,9 @@ function gainExperience(battle, f, foe, amount) {
     const ids = f.moves.map((m) => m.id);
     while (level < 100 && exp >= expFor(group, level + 1)) {
         level++;
+        const fr = friendshipOf(f.entity);
+        setProp(f.entity, "cobblemon:friendship", Math.min(255, fr + (fr <= 99 ? 3 : fr <= 199 ? 2 : 0)));
+        leveled.add(f.entity);
         say(battle, `§b${f.info.name} grew to level ${level}!`);
         for (const [at, id] of f.info.learnset ?? []) {
             if (at !== level || ids.includes(id) || !MOVES[id]) continue;
@@ -934,20 +957,33 @@ const evolving = [];
 world.beforeEvents.entityRemove.subscribe((event) => {
     const e = event.removedEntity;
     if (!POKEMON[e.typeId]) return;
-    let owner;
-    try { owner = e.getDynamicProperty(OWNER); } catch (err) { }
-    if (owner) evolving.push({ owner, location: { ...e.location }, tick: system.currentTick });
+    let owner, kept = {}, name = "";
+    try {
+        owner = e.getDynamicProperty(OWNER);
+        for (const id of e.getDynamicPropertyIds()) kept[id] = e.getDynamicProperty(id);
+        name = e.nameTag;
+    } catch (err) { }
+    if (owner) evolving.push({ owner, kept, name, from: e.typeId, location: { ...e.location }, tick: system.currentTick });
 });
 world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
     if (cause !== EntityInitializationCause.Transformed || !POKEMON[entity.typeId]) return;
     const i = evolving.findIndex((p) => system.currentTick - p.tick < 40 && Math.hypot(p.location.x - entity.location.x, p.location.z - entity.location.z) < 3);
     if (i < 0) return;
-    const { owner } = evolving.splice(i, 1)[0];
+    const { owner, kept, name, from } = evolving.splice(i, 1)[0];
     const player = world.getPlayers().find((p) => p.id === owner);
     system.run(() => {
         try {
             if (!entity.isValid) return;
             if (player) entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
+            // level, experience, moves, IVs, EVs, nature, friendship and held item carry over; the ability keeps its slot
+            for (const [key, value] of Object.entries(kept ?? {})) { try { entity.setDynamicProperty(key, value); } catch (e) { } }
+            const before = POKEMON[from], after = POKEMON[entity.typeId], ability = kept?.["cobblemon:ability"];
+            if (before && after && ability) {
+                const hidden = (before.hidden ?? []).indexOf(ability), slot = (before.abilities ?? []).indexOf(ability);
+                const next = hidden >= 0 ? (after.hidden ?? [])[hidden] ?? (after.hidden ?? [])[0] : (after.abilities ?? [])[Math.max(0, slot)] ?? (after.abilities ?? [])[0];
+                if (next) entity.setDynamicProperty("cobblemon:ability", next);
+            }
+            if (name && name !== "NPC") entity.nameTag = name;
             entity.setDynamicProperty(OWNER, owner);
             if (player) register(player, entity.typeId, 2);
             player?.sendMessage(`§aYour Pokemon evolved into ${POKEMON[entity.typeId].name}!`);
@@ -1449,9 +1485,7 @@ function lureLevel(item) {
     try { return item.getComponent("minecraft:enchantable")?.getEnchantment("lure")?.level ?? 0; } catch (e) { return 0; }
 }
 
-// Cobblemon's time ranges, in ticks of the day
-const TIME_RANGES = { day: [[23460, 24000], [0, 12541]], night: [[12542, 23459]], noon: [[5000, 6999]], midnight: [[17000, 18999]],
-    morning: [[23460, 24000], [0, 4999]], afternoon: [[7000, 12039]], dawn: [[22300, 23999]], dusk: [[12040, 13800]] };
+// Cobblemon's time ranges, in ticks of the day, are TIME_RANGES from data.js (TimeRange.kt)
 
 function spawnAllowed(spawn, cast, bobber, tags) {
     const at = bobber.location;
@@ -1944,6 +1978,7 @@ function applyCandy(player, entity, candy) {
     const group = f.info.expGroup;
     const gain = candy === "level" ? expFor(group, f.level + 1) - Math.max(prop(entity, EXP) ?? 0, expFor(group, f.level)) : candy;
     gainExperience({ player, trainer: false }, f, null, Math.max(1, gain));
+    system.runTimeout(() => offerLevelEvolutions(player), 10);
     return true;
 }
 
@@ -2013,6 +2048,70 @@ function showHeld(entity) {
     try {
         entity.setProperty("cobblemon:held_index", (id && HELD_INDEX[id]) || 0);   // the index follows the pack's icon list
     } catch (e) { }
+}
+
+// Level-up evolution, as Cobblemon's LevelUpEvolution: when a Pokemon levels up and meets an evolution's
+// requirements, its trainer is asked, and a yes transforms it. An Everstone keeps it from evolving.
+function genderOf(entity) {
+    let g = prop(entity, "cobblemon:gender");
+    if (!g) {
+        const ratio = POKEMON[entity.typeId]?.maleRatio ?? 0.5;
+        g = ratio < 0 ? "genderless" : Math.random() < ratio ? "male" : "female";
+        setProp(entity, "cobblemon:gender", g);
+    }
+    return g;
+}
+function inTimeRange(name) {
+    const t = world.getTimeOfDay() % 24000;
+    return (TIME_RANGES[name] ?? [[0, 23999]]).some(([a, b]) => t >= a && t <= b);
+}
+const MOON_PHASES = ["FULL_MOON", "WANING_GIBBOUS", "LAST_QUARTER", "WANING_CRESCENT", "NEW_MOON", "WAXING_CRESCENT", "FIRST_QUARTER", "WAXING_GIBBOUS"];
+function meets(entity, f, r, player) {
+    switch (r.t) {
+        case "level": return f.level >= r.min;
+        case "friendship": return friendshipOf(entity) >= r.min;
+        case "time": return inTimeRange(r.range);
+        case "held": return prop(entity, "cobblemon:held") === r.item;
+        case "move": return f.moves.some((m) => m.id === r.move);
+        case "move_type": return f.moves.some((m) => m.type === r.type);
+        case "party": { const has = !!player && findParty(player, entity.location).some((e) => e.id !== entity.id && (POKEMON[e.typeId]?.name ?? "").toLowerCase() === r.species); return has === r.contains; }
+        case "weather": { let w = "Clear"; try { w = entity.dimension.getWeather(); } catch (e) { } return (r.rain === undefined || (w !== "Clear") === r.rain) && (r.thunder === undefined || (w === "Thunder") === r.thunder); }
+        case "moon": { let phase = 0; try { phase = world.getMoonPhase(); } catch (e) { } return MOON_PHASES[phase] === r.phase; }
+        case "stat_gt": return f.stats[r.hi] > f.stats[r.lo];
+        case "stat_eq": return f.stats[r.a] === f.stats[r.b];
+        case "prop":
+            if (r.key === "gender") return genderOf(entity) === r.value;
+            if (r.key === "nature") return natureOf(entity) === r.value;
+            if (r.key === "nickname") return entity.nameTag === r.value;
+            if (r.key === "cocoon_species") {
+                // Wurmple's split: each Wurmple is one or the other, rolled once
+                let c = prop(entity, "cobblemon:cocoon");
+                if (!c) { c = Math.random() < 0.5 ? "silcoon" : "cascoon"; setProp(entity, "cobblemon:cocoon", c); }
+                return c === r.value;
+            }
+            return false;
+        default: return false;
+    }
+}
+function evolutionFor(entity, player) {
+    const f = fighter(entity), info = POKEMON[entity.typeId];
+    if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return null;
+    return info.evolutions.find((e) => e.req.every((r) => meets(entity, f, r, player))) ?? null;
+}
+function offerEvolution(player, entity) {
+    const evolution = evolutionFor(entity, player);
+    if (!evolution || !entity.isValid || prop(entity, "cobblemon:evolving")) return;
+    setProp(entity, "cobblemon:evolving", true);
+    const name = POKEMON[entity.typeId].name, into = POKEMON[evolution.to]?.name ?? "?";
+    new MessageFormData().title("Evolution").body(`What? ${name} is evolving into ${into}!`).button1("Evolve").button2("Not now")
+        .show(player).then((r) => {
+            if (!entity.isValid) return;
+            setProp(entity, "cobblemon:evolving", undefined);
+            if (r.canceled || r.selection !== 0) return;
+            // an evolution that needs a held item uses it up
+            if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
+            entity.triggerEvent(evolution.event);
+        }).catch(() => setProp(entity, "cobblemon:evolving", undefined));
 }
 
 function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
