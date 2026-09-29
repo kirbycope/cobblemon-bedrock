@@ -1169,7 +1169,7 @@ def create_loot_tables():
 
 
 def create_dialogues():
-    """The panel a right-click opens: Bedrock's NPC dialogue, one scene per Pokemon plus a stats page."""
+    """The panel a right-click opens: Bedrock's NPC dialogue, one scene per Pokemon; its Stats button opens the script's summary."""
     print("Creating dialogues...")
     fresh(dialogueBedrock)
     scenes = []
@@ -1179,26 +1179,15 @@ def create_dialogues():
         key = species_key(species); name = display_name(species)
         types = " / ".join(type_name(t) for t in (species.get("primaryType"), species.get("secondaryType")) if t)
         desc = lang.get(f"cobblemon.species.{key}.desc", "")
-        stats = species.get("baseStats", {})
-        stat_line = "  ".join(f"{label} {stats.get(stat, '?')}" for label, stat in (("HP", "hp"), ("Atk", "attack"), ("Def", "defence"), ("SpA", "special_attack"), ("SpD", "special_defence"), ("Spe", "speed")))
-        height = species.get("height", 0) / 10; weight = species.get("weight", 0) / 10
         cry = [{"name": "Cry", "commands": [f"/playsound cobblemon.{key}.cry @initiator ~ ~ ~"]}] if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else []
         scenes.append({
             "scene_tag": f"cobblemon:{pokemon}",
             "npc_name": name,
             "text": f"{types} type\n{desc}",
-            "buttons": cry + [{"name": "Stats", "commands": [f"/dialogue open @s @initiator cobblemon:{pokemon}.stats"]},
+            "buttons": cry + [{"name": "Stats", "commands": ["/scriptevent cobblemon:summary go"]},
                               {"name": "Battle", "commands": ["/scriptevent cobblemon:battle go"]},
                               {"name": "Stay", "commands": ["/event entity @s cobblemon:stay"]}, {"name": "Follow", "commands": ["/event entity @s cobblemon:follow"]}]
                        + ([{"name": "Ride", "commands": ["/ride @initiator start_riding @s teleport_rider"]}] if ride_behaviours(species) else [])
-        })
-        scenes.append({
-            "scene_tag": f"cobblemon:{pokemon}.stats",
-            "npc_name": name,
-            "text": f"Height {height:g} m, weight {weight:g} kg\n{stat_line}",
-            # Bedrock allows six buttons a scene, which the main page fills for a rideable Pokemon
-            "buttons": [{"name": "Take Item", "commands": ["/scriptevent cobblemon:take_item go"]},
-                        {"name": "Back", "commands": [f"/dialogue open @s @initiator cobblemon:{pokemon}"]}]
         })
     with open(f"{dialogueBedrock}/pokemon.dialogue.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": scenes}}, indent=4, ensure_ascii=False))
@@ -2339,6 +2328,33 @@ def showdown_typechart():
     return chart
 
 
+STAT_KEYS = {"hp": "hp", "attack": "atk", "defence": "def", "special_attack": "spa", "special_defence": "spd", "speed": "spe"}
+KOTLIN_STATS = {"HP": "hp", "ATTACK": "atk", "DEFENCE": "def", "SPECIAL_ATTACK": "spa", "SPECIAL_DEFENCE": "spd", "SPEED": "spe"}
+
+
+def natures():
+    """{nature: [raised stat, lowered stat]} from Natures.kt; the neutral natures raise and lower nothing."""
+    path = f"{kotlinMain}/api/pokemon/Natures.kt"
+    with open(path, encoding="utf-8") as file: text = file.read()
+    out = {}
+    for m in re.finditer(r'Nature\(cobblemonResource\("(\w+)"\),\s*"[^"]+",\s*(null|Stats\.(\w+)),\s*(null|Stats\.(\w+))', text):
+        out[m.group(1)] = [KOTLIN_STATS.get(m.group(3)), KOTLIN_STATS.get(m.group(5))]
+    return out
+
+
+def ev_items():
+    """Vitamins (10 EVs), feathers (1), mints (a nature) and the berries that lower an EV, from CobblemonItems.kt."""
+    path = f"{kotlinMain}/CobblemonItems.kt"
+    with open(path, encoding="utf-8") as file: text = file.read()
+    evs = {}
+    for m in re.finditer(r'create\("(\w+)",\s*VitaminItem\(Stats\.(\w+)', text): evs[f"cobblemon:{m.group(1)}"] = [KOTLIN_STATS[m.group(2)], 10, "minecraft:glass_bottle"]
+    for m in re.finditer(r'create\("(\w+)",\s*FeatherItem\(Stats\.(\w+)', text): evs[f"cobblemon:{m.group(1)}"] = [KOTLIN_STATS[m.group(2)], 1, None]
+    mints = {f"cobblemon:{m.group(1)}": m.group(2).lower() for m in re.finditer(r'mintItem\("(\w+)",\s*MintItem\(Natures\.(\w+)', text)}
+    berries = {f"cobblemon:{m.group(1)}_berry": KOTLIN_STATS[m.group(2)]
+               for m in re.finditer(r'berryItem\("(\w+)",\s*FriendshipRaisingBerryItem\([^,]+,\s*Stats\.(\w+)', text)}
+    return evs, mints, berries
+
+
 def create_battle_data():
     print("Creating battle data...")
     os.makedirs(scriptsBedrock, exist_ok=True)
@@ -2373,6 +2389,8 @@ def create_battle_data():
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []),
             "ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in species.get("abilities", []) if a.startswith("h:")], "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
+            "evYield": {STAT_KEYS[k]: v for k, v in species.get("evYield", {}).items() if v and k in STAT_KEYS},
+            "friendship": species.get("baseFriendship", 50), "height": species.get("height", 0),
             "variants": variant_battle_overrides(pokemon, species)
         }
     with open(f"{scriptsBedrock}/data.js", "w", encoding="utf-8") as file:
@@ -2387,6 +2405,7 @@ def create_battle_data():
             found = re.search(r'name: "([^"]+)"', block.group(2))
             if found: ability_names[block.group(1)] = found.group(1)
         file.write("export const ABILITY_NAMES = " + json.dumps(ability_names) + ";" + chr(10))
+        file.write("export const NATURES = " + json.dumps(natures()) + ";" + chr(10))
         balls = {b["item"]: {"name": b["display"], "mult": b["mult"], "rule": b["rule"]} for b in poke_balls()}
         file.write("export const BALLS = " + json.dumps(balls, ensure_ascii=False) + ";\n")
     print(f"Create battle data complete: {len(table)} Pokemon, {len(used)} moves.")
@@ -3846,6 +3865,10 @@ def create_general_items():
         file.write("// generated by port.py: held items (CobblemonItems.kt), medicine with its amounts (mechanics), candies" + chr(10))
         file.write("export const HELD_ITEMS = " + json.dumps(held) + ";" + chr(10))
         file.write("export const MEDICINE = " + json.dumps(medicine) + ";" + chr(10))
+        evs, mints, ev_berries = ev_items()
+        file.write("export const EV_ITEMS = " + json.dumps({k: v for k, v in evs.items() if k in defined}) + ";" + chr(10))
+        file.write("export const MINTS = " + json.dumps({k: v for k, v in mints.items() if k in defined}) + ";" + chr(10))
+        file.write("export const EV_BERRIES = " + json.dumps({k: v for k, v in ev_berries.items() if k in defined}) + ";" + chr(10))
         file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
     print(f"Create items complete: {len(made)} items, {len(held)} held items, {len(medicine)} medicines.")
     return made

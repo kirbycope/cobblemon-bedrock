@@ -8,16 +8,16 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
-import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES } from "./data.js";
+import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, NATURES } from "./data.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
-import { HELD_ITEMS, MEDICINE, CANDIES } from "./items.js";
+import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES } from "./items.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
-const STAT_NAMES = { atk: "Attack", def: "Defense", spa: "Sp. Atk", spd: "Sp. Def", spe: "Speed", accuracy: "accuracy", evasion: "evasiveness" };
+const STAT_NAMES = { hp: "HP", atk: "Attack", def: "Defense", spa: "Sp. Atk", spd: "Sp. Def", spe: "Speed", accuracy: "accuracy", evasion: "evasiveness" };
 const STATUS_TEXT = { brn: "was burned", par: "is paralyzed! It may be unable to move", psn: "was poisoned", tox: "was badly poisoned", slp: "fell asleep", frz: "was frozen solid" };
 const STATUS_TAG = { brn: "§6BRN§r", par: "§ePAR§r", psn: "§5PSN§r", tox: "§5TOX§r", slp: "§7SLP§r", frz: "§bFRZ§r" };
 const STATUS_IMMUNE = { brn: ["fire"], par: ["electric"], psn: ["poison", "steel"], tox: ["poison", "steel"], frz: ["ice"] };
@@ -36,8 +36,43 @@ const STATUS_BERRIES = { cheri_berry: ["par"], chesto_berry: ["slp"], pecha_berr
 function held(f) { return f.held ? f.held.slice("cobblemon:".length) : null; }
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
 
-function statAt(base, level) { return Math.floor(((2 * base + 31) * level) / 100) + 5; }
-function hpAt(base, level) { return Math.floor(((2 * base + 31) * level) / 100) + level + 10; }
+function statAt(base, level, iv = 31, ev = 0, nature = 1) { return Math.floor((Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5) * nature); }
+function hpAt(base, level, iv = 31, ev = 0) { return base === 1 ? 1 : Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + level + 10; }   // Shedinja has 1
+
+// Each Pokemon rolls its IVs (0 to 31) and nature once, as Cobblemon does when it creates one, and keeps them with
+// its EVs as dynamic properties. EVs come from battles by the foe's EV yield and from vitamins and feathers, 252 at
+// most in a stat and 510 in all; a mint changes the nature its stats use, and the berries that lower EVs undo them.
+const STAT_KEYS = ["hp", "atk", "def", "spa", "spd", "spe"];
+const EV_STAT_MAX = 252, EV_TOTAL_MAX = 510;
+function storedObject(entity, key, make) {
+    let value;
+    try { value = JSON.parse(prop(entity, key) ?? "null"); } catch (e) { }
+    if (!value || typeof value !== "object") { value = make(); setProp(entity, key, JSON.stringify(value)); }
+    return value;
+}
+function ivsOf(entity) { return storedObject(entity, "cobblemon:ivs", () => Object.fromEntries(STAT_KEYS.map((k) => [k, Math.floor(Math.random() * 32)]))); }
+function evsOf(entity) { return storedObject(entity, "cobblemon:evs", () => Object.fromEntries(STAT_KEYS.map((k) => [k, 0]))); }
+function natureOf(entity) {
+    let nature = prop(entity, "cobblemon:nature");
+    if (!NATURES[nature]) { const all = Object.keys(NATURES); nature = all[Math.floor(Math.random() * all.length)]; setProp(entity, "cobblemon:nature", nature); }
+    return nature;
+}
+function effectiveNature(entity) { const minted = prop(entity, "cobblemon:mint"); return NATURES[minted] ? minted : natureOf(entity); }
+function natureMultiplier(nature, stat) { const [up, down] = NATURES[nature] ?? []; return up === down ? 1 : stat === up ? 1.1 : stat === down ? 0.9 : 1; }
+function statsOf(entity, info, level) {
+    const ivs = ivsOf(entity), evs = evsOf(entity), nature = effectiveNature(entity), out = {};
+    for (const k of STAT_KEYS) out[k] = k === "hp" ? hpAt(info.stats.hp, level, ivs.hp, evs.hp) : statAt(info.stats[k], level, ivs[k], evs[k], natureMultiplier(nature, k));
+    return out;
+}
+// adds (or with a negative amount removes) EVs within the caps; returns how many changed
+function addEvs(entity, stat, amount) {
+    const evs = evsOf(entity), total = STAT_KEYS.reduce((t, k) => t + (evs[k] ?? 0), 0);
+    const change = amount > 0 ? Math.min(amount, EV_STAT_MAX - evs[stat], EV_TOTAL_MAX - total) : Math.max(amount, -evs[stat]);
+    if (!change) return 0;
+    evs[stat] += change; setProp(entity, "cobblemon:evs", JSON.stringify(evs));
+    return change;
+}
+function natureName(nature) { return cap(nature ?? "hardy"); }
 function stage(s) { return s >= 0 ? (2 + s) / 2 : 2 / (2 - s); }
 function accStage(s) { return s >= 0 ? (3 + s) / 3 : 3 / (3 - s); }
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -81,7 +116,7 @@ function fighter(entity) {
     let ids;
     try { ids = JSON.parse(prop(entity, MOVESET) ?? "null"); } catch (e) { }
     if (!Array.isArray(ids)) ids = level === info.level ? info.moves : movesAt(info, level);
-    const stats = { hp: hpAt(info.stats.hp, level), atk: statAt(info.stats.atk, level), def: statAt(info.stats.def, level), spa: statAt(info.stats.spa, level), spd: statAt(info.stats.spd, level), spe: statAt(info.stats.spe, level) };
+    const stats = statsOf(entity, info, level);
     // a Pokemon enters with the share of its health its entity has left
     let hp = stats.hp;
     try {
@@ -695,6 +730,7 @@ function endOfTurn(battle) {
 // experience for beating a Pokemon, and the levels and moves it brings
 function gainExperience(battle, f, foe, amount) {
     const gain = amount ?? Math.max(1, Math.floor(((foe.info.baseExp || 50) * foe.level * (battle.trainer ? 1.5 : 1)) / 7));
+    if (foe) for (const [stat, n] of Object.entries(foe.info.evYield ?? {})) addEvs(f.entity, stat, n);   // the foe's EV yield
     const group = f.info.expGroup;
     let exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, f.level)) + gain, level = f.level;
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
@@ -778,6 +814,17 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:fish_now") {
         // testing: /execute as <player> run scriptevent cobblemon:fish_now makes a floating bobber bite at once
         for (const cast of fishing.values()) if (cast.phase === "waiting" || cast.phase === "travel") { cast.phase = "travel"; cast.travel = 1; }
+    } else if (event.id === "cobblemon:claim") {
+        // for testing: the nearest wild Pokemon within 8 blocks becomes the running player's own, as a claim does
+        const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
+        const target = player?.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 8, closest: 1 })
+            .find((e) => prop(e, OWNER) === undefined);
+        if (!target) return;
+        try { target.triggerEvent("cobblemon:caught"); target.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
+        setProp(target, OWNER, player.id);
+        player.sendMessage(`§a${POKEMON[target.typeId]?.name} is now yours.`);
+    } else if (event.id === "cobblemon:summary") {
+        showSummary(source);
     } else if (event.id === "cobblemon:take_item") {
         takeHeld(source);
     } else if (event.id === "cobblemon:join_fences") {
@@ -1100,8 +1147,12 @@ function snapshot(entity) {
     try { const h = entity.getComponent(EntityComponentTypes.Health); hp = h.currentValue / h.effectiveMax; } catch (e) { }
     return { t: entity.typeId, v: variant, lv: prop(entity, LEVEL) ?? species.level, xp: prop(entity, EXP) ?? 0,
              mv: prop(entity, MOVESET) ?? null, f: !!prop(entity, FAINTED), hp,
-             n: entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "" };   // "NPC" is the name the panel component gives
+             n: entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "",   // "NPC" is the name the panel component gives
+             k: Object.fromEntries(KEPT.map((key) => [key, prop(entity, key)]).filter(([, v]) => v !== undefined)) };
 }
+
+// what a Pokemon keeps through the PC and the pasture besides its level, moves and name
+const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held"];
 
 function setPcScreen(block, on) {
     const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
@@ -1228,6 +1279,7 @@ function spawnStored(player, rec, at) {
             if (rec.mv) setProp(entity, MOVESET, rec.mv);
             if (rec.f) setProp(entity, FAINTED, true);
             if (rec.n) entity.nameTag = rec.n;
+            for (const [key, value] of Object.entries(rec.k ?? {})) setProp(entity, key, value);
             const h = entity.getComponent(EntityComponentTypes.Health);
             if (h) h.setCurrentValue(Math.max(1, Math.round(h.effectiveMax * rec.hp)));
         } catch (e) { }
@@ -1820,13 +1872,36 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     if (!id || !POKEMON[target.typeId]) return;
     const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
     const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
-    if (!medicine && candy === undefined && !held && !changer) return;
+    const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id];
+    if (!medicine && candy === undefined && !held && !changer && !evItem && !mint && !evBerry) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
     system.run(() => {
         if (!target.isValid) return;
         if (battles.has(player.id)) { player.sendMessage("§7Use items from the Bag during a battle."); return; }
-        if (changer) {
+        const name = POKEMON[target.typeId].name;
+        if (evItem) {
+            // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
+            const [stat, amount, back] = evItem;
+            if (!addEvs(target, stat, amount)) { player.sendMessage("§7It won't have any effect."); return; }
+            consumeHand(player); if (back && player.getGameMode?.() !== "Creative") giveOrDrop(player, back);
+            player.sendMessage(`§a${name}'s ${STAT_NAMES[stat]} base points rose.`);
+            refreshHealth(target);
+        } else if (mint) {
+            // MintItem: the stats follow the mint's nature from now on; the Pokemon keeps its own
+            if (effectiveNature(target) === mint) { player.sendMessage(`§7${name} already has the ${natureName(mint)} nature's effect.`); return; }
+            setProp(target, "cobblemon:mint", mint); consumeHand(player);
+            player.sendMessage(`§a${name}'s stats may have changed due to the effects of the ${itemName(id)}!`);
+            refreshHealth(target);
+        } else if (evBerry) {
+            // FriendshipRaisingBerryItem: 10 EVs off, friendship up by 10, 5 or 1 as it is lower or higher
+            const lowered = addEvs(target, evBerry, -10);
+            const before = friendshipOf(target), raised = Math.min(255, before + (before < 100 ? 10 : before < 200 ? 5 : 1)) - before;
+            if (!lowered && !raised) { player.sendMessage("§7It won't have any effect."); return; }
+            setProp(target, "cobblemon:friendship", before + raised); consumeHand(player);
+            player.sendMessage(`§a${name} ${raised ? "became more friendly" : "ate the berry"}${lowered ? `, and its ${STAT_NAMES[evBerry]} base points fell` : ""}.`);
+            refreshHealth(target);
+        } else if (changer) {
             // Ability Capsule swaps between the two normal abilities; Ability Patch gives the hidden one
             const info = POKEMON[target.typeId], current = fighter(target).ability;
             const hidden = (info.hidden ?? []).includes(current);
@@ -1850,6 +1925,46 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 });
 
 function itemName(id) { return id.slice("cobblemon:".length).split("_").map(cap).join(" "); }
+
+function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
+
+// the entity's health follows its battle HP, so a change to its HP stat keeps the same share of health
+function refreshHealth(entity) {
+    try {
+        const health = entity.getComponent(EntityComponentTypes.Health);
+        if (health) health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue));
+    } catch (e) { }
+}
+
+// the panel's Stats button: the Pokemon's own summary, as Cobblemon's summary screen shows it
+function showSummary(source) {
+    const player = world.getPlayers().find((p) => p.id === prop(source, OWNER)) ?? nearestPlayer(source);
+    const f = fighter(source);
+    if (!player || !f) return;
+    const info = f.info, mine = prop(source, OWNER) === player.id;
+    const lines = [`§l${info.name}§r  Lv ${f.level}   ${info.types.map(cap).join(" / ")}`,
+                   `Height ${(info.height / 10).toFixed(1)} m, weight ${(info.weight / 10).toFixed(1)} kg`];
+    if (mine) {
+        const nature = natureOf(source), minted = prop(source, "cobblemon:mint"), ivs = ivsOf(source), evs = evsOf(source);
+        lines.push(`Nature: ${natureName(nature)}${NATURES[minted] && minted !== nature ? ` (minted: ${natureName(minted)})` : ""}`,
+                   `Ability: ${abilityName(f.ability)}`, `Held item: ${heldItem(source) ? itemName(heldItem(source)) : "none"}`,
+                   `Friendship: ${friendshipOf(source)}`, "",
+                   "§lStats§r (IV, EV)");
+        const [up, down] = NATURES[effectiveNature(source)] ?? [];
+        for (const k of STAT_KEYS) {
+            const mark = up !== down && k === up ? "§c+§r" : up !== down && k === down ? "§9-§r" : " ";
+            lines.push(`${STAT_NAMES[k]}${mark} §l${f.stats[k]}§r   §7IV ${ivs[k]}, EV ${evs[k]}§r`);
+        }
+        lines.push(`EVs ${STAT_KEYS.reduce((t, k) => t + evs[k], 0)} / ${EV_TOTAL_MAX}`);
+    } else {
+        lines.push("", "§lBase stats§r", STAT_KEYS.map((k) => `${STAT_NAMES[k]} ${info.stats[k]}`).join("  "));
+    }
+    const form = new ActionFormData().title(info.name).body(lines.join("\n"));
+    const take = mine && heldItem(source);
+    if (take) form.button("Take Item");
+    form.button("Close");
+    form.show(player).then((r) => { if (!r.canceled && take && r.selection === 0) takeHeld(source); }).catch(() => { });
+}
 
 // the panel's Take Item button
 function takeHeld(source) {
