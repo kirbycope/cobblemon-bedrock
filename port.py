@@ -359,6 +359,8 @@ def fix_animations():
     for root, _, files in os.walk(animationsBedrock):
         for name in files:
             if not name.endswith(".animation.json"): continue
+            # the port's own animations (the beam, the held balls) use queries of its own, not Cobblemon's
+            if name == "beam.animation.json" or name.endswith("_held.animation.json"): continue
             path = os.path.join(root, name)
             with open(path, encoding="utf-8") as file: data = json.load(file)
             before = json.dumps(data)
@@ -703,6 +705,10 @@ def render_controller_names(pokemon, pokemonName):
     return [f"controller.render.{pokemonName}"] + [f"controller.render.{pokemonName}_{name}" for name in _layer_names(resolver_variations(pokemon))]
 
 
+# PokemonRenderer.renderTransition: a Pokemon beamed into a ball turns red as it shrinks (recallBeamColour)
+RED_OVERLAY = {"r": 1.0, "g": 0.1, "b": 0.1, "a": "q.property('cobblemon:red')"}
+
+
 def create_render_controllers():
     """The base pass and one pass per texture layer, each picking its texture and geometry by the
     entity's variant; a variant without a given layer draws that pass with a blank texture."""
@@ -714,7 +720,7 @@ def create_render_controllers():
         variations = resolver_variations(pokemon)
         geometry_array = [f"Geometry.{geometry_key(v['model'])}" for v in variations]
         dedupe_variant_locators(pokemon)
-        base = {"materials": [{"*": "Material.default"}]}
+        base = {"materials": [{"*": "Material.default"}], "overlay_color": RED_OVERLAY}
         if len(variations) == 1:
             base.update({"geometry": geometry_array[0], "textures": ["Texture.v0"]})
         else:
@@ -735,7 +741,7 @@ def create_render_controllers():
                 else: flat += [f"Texture.{name}_{n}_{i % len(layer['frames'])}" for i in range(stride)]
             frame = f" + math.mod(math.floor(q.life_time * {max(fps)}), {stride})" if stride > 1 else ""
             index = (f"query.variant * {stride}" if len(variations) > 1 else "0") + frame
-            controller = {"materials": [{"*": "Material.translucent"}], "arrays": {"textures": {f"Array.{name}": flat}}, "textures": [f"Array.{name}[{index}]"]}
+            controller = {"materials": [{"*": "Material.translucent"}], "arrays": {"textures": {f"Array.{name}": flat}}, "textures": [f"Array.{name}[{index}]"], "overlay_color": RED_OVERLAY}
             if len(variations) == 1: controller["geometry"] = geometry_array[0]
             else: controller.update({"geometry": "Array.geo[query.variant]"}); controller["arrays"]["geometries"] = {"Array.geo": geometry_array}
             controllers[f"controller.render.{pokemonName}_{name}"] = controller
@@ -975,7 +981,7 @@ def create_client_entities():
                     },
                     "textures": variant_textures(pokemon),
                     "geometry": variant_geometries(pokemon),
-                    "scripts": scripts,
+                    "scripts": {**scripts, "scale": "q.property('cobblemon:size')"},
                     "animations": animations,
                     "render_controllers": render_controller_names(pokemon, pokemonName),
                     "spawn_egg": {"texture": f"{pokemon}_spawn_egg"}
@@ -1119,7 +1125,10 @@ def create_behavior_entities():
                                    "cobblemon:submerged": {"type": "bool", "default": False, "client_sync": True},
                                    "cobblemon:holding": {"type": "bool", "default": False, "client_sync": True},
                                    "cobblemon:held_index": {"type": "int", "range": [0, 1023], "default": 0, "client_sync": True},
-                                   "cobblemon:on_sand": {"type": "int", "range": [0, 2], "default": 0, "client_sync": True}},
+                                   "cobblemon:on_sand": {"type": "int", "range": [0, 2], "default": 0, "client_sync": True},
+                                   # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
+                                   "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
+                                   "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True}},
                     "animations": {"dialogue": f"controller.animation.{pokemon}.dialogue"},
                     "scripts": {"animate": ["dialogue"]}
                 },
@@ -1254,6 +1263,18 @@ def create_sounds():
             events.update({"hurt": f"cobblemon.{key}.cry", "death": f"cobblemon.{key}.cry"})
             events["ambient"] = f"cobblemon.{key}.ambient" if f"cobblemon.{key}.ambient" in definitions else f"cobblemon.{key}.cry"
         if events: entities[entity_id(pokemon)] = {"volume": 1.0, "pitch": 1.0, "events": events}
+    # Cobblemon's Poke Ball sounds: throw, hit, open, shut, bounce, shake, capture, break, recall, send out
+    for key, definition in cobblemon_sounds.items():
+        if not key.startswith("poke_ball."): continue
+        sounds = []
+        for sound in definition.get("sounds", []):
+            name = sound["name"] if isinstance(sound, dict) else sound
+            source = f"{cobblemon}/sounds/{name.split(':', 1)[1]}.ogg"
+            if not os.path.exists(source): continue
+            os.makedirs(f"{soundsBedrock}/poke_ball", exist_ok=True)
+            shutil.copyfile(source, f"{soundsBedrock}/poke_ball/{os.path.basename(source)}")
+            sounds.append({"name": f"sounds/poke_ball/{os.path.basename(source)[:-4]}", "volume": sound.get("volume", 1.0) if isinstance(sound, dict) else 1.0})
+        if sounds: definitions[f"cobblemon.{key}"] = {"category": "neutral", "sounds": sounds}
     os.makedirs(soundsBedrock, exist_ok=True)
     with open(f"{soundsBedrock}/sound_definitions.json", "w") as file:
         file.write(json.dumps({"format_version": "1.14.0", "sound_definitions": definitions}, indent=4))
@@ -1674,9 +1695,9 @@ def add_sleep(entity, species, kind):
 # ---------------------------------------------------------------------------
 # Poke Balls, capture, ownership and combat. All vanilla components, no scripts:
 #
-# - cobblemon:poke_ball is a throwable item whose projectile fires cobblemon:catch_attempt on the
-#   Pokemon it hits. The event rolls Cobblemon's catch rate (doubled on a sleeping Pokemon); on a
-#   success the Pokemon drops a filled ball item, cobblemon:poke_ball_<id>, and vanishes.
+# - cobblemon:poke_ball is a throwable item whose projectile scripts/main.js catches when it hits a wild
+#   Pokemon: EmptyPokeBallEntity's sequence (bounce, open, the red beam, fall, shakes), then Cobblemon's
+#   catch roll; on a success the Pokemon drops a filled ball item, cobblemon:poke_ball_<id>, and vanishes.
 # - a filled ball places its Pokemon back with the cobblemon:released event, which makes it claimable.
 # - interacting with a Pokemon while holding an empty Poke Ball tames it (minecraft:tameable): at the
 #   catch rate for a wild one, always for a released one. Bedrock offers no other way to set an owner.
@@ -1697,8 +1718,7 @@ def catch_rate(species):
 # Poke Ball types. Every ball in Cobblemon's bedrock/poke_balls/variations becomes an item, cobblemon:<name>,
 # thrown as its own projectile, cobblemon:ball_<name>, on the ball's own model and texture. Cobblemon keeps
 # the catch modifiers in code; the lang tooltips state them, and that is where the multipliers come from.
-# Balls that behave alike share a catch class (family catch_<class> on the projectile), so a Pokemon's
-# damage sensor carries one trigger per class rather than per ball.
+# scripts/main.js applies the multipliers when a thrown ball lands (ballMultiplier).
 # ---------------------------------------------------------------------------
 
 # balls whose multiplier depends on something; the rest are the flat multiplier in their tooltip
@@ -1711,7 +1731,6 @@ BALL_RULES = {
 }
 # rules a thrown ball can apply in the world; the others need a battle and apply only in main.js
 WORLD_RULES = {"master", "dusk", "park", "dive", "net", "fast", "heavy", "nest", "beast", "dream"}
-SLEEP_BONUS = 2.0
 _balls = None
 
 
@@ -1736,51 +1755,11 @@ def poke_balls():
         catch = "x1_5" if rule == "safari" else rule if rule in WORLD_RULES else "x1" if rule else "x" + f"{mult:g}".replace(".", "_")
         power = 2.0 if "flies further" in tooltip else 1.0 if "throws less far" in tooltip else 1.5
         balls.append({"name": name, "display": lang.get(f"item.cobblemon.{name}", name.replace("_", " ").title()),
-                      "item": f"cobblemon:{name}", "entity": "cobblemon:poke_ball" if name == "poke_ball" else f"cobblemon:ball_{name}",
+                      "item": f"cobblemon:{name}", "entity": f"cobblemon:ball_{name}",   # never the item's own id, which its attachable holds
                       "model": model, "texture": texture, "mult": mult, "rule": rule, "catch": catch, "power": power})
     balls.sort(key=lambda b: b["name"] != "poke_ball")
     _balls = balls
     return balls
-
-
-def ball_cases(catch, species, level):
-    """A catch class as mutually exclusive (filters, multiplier) cases for this species."""
-    types = {species.get("primaryType"), species.get("secondaryType")}
-    if catch.startswith("x"): return [([], float(catch[1:].replace("_", ".")))]
-    if catch == "net": return [([], 3.0 if types & {"water", "bug"} else 1.0)]
-    if catch == "fast": return [([], 4.0 if species.get("baseStats", {}).get("speed", 0) >= 100 else 1.0)]
-    if catch == "heavy":
-        kg = species.get("weight", 0) / 10   # species weight is in hectograms
-        return [([], 1.0 if kg < 100 else 2.0 if kg < 200 else 3.0 if kg < 300 else 4.0)]
-    if catch == "nest": return [([], min(4.0, max(1.0, (41 - level) / 10)))]
-    if catch == "beast": return [([], 5.0 if "ultra_beast" in species.get("labels", []) else 0.1)]
-    if catch == "dream": return [([], 1.0)]   # the 4x is applied to the sleeping case in catch_event
-    if catch == "dusk":
-        # is_brightness reads 0 to 1; light level 0 is darkness, 1 to 7 is under half
-        dark = {"test": "is_brightness", "subject": "self", "operator": "<", "value": 0.05}
-        dim = [{"test": "is_brightness", "subject": "self", "operator": ">=", "value": 0.05}, {"test": "is_brightness", "subject": "self", "operator": "<", "value": 0.5}]
-        return [([dark], 3.5), (dim, 3.0), ([{"test": "is_brightness", "subject": "self", "operator": ">=", "value": 0.5}], 1.0)]
-    if catch == "park":
-        tags = [{"test": "has_biome_tag", "subject": "self", "value": tag} for tag in ("forest", "plains")]
-        return [([{"any_of": tags}], 2.5), ([{"none_of": tags}], 1.0)]
-    if catch == "dive":
-        return [([{"test": "is_underwater", "subject": "self", "value": True}], 3.5), ([{"test": "is_underwater", "subject": "self", "value": False}], 1.0)]
-    return [([], 1.0)]
-
-
-def catch_event(catch, rate, species, level):
-    """The catch roll for one class: out of 2560, the catch rate (0 to 255) times the ball's multiplier times
-    ten, doubled on a sleeping Pokemon (quadrupled again for a Dream Ball). A Master Ball always catches."""
-    success = {"remove": {"component_groups": ["cobblemon:wild"]}, "add": {"component_groups": ["cobblemon:captured"]}}
-    if catch == "master": return success
-    steps = []
-    for filters, mult in ball_cases(catch, species, level):
-        for sleeping in (True, False):
-            m = mult * (SLEEP_BONUS if sleeping else 1) * (4 if catch == "dream" and sleeping else 1)
-            weight = min(2560, max(1, round(rate * m * 10)))
-            roll = [dict(success, weight=weight)] + ([{"weight": 2560 - weight}] if weight < 2560 else [])
-            steps.append({"filters": {"all_of": filters + [{"test": "is_sleeping", "subject": "self", "value": sleeping}]}, "randomize": roll})
-    return {"sequence": steps}
 
 
 # ---------------------------------------------------------------------------
@@ -2008,10 +1987,8 @@ def add_capture(entity, species, pokemon, kind):
     groups["cobblemon:wild"] = {"minecraft:despawn": despawn}
     balls = poke_balls(); ball_items = [b["item"] for b in balls]; classes = sorted({b["catch"] for b in balls})
     components["minecraft:tameable"] = {"probability": round(rate / 255, 3), "tame_items": ball_items, "tame_event": {"event": "cobblemon:caught", "target": "self"}}
-    # a thrown ball lands as a one-point hit; the sensor cancels the damage and rolls the catch for the ball's class instead
-    components["minecraft:damage_sensor"] = {"triggers": [
-        {"on_damage": {"filters": {"test": "is_family", "subject": "damager", "value": f"catch_{c}"}, "event": f"cobblemon:catch_attempt_{c}", "target": "self"}, "deals_damage": False} for c in classes
-    ] + [{"on_damage": {"filters": {"test": "is_family", "subject": "damager", "value": "poke_ball"}}, "deals_damage": False}]}
+    # a thrown ball never hurts; scripts/main.js plays the capture and rolls the catch
+    components["minecraft:damage_sensor"] = {"triggers": [{"on_damage": {"filters": {"test": "is_family", "subject": "damager", "value": "poke_ball"}}, "deals_damage": False}]}
     groups["cobblemon:released"] = {"minecraft:tameable": {"probability": 1.0, "tame_items": ball_items, "tame_event": {"event": "cobblemon:caught", "target": "self"}}, "minecraft:persistent": {}}
     groups["cobblemon:owned"] = {
         "minecraft:is_tamed": {},
@@ -2043,8 +2020,6 @@ def add_capture(entity, species, pokemon, kind):
     events["cobblemon:vanish"] = {"add": {"component_groups": ["cobblemon:gone"]}}
     add_riding(entity, species, pokemon)   # after the events above, which it adds to
     level = max(5, spawn_level_by_name.get(species_key(species), 5))
-    for c in classes: events[f"cobblemon:catch_attempt_{c}"] = catch_event(c, rate, species, level)
-    events["cobblemon:catch_attempt"] = catch_event("x1", rate, species, level)
 
 
 def create_items():
@@ -2059,7 +2034,7 @@ def create_items():
             "minecraft:display_name": {"value": "item.cobblemon:poke_ball.name"},
             "minecraft:max_stack_size": 16,
             "minecraft:throwable": {"do_swing_animation": True, "launch_power_scale": 1.0, "max_launch_power": 1.0},
-            "minecraft:projectile": {"projectile_entity": "cobblemon:poke_ball"},
+            "minecraft:projectile": {"projectile_entity": "cobblemon:ball_poke_ball"},
             "minecraft:tags": {"tags": ["minecraft:transform_materials"]}
         }}}
     with open(f"{itemsBedrock}/poke_ball.json", "w") as file: file.write(json.dumps(ball, indent=4))
@@ -2121,10 +2096,8 @@ def create_poke_ball_entity():
                 "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": True},
                 "minecraft:projectile": {
                     "power": info["power"], "gravity": 0.03, "angle_offset": 0.0, "hit_sound": "cobblemon.poke_ball.hit",
-                    "on_hit": {
-                        "impact_damage": {"damage": 1, "knockback": False, "semi_random_diff_damage": False},
-                        "remove_on_hit": {}
-                    }
+                    # a one-point hit, which the Pokemon's damage sensor cancels, so the ball registers on what it strikes
+                    "on_hit": {"impact_damage": {"damage": 1, "knockback": False, "semi_random_diff_damage": False}, "remove_on_hit": {}}
                 }
             }}}
         with open(f"{entitiesBedrock}/{stem}.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=4))
@@ -2140,7 +2113,184 @@ def create_poke_ball_entity():
             "render_controllers": ["controller.render.poke_ball"]
         }}}
         with open(f"{entityBedrock}/{stem}.entity.json", "w") as file: file.write(json.dumps(client, indent=4))
+    create_capture_ball()
+    create_beam()
+    create_ball_attachables()
     print(f"Create Poke Ball entities complete: {len(poke_balls())} balls.")
+
+
+def ball_model_textures(model):
+    """The balls drawn on one model, in the order the capture ball's texture array and data.js index them."""
+    return [b for b in poke_balls() if b["model"] == model]
+
+
+# the capture ball's states, set by scripts/main.js as EmptyPokeBallEntity's CaptureState moves on
+BALL_STATES = {"fly": 0, "hover": 1, "open": 2, "shut": 3, "shake": 4, "critical": 5, "capture": 6, "break": 7}
+
+
+def create_capture_ball():
+    """The ball after it hits: one entity per ball model, its texture picked by cobblemon:ball, playing
+    PokeBallModel's poses and PokeBallPosableState's animations for the state the script sets: open when the
+    ball hovers (then shut 1.75 seconds later), bounce as it lands, a random bob on each shake, capture or break."""
+    for model in ("poke_ball", "ancient_poke_ball"):
+        balls = ball_model_textures(model)
+        stem = "capture_ball" if model == "poke_ball" else "capture_ball_ancient"
+        ident = f"cobblemon:{stem}"
+        state = "q.property('cobblemon:state')"
+        a = lambda n: f"animation.{model}.{n}"
+        route = lambda here: [{name: f"{state} == {value}"} for name, value in BALL_STATES.items() if name != here]
+        bob = {f"bob{n}": f"v.bob == {n}" for n in range(1, 7)}
+        odd = "math.mod(q.property('cobblemon:shake'), 2) == 1"
+        states = {
+            "fly": {"animations": ["throw"], "transitions": route("fly")},
+            "hover": {"animations": ["shut_idle"], "transitions": route("hover")},
+            "open": {"animations": ["open"], "transitions": [{"opened": "q.all_animations_finished"}] + route("open")},
+            "opened": {"animations": ["open_idle"], "transitions": route("open")},
+            "shut": {"animations": ["shut"], "transitions": [{"closed": "q.all_animations_finished"}] + route("shut")},
+            "closed": {"animations": ["shut_idle"], "transitions": route("shut")},
+            "shake": {"animations": ["bounce"], "transitions": [{"bob_odd": odd}] + route("shake")},
+            "bob_odd": {"on_entry": ["v.bob = math.random_integer(1, 6);"], "animations": [bob], "transitions": [{"bob_even": f"!({odd})"}] + route("shake")},
+            "bob_even": {"on_entry": ["v.bob = math.random_integer(1, 6);"], "animations": [bob], "transitions": [{"bob_odd": odd}] + route("shake")},
+            "critical": {"animations": ["critical"], "transitions": route("critical")},
+            "capture": {"animations": ["capture"], "transitions": route("capture")},
+            "break": {"animations": ["break"], "transitions": route("break")},
+        }
+        with open(f"{animationControllersBedrock}/{stem}.animation_controllers.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": {f"controller.animation.{stem}": {"initial_state": "fly", "states": states}}}, indent=2))
+        with open(f"{renderControllersBedrock}/{stem}.render_controllers.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {f"controller.render.{stem}": {
+                "arrays": {"textures": {"Array.ball": [f"Texture.b{n}" for n in range(len(balls))]}},
+                "geometry": "Geometry.default", "materials": [{"*": "Material.default"}],
+                "textures": ["Array.ball[q.property('cobblemon:ball')]"]}}}, indent=2))
+        names = ["throw", "open", "open_idle", "shut", "shut_idle", "bounce", "critical", "capture", "break"] + [f"bob{n}" for n in range(1, 7)]
+        with open(f"{pokeBallsMain}/animations/{model}.animation.json", encoding="utf-8") as file: clips = json.load(file)["animations"]
+        effects = sorted({e["effect"] for c in clips.values() for e in c.get("sound_effects", {}).values() if isinstance(e, dict)})
+        particles = sorted({e["effect"] for c in clips.values() for v in c.get("particle_effects", {}).values() for e in (v if isinstance(v, list) else [v])})
+        client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": ident,
+            "materials": {"default": "entity_alphatest"},
+            "textures": {f"b{n}": f"textures/entity/poke_ball/{b['texture']}" for n, b in enumerate(balls)},
+            "geometry": {"default": f"geometry.{model}"},
+            "animations": {**{n: a(n) for n in names}, "state": f"controller.animation.{stem}"},
+            "scripts": {"scale": "0.7", "animate": ["state"]},   # PokeBallRenderer draws the ball at 0.7
+            "sound_effects": {e: f"cobblemon.{e}" for e in effects},
+            # a key cannot hold a namespace, so an effect the clip names by its full id is left out
+            "particle_effects": {e: f"cobblemon:{e}" for e in particles if ":" not in e},
+            "render_controllers": [f"controller.render.{stem}"]}}}
+        with open(f"{entityBedrock}/{stem}.entity.json", "w") as file: file.write(json.dumps(client, indent=2))
+        behavior = {"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": ident, "is_spawnable": False, "is_summonable": True, "is_experimental": False,
+                            "properties": {"cobblemon:ball": {"type": "int", "range": [0, 63], "default": 0, "client_sync": True},
+                                           "cobblemon:state": {"type": "int", "range": [0, 15], "default": 0, "client_sync": True},
+                                           "cobblemon:shake": {"type": "int", "range": [0, 15], "default": 0, "client_sync": True}}},
+            "components": {
+                "minecraft:type_family": {"family": ["capture_ball", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.25, "height": 0.25},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}}}}
+        with open(f"{entitiesBedrock}/{stem}.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=2))
+
+
+def create_beam():
+    """PokemonRenderer.renderBeam: a red beacon-style beam, a 0.03 block core in a 0.07 block glow at 0.4 alpha.
+    One entity per beam, pointed and stretched by the properties the script sets each tick."""
+    image = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    for x in range(16):
+        for y in range(16): image.putpixel((x, y), (255, 26, 26, 255) if x < 8 else (255, 26, 26, 102))
+    os.makedirs(f"{texturesEntityBedrock}/beam", exist_ok=True)
+    image.save(f"{texturesEntityBedrock}/beam/recall_beam.png")
+    def cube(radius, u):
+        px = radius * 16
+        face = {"uv": [u, 0], "uv_size": [8, 16]}
+        # along -Z, the way a Bedrock model faces, so the entity's own yaw points it
+        return {"origin": [-px, -px, -16], "size": [2 * px, 2 * px, 16], "uv": {f: dict(face) for f in ("north", "south", "east", "west", "up", "down")}}
+    geo = {"format_version": "1.12.0", "minecraft:geometry": [{
+        "description": {"identifier": "geometry.cobblemon_beam", "texture_width": 16, "texture_height": 16,
+                        "visible_bounds_width": 64, "visible_bounds_height": 64, "visible_bounds_offset": [0, 0, 0]},
+        "bones": [{"name": "yaw", "pivot": [0, 0, 0]},
+                  {"name": "pitch", "parent": "yaw", "pivot": [0, 0, 0]},
+                  {"name": "beam", "parent": "pitch", "pivot": [0, 0, 0], "cubes": [cube(0.03, 0), cube(0.07, 8)]}]}]}
+    os.makedirs(f"{modelsBedrock}/beam", exist_ok=True)
+    with open(f"{modelsBedrock}/beam/beam.geo.json", "w") as file: file.write(json.dumps(geo, indent=2))
+    with open(f"{animationsBedrock}/beam.animation.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.8.0", "animations": {"animation.cobblemon_beam.aim": {"loop": True, "bones": {
+            "pitch": {"rotation": ["q.property('cobblemon:pitch')", 0, 0]},
+            "beam": {"scale": [1, 1, "math.max(q.property('cobblemon:length'), 0.001)"]}}}}}, indent=2))
+    with open(f"{renderControllersBedrock}/beam.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_beam": {
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Texture.default"], "ignore_lighting": True}}}, indent=2))
+    with open(f"{entityBedrock}/beam.entity.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:beam", "materials": {"default": "entity_alphablend"},
+            "textures": {"default": "textures/entity/beam/recall_beam"}, "geometry": {"default": "geometry.cobblemon_beam"},
+            "animations": {"aim": "animation.cobblemon_beam.aim"}, "scripts": {"animate": ["aim"]},
+            "render_controllers": ["controller.render.cobblemon_beam"]}}}, indent=2))
+    with open(f"{entitiesBedrock}/beam.behavior.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:beam", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
+                            "properties": {"cobblemon:length": {"type": "float", "range": [0.0, 64.0], "default": 0.0, "client_sync": True},
+                                           "cobblemon:yaw": {"type": "float", "range": [-360.0, 360.0], "default": 0.0, "client_sync": True},
+                                           "cobblemon:pitch": {"type": "float", "range": [-180.0, 180.0], "default": 0.0, "client_sync": True}}},
+            "components": {
+                "minecraft:type_family": {"family": ["beam", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}}}}, indent=2))
+
+
+def create_ball_attachables():
+    """Every ball, and every filled ball, is held as its 3D model (Cobblemon's poke_ball_model item model and its
+    display transforms); the hotbar keeps the icon."""
+    attachables = f"{resourcePack}/attachables"
+    fresh(attachables)
+    for model in ("poke_ball", "ancient_poke_ball"):
+        with open(f"{modelsBedrock}/poke_ball/{model}.geo.json", encoding="utf-8") as file: geo = json.load(file)
+        g = geo["minecraft:geometry"][0]
+        g["description"]["identifier"] = f"geometry.{model}_held"
+        for bone in g["bones"]:
+            if bone["name"] == "poke_ball": bone["binding"] = "q.item_slot_to_bone_name(c.item_slot)"
+            # Bedrock lowers a bound bone by 24 units, so the model is drawn that much higher (the trident's pivot)
+            if "pivot" in bone: bone["pivot"] = [bone["pivot"][0], bone["pivot"][1] + 24, bone["pivot"][2]]
+            for c in bone.get("cubes", []): c["origin"] = [c["origin"][0], c["origin"][1] + 24, c["origin"][2]]
+            for name, loc in list(bone.get("locators", {}).items()):
+                if isinstance(loc, list): bone["locators"][name] = [loc[0], loc[1] + 24, loc[2]]
+                elif isinstance(loc, dict) and "offset" in loc: loc["offset"] = [loc["offset"][0], loc["offset"][1] + 24, loc["offset"][2]]
+        with open(f"{modelsBedrock}/poke_ball/{model}_held.geo.json", "w") as file: file.write(json.dumps(geo, indent="\t"))
+        with open(f"{animationsBedrock}/poke_ball/{model}_held.animation.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.8.0", "animations": {
+                f"animation.{model}.held_first_person": {"loop": True, "bones": {"poke_ball": HELD_FIRST_PERSON}},
+                f"animation.{model}.held_third_person": {"loop": True, "bones": {"poke_ball": HELD_THIRD_PERSON}}}}, indent=2))
+    def attachable(item, info):
+        return {"format_version": "1.10.0", "minecraft:attachable": {"description": {
+            "identifier": item,
+            "materials": {"default": "entity_alphatest", "enchanted": "entity_alphatest_glint"},
+            "textures": {"default": f"textures/entity/poke_ball/{info['texture']}", "enchanted": "textures/misc/enchanted_item_glint"},
+            "geometry": {"default": f"geometry.{info['model']}_held"},
+            "animations": {"first": f"animation.{info['model']}.held_first_person", "third": f"animation.{info['model']}.held_third_person",
+                           "held": "controller.animation.poke_ball.held"},
+            "scripts": {"animate": ["held"]},
+            "render_controllers": ["controller.render.item_default"]}}}
+    with open(f"{animationControllersBedrock}/poke_ball_held.animation_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": {"controller.animation.poke_ball.held": {"initial_state": "first_person", "states": {
+            "first_person": {"animations": ["first"], "transitions": [{"third_person": "!c.is_first_person"}]},
+            "third_person": {"animations": ["third"], "transitions": [{"first_person": "c.is_first_person"}]}}}}}, indent=2))
+    count = 0
+    for info in poke_balls():
+        with open(f"{attachables}/{info['name']}.json", "w") as file: file.write(json.dumps(attachable(info["item"], info), indent=2)); count += 1
+    plain = poke_balls()[0]
+    for path in glob.glob(f"{itemsBedrock}/balls/*.json"):
+        pokemon = os.path.basename(path)[:-5]
+        with open(f"{attachables}/filled_{pokemon}.json", "w") as file: file.write(json.dumps(attachable(f"cobblemon:poke_ball_{pokemon}", plain))); count += 1
+    print(f"  {count} attachables hold the balls as their 3D model.")
+
+
+# where the held ball sits, tuned against Cobblemon's poke_ball_model display (firstperson_righthand turns it 124 degrees)
+HELD_FIRST_PERSON = {"position": [5.5, -1.5, 8], "rotation": [0, 124, 0], "scale": 0.35}
+HELD_THIRD_PERSON = {"position": [-3.5, -12.5, -3], "rotation": [0, 37, 0], "scale": 0.5}
 
 
 # ---------------------------------------------------------------------------
@@ -2483,7 +2633,12 @@ def create_battle_data():
         file.write("export const ABILITY_NAMES = " + json.dumps(ability_names) + ";" + chr(10))
         file.write("export const NATURES = " + json.dumps(natures()) + ";" + chr(10))
         file.write("export const TIME_RANGES = " + json.dumps(time_ranges()) + ";" + chr(10))
-        balls = {b["item"]: {"name": b["display"], "mult": b["mult"], "rule": b["rule"]} for b in poke_balls()}
+        balls = {}
+        for b in poke_balls():
+            fx = b["name"].replace("_", "")
+            balls[b["item"]] = {"name": b["display"], "mult": b["mult"], "rule": b["rule"], "ancient": b["model"] != "poke_ball",
+                                "tex": [x["name"] for x in ball_model_textures(b["model"])].index(b["name"]),
+                                "fx": fx if os.path.isdir(f"{particlesBedrock}/balls/{fx}") else None}
         file.write("export const BALLS = " + json.dumps(balls, ensure_ascii=False) + ";\n")
     print(f"Create battle data complete: {len(table)} Pokemon, {len(used)} moves.")
 

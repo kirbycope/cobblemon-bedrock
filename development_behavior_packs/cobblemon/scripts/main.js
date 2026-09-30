@@ -570,6 +570,7 @@ function sendOut(battle, entity, spot) {
     if (kept) { f.moves = kept.moves; f.status = kept.status; f.sleep = kept.sleep; }
     freeze(entity, true);
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
+    sendOutEffect(battle.player, entity);
     battle.ally = f;
     say(battle, `§6Go, ${f.info.name}! §7(Lv ${f.level})`);
     enter(battle, f, battle.foe);
@@ -616,8 +617,11 @@ function switchTo(battle, entity) {
     const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
     if (old.isValid) {
         freeze(old, false);
-        try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
         say(battle, `§7${battle.ally.info.name}, come back!`);
+        recallEffect(battle.player, old, () => {
+            try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
+            setSize(old, 1);
+        });
     }
     sendOut(battle, entity, spot);
 }
@@ -986,6 +990,27 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             }
             console.warn(`[formations] ${hits.length} buried suspicious blocks within ${radius} chunks of ${cx * 16} ${cz * 16}: ${hits.slice(0, 30).join(", ")}`);
         })());
+    } else if (event.id === "cobblemon:test_beam") {
+        // for testing: a beam from the running player's hand to 4 blocks in front of them, held for 10 seconds
+        const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
+        if (!player) return;
+        const a = handOf(player), d = player.getViewDirection(), b = { x: a.x + d.x * 4, y: a.y + d.y * 4 - 0.5, z: a.z + d.z * 4 };
+        const beam = player.dimension.spawnEntity("cobblemon:beam", a);
+        system.runTimeout(() => drawBeam(beam, a, b, 0, 1), 2);
+        system.runTimeout(() => { try { beam.remove(); } catch (e) { } }, 200);
+    } else if (event.id === "cobblemon:test_capture") {
+        // for testing: "/scriptevent cobblemon:test_capture [ball id]" plays a throw of that ball at the nearest wild
+        // Pokemon within 8 blocks of the running player, as if it had just hit
+        const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
+        const target = player?.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 8 })
+            .filter((e) => prop(e, OWNER) === undefined && !e.hasComponent(EntityComponentTypes.IsTamed))
+            .sort((a, b) => Math.hypot(a.location.x - player.location.x, a.location.z - player.location.z) - Math.hypot(b.location.x - player.location.x, b.location.z - player.location.z))[0];
+        const ballId = event.message?.trim() || "cobblemon:poke_ball";
+        const projectile = [...BALL_FROM_PROJECTILE].find(([, id]) => id === ballId)?.[0];
+        if (!target || !projectile) return;
+        const d = { x: target.location.x - player.location.x, y: 0, z: target.location.z - player.location.z }, len = Math.hypot(d.x, d.z) || 1;
+        const hit = { x: target.location.x - (d.x / len) * 0.5, y: target.location.y + 0.4, z: target.location.z - (d.z / len) * 0.5 };
+        startCapture(player, projectile, target, hit, { x: d.x / len, y: 0, z: d.z / len });
     } else if (event.id === "cobblemon:claim") {
         // for testing: the nearest wild Pokemon within 8 blocks becomes the running player's own, as a claim does
         const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
@@ -1374,7 +1399,7 @@ function deposit(player, done) {
             contents[slot] = snapshot(entity);
             saveBox(player, n, contents);
             player.sendMessage(`§a${describe(contents[slot])} went to Box ${n + 1}.`);
-            try { entity.remove(); } catch (e) { }
+            recallEffect(player, entity, () => { try { entity.remove(); } catch (e) { } });
             done();
             return;
         }
@@ -1468,6 +1493,7 @@ function spawnStored(player, rec, at) {
             const h = entity.getComponent(EntityComponentTypes.Health);
             if (h) h.setCurrentValue(Math.max(1, Math.round(h.effectiveMax * rec.hp)));
         } catch (e) { }
+        sendOutEffect(player, entity);
     });
     return entity;
 }
@@ -1518,8 +1544,10 @@ function recall(player, entity, block) {
     contents[slot] = { ...snapshot(entity) };
     saveBox(player, n, contents);
     player.sendMessage(`§a${describe(contents[slot])} is back in Box ${n + 1}.`);
-    try { entity.remove(); } catch (e) { }
-    if (block && !pasturedHere(block.dimension, pastureKey(block), block.location).filter((e) => e.isValid).length) setPastureLamp(block, false);
+    recallEffect(player, entity, () => {
+        try { entity.remove(); } catch (e) { }
+        if (block && !pasturedHere(block.dimension, pastureKey(block), block.location).filter((e) => e.isValid).length) setPastureLamp(block, false);
+    });
 }
 
 // a broken pasture brings its Pokemon back: into their owners' PCs if they are online, and otherwise the next
@@ -2439,6 +2467,330 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             try { player.playSound("random.levelup", { location: center }); } catch (err) { }
         }
     });
+});
+
+// ---------------------------------------------------------------------------
+// Poke Balls in the world, after EmptyPokeBallEntity, PokeBallPosableState and PokemonClientDelegate. A ball that
+// hits a wild Pokemon bounces up and back, opens, and beams the Pokemon in along a red beam (it reddens and
+// shrinks), shuts, falls, and on the ground bounces then shakes once per passed check of Cobblemon's capture
+// calculator: four checks passed and it clicks shut, otherwise it bursts open and the Pokemon comes back out.
+// A ball that misses drops back as an item. Sending a Pokemon out throws its ball, which bursts with the ball's own
+// flash and sparkles as the Pokemon grows; recalling one runs the red beam from the Pokemon back to the hand.
+// ---------------------------------------------------------------------------
+const BEAM_EXTEND = 4, BEAM_SHRINK = 8;   // ticks: PokemonClientDelegate's BEAM_EXTEND_TIME 0.2 and BEAM_SHRINK_TIME 0.4 s
+const BALL_FROM_PROJECTILE = new Map(Object.keys(BALLS).map((id) => [`cobblemon:ball_${id.slice("cobblemon:".length)}`, id]));
+const capturing = new Set();
+
+// runs fn(tick) every tick until it returns false or `ticks` pass; a thrown error ends it
+function timeline(ticks, fn) {
+    let t = 0;
+    const id = system.runInterval(() => {
+        let more = false;
+        try { more = t <= ticks && fn(t) !== false; } catch (e) { }
+        t++;
+        if (!more) system.clearRun(id);
+    }, 1);
+}
+
+function setSize(entity, size, red = 0) {
+    try { entity.setProperty("cobblemon:size", Math.max(0, Math.min(1, size))); entity.setProperty("cobblemon:red", Math.max(0, Math.min(1, red))); } catch (e) { }
+}
+
+// the middle of a Pokemon's body at its current send-out scale, where Cobblemon aims the beam
+function bodyCentre(entity, size = 1) {
+    const h = Math.min(3, Math.max(0.4, (POKEMON[entity.typeId]?.height ?? 10) / 10));
+    return { x: entity.location.x, y: entity.location.y + (h / 2) * size, z: entity.location.z };
+}
+
+// a player's throwing hand: eye height less 0.4, 0.3 to the right, as PokemonRenderer places the beam's end
+function handOf(player) {
+    const head = player.getHeadLocation(), yaw = (player.getRotation().y * Math.PI) / 180;
+    return { x: head.x - Math.cos(yaw) * 0.3, y: head.y - 0.4, z: head.z - Math.sin(yaw) * 0.3 };
+}
+
+// one beam entity drawn from a to b between fractions t0 and t1 of the way
+function drawBeam(beam, a, b, t0, t1) {
+    const from = { x: a.x + (b.x - a.x) * t0, y: a.y + (b.y - a.y) * t0, z: a.z + (b.z - a.z) * t0 };
+    const dx = (b.x - a.x) * (t1 - t0), dy = (b.y - a.y) * (t1 - t0), dz = (b.z - a.z) * (t1 - t0);
+    try {
+        // the entity's yaw heads the beam (Minecraft faces (-sin yaw, cos yaw)); the pitch bone tilts it, positive downward
+        beam.teleport(from, { rotation: { x: 0, y: (Math.atan2(-dx, dz) * 180) / Math.PI } });
+        beam.setProperty("cobblemon:pitch", (-Math.atan2(dy, Math.hypot(dx, dz)) * 180) / Math.PI);
+        beam.setProperty("cobblemon:length", Math.min(64, Math.hypot(dx, dy, dz)));
+    } catch (e) { }
+}
+
+// PokemonRenderer.renderBeam's timing: out over 0.2 s, held, gone over 0.2 s after the 0.4 s shrink. The Pokemon
+// reddens and shrinks while it is held. A capture beam runs from the ball and pulls back into it; a recall beam
+// runs from the Pokemon to the hand and its tail follows it there. onGone runs as the Pokemon vanishes.
+function beamIn(pokemon, source, capture, onGone) {
+    const dim = pokemon.dimension;
+    let beam;
+    try { beam = dim.spawnEntity("cobblemon:beam", source()); } catch (e) { onGone?.(); return; }
+    try { dim.playSound("cobblemon.poke_ball.recall", source(), { volume: 0.6 }); } catch (e) { }
+    const total = BEAM_EXTEND * 2 + BEAM_SHRINK;
+    timeline(total, (t) => {
+        const ratio = t < BEAM_EXTEND ? t / BEAM_EXTEND : t > BEAM_EXTEND + BEAM_SHRINK ? 1 - Math.min(1, (t - BEAM_EXTEND - BEAM_SHRINK) / BEAM_EXTEND) : 1;
+        const shrink = Math.min(1, Math.max(0, (t - BEAM_EXTEND) / BEAM_SHRINK));
+        if (pokemon.isValid) setSize(pokemon, 1 - shrink, Math.min(0.6, shrink));
+        const ball = source(), body = pokemon.isValid ? bodyCentre(pokemon) : ball;
+        if (beam.isValid) {
+            if (capture) drawBeam(beam, ball, body, 0, ratio);
+            else if (t <= BEAM_EXTEND + BEAM_SHRINK) drawBeam(beam, body, ball, 0, ratio);
+            else drawBeam(beam, body, ball, 1 - ratio, 1);
+        }
+        if (t === BEAM_EXTEND + BEAM_SHRINK) onGone?.();
+        if (t >= total) { try { beam.remove(); } catch (e) { } return false; }
+    });
+}
+
+// a ball's own send-out burst (sendflash, ballsendsparkle), or the Poke Ball's when a ball has none
+function ballBurst(dim, ballId, at) {
+    const fx = BALLS[ballId]?.fx ?? "pokeball";
+    for (const name of ["sendflash", "ballsendsparkle", "ballsparks"]) { try { dim.spawnParticle(`cobblemon:${fx}/casual/${name}`, at); } catch (e) { } }
+}
+
+function captureBall(dim, ballId, at) {
+    const ball = BALLS[ballId] ?? BALLS["cobblemon:poke_ball"];
+    const entity = dim.spawnEntity(ball.ancient ? "cobblemon:capture_ball_ancient" : "cobblemon:capture_ball", at);
+    try { entity.setProperty("cobblemon:ball", ball.tex ?? 0); } catch (e) { }
+    return entity;
+}
+
+function ballState(entity, state) { try { entity.setProperty("cobblemon:state", { fly: 0, hover: 1, open: 2, shut: 3, shake: 4, critical: 5, capture: 6, break: 7 }[state]); } catch (e) { } }
+
+function dropBall(dim, ballId, at, player) {
+    if (player?.getGameMode?.() === "Creative") return;
+    try { dim.spawnItem(new ItemStack(ballId, 1), at); } catch (e) { }
+}
+
+// Send-out: the ball flies from the hand to where the Pokemon stands, bursts, and the Pokemon grows out of it
+function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_ball") ?? "cobblemon:poke_ball") {
+    if (!entity?.isValid) return;
+    setSize(entity, 0);
+    const dim = entity.dimension, from = player?.isValid ? handOf(player) : { ...entity.location, y: entity.location.y + 1 };
+    let ball;
+    try { ball = captureBall(dim, ballId, from); } catch (e) { setSize(entity, 1); return; }
+    try { dim.playSound("cobblemon.poke_ball.throw", from); } catch (e) { }
+    const FLIGHT = 10;
+    timeline(FLIGHT + BEAM_SHRINK, (t) => {
+        if (!entity.isValid) { try { ball.remove(); } catch (e) { } return false; }
+        const to = { x: entity.location.x, y: entity.location.y + 0.5, z: entity.location.z };
+        if (t < FLIGHT) {
+            const k = t / FLIGHT;
+            try { ball.teleport({ x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + Math.sin(k * Math.PI) * 0.8, z: from.z + (to.z - from.z) * k }, { facingLocation: to }); } catch (e) { }
+        } else if (t === FLIGHT) {
+            try { ball.remove(); } catch (e) { }
+            ballBurst(dim, ballId, to);
+            try { dim.playSound("cobblemon.poke_ball.send_out", to); } catch (e) { }
+            try { const cry = POKEMON[entity.typeId]?.cry; if (cry) dim.playSound(cry, to); } catch (e) { }
+        } else setSize(entity, (t - FLIGHT) / BEAM_SHRINK);
+        if (t >= FLIGHT + BEAM_SHRINK) { setSize(entity, 1); return false; }
+    });
+}
+
+// Recall: the red beam runs from the Pokemon to the hand and takes it in; then() runs as it vanishes
+function recallEffect(player, entity, then) {
+    if (!entity?.isValid || !player?.isValid) { then?.(); return; }
+    try { entity.addEffect("slowness", 40, { amplifier: 255, showParticles: false }); } catch (e) { }
+    beamIn(entity, () => handOf(player), false, () => { then?.(); });
+}
+
+// Cobblemon's capture calculator (CobblemonCaptureCalculator.processCapture): the modified catch rate from health,
+// half outside battle, the ball, status and a low-level bonus, then four shake checks of 65536 / (255 / rate)^0.1875
+function captureRoll(player, pokemon, ballId) {
+    const f = fighter(pokemon);
+    if (!f) return { shakes: 0, caught: false };
+    let mult = worldBallMultiplier(player, f, ballId);
+    if (mult === Infinity) return { shakes: 3, caught: true };
+    if (f.info.ultraBeast && BALLS[ballId]?.rule !== "beast") mult *= 0.1;
+    const levelBonus = f.level < 13 ? Math.max(Math.trunc((36 - 2 * f.level) / 10), 1) : 1;
+    let rate = (((3 * f.stats.hp - 2 * f.hp) * f.info.catchRate * 0.5 * mult) / (3 * f.stats.hp)) * levelBonus;
+    const highest = Math.max(0, ...findParty(player, player.location).map((e) => fighter(e)?.level ?? 0));
+    if (highest && highest < f.level && f.level - highest >= 50) rate *= 0.1;
+    const chance = Math.round(65536 / Math.pow(255 / Math.max(rate, 0.0001), 0.1875));
+    let shakes = 0;
+    for (let i = 0; i < 4; i++) if (Math.floor(Math.random() * 65537) < chance) shakes++;
+    return { shakes: Math.min(shakes, 3), caught: shakes === 4 };
+}
+
+// the ball's multiplier for a throw in the world: the battle rules where they read the world, Safari's 1.5 outside
+// battle, and the Level Ball against the thrower's strongest Pokemon
+function worldBallMultiplier(player, f, ballId) {
+    const ball = BALLS[ballId];
+    if (!ball) return 1;
+    const party = findParty(player, player.location).map((e) => fighter(e)).filter(Boolean).sort((a, b) => b.level - a.level);
+    switch (ball.rule) {
+        case "quick": case "timer": case "love": case "lure": case "dream": return 1;
+        case "safari": return 1.5;
+        case "level": if (!party.length) return 1; break;
+        default: break;
+    }
+    return ballMultiplier({ foe: f, ally: party[0] ?? f, player, turn: 1 }, ballId);
+}
+
+function startCapture(player, projectileId, pokemon, hit, velocity) {
+    const ballId = BALL_FROM_PROJECTILE.get(projectileId), dim = pokemon.dimension;
+    const wild = POKEMON[pokemon.typeId] && !prop(pokemon, OWNER) && !pokemon.hasComponent(EntityComponentTypes.IsTamed);
+    let busy = capturing.has(pokemon.id);
+    try { busy = busy || pokemon.getProperty("cobblemon:battle"); } catch (e) { }
+    if (!wild || busy) { dropBall(dim, ballId, hit, player); return; }
+    capturing.add(pokemon.id);
+    freeze(pokemon, true);
+    try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { }
+    register(player, pokemon.typeId, 1);
+    let ball;
+    try { ball = captureBall(dim, ballId, hit); } catch (e) { capturing.delete(pokemon.id); freeze(pokemon, false); dropBall(dim, ballId, hit, player); return; }
+    ballState(ball, "hover");
+    // bounce back off the Pokemon: a third of a block a tick up, a tenth back and to one side, under gravity
+    const side = Math.random() < 0.5 ? 1 : -1, back = Math.hypot(velocity.x, velocity.z) || 1;
+    const bx = -velocity.x / back, bz = -velocity.z / back, turn = (side * Math.PI) / 3;
+    const v = { x: (bx * Math.cos(turn) - bz * Math.sin(turn)) * 0.1, y: 1 / 3, z: (bx * Math.sin(turn) + bz * Math.cos(turn)) * 0.1 };
+    const pos = { ...hit };
+    const gone = () => { capturing.delete(pokemon.id); try { if (ball.isValid) ball.remove(); } catch (e) { } };
+    const face = () => (pokemon.isValid ? bodyCentre(pokemon) : pos);
+    timeline(20 * 12, (t) => {
+        if (!ball.isValid) { gone(); if (pokemon.isValid) { setSize(pokemon, 1); freeze(pokemon, false); } return false; }
+        if (!pokemon.isValid) { gone(); return false; }
+        if (t < 14) {                                    // 0.7 s of bounce
+            pos.x += v.x; pos.y += v.y; pos.z += v.z; v.y -= 0.03;
+            try { ball.teleport(pos, { facingLocation: face() }); } catch (e) { }
+        }
+        if (t === 4) ballState(ball, "open");            // opens 0.2 s after the hit
+        if (t === 14) beamIn(pokemon, () => ({ x: pos.x, y: pos.y + 0.25, z: pos.z }), true);
+        if (t === 39) ballState(ball, "shut");           // and shuts 1.75 s after opening
+        if (t === 44) {                                  // falls 2.2 s after the hit, for at most 1.5 s
+            try { pokemon.teleport({ x: pos.x, y: pos.y, z: pos.z }); } catch (e) { }
+            fall(ball, pos, player, pokemon, ballId, gone);
+            return false;
+        }
+    });
+}
+
+function fall(ball, pos, player, pokemon, ballId, gone) {
+    const dim = ball.dimension;
+    let vy = 0;
+    timeline(30, (t) => {
+        if (!ball.isValid || !pokemon.isValid) { gone(); return false; }
+        vy -= 0.03;
+        const next = pos.y + vy;
+        let floor;
+        try { const b = dim.getBlock({ x: Math.floor(pos.x), y: Math.floor(next), z: Math.floor(pos.z) }); if (b && !b.isAir && !b.isLiquid) floor = Math.floor(next) + 1; } catch (e) { }
+        if (floor !== undefined || t >= 30) {
+            if (floor !== undefined) pos.y = floor;
+            try { ball.teleport(pos); } catch (e) { }
+            land(ball, pos, player, pokemon, ballId, gone);
+            return false;
+        }
+        pos.y = next;
+        try { ball.teleport(pos); } catch (e) { }
+    });
+}
+
+// on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result
+function land(ball, pos, player, pokemon, ballId, gone) {
+    const dim = ball.dimension, roll = captureRoll(player, pokemon, ballId);
+    ballState(ball, "shake");
+    let shake = 0;
+    const steps = roll.shakes + 1;
+    for (let i = 0; i < steps; i++) {
+        system.runTimeout(() => {
+            if (!ball.isValid || !pokemon.isValid) { gone(); return; }
+            if (i < roll.shakes) { shake++; try { ball.setProperty("cobblemon:shake", shake); } catch (e) { } return; }
+            if (roll.caught) caught(ball, pos, player, pokemon, ballId, gone);
+            else brokeFree(ball, pos, pokemon, ballId, gone);
+        }, 20 + i * 25);
+    }
+}
+
+function caught(ball, pos, player, pokemon, ballId, gone) {
+    ballState(ball, "capture");
+    system.runTimeout(() => {
+        const name = POKEMON[pokemon.typeId]?.name ?? "The Pokemon";
+        if (pokemon.isValid) {
+            try { pokemon.teleport(pos); } catch (e) { }
+            setProp(pokemon, "cobblemon:caught_ball", ballId);
+            register(player, pokemon.typeId, 2);
+            try { pokemon.triggerEvent("cobblemon:capture"); } catch (e) { }
+            player.sendMessage(`§aGotcha! ${name} was caught!`);
+        }
+        gone();
+    }, BALLS[ballId]?.ancient ? 36 : 20);
+}
+
+function brokeFree(ball, pos, pokemon, ballId, gone) {
+    ballState(ball, "break");
+    const dim = ball.dimension;
+    try { pokemon.teleport(pos); } catch (e) { }
+    system.runTimeout(() => {
+        ballBurst(dim, ballId, { x: pos.x, y: pos.y + 0.3, z: pos.z });
+        timeline(BEAM_SHRINK, (t) => { if (pokemon.isValid) setSize(pokemon, t / BEAM_SHRINK); });
+        freeze(pokemon, false);
+        capturing.delete(pokemon.id);
+    }, 2);
+    system.runTimeout(() => { try { if (ball.isValid) ball.remove(); } catch (e) { } }, 24);
+}
+
+// A thrown ball is tracked from the tick it spawns and tested against the Pokemon around it every tick, so a hit
+// never depends on the engine's own projectile collision
+const flying = new Map();
+world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+    if (BALL_FROM_PROJECTILE.has(entity.typeId)) flying.set(entity.id, { entity, last: { ...entity.location } });
+});
+system.runInterval(() => {
+    for (const [id, f] of flying) {
+        const ball = f.entity;
+        if (!ball.isValid) { flying.delete(id); continue; }
+        const at = ball.location;
+        let near = [];
+        try { near = ball.dimension.getEntities({ families: ["pokemon"], location: at, maxDistance: 4 }); } catch (e) { }
+        const hit = near.find((e) => {
+            const h = Math.min(3, Math.max(0.4, (POKEMON[e.typeId]?.height ?? 10) / 10)), r = Math.max(0.35, Math.min(1.5, h * 0.45)) + 0.15;
+            // the ball's path since the last tick, sampled, against the Pokemon's box
+            for (let k = 0; k <= 4; k++) {
+                const x = f.last.x + (at.x - f.last.x) * (k / 4), y = f.last.y + (at.y - f.last.y) * (k / 4), z = f.last.z + (at.z - f.last.z) * (k / 4);
+                if (Math.hypot(x - e.location.x, z - e.location.z) <= r && y >= e.location.y - 0.2 && y <= e.location.y + h + 0.2) return true;
+            }
+            return false;
+        });
+        if (hit) {
+            flying.delete(id);
+            let owner, velocity = { x: at.x - f.last.x, y: at.y - f.last.y, z: at.z - f.last.z };
+            try { owner = ball.getComponent("minecraft:projectile")?.owner; } catch (e) { }
+            const typeId = ball.typeId, where = { ...at };
+            try { ball.remove(); } catch (e) { }
+            if (owner?.typeId === "minecraft:player" && POKEMON[hit.typeId]) startCapture(owner, typeId, hit, where, velocity);
+            else dropBall(hit.dimension, BALL_FROM_PROJECTILE.get(typeId), where, owner);
+            continue;
+        }
+        f.last = { ...at };
+    }
+}, 1);
+world.afterEvents.projectileHitEntity.subscribe((event) => {
+    const { projectile, source, dimension, location, hitVector } = event;
+    const ballId = BALL_FROM_PROJECTILE.get(projectile?.typeId);
+    if (!ballId) return;
+    flying.delete(projectile.id);
+    const target = event.getEntityHit()?.entity;
+    const player = source?.typeId === "minecraft:player" ? source : undefined;
+    if (target && POKEMON[target.typeId] && player) startCapture(player, projectile.typeId, target, { ...location }, hitVector ?? { x: 0, y: 0, z: 1 });
+    else dropBall(dimension, ballId, location, player);
+});
+world.afterEvents.projectileHitBlock.subscribe((event) => {
+    const ballId = BALL_FROM_PROJECTILE.get(event.projectile?.typeId);
+    if (!ballId) return;
+    flying.delete(event.projectile.id);
+    const player = event.source?.typeId === "minecraft:player" ? event.source : undefined;
+    dropBall(event.dimension, ballId, event.location, player);
+});
+
+// every ball entity and beam is the script's; none outlives a restart
+world.afterEvents.worldLoad?.subscribe?.(() => {
+    for (const dim of ["overworld", "nether", "the_end"].map((d) => world.getDimension(d))) {
+        for (const type of ["cobblemon:capture_ball", "cobblemon:capture_ball_ancient", "cobblemon:beam"]) {
+            try { for (const e of dim.getEntities({ type })) e.remove(); } catch (e) { }
+        }
+    }
 });
 
 world.afterEvents.worldLoad?.subscribe?.(() => console.log("[cobblemon] battle script ready"));
