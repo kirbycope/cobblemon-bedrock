@@ -475,6 +475,12 @@ function freeze(entity, on) {
     } catch (e) { }
 }
 
+function gainFriendship(entity, amount, cap = 255) {
+    if (amount <= 0) return;
+    const boost = prop(entity, "cobblemon:caught_ball") === "cobblemon:luxury_ball" ? 2 : 1;
+    setProp(entity, "cobblemon:friendship", Math.min(cap, friendshipOf(entity) + Math.round(amount * boost)));
+}
+
 // Friendship, as PlayerPartyStore does it: every two minutes a Pokemon out in the world gains one, up to 160
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -483,7 +489,7 @@ system.runInterval(() => {
         for (const e of near) {
             if (prop(e, OWNER) !== player.id) continue;
             const f = friendshipOf(e);
-            if (f < 160) setProp(e, "cobblemon:friendship", f + 1);
+            if (f < 160) gainFriendship(e, 1, 160);
         }
     }
 }, 20 * 120);
@@ -519,6 +525,9 @@ function endBattle(battle, text) {
     battles.delete(battle.player.id);
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
+    // PokemonBattle.end: a wild Pokemon still out heals fully, whether it won, fled or was left
+    const foe = battle.foe?.entity;
+    if (!battle.trainer && foe?.isValid && POKEMON[foe.typeId] && !prop(foe, OWNER)) healFully(foe);
     if (text) say(battle, text);
 }
 
@@ -703,7 +712,7 @@ function throwBall(battle, id) {
         if (Math.random() < chance) {
             say(battle, `§aGotcha! ${f.info.name} was caught!`);
             register(battle.player, f.entity.typeId, 2);
-            try { f.entity.triggerEvent("cobblemon:capture"); } catch (e) { }
+            keepCaught(battle.player, f.entity, id);
             endBattle(battle);
             return true;
         }
@@ -960,7 +969,7 @@ function gainExperience(battle, f, foe, amount) {
     while (level < 100 && exp >= expFor(group, level + 1)) {
         level++;
         const fr = friendshipOf(f.entity);
-        setProp(f.entity, "cobblemon:friendship", Math.min(255, fr + (fr <= 99 ? 3 : fr <= 199 ? 2 : 0)));
+        gainFriendship(f.entity, fr <= 99 ? 3 : fr <= 199 ? 2 : 0);
         leveled.add(f.entity);
         say(battle, `§b${f.info.name} grew to level ${level}!`);
         for (const [at, id] of f.info.learnset ?? []) {
@@ -3062,15 +3071,82 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
         const name = POKEMON[pokemon.typeId]?.name ?? "The Pokemon";
         if (pokemon.isValid) {
             try { pokemon.teleport(pos); } catch (e) { }
-            setProp(pokemon, "cobblemon:caught_ball", ballId);
-            register(player, pokemon.typeId, 2);
-            try { pokemon.triggerEvent("cobblemon:capture"); } catch (e) { }
             player.sendMessage(`§aGotcha! ${name} was caught!`);
+            keepCaught(player, pokemon, ballId);
         }
         gone();
     }, BALLS[ballId]?.ancient ? 36 : 20);
 }
 
+// A caught Pokemon becomes the player's, as Cobblemon's party.add does, and joins the party beside them; with six
+// already there it goes to the first free PC slot. The ball's capture effects apply (CaptureEffects): the Friend Ball
+// starts it at 150 friendship, the Heal Ball restores it fully.
+function keepCaught(player, pokemon, ballId) {
+    if (!pokemon?.isValid || !player?.isValid) return;
+    try { pokemon.triggerEvent("cobblemon:caught"); pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
+    setProp(pokemon, OWNER, player.id);
+    setProp(pokemon, "cobblemon:caught_ball", ballId);
+    register(player, pokemon.typeId, 2);
+    if (ballId === "cobblemon:friend_ball") setProp(pokemon, "cobblemon:friendship", 150);
+    if (ballId === "cobblemon:heal_ball") healFully(pokemon);
+    setSize(pokemon, 1, 0);
+    freeze(pokemon, false);
+    const party = summaryParty(player).filter((e) => e.id !== pokemon.id);
+    if (party.length < PARTY_SIZE) return;
+    for (let n = 0; n < PC_BOXES; n++) {
+        const contents = box(player, n), slot = contents.indexOf(null);
+        if (slot < 0) continue;
+        contents[slot] = snapshot(pokemon); saveBox(player, n, contents);
+        player.sendMessage(`§a${POKEMON[pokemon.typeId]?.name} was sent to Box ${n + 1}.`);
+        try { pokemon.remove(); } catch (e) { }
+        return;
+    }
+}
+
+function healFully(entity) {
+    setProp(entity, FAINTED, undefined);
+    setProp(entity, "cobblemon:faint_timer", undefined);
+    try { const h = entity.getComponent(EntityComponentTypes.Health); h.setCurrentValue(h.effectiveMax); } catch (e) { }
+}
+
+// PlayerPartyStore.onSecondPassed, out of battle: a fainted Pokemon wakes after defaultFaintTimer (300 s) with
+// faintAwakenHealthPercent (20%) of its health; a hurt one heals healPercent (5%) every healTimer (60 s). Sleeping
+// the night in a bed heals the party by half and wakes the fainted (Pokemon.didSleep).
+const FAINT_SECONDS = 300, AWAKEN_SHARE = 0.2, HEAL_SHARE = 0.05, HEAL_SECONDS = 60;
+const sleepers = new Map();
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let asleep = false;
+        try { asleep = player.isSleeping; } catch (e) { }
+        const slept = sleepers.get(player.id) ?? 0;
+        sleepers.set(player.id, asleep ? slept + 1 : 0);
+        const wokeRested = !asleep && slept >= 5;   // five seconds in bed: the night passed
+        if (battles.has(player.id) && !wokeRested) continue;
+        for (const e of summaryParty(player)) {
+            let health;
+            try { health = e.getComponent(EntityComponentTypes.Health); } catch (err) { continue; }
+            if (!health) continue;
+            if (wokeRested) {
+                setProp(e, FAINTED, undefined); setProp(e, "cobblemon:faint_timer", undefined);
+                health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue + health.effectiveMax / 2));
+                continue;
+            }
+            if (prop(e, FAINTED)) {
+                const left = (prop(e, "cobblemon:faint_timer") ?? FAINT_SECONDS) - 1;
+                if (left > 0) { setProp(e, "cobblemon:faint_timer", left); continue; }
+                setProp(e, FAINTED, undefined); setProp(e, "cobblemon:faint_timer", undefined);
+                health.setCurrentValue(Math.max(1, Math.ceil(health.effectiveMax * AWAKEN_SHARE)));
+                player.sendMessage(`${e.nameTag && e.nameTag !== "NPC" ? e.nameTag : POKEMON[e.typeId].name} has recovered from fainting.`);
+            } else if (health.currentValue < health.effectiveMax) {
+                const left = (prop(e, "cobblemon:heal_timer") ?? HEAL_SECONDS) - 1;
+                if (left > 0) { setProp(e, "cobblemon:heal_timer", left); continue; }
+                setProp(e, "cobblemon:heal_timer", HEAL_SECONDS);
+                health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue + Math.max(1, Math.round(health.effectiveMax * HEAL_SHARE))));
+            }
+        }
+        if (wokeRested) player.sendMessage("§aYour Pokemon are rested.");
+    }
+}, 20);
 function brokeFree(ball, pos, pokemon, ballId, gone) {
     ballState(ball, "break");
     const dim = ball.dimension;
