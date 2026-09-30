@@ -10,6 +10,7 @@ import { world, system, EntityComponentTypes, EntityInitializationCause, ItemSta
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
+import { NPC_SCENES } from "./npc_dialogue.js";
 import { PC_LAYOUT } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
@@ -574,6 +575,36 @@ system.runInterval(() => {
         }
     }
 }, 40);
+
+// The trainer's and the professor's scenes on Cobblemon's DialogueScreen (the cbm:dialogue layout): the name plate,
+// the face in the portrait frame, the text and the options, stacked when there are more than two. An option runs the
+// scene's commands as the NPC, with @initiator the player; "/dialogue open" moves to another scene. A scene with no
+// options goes on (here, closes) with a click on the box.
+function showScene(player, npc, tag) {
+    const scene = NPC_SCENES[tag];
+    if (!scene || !npc?.isValid) return;
+    const options = scene.buttons ?? [];
+    const layout = !options.length ? "n" : options.length <= 2 ? "h" : "v";
+    const kind = npc.typeId.slice("cobblemon:".length);
+    const body = padBytes(kind, 16) + layout + scene.text.replace(/%/g, "%%");
+    const form = new ActionFormData().title("cbm:dialogue" + scene.npc_name).body(body);
+    if (layout === "n") form.button("", "textures/ui/cobblemon/dialogue/none");
+    for (const o of options) form.button(o.name, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}`);
+    form.show(player).then((r) => {
+        if (r.canceled || layout === "n" || !npc.isValid) return;
+        for (const command of options[r.selection]?.commands ?? []) {
+            const next = command.match(/^\/dialogue open \S+ \S+ (\S+)/);
+            if (next) { system.runTimeout(() => showScene(player, npc, next[1]), 2); continue; }
+            try { npc.runCommand(command.slice(1).replace(/@initiator/g, `"${player.name}"`)); } catch (e) { }
+        }
+    }).catch(() => { });
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target } = event;
+    if (!NPC_SCENES[target?.typeId]) return;
+    event.cancel = true;
+    system.run(() => showScene(player, target, target.typeId));
+});
 
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
 // Pokemon, whatever is in hand; a plain right-click on a wild Pokemon with an empty hand challenges it, as Cobblemon's
