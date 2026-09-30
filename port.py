@@ -4693,6 +4693,181 @@ def create_gilded_chests():
     return made
 
 
+# ---------------------------------------------------------------------------
+# Battle screen. Cobblemon draws its battle overlay in code (BattleOverlay, BattleGeneralActionSelection,
+# BattleMoveSelection) on the textures in textures/gui/battle; here the same textures and positions are a JSON UI
+# layout for the battle's server forms. main.js titles a battle form "cbm:battle_menu" or "cbm:battle_moves" and packs
+# both Pokemon's name, level, health and status into its body as fixed-width fields, which the layout slices out.
+# ---------------------------------------------------------------------------
+
+guiMain = f"{cobblemon}/textures/gui"
+uiTextures = f"{resourcePack}/textures/ui/cobblemon"
+# ElementalTypes.kt: each type's hue, and its column in types.png and types_small.png
+TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("grass", 0x62D14F), ("electric", 0xFFD314), ("ice", 0x54F2F2),
+             ("fighting", 0xEF565D), ("poison", 0xD651FF), ("ground", 0xF4A453), ("flying", 0xB8B2FF), ("psychic", 0xFF5E9E), ("bug", 0xD3D319),
+             ("rock", 0xB7A16E), ("ghost", 0x9C80F7), ("dragon", 0x7580FF), ("dark", 0x587DA0), ("steel", 0xABD1F4), ("fairy", 0xFF7FE5)]
+# the body's fields, [start, end) in characters: a "~" then, for the ally and then the foe, name, level, health in
+# 2% steps (00 to 50), health text and status
+# (a field of digits alone is read as a number, which a label will not show, so the level carries its "Lv." and the
+# health step an "h")
+# The health texts ("45/45", "100%") start with a colour code instead, and sit at the end of the body, so the colour
+# code's second byte cannot shift any other field.
+BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27)}
+BATTLE_SIDE = 26
+BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters; the foe's runs to the end
+
+
+def depletable_red_green(ratio):
+    """RenderHelper.getDepletableRedGreen: the health bar's red and green for a share of health."""
+    r = -2 * ratio + 2 if ratio > 0.2 else 1.0
+    g = 1.0 if ratio > 0.5 else ratio / 0.5 if ratio > 0.2 else 0.0
+    return r, g
+
+
+def create_battle_ui():
+    for folder in ("battle", "types"): os.makedirs(f"{uiTextures}/{folder}", exist_ok=True)
+    def frames(name, height):
+        image = Image.open(f"{guiMain}/battle/{name}.png").convert("RGBA")
+        return image.crop((0, 0, image.width, height)), image.crop((0, height, image.width, height * 2))
+    for option in ("fight", "bag", "switch", "run"):
+        normal, hover = frames(f"battle_menu_{option}", 26)
+        normal.save(f"{uiTextures}/battle/menu_{option}.png"); hover.save(f"{uiTextures}/battle/menu_{option}_hover.png")
+    normal, hover = frames("battle_back", 34)
+    normal.save(f"{uiTextures}/battle/back.png"); hover.save(f"{uiTextures}/battle/back_hover.png")
+    # BattleMoveSelection: the move tile tinted by its type's hue, the overlay over it, half opacity when it cannot be picked
+    tile, tile_hover = frames("battle_move", 24)
+    overlay = Image.open(f"{guiMain}/battle/battle_move_overlay.png").convert("RGBA")
+    small = Image.open(f"{guiMain}/types_small.png").convert("RGBA")
+    for n, (type_name, hue) in enumerate(TYPE_HUES):
+        rgb = ((hue >> 16) & 255, (hue >> 8) & 255, hue & 255)
+        for suffix, base in (("", tile), ("_hover", tile_hover)):
+            tinted = Image.new("RGBA", base.size)
+            px, out = base.load(), tinted.load()
+            for x in range(base.width):
+                for y in range(base.height):
+                    r, g, b, a = px[x, y]
+                    out[x, y] = (r * rgb[0] // 255, g * rgb[1] // 255, b * rgb[2] // 255, a)
+            tinted.alpha_composite(overlay)
+            tinted.save(f"{uiTextures}/battle/move_{type_name}{suffix}.png")
+            faded = tinted.copy(); faded.putalpha(faded.getchannel("A").point(lambda v: v // 2))
+            faded.save(f"{uiTextures}/battle/move_{type_name}_off{suffix}.png")
+        small.crop((n * 18, 0, n * 18 + 18, 18)).save(f"{uiTextures}/types/{type_name}.png")
+    for name in ("battle_info_base", "battle_info_base_flipped", "battle_info_underlay"):
+        shutil.copyfile(f"{guiMain}/battle/{name}.png", f"{uiTextures}/battle/{name[len('battle_'):]}.png")
+    for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
+        shutil.copyfile(f"{guiMain}/battle/battle_status_{status}.png", f"{uiTextures}/battle/status_{status}.png")
+    Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
+
+    T = "textures/ui/cobblemon"
+    def field(side, name):
+        if name == "hptext":
+            if side == 1: return f"(#form_text - ('%.{BATTLE_HPTEXT + 12}s' * #form_text))"
+            return f"(('%.{BATTLE_HPTEXT + 12}s' * #form_text) - ('%.{BATTLE_HPTEXT}s' * #form_text))"
+        a, b = BATTLE_FIELDS[name]
+        a, b = a + side * BATTLE_SIDE, b + side * BATTLE_SIDE
+        return f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
+    def text_label(name, source, offset, anchor="top_left", scale=1.0, color=(1, 1, 1)):
+        return {name: {"type": "label", "anchor_from": anchor, "anchor_to": anchor, "offset": offset, "size": [100, 10],
+                       "font_scale_factor": scale, "shadow": True, "color": list(color), "text": "#value", "layer": 4,
+                       "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
+    def info_tile(side):
+        # BattleOverlay.drawBattleTile: the ally's tile at the top left, the foe's flipped at the top right
+        reversed_ = side == 1
+        info_x = 7 if reversed_ else 28 + 5 + 7
+        controls = [
+            {"base": {"type": "image", "texture": f"{T}/battle/{'info_base_flipped' if reversed_ else 'info_base'}", "size": [140, 40], "layer": 1}},
+            {"portrait": {"type": "image", "texture": f"{T}/battle/info_underlay", "size": [28, 28], "layer": 2,
+                          "anchor_from": "top_left", "anchor_to": "top_left", "offset": [140 - 28 - 5 if reversed_ else 5, 8]}},
+            text_label("name", field(side, "name"), [info_x, 7]),
+            text_label("level", field(side, "level"), [info_x + 66, 7]),
+            {"hp_text": {**text_label("hp_text", field(side, "hptext"), [info_x + (39.5 if not reversed_ else 44.5) - 50, 22], scale=0.5)["hp_text"], "text_alignment": "center"}},
+        ]
+        # the health bar: 97 pixels at full health, its colour depleting from green through yellow to red
+        for step in range(51):
+            ratio = step / 50
+            width = round(97 * ratio)
+            if width == 0: continue
+            r, g = depletable_red_green(ratio)
+            x = info_x - 2 if not reversed_ else info_x - 2 + (97 - width)
+            controls.append({f"hp_{step:02d}": {"type": "image", "texture": f"{T}/white", "size": [width, 4], "keep_ratio": False, "offset": [x, 22], "layer": 3,
+                                                "anchor_from": "top_left", "anchor_to": "top_left", "color": [r * 0.8, g * 0.8, 0.27],
+                                                "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                                             "source_property_name": f"({field(side, 'hp')} = 'h{step:02d}')", "target_property_name": "#visible"}]}})
+        for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
+            controls.append({f"status_{status}": {"type": "image", "texture": f"{T}/battle/status_{status}", "size": [74, 7], "layer": 3,
+                                                  "anchor_from": "top_left", "anchor_to": "top_left", "offset": [info_x - 2, 30],
+                                                  "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                                               "source_property_name": f"({field(side, 'status')} = '{status}')", "target_property_name": "#visible"}]}})
+        return {f"info_{side}": {"type": "panel", "size": [140, 40], "anchor_from": "top_right" if reversed_ else "top_left",
+                                 "anchor_to": "top_right" if reversed_ else "top_left", "offset": [-12 if reversed_ else 12, 10], "controls": controls}}
+
+    def face(state, label_controls):
+        return {"type": "image", "size": ["100%", "100%"], "layer": 2,
+                "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                             {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}],
+                "controls": label_controls}
+    def button_label(name, source, offset, scale=1.0, anchor="top_left", size=(90, 10), align="left"):
+        return {name: {"type": "label", "anchor_from": anchor, "anchor_to": anchor, "offset": offset, "size": list(size), "text_alignment": align,
+                       "font_scale_factor": scale, "shadow": True, "text": "#value", "layer": 3,
+                       "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                    {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
+    def button(size, labels):
+        return {"type": "button", "size": size, "layer": 2,
+                "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                    {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                "controls": [{"default": face("", labels)}, {"hover": face("_hover", labels)}, {"pressed": face("_hover", labels)}]}
+    shown = {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}
+    text_binding = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    # BattleOptionTile: 90 by 26, the label 6 in and 8 down
+    menu_item = {"type": "panel", "size": [93, 29], "bindings": [text_binding, shown],
+                 "controls": [{"tile": {**button([90, 26], [button_label("label", "#form_button_text", [6, 8])]), "anchor_from": "top_left", "anchor_to": "top_left"}}]}
+    # BattleMoveTile: 92 by 24, the type icon 9 out to the left, the name 17 in, the PP at the right; Back below
+    move_labels = [button_label("name", "('%.16s' * #form_button_text)", [17, 3]),
+                   # the PP, centred at 75 across and 14 down, gold at half or less and red when out (its colour code leads the text)
+                   button_label("pp", "(#form_button_text - ('%.16s' * #form_button_text))", [75 - 20, 14], size=(40, 10), align="center"),
+                   {"type_icon": {"type": "image", "size": [18, 18], "offset": [-9, 3], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                                  "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                               {"binding_type": "view", "source_property_name": f"('{T}/types/' + ((#form_button_texture - '{T}/battle/move_') - '_off'))", "target_property_name": "#texture"}]}}]
+    is_back = f"(not ((#form_button_texture - 'battle/back') = #form_button_texture))"
+    move_item = {"type": "panel", "size": [105, 29], "bindings": [text_binding, shown], "controls": [
+        {"move": {**button([92, 24], move_labels), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 0],
+                  "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
+                               {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                               {"binding_type": "view", "source_property_name": f"(not {is_back})", "target_property_name": "#visible"}]}},
+        {"back": {**button([29, 17], []), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [-8, 4],
+                  "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
+                               {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                               {"binding_type": "view", "source_property_name": is_back, "target_property_name": "#visible"}]}}]}
+    def grid(name, template, item_size, offset, marker):
+        return {name: {"type": "grid", "size": [item_size[0] * 2, item_size[1] * 3], "grid_dimensions": [2, 3],
+                       "grid_item_template": f"server_form.{template}", "collection_name": "form_buttons",
+                       "anchor_from": "bottom_left", "anchor_to": "top_left", "offset": offset,
+                       "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                                    "source_property_name": f"(not ((#title_text - '{marker}') = #title_text))", "target_property_name": "#visible"}]}}
+    ui = {
+        "namespace": "server_form",
+        # the vanilla panel is sized 0 by 0 at the centre; the battle layout anchors to the screen's corners
+        "main_screen_content": {"size": ["100%", "100%"], "modifications": [{"array_name": "controls", "operation": "insert_back", "value": {
+            "cobblemon_battle_factory": {"type": "panel", "factory": {"name": "server_form_factory", "control_ids": {"long_form": "@server_form.cobblemon_battle"}}}}}]},
+        # the vanilla form stays for every other form
+        "long_form": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
+            {"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "((#title_text - 'cbm:battle') = #title_text)", "target_property_name": "#visible"}]}]},
+        "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
+                             "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                                          "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
+                             "controls": [info_tile(0), info_tile(1),
+                                          grid("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
+                                          grid("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
+        "cobblemon_menu_item": menu_item,
+        "cobblemon_move_item": move_item,
+    }
+    os.makedirs(f"{resourcePack}/ui", exist_ok=True)
+    with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
+    print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
+
+
 def create_model_blocks():
     """The Cobblemon blocks with element models the pack has not made elsewhere."""
     made, placers = [], 0
@@ -4726,6 +4901,7 @@ def create_model_blocks():
             label = lang.get(f"block.cobblemon.{name}") or lang.get(f"item.cobblemon.{name}") or name.replace("_", " ").title()
             file.write(f"tile.cobblemon:{block}.name={label}" + chr(10))
     chests = create_gilded_chests()
+    create_battle_ui()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         for chest in chests:
             file.write(f"entity.cobblemon:{chest}_entity.name={lang.get('block.cobblemon.' + chest, chest.replace('_', ' ').title())}" + chr(10))

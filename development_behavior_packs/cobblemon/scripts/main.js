@@ -721,23 +721,12 @@ function turn(battle) {
     const canSwitch = findParty(battle.player, foe.entity.location).some((e) => e.id !== ally.entity.id);
     if (canSwitch) options.push({ kind: "switch" });
     options.push({ kind: "bag" }, { kind: "ball" }, { kind: "run" });
-    const form = new ActionFormData().title(`${ally.info.name} vs ${foe.info.name}`)
-        .body(`§l${foe.info.name}§r Lv ${foe.level}${statusTag(foe)}  ${bar(foe.hp, foe.stats.hp)} ${foe.hp}/${foe.stats.hp}\n§l${ally.info.name}§r Lv ${ally.level}${statusTag(ally)}  ${bar(ally.hp, ally.stats.hp)} ${ally.hp}/${ally.stats.hp}\n\nWhat will ${ally.info.name} do?`);
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
         for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
     }
-    for (const o of options) {
-        if (o.kind === "move" && o.locked) form.button(`§8${o.move.name}\n(locked by ${itemName(ally.held)})`);
-        else if (o.kind === "move") form.button(o.move === STRUGGLE ? "Struggle\n§7no PP left" : `${o.move.name}  ${o.move.left}/${o.move.pp}\n§7${cap(o.move.type)} ${o.move.power || "-"}${o.move.left ? "" : "  (no PP)"}`);
-        else if (o.kind === "switch") form.button("Switch Pokemon");
-        else if (o.kind === "bag") form.button("Bag");
-        else if (o.kind === "ball") form.button(battle.trainer ? "§8(no catching in trainer battles)" : "Throw Poke Ball");
-        else form.button("Run");
-    }
-    form.show(battle.player).then((r) => {
+    pickAction(battle, options).then((choice) => {
         if (!battles.has(battle.player.id)) return;
-        if (r.canceled) { battle.turn--; system.runTimeout(() => turn(battle), 20); return; }
-        const choice = options[r.selection];
+        if (!choice) { battle.turn--; system.runTimeout(() => turn(battle), 20); return; }
         if (choice.kind === "run") { endBattle(battle, "§7Got away safely."); return; }
         if (choice.kind === "switch") {
             chooseSwitch(battle, false).then((entity) => {
@@ -786,6 +775,62 @@ function turn(battle) {
         }
         endOfTurn(battle);
     }).catch(() => endBattle(battle));
+}
+
+// The battle screen, laid out by the resource pack's ui/server_form.json on Cobblemon's battle textures: the form's
+// title picks the layout and its body carries both Pokemon as fixed-width fields (see BATTLE_FIELDS in port.py).
+const UI = "textures/ui/cobblemon";
+function pad(value, width) { const s = String(value ?? ""); return s.length >= width ? s.slice(0, width) : s + " ".repeat(width - s.length); }
+function battleBody(battle) {
+    const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
+    const side = (f) => {
+        const step = f.hp > 0 ? Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50)) : 0;
+        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3);
+    };
+    // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
+    const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
+    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + theirs;
+}
+
+// BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
+function pickAction(battle, options) {
+    const menu = new ActionFormData().title("cbm:battle_menu").body(battleBody(battle))
+        .button("Fight", `${UI}/battle/menu_fight`).button("Bag", `${UI}/battle/menu_bag`)
+        .button("Switch", `${UI}/battle/menu_switch`).button("Run", `${UI}/battle/menu_run`);
+    return menu.show(battle.player).then((r) => {
+        if (r.canceled || !battles.has(battle.player.id)) return undefined;
+        if (r.selection === 3) return options.find((o) => o.kind === "run");
+        if (r.selection === 2) {
+            const sw = options.find((o) => o.kind === "switch");
+            if (!sw) { say(battle, "§7There is no other Pokemon to switch to."); return pickAction(battle, options); }
+            return sw;
+        }
+        if (r.selection === 1) {
+            // the Bag holds medicine and, against a wild Pokemon, the Poke Balls
+            const bag = new ActionFormData().title("Bag").button("Medicine");
+            if (!battle.trainer) bag.button("Poke Balls");
+            bag.button("Back");
+            return bag.show(battle.player).then((b) => {
+                if (b.canceled || !battles.has(battle.player.id)) return pickAction(battle, options);
+                if (b.selection === 0) return options.find((o) => o.kind === "bag");
+                if (b.selection === 1 && !battle.trainer) return options.find((o) => o.kind === "ball");
+                return pickAction(battle, options);
+            });
+        }
+        const moves = options.filter((o) => o.kind === "move");
+        const form = new ActionFormData().title("cbm:battle_moves").body(battleBody(battle));
+        for (const o of moves) {
+            const m = o.move, off = o.locked || (m !== STRUGGLE && m.left <= 0);
+            const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
+            form.button(pad(m.name, 16) + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
+        }
+        form.button("Back", `${UI}/battle/back`);
+        return form.show(battle.player).then((m) => {
+            if (m.canceled || !battles.has(battle.player.id)) return undefined;
+            if (m.selection >= moves.length) return pickAction(battle, options);
+            return moves[m.selection];
+        });
+    });
 }
 
 function pickFoeMove(foe) {
