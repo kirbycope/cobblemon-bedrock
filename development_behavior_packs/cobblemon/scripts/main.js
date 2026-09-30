@@ -10,6 +10,7 @@ import { world, system, EntityComponentTypes, EntityInitializationCause, ItemSta
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
+import { PC_LAYOUT } from "./pc_layout.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
@@ -860,7 +861,7 @@ system.runInterval(() => {
         try {
             // Cobblemon hides the party overlay while its battle overlay is up
             if (!battles.has(player.id)) mine = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-                .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture"))
+                .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
         const empty = " ".repeat(18) + "h00e00bxxeo";
@@ -1446,27 +1447,113 @@ function snapshot(entity) {
 }
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
-const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held"];
+const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
+    "cobblemon:gender", "cobblemon:caught_ball"];
 
 function setPcScreen(block, on) {
     const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
     if (top?.typeId === "cobblemon:pc") setState(top, "cobblemon:on", on);
 }
 
-function openPc(block, player) {
+// The PC, laid out by ui/server_form.json on Cobblemon's PC textures (PC_LAYOUT in port.py): box slots 0 to 29, the
+// party 30 to 35, then previous and next box, release and exit. Choosing a Pokemon selects it (the pointer shows over
+// it); choosing another slot moves it there, swapping with what is there, depositing or withdrawing as the slots say.
+const PC_UI = "textures/ui/cobblemon";
+const iconOf = (typeId) => (typeId ? `i${typeId.slice("cobblemon:p".length, "cobblemon:p".length + 4)}` : "i----");
+function pcInfo(v, rec, entity) {
+    const typeId = rec?.t ?? entity?.typeId, info = POKEMON[typeId];
+    if (!info) { Object.assign(v, { portrait: "i----", gender: "o", ball: "b--", type1: "t--", type2: "t--" }); return; }
+    const kept = (key) => (rec ? rec.k?.[key] : prop(entity, key));
+    const variant = rec ? rec.v : (entity.getComponent("minecraft:variant")?.value ?? 0);
+    const form = { ...info, ...(info.variants?.[variant] ?? {}) };
+    const level = rec ? rec.lv : prop(entity, LEVEL) ?? info.level;
+    let moves = [];
+    try { moves = JSON.parse((rec ? rec.mv : prop(entity, MOVESET)) ?? "null") ?? movesAt(form, level); } catch (e) { moves = movesAt(form, level); }
+    const ball = Object.keys(BALLS).indexOf(kept("cobblemon:caught_ball") ?? "cobblemon:poke_ball");
+    const tag = rec ? rec.n : (entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "");
+    Object.assign(v, {
+        level: num(level), name: tag || form.name, portrait: iconOf(typeId),
+        gender: { male: "m", female: "f" }[kept("cobblemon:gender")] ?? "o", ball: `b${String(Math.max(0, ball)).padStart(2, "0")}`,
+        type1: typeCode(form.types[0]), type2: typeCode(form.types[1]),
+        nature: natureName(kept("cobblemon:mint") ?? kept("cobblemon:nature")), ability: abilityName(kept("cobblemon:ability") ?? form.ability),
+    });
+    moves.slice(0, 4).forEach((id, n) => { v[`move${n}`] = MOVES[id]?.name ?? ""; });
+    const held = kept(HELD);
+    v.item = (held && HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1]) || `${PC_UI}/summary/blank`;
+}
+
+function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
-    tidyPastured(player);
-    setPcScreen(block, true);
+    if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; }
     const done = () => { try { setPcScreen(block, false); } catch (e) { } };
-    let stored = 0;
-    for (let n = 0; n < PC_BOXES; n++) stored += box(player, n).filter(Boolean).length;
-    new ActionFormData().title("PC").body(`${stored} Pokemon stored in ${PC_BOXES} boxes.`)
-        .button("Deposit").button("Withdraw").button("Release").button("Close")
+    const party = summaryParty(player), contents = box(player, state.box);
+    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank` };
+    const sel = state.sel;
+    if (sel?.kind === "box") pcInfo(v, box(player, sel.box)[sel.slot], null);
+    else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
+    else pcInfo(v, null, null);
+    for (let n = 0; n < 30; n++) { v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n"; }
+    for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
+    const body = PC_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:pc").body(body);
+    for (let n = 0; n < 36; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
+    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/release`).button("exit", `${PC_UI}/summary/exit`);
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === 39) { done(); return; }
+        const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
+        if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 38) { pcRelease(player, state, party, () => again(5)); return; }
+        const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
+        const occupied = target.kind === "box" ? !!contents[target.slot] : !!party[target.slot];
+        if (!sel) { state.sel = occupied ? target : null; again(); return; }
+        if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; again(); return; }
+        state.sel = null;
+        pcMove(player, sel, target, party);
+        again(12);   // the party changes as Pokemon beam in and out
+    }).catch(done);
+}
+
+// moves the selected Pokemon to a slot: within the PC it swaps, between the PC and the party it deposits and withdraws
+function pcMove(player, from, to, party) {
+    const here = (pos) => (pos.kind === "box" ? box(player, pos.box)[pos.slot] : party[pos.slot]);
+    const a = here(from), b = here(to);
+    if ((from.kind === "box" && a?.p) || (to.kind === "box" && b?.p)) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); return; }
+    if (from.kind === "box" && to.kind === "box") {
+        const src = box(player, from.box), dst = from.box === to.box ? src : box(player, to.box);
+        const moving = src[from.slot]; src[from.slot] = dst[to.slot]; dst[to.slot] = moving;
+        saveBox(player, from.box, src); if (dst !== src) saveBox(player, to.box, dst);
+        return;
+    }
+    if (from.kind === "party" && to.kind === "party") return;
+    const [boxPos, partyPos] = from.kind === "box" ? [from, to] : [to, from];
+    const contents = box(player, boxPos.box), rec = contents[boxPos.slot], entity = party[partyPos.slot];
+    if (!entity && party.length >= PARTY_SIZE) { player.sendMessage(`§cYou already have ${PARTY_SIZE} Pokemon with you.`); return; }
+    contents[boxPos.slot] = entity?.isValid ? snapshot(entity) : null;
+    saveBox(player, boxPos.box, contents);
+    if (entity?.isValid) recallEffect(player, entity, () => { try { entity.remove(); } catch (e) { } });
+    if (rec) {
+        const d = player.getViewDirection(), at = { x: player.location.x + d.x * 2, y: player.location.y, z: player.location.z + d.z * 2 };
+        try { spawnStored(player, rec, at); } catch (e) { contents[boxPos.slot] = rec; saveBox(player, boxPos.box, contents); }
+    }
+}
+
+function pcRelease(player, state, party, then) {
+    const sel = state.sel;
+    if (!sel) { then(); return; }
+    const rec = sel.kind === "box" ? box(player, sel.box)[sel.slot] : null, entity = sel.kind === "party" ? party[sel.slot] : null;
+    if (!rec && !entity?.isValid) { state.sel = null; then(); return; }
+    if (rec?.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); then(); return; }
+    const label = rec ? describe(rec) : describe(snapshot(entity));
+    new MessageFormData().title("Release").body(`Release ${label}? It will be gone for good.`).button1("Keep").button2("Release")
         .show(player).then((r) => {
-            if (r.canceled || r.selection === 3) { done(); return; }
-            if (r.selection === 0) deposit(player, done);
-            else pickStored(player, r.selection === 1 ? "Withdraw" : "Release", (n, slot) => r.selection === 1 ? withdraw(player, n, slot, done) : release(player, n, slot, done), done);
-        }).catch(done);
+            if (r.selection === 1) {
+                if (rec) { const contents = box(player, sel.box); contents[sel.slot] = null; saveBox(player, sel.box, contents); }
+                else { try { entity.remove(); } catch (e) { } }
+                player.sendMessage(`§7${label} was released. Bye-bye!`);
+                state.sel = null;
+            }
+            then();
+        }).catch(then);
 }
 
 function deposit(player, done) {
@@ -2427,7 +2514,7 @@ const typeCode = (type) => { const i = TYPE_ORDER.indexOf(type); return i < 0 ? 
 function summaryParty(player) {
     try {
         return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture"))
+            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
             .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
     } catch (e) { return []; }
 }
@@ -2734,10 +2821,12 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
 }
 
 // Recall: the red beam runs from the Pokemon to the hand and takes it in; then() runs as it vanishes
+const recalling = new Set();   // Pokemon on their way back into a ball, already out of the party
 function recallEffect(player, entity, then) {
     if (!entity?.isValid || !player?.isValid) { then?.(); return; }
+    recalling.add(entity.id);
     try { entity.addEffect("slowness", 40, { amplifier: 255, showParticles: false }); } catch (e) { }
-    beamIn(entity, () => handOf(player), false, () => { then?.(); });
+    beamIn(entity, () => handOf(player), false, () => { recalling.delete(entity.id); then?.(); });
 }
 
 // Cobblemon's capture calculator (CobblemonCaptureCalculator.processCapture): the modified catch rate from health,

@@ -4759,7 +4759,7 @@ def create_summary_ui():
                  "summary_party_background", "type_spacer", "type_spacer_double", "summary_stats_icon_increase", "summary_stats_icon_decrease"):
         shutil.copyfile(f"{src}/{name}.png", f"{S}/{name.replace('summary_', '')}.png")
     blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
-    for name in ("blank", "stat_n", "t--", "x--", "sel_n"): blank.save(f"{S}/{name}.png")
+    for name in ("blank", "stat_n", "t--", "x--", "sel_n", "b--"): blank.save(f"{S}/{name}.png")
     shutil.copyfile(f"{src}/summary_move_selected_overlay.png", f"{S}/sel_y.png")
     for key in ("power", "accuracy", "effect"):
         shutil.copyfile(f"{src}/summary_moves_icon_{key}.png", f"{S}/icon_{key[:3] if key != 'power' else key}.png")
@@ -4923,6 +4923,124 @@ def create_summary_ui():
     return {"cobblemon_summary": summary}
 
 
+# The PC, after PCGUI and StorageWidget: the 349 by 205 base, the chosen Pokemon's portrait, level, name, ball, gender,
+# types, held item, nature, ability and moves on the left; the box screen with its wallpaper, grid and 30 slots in the
+# middle; the party panel's six slots on the right. Every slot is a button: choose a Pokemon, then a slot to move it,
+# swap it, deposit it or withdraw it. The slots show the Pokemon's box icon (the pack's spawn egg icons), since a
+# JSON UI screen cannot draw a model.
+PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("portrait", 5), ("nature", 18), ("ability", 20)] \
+    + [(f"move{n}", 16) for n in range(4)] + [("box", 12)] + [(f"b{n}", 5) for n in range(30)] + [(f"p{n}", 5) for n in range(6)] \
+    + [(f"s{n}", 1) for n in range(36)] + [("item", 0)]
+
+
+def pokemon_icons():
+    """The box icon of each species, as textures/ui/cobblemon/icons/i<national number>."""
+    folder = f"{uiTextures}/icons"
+    os.makedirs(folder, exist_ok=True)
+    made = 0
+    for pokemon in pokemons:
+        number = pokemon.split("_", 1)[0]
+        source = f"{texturesItemsBedrock}/{pokemon}_spawn_egg.png"
+        if not os.path.exists(source) or os.path.exists(f"{folder}/i{number}.png"): continue
+        Image.open(source).convert("RGBA").save(f"{folder}/i{number}.png"); made += 1
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{folder}/i----.png")
+    return made
+
+
+def create_pc_ui():
+    P = f"{uiTextures}/pc"
+    os.makedirs(P, exist_ok=True)
+    src = f"{guiMain}/pc"
+    for name in ("pc_base", "portrait_background", "info_box", "party_panel", "pc_screen_grid", "pc_screen_overlay", "type_spacer_single",
+                 "type_spacer_double", "pc_pointer"):
+        shutil.copyfile(f"{src}/{name}.png", f"{P}/{name.replace('pc_', '')}.png")
+    shutil.copyfile(f"{src}/wallpaper/basic/wallpaper_basic_05.png", f"{P}/wallpaper.png")   # PCBoxWallpaperRepository.defaultWallpaper
+    def two(path):
+        image = Image.open(path).convert("RGBA")
+        return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
+    for name, file in (("prev", "pc_arrow_previous"), ("next", "pc_arrow_next"), ("release", "pc_release_button")):
+        normal, hover = two(f"{src}/{file}.png"); normal.save(f"{P}/{name}.png"); hover.save(f"{P}/{name}_hover.png")
+    overlay = Image.open(f"{src}/pc_slot_overlay.png").convert("RGBA")
+    Image.new("RGBA", (25, 25), (0, 0, 0, 0)).save(f"{P}/slot.png"); overlay.save(f"{P}/slot_hover.png")
+    overlay.save(f"{P}/slot_on.png"); overlay.save(f"{P}/slot_on_hover.png")
+    for sel in ("n", "y"): (Image.open(f"{src}/pc_pointer.png").convert("RGBA") if sel == "y" else Image.new("RGBA", (1, 1), (0, 0, 0, 0))).save(f"{P}/sel_{sel}.png")
+    icons = pokemon_icons()
+
+    T = "textures/ui/cobblemon"
+    offsets, at = {}, 0
+    for name, width in PC_LAYOUT: offsets[name] = (at, at + width); at += width
+    def field(name):
+        a, b = offsets[name]
+        if name == "item": return f"(#form_text - ('%.{a}s' * #form_text))"
+        return f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
+    def bound(source, target):
+        return [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": source, "target_property_name": target}]
+    def label(name, source, offset, scale=1.0, size=(100, 10), align="left", shadow=True, layer=6):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": layer,
+                       "font_scale_factor": scale, "text_alignment": align, "shadow": shadow, "text": "#value", "bindings": bound(source, "#value")}}
+    def fixed(name, text, offset, scale=1.0, size=(100, 10), align="left"):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": 6,
+                       "font_scale_factor": scale, "text_alignment": align, "shadow": True, "text": text}}
+    def image(name, texture, offset, size, layer=3):
+        return {name: {"type": "image", "texture": f"{T}/{texture}", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": False,
+                       "anchor_from": "top_left", "anchor_to": "top_left"}}
+    def picture(name, folder, source, offset, size, layer=4, keep=False):
+        return {name: {"type": "image", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": keep,
+                       "anchor_from": "top_left", "anchor_to": "top_left", "bindings": bound(f"('{T}/{folder}' + {source})", "#texture")}}
+    controls = [image("portrait_bg", "pc/portrait_background", (6, 27), (66, 66), 1), image("base", "pc/base", (0, 0), (349, 205), 2),
+                picture("portrait", "icons/", field("portrait"), (9, 30), (60, 60), 3, True),
+                fixed("lv", "Lv.", (6, 1.5)), label("level", field("level"), (19, 1.5), size=(40, 10)),
+                label("name", field("name"), (12, 11.5), 0.75, size=(76, 10)),
+                picture("ball", "summary/", field("ball"), (3.5, 12), (8, 8)),
+                picture("gender", "summary/g", field("gender"), (69, 11.5), (5, 7)),
+                image("types_bg", "pc/type_spacer_double", (9, 118.5), (63, 6)),
+                picture("type1", "summary/", field("type1"), (22.5, 112), (18, 18), 5), picture("type2", "summary/", field("type2"), (40.5, 112), (18, 18), 5),
+                {"item_icon": {"type": "image", "offset": [3, 98], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                               "bindings": bound(field("item"), "#texture")}},
+                fixed("item_l", "Held Item", (24, 108.5), 0.5),
+                image("info_box", "pc/info_box", (9, 128), (63, 69)),
+                fixed("nature_l", "Nature", (9, 129.5), 0.5, size=(63, 5), align="center"),
+                label("nature", field("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
+                fixed("ability_l", "Ability", (9, 146.5), 0.5, size=(63, 5), align="center"),
+                label("ability", field("ability"), (9, 154), 0.5, size=(63, 5), align="center"),
+                fixed("moves_l", "Moves", (9, 163.5), 0.5, size=(63, 5), align="center")]
+    controls += [label(f"move{n}", field(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]
+    # the box screen at StorageWidget's place, and its 30 slots in 6 columns of 27
+    controls += [image("wallpaper", "pc/wallpaper", (85, 27), (174, 155), 2), image("grid", "pc/screen_grid", (92, 38), (160, 133), 3),
+                 image("overlay", "pc/screen_overlay", (85, 27), (174, 155), 4),
+                 label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center"),
+                 image("party_panel", "pc/party_panel", (267, 8), (82, 169), 2)]
+    slots = [(92 + 27 * (n % 6), 38 + 27 * (n // 6)) for n in range(30)]
+    slots += [(278 + (31 if n % 2 else 0), 35 + 31 * (n // 2) + (8 if n % 2 else 0)) for n in range(6)]
+    for n, (x, y) in enumerate(slots):
+        key = f"b{n}" if n < 30 else f"p{n - 30}"
+        controls += [picture(f"icon{n}", "icons/", field(key), (x + 1, y + 1), (23, 23), 5, True),
+                     picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7)]
+    def face(state):
+        return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
+                "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                             {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}]}
+    def button(index, offset, size):
+        return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
+                                    "collection_index": index, "layer": 6,
+                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
+    buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
+    buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (126, 186), (58, 16)), button(39, (320, 186), (26, 13))]
+    pc = {"type": "panel", "size": [349, 205], "anchor_from": "center", "anchor_to": "center",
+          "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                       "source_property_name": "(not ((#title_text - 'cbm:pc') = #title_text))", "target_property_name": "#visible"}],
+          "controls": controls + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons}}]}
+    with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
+        file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
+    print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon icons")
+    return {"cobblemon_pc": pc}
+
+
 def create_battle_ui():
     for folder in ("battle", "types"): os.makedirs(f"{uiTextures}/{folder}", exist_ok=True)
     def frames(name, height):
@@ -5053,7 +5171,8 @@ def create_battle_ui():
         # the vanilla form stays for every other form
         "long_form": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
             {"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "((#title_text - 'cbm:') = #title_text)", "target_property_name": "#visible"}]}]},
-        "cobblemon_forms": {"type": "panel", "size": ["100%", "100%"], "controls": [{"battle@server_form.cobblemon_battle": {}}, {"summary@server_form.cobblemon_summary": {}}]},
+        "cobblemon_forms": {"type": "panel", "size": ["100%", "100%"], "controls": [{"battle@server_form.cobblemon_battle": {}}, {"summary@server_form.cobblemon_summary": {}},
+                                                                                       {"pc@server_form.cobblemon_pc": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
@@ -5064,6 +5183,7 @@ def create_battle_ui():
         "cobblemon_move_item": move_item,
     }
     ui.update(create_summary_ui())
+    ui.update(create_pc_ui())
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
