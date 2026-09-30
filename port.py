@@ -5055,7 +5055,8 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"move{n}", 16) for n in range(4)] + [("box", 12)] + [(f"b{n}", 5) for n in range(30)] + [(f"p{n}", 5) for n in range(6)] \
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
-    + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] + [("item", 0)]
+    + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] \
+    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("item", 0)]
 # PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
 # six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
 PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
@@ -5106,6 +5107,10 @@ def create_pc_ui():
                 slot.alpha_composite(overlay.crop((0, top, 56, top + 50)))
                 slot.save(f"{P}/wps_{code}{suffix}{state}.png")
     shutil.copyfile(f"{src}/wallpaper_scroll_background.png", f"{P}/wallpaper_scroll_background.png")
+    # the info box's IV and EV pages (PCGUI's currentStatIndex), and the arrow that turns them
+    for page, name in (("i", "info_box"), ("v", "info_box_stats"), ("e", "info_box_stats")): shutil.copyfile(f"{src}/{name}.png", f"{P}/ibox_{page}.png")
+    arrow = Image.open(f"{src}/info_arrow.png").convert("RGBA")
+    arrow.crop((0, 0, 10, 16)).save(f"{P}/info_arrow.png"); arrow.crop((0, 16, 10, 32)).save(f"{P}/info_arrow_hover.png")
     for name, out in (("pc_icon_options", "options"), ("pc_button_set_wallpaper", "set_wallpaper"),
                       *[(f"pc_button_sort_{k}{r}", f"sort_{k}{r}") for k in ("name", "level", "type", "pokedex_number", "gender") for r in ("", "_reverse")]):
         image = Image.open(f"{src}/{name}.png").convert("RGBA")
@@ -5171,13 +5176,27 @@ def create_pc_ui():
                                "bindings": bound(field("item"), "#texture")}},
                 fixed("item_l", "Held Item", (24, 108.5), 0.5),
                 *[picture(f"mark{i}", f"summary/mark{i}_", field(f"mark{i}"), (29 + 7 * i, 96.5), (6, 6), 5) for i in range(6)],
-                image("info_box", "pc/info_box", (9, 128), (63, 69)),
-                fixed("nature_l", "Nature", (9, 129.5), 0.5, size=(63, 5), align="center"),
-                label("nature", field("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
-                fixed("ability_l", "Ability", (9, 146.5), 0.5, size=(63, 5), align="center"),
-                label("ability", field("ability"), (9, 154), 0.5, size=(63, 5), align="center"),
-                fixed("moves_l", "Moves", (9, 163.5), 0.5, size=(63, 5), align="center")]
-    controls += [label(f"move{n}", field(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]
+                picture("info_box", "pc/ibox_", field("page"), (9, 128), (63, 69))]
+    info_page = [fixed("nature_l", "Nature", (9, 129.5), 0.5, size=(63, 5), align="center"),
+                 label("nature", field("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
+                 fixed("ability_l", "Ability", (9, 146.5), 0.5, size=(63, 5), align="center"),
+                 label("ability", field("ability"), (9, 154), 0.5, size=(63, 5), align="center"),
+                 fixed("moves_l", "Moves", (9, 163.5), 0.5, size=(63, 5), align="center")]
+    info_page += [label(f"move{n}", field(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]
+    # the IV and EV pages: the heading, then HP to Speed 10 apart, each value centred at 65
+    stat_page = []
+    for i, text in enumerate(("HP", "Atk", "Def", "Sp.Atk", "Sp.Def", "Speed")):
+        stat_page += [fixed(f"stat_l{i}", text, (13, 139 + 10 * i), 0.5, size=(40, 5)),
+                      label(f"stat_v{i}", field(f"sv{i}"), (65 - 10, 139 + 10 * i), 0.5, size=(20, 5), align="center")]
+    def page_panel(name, pages, children):
+        return {name: {"type": "panel", "size": [349, 205], "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                    "source_property_name": " or ".join(f"({field('page')} = '{pg}')" for pg in pages), "target_property_name": "#visible"}],
+                       "controls": children}}
+    # one panel a page: a visibility binding with "or" in it never shows
+    controls += [page_panel("info_page", "i", info_page), page_panel("iv_page", "v", stat_page), page_panel("ev_page", "e", stat_page),
+                 page_panel("iv_head", "v", [fixed("iv_l", "IVs", (9, 129.5), 0.5, size=(63, 5), align="center")]),
+                 page_panel("ev_head", "e", [fixed("ev_l", "EVs", (9, 129.5), 0.5, size=(63, 5), align="center")])]
     # the box screen at StorageWidget's place, and its 30 slots in 6 columns of 27
     controls += [picture("wallpaper", "pc/wp_", field("wall"), (85, 27), (174, 155), 2), picture("glow", "pc/glow_", field("wall"), (68, 10), (208, 189), 3),
                  while_("n", image("grid", "pc/screen_grid", (92, 38), (160, 133), 3), "opts"),
@@ -5227,6 +5246,7 @@ def create_pc_ui():
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
     # IconButton draws its texture at half size
     buttons += [button(40, (218, 186), (8, 8)), button(41, (242, 31), (10, 10))]
+    info_arrow = [button(42 + len(PC_WALLPAPERS) + 5, (1, 157), (10, 16))]
     # PokemonSortMode's five sort buttons, 12 apart from (92, 31), while the options show
     buttons += [button(42 + len(PC_WALLPAPERS) + n, (92 + 12 * n, 31), (10, 10)) for n in range(5)]
     # WallpapersScrollingWidget in the party's place (274, 29, 68 by 146): a slot of 56 by 50 every 54, 4 in, scrolling
@@ -5252,7 +5272,7 @@ def create_pc_ui():
                 "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                              "source_property_name": f"(not ((#title_text - '{title}') = #title_text))", "target_property_name": "#visible"}],
                 "controls": controls + extra + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons_here}}]}
-    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons + box_opts)
+    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons + box_opts + info_arrow)
     pasture = screen("cbm:pasture", pasture_controls + [fixed("recall_all_l", "Recall All", (273, 165), 1.0, size=(70, 10), align="center", layer=12)], pasture_buttons)
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")

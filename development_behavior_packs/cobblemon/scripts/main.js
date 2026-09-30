@@ -1652,11 +1652,15 @@ const PC_UI = "textures/ui/cobblemon";
 const iconOf = (typeId) => (typeId ? `i${typeId.slice("cobblemon:p".length, "cobblemon:p".length + 4)}` : "i----");
 function pcInfo(v, rec, entity) {
     const typeId = rec?.t ?? entity?.typeId, info = POKEMON[typeId];
-    for (let i = 0; i < 6; i++) v[`mark${i}`] = "n";   // no Pokemon chosen, no markings shown
+    for (let i = 0; i < 6; i++) { v[`mark${i}`] = "n"; v[`sv${i}`] = ""; }   // no Pokemon chosen, no markings or stats shown
     if (!info) { Object.assign(v, { portrait: "i----", gender: "o", ball: "b--", type1: "t--", type2: "t--" }); return; }
     const kept = (key) => (rec ? rec.k?.[key] : prop(entity, key));
     const marks = String(kept(MARKINGS) ?? "000000");
     for (let i = 0; i < 6; i++) v[`mark${i}`] = marks[i] ?? "0";
+    // the info box's IV and EV pages
+    let ivs = {}, evs = {};
+    try { ivs = rec ? JSON.parse(rec.k?.["cobblemon:ivs"] ?? "{}") : ivsOf(entity); evs = rec ? JSON.parse(rec.k?.["cobblemon:evs"] ?? "{}") : evsOf(entity); } catch (e) { }
+    if (v.page === "v" || v.page === "e") STAT_KEYS.forEach((k, i) => { v[`sv${i}`] = num((v.page === "v" ? ivs : evs)[k] ?? 0); });
     const variant = rec ? rec.v : (entity.getComponent("minecraft:variant")?.value ?? 0);
     const form = { ...info, ...(info.variants?.[variant] ?? {}) };
     const level = rec ? rec.lv : prop(entity, LEVEL) ?? info.level;
@@ -1735,9 +1739,19 @@ function openPc(block, player, state) {
     const done = () => { try { setPcScreen(block, false); } catch (e) { } };
     const party = summaryParty(player), contents = box(player, state.box);
     const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
-    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n" };
+    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n",
+                page: state.page ?? "i" };
     const sel = state.sel;
-    if (sel?.kind === "box") pcInfo(v, box(player, sel.box)[sel.slot], null);
+    if (sel?.kind === "box") {
+        // a Pokemon stored before it rolled its IVs rolls them now and keeps them, as every Cobblemon Pokemon has them
+        const contents = box(player, sel.box), rec = contents[sel.slot];
+        if (rec && !rec.k?.["cobblemon:ivs"]) {
+            rec.k = { ...(rec.k ?? {}), "cobblemon:ivs": JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, Math.floor(Math.random() * 32)]))) };
+            if (!rec.k["cobblemon:evs"]) rec.k["cobblemon:evs"] = JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, 0])));
+            saveBox(player, sel.box, contents);
+        }
+        pcInfo(v, rec, null);
+    }
     else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
     else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
@@ -1757,6 +1771,7 @@ function openPc(block, player, state) {
     }
     // the sort buttons show their reverse face after a sort by them, as a shift-click would sort
     for (const mode of PC_SORTS) form.button(mode, `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
+    form.button("info page", `${PC_UI}/pc/info_arrow`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
@@ -1765,6 +1780,11 @@ function openPc(block, player, state) {
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
         if (pick === 41) {
             if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
+            again(); return;
+        }
+        if (pick === 42 + PC_WALLPAPERS.length + PC_SORTS.length) {
+            // the arrow turns the info box: info, IVs, EVs
+            state.page = { i: "v", v: "e", e: "i" }[state.page ?? "i"];
             again(); return;
         }
         if (pick >= 42 + PC_WALLPAPERS.length) {
@@ -1976,7 +1996,7 @@ function openPasture(block, player, state) {
     state.page %= pages;
     const contents = box(player, state.box), sel = state.sel;
     const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, count: num(`${here.length}/${PASTURE_LIMIT}`),
-                wall: jsonProp(player, WALLS, {})[state.box] ?? "w05", wmode: "n", opts: "n" };
+                wall: jsonProp(player, WALLS, {})[state.box] ?? "w05", wmode: "n", opts: "n", page: "i" };
     if (sel) pcInfo(v, box(player, sel.box)[sel.slot], null); else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
         v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";

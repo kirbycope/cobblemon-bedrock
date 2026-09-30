@@ -37712,7 +37712,7 @@
             },
             {
               "binding_type": "view",
-              "source_property_name": "(#form_text - ('%.525s' * #form_text))",
+              "source_property_name": "(#form_text - ('%.562s' * #form_text))",
               "target_property_name": "#texture"
             }
           ]
@@ -37903,7 +37903,6 @@
       {
         "info_box": {
           "type": "image",
-          "texture": "textures/ui/cobblemon/pc/info_box",
           "offset": [
             9,
             128
@@ -37912,248 +37911,1013 @@
             63,
             69
           ],
-          "layer": 3,
+          "layer": 4,
           "keep_ratio": false,
           "anchor_from": "top_left",
-          "anchor_to": "top_left"
-        }
-      },
-      {
-        "nature_l": {
-          "type": "label",
-          "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            129.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Nature"
-        }
-      },
-      {
-        "nature": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            137
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.55s' * #form_text) - ('%.37s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "('textures/ui/cobblemon/pc/ibox_' + (('%.526s' * #form_text) - ('%.525s' * #form_text)))",
+              "target_property_name": "#texture"
             }
           ]
         }
       },
       {
-        "ability_l": {
-          "type": "label",
+        "info_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            146.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Ability"
-        }
-      },
-      {
-        "ability": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            154
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.75s' * #form_text) - ('%.55s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'i')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "nature_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Nature"
+              }
+            },
+            {
+              "nature": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  137
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.55s' * #form_text) - ('%.37s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ability_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  146.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Ability"
+              }
+            },
+            {
+              "ability": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  154
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.75s' * #form_text) - ('%.55s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "moves_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  163.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Moves"
+              }
+            },
+            {
+              "move0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  170.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.91s' * #form_text) - ('%.75s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  177.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.107s' * #form_text) - ('%.91s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  184.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.123s' * #form_text) - ('%.107s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  191.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.139s' * #form_text) - ('%.123s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "moves_l": {
-          "type": "label",
+        "iv_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            163.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Moves"
-        }
-      },
-      {
-        "move0": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            170.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.91s' * #form_text) - ('%.75s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'v')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "stat_l0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  139
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "HP"
+              }
+            },
+            {
+              "stat_v0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  139
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.532s' * #form_text) - ('%.526s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  149
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Atk"
+              }
+            },
+            {
+              "stat_v1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  149
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.538s' * #form_text) - ('%.532s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  159
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Def"
+              }
+            },
+            {
+              "stat_v2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  159
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  169
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Atk"
+              }
+            },
+            {
+              "stat_v3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  169
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.550s' * #form_text) - ('%.544s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  179
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Def"
+              }
+            },
+            {
+              "stat_v4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  179
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.556s' * #form_text) - ('%.550s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  189
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Speed"
+              }
+            },
+            {
+              "stat_v5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  189
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "move1": {
-          "type": "label",
+        "ev_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            177.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.107s' * #form_text) - ('%.91s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'e')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "stat_l0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  139
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "HP"
+              }
+            },
+            {
+              "stat_v0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  139
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.532s' * #form_text) - ('%.526s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  149
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Atk"
+              }
+            },
+            {
+              "stat_v1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  149
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.538s' * #form_text) - ('%.532s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  159
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Def"
+              }
+            },
+            {
+              "stat_v2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  159
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  169
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Atk"
+              }
+            },
+            {
+              "stat_v3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  169
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.550s' * #form_text) - ('%.544s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  179
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Def"
+              }
+            },
+            {
+              "stat_v4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  179
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.556s' * #form_text) - ('%.550s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  189
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Speed"
+              }
+            },
+            {
+              "stat_v5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  189
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "move2": {
-          "type": "label",
+        "iv_head": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            184.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.123s' * #form_text) - ('%.107s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'v')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "iv_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "IVs"
+              }
             }
           ]
         }
       },
       {
-        "move3": {
-          "type": "label",
+        "ev_head": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            191.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.139s' * #form_text) - ('%.123s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'e')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "ev_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "EVs"
+              }
             }
           ]
         }
@@ -53308,6 +54072,115 @@
                   }
                 ]
               }
+            },
+            {
+              "button_64": {
+                "type": "button",
+                "size": [
+                  10,
+                  16
+                ],
+                "offset": [
+                  1,
+                  157
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 64,
+                "layer": 6,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
@@ -53622,7 +54495,7 @@
             },
             {
               "binding_type": "view",
-              "source_property_name": "(#form_text - ('%.525s' * #form_text))",
+              "source_property_name": "(#form_text - ('%.562s' * #form_text))",
               "target_property_name": "#texture"
             }
           ]
@@ -53813,7 +54686,6 @@
       {
         "info_box": {
           "type": "image",
-          "texture": "textures/ui/cobblemon/pc/info_box",
           "offset": [
             9,
             128
@@ -53822,248 +54694,1013 @@
             63,
             69
           ],
-          "layer": 3,
+          "layer": 4,
           "keep_ratio": false,
           "anchor_from": "top_left",
-          "anchor_to": "top_left"
-        }
-      },
-      {
-        "nature_l": {
-          "type": "label",
-          "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            129.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Nature"
-        }
-      },
-      {
-        "nature": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            137
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.55s' * #form_text) - ('%.37s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "('textures/ui/cobblemon/pc/ibox_' + (('%.526s' * #form_text) - ('%.525s' * #form_text)))",
+              "target_property_name": "#texture"
             }
           ]
         }
       },
       {
-        "ability_l": {
-          "type": "label",
+        "info_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            146.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Ability"
-        }
-      },
-      {
-        "ability": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            154
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.75s' * #form_text) - ('%.55s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'i')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "nature_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Nature"
+              }
+            },
+            {
+              "nature": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  137
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.55s' * #form_text) - ('%.37s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ability_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  146.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Ability"
+              }
+            },
+            {
+              "ability": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  154
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.75s' * #form_text) - ('%.55s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "moves_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  163.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "Moves"
+              }
+            },
+            {
+              "move0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  170.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.91s' * #form_text) - ('%.75s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  177.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.107s' * #form_text) - ('%.91s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  184.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.123s' * #form_text) - ('%.107s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  191.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.139s' * #form_text) - ('%.123s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "moves_l": {
-          "type": "label",
+        "iv_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            163.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "Moves"
-        }
-      },
-      {
-        "move0": {
-          "type": "label",
-          "anchor_from": "top_left",
-          "anchor_to": "top_left",
-          "offset": [
-            9,
-            170.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.91s' * #form_text) - ('%.75s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'v')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "stat_l0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  139
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "HP"
+              }
+            },
+            {
+              "stat_v0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  139
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.532s' * #form_text) - ('%.526s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  149
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Atk"
+              }
+            },
+            {
+              "stat_v1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  149
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.538s' * #form_text) - ('%.532s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  159
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Def"
+              }
+            },
+            {
+              "stat_v2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  159
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  169
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Atk"
+              }
+            },
+            {
+              "stat_v3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  169
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.550s' * #form_text) - ('%.544s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  179
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Def"
+              }
+            },
+            {
+              "stat_v4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  179
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.556s' * #form_text) - ('%.550s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  189
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Speed"
+              }
+            },
+            {
+              "stat_v5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  189
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "move1": {
-          "type": "label",
+        "ev_page": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            177.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.107s' * #form_text) - ('%.91s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'e')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "stat_l0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  139
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "HP"
+              }
+            },
+            {
+              "stat_v0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  139
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.532s' * #form_text) - ('%.526s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  149
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Atk"
+              }
+            },
+            {
+              "stat_v1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  149
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.538s' * #form_text) - ('%.532s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  159
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Def"
+              }
+            },
+            {
+              "stat_v2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  159
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  169
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Atk"
+              }
+            },
+            {
+              "stat_v3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  169
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.550s' * #form_text) - ('%.544s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  179
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp.Def"
+              }
+            },
+            {
+              "stat_v4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  179
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.556s' * #form_text) - ('%.550s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "stat_l5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  13,
+                  189
+                ],
+                "size": [
+                  40,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Speed"
+              }
+            },
+            {
+              "stat_v5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  55,
+                  189
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
             }
           ]
         }
       },
       {
-        "move2": {
-          "type": "label",
+        "iv_head": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            184.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.123s' * #form_text) - ('%.107s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'v')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "iv_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "IVs"
+              }
             }
           ]
         }
       },
       {
-        "move3": {
-          "type": "label",
+        "ev_head": {
+          "type": "panel",
+          "size": [
+            349,
+            205
+          ],
           "anchor_from": "top_left",
           "anchor_to": "top_left",
-          "offset": [
-            9,
-            191.5
-          ],
-          "size": [
-            63,
-            5
-          ],
-          "layer": 6,
-          "font_scale_factor": 0.5,
-          "text_alignment": "center",
-          "shadow": true,
-          "text": "#value",
           "bindings": [
             {
               "binding_name": "#form_text"
             },
             {
               "binding_type": "view",
-              "source_property_name": "(('%.139s' * #form_text) - ('%.123s' * #form_text))",
-              "target_property_name": "#value"
+              "source_property_name": "((('%.526s' * #form_text) - ('%.525s' * #form_text)) = 'e')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "ev_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  129.5
+                ],
+                "size": [
+                  63,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "center",
+                "shadow": true,
+                "text": "EVs"
+              }
             }
           ]
         }
