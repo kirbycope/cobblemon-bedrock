@@ -2267,7 +2267,7 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "(#form_text - ('%.75s' * #form_text))",
+                    "source_property_name": "(('%.84s' * #form_text) - ('%.75s' * #form_text))",
                     "target_property_name": "#value"
                   }
                 ],
@@ -4109,6 +4109,81 @@
                     "binding_type": "view",
                     "source_property_name": "((('%.58s' * #form_text) - ('%.55s' * #form_text)) = 'fnt')",
                     "target_property_name": "#visible"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "log": {
+          "type": "panel",
+          "size": [
+            169,
+            55
+          ],
+          "anchor_from": "bottom_right",
+          "anchor_to": "bottom_right",
+          "offset": [
+            -12,
+            -30
+          ],
+          "controls": [
+            {
+              "frame": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/battle/log",
+                "size": [
+                  169,
+                  55
+                ],
+                "layer": 1
+              }
+            },
+            {
+              "box": {
+                "type": "panel",
+                "size": [
+                  153,
+                  46
+                ],
+                "offset": [
+                  5,
+                  6
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "clips_children": true,
+                "controls": [
+                  {
+                    "lines": {
+                      "type": "label",
+                      "size": [
+                        146,
+                        "default"
+                      ],
+                      "anchor_from": "bottom_left",
+                      "anchor_to": "bottom_left",
+                      "offset": [
+                        1,
+                        1
+                      ],
+                      "layer": 3,
+                      "shadow": true,
+                      "font_scale_factor": 0.8,
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_text - ('%.84s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
                   }
                 ]
               }

@@ -78,7 +78,7 @@ def protect(bridge, player=PLAYER):
 def stage(bridge, entity, spot=TEST_SPOT, player=PLAYER):
     x, y, z = spot; top = y + 4
     protect(bridge, player)
-    for c in (f"time set day", f"kill @e[type=drowned,x={x},y={y},z={z},r=32]",
+    for c in (f"time set day", "weather clear", f"kill @e[family=monster,x={x},y={y},z={z},r=48]",
               f"fill {x-1} {top} {z-1} {x+4} {top+3} {z+1} air",
               f"setblock {x} {top} {z} stone", f"setblock {x+2} {top} {z} stone",
               f"tp {player} {x}.5 {top+1} {z}.5 -90 30",   # face +x (the mob) and 30 degrees down onto it; 'facing' aims at the sky

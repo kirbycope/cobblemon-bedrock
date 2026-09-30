@@ -4672,7 +4672,8 @@ TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("gr
 # code's second byte cannot shift any other field.
 BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32)}
 BATTLE_SIDE = 31
-BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters; the foe's runs to the end
+BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters, then the foe's, 9
+BATTLE_LOG = BATTLE_HPTEXT + 12 + 9   # the battle log's last lines run from here to the end
 
 
 def depletable_red_green(ratio):
@@ -5392,11 +5393,12 @@ def create_battle_ui():
     for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
         shutil.copyfile(f"{guiMain}/battle/battle_status_{status}.png", f"{uiTextures}/battle/status_{status}.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
+    shutil.copyfile(f"{guiMain}/battle/battle_log.png", f"{uiTextures}/battle/log.png")
 
     T = "textures/ui/cobblemon"
     def field(side, name):
         if name == "hptext":
-            if side == 1: return f"(#form_text - ('%.{BATTLE_HPTEXT + 12}s' * #form_text))"
+            if side == 1: return f"(('%.{BATTLE_LOG}s' * #form_text) - ('%.{BATTLE_HPTEXT + 12}s' * #form_text))"
             return f"(('%.{BATTLE_HPTEXT + 12}s' * #form_text) - ('%.{BATTLE_HPTEXT}s' * #form_text))"
         a, b = BATTLE_FIELDS[name]
         a, b = a + side * BATTLE_SIDE, b + side * BATTLE_SIDE
@@ -5480,6 +5482,14 @@ def create_battle_ui():
                   "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
                                {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                {"binding_type": "view", "source_property_name": is_back, "target_property_name": "#visible"}]}}]}
+    # BattleMessagePane: the 169 by 55 log frame 12 in from the right and 30 up from the bottom, its text box 6 in,
+    # 153 by 46, showing the last lines (Bedrock's font drawn at 0.8 to fit Cobblemon's 146-pixel lines) with the newest at the bottom
+    battle_log = {"log": {"type": "panel", "size": [169, 55], "anchor_from": "bottom_right", "anchor_to": "bottom_right", "offset": [-12, -30], "controls": [
+        {"frame": {"type": "image", "texture": f"{T}/battle/log", "size": [169, 55], "layer": 1}},
+        {"box": {"type": "panel", "size": [153, 46], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "controls": [
+            {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, 1], "layer": 3,
+                       "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                       "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}}]}}
     def grid(name, template, item_size, offset, marker):
         return {name: {"type": "grid", "size": [item_size[0] * 2, item_size[1] * 3], "grid_dimensions": [2, 3],
                        "grid_item_template": f"server_form.{template}", "collection_name": "form_buttons",
@@ -5501,7 +5511,7 @@ def create_battle_ui():
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
-                             "controls": [info_tile(0), info_tile(1),
+                             "controls": [info_tile(0), info_tile(1), battle_log,
                                           grid("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
                                           grid("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
         "cobblemon_menu_item": menu_item,
