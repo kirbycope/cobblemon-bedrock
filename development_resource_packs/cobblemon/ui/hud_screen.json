@@ -1849,6 +1849,13 @@
             ]
           }
         }
+      },
+      {
+        "array_name": "controls",
+        "operation": "insert_back",
+        "value": {
+          "cobblemon_scan@hud.cobblemon_scan": {}
+        }
       }
     ]
   },
@@ -1864,10 +1871,958 @@
           },
           {
             "binding_type": "view",
-            "source_property_name": "((#hud_title_text_string - 'cbm:party') = #hud_title_text_string)",
+            "source_property_name": "(((#hud_title_text_string - 'cbm:party') = #hud_title_text_string) and ((#hud_title_text_string - 'cbm:scan') = #hud_title_text_string))",
             "target_property_name": "#visible"
           }
         ]
+      }
+    ]
+  },
+  "cobblemon_scan": {
+    "type": "panel",
+    "size": [
+      "100%",
+      "100%"
+    ],
+    "controls": [
+      {
+        "data_control": {
+          "type": "panel",
+          "size": [
+            0,
+            0
+          ],
+          "property_bag": {
+            "#preserved_text": ""
+          },
+          "bindings": [
+            {
+              "binding_name": "#hud_title_text_string"
+            },
+            {
+              "binding_name": "#hud_title_text_string",
+              "binding_name_override": "#preserved_text",
+              "binding_condition": "visibility_changed"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:scan') = #hud_title_text_string))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "lines": {
+          "type": "image",
+          "size": [
+            "100%",
+            "100%"
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "layer": 1,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/lines_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ],
+          "tiled": true
+        }
+      },
+      {
+        "tl": {
+          "type": "image",
+          "size": [
+            4,
+            4
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/tl_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "tr": {
+          "type": "image",
+          "size": [
+            4,
+            4
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "top_right",
+          "anchor_to": "top_right",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/tr_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "bl": {
+          "type": "image",
+          "size": [
+            4,
+            4
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "bottom_left",
+          "anchor_to": "bottom_left",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/bl_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "br": {
+          "type": "image",
+          "size": [
+            4,
+            4
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "bottom_right",
+          "anchor_to": "bottom_right",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/br_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "top": {
+          "type": "image",
+          "size": [
+            "100% - 8px",
+            3
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/top_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "bottom": {
+          "type": "image",
+          "size": [
+            "100% - 8px",
+            3
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "bottom_middle",
+          "anchor_to": "bottom_middle",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/bottom_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "left": {
+          "type": "image",
+          "size": [
+            3,
+            "100% - 8px"
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "left_middle",
+          "anchor_to": "left_middle",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/left_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "right": {
+          "type": "image",
+          "size": [
+            3,
+            "100% - 8px"
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "right_middle",
+          "anchor_to": "right_middle",
+          "layer": 2,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/right_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "notch": {
+          "type": "image",
+          "size": [
+            200,
+            12
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "top_middle",
+          "anchor_to": "top_middle",
+          "layer": 3,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/notch_' + (('%.10s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "outer": {
+          "type": "image",
+          "size": [
+            116,
+            116
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 4,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/outer_' + (('%.12s' * #preserved_text) - ('%.10s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "inner": {
+          "type": "image",
+          "size": [
+            84,
+            84
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 4,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/inner_' + (('%.14s' * #preserved_text) - ('%.12s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "middle": {
+          "type": "image",
+          "size": [
+            100,
+            100
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 4,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/mid_' + (('%.16s' * #preserved_text) - ('%.14s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "center": {
+          "type": "image",
+          "size": [
+            128,
+            16
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/center_' + (('%.181s' * #preserved_text) - ('%.180s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "registered": {
+          "type": "label",
+          "size": [
+            128,
+            10
+          ],
+          "offset": [
+            0,
+            -3
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(#preserved_text - ('%.182s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "unknown": {
+          "type": "image",
+          "size": [
+            34,
+            46
+          ],
+          "offset": [
+            0,
+            2
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/unknown_' + (('%.182s' * #preserved_text) - ('%.181s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pointer_l": {
+          "type": "image",
+          "size": [
+            6,
+            10
+          ],
+          "offset": [
+            -33,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/pointerl_' + (('%.182s' * #preserved_text) - ('%.181s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pointer_r": {
+          "type": "image",
+          "size": [
+            6,
+            10
+          ],
+          "offset": [
+            33,
+            0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/pointerr_' + (('%.182s' * #preserved_text) - ('%.181s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "frame0l": {
+          "type": "image",
+          "size": [
+            92,
+            55
+          ],
+          "offset": [
+            -74.0,
+            -52.5
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame0l_' + (('%.17s' * #preserved_text) - ('%.16s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text0l": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            -74.0,
+            -70
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.40s' * #preserved_text) - ('%.20s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame0r": {
+          "type": "image",
+          "size": [
+            92,
+            55
+          ],
+          "offset": [
+            74.0,
+            -52.5
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame0r_' + (('%.17s' * #preserved_text) - ('%.16s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text0r": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            74.0,
+            -70
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.60s' * #preserved_text) - ('%.40s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame1l": {
+          "type": "image",
+          "size": [
+            120,
+            20
+          ],
+          "offset": [
+            -117.0,
+            -16.0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame1l_' + (('%.18s' * #preserved_text) - ('%.17s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text1l": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            -131.0,
+            -17
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.80s' * #preserved_text) - ('%.60s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame1r": {
+          "type": "image",
+          "size": [
+            120,
+            20
+          ],
+          "offset": [
+            117.0,
+            -16.0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame1r_' + (('%.18s' * #preserved_text) - ('%.17s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text1r": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            131.0,
+            -17
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.100s' * #preserved_text) - ('%.80s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame2l": {
+          "type": "image",
+          "size": [
+            120,
+            20
+          ],
+          "offset": [
+            -117.0,
+            16.0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame2l_' + (('%.19s' * #preserved_text) - ('%.18s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text2l": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            -131.0,
+            19
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.120s' * #preserved_text) - ('%.100s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame2r": {
+          "type": "image",
+          "size": [
+            120,
+            20
+          ],
+          "offset": [
+            117.0,
+            16.0
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame2r_' + (('%.19s' * #preserved_text) - ('%.18s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text2r": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            131.0,
+            19
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.140s' * #preserved_text) - ('%.120s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame3l": {
+          "type": "image",
+          "size": [
+            92,
+            55
+          ],
+          "offset": [
+            -74.0,
+            52.5
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame3l_' + (('%.20s' * #preserved_text) - ('%.19s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text3l": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            -74.0,
+            72
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.160s' * #preserved_text) - ('%.140s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "frame3r": {
+          "type": "image",
+          "size": [
+            92,
+            55
+          ],
+          "offset": [
+            74.0,
+            52.5
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 5,
+          "keep_ratio": false,
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/scan/frame3r_' + (('%.20s' * #preserved_text) - ('%.19s' * #preserved_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "text3r": {
+          "type": "label",
+          "size": [
+            92,
+            10
+          ],
+          "offset": [
+            74.0,
+            72
+          ],
+          "anchor_from": "center",
+          "anchor_to": "center",
+          "layer": 6,
+          "text_alignment": "center",
+          "shadow": true,
+          "font_scale_factor": 1.0,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "(('%.180s' * #preserved_text) - ('%.160s' * #preserved_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
       }
     ]
   }

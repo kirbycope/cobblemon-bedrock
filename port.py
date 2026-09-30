@@ -1215,8 +1215,8 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.")): continue
-        folder = key.split(".")[0]
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.")): continue
+        folder = key.split(".")[-2] if key.startswith("item.") else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
             name = sound["name"] if isinstance(sound, dict) else sound
@@ -5640,9 +5640,118 @@ def create_battle_ui():
 # ---------------------------------------------------------------------------
 
 PARTY_MARKER = "cbm:party"
+# The Pokedex scanner (PokedexScannerRenderer), a second HUD layer on its own preserved title: the overlay's state, the
+# inner ring's pace, the middle ring's segments, which side each info frame is on and the text on each side, the
+# registered frame, the unknown mark and pointers, then the registered text to the end
+SCAN_MARKER = "cbm:scan"
+SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), **{f"f{k}": (8 + k, 9 + k) for k in range(4)},
+               **{f"t{k}{side}": (12 + 40 * k + (20 if side == "r" else 0), 32 + 40 * k + (20 if side == "r" else 0)) for k in range(4) for side in "lr"},
+               "reg": (172, 173), "unknown": (173, 174)}
+SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
                 "note": (34, 36)}
 PARTY_RECORD = 36   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+
+
+def scan_code(n):
+    """A frame number as a letter and a digit (7 is "a7", 23 is "c3"): a field of digits alone is read as a number,
+    which drops a leading zero from the texture's name."""
+    return chr(97 + n // 10) + str(n % 10)
+
+
+def create_scan_hud():
+    """PokedexScannerRenderer as a HUD layer: scanlines, borders, corners and notch across the screen; the outer and
+    inner rings turning (frames rotated as renderScanRings turns them, picked by the script), the middle ring's segments
+    filling with the scan, the four info frames at their places with the level, species, size and types, the
+    registered frame, and the unknown mark and pointers while a scan runs."""
+    src, out = f"{guiMain}/pokedex/scan", f"{uiTextures}/scan"
+    fresh(out)
+    blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    def load(name): return Image.open(f"{src}/{name}.png").convert("RGBA")
+    corners = load("overlay_corners")
+    parts = {"lines": load("overlay_scanlines"), "top": load("overlay_border_top"), "bottom": load("overlay_border_bottom"),
+             "left": load("overlay_border_left"), "right": load("overlay_border_right"), "notch": load("overlay_notch"),
+             "tl": corners.crop((0, 0, 4, 4)), "tr": corners.crop((4, 0, 8, 4)), "bl": corners.crop((0, 4, 4, 8)), "br": corners.crop((4, 4, 8, 8))}
+    for name, image in parts.items(): image.save(f"{out}/{name}_on.png"); blank.save(f"{out}/{name}_of.png")
+    # the outer and inner rings, turned anticlockwise in 15 degree steps; the script picks the frame for the angle
+    # renderScanRings has reached (the outer half a degree an update, the inner one idle and ten on a Pokemon)
+    for ring in ("outer", "inner"):
+        image = load(f"scan_ring_{ring}")
+        for n in range(24): image.rotate(n * 15, resample=Image.NEAREST).save(f"{out}/{ring}_{scan_code(n)}.png")
+        blank.save(f"{out}/{ring}_of.png")
+    # the middle ring: a 100 by 1 spoke every 4.5 degrees, as many as the scan leaves (40 before it, then fewer)
+    spoke = load("scan_ring_middle")
+    for count in range(41):
+        ring = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+        line = Image.new("RGBA", (100, 100), (0, 0, 0, 0)); line.alpha_composite(spoke, (0, 50))
+        for i in range(count): ring.alpha_composite(line.rotate(-i * 4.5, resample=Image.NEAREST))
+        ring.save(f"{out}/mid_{scan_code(count)}.png")
+    blank.save(f"{out}/mid_of.png")
+    # the info frames at full focus (the last of their ten frames), a pair of images a frame, one a side
+    for k in range(4):
+        for side, name in (("l", "left"), ("r", "right")):
+            frame = load(f"scan_info_frame_{name}_{k}")
+            h = frame.height // 10
+            frame.crop((0, h * 9, frame.width, h * 10)).save(f"{out}/frame{k}{side}_{side}.png")
+            for other in "lrx":
+                if other != side: blank.save(f"{out}/frame{k}{side}_{other}.png")
+    center = load("scan_info_frame")
+    center.crop((0, 16 * 5, 128, 16 * 6)).save(f"{out}/center_y.png"); blank.save(f"{out}/center_n.png")
+    load("scan_unknown").save(f"{out}/unknown_y.png"); blank.save(f"{out}/unknown_n.png")
+    pointer = load("pointer")
+    pointer.crop((0, 0, 6, 10)).save(f"{out}/pointerl_y.png"); pointer.crop((6, 0, 12, 10)).save(f"{out}/pointerr_y.png")
+    blank.save(f"{out}/pointerl_n.png"); blank.save(f"{out}/pointerr_n.png")
+
+    T = "textures/ui/cobblemon/scan"
+    def field(name):
+        if name == "text": return f"(#preserved_text - ('%.{len(SCAN_MARKER) + SCAN_TEXT}s' * #preserved_text))"
+        a, b = SCAN_FIELDS[name]
+        a, b = len(SCAN_MARKER) + a, len(SCAN_MARKER) + b
+        return f"(('%.{b}s' * #preserved_text) - ('%.{a}s' * #preserved_text))"
+    def from_data(source, target):
+        return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
+                "source_property_name": source, "target_property_name": target}
+    def part(name, texture, source, size, anchor, offset=(0, 0), layer=1, **extra):
+        # before any scan record arrives the field is empty and the name is the bare prefix, which draws nothing
+        blank.save(f"{out}/{texture}.png")
+        return {name: {"type": "image", "size": size, "offset": list(offset), "anchor_from": anchor, "anchor_to": anchor, "layer": layer, "keep_ratio": False,
+                       "bindings": [from_data(f"('{T}/{texture}' + {field(source)})", "#texture")], **extra}}
+    def text(name, source, offset, size=(92, 10), scale=1.0):
+        return {name: {"type": "label", "size": list(size), "offset": list(offset), "anchor_from": "center", "anchor_to": "center", "layer": 6,
+                       "text_alignment": "center", "shadow": True, "font_scale_factor": scale, "text": "#value", "bindings": [from_data(source, "#value")]}}
+    controls = [
+        {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
+            {"binding_name": "#hud_title_text_string"},
+            {"binding_name": "#hud_title_text_string", "binding_name_override": "#preserved_text", "binding_condition": "visibility_changed"},
+            {"binding_type": "view", "source_property_name":
+                f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string))",
+             "target_property_name": "#visible"}]}},
+        part("lines", "lines_", "state", ["100%", "100%"], "top_left", tiled=True),
+        part("tl", "tl_", "state", [4, 4], "top_left", layer=2), part("tr", "tr_", "state", [4, 4], "top_right", layer=2),
+        part("bl", "bl_", "state", [4, 4], "bottom_left", layer=2), part("br", "br_", "state", [4, 4], "bottom_right", layer=2),
+        part("top", "top_", "state", ["100% - 8px", 3], "top_middle", layer=2), part("bottom", "bottom_", "state", ["100% - 8px", 3], "bottom_middle", layer=2),
+        part("left", "left_", "state", [3, "100% - 8px"], "left_middle", layer=2), part("right", "right_", "state", [3, "100% - 8px"], "right_middle", layer=2),
+        part("notch", "notch_", "state", [200, 12], "top_middle", layer=3),
+        part("outer", "outer_", "outer", [116, 116], "center", layer=4),
+        part("inner", "inner_", "ring", [84, 84], "center", layer=4),
+        part("middle", "mid_", "seg", [100, 100], "center", layer=4),
+        part("center", "center_", "reg", [128, 16], "center", layer=5),
+        text("registered", field("text"), (0, -3), size=(128, 10)),
+        part("unknown", "unknown_", "unknown", [34, 46], "center", (0, 2), layer=5),
+        part("pointer_l", "pointerl_", "unknown", [6, 10], "center", (-30 - 3, 0), layer=5),
+        part("pointer_r", "pointerr_", "unknown", [6, 10], "center", (30 + 3, 0), layer=5)]
+    # renderInfoFrames: each frame at its place for its side, its text centred in it
+    for k in range(4):
+        inner = k in (1, 2)
+        w, h = (120, 20) if inner else (92, 55)
+        y = {0: -80, 1: -26, 2: 6, 3: 25}[k]
+        for side in "lr":
+            x = (-177 if inner else -120) + (0 if side == "l" else (234 if inner else 148))
+            controls.append(part(f"frame{k}{side}", f"frame{k}{side}_", f"f{k}", [w, h], "center", (x + w / 2, y + h / 2), layer=5))
+            text_x = x + (((120 - 28) / 2 + (0 if side == "l" else 28)) if inner else 92 / 2)
+            text_y = y + {0: 5, 1: 4, 2: 8, 3: 42}[k]
+            controls.append(text(f"text{k}{side}", field(f"t{k}{side}"), (text_x, text_y + 5)))
+    return {"cobblemon_scan": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 
 def create_party_hud():
@@ -5728,8 +5837,11 @@ def create_party_hud():
         # a title carrying the party is data, not something to show
         "hud_title_text": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
             {"binding_name": "#hud_title_text_string", "binding_type": "global"},
-            {"binding_type": "view", "source_property_name": f"((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string)", "target_property_name": "#visible"}]}]},
+            {"binding_type": "view", "source_property_name": f"(((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string) and "
+                                                             f"((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
     }
+    hud.update(create_scan_hud())
+    hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_scan@hud.cobblemon_scan": {}}})
     with open(f"{resourcePack}/ui/hud_screen.json", "w", encoding="utf-8") as file: file.write(json.dumps(hud, indent=2))
     print("  party HUD: Cobblemon's party slots down the left edge")
 

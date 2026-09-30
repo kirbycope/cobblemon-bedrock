@@ -2189,27 +2189,88 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     }).catch(() => { });
 }
 
-function scan(player, entity, colour) {
-    register(player, entity.typeId, prop(entity, OWNER) === player.id ? 2 : 1);
-    try { player.playSound("random.orb", { pitch: 1.5 }); } catch (e) { }
-    const n = DEX_INDEX.get(entity.typeId), at = REGIONS[0].entries.indexOf(n);
-    openDex(player, colour, { region: 0, page: Math.max(0, Math.floor(at / 25)), filter: 0, chosen: n ?? null, tab: "i" });
+// The Pokedex in hand (PokedexUsageContext): a tap opens the register; held past five ticks it opens the scanner, the
+// HUD layer ui/hud_screen.json draws from a "cbm:scan" title (SCAN_FIELDS in port.py). Aimed at a Pokemon within ten
+// blocks it shows the info frames (level and species, and size and types once caught); a species the player has
+// not registered is scanned while it stays in the sights, the middle ring's segments running down, until it registers.
+const SCAN_MARKER = "cbm:scan", SCAN_OPEN_TICKS = 5, SCAN_RATE = (1 / 0.0175) / 20;   // scan progress an update, 57 updates a second
+const scanners = new Map();   // player id -> the scanner's state
+function scanTitle(player, text) {
+    try { player.onScreenDisplay.setTitle(SCAN_MARKER + text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
 }
-
-// right-clicking a Pokemon with a Pokedex scans it (in place of its panel); right-clicking anything else opens the register
-world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
-    if (!event.itemStack?.typeId.startsWith("cobblemon:pokedex_") || !POKEMON[event.target.typeId]) return;
-    event.cancel = true;
-    const { player, target } = event;
-    const colour = event.itemStack.typeId.slice("cobblemon:pokedex_".length);
-    system.run(() => scan(player, target, colour));
-});
+function scanSound(player, name) { try { player.playSound(`cobblemon.item.pokedex.${name}`); } catch (e) { } }
+function scanRecord(st) {
+    if (!st.open) return "of" + "of" + "of" + "of" + "xxxx" + " ".repeat(160) + "nn";
+    const target = st.target?.isValid ? st.target : null;
+    const seg = st.progress > 0 && st.progress >= 20 ? Math.max(0, Math.min(40, Math.floor((st.progress - 20) / 2))) : 40;
+    let sides = "xxxx", texts = Array(8).fill("");
+    if (target && st.focus >= 9) {
+        const info = POKEMON[target.typeId], owned = st.caught;
+        const lines = [`Lv.${prop(target, LEVEL) ?? info.level}`, info.name, "Size: M", `${info.types.map(cap).join("/")} Type`];
+        sides = st.sides.map((s, k) => (k < 2 || owned ? s : "x")).join("");
+        lines.forEach((line, k) => { if (sides[k] !== "x") texts[k * 2 + (sides[k] === "l" ? 0 : 1)] = line; });
+    }
+    const registered = st.registered > 0;
+    // frame numbers go as a letter and a digit (scan_code in port.py), since digits alone read as a number
+    const code = (n) => String.fromCharCode(97 + Math.floor(n / 10)) + (n % 10);
+    const frame = (angle) => code(Math.floor(angle / 15) % 24);
+    return "on" + frame(st.usage * 0.5) + frame(st.inner) + code(seg) + sides + texts.map((x) => padBytes(x, 20)).join("")
+        + (registered ? "y" : "n") + (st.progress > 0 && !registered ? "y" : "n") + (registered ? "Pokémon Registered" : "");
+}
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
-    const hit = player.getEntitiesFromViewDirection({ maxDistance: 12 }).find((h) => POKEMON[h.entity.typeId]);
-    const colour = itemStack.typeId.slice("cobblemon:pokedex_".length);
-    if (hit) scan(player, hit.entity, colour); else openDex(player, colour);
+    scanners.set(player.id, { player, colour: itemStack.typeId.slice("cobblemon:pokedex_".length), start: system.currentTick, open: false,
+                              target: null, focus: 0, progress: 0, registered: 0, usage: 0, inner: 0, sides: ["l", "r", "l", "r"], caught: false, sent: "" });
 });
+world.afterEvents.itemStopUse.subscribe(({ source: player, itemStack }) => {
+    if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
+    const st = scanners.get(player.id);
+    scanners.delete(player.id);
+    if (!st) return;
+    if (!st.open) { scanSound(player, "open"); openDex(player, st.colour); return; }
+    scanSound(player, "scan_close");
+    scanTitle(player, scanRecord({ open: false }));
+});
+system.runInterval(() => {
+    for (const [id, st] of scanners) {
+        const player = st.player;
+        if (!player.isValid) { scanners.delete(id); continue; }
+        if (!st.open && system.currentTick - st.start >= SCAN_OPEN_TICKS) { st.open = true; scanSound(player, "scan_open"); }
+        if (!st.open) continue;
+        // PokemonScanner.detectEntity: the nearest Pokemon in the sights within ten blocks, not behind a block
+        let target;
+        try {
+            const hit = player.getEntitiesFromViewDirection({ maxDistance: 10 }).find((h) => POKEMON[h.entity.typeId]);
+            const wall = player.getBlockFromViewDirection({ maxDistance: 10 });
+            const eye = player.getHeadLocation(), at = wall && { x: wall.block.location.x + wall.faceLocation.x, y: wall.block.location.y + wall.faceLocation.y, z: wall.block.location.z + wall.faceLocation.z };
+            if (hit && !(at && Math.hypot(at.x - eye.x, at.y - eye.y, at.z - eye.z) < hit.distance)) target = hit.entity;
+        } catch (e) { }
+        if (target?.id !== st.target?.id) {
+            st.target = target ?? null; st.progress = 0; st.focus = 0;
+            if (target) {
+                st.sides = [0, 1, 2, 3].map(() => (Math.random() < 0.5 ? "l" : "r"));
+                st.caught = dexStatus(player, target.typeId) >= 2;
+                st.fresh = dexStatus(player, target.typeId) === 0;
+                if (!st.fresh) scanSound(player, "scan_detail");
+            }
+        }
+        st.usage += SCAN_RATE; st.inner = (st.inner + SCAN_RATE * (st.target ? 10 : 1)) % 360;
+        if (st.target) st.focus = Math.min(9, st.focus + SCAN_RATE);
+        if (st.target && st.fresh) {
+            // a new species: the scan runs while it stays in the sights, and registers it at the end
+            st.progress += SCAN_RATE;
+            if (system.currentTick % 6 === 0) scanSound(player, "scan_loop");
+            if (st.progress >= 100) {
+                register(player, st.target.typeId, prop(st.target, OWNER) === player.id ? 2 : 1);
+                st.fresh = false; st.progress = 0; st.registered = 40;
+                scanSound(player, "scan_register_pokemon");
+            }
+        }
+        if (st.registered > 0) st.registered = Math.max(0, st.registered - SCAN_RATE);
+        const record = scanRecord(st);
+        if (record !== st.sent) { st.sent = record; scanTitle(player, record); }
+    }
+}, 1);
 
 // Apricorns (ApricornBlock): a fruit ripens a stage on one random tick in five; used when ripe it drops its apricorn,
 // and a sprout one time in ten, and starts again; broken when ripe it drops the same; bone meal ripens it a stage.
