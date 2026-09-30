@@ -4743,7 +4743,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1))] \
-    + [("desc", 120), ("item", 0)]
+    + [("desc", 120), ("evolve", 6), ("item", 0)]
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
 
@@ -4786,6 +4786,10 @@ def create_summary_ui():
         frame = frame.copy(); frame.alpha_composite(icon, (8, 4)); frame.save(f"{S}/{name}.png")
     Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/item.png"); Image.new("RGBA", (16, 16), (255, 255, 255, 70)).save(f"{S}/item_hover.png")
     Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none_hover.png")
+    Image.new("RGBA", (16, 16), (255, 255, 255, 50)).save(f"{S}/name_hover.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/name.png")
+    normal, hover = two(Image.open(f"{src}/summary_evolve_button.png").convert("RGBA")); normal.save(f"{S}/evolve.png"); hover.save(f"{S}/evolve_hover.png")
+    for d in ("up", "down"):
+        normal, hover = two(Image.open(f"{src}/summary_move_reorder_{d}.png").convert("RGBA")); normal.save(f"{S}/{d}.png"); hover.save(f"{S}/{d}_hover.png")
     # move tiles tinted by type, as the battle's are; the party health bar in 38 steps; the experience bar in 55
     move = Image.open(f"{src}/summary_move.png").convert("RGBA").crop((0, 0, 108, 22))
     overlay = Image.open(f"{src}/summary_move_overlay.png").convert("RGBA")
@@ -4902,6 +4906,12 @@ def create_summary_ui():
         buttons.append(button(3 + n, (216 + 6 + (51 if n % 2 else 0), 24 + 7 + 32 * (n // 2) + (8 if n % 2 else 0)), (46, 27)))
     buttons += [button(9, (3, 104), (16, 16)), button(10, (302, 145), (26, 13))]
     buttons += [button(11 + n, (77 + 13, 12 + 6 + 25 * n), (108, 22)) for n in range(4)]
+    # the evolve button (Summary's SummaryButton at 12, 145), the reorder arrows left of each move tile
+    # (ReorderMoveButton, 11.5 out, 6 and 13 down, at half size) and the name, which renames
+    buttons.append(button(15, (12, 145), (54, 15)))
+    for n in range(4):
+        buttons += [button(16 + 2 * n, (90 - 11.5, 18 + 25 * n + 6), (4, 3)), button(17 + 2 * n, (90 - 11.5, 18 + 25 * n + 13), (4, 3))]
+    buttons.append(button(24, (12, 14), (56, 9)))
     left = [image("portrait", "portrait_background", (6, 32), (66, 66), 1), image("base", "base", (0, 0), (331, 161), 2),
             fixed("lv", "Lv.", (6, 4.5)), label("level", field("level"), (19, 4.5), size=(30, 10)),
             label("name", field("name"), (12, 15), 0.75, size=(76, 10)),
@@ -4912,7 +4922,8 @@ def create_summary_ui():
             picture("type1", field("type1"), (21, 123), (18, 18), 5), picture("type2", field("type2"), (39, 123), (18, 18), 5),
             {"item_icon": {"type": "image", "offset": [3, 104], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
                            "bindings": bound(field("item"), "#texture")}},
-            fixed("item_l", "Held Item", (24, 114.5), 0.5)]
+            fixed("item_l", "Held Item", (24, 114.5), 0.5),
+            label("evolve", field("evolve"), (12, 148.5), 1.0, size=(54, 10), align="center", layer=9)]
     summary = {"type": "panel", "size": [331, 161], "anchor_from": "center", "anchor_to": "center",
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))", "target_property_name": "#visible"}],

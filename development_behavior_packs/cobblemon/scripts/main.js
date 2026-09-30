@@ -7,7 +7,7 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
-import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
+import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { PC_LAYOUT } from "./pc_layout.js";
@@ -1105,13 +1105,17 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const hit = { x: target.location.x - (d.x / len) * 0.5, y: target.location.y + 0.4, z: target.location.z - (d.z / len) * 0.5 };
         startCapture(player, projectile, target, hit, { x: d.x / len, y: 0, z: d.z / len });
     } else if (event.id === "cobblemon:claim") {
-        // for testing: the nearest wild Pokemon within 8 blocks becomes the running player's own, as a claim does
+        // for testing: "/scriptevent cobblemon:claim [level]" makes the running Pokemon, or else the nearest wild one within
+        // 8 blocks of the running player, that player's own, as a claim does, at the level given
         const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
-        const target = player?.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 8, closest: 1 })
-            .find((e) => prop(e, OWNER) === undefined);
-        if (!target) return;
+        const target = POKEMON[source.typeId] ? source : player?.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 8 })
+            .filter((e) => prop(e, OWNER) === undefined && !e.hasComponent(EntityComponentTypes.IsTamed))
+            .sort((a, b) => Math.hypot(a.location.x - player.location.x, a.location.z - player.location.z) - Math.hypot(b.location.x - player.location.x, b.location.z - player.location.z))[0];
+        if (!target || !player) return;
         try { target.triggerEvent("cobblemon:caught"); target.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
         setProp(target, OWNER, player.id);
+        const level = Number(event.message);
+        if (level >= 1 && level <= 100) { setProp(target, LEVEL, level); setProp(target, EXP, expFor(POKEMON[target.typeId].expGroup, level)); }
         player.sendMessage(`§a${POKEMON[target.typeId]?.name} is now yours.`);
     } else if (event.id === "cobblemon:summary") {
         showSummary(source);
@@ -2654,6 +2658,9 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     }
     const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
     v.item = icon ?? `${SUMMARY_UI}/blank`;
+    // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone
+    const evolution = mine && !battles.has(player.id) ? evolutionFor(source, player) : null;
+    v.evolve = evolution ? "Evolve" : "";
     const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
 
     const form = new ActionFormData().title("cbm:summary").body(body);
@@ -2662,11 +2669,40 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     form.button("item", `${SUMMARY_UI}/item`);
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
+    form.button("evolve", `${SUMMARY_UI}/${evolution ? "evolve" : "none"}`);
+    for (let n = 0; n < 4; n++) {
+        form.button("up", `${SUMMARY_UI}/${mine && tab === "m" && n > 0 && f.moves[n] ? "up" : "none"}`);
+        form.button("down", `${SUMMARY_UI}/${mine && tab === "m" && f.moves[n + 1] ? "down" : "none"}`);
+    }
+    form.button("name", `${SUMMARY_UI}/${mine ? "name" : "none"}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
-        if (pick >= 11) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
+        if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
+        if (pick === 15) { if (evolution) offerEvolution(player, source); return; }
+        if (pick >= 16 && pick <= 23 && mine && tab === "m") {
+            // MoveSlotWidget's reorder arrows swap a move with the one above or below it
+            const n = (pick - 16) >> 1, other = pick % 2 === 0 ? n - 1 : n + 1, ids = f.moves.map((mv) => mv.id);
+            if (other >= 0 && other < ids.length) {
+                [ids[n], ids[other]] = [ids[other], ids[n]];
+                setProp(source, MOVESET, JSON.stringify(ids));
+                showSummary(source, tab, player, selected === n ? other : selected === other ? n : selected); return;
+            }
+            showSummary(source, tab, player, selected); return;
+        }
+        if (pick === 24 && mine) {
+            // NicknameEntryWidget: a nickname up to 12 characters, an empty one clears it
+            new ModalFormData().title("Nickname").textField("Nickname", info.name, { defaultValue: tagged })
+                .show(player).then((q) => {
+                    if (!q.canceled && source.isValid) {
+                        const name = String(q.formValues?.[0] ?? "").trim().slice(0, 12);
+                        try { source.nameTag = name; } catch (e) { }
+                    }
+                    if (source.isValid) showSummary(source, tab, player, selected);
+                }).catch(() => { });
+            return;
+        }
         if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player); return; }
         if (pick === 9 && mine) {
             const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
