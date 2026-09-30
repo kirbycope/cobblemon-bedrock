@@ -8,13 +8,14 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
 import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
-import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, NATURES, TIME_RANGES } from "./data.js";
+import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
+import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST } from "./items.js";
-import { HELD_INDEX } from "./held_display.js";
+import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -2409,40 +2410,100 @@ function refreshHealth(entity) {
 }
 
 // the panel's Stats button: the Pokemon's own summary, as Cobblemon's summary screen shows it
-function showSummary(source) {
-    const player = world.getPlayers().find((p) => p.id === prop(source, OWNER)) ?? nearestPlayer(source);
-    const f = fighter(source);
+// The Summary, laid out by ui/server_form.json on Cobblemon's summary textures (see SUMMARY_LAYOUT in port.py): the
+// body carries every field at its width in bytes; the buttons are the Info, Moves and Stats tabs, the six party
+// slots, the held item slot (give what is in hand, or take what it holds) and the exit.
+const TYPE_ORDER = ["normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug",
+    "rock", "ghost", "dragon", "dark", "steel", "fairy"];
+const SUMMARY_UI = "textures/ui/cobblemon/summary";
+function utf8Length(ch) { const c = ch.codePointAt(0); return c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; }
+function padBytes(value, width) {
+    let out = "", used = 0;
+    for (const ch of String(value ?? "")) { const n = utf8Length(ch); if (used + n > width) break; out += ch; used += n; }
+    return out + " ".repeat(width - used);
+}
+const num = (n) => `\u00a7r${n}`;   // a colour code first, so the layout never reads the field as a number
+const typeCode = (type) => { const i = TYPE_ORDER.indexOf(type); return i < 0 ? "t--" : `t${String(i).padStart(2, "0")}`; };
+function summaryParty(player) {
+    try {
+        return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
+            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture"))
+            .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
+    } catch (e) { return []; }
+}
+
+function showSummary(source, tab = "i", viewer, selected = 0) {
+    const player = viewer ?? world.getPlayers().find((p) => p.id === prop(source, OWNER)) ?? nearestPlayer(source);
+    const f = source?.isValid ? fighter(source) : undefined;
     if (!player || !f) return;
     const info = f.info, mine = prop(source, OWNER) === player.id;
-    const lines = [`§l${info.name}§r  Lv ${f.level}   ${info.types.map(cap).join(" / ")}`,
-                   `Height ${(info.height / 10).toFixed(1)} m, weight ${(info.weight / 10).toFixed(1)} kg`];
-    if (mine) {
-        const nature = natureOf(source), minted = prop(source, "cobblemon:mint"), ivs = ivsOf(source), evs = evsOf(source);
-        lines.push(`Nature: ${natureName(nature)}${NATURES[minted] && minted !== nature ? ` (minted: ${natureName(minted)})` : ""}`,
-                   `Ability: ${abilityName(f.ability)}`, `Held item: ${heldItem(source) ? itemName(heldItem(source)) : "none"}`,
-                   `Friendship: ${friendshipOf(source)}`, "",
-                   "§lStats§r (IV, EV)");
-        const [up, down] = NATURES[effectiveNature(source)] ?? [];
-        for (const k of STAT_KEYS) {
-            const mark = up !== down && k === up ? "§c+§r" : up !== down && k === down ? "§9-§r" : " ";
-            lines.push(`${STAT_NAMES[k]}${mark} §l${f.stats[k]}§r   §7IV ${ivs[k]}, EV ${evs[k]}§r`);
-        }
-        lines.push(`EVs ${STAT_KEYS.reduce((t, k) => t + evs[k], 0)} / ${EV_TOTAL_MAX}`);
-    } else {
-        lines.push("", "§lBase stats§r", STAT_KEYS.map((k) => `${STAT_NAMES[k]} ${info.stats[k]}`).join("  "));
+    const v = { tab };
+    const tagged = source.nameTag && source.nameTag !== "NPC" ? source.nameTag : "";
+    Object.assign(v, {
+        level: num(f.level), name: tagged || info.name, gender: { male: "m", female: "f" }[genderOf(source)] ?? "o",
+        ball: `b${String(Math.max(0, Object.keys(BALLS).indexOf(prop(source, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"))).padStart(2, "0")}`,
+        type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), status: prop(source, FAINTED) ? "fnt" : "non",
+        dex: num(String(info.dex ?? DEX_INDEX.get(source.typeId) + 1 ?? 0).padStart(4, "0")), species: info.name,
+        types: info.types.map(cap).join(" / "),
+        ot: mine ? player.name : (world.getPlayers().find((p) => p.id === prop(source, OWNER))?.name ?? "-"),
+        nature: mine ? natureName(effectiveNature(source)) : "-", ability: abilityName(f.ability), desc: ABILITY_DESC[f.ability] ?? "",
+        friendship: num(friendshipOf(source)),
+    });
+    const group = info.expGroup, exp = Math.max(prop(source, EXP) ?? 0, expFor(group, f.level));
+    const span = Math.max(1, expFor(group, f.level + 1) - expFor(group, f.level));
+    v.exp = num(exp); v.tonext = num(f.level >= 100 ? 0 : expFor(group, f.level + 1) - exp);
+    v.expbar = `x${String(Math.round(Math.min(1, (exp - expFor(group, f.level)) / span) * 55)).padStart(2, "0")}`;
+    f.moves.slice(0, 4).forEach((mv, n) => { v[`m${n}name`] = mv.name; v[`m${n}type`] = typeCode(mv.type); v[`m${n}pp`] = num(`${mv.left}/${mv.pp}`); });
+    for (let n = f.moves.length; n < 4; n++) { v[`m${n}type`] = "t--"; }
+    for (let n = 0; n < 4; n++) v[`m${n}sel`] = n === selected && f.moves[n] ? "y" : "n";
+    const chosen = f.moves[selected];
+    if (chosen) {
+        // a lone "-" reads as a number and a lone "%" as a format, so both get the colour code and the % is doubled
+        v.mpower = num(chosen.power > 0 ? chosen.power : "-");
+        v.macc = num(chosen.accuracy === true || !chosen.accuracy ? "-" : `${chosen.accuracy}%%`);
+        v.meff = num(chosen.secondary?.chance ? `${chosen.secondary.chance}%%` : "-");
+        v.mdesc = MOVE_DESC[chosen.id] ?? "";
     }
-    const form = new ActionFormData().title(info.name).body(lines.join("\n"));
-    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
-    const hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
-    const buttons = [];
-    if (mine && hand && !HOLD_BLACKLIST.includes(hand)) buttons.push(["give", `Give ${itemName(hand)}`]);
-    if (mine && heldItem(source)) buttons.push(["take", "Take Item"]);
-    for (const [, label] of buttons) form.button(label);
-    form.button("Close");
+    const ivs = ivsOf(source), evs = evsOf(source), [up, down] = NATURES[effectiveNature(source)] ?? [];
+    for (const k of STAT_KEYS) {
+        v[`s${k}val`] = num(f.stats[k]); v[`s${k}iv`] = mine ? num(ivs[k]) : ""; v[`s${k}ev`] = mine ? num(evs[k]) : "";
+        v[`s${k}mark`] = up !== down && k === up ? "u" : up !== down && k === down ? "d" : "n";
+    }
+    const party = summaryParty(player);
+    for (let n = 0; n < 6; n++) {
+        const e = party[n];
+        if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; continue; }
+        const pi = POKEMON[e.typeId];
+        let share = 1;
+        try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
+        v[`p${n}name`] = e.nameTag && e.nameTag !== "NPC" ? e.nameTag : pi.name;
+        v[`p${n}level`] = `Lv. ${prop(e, LEVEL) ?? pi.level}`;
+        v[`p${n}hp`] = `q${String(prop(e, FAINTED) ? 0 : Math.round(share * 37)).padStart(2, "0")}`;
+        v[`p${n}gender`] = { male: "m", female: "f" }[genderOf(e)] ?? "o";
+    }
+    const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
+    v.item = icon ?? `${SUMMARY_UI}/blank`;
+    const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+
+    const form = new ActionFormData().title("cbm:summary").body(body);
+    for (const [key, name] of [["i", "info"], ["m", "moves"], ["s", "stats"]]) form.button(name, `${SUMMARY_UI}/tab_${name}${tab === key ? "_on" : ""}`);
+    for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
+    form.button("item", `${SUMMARY_UI}/item`);
+    form.button("exit", `${SUMMARY_UI}/exit`);
+    for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
     form.show(player).then((r) => {
-        const pick = r.canceled ? null : buttons[r.selection]?.[0];
-        if (pick === "take") takeHeld(source);
-        if (pick === "give") giveHeld(player, source);
+        if (r.canceled || r.selection === 10) return;
+        const pick = r.selection;
+        if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
+        if (pick >= 11) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
+        if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player); return; }
+        if (pick === 9 && mine) {
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            const hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
+            if (hand && !HOLD_BLACKLIST.includes(hand)) giveHeld(player, source);
+            else if (heldItem(source)) takeHeld(source);
+        }
+        showSummary(source, tab, player, selected);
     }).catch(() => { });
 }
 

@@ -15,7 +15,7 @@
             "factory": {
               "name": "server_form_factory",
               "control_ids": {
-                "long_form": "@server_form.cobblemon_battle"
+                "long_form": "@server_form.cobblemon_forms"
               }
             }
           }
@@ -34,10 +34,25 @@
           },
           {
             "binding_type": "view",
-            "source_property_name": "((#title_text - 'cbm:battle') = #title_text)",
+            "source_property_name": "((#title_text - 'cbm:') = #title_text)",
             "target_property_name": "#visible"
           }
         ]
+      }
+    ]
+  },
+  "cobblemon_forms": {
+    "type": "panel",
+    "size": [
+      "100%",
+      "100%"
+    ],
+    "controls": [
+      {
+        "battle@server_form.cobblemon_battle": {}
+      },
+      {
+        "summary@server_form.cobblemon_summary": {}
       }
     ]
   },
@@ -4851,6 +4866,5263 @@
           "offset": [
             -8,
             4
+          ]
+        }
+      }
+    ]
+  },
+  "cobblemon_summary": {
+    "type": "panel",
+    "size": [
+      331,
+      161
+    ],
+    "anchor_from": "center",
+    "anchor_to": "center",
+    "bindings": [
+      {
+        "binding_name": "#title_text"
+      },
+      {
+        "binding_type": "view",
+        "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))",
+        "target_property_name": "#visible"
+      }
+    ],
+    "controls": [
+      {
+        "portrait": {
+          "type": "image",
+          "texture": "textures/ui/cobblemon/summary/portrait_background",
+          "offset": [
+            6,
+            32
+          ],
+          "size": [
+            66,
+            66
+          ],
+          "layer": 1,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "base": {
+          "type": "image",
+          "texture": "textures/ui/cobblemon/summary/base",
+          "offset": [
+            0,
+            0
+          ],
+          "size": [
+            331,
+            161
+          ],
+          "layer": 2,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "lv": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            6,
+            4.5
+          ],
+          "size": [
+            100,
+            10
+          ],
+          "layer": 6,
+          "font_scale_factor": 1.0,
+          "text_alignment": "left",
+          "shadow": true,
+          "text": "Lv."
+        }
+      },
+      {
+        "level": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            19,
+            4.5
+          ],
+          "size": [
+            30,
+            10
+          ],
+          "layer": 6,
+          "font_scale_factor": 1.0,
+          "text_alignment": "left",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.7s' * #form_text) - ('%.1s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "name": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            12,
+            15
+          ],
+          "size": [
+            76,
+            10
+          ],
+          "layer": 6,
+          "font_scale_factor": 0.75,
+          "text_alignment": "left",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.23s' * #form_text) - ('%.7s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "ball": {
+          "type": "image",
+          "offset": [
+            3.5,
+            15
+          ],
+          "size": [
+            8,
+            8
+          ],
+          "layer": 4,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.27s' * #form_text) - ('%.24s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "gender": {
+          "type": "image",
+          "offset": [
+            69,
+            15
+          ],
+          "size": [
+            5,
+            7
+          ],
+          "layer": 4,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.24s' * #form_text) - ('%.23s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "status": {
+          "type": "image",
+          "offset": [
+            34,
+            4
+          ],
+          "size": [
+            39,
+            7
+          ],
+          "layer": 4,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/st' + (('%.36s' * #form_text) - ('%.33s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "types_bg": {
+          "type": "image",
+          "texture": "textures/ui/cobblemon/summary/type_spacer_double",
+          "offset": [
+            5.5,
+            126
+          ],
+          "size": [
+            67,
+            12
+          ],
+          "layer": 3,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "type1": {
+          "type": "image",
+          "offset": [
+            21,
+            123
+          ],
+          "size": [
+            18,
+            18
+          ],
+          "layer": 5,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.30s' * #form_text) - ('%.27s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "type2": {
+          "type": "image",
+          "offset": [
+            39,
+            123
+          ],
+          "size": [
+            18,
+            18
+          ],
+          "layer": 5,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.33s' * #form_text) - ('%.30s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "item_icon": {
+          "type": "image",
+          "offset": [
+            3,
+            104
+          ],
+          "size": [
+            16,
+            16
+          ],
+          "layer": 4,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(#form_text - ('%.838s' * #form_text))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "item_l": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            24,
+            114.5
+          ],
+          "size": [
+            100,
+            10
+          ],
+          "layer": 6,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": true,
+          "text": "Held Item"
+        }
+      },
+      {
+        "info": {
+          "type": "panel",
+          "size": [
+            134,
+            148
+          ],
+          "offset": [
+            77,
+            12
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "((('%.1s' * #form_text) - ('%.0s' * #form_text)) = 'i')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "base": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/info_base",
+                "offset": [
+                  0,
+                  0
+                ],
+                "size": [
+                  134,
+                  148
+                ],
+                "layer": 2,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "l0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  5.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Pokedex No."
+              }
+            },
+            {
+              "v0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  5.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.43s' * #form_text) - ('%.36s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "l1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  20.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Species"
+              }
+            },
+            {
+              "v1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  20.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.59s' * #form_text) - ('%.43s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "l2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  35.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Type"
+              }
+            },
+            {
+              "v2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  35.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.79s' * #form_text) - ('%.59s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "l3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  50.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "OT"
+              }
+            },
+            {
+              "v3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  50.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.95s' * #form_text) - ('%.79s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "l4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  65.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Nature"
+              }
+            },
+            {
+              "v4": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  65.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.113s' * #form_text) - ('%.95s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "l5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  80.5
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Ability"
+              }
+            },
+            {
+              "v5": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  53,
+                  80.5
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.62,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.133s' * #form_text) - ('%.113s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "desc": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  94.5
+                ],
+                "size": [
+                  118,
+                  24
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": false,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.838s' * #form_text) - ('%.718s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "exp_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  72.5,
+                  125
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Exp. Points"
+              }
+            },
+            {
+              "exp": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  72.5,
+                  125
+                ],
+                "size": [
+                  54.5,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.145s' * #form_text) - ('%.133s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "next_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  72.5,
+                  137
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "To Next Lv."
+              }
+            },
+            {
+              "next": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  72.5,
+                  137
+                ],
+                "size": [
+                  54.5,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.157s' * #form_text) - ('%.145s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "expbar": {
+                "type": "image",
+                "offset": [
+                  72,
+                  131
+                ],
+                "size": [
+                  55,
+                  1
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.160s' * #form_text) - ('%.157s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "friend_l": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  125
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Friendship"
+              }
+            },
+            {
+              "friend": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  8,
+                  137
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.166s' * #form_text) - ('%.160s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "moves": {
+          "type": "panel",
+          "size": [
+            134,
+            148
+          ],
+          "offset": [
+            77,
+            12
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "((('%.1s' * #form_text) - ('%.0s' * #form_text)) = 'm')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "base": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/moves_base",
+                "offset": [
+                  0,
+                  0
+                ],
+                "size": [
+                  134,
+                  148
+                ],
+                "layer": 2,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "tile0": {
+                "type": "image",
+                "offset": [
+                  13,
+                  6
+                ],
+                "size": [
+                  108,
+                  22
+                ],
+                "layer": 3,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/move_' + (('%.185s' * #form_text) - ('%.182s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "type0": {
+                "type": "image",
+                "offset": [
+                  15,
+                  8
+                ],
+                "size": [
+                  18,
+                  18
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.185s' * #form_text) - ('%.182s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "name0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  41,
+                  9
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.182s' * #form_text) - ('%.166s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "pp0": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  73,
+                  19
+                ],
+                "size": [
+                  45,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.194s' * #form_text) - ('%.185s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "tile1": {
+                "type": "image",
+                "offset": [
+                  13,
+                  31
+                ],
+                "size": [
+                  108,
+                  22
+                ],
+                "layer": 3,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/move_' + (('%.214s' * #form_text) - ('%.211s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "type1": {
+                "type": "image",
+                "offset": [
+                  15,
+                  33
+                ],
+                "size": [
+                  18,
+                  18
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.214s' * #form_text) - ('%.211s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "name1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  41,
+                  34
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.211s' * #form_text) - ('%.195s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "pp1": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  73,
+                  44
+                ],
+                "size": [
+                  45,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.223s' * #form_text) - ('%.214s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "tile2": {
+                "type": "image",
+                "offset": [
+                  13,
+                  56
+                ],
+                "size": [
+                  108,
+                  22
+                ],
+                "layer": 3,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/move_' + (('%.243s' * #form_text) - ('%.240s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "type2": {
+                "type": "image",
+                "offset": [
+                  15,
+                  58
+                ],
+                "size": [
+                  18,
+                  18
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.243s' * #form_text) - ('%.240s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "name2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  41,
+                  59
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.240s' * #form_text) - ('%.224s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "pp2": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  73,
+                  69
+                ],
+                "size": [
+                  45,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.252s' * #form_text) - ('%.243s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "tile3": {
+                "type": "image",
+                "offset": [
+                  13,
+                  81
+                ],
+                "size": [
+                  108,
+                  22
+                ],
+                "layer": 3,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/move_' + (('%.272s' * #form_text) - ('%.269s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "type3": {
+                "type": "image",
+                "offset": [
+                  15,
+                  83
+                ],
+                "size": [
+                  18,
+                  18
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.272s' * #form_text) - ('%.269s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "name3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  41,
+                  84
+                ],
+                "size": [
+                  80,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.269s' * #form_text) - ('%.253s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "pp3": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  73,
+                  94
+                ],
+                "size": [
+                  45,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.281s' * #form_text) - ('%.272s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "icon_power": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/icon_power",
+                "offset": [
+                  7,
+                  114.5
+                ],
+                "size": [
+                  5,
+                  5
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "label_power": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  115
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Power"
+              }
+            },
+            {
+              "value_power": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  115
+                ],
+                "size": [
+                  48.5,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.290s' * #form_text) - ('%.282s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "icon_acc": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/icon_acc",
+                "offset": [
+                  7,
+                  125.5
+                ],
+                "size": [
+                  5,
+                  5
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "label_acc": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  126
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Accuracy"
+              }
+            },
+            {
+              "value_acc": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  126
+                ],
+                "size": [
+                  48.5,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.298s' * #form_text) - ('%.290s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "icon_eff": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/icon_eff",
+                "offset": [
+                  7,
+                  136.5
+                ],
+                "size": [
+                  5,
+                  5
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "label_eff": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  137
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Effect"
+              }
+            },
+            {
+              "value_eff": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  14,
+                  137
+                ],
+                "size": [
+                  48.5,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.306s' * #form_text) - ('%.298s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "move_desc": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  70,
+                  115
+                ],
+                "size": [
+                  60,
+                  30
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": false,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.466s' * #form_text) - ('%.306s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "sel0": {
+                "type": "image",
+                "offset": [
+                  12,
+                  5
+                ],
+                "size": [
+                  110,
+                  24
+                ],
+                "layer": 5,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/sel_' + (('%.195s' * #form_text) - ('%.194s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "sel1": {
+                "type": "image",
+                "offset": [
+                  12,
+                  30
+                ],
+                "size": [
+                  110,
+                  24
+                ],
+                "layer": 5,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/sel_' + (('%.224s' * #form_text) - ('%.223s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "sel2": {
+                "type": "image",
+                "offset": [
+                  12,
+                  55
+                ],
+                "size": [
+                  110,
+                  24
+                ],
+                "layer": 5,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/sel_' + (('%.253s' * #form_text) - ('%.252s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "sel3": {
+                "type": "image",
+                "offset": [
+                  12,
+                  80
+                ],
+                "size": [
+                  110,
+                  24
+                ],
+                "layer": 5,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/sel_' + (('%.282s' * #form_text) - ('%.281s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "stats": {
+          "type": "panel",
+          "size": [
+            134,
+            148
+          ],
+          "offset": [
+            77,
+            12
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "((('%.1s' * #form_text) - ('%.0s' * #form_text)) = 's')",
+              "target_property_name": "#visible"
+            }
+          ],
+          "controls": [
+            {
+              "base": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/stats_other_base",
+                "offset": [
+                  0,
+                  0
+                ],
+                "size": [
+                  134,
+                  148
+                ],
+                "layer": 2,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "h_iv": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  85,
+                  6
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "IV"
+              }
+            },
+            {
+              "h_ev": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  106,
+                  6
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "EV"
+              }
+            },
+            {
+              "lhp": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  14
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "HP"
+              }
+            },
+            {
+              "mhp": {
+                "type": "image",
+                "offset": [
+                  44,
+                  15
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.484s' * #form_text) - ('%.483s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vhp": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  14
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.472s' * #form_text) - ('%.466s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ihp": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  15
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.477s' * #form_text) - ('%.472s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ehp": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  15
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.483s' * #form_text) - ('%.477s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "latk": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  29
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Attack"
+              }
+            },
+            {
+              "matk": {
+                "type": "image",
+                "offset": [
+                  44,
+                  30
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.502s' * #form_text) - ('%.501s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vatk": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  29
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.490s' * #form_text) - ('%.484s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "iatk": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  30
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.495s' * #form_text) - ('%.490s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "eatk": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  30
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.501s' * #form_text) - ('%.495s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ldef": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  44
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Defence"
+              }
+            },
+            {
+              "mdef": {
+                "type": "image",
+                "offset": [
+                  44,
+                  45
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.520s' * #form_text) - ('%.519s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vdef": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  44
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.508s' * #form_text) - ('%.502s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "idef": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  45
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.513s' * #form_text) - ('%.508s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "edef": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  45
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.519s' * #form_text) - ('%.513s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "lspa": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  59
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp. Atk"
+              }
+            },
+            {
+              "mspa": {
+                "type": "image",
+                "offset": [
+                  44,
+                  60
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.538s' * #form_text) - ('%.537s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vspa": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  59
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.526s' * #form_text) - ('%.520s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ispa": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  60
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.531s' * #form_text) - ('%.526s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "espa": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  60
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.537s' * #form_text) - ('%.531s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "lspd": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  74
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Sp. Def"
+              }
+            },
+            {
+              "mspd": {
+                "type": "image",
+                "offset": [
+                  44,
+                  75
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.556s' * #form_text) - ('%.555s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vspd": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  74
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ispd": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  75
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.549s' * #form_text) - ('%.544s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "espd": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  75
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.555s' * #form_text) - ('%.549s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "lspe": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  10,
+                  89
+                ],
+                "size": [
+                  100,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "left",
+                "shadow": true,
+                "text": "Speed"
+              }
+            },
+            {
+              "mspe": {
+                "type": "image",
+                "offset": [
+                  44,
+                  90
+                ],
+                "size": [
+                  8,
+                  6
+                ],
+                "layer": 4,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.574s' * #form_text) - ('%.573s' * #form_text)))",
+                    "target_property_name": "#texture"
+                  }
+                ]
+              }
+            },
+            {
+              "vspe": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  54,
+                  89
+                ],
+                "size": [
+                  26,
+                  10
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.75,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "ispe": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  80,
+                  90
+                ],
+                "size": [
+                  15,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.567s' * #form_text) - ('%.562s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
+              "espe": {
+                "type": "label",
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  98,
+                  90
+                ],
+                "size": [
+                  20,
+                  5
+                ],
+                "layer": 6,
+                "font_scale_factor": 0.5,
+                "text_alignment": "right",
+                "shadow": true,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "text": "#value",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "(('%.573s' * #form_text) - ('%.567s' * #form_text))",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "party_base": {
+          "type": "image",
+          "texture": "textures/ui/cobblemon/summary/party_background",
+          "offset": [
+            216,
+            24
+          ],
+          "size": [
+            114,
+            113
+          ],
+          "layer": 2,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left"
+        }
+      },
+      {
+        "pname0": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            226,
+            51
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.586s' * #form_text) - ('%.574s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel0": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            243,
+            44
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.593s' * #form_text) - ('%.586s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php0": {
+          "type": "image",
+          "offset": [
+            226,
+            56
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.596s' * #form_text) - ('%.593s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender0": {
+          "type": "image",
+          "offset": [
+            262,
+            51
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.597s' * #form_text) - ('%.596s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pname1": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            277,
+            59
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.610s' * #form_text) - ('%.598s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel1": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            294,
+            52
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.617s' * #form_text) - ('%.610s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php1": {
+          "type": "image",
+          "offset": [
+            277,
+            64
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.620s' * #form_text) - ('%.617s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender1": {
+          "type": "image",
+          "offset": [
+            313,
+            59
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.621s' * #form_text) - ('%.620s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pname2": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            226,
+            83
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.634s' * #form_text) - ('%.622s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel2": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            243,
+            76
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.641s' * #form_text) - ('%.634s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php2": {
+          "type": "image",
+          "offset": [
+            226,
+            88
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.644s' * #form_text) - ('%.641s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender2": {
+          "type": "image",
+          "offset": [
+            262,
+            83
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.645s' * #form_text) - ('%.644s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pname3": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            277,
+            91
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.658s' * #form_text) - ('%.646s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel3": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            294,
+            84
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.665s' * #form_text) - ('%.658s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php3": {
+          "type": "image",
+          "offset": [
+            277,
+            96
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.668s' * #form_text) - ('%.665s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender3": {
+          "type": "image",
+          "offset": [
+            313,
+            91
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.669s' * #form_text) - ('%.668s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pname4": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            226,
+            115
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.682s' * #form_text) - ('%.670s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel4": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            243,
+            108
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.689s' * #form_text) - ('%.682s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php4": {
+          "type": "image",
+          "offset": [
+            226,
+            120
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.692s' * #form_text) - ('%.689s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender4": {
+          "type": "image",
+          "offset": [
+            262,
+            115
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.693s' * #form_text) - ('%.692s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pname5": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            277,
+            123
+          ],
+          "size": [
+            40,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "left",
+          "shadow": false,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.706s' * #form_text) - ('%.694s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "plevel5": {
+          "type": "label",
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            294,
+            116
+          ],
+          "size": [
+            20,
+            5
+          ],
+          "layer": 8,
+          "font_scale_factor": 0.5,
+          "text_alignment": "center",
+          "shadow": true,
+          "color": [
+            1,
+            1,
+            1
+          ],
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(('%.713s' * #form_text) - ('%.706s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
+        }
+      },
+      {
+        "php5": {
+          "type": "image",
+          "offset": [
+            277,
+            128
+          ],
+          "size": [
+            37,
+            1
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/' + (('%.716s' * #form_text) - ('%.713s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "pgender5": {
+          "type": "image",
+          "offset": [
+            313,
+            123
+          ],
+          "size": [
+            2.5,
+            3.5
+          ],
+          "layer": 8,
+          "keep_ratio": false,
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "('textures/ui/cobblemon/summary/g' + (('%.717s' * #form_text) - ('%.716s' * #form_text)))",
+              "target_property_name": "#texture"
+            }
+          ]
+        }
+      },
+      {
+        "buttons": {
+          "type": "collection_panel",
+          "size": [
+            331,
+            161
+          ],
+          "collection_name": "form_buttons",
+          "controls": [
+            {
+              "button_0": {
+                "type": "button",
+                "size": [
+                  39,
+                  13
+                ],
+                "offset": [
+                  78,
+                  -1
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 0,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_1": {
+                "type": "button",
+                "size": [
+                  39,
+                  13
+                ],
+                "offset": [
+                  109,
+                  -1
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 1,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_2": {
+                "type": "button",
+                "size": [
+                  39,
+                  13
+                ],
+                "offset": [
+                  140,
+                  -1
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 2,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_3": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  222,
+                  31
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 3,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_4": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  273,
+                  39
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 4,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_5": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  222,
+                  63
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 5,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_6": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  273,
+                  71
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 6,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_7": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  222,
+                  95
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 7,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_8": {
+                "type": "button",
+                "size": [
+                  46,
+                  27
+                ],
+                "offset": [
+                  273,
+                  103
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 8,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_9": {
+                "type": "button",
+                "size": [
+                  16,
+                  16
+                ],
+                "offset": [
+                  3,
+                  104
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 9,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_10": {
+                "type": "button",
+                "size": [
+                  26,
+                  13
+                ],
+                "offset": [
+                  302,
+                  145
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 10,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_11": {
+                "type": "button",
+                "size": [
+                  108,
+                  22
+                ],
+                "offset": [
+                  90,
+                  18
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 11,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_12": {
+                "type": "button",
+                "size": [
+                  108,
+                  22
+                ],
+                "offset": [
+                  90,
+                  43
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 12,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_13": {
+                "type": "button",
+                "size": [
+                  108,
+                  22
+                ],
+                "offset": [
+                  90,
+                  68
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 13,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_14": {
+                "type": "button",
+                "size": [
+                  108,
+                  22
+                ],
+                "offset": [
+                  90,
+                  93
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 14,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
           ]
         }
       }
