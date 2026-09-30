@@ -4,7 +4,7 @@
                            and cries, download the spawn egg sprites, then generate everything below
     python port.py --fix   regenerate only: repair the copied animations and models, then rebuild the
                            animation controllers, render controllers, client entities, behavior
-                           entities, loot tables, dialogue scenes and sound definitions
+                           entities, loot tables, NPC dialogue scenes and sound definitions
 
 The generated files come from Cobblemon's own data rather than from a template:
 
@@ -12,8 +12,7 @@ The generated files come from Cobblemon's own data rather than from a template:
   drops, what it evolves into) comes from its species file under data/cobblemon/species
 - its animation controller comes from the animation names its own animation file carries
   (ground_idle, ground_walk, air_fly, water_swim, sleep, blink and so on)
-- its interaction panel is a Bedrock NPC dialogue scene, so right-clicking a Pokemon opens a panel
-  with its dex entry, its types and stats and a button that plays its cry
+- its interact wheel and name label are the script's (scripts/main.js), on Cobblemon's own GUI textures
 """
 import collections
 import glob
@@ -23,6 +22,7 @@ import os
 import re
 import shutil
 import sys
+import textwrap
 import urllib.request
 
 from PIL import Image
@@ -4104,6 +4104,15 @@ def create_general_items():
         file.write("export const MINTS = " + json.dumps({k: v for k, v in mints.items() if k in defined}) + ";" + chr(10))
         file.write("export const EV_BERRIES = " + json.dumps({k: v for k, v in ev_berries.items() if k in defined}) + ";" + chr(10))
         file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
+        # CobblemonTooltipGenerator: the gray lines under an item's name, its ".tooltip" key then "_1", "_2" and on,
+        # shown as the item's lore, wrapped to Bedrock's 50 characters a line (the colour code counts)
+        tooltips = {}
+        for item in sorted(defined):
+            key = f"item.cobblemon.{item.split(':', 1)[1]}.tooltip"
+            texts = ([lang[key]] if key in lang else []) + [lang[f"{key}_{i}"] for i in range(1, 20) if f"{key}_{i}" in lang]
+            lines = [line for text in texts for line in textwrap.wrap(text, 46)][:20]
+            if lines: tooltips[item] = lines
+        file.write("export const TOOLTIPS = " + json.dumps(tooltips, ensure_ascii=False) + ";" + chr(10))
     print(f"Create items complete: {len(made)} items, {len(held)} held items, {len(medicine)} medicines.")
     return made
 

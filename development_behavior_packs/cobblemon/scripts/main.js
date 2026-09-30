@@ -17,7 +17,7 @@ import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
-import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST } from "./items.js";
+import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 
 const battles = new Map(); // player id -> battle
@@ -560,6 +560,20 @@ function nicknameOf(entity) {
     try { tag = entity.nameTag ?? ""; } catch (e) { }
     return tag && tag !== "NPC" && !tag.includes("Lv. ") ? tag : "";
 }
+
+// Item tooltips (CobblemonTooltipGenerator): Cobblemon's gray lines under an item's name, set as its lore when it
+// turns up in a player's inventory without them
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+        if (!inv) continue;
+        for (let i = 0; i < inv.size; i++) {
+            const item = inv.getItem(i), lines = item && TOOLTIPS[item.typeId];
+            if (!lines || item.getLore().length) continue;
+            try { item.setLore(lines.map((line) => `§7${line}`)); inv.setItem(i, item); } catch (e) { }
+        }
+    }
+}, 40);
 
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
 // Pokemon, whatever is in hand; a plain right-click on a wild Pokemon with an empty hand challenges it, as Cobblemon's
