@@ -2288,14 +2288,29 @@ system.runInterval(() => {
 // The Pokedex, laid out by ui/server_form.json on Cobblemon's Pokedex textures (DEX_LAYOUT in port.py): the region
 // and its arrows, a page of 25 entries, and the chosen entry with its Info, Abilities and Stats tabs and the cry.
 const DEX_FILTERS = [["All", () => true], ["Seen", (st) => st !== "0"], ["Owned", (st) => st === "2"], ["Unregistered", (st) => st === "0"]];
+// SearchFilter: an entry matches when its species is registered and, by species, its name holds the search; by ability
+// or move, only once caught, one of its abilities or level-up moves does. Cobblemon's fourth kind, drops, is left out:
+// the port keeps no drop lists in the script's data
+const DEX_SEARCH = [["species", "Species Name"], ["abilities", "Ability"], ["moves", "Move Name"]];
+function dexMatches(n, known, search, by) {
+    if (!search) return true;
+    const info = POKEMON[NATIONAL[n]], q = search.trim().toLowerCase();
+    if (!info || known === "0") return false;
+    if (by === 0) return info.name.toLowerCase().includes(q);
+    if (known !== "2") return false;
+    if (by === 1) return [...(info.abilities ?? []), ...(info.hidden ?? [])].some((a) => abilityName(a).toLowerCase().includes(q));
+    return (info.learnset ?? []).some(([, id]) => (MOVES[id]?.name ?? "").toLowerCase().includes(q));
+}
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
     const s = dexString(player), region = REGIONS[state.region];
-    const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n]));
+    state.by ??= 0;
+    const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n]) && dexMatches(n, s[n], state.search, state.by));
     const pages = Math.max(1, Math.ceil(entries.length / 25));
     state.page = Math.min(state.page, pages - 1);
     const shown = entries.slice(state.page * 25, state.page * 25 + 25);
     const v = {
         colour: { red: "r", blue: "b", green: "g", pink: "p", yellow: "y", black: "k", white: "w" }[colour] ?? "r", region: region.name, filter: DEX_FILTERS[state.filter][0],
+        search: state.search ? `§f${state.search}` : "§8Search",
         seen: num(region.entries.filter((n) => s[n] !== "0").length), caught: num(region.entries.filter((n) => s[n] === "2").length),
     };
     for (let i = 0; i < 25; i++) {
@@ -2333,6 +2348,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     for (const [letter, name] of [["i", "info"], ["a", "abilities"], ["s", "stats"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
     form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" ? "cry" : "none"}`);
     form.button("filter", `${PC_UI}/pokedex/filter`);
+    form.button("search", `${PC_UI}/pokedex/filter`).button("search by", `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);
     form.show(player).then((r) => {
         if (r.canceled) return;
         const pick = r.selection, again = () => openDex(player, colour, state);
@@ -2343,6 +2359,16 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         else if (pick <= 31) state.tab = "ias"[pick - 29];
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
+        else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; player.sendMessage(`§7Search by ${DEX_SEARCH[state.by][1]}`); }
+        else if (pick === 34) {
+            // the search box: forms cannot type into a layout, so it asks, up to SearchWidget's 23 characters
+            new ModalFormData().title(`Search by ${DEX_SEARCH[state.by][1]}`).textField("Search", "", { defaultValue: state.search ?? "" })
+                .show(player).then((q) => {
+                    if (!q.canceled) { state.search = String(q.formValues?.[0] ?? "").replace(/[%§]/g, "").slice(0, 23); state.page = 0; }
+                    again();
+                }).catch(() => { });
+            return;
+        }
         again();
     }).catch(() => { });
 }
