@@ -1733,14 +1733,35 @@ function sortBox(player, n, mode, reverse) {
     saveBox(player, n, contents.map((rec) => (rec?.p ? rec : loose.shift() ?? null)));
 }
 
+// PC Search: the filter's words must all hold ("!" before one turns it round): holding, fainted, legendary, mythical,
+// ultrabeast, lvl=N, or else a part of the species or the nickname. A Pokemon that fails is not drawn and not chosen.
+function pcPasses(rec, filter) {
+    if (!rec || !filter) return true;
+    const info = POKEMON[rec.t] ?? {};
+    return filter.toLowerCase().trim().split(/\s+/).every((word) => {
+        const inverted = word.startsWith("!"), w = inverted ? word.slice(1) : word;
+        let ok;
+        if (["holding", "helditem", "held_item"].includes(w)) ok = !!rec.k?.["cobblemon:held"];
+        else if (w === "fainted") ok = !!rec.f;
+        else if (w === "legendary") ok = !!info.legendary;
+        else if (w === "mythical") ok = !!info.mythical;
+        else if (w === "ultrabeast" || w === "ultra_beast") ok = !!info.ultraBeast;
+        else if (/^(lvl|level)=\d+$/.test(w)) ok = rec.lv === Number(w.split("=")[1]);
+        else ok = !w || (info.name ?? "").toLowerCase().includes(w) || (rec.n ?? "").toLowerCase().includes(w);
+        return inverted ? !ok : ok;
+    });
+}
+const PC_NAMES = "cobblemon:pc_names";
+
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
     if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; }
     const done = () => { try { setPcScreen(block, false); } catch (e) { } };
     const party = summaryParty(player), contents = box(player, state.box);
     const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
-    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n",
-                page: state.page ?? "i" };
+    const names = jsonProp(player, PC_NAMES, {});
+    const v = { box: names[state.box] ?? `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n",
+                page: state.page ?? "i", filter: state.filter ? `§f${state.filter}` : "§7Filter", rel: state.sel ? "y" : "n" };
     const sel = state.sel;
     if (sel?.kind === "box") {
         // a Pokemon stored before it rolled its IVs rolls them now and keeps them, as every Cobblemon Pokemon has them
@@ -1761,14 +1782,15 @@ function openPc(block, player, state) {
     else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
     else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
-        v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
-        v[`q${n}`] = contents[n]?.p ? "y" : "n";
+        const shown = pcPasses(contents[n], state.filter);
+        v[`b${n}`] = shown ? iconOf(contents[n]?.t) : "i----"; v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
+        v[`q${n}`] = contents[n]?.p && shown ? "y" : "n";
     }
     for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
     const body = PC_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pc").body(body);
     for (let n = 0; n < 36; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
-    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/release`).button("exit", `${PC_UI}/summary/exit`);
+    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/${state.sel ? "release" : "none"}`).button("exit", `${PC_UI}/summary/exit`);
     form.button("options", `${PC_UI}/pc/options${state.opts ? "_on" : ""}`);
     form.button("wallpaper", `${PC_UI}/pc/${state.opts ? `set_wallpaper${state.wmode ? "_on" : ""}` : "none"}`);
     for (let n = 0; n < PC_WALLPAPERS.length; n++) {
@@ -1778,6 +1800,7 @@ function openPc(block, player, state) {
     // the sort buttons show their reverse face after a sort by them, as a shift-click would sort
     for (const mode of PC_SORTS) form.button(mode, `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
     form.button("info page", `${PC_UI}/pc/info_arrow`);
+    form.button("filter", `${PC_UI}/pc/bar`).button("box name", `${PC_UI}/pc/bar`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
@@ -1787,6 +1810,21 @@ function openPc(block, player, state) {
         if (pick === 41) {
             if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
             again(); return;
+        }
+        if (pick === 43 + PC_WALLPAPERS.length + PC_SORTS.length || pick === 44 + PC_WALLPAPERS.length + PC_SORTS.length) {
+            // TextWidget's 19 characters: the filter, or the box's name (an empty one gives the box its number back)
+            const naming = pick === 44 + PC_WALLPAPERS.length + PC_SORTS.length;
+            new ModalFormData().title(naming ? "Box Name" : "Filter")
+                .textField(naming ? "Name" : "Format: pikachu shiny held_item lvl=1...", "", { defaultValue: naming ? names[state.box] ?? "" : state.filter ?? "" })
+                .show(player).then((q) => {
+                    if (!q.canceled) {
+                        const text = String(q.formValues?.[0] ?? "").replace(/[%§]/g, "").trim().slice(0, 19);
+                        if (naming) { if (text) names[state.box] = text; else delete names[state.box]; player.setDynamicProperty(PC_NAMES, JSON.stringify(names)); }
+                        else { state.filter = text || undefined; state.sel = null; }
+                    }
+                    again();
+                }).catch(done);
+            return;
         }
         if (pick === 42 + PC_WALLPAPERS.length + PC_SORTS.length) {
             // the arrow turns the info box: info, IVs, EVs
@@ -1810,6 +1848,7 @@ function openPc(block, player, state) {
             again(); return;
         }
         const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
+        if (target.kind === "box" && !pcPasses(contents[target.slot], state.filter)) { again(); return; }
         const occupied = target.kind === "box" ? !!contents[target.slot] : !!party[target.slot];
         if (!sel) { state.sel = occupied ? target : null; again(); return; }
         if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; again(); return; }

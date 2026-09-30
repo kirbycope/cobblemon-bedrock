@@ -2587,7 +2587,7 @@ def create_battle_data():
             "types": [t for t in (species.get("primaryType"), species.get("secondaryType")) if t],
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)},
             "moves": learned,
-            "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []),
+            "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []), "legendary": "legendary" in species.get("labels", []), "mythical": "mythical" in species.get("labels", []),
             "ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in species.get("abilities", []) if a.startswith("h:")], "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
             "evYield": {STAT_KEYS[k]: v for k, v in species.get("evYield", {}).items() if v and k in STAT_KEYS},
@@ -5110,7 +5110,7 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
     + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] \
-    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("item", 0)]
+    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1)] + [("item", 0)]
 # PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
 # six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
 PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
@@ -5171,6 +5171,8 @@ def create_pc_ui():
         normal, lit = image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
         normal.save(f"{P}/{out}.png"); lit.save(f"{P}/{out}_hover.png"); lit.save(f"{P}/{out}_on.png"); lit.save(f"{P}/{out}_on_hover.png")
     for name in ("none", "none_hover"): blank1.save(f"{P}/{name}.png")
+    Image.open(f"{src}/pc_icon_filter.png").convert("RGBA").crop((0, 0, 16, 16)).save(f"{P}/filter_icon.png")
+    for name in ("bar", "bar_hover"): blank1.save(f"{P}/{name}.png")
     def two(path):
         image = Image.open(path).convert("RGBA")
         return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
@@ -5256,7 +5258,10 @@ def create_pc_ui():
                  while_("n", image("grid", "pc/screen_grid", (92, 38), (160, 133), 3), "opts"),
                  while_("y", image("grid_opts", "pc/screen_grid", (92, 43), (160, 133), 3), "opts"),
                  image("overlay", "pc/screen_overlay", (85, 27), (174, 155), 4),
-                 label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center")]
+                 label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center"),
+                 # FilterWidget: its icon 9 to the left, the filter (or "Filter") centred over the bar
+                 image("filter_icon", "pc/filter_icon", (117, 186), (8, 8), 5),
+                 label("filter", field("filter"), (126, 185), 0.75, size=(91, 10), align="center", layer=6)]
     slots = [(92 + 27 * (n % 6), 38 + 27 * (n // 6)) for n in range(30)]
     slots += [(278 + (31 if n % 2 else 0), 35 + 31 * (n // 2) + (8 if n % 2 else 0)) for n in range(6)]
     for n, (x, y) in enumerate(slots[:30]):
@@ -5296,11 +5301,13 @@ def create_pc_ui():
     buttons = [while_("n", button(n, (x, y), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
     box_opts = [while_("y", button(n, (x, y + 5), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
     buttons += [while_("n", button(n, (x, y), (25, 25))) for n, (x, y) in enumerate(slots[30:], 30)]
-    buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (126, 186), (58, 16)), button(39, (320, 186), (26, 13))]
+    buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (279, 151), (58, 16)), button(39, (320, 186), (26, 13))]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
     # IconButton draws its texture at half size
     buttons += [button(40, (218, 186), (8, 8)), button(41, (242, 31), (10, 10))]
-    info_arrow = [button(42 + len(PC_WALLPAPERS) + 5, (1, 157), (10, 16))]
+    info_arrow = [button(42 + len(PC_WALLPAPERS) + 5, (1, 157), (10, 16)),
+                  button(42 + len(PC_WALLPAPERS) + 6, (126, 183), (91, 14)),     # the filter
+                  button(42 + len(PC_WALLPAPERS) + 7, (126, 10), (92, 12))]      # the box name, which renames the box
     # PokemonSortMode's five sort buttons, 12 apart from (92, 31), while the options show
     buttons += [button(42 + len(PC_WALLPAPERS) + n, (92 + 12 * n, 31), (10, 10)) for n in range(5)]
     # WallpapersScrollingWidget in the party's place (274, 29, 68 by 146): a slot of 56 by 50 every 54, 4 in, scrolling
