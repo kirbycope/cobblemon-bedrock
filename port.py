@@ -4779,6 +4779,13 @@ def create_summary_ui():
     Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none_hover.png")
     Image.new("RGBA", (16, 16), (255, 255, 255, 50)).save(f"{S}/name_hover.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/name.png")
     normal, hover = two(Image.open(f"{src}/summary_evolve_button.png").convert("RGBA")); normal.save(f"{S}/evolve.png"); hover.save(f"{S}/evolve_hover.png")
+    # MarkingButton: each marking's 12 by 12 frames, its three states down and the hover across
+    for i in range(6):
+        sheet = Image.open(f"{src}/icon_marking_{i}.png").convert("RGBA")
+        for state in range(3):
+            sheet.crop((0, state * 12, 12, state * 12 + 12)).save(f"{S}/mark{i}_{state}.png")
+            sheet.crop((12, state * 12, 24, state * 12 + 12)).save(f"{S}/mark{i}_{state}_hover.png")
+        blank.save(f"{S}/mark{i}_n.png")
     # EvolutionSelectScreen: the scroll list's background and overlay, the slot and its Evolve button
     normal, hover = two(Image.open(f"{src}/summary_evolve_select_button.png").convert("RGBA")); normal.save(f"{S}/evsel.png"); hover.save(f"{S}/evsel_hover.png")
     for name, out in (("summary_scroll_background", "scroll_bg"), ("summary_scroll_overlay", "scroll_overlay"), ("summary_evolve_slot", "evslot_y")):
@@ -4910,6 +4917,7 @@ def create_summary_ui():
     for n in range(4):
         buttons += [button(16 + 2 * n, (90 - 11.5, 18 + 25 * n + 6), (4, 3)), button(17 + 2 * n, (90 - 11.5, 18 + 25 * n + 13), (4, 3))]
     buttons.append(button(24, (12, 14), (56, 9)))
+    buttons += [button(28 + i, (29 + 7 * i, 102), (6, 6)) for i in range(6)]
     # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
     # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
     # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
@@ -4973,7 +4981,7 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"move{n}", 16) for n in range(4)] + [("box", 12)] + [(f"b{n}", 5) for n in range(30)] + [(f"p{n}", 5) for n in range(6)] \
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
-    + [("wall", 3), ("wmode", 1), ("opts", 1)] + [("item", 0)]
+    + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] + [("item", 0)]
 # PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
 # six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
 PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
@@ -5088,6 +5096,7 @@ def create_pc_ui():
                 {"item_icon": {"type": "image", "offset": [3, 98], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
                                "bindings": bound(field("item"), "#texture")}},
                 fixed("item_l", "Held Item", (24, 108.5), 0.5),
+                *[picture(f"mark{i}", f"summary/mark{i}_", field(f"mark{i}"), (29 + 7 * i, 96.5), (6, 6), 5) for i in range(6)],
                 image("info_box", "pc/info_box", (9, 128), (63, 69)),
                 fixed("nature_l", "Nature", (9, 129.5), 0.5, size=(63, 5), align="center"),
                 label("nature", field("nature"), (9, 137), 0.5, size=(63, 5), align="center"),

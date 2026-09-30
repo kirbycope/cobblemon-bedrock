@@ -1636,7 +1636,9 @@ function snapshot(entity) {
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
-    "cobblemon:gender", "cobblemon:caught_ball"];
+    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings"];
+// Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
+const MARKINGS = "cobblemon:markings";
 
 function setPcScreen(block, on) {
     const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
@@ -1650,8 +1652,11 @@ const PC_UI = "textures/ui/cobblemon";
 const iconOf = (typeId) => (typeId ? `i${typeId.slice("cobblemon:p".length, "cobblemon:p".length + 4)}` : "i----");
 function pcInfo(v, rec, entity) {
     const typeId = rec?.t ?? entity?.typeId, info = POKEMON[typeId];
+    for (let i = 0; i < 6; i++) v[`mark${i}`] = "n";   // no Pokemon chosen, no markings shown
     if (!info) { Object.assign(v, { portrait: "i----", gender: "o", ball: "b--", type1: "t--", type2: "t--" }); return; }
     const kept = (key) => (rec ? rec.k?.[key] : prop(entity, key));
+    const marks = String(kept(MARKINGS) ?? "000000");
+    for (let i = 0; i < 6; i++) v[`mark${i}`] = marks[i] ?? "0";
     const variant = rec ? rec.v : (entity.getComponent("minecraft:variant")?.value ?? 0);
     const form = { ...info, ...(info.variants?.[variant] ?? {}) };
     const level = rec ? rec.lv : prop(entity, LEVEL) ?? info.level;
@@ -3013,12 +3018,23 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     }
     form.button("name", `${SUMMARY_UI}/${mine ? "name" : "none"}`);
     for (let n = 0; n < 3; n++) form.button(side === "e" && evolutions[n] ? "Evolve" : "", `${SUMMARY_UI}/${side === "e" && evolutions[n] ? "evsel" : "none"}`);
+    const marks = String(prop(source, MARKINGS) ?? "000000");
+    for (let i = 0; i < 6; i++) form.button("mark", `${SUMMARY_UI}/mark${i}_${marks[i] ?? 0}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
+        if (pick >= 28 && pick <= 33) {
+            // a marking goes to its next state, only on your own Pokemon (canEdit)
+            if (mine) {
+                const next = marks.split(""); next[pick - 28] = String((Number(next[pick - 28]) + 1) % 3);
+                setProp(source, MARKINGS, next.join(""));
+                try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            }
+            showSummary(source, tab, player, selected, side); return;
+        }
         if (pick >= 25 && pick <= 27) {
             // EvolveSlot's Evolve button closes the screen and starts the evolution
             const chosen = side === "e" && evolutions[pick - 25];
