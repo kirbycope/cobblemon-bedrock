@@ -980,6 +980,11 @@ function partyNotes(e) {
     // ui.exp.number, "+N EXP", with a colour code first since a leading "+" reads as a number
     return note + padBytes(since < 63 && gain.exp ? `§f+${gain.exp} EXP` : "", 10);
 }
+// the held item's HUD icon: "h" and two letters from its HELD_INDEX, "hzz" for none (and for items with no copy there)
+function heldCode(e) {
+    const n = HELD_INDEX[prop(e, HELD)] ?? 0;
+    return n ? `h${String.fromCharCode(97 + Math.floor(n / 26))}${String.fromCharCode(97 + (n % 26))}` : "hzz";
+}
 function partyRecord(e) {
     const info = POKEMON[e.typeId];
     const level = prop(e, LEVEL) ?? info.level, group = info.expGroup;
@@ -995,7 +1000,7 @@ function partyRecord(e) {
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId)
-        + partyNotes(e);
+        + partyNotes(e) + heldCode(e);
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -1006,7 +1011,7 @@ system.runInterval(() => {
                 .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10);
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz";
         const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;

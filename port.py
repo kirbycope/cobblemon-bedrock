@@ -5996,8 +5996,8 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
                "reg": (172, 173), "unknown": (173, 174)}
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
-                "note": (34, 36), "exp_text": (36, 46)}
-PARTY_RECORD = 46   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49)}
+PARTY_RECORD = 49   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
 
 
 def scan_code(n):
@@ -6113,6 +6113,16 @@ def create_party_hud():
     shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
     shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/o.png")   # genderless, and an empty slot
+    # the held item's icon (PartyOverlay's renderScaledGuiItemIcon, half size at 12, 14): each icon the model can show,
+    # named by its HELD_INDEX as "h" and two letters, since digits alone read as a number; vanilla items have no copy
+    with open(f"{scriptsBedrock}/held_display.js", encoding="utf-8") as file:
+        icons = json.loads(re.search(r"HELD_ICONS = (\[.*?\]);", file.read()).group(1))
+    for n, icon in enumerate(icons, 1):
+        source = f"{resourcePack}/{icon}.png"
+        target = f"{party}/h{chr(97 + n // 26)}{chr(97 + n % 26)}.png"
+        if os.path.exists(source): shutil.copyfile(source, target)
+        else: Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(target)   # a vanilla item's icon is not in the pack
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/hzz.png")
     # the slot's pop-ups, two places: the first holds the evolution or the new move, the second the evolution when
     # both show ("nv" evolution, "nm" new move, "vm" both, "nn" none)
     evo, move = f"{guiMain}/party/party_slot_notification_evolution.png", f"{guiMain}/party/party_slot_notification_new_move.png"
@@ -6175,6 +6185,7 @@ def create_party_hud():
                 picture("hp", slot, "hp", [2, 18], [46, 5]),
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
                 picture("ball", slot, "ball", [9, 11], [43.5, 22], 3),
+                picture("held", slot, "held", [8, 8], [12, 14], 4),
                 # PartyOverlay's pop-ups beside the slot at half size: the new move or evolution 56.5 in and 4 down (under
                 # the gained experience), and the evolution at 78 when both show; the experience gained 57 in, 17 down
                 {"note_a": {"type": "image", "size": [18.5, 10], "offset": [56.5, 4], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
