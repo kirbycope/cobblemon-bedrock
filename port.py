@@ -25,7 +25,7 @@ import sys
 import textwrap
 import urllib.request
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import poses
 
@@ -4744,7 +4744,8 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
-    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("item", 0)]
+    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
+    + [("item", 0)]
 SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
@@ -4753,6 +4754,27 @@ def summary_offsets():
     out, at = {}, 0
     for name, width in SUMMARY_LAYOUT: out[name] = (at, at + width); at += width
     return out
+
+
+HEX_STEPS = 12   # the polygon's vertices go out in 12 steps of the radius, the least 5 of its 48 as drawStatPolygon keeps it
+
+
+def stat_wedges(folder):
+    """drawStatPolygon's triangles, one for each pair of neighbouring vertices at each pair of steps (letters a to m),
+    white at 60 percent for the layout to tint: centre 67, 70 of StatWidget, radius 48, the first vertex at the top."""
+    import math
+    os.makedirs(folder, exist_ok=True)
+    k, size = 2, 96   # drawn at twice the size, into the 96 by 96 box the layout places at 19, 22
+    for i in range(6):
+        a0, a1 = math.radians(-90 + 60 * i), math.radians(-90 + 60 * (i + 1))
+        for s0 in range(HEX_STEPS + 1):
+            for s1 in range(HEX_STEPS + 1):
+                r0, r1 = (max(st / HEX_STEPS, 5 / 48) * 48 for st in (s0, s1))
+                cx = cy = size / 2
+                pts = [(cx * k, cy * k), ((cx + r0 * math.cos(a0)) * k, (cy + r0 * math.sin(a0)) * k), ((cx + r1 * math.cos(a1)) * k, (cy + r1 * math.sin(a1)) * k)]
+                img = Image.new("RGBA", (size * k, size * k), (0, 0, 0, 0))
+                ImageDraw.Draw(img).polygon(pts, fill=(255, 255, 255, 153))
+                img.save(f"{folder}/w{i}_{chr(97 + s0)}{chr(97 + s1)}.png", optimize=True)
 
 
 def create_summary_ui():
@@ -4768,6 +4790,11 @@ def create_summary_ui():
     for key in ("power", "accuracy", "effect"):
         shutil.copyfile(f"{src}/summary_moves_icon_{key}.png", f"{S}/icon_{key[:3] if key != 'power' else key}.png")
     shutil.copyfile(f"{S}/stats_icon_increase.png", f"{S}/stat_u.png"); shutil.copyfile(f"{S}/stats_icon_decrease.png", f"{S}/stat_d.png")
+    for name in ("summary_stats_chart", "summary_stats_chart_base"): shutil.copyfile(f"{src}/{name}.png", f"{S}/{name.replace('summary_', '')}.png")
+    marker = Image.open(f"{src}/summary_stats_tab_marker.png").convert("RGBA")
+    for i, letter in enumerate("sveo"):
+        for page in "sveo": (marker if page == letter else blank).save(f"{S}/smark{i}_{page}.png")
+    stat_wedges(f"{S}/hex")
     def two(image):   # a texture with a normal frame over a hover frame
         return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
     # tabs: the tab with its icon drawn at half size, at twice the resolution so the icon keeps its pixels
@@ -4907,13 +4934,39 @@ def create_summary_ui():
     for n in range(4):
         moves.append(picture(f"sel{n}", field(f"m{n}sel"), (12, 5 + 25 * n), (110, 24), 5, "sel_"))
     # Stats: one row a stat, its value, then IV and EV, with the nature's arrow
-    stats = [fixed("h_iv", "IV", (85, 6), 0.5), fixed("h_ev", "EV", (106, 6), 0.5)]
-    for n, (key, text) in enumerate(STAT_ROWS):
-        y = 14 + n * 15
-        stats += [fixed(f"l{key}", text, (10, y), 0.75), picture(f"m{key}", field(f"s{key}mark"), (44, y + 1), (8, 6), prefix="stat_"),
-                  label(f"v{key}", field(f"s{key}val"), (54, y), 0.75, size=(26, 10), align="right"),
-                  label(f"i{key}", field(f"s{key}iv"), (80, y + 1), 0.5, size=(15, 5), align="right"),
-                  label(f"e{key}", field(f"s{key}ev"), (98, y + 1), 0.5, size=(20, 5), align="right")]
+    # StatWidget: the chart (83 by 96 at 25.5, 22) and the stat polygon over it, drawn from six wedges (one a pair of
+    # neighbouring vertices, pre-rendered at each pair of 13 steps and tinted by the page); each vertex's label and value
+    # at hexagonVerticesOffset, the nature's arrows, then the Stat, IVs, EVs and Other tabs along the bottom
+    stats = [image("chart", "stats_chart", (25.5, 22), (83, 96), 3)]
+    for page, colour in (("s", (50 / 255, 215 / 255, 1.0)), ("v", (216 / 255, 100 / 255, 1.0)), ("e", (1.0, 1.0, 100 / 255))):
+        wedges = []
+        for i in range(6):
+            src_field = f"(('%.{offsets['hex'][0] + i + 2}s' * #form_text) - ('%.{offsets['hex'][0] + i}s' * #form_text))"
+            wedges.append({f"w{page}{i}": {"type": "image", "offset": [19, 22], "size": [96, 96], "layer": 4, "keep_ratio": False, "color": list(colour),
+                                           "anchor_from": "top_left", "anchor_to": "top_left", "bindings": bound(f"('{T}/hex/w{i}_' + {src_field})", "#texture")}})
+        stats.append({f"poly_{page}": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
+                                       "bindings": bound(f"({field('stab')} = '{page}')", "#visible"), "controls": wedges}})
+    vertex = []
+    for i, (vx, vy) in enumerate(((67, 10.5), (122, 42.5), (122, 93.5), (67, 124.5), (12, 93.5), (12, 42.5))):
+        vertex += [label(f"hl{i}", field(f"ln{i}"), (vx - 20, vy), 0.5, size=(40, 5), align="center", layer=6),
+                   label(f"hv{i}", field(f"lv{i}"), (vx - 20, vy + 5.5), 0.5, size=(40, 5), align="center", layer=6)]
+    # the nature's arrows beside the stat it raises and lowers (renderModifiedStatIcon), in the vertices' order
+    for i, (mx, my) in enumerate(((65, 6), (120, 38), (120, 89), (65, 120), (10, 89), (10, 38))):
+        vertex.append(picture(f"hm{i}", field(f"hm{i}"), (mx, my), (4, 3), 6, "stat_"))
+    # a copy for each polygon page: a "not" in this binding never hid it on the Other page
+    for page in "sve":
+        stats.append({f"vertices_{page}": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
+                                           "bindings": bound(f"({field('stab')} = '{page}')", "#visible"),
+                                           "controls": [{f"{next(iter(c))}_{page}": next(iter(c.values()))} for c in vertex]}})
+    for i, name in enumerate(("Stat", "IVs", "EVs", "Other")):
+        stats.append(fixed(f"stab{i}", name, (31 + 24 * i - 12, 143), 0.5, size=(24, 5), align="center"))
+        stats.append(picture(f"smark{i}", field("stab"), (31 + 24 * i - 2, 140), (4, 2), 6, f"smark{i}_"))
+    # the Other page: friendship, as StatWidget's other bars show it
+    stats.append({"other": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
+                            "bindings": bound(f"({field('stab')} = 'o')", "#visible"), "controls": [
+        image("other_base", "stats_other_base", (0, 0), (134, 148), 3),
+        fixed("friend_l", "Friendship", (20, 20), 0.5, size=(60, 5)),
+        label("friend_v", field("friendship"), (90, 20), 0.5, size=(30, 5), align="right")]}})
     # the party, PartyWidget's slots: two columns 51 apart, rows 32 apart, the right column 8 lower
     party = [image("party_base", "party_background", (216, 24), (114, 113), 2)]
     for n in range(6):
@@ -4950,6 +5003,7 @@ def create_summary_ui():
     buttons.append(button(24, (12, 14), (56, 9)))
     buttons += [button(28 + i, (29 + 7 * i, 102), (6, 6)) for i in range(6)]
     buttons += [button(34 + n, (77 + 13 + 114.5, 12 + 6 + 25 * n + 6.5), (6, 9)) for n in range(4)]
+    stat_tab_buttons = [button(38 + SWAP_SLOTS + i, (77 + 31 + 24 * i - 12, 12 + 140), (24, 9)) for i in range(4)]
     # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
     # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
     # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
@@ -5038,8 +5092,8 @@ def create_summary_ui():
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))", "target_property_name": "#visible"}],
                "controls": left + [tab_panel("info", "i", "info_base", info), tab_panel("moves", "m", "moves_base", moves),
-                                   tab_panel("stats", "s", "stats_other_base", stats)] + party + [evolve_panel, swap_panel] +
-                           [{"buttons": {"type": "collection_panel", "size": [331, 161], "collection_name": "form_buttons", "controls": buttons}}]}
+                                   tab_panel("stats", "s", "stats_chart_base", stats)] + party + [evolve_panel, swap_panel] +
+                           [{"buttons": {"type": "collection_panel", "size": [331, 161], "collection_name": "form_buttons", "controls": buttons + stat_tab_buttons}}]}
     with open(f"{scriptsBedrock}/summary_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the Summary form's body, field by field, and each field's width in bytes\n")
         file.write("export const SUMMARY_LAYOUT = " + json.dumps(SUMMARY_LAYOUT) + ";\n")

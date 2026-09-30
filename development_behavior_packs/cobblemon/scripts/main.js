@@ -3012,7 +3012,9 @@ function summaryParty(player) {
 // MoveSwapScreen: the moves a Pokemon can relearn (Pokemon.relearnableMoves, its level-up moves to its level that it does
 // not know), and Forget when it knows more than one, for the move whose swap button was pressed; an add button on an
 // empty slot offers the same moves without Forget
-const summarySwap = new Map(), SWAP_ROWS = 20;   // player id -> the move slot being swapped
+const summarySwap = new Map(), SWAP_ROWS = 20;
+// StatWidget's pages (Stat, IVs, EVs, Other), by player; the polygon's vertices in drawStatPolygon's order
+const summaryStatTab = new Map(), HEX_ORDER = ["hp", "atk", "def", "spe", "spd", "spa"], HEX_LABELS = ["HP", "Atk", "Def", "Speed", "Sp.Def", "Sp.Atk"];   // player id -> the move slot being swapped
 function relearnable(entity, f) {
     const known = f.moves.map((m) => m.id), out = [];
     for (const [at, id] of f.info.learnset ?? []) if (at <= f.level && MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);
@@ -3055,6 +3057,21 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         v[`s${k}val`] = num(f.stats[k]); v[`s${k}iv`] = mine ? num(ivs[k]) : ""; v[`s${k}ev`] = mine ? num(evs[k]) : "";
         v[`s${k}mark`] = up !== down && k === up ? "u" : up !== down && k === down ? "d" : "n";
     }
+    // the polygon: each vertex's share of 400 (a stat), 31 (an IV) or 252 (an EV), in 12 steps as letters
+    const stab = summaryStatTab.get(player.id) ?? "s";
+    v.stab = stab;
+    const share = (k) => (stab === "v" ? (ivs[k] ?? 0) / 31 : stab === "e" ? (evs[k] ?? 0) / 252 : (k === "hp" ? f.stats.hp : f.stats[k]) / 400);
+    const steps = HEX_ORDER.map((k) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round(share(k) * 12)))));
+    v.hex = steps.join("") + steps[0];
+    let hp = f.stats.hp;
+    try { hp = Math.ceil(source.getComponent(EntityComponentTypes.Health).currentValue / source.getComponent(EntityComponentTypes.Health).effectiveMax * f.stats.hp); } catch (e) { }
+    HEX_ORDER.forEach((k, i) => {
+        // the nature's raised stat red and lowered one blue, on the Stat page (getModifiedStatColour)
+        const tint = stab === "s" && up !== down ? (k === up ? "§c" : k === down ? "§9" : "§f") : "§f";
+        v[`ln${i}`] = tint + HEX_LABELS[i];
+        v[`lv${i}`] = num(stab === "v" ? ivs[k] ?? 0 : stab === "e" ? evs[k] ?? 0 : k === "hp" ? `${hp} / ${f.stats.hp}` : f.stats[k]);
+        v[`hm${i}`] = stab === "s" && up !== down ? (k === up ? "u" : k === down ? "d" : "n") : "n";
+    });
     // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone; it swaps the
     // party for EvolutionSelectScreen
     const evolutions = mine && !battles.has(player.id) ? readyEvolutions(source, player) : [];
@@ -3122,12 +3139,19 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
             + padBytes(num(mv.secondary?.chance ? `${mv.secondary.chance}%%` : "-"), 9) + num(`${mv.pp}PP`);
         form.button(text, `${SUMMARY_UI}/swap_${typeCode(mv.type)}`);
     }
+    // StatWidget's page tabs, after the switch list's rows
+    for (let i = 0; i < 4; i++) form.button("stat page", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
+        if (pick >= 38 + SWAP_ROWS && pick < 42 + SWAP_ROWS) {
+            summaryStatTab.set(player.id, "sveo"[pick - 38 - SWAP_ROWS]);
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            showSummary(source, tab, player, selected, side); return;
+        }
         if (pick >= 34 && pick <= 37) {
             // a swap or add button opens the switch list for that slot, and closes it when pressed again
             const n = pick - 34;

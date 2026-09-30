@@ -10904,7 +10904,7 @@
             },
             {
               "binding_type": "view",
-              "source_property_name": "(#form_text - ('%.952s' * #form_text))",
+              "source_property_name": "(#form_text - ('%.1110s' * #form_text))",
               "target_property_name": "#texture"
             }
           ]
@@ -12497,7 +12497,7 @@
             {
               "base": {
                 "type": "image",
-                "texture": "textures/ui/cobblemon/summary/stats_other_base",
+                "texture": "textures/ui/cobblemon/summary/stats_chart_base",
                 "offset": [
                   0,
                   0
@@ -12513,77 +12513,2515 @@
               }
             },
             {
-              "h_iv": {
+              "chart": {
+                "type": "image",
+                "texture": "textures/ui/cobblemon/summary/stats_chart",
+                "offset": [
+                  25.5,
+                  22
+                ],
+                "size": [
+                  83,
+                  96
+                ],
+                "layer": 3,
+                "keep_ratio": false,
+                "anchor_from": "top_left",
+                "anchor_to": "top_left"
+              }
+            },
+            {
+              "poly_s": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 's')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "ws0": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w0_' + (('%.955s' * #form_text) - ('%.953s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ws1": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w1_' + (('%.956s' * #form_text) - ('%.954s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ws2": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w2_' + (('%.957s' * #form_text) - ('%.955s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ws3": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w3_' + (('%.958s' * #form_text) - ('%.956s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ws4": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w4_' + (('%.959s' * #form_text) - ('%.957s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "ws5": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.19607843137254902,
+                        0.8431372549019608,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w5_' + (('%.960s' * #form_text) - ('%.958s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "poly_v": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 'v')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "wv0": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w0_' + (('%.955s' * #form_text) - ('%.953s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "wv1": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w1_' + (('%.956s' * #form_text) - ('%.954s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "wv2": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w2_' + (('%.957s' * #form_text) - ('%.955s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "wv3": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w3_' + (('%.958s' * #form_text) - ('%.956s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "wv4": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w4_' + (('%.959s' * #form_text) - ('%.957s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "wv5": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        0.8470588235294118,
+                        0.39215686274509803,
+                        1.0
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w5_' + (('%.960s' * #form_text) - ('%.958s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "poly_e": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 'e')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "we0": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w0_' + (('%.955s' * #form_text) - ('%.953s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "we1": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w1_' + (('%.956s' * #form_text) - ('%.954s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "we2": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w2_' + (('%.957s' * #form_text) - ('%.955s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "we3": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w3_' + (('%.958s' * #form_text) - ('%.956s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "we4": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w4_' + (('%.959s' * #form_text) - ('%.957s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "we5": {
+                      "type": "image",
+                      "offset": [
+                        19,
+                        22
+                      ],
+                      "size": [
+                        96,
+                        96
+                      ],
+                      "layer": 4,
+                      "keep_ratio": false,
+                      "color": [
+                        1.0,
+                        1.0,
+                        0.39215686274509803
+                      ],
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/hex/w5_' + (('%.960s' * #form_text) - ('%.958s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "vertices_s": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 's')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "hl0_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        10.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.972s' * #form_text) - ('%.960s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv0_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        16.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1044s' * #form_text) - ('%.1032s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl1_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.984s' * #form_text) - ('%.972s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv1_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1056s' * #form_text) - ('%.1044s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl2_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.996s' * #form_text) - ('%.984s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv2_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1068s' * #form_text) - ('%.1056s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl3_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        124.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1008s' * #form_text) - ('%.996s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv3_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        130.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1080s' * #form_text) - ('%.1068s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl4_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1020s' * #form_text) - ('%.1008s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv4_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1092s' * #form_text) - ('%.1080s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl5_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1032s' * #form_text) - ('%.1020s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv5_s": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1104s' * #form_text) - ('%.1092s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm0_s": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        6
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1105s' * #form_text) - ('%.1104s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm1_s": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1106s' * #form_text) - ('%.1105s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm2_s": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1107s' * #form_text) - ('%.1106s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm3_s": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        120
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1108s' * #form_text) - ('%.1107s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm4_s": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1109s' * #form_text) - ('%.1108s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm5_s": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1110s' * #form_text) - ('%.1109s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "vertices_v": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 'v')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "hl0_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        10.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.972s' * #form_text) - ('%.960s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv0_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        16.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1044s' * #form_text) - ('%.1032s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl1_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.984s' * #form_text) - ('%.972s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv1_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1056s' * #form_text) - ('%.1044s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl2_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.996s' * #form_text) - ('%.984s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv2_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1068s' * #form_text) - ('%.1056s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl3_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        124.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1008s' * #form_text) - ('%.996s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv3_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        130.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1080s' * #form_text) - ('%.1068s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl4_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1020s' * #form_text) - ('%.1008s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv4_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1092s' * #form_text) - ('%.1080s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl5_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1032s' * #form_text) - ('%.1020s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv5_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1104s' * #form_text) - ('%.1092s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm0_v": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        6
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1105s' * #form_text) - ('%.1104s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm1_v": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1106s' * #form_text) - ('%.1105s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm2_v": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1107s' * #form_text) - ('%.1106s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm3_v": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        120
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1108s' * #form_text) - ('%.1107s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm4_v": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1109s' * #form_text) - ('%.1108s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm5_v": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1110s' * #form_text) - ('%.1109s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "vertices_e": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 'e')",
+                    "target_property_name": "#visible"
+                  }
+                ],
+                "controls": [
+                  {
+                    "hl0_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        10.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.972s' * #form_text) - ('%.960s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv0_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        16.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1044s' * #form_text) - ('%.1032s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl1_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.984s' * #form_text) - ('%.972s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv1_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1056s' * #form_text) - ('%.1044s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl2_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.996s' * #form_text) - ('%.984s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv2_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        102,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1068s' * #form_text) - ('%.1056s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl3_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        124.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1008s' * #form_text) - ('%.996s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv3_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        47,
+                        130.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1080s' * #form_text) - ('%.1068s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl4_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        93.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1020s' * #form_text) - ('%.1008s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv4_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        99.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1092s' * #form_text) - ('%.1080s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hl5_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        42.5
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1032s' * #form_text) - ('%.1020s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hv5_e": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        -8,
+                        48.0
+                      ],
+                      "size": [
+                        40,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "center",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.1104s' * #form_text) - ('%.1092s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm0_e": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        6
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1105s' * #form_text) - ('%.1104s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm1_e": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1106s' * #form_text) - ('%.1105s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm2_e": {
+                      "type": "image",
+                      "offset": [
+                        120,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1107s' * #form_text) - ('%.1106s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm3_e": {
+                      "type": "image",
+                      "offset": [
+                        65,
+                        120
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1108s' * #form_text) - ('%.1107s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm4_e": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        89
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1109s' * #form_text) - ('%.1108s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hm5_e": {
+                      "type": "image",
+                      "offset": [
+                        10,
+                        38
+                      ],
+                      "size": [
+                        4,
+                        3
+                      ],
+                      "layer": 6,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.1110s' * #form_text) - ('%.1109s' * #form_text)))",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "stab0": {
                 "type": "label",
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  85,
-                  6
+                  19,
+                  143
                 ],
                 "size": [
-                  100,
-                  10
+                  24,
+                  5
                 ],
                 "layer": 6,
                 "font_scale_factor": 0.5,
-                "text_alignment": "left",
+                "text_alignment": "center",
                 "shadow": true,
-                "text": "IV"
+                "text": "Stat"
               }
             },
             {
-              "h_ev": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  106,
-                  6
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "EV"
-              }
-            },
-            {
-              "lhp": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  14
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "HP"
-              }
-            },
-            {
-              "mhp": {
+              "smark0": {
                 "type": "image",
                 "offset": [
-                  44,
-                  15
+                  29,
+                  140
                 ],
                 "size": [
-                  8,
-                  6
+                  4,
+                  2
                 ],
-                "layer": 4,
+                "layer": 6,
                 "keep_ratio": false,
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
@@ -12593,149 +15031,44 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.484s' * #form_text) - ('%.483s' * #form_text)))",
+                    "source_property_name": "('textures/ui/cobblemon/summary/smark0_' + (('%.953s' * #form_text) - ('%.952s' * #form_text)))",
                     "target_property_name": "#texture"
                   }
                 ]
               }
             },
             {
-              "vhp": {
+              "stab1": {
                 "type": "label",
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  54,
-                  14
+                  43,
+                  143
                 ],
                 "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.472s' * #form_text) - ('%.466s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "ihp": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  15
-                ],
-                "size": [
-                  15,
+                  24,
                   5
                 ],
                 "layer": 6,
                 "font_scale_factor": 0.5,
-                "text_alignment": "right",
+                "text_alignment": "center",
                 "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.477s' * #form_text) - ('%.472s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
+                "text": "IVs"
               }
             },
             {
-              "ehp": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  15
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.483s' * #form_text) - ('%.477s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "latk": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  29
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "Attack"
-              }
-            },
-            {
-              "matk": {
+              "smark1": {
                 "type": "image",
                 "offset": [
-                  44,
-                  30
+                  53,
+                  140
                 ],
                 "size": [
-                  8,
-                  6
+                  4,
+                  2
                 ],
-                "layer": 4,
+                "layer": 6,
                 "keep_ratio": false,
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
@@ -12745,149 +15078,44 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.502s' * #form_text) - ('%.501s' * #form_text)))",
+                    "source_property_name": "('textures/ui/cobblemon/summary/smark1_' + (('%.953s' * #form_text) - ('%.952s' * #form_text)))",
                     "target_property_name": "#texture"
                   }
                 ]
               }
             },
             {
-              "vatk": {
+              "stab2": {
                 "type": "label",
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  54,
-                  29
+                  67,
+                  143
                 ],
                 "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.490s' * #form_text) - ('%.484s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "iatk": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  30
-                ],
-                "size": [
-                  15,
+                  24,
                   5
                 ],
                 "layer": 6,
                 "font_scale_factor": 0.5,
-                "text_alignment": "right",
+                "text_alignment": "center",
                 "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.495s' * #form_text) - ('%.490s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
+                "text": "EVs"
               }
             },
             {
-              "eatk": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  30
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.501s' * #form_text) - ('%.495s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "ldef": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  44
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "Defence"
-              }
-            },
-            {
-              "mdef": {
+              "smark2": {
                 "type": "image",
                 "offset": [
-                  44,
-                  45
+                  77,
+                  140
                 ],
                 "size": [
-                  8,
-                  6
+                  4,
+                  2
                 ],
-                "layer": 4,
+                "layer": 6,
                 "keep_ratio": false,
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
@@ -12897,149 +15125,44 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.520s' * #form_text) - ('%.519s' * #form_text)))",
+                    "source_property_name": "('textures/ui/cobblemon/summary/smark2_' + (('%.953s' * #form_text) - ('%.952s' * #form_text)))",
                     "target_property_name": "#texture"
                   }
                 ]
               }
             },
             {
-              "vdef": {
+              "stab3": {
                 "type": "label",
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "offset": [
-                  54,
-                  44
+                  91,
+                  143
                 ],
                 "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.508s' * #form_text) - ('%.502s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "idef": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  45
-                ],
-                "size": [
-                  15,
+                  24,
                   5
                 ],
                 "layer": 6,
                 "font_scale_factor": 0.5,
-                "text_alignment": "right",
+                "text_alignment": "center",
                 "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.513s' * #form_text) - ('%.508s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
+                "text": "Other"
               }
             },
             {
-              "edef": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  45
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.519s' * #form_text) - ('%.513s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "lspa": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  59
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "Sp. Atk"
-              }
-            },
-            {
-              "mspa": {
+              "smark3": {
                 "type": "image",
                 "offset": [
-                  44,
-                  60
+                  101,
+                  140
                 ],
                 "size": [
-                  8,
-                  6
+                  4,
+                  2
                 ],
-                "layer": 4,
+                "layer": 6,
                 "keep_ratio": false,
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
@@ -13049,417 +15172,104 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.538s' * #form_text) - ('%.537s' * #form_text)))",
+                    "source_property_name": "('textures/ui/cobblemon/summary/smark3_' + (('%.953s' * #form_text) - ('%.952s' * #form_text)))",
                     "target_property_name": "#texture"
                   }
                 ]
               }
             },
             {
-              "vspa": {
-                "type": "label",
+              "other": {
+                "type": "panel",
+                "size": [
+                  134,
+                  148
+                ],
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
-                "offset": [
-                  54,
-                  59
-                ],
-                "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
                 "bindings": [
                   {
                     "binding_name": "#form_text"
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "(('%.526s' * #form_text) - ('%.520s' * #form_text))",
-                    "target_property_name": "#value"
+                    "source_property_name": "((('%.953s' * #form_text) - ('%.952s' * #form_text)) = 'o')",
+                    "target_property_name": "#visible"
                   }
-                ]
-              }
-            },
-            {
-              "ispa": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  60
                 ],
-                "size": [
-                  15,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
+                "controls": [
                   {
-                    "binding_name": "#form_text"
+                    "other_base": {
+                      "type": "image",
+                      "texture": "textures/ui/cobblemon/summary/stats_other_base",
+                      "offset": [
+                        0,
+                        0
+                      ],
+                      "size": [
+                        134,
+                        148
+                      ],
+                      "layer": 3,
+                      "keep_ratio": false,
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left"
+                    }
                   },
                   {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.531s' * #form_text) - ('%.526s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "espa": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  60
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
+                    "friend_l": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        20,
+                        20
+                      ],
+                      "size": [
+                        60,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "left",
+                      "shadow": true,
+                      "text": "Friendship"
+                    }
                   },
                   {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.537s' * #form_text) - ('%.531s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "lspd": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  74
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "Sp. Def"
-              }
-            },
-            {
-              "mspd": {
-                "type": "image",
-                "offset": [
-                  44,
-                  75
-                ],
-                "size": [
-                  8,
-                  6
-                ],
-                "layer": 4,
-                "keep_ratio": false,
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.556s' * #form_text) - ('%.555s' * #form_text)))",
-                    "target_property_name": "#texture"
-                  }
-                ]
-              }
-            },
-            {
-              "vspd": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  54,
-                  74
-                ],
-                "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.544s' * #form_text) - ('%.538s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "ispd": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  75
-                ],
-                "size": [
-                  15,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.549s' * #form_text) - ('%.544s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "espd": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  75
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.555s' * #form_text) - ('%.549s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "lspe": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  10,
-                  89
-                ],
-                "size": [
-                  100,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "left",
-                "shadow": true,
-                "text": "Speed"
-              }
-            },
-            {
-              "mspe": {
-                "type": "image",
-                "offset": [
-                  44,
-                  90
-                ],
-                "size": [
-                  8,
-                  6
-                ],
-                "layer": 4,
-                "keep_ratio": false,
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "('textures/ui/cobblemon/summary/stat_' + (('%.574s' * #form_text) - ('%.573s' * #form_text)))",
-                    "target_property_name": "#texture"
-                  }
-                ]
-              }
-            },
-            {
-              "vspe": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  54,
-                  89
-                ],
-                "size": [
-                  26,
-                  10
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.75,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.562s' * #form_text) - ('%.556s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "ispe": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  80,
-                  90
-                ],
-                "size": [
-                  15,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.567s' * #form_text) - ('%.562s' * #form_text))",
-                    "target_property_name": "#value"
-                  }
-                ]
-              }
-            },
-            {
-              "espe": {
-                "type": "label",
-                "anchor_from": "top_left",
-                "anchor_to": "top_left",
-                "offset": [
-                  98,
-                  90
-                ],
-                "size": [
-                  20,
-                  5
-                ],
-                "layer": 6,
-                "font_scale_factor": 0.5,
-                "text_alignment": "right",
-                "shadow": true,
-                "color": [
-                  1,
-                  1,
-                  1
-                ],
-                "text": "#value",
-                "bindings": [
-                  {
-                    "binding_name": "#form_text"
-                  },
-                  {
-                    "binding_type": "view",
-                    "source_property_name": "(('%.573s' * #form_text) - ('%.567s' * #form_text))",
-                    "target_property_name": "#value"
+                    "friend_v": {
+                      "type": "label",
+                      "anchor_from": "top_left",
+                      "anchor_to": "top_left",
+                      "offset": [
+                        90,
+                        20
+                      ],
+                      "size": [
+                        30,
+                        5
+                      ],
+                      "layer": 6,
+                      "font_scale_factor": 0.5,
+                      "text_alignment": "right",
+                      "shadow": true,
+                      "color": [
+                        1,
+                        1,
+                        1
+                      ],
+                      "text": "#value",
+                      "bindings": [
+                        {
+                          "binding_name": "#form_text"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(('%.166s' * #form_text) - ('%.160s' * #form_text))",
+                          "target_property_name": "#value"
+                        }
+                      ]
+                    }
                   }
                 ]
               }
@@ -19303,6 +21113,442 @@
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
                 "collection_index": 37,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_58": {
+                "type": "button",
+                "size": [
+                  24,
+                  9
+                ],
+                "offset": [
+                  96,
+                  152
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 58,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_59": {
+                "type": "button",
+                "size": [
+                  24,
+                  9
+                ],
+                "offset": [
+                  120,
+                  152
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 59,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_60": {
+                "type": "button",
+                "size": [
+                  24,
+                  9
+                ],
+                "offset": [
+                  144,
+                  152
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 60,
+                "layer": 5,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_61": {
+                "type": "button",
+                "size": [
+                  24,
+                  9
+                ],
+                "offset": [
+                  168,
+                  152
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 61,
                 "layer": 5,
                 "default_control": "default",
                 "hover_control": "hover",
