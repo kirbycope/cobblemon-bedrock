@@ -2301,7 +2301,17 @@ function dexMatches(n, known, search, by) {
     if (by === 1) return [...(info.abilities ?? []), ...(info.hidden ?? [])].some((a) => abilityName(a).toLowerCase().includes(q));
     return (info.learnset ?? []).some(([, id]) => (MOVES[id]?.name ?? "").toLowerCase().includes(q));
 }
+// every Pokemon the player keeps counts as caught (Cobblemon's Pokedex marks what enters the party or the PC), which
+// also catches up a register made before a way of getting a Pokemon registered it
+function registerKept(player) {
+    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t && dexStatus(player, rec.t) < 2) register(player, rec.t, 2);
+    try {
+        for (const e of player.dimension.getEntities({ families: ["owned"] }))
+            if (POKEMON[e.typeId] && prop(e, OWNER) === player.id && dexStatus(player, e.typeId) < 2) register(player, e.typeId, 2);
+    } catch (e) { }
+}
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
+    if (!state.kept) { registerKept(player); state.kept = true; }
     const s = dexString(player), region = REGIONS[state.region];
     state.by ??= 0;
     const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n]) && dexMatches(n, s[n], state.search, state.by));
