@@ -2348,6 +2348,15 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
             v.line2 = species.hidden?.length ? `Hidden: ${species.hidden.map(abilityName).join(", ")}` : "";
         }
         if (st === "2" && state.tab === "s") for (const k of STAT_KEYS) v[`stat${k}`] = `${STAT_NAMES[k]} ${species.stats[k]}`;
+        // SizeWidget's height and weight (decimetres and hectograms in the species files)
+        if (st === "2" && state.tab === "z") { v.line1 = `Height: ${(info.h ?? 0) / 10}m`; v.line2 = `Weight: ${(info.w ?? 0) / 10}kg`; }
+        if (st === "2" && state.tab === "d") v.desc = info.dr?.length ? num(info.dr.join("\n").replace(/%/g, "%%")) : "No drops available.";   // a leading digit reads as a number
+        // MovesLearnsetWidget's level-up moves, as many as the box holds
+        if (st === "2" && state.tab === "m") {
+            const seen = new Set(), rows = [];
+            for (const [at, id] of species.learnset ?? []) if (MOVES[id] && !seen.has(id)) { seen.add(id); rows.push(`Lv. ${at} ${MOVES[id].name}`); }
+            v.desc = rows.length ? rows.slice(0, 16).reduce((out, r, i) => out + (i % 2 ? `   ${r}\n` : r), "") : "";
+        }
         if (st !== "2") v.line1 = st === "0" ? "Not yet seen." : "Seen, not yet caught.";
     } else { Object.assign(v, { caughtmark: "n", type1: "t--", type2: "t--", portrait: "i----", platform: "p--", tab: "x" }); }
     const body = DEX_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
@@ -2359,6 +2368,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" ? "cry" : "none"}`);
     form.button("filter", `${PC_UI}/pokedex/filter`);
     form.button("search", `${PC_UI}/pokedex/filter`).button("search by", `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);
+    for (const [letter, name] of [["z", "size"], ["d", "drops"], ["m", "moves"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
     form.show(player).then((r) => {
         if (r.canceled) return;
         const pick = r.selection, again = () => openDex(player, colour, state);
@@ -2367,6 +2377,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
         else if (pick === 28) state.page = (state.page + 1) % pages;
         else if (pick <= 31) state.tab = "ias"[pick - 29];
+        else if (pick >= 36 && pick <= 38) state.tab = "zdm"[pick - 36];
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
         else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; player.sendMessage(`§7Search by ${DEX_SEARCH[state.by][1]}`); }
