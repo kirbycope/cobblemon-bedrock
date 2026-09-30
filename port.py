@@ -5410,6 +5410,10 @@ def create_pokedex_ui():
     blank.save(f"{D}/none.png"); blank.save(f"{D}/none_hover.png")
     for letter in DEX_TABS:
         for tab in DEX_TABS + "x": (Image.open(f"{src}/select_arrow.png").convert("RGBA") if tab == letter else blank).save(f"{D}/t{letter}_{tab}.png")
+    # PokemonInfoWidget's form arrows, a normal frame over a hover one
+    for name in ("forms_arrow_left", "forms_arrow_right"):
+        frames = Image.open(f"{src}/{name}.png").convert("RGBA")
+        frames.crop((0, 0, 10, 16)).save(f"{D}/{name}.png"); frames.crop((0, 16, 10, 32)).save(f"{D}/{name}_hover.png")
     # SearchWidget's bar and icon, and the search-by button's four faces (species, abilities, moves, drops)
     for name in ("pokedex_screen_bar_search", "search_icon"): shutil.copyfile(f"{src}/{name}.png", f"{D}/{name.replace('pokedex_', '')}.png")
     for name in ("species", "abilities", "moves", "drops"):
@@ -5491,7 +5495,8 @@ def create_pokedex_ui():
                 button(29, (190.5, 181.5), (8, 8)), button(30, (212.5, 181.5), (8, 8)), button(31, (256.5, 181.5), (8, 8)),   # info, abilities, stats
                 button(32, (ix + 114, iy + 81), (22, 10)), button(33, (26, 180), (139, 11)),
                 button(34, (26, 28), (126, 11)), button(35, (154.5, 29.5), (8, 8)),        # the search bar, and search by
-                button(36, (234.5, 181.5), (8, 8)), button(37, (278.5, 181.5), (8, 8)), button(38, (300.5, 181.5), (8, 8))]   # size, drops, moves
+                button(36, (234.5, 181.5), (8, 8)), button(37, (278.5, 181.5), (8, 8)), button(38, (300.5, 181.5), (8, 8)),   # size, drops, moves
+                button(39, (ix + 18, iy + 55.5), (5, 8)), button(40, (ix + 116, iy + 55.5), (5, 8))]                         # the form arrows
     dex = {"type": "panel", "size": [345, 207], "anchor_from": "center", "anchor_to": "center",
            "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                         "source_property_name": "(not ((#title_text - 'cbm:pokedex') = #title_text))", "target_property_name": "#visible"}],

@@ -694,7 +694,7 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
         try {
             if (target.isValid && target.hasComponent(EntityComponentTypes.IsTamed) && !target.getDynamicProperty(OWNER)) {
                 target.setDynamicProperty(OWNER, player.id);
-                register(player, target.typeId, 2);
+                register(player, target.typeId, 2, variantOf(target));
                 player.sendMessage(`§a${POKEMON[target.typeId].name} is now yours!`);
             }
         } catch (e) { }
@@ -741,7 +741,7 @@ function startBattle(player, foeEntity, trainer) {
     battles.set(player.id, battle);
     freeze(foeEntity, true);
     say(battle, `§6A ${trainer ? "Trainer's " : "wild "}${foe.info.name} appeared! §7(Lv ${foe.level})`);
-    register(player, foeEntity.typeId, 1);
+    register(player, foeEntity.typeId, 1, variantOf(foeEntity));
     if (!sendOut(battle, party[0], { x: battle.spot.x, y: party[0].location.y, z: battle.spot.z })) { endBattle(battle); return; }
     enter(battle, foe, battle.ally);
     system.runTimeout(() => turn(battle), 20);
@@ -1362,7 +1362,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
                 if (next) entity.setDynamicProperty("cobblemon:ability", next);
             }
             entity.setDynamicProperty(OWNER, owner);
-            if (player) register(player, entity.typeId, 2);
+            if (player) register(player, entity.typeId, 2, variantOf(entity));
             player?.sendMessage(`§a${kept?.[NICK] || POKEMON[from]?.name} evolved into ${POKEMON[entity.typeId].name}!`);
         } catch (e) { }
     });
@@ -2334,8 +2334,19 @@ function dexStatus(player, typeId) {
     return n === undefined ? 0 : Number(dexString(player)[n]);
 }
 
-function register(player, typeId, status) {
+// the variants a player has met of each species (Cobblemon's encountered forms and seen shiny states, which the port's
+// variants carry together), for the Pokedex's form arrows
+const DEX_VARIANTS = "cobblemon:dex_variants";
+function noteVariant(player, typeId, variant) {
+    if (variant === undefined || !player?.isValid || !POKEMON[typeId]) return;
+    const seen = jsonProp(player, DEX_VARIANTS, {}), list = seen[typeId] ?? [];
+    if (list.includes(variant)) return;
+    seen[typeId] = [...list, variant].sort((a, b) => a - b);
+    player.setDynamicProperty(DEX_VARIANTS, JSON.stringify(seen));
+}
+function register(player, typeId, status, variant) {
     const n = DEX_INDEX.get(typeId);
+    noteVariant(player, typeId, variant);
     if (n === undefined || !player?.isValid) return;
     const s = dexString(player);
     if (Number(s[n]) >= status) return;
@@ -2347,7 +2358,7 @@ function register(player, typeId, status) {
 // the owner of a Pokemon that just became theirs; used wherever ownership is set
 function registerOwned(entity) {
     const owner = world.getPlayers().find((p) => p.id === prop(entity, OWNER));
-    if (owner) register(owner, entity.typeId, 2);
+    if (owner) register(owner, entity.typeId, 2, variantOf(entity));
 }
 
 // filled balls in an inventory count as caught; checked every few seconds
@@ -2382,10 +2393,10 @@ function dexMatches(n, known, search, by) {
 // every Pokemon the player keeps counts as caught (Cobblemon's Pokedex marks what enters the party or the PC), which
 // also catches up a register made before a way of getting a Pokemon registered it
 function registerKept(player) {
-    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t && dexStatus(player, rec.t) < 2) register(player, rec.t, 2);
+    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
     try {
         for (const e of player.dimension.getEntities({ families: ["owned"] }))
-            if (POKEMON[e.typeId] && prop(e, OWNER) === player.id && dexStatus(player, e.typeId) < 2) register(player, e.typeId, 2);
+            if (POKEMON[e.typeId] && prop(e, OWNER) === player.id) { if (dexStatus(player, e.typeId) < 2) register(player, e.typeId, 2); noteVariant(player, e.typeId, variantOf(e)); }
     } catch (e) { }
 }
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
@@ -2414,10 +2425,16 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     if (chosen !== null) {
         const id = NATIONAL[chosen], st = s[chosen], info = DEX_INFO[id] ?? {}, species = POKEMON[id];
         v.num = num(String(info.n ?? chosen + 1).padStart(4, "0"));
-        v.name = st === "0" ? "???" : species.name;
+        // the form arrows step through the variants met (the base one when none is recorded)
+        const met = jsonProp(player, DEX_VARIANTS, {})[id] ?? [];
+        const forms = met.length ? met : [0];
+        state.form = (state.form ?? 0) % forms.length;
+        const variant = forms[state.form], look = { ...species, ...(species.variants?.[variant] ?? {}) };
+        v.name = st === "0" ? "???" : look.name;
         v.caughtmark = st === "2" ? "y" : "n";
-        v.type1 = st === "0" ? "t--" : typeCode(species.types[0]); v.type2 = st === "0" ? "t--" : typeCode(species.types[1]);
-        v.portrait = st === "0" ? "i----" : iconOf(id);
+        v.type1 = st === "0" ? "t--" : typeCode(look.types[0]); v.type2 = st === "0" ? "t--" : typeCode(look.types[1]);
+        v.portrait = st === "0" ? "i----" : iconOf(id, variant);
+        state.forms = st === "0" ? 1 : forms.length;
         v.platform = st === "0" ? "p--" : `p${typeCode(species.types[0]).slice(1)}`;
         v.tab = state.tab;
         if (st === "2" && state.tab === "i") v.desc = info.d ?? "";
@@ -2447,15 +2464,18 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.button("filter", `${PC_UI}/pokedex/filter`);
     form.button("search", `${PC_UI}/pokedex/filter`).button("search by", `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);
     for (const [letter, name] of [["z", "size"], ["d", "drops"], ["m", "moves"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
+    const arrows = chosen !== null && (state.forms ?? 1) > 1;
+    form.button("form left", `${PC_UI}/pokedex/${arrows ? "forms_arrow_left" : "none"}`).button("form right", `${PC_UI}/pokedex/${arrows ? "forms_arrow_right" : "none"}`);
     form.show(player).then((r) => {
         if (r.canceled) return;
         const pick = r.selection, again = () => openDex(player, colour, state);
-        if (pick < 25) { if (shown[pick] !== undefined) state.chosen = shown[pick]; }
+        if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; } }
         else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
         else if (pick === 28) state.page = (state.page + 1) % pages;
         else if (pick <= 31) state.tab = "ias"[pick - 29];
         else if (pick >= 36 && pick <= 38) state.tab = "zdm"[pick - 36];
+        else if (pick === 39 || pick === 40) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
         else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; player.sendMessage(`§7Search by ${DEX_SEARCH[state.by][1]}`); }
@@ -2498,7 +2518,7 @@ function scanRecord(st) {
     const code = (n) => String.fromCharCode(97 + Math.floor(n / 10)) + (n % 10);
     const frame = (angle) => code(Math.floor(angle / 15) % 24);
     return "on" + frame(st.usage * 0.5) + frame(st.inner) + code(seg) + sides + texts.map((x) => padBytes(x, 20)).join("")
-        + (registered ? "y" : "n") + (st.progress > 0 && !registered ? "y" : "n") + (registered ? "Pokémon Registered" : "");
+        + (registered ? "y" : "n") + (st.progress > 0 && !registered ? "y" : "n") + (registered ? st.regText ?? "Pokémon Registered" : "");
 }
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
@@ -2533,20 +2553,24 @@ system.runInterval(() => {
             if (target) {
                 st.sides = [0, 1, 2, 3].map(() => (Math.random() < 0.5 ? "l" : "r"));
                 st.caught = dexStatus(player, target.typeId) >= 2;
-                st.fresh = dexStatus(player, target.typeId) === 0;
+                // new information (PokedexLearnedInformation): the species, or a form or variation of it not met yet
+                const met = jsonProp(player, DEX_VARIANTS, {})[target.typeId] ?? [], v = variantOf(target);
+                const info = POKEMON[target.typeId], formName = info.variants?.[v]?.name;
+                st.fresh = dexStatus(player, target.typeId) === 0 || !met.includes(v);
+                st.regText = dexStatus(player, target.typeId) === 0 ? "Pokémon Registered" : formName && formName !== info.name ? "Form Registered" : "Variation Registered";
                 if (!st.fresh) scanSound(player, "scan_detail");
             }
         }
         st.usage += SCAN_RATE; st.inner = (st.inner + SCAN_RATE * (st.target ? 10 : 1)) % 360;
         if (st.target) st.focus = Math.min(9, st.focus + SCAN_RATE);
         if (st.target && st.fresh) {
-            // a new species: the scan runs while it stays in the sights, and registers it at the end
+            // new information: the scan runs while it stays in the sights, and registers it at the end
             st.progress += SCAN_RATE;
             if (system.currentTick % 6 === 0) scanSound(player, "scan_loop");
             if (st.progress >= 100) {
-                register(player, st.target.typeId, prop(st.target, OWNER) === player.id ? 2 : 1);
+                register(player, st.target.typeId, prop(st.target, OWNER) === player.id ? 2 : 1, variantOf(st.target));
                 st.fresh = false; st.progress = 0; st.registered = 40;
-                scanSound(player, "scan_register_pokemon");
+                scanSound(player, st.regText === "Pokémon Registered" ? "scan_register_pokemon" : "scan_register_aspect");
             }
         }
         if (st.registered > 0) st.registered = Math.max(0, st.registered - SCAN_RATE);
@@ -3540,7 +3564,7 @@ function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
     capturing.add(pokemon.id);
     if (battle) captureBattles.set(pokemon.id, battle);
     else { freeze(pokemon, true); try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { } }
-    register(player, pokemon.typeId, 1);
+    register(player, pokemon.typeId, 1, variantOf(pokemon));
     let ball;
     try { ball = captureBall(dim, ballId, hit); } catch (e) { capturing.delete(pokemon.id); freeze(pokemon, false); dropBall(dim, ballId, hit, player); return; }
     ballState(ball, "hover");
@@ -3629,7 +3653,7 @@ function keepCaught(player, pokemon, ballId) {
     try { pokemon.triggerEvent("cobblemon:caught"); pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
     setProp(pokemon, OWNER, player.id);
     setProp(pokemon, "cobblemon:caught_ball", ballId);
-    register(player, pokemon.typeId, 2);
+    register(player, pokemon.typeId, 2, variantOf(pokemon));
     if (ballId === "cobblemon:friend_ball") setProp(pokemon, "cobblemon:friendship", 150);
     if (ballId === "cobblemon:heal_ball") healFully(pokemon);
     setSize(pokemon, 1, 0);
