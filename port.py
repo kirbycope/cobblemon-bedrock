@@ -1215,7 +1215,7 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "pc.")): continue
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "pc.", "gui.")): continue
         folder = key.split(".")[-2] if key.startswith("item.") else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
@@ -4735,6 +4735,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
     + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("item", 0)]
+SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
 
@@ -4806,6 +4807,26 @@ def create_summary_ui():
         tinted.save(f"{S}/move_t{n:02d}.png")
         shutil.copyfile(f"{uiTextures}/types/{type_name}.png", f"{S}/t{n:02d}.png")
     blank.save(f"{S}/move_t--.png")
+    # MoveSwapScreen: the condensed move slot (91 by 18, a hover frame below) tinted by type under its overlay; the
+    # Forget slot on its empty frame with its icon; SwapMoveButton's swap and add buttons
+    condensed = Image.open(f"{src}/summary_move_condensed.png").convert("RGBA")
+    cover = Image.open(f"{src}/summary_move_overlay_condensed.png").convert("RGBA")
+    for n, (type_name, hue) in enumerate(TYPE_HUES):
+        rgb = ((hue >> 16) & 255, (hue >> 8) & 255, hue & 255)
+        for state, top in (("", 0), ("_hover", 18)):
+            frame = condensed.crop((0, top, 91, top + 18)); tinted = Image.new("RGBA", frame.size); px, out = frame.load(), tinted.load()
+            for x in range(frame.width):
+                for y in range(frame.height):
+                    r, g, b, a = px[x, y]; out[x, y] = (r * rgb[0] // 255, g * rgb[1] // 255, b * rgb[2] // 255, a)
+            tinted.alpha_composite(cover)
+            tinted.save(f"{S}/swap_t{n:02d}{state}.png")
+    empty = Image.open(f"{src}/summary_move_condensed_empty.png").convert("RGBA")
+    icon = Image.open(f"{src}/summary_move_condensed_empty_icon.png").convert("RGBA")
+    for state, top in (("", 0), ("_hover", 18)):
+        frame = empty.crop((0, top, 100, top + 18)); frame.alpha_composite(icon.crop((0, top // 18 * 14, 14, top // 18 * 14 + 14)), (100 // 2 - 7 + 9 - 9, 18 // 2 - 4 - 3))
+        frame.save(f"{S}/swap_forget{state}.png")
+    for name in ("swap", "add"):
+        normal, hover = two(Image.open(f"{src}/summary_move_{name}.png").convert("RGBA")); normal.save(f"{S}/mv{name}.png"); hover.save(f"{S}/mv{name}_hover.png")
     for step in range(38):
         r, g = depletable_red_green(step / 37)
         bar = Image.new("RGBA", (37, 1), (0, 0, 0, 0))
@@ -4918,6 +4939,7 @@ def create_summary_ui():
         buttons += [button(16 + 2 * n, (90 - 11.5, 18 + 25 * n + 6), (4, 3)), button(17 + 2 * n, (90 - 11.5, 18 + 25 * n + 13), (4, 3))]
     buttons.append(button(24, (12, 14), (56, 9)))
     buttons += [button(28 + i, (29 + 7 * i, 102), (6, 6)) for i in range(6)]
+    buttons += [button(34 + n, (77 + 13 + 114.5, 12 + 6 + 25 * n + 6.5), (6, 9)) for n in range(4)]
     # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
     # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
     # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
@@ -4941,6 +4963,48 @@ def create_summary_ui():
                                            "shadow": True, "layer": 1, "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection",
                                                                                      "binding_collection_name": "form_buttons"}]}}]
         evolve_buttons.append(select)
+    def swap_face(state):
+        text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        tex = {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        def part(a, b): return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+        def tlabel(name, source, x, y, w=40):
+            return {name: {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.5, "size": [w, 5], "offset": [x, y], "layer": 3,
+                           "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
+        def ticon(name, texture, x, y):
+            return {name: {"type": "image", "texture": f"{T}/{texture}", "size": [5, 5], "offset": [x, y], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
+                           "bindings": [tex, {"binding_type": "view", "source_property_name": "(not ((#form_button_texture - 'forget') = #form_button_texture))",
+                                              "target_property_name": "#visible"}]}}
+        stats = {"stats": {"type": "panel", "size": ["100%", "100%"], "layer": 3, "bindings": [tex, {"binding_type": "view",
+                           "source_property_name": "((#form_button_texture - 'forget') = #form_button_texture)", "target_property_name": "#visible"}], "controls": [
+            {"type_icon": {"type": "image", "size": [18, 18], "offset": [-9, 0], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                           "bindings": [tex, {"binding_type": "view", "source_property_name": f"('{T}/' + ((#form_button_texture - '{T}/swap_') - '_hover'))", "target_property_name": "#texture"}]}},
+            tlabel("name", part(0, 16), 14, 3.5, 70),
+            {"ip": {"type": "image", "texture": f"{T}/icon_power", "size": [5, 5], "offset": [10, 11], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left"}},
+            {"ia": {"type": "image", "texture": f"{T}/icon_acc", "size": [5, 5], "offset": [30, 11], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left"}},
+            {"ie": {"type": "image", "texture": f"{T}/icon_eff", "size": [5, 5], "offset": [53.5, 11], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left"}},
+            tlabel("power", part(16, 23), 16.5, 12), tlabel("acc", part(23, 32), 37, 12), tlabel("eff", part(32, 41), 60.5, 12),
+            tlabel("pp", f"(#form_button_text - ('%.41s' * #form_button_text))", 76, 12, 20)]}}
+        return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
+                "bindings": [tex, {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}],
+                "controls": [stats]}
+    def swap_slot(index, y):
+        body = button(index, (8.5, y), (91, 18))[f"button_{index}"]
+        body["controls"] = [{"default": swap_face("")}, {"hover": swap_face("_hover")}, {"pressed": swap_face("_hover")}]
+        body["bindings"] = body["bindings"] + [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                               {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}]
+        return {f"button_{index}": body}
+    swap_count = SWAP_SLOTS
+    swap_content = {"type": "panel", "size": [108, 21 * swap_count + 6], "controls": [
+        {"slots": {"type": "collection_panel", "size": [108, 21 * swap_count + 6], "collection_name": "form_buttons",
+                   "controls": [swap_slot(38 + n, 3 + 21 * n) for n in range(swap_count)]}}]}
+    swap_panel = {"swap_panel": {"type": "panel", "size": [108, 112], "offset": [216, 23], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 10,
+                                 "bindings": bound(f"({field('side')} = 's')", "#visible"), "controls": [
+        image("list_bg", "scroll_bg", (0, 0), (108, 112), 1),
+        {"scroll@common.scrolling_panel": {"size": [108, 112], "layer": 3, "$show_background": False,
+                                             "$scrolling_content": "server_form.cobblemon_summary_swap", "$scroll_size": [3, "100% - 4px"],
+                                             "$scrolling_pane_size": ["100%", "100%"], "$scrolling_pane_offset": [0, 0], "$scroll_bar_right_padding_size": [0, 0]}},
+        image("list_overlay", "scroll_overlay", (0, -3), (108, 118), 6),
+        fixed("list_label", "Switch Move", (32.5 - 50, -13.5), 1.0, size=(100, 10), align="center", layer=7)]}}
     evolve_panel = {"evolve_panel": {"type": "panel", "size": [108, 112], "offset": [216, 23], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 10,
                                      "bindings": bound(f"({field('side')} = 'e')", "#visible"),
                                      "controls": [{"list": {"type": "panel", "size": [108, 112], "clips_children": True, "controls": evolve}}] + evolve_frame + [
@@ -4964,12 +5028,12 @@ def create_summary_ui():
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))", "target_property_name": "#visible"}],
                "controls": left + [tab_panel("info", "i", "info_base", info), tab_panel("moves", "m", "moves_base", moves),
-                                   tab_panel("stats", "s", "stats_other_base", stats)] + party + [evolve_panel] +
+                                   tab_panel("stats", "s", "stats_other_base", stats)] + party + [evolve_panel, swap_panel] +
                            [{"buttons": {"type": "collection_panel", "size": [331, 161], "collection_name": "form_buttons", "controls": buttons}}]}
     with open(f"{scriptsBedrock}/summary_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the Summary form's body, field by field, and each field's width in bytes\n")
         file.write("export const SUMMARY_LAYOUT = " + json.dumps(SUMMARY_LAYOUT) + ";\n")
-    return {"cobblemon_summary": summary}
+    return {"cobblemon_summary": summary, "cobblemon_summary_swap": swap_content}
 
 
 # The PC, after PCGUI and StorageWidget: the 349 by 205 base, the chosen Pokemon's portrait, level, name, ball, gender,

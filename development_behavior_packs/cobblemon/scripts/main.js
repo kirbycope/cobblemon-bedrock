@@ -2936,6 +2936,15 @@ function summaryParty(player) {
     } catch (e) { return []; }
 }
 
+// MoveSwapScreen: the moves a Pokemon can relearn (Pokemon.relearnableMoves, its level-up moves to its level that it does
+// not know), and Forget when it knows more than one, for the move whose swap button was pressed; an add button on an
+// empty slot offers the same moves without Forget
+const summarySwap = new Map(), SWAP_ROWS = 20;   // player id -> the move slot being swapped
+function relearnable(entity, f) {
+    const known = f.moves.map((m) => m.id), out = [];
+    for (const [at, id] of f.info.learnset ?? []) if (at <= f.level && MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);
+    return out;
+}
 function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const player = viewer ?? world.getPlayers().find((p) => p.id === prop(source, OWNER)) ?? nearestPlayer(source);
     const f = source?.isValid ? fighter(source) : undefined;
@@ -2976,7 +2985,11 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone; it swaps the
     // party for EvolutionSelectScreen
     const evolutions = mine && !battles.has(player.id) ? readyEvolutions(source, player) : [];
-    if (!evolutions.length) side = "p";
+    if (side === "e" && !evolutions.length) side = "p";
+    if (side === "s" && !(mine && tab === "m")) side = "p";
+    const swapSlot = summarySwap.get(player.id) ?? 0;
+    const swapList = side === "s" ? relearnable(source, f) : [];
+    const canForget = side === "s" && f.moves.length > 1 && f.moves[swapSlot];
     v.side = side;
     for (let n = 0; n < 3; n++) {
         const e = side === "e" ? evolutions[n] : undefined, into = e && POKEMON[e.to];
@@ -2986,7 +2999,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         v[`e${n}type2`] = into?.types[1] ? typeCode(into.types[1]) : "x--";
         v[`e${n}icon`] = into ? iconOf(e.to) : "i----";
     }
-    const party = side === "e" ? [] : summaryParty(player);
+    const party = side === "p" ? summaryParty(player) : [];
     for (let n = 0; n < 6; n++) {
         const e = party[n];
         if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; v[`p${n}icon`] = "i----"; continue; }
@@ -3020,12 +3033,49 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     for (let n = 0; n < 3; n++) form.button(side === "e" && evolutions[n] ? "Evolve" : "", `${SUMMARY_UI}/${side === "e" && evolutions[n] ? "evsel" : "none"}`);
     const marks = String(prop(source, MARKINGS) ?? "000000");
     for (let i = 0; i < 6; i++) form.button("mark", `${SUMMARY_UI}/mark${i}_${marks[i] ?? 0}`);
+    // SwapMoveButton on each move tile: swap for a known move, add for the first empty slot
+    for (let n = 0; n < 4; n++) {
+        const kind = f.moves[n] ? "mvswap" : n === f.moves.length ? "mvadd" : "none";
+        form.button("swap", `${SUMMARY_UI}/${mine && tab === "m" ? kind : "none"}`);
+    }
+    // each row is a move id, or null for Forget
+    const swapRows = [...swapList.slice(0, SWAP_ROWS - (canForget ? 1 : 0)), ...(canForget ? [null] : [])];
+    for (let n = 0; n < SWAP_ROWS; n++) {
+        const mv = swapRows[n] && MOVES[swapRows[n]];
+        if (n >= swapRows.length) { form.button("", `${SUMMARY_UI}/none`); continue; }
+        if (!mv) { form.button("forget", `${SUMMARY_UI}/swap_forget`); continue; }
+        const text = padBytes(mv.name, 16) + padBytes(num(mv.power > 0 ? mv.power : "-"), 7)
+            + padBytes(num(mv.accuracy === true || !mv.accuracy ? "-" : `${mv.accuracy}%%`), 9)
+            + padBytes(num(mv.secondary?.chance ? `${mv.secondary.chance}%%` : "-"), 9) + num(`${mv.pp}PP`);
+        form.button(text, `${SUMMARY_UI}/swap_${typeCode(mv.type)}`);
+    }
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
+        if (pick >= 34 && pick <= 37) {
+            // a swap or add button opens the switch list for that slot, and closes it when pressed again
+            const n = pick - 34;
+            if (!mine || tab !== "m" || n > f.moves.length) { showSummary(source, tab, player, selected, side); return; }
+            const open = side === "s" && swapSlot === n;
+            summarySwap.set(player.id, n);
+            showSummary(source, tab, player, selected, open ? "p" : "s"); return;
+        }
+        if (pick >= 38 && pick < 38 + SWAP_ROWS) {
+            const row = pick - 38, ids = f.moves.map((m) => m.id);
+            if (side === "s" && row < swapRows.length) {
+                const id = swapRows[row];
+                if (!id) ids.splice(swapSlot, 1);                  // Forget
+                else if (swapSlot < ids.length) ids[swapSlot] = id;   // the chosen move takes the slot
+                else ids.push(id);                                 // or fills the empty one
+                setProp(source, MOVESET, JSON.stringify(ids));
+                try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+                showSummary(source, tab, player, Math.min(selected, ids.length - 1), "p"); return;
+            }
+            showSummary(source, tab, player, selected, side); return;
+        }
         if (pick >= 28 && pick <= 33) {
             // a marking goes to its next state, only on your own Pokemon (canEdit)
             if (mine) {
