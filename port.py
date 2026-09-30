@@ -5119,6 +5119,13 @@ PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in 
     ("end", "biome/wallpaper_biome_the_end", "biome_the_end"), ("alp", "misc/wallpaper_pokemon_alpha", "pokemon_alpha")]
 
 
+def portrait_code(number, variant):
+    """A portrait's texture name: "i", the National number and the variant, each in two base-36 digits."""
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    b36 = lambda n: digits[n // 36] + digits[n % 36]
+    return f"i{b36(number)}{b36(variant)}"
+
+
 def pokemon_icons():
     """Each species' portrait as textures/ui/cobblemon/icons/i<national number>: Cobblemon's own model rendered offline
     (tools/render_portraits.py) posed as its PROFILE pose and turned as drawProfilePokemon turns it, since a JSON UI
@@ -5127,14 +5134,24 @@ def pokemon_icons():
     os.makedirs(folder, exist_ok=True)
     sys.path.insert(0, os.path.join(pwd, "tools"))
     import render_portraits
-    failures = render_portraits.render_all(folder, lambda name: f"i{name.split('_', 1)[0]}.png")
+    # one portrait a variant (its shiny and form textures and models), named by portrait_code: "i", then the National
+    # number and the variant in two base-36 digits each, so the field keeps its five bytes
+    variants = {}
+    for path in glob.glob(f"{entitiesBedrock}/[0-9]*.behavior.json"):
+        with open(path, encoding="utf-8") as file: events = json.load(file)["minecraft:entity"].get("events", {})
+        variants[os.path.basename(path)[:-len(".behavior.json")]] = max(1, sum(1 for key in events if key.startswith("cobblemon:set_variant_")))
+    for old in glob.glob(f"{folder}/i[0-9]*.png"): os.remove(old)
+    failures = render_portraits.render_all(folder, lambda name, v: f"{portrait_code(int(name.split('_', 1)[0]), v)}.png", variants=variants)
     for name, error in failures: print(f"  no portrait for {name}: {error}")
-    for source in sorted(glob.glob(f"{texturesItemsBedrock}/*_spawn_egg.png")):
-        number = os.path.basename(source).split("_", 1)[0]
-        if not number.isdigit() or os.path.exists(f"{folder}/i{number}.png"): continue
-        Image.open(source).convert("RGBA").save(f"{folder}/i{number}.png")
+    for name, count in variants.items():
+        number = int(name.split("_", 1)[0]); base = f"{folder}/{portrait_code(number, 0)}.png"
+        if not os.path.exists(base):
+            egg = f"{texturesItemsBedrock}/{name}_spawn_egg.png"
+            if os.path.exists(egg): Image.open(egg).convert("RGBA").save(base)
+        for v in range(1, count):   # a variant that did not render shows the base look
+            if not os.path.exists(f"{folder}/{portrait_code(number, v)}.png") and os.path.exists(base): shutil.copyfile(base, f"{folder}/{portrait_code(number, v)}.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{folder}/i----.png")
-    return len(glob.glob(f"{folder}/i[0-9]*.png"))
+    return len(glob.glob(f"{folder}/i*.png")) - 1
 
 
 def create_pc_ui():

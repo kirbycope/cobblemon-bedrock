@@ -756,7 +756,7 @@ function switchTile(battle, e) {
     const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const status = !fainted && f.status ? { tox: "psn" }[f.status] ?? f.status : "non";
-    return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId)
+    return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId, variantOf(e))
         + "b" + String(ball).padStart(2, "0") + `§f${Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
 }
 function chooseSwitch(battle, forced) {
@@ -901,7 +901,7 @@ function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
         const step = f.hp > 0 ? Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50)) : 0;
-        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId)
+        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId, variantOf(f.entity))
             // the gender, and whether the player has caught this species (BattleOverlay's caught indicator)
             + ({ male: "m", female: "f" }[f.entity?.isValid ? genderOf(f.entity) : ""] ?? "o")
             + (dexStatus(battle.player, f.entity?.typeId) >= 2 ? "y" : "n");
@@ -999,7 +999,7 @@ function partyRecord(e) {
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
-        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId)
+        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
         + partyNotes(e) + heldCode(e);
 }
 system.runInterval(() => {
@@ -1200,6 +1200,11 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:inspect") {
+        // testing: "/execute as <entity> run scriptevent cobblemon:inspect" logs its variant and dynamic properties
+        const props = {};
+        try { for (const id of source.getDynamicPropertyIds()) props[id] = source.getDynamicProperty(id); } catch (e) { }
+        console.warn(`[cobblemon] ${source.typeId} variant ${variantOf(source)} ${JSON.stringify(props).slice(0, 600)}`);
     } else if (event.id === "cobblemon:biome") {
         // testing: "/execute as <player> run scriptevent cobblemon:biome" logs the biome the wallpaper unlocks read there
         let id = "?";
@@ -1654,7 +1659,10 @@ function setPcScreen(block, on) {
 // party 30 to 35, then previous and next box, release and exit. Choosing a Pokemon selects it (the pointer shows over
 // it); choosing another slot moves it there, swapping with what is there, depositing or withdrawing as the slots say.
 const PC_UI = "textures/ui/cobblemon";
-const iconOf = (typeId) => (typeId ? `i${typeId.slice("cobblemon:p".length, "cobblemon:p".length + 4)}` : "i----");
+// a portrait's texture (portrait_code in port.py): "i", the National number and the variant in two base-36 digits each
+const B36 = (n) => n.toString(36).padStart(2, "0").slice(-2);
+const iconOf = (typeId, variant = 0) => (typeId ? `i${B36(Number(typeId.slice("cobblemon:p".length, "cobblemon:p".length + 4)))}${B36(variant ?? 0)}` : "i----");
+const variantOf = (e) => { try { return e?.getComponent("minecraft:variant")?.value ?? 0; } catch (err) { return 0; } };
 function pcInfo(v, rec, entity) {
     const typeId = rec?.t ?? entity?.typeId, info = POKEMON[typeId];
     for (let i = 0; i < 6; i++) { v[`mark${i}`] = "n"; v[`sv${i}`] = ""; }   // no Pokemon chosen, no markings or stats shown
@@ -1674,7 +1682,7 @@ function pcInfo(v, rec, entity) {
     const ball = Object.keys(BALLS).indexOf(kept("cobblemon:caught_ball") ?? "cobblemon:poke_ball");
     const tag = rec ? rec.n : (nicknameOf(entity));
     Object.assign(v, {
-        level: num(level), name: tag || form.name, portrait: iconOf(typeId),
+        level: num(level), name: tag || form.name, portrait: iconOf(typeId, variant),
         gender: { male: "m", female: "f" }[kept("cobblemon:gender")] ?? "o", ball: `b${String(Math.max(0, ball)).padStart(2, "0")}`,
         type1: typeCode(form.types[0]), type2: typeCode(form.types[1]),
         nature: natureName(kept("cobblemon:mint") ?? kept("cobblemon:nature")), ability: abilityName(kept("cobblemon:ability") ?? form.ability),
@@ -1788,10 +1796,10 @@ function openPc(block, player, state) {
     else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
         const shown = pcPasses(contents[n], state.filter);
-        v[`b${n}`] = shown ? iconOf(contents[n]?.t) : "i----"; v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
+        v[`b${n}`] = shown ? iconOf(contents[n]?.t, contents[n]?.v) : "i----"; v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
         v[`q${n}`] = contents[n]?.p && shown ? "y" : "n";
     }
-    for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
+    for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId, variantOf(party[n])); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
     const body = PC_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pc").body(body);
     for (let n = 0; n < 36; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
@@ -2049,7 +2057,7 @@ function openPasture(block, player, state) {
                 wall: jsonProp(player, WALLS, {})[state.box] ?? "w05", wmode: "n", opts: "n", page: "i" };
     if (sel) pcInfo(v, box(player, sel.box)[sel.slot], null); else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
-        v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";
+        v[`b${n}`] = iconOf(contents[n]?.t, contents[n]?.v); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";
         v[`q${n}`] = contents[n]?.p ? "y" : "n";
     }
     const shown = here.slice(state.page * 4, state.page * 4 + 4);
@@ -2058,7 +2066,7 @@ function openPasture(block, player, state) {
         if (!e) { Object.assign(v, { [`r${n}icon`]: "i----", [`r${n}gender`]: "o", [`r${n}slot`]: "e", [`r${n}move`]: "n" }); continue; }
         const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
         Object.assign(v, {
-            [`r${n}icon`]: iconOf(e.typeId), [`r${n}level`]: `Lv. ${prop(e, LEVEL) ?? info.level}`,
+            [`r${n}icon`]: iconOf(e.typeId, variantOf(e)), [`r${n}level`]: `Lv. ${prop(e, LEVEL) ?? info.level}`,
             [`r${n}name`]: nicknameOf(e) || info.name,
             [`r${n}gender`]: { male: "m", female: "f" }[genderOf(e)] ?? "o", [`r${n}slot`]: own ? "o" : "n", [`r${n}move`]: own ? "y" : "n",
         });
@@ -3137,7 +3145,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     for (let n = 0; n < 6; n++) {
         const e = party[n];
         if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; v[`p${n}icon`] = "i----"; continue; }
-        v[`p${n}icon`] = iconOf(e.typeId);
+        v[`p${n}icon`] = iconOf(e.typeId, variantOf(e));
         const pi = POKEMON[e.typeId];
         let share = 1;
         try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
@@ -3148,7 +3156,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     }
     const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
     v.item = icon ?? `${SUMMARY_UI}/blank`;
-    v.portrait = iconOf(source.typeId);
+    v.portrait = iconOf(source.typeId, variantOf(source));
     v.evolve = evolutions.length ? "Evolve" : "";
     const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
 

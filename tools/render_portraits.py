@@ -674,20 +674,22 @@ def main():
 
 
 def _render_to(job):
-    name, path, size = job
+    name, path, size, variant = job
     try:
-        img, _ = render_species(name, size, 4, 0, "fit", False)
+        img, _ = render_species(name, size, 4, variant, "fit", False)
         img.save(path, optimize=True)
         return None
     except Exception as e:
         return (name, repr(e))
 
 
-def render_all(out_dir, naming, size=128, processes=None):
-    """Render every numbered species' portrait into out_dir, named by naming(species folder); returns the failures."""
+def render_all(out_dir, naming, size=128, processes=None, variants=None):
+    """Render every numbered species' portrait into out_dir, named by naming(species folder, variant); variants maps a
+    folder to its number of variants (one when absent). Returns the failures."""
     from multiprocessing import Pool
     names = sorted(os.path.basename(p)[:-len(".entity.json")] for p in glob.glob(os.path.join(PACK, "entity", "*.entity.json")))
-    jobs = [(n, os.path.join(out_dir, naming(n)), size) for n in names if re.match(r"^\d{4}_", n)]
+    jobs = [(n, os.path.join(out_dir, naming(n, v)), size, v) for n in names if re.match(r"^\d{4}_", n)
+            for v in range((variants or {}).get(n, 1))]
     os.makedirs(out_dir, exist_ok=True)
     with Pool(processes) as pool: results = pool.map(_render_to, jobs, chunksize=8)
     return [r for r in results if r]
