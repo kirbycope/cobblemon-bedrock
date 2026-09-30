@@ -11,7 +11,7 @@ import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/serve
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
-import { PC_LAYOUT } from "./pc_layout.js";
+import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -1195,6 +1195,11 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:biome") {
+        // testing: "/execute as <player> run scriptevent cobblemon:biome" logs the biome the wallpaper unlocks read there
+        let id = "?";
+        try { id = source.dimension.getBiome(source.location)?.id; } catch (e) { id = `error: ${e}`; }
+        console.warn(`[cobblemon] biome at ${source.name ?? source.typeId}: ${id}`);
     } else if (event.id === "cobblemon:set_level") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:set_level <level>" puts a Pokemon back at a level,
         // with that level's base experience and its species' default moves for it
@@ -1665,12 +1670,44 @@ function pcInfo(v, rec, entity) {
     v.item = (held && HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1]) || `${PC_UI}/summary/blank`;
 }
 
+// PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
+// basic one; the six Cobblemon unlocks come from wallpaper_unlocks.molang (standing in a cave, forest or ocean biome,
+// in the Nether or the End; catching an alpha, which the port has none of) and show "new" until the list is opened
+const WALLS = "cobblemon:pc_walls", WALLS_UNLOCKED = "cobblemon:walls_unlocked", WALLS_UNSEEN = "cobblemon:walls_unseen";
+const WALL_NAMES = { biome_cave: "Caves", biome_forest: "Forest", biome_nether: "The Nether", biome_ocean: "Ocean", biome_the_end: "The End", pokemon_alpha: "Alpha" };
+function jsonProp(player, key, fallback) { try { return JSON.parse(player.getDynamicProperty(key) ?? "null") ?? fallback; } catch (e) { return fallback; } }
+function wallpapersOf(player) {
+    const unlocked = jsonProp(player, WALLS_UNLOCKED, []);
+    return PC_WALLPAPERS.filter(([, unlock]) => !unlock || unlocked.includes(unlock));
+}
+function unlockWallpaper(player, unlock) {
+    const unlocked = jsonProp(player, WALLS_UNLOCKED, []);
+    if (unlocked.includes(unlock)) return;
+    unlocked.push(unlock); player.setDynamicProperty(WALLS_UNLOCKED, JSON.stringify(unlocked));
+    const unseen = jsonProp(player, WALLS_UNSEEN, []); unseen.push(unlock); player.setDynamicProperty(WALLS_UNSEEN, JSON.stringify(unseen));
+    player.sendMessage(`§eWallpaper Unlocked §7"${WALL_NAMES[unlock] ?? unlock}"`);
+    try { player.playSound("cobblemon.pc.wallpaper.unlock"); } catch (e) { }
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        const dim = player.dimension.id;
+        if (dim === "minecraft:nether") unlockWallpaper(player, "biome_nether");
+        if (dim === "minecraft:the_end") unlockWallpaper(player, "biome_the_end");
+        let biome = "";
+        try { biome = player.dimension.getBiome(player.location)?.id ?? ""; } catch (e) { continue; }
+        if (/caves|deep_dark/.test(biome)) unlockWallpaper(player, "biome_cave");
+        if (/forest|grove/.test(biome)) unlockWallpaper(player, "biome_forest");
+        if (/ocean/.test(biome)) unlockWallpaper(player, "biome_ocean");
+    }
+}, 20);
+
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
     if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; }
     const done = () => { try { setPcScreen(block, false); } catch (e) { } };
     const party = summaryParty(player), contents = box(player, state.box);
-    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank` };
+    const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
+    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n" };
     const sel = state.sel;
     if (sel?.kind === "box") pcInfo(v, box(player, sel.box)[sel.slot], null);
     else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
@@ -1684,11 +1721,27 @@ function openPc(block, player, state) {
     const form = new ActionFormData().title("cbm:pc").body(body);
     for (let n = 0; n < 36; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
     form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/release`).button("exit", `${PC_UI}/summary/exit`);
+    form.button("options", `${PC_UI}/pc/options${state.opts ? "_on" : ""}`);
+    form.button("wallpaper", `${PC_UI}/pc/${state.opts ? `set_wallpaper${state.wmode ? "_on" : ""}` : "none"}`);
+    for (let n = 0; n < PC_WALLPAPERS.length; n++) {
+        const w = available[n];
+        form.button("wall", `${PC_UI}/pc/${w ? `wps_${w[0]}${w[1] && unseen.includes(w[1]) ? "_new" : ""}` : "none"}`);
+    }
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
         if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
         if (pick === 38) { pcRelease(player, state, party, () => again(5)); return; }
+        if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
+        if (pick === 41) {
+            if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
+            again(); return;
+        }
+        if (pick >= 42) {
+            const w = available[pick - 42];
+            if (w) { walls[state.box] = w[0]; player.setDynamicProperty(WALLS, JSON.stringify(walls)); try { player.playSound("cobblemon.pc.click"); } catch (e) { } }
+            again(); return;
+        }
         const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
         const occupied = target.kind === "box" ? !!contents[target.slot] : !!party[target.slot];
         if (!sel) { state.sel = occupied ? target : null; again(); return; }
@@ -1881,7 +1934,8 @@ function openPasture(block, player, state) {
     const pages = Math.max(1, Math.ceil(here.length / 4));
     state.page %= pages;
     const contents = box(player, state.box), sel = state.sel;
-    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, count: num(`${here.length}/${PASTURE_LIMIT}`) };
+    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, count: num(`${here.length}/${PASTURE_LIMIT}`),
+                wall: jsonProp(player, WALLS, {})[state.box] ?? "w05", wmode: "n", opts: "n" };
     if (sel) pcInfo(v, box(player, sel.box)[sel.slot], null); else pcInfo(v, null, null);
     for (let n = 0; n < 30; n++) {
         v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";

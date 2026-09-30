@@ -1215,7 +1215,7 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.")): continue
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "pc.")): continue
         folder = key.split(".")[-2] if key.startswith("item.") else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
@@ -4973,7 +4973,13 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"move{n}", 16) for n in range(4)] + [("box", 12)] + [(f"b{n}", 5) for n in range(30)] + [(f"p{n}", 5) for n in range(6)] \
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
-    + [("item", 0)]
+    + [("wall", 3), ("wmode", 1), ("opts", 1)] + [("item", 0)]
+# PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
+# six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
+PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
+    ("cav", "biome/wallpaper_biome_cave", "biome_cave"), ("for", "biome/wallpaper_biome_forest", "biome_forest"),
+    ("nth", "biome/wallpaper_biome_nether", "biome_nether"), ("ocn", "biome/wallpaper_biome_ocean", "biome_ocean"),
+    ("end", "biome/wallpaper_biome_the_end", "biome_the_end"), ("alp", "misc/wallpaper_pokemon_alpha", "pokemon_alpha")]
 
 
 def pokemon_icons():
@@ -5001,7 +5007,28 @@ def create_pc_ui():
     for name in ("pc_base", "portrait_background", "info_box", "party_panel", "pc_screen_grid", "pc_screen_overlay", "type_spacer_single",
                  "type_spacer_double", "pc_pointer"):
         shutil.copyfile(f"{src}/{name}.png", f"{P}/{name.replace('pc_', '')}.png")
-    shutil.copyfile(f"{src}/wallpaper/basic/wallpaper_basic_05.png", f"{P}/wallpaper.png")   # PCBoxWallpaperRepository.defaultWallpaper
+    # every wallpaper at the screen's size, its glow (drawn 17 out on every side) and its preview slot for the list:
+    # WallpaperEntry's thumbnail inside pc_screen_overlay_preview (the "new" frame for one not yet seen)
+    preview, preview_new = (Image.open(f"{src}/{name}.png").convert("RGBA") for name in ("pc_screen_overlay_preview", "pc_screen_overlay_preview_new"))
+    blank1 = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    for code, path, _ in PC_WALLPAPERS:
+        folder, name = path.split("/")
+        wall = Image.open(f"{src}/wallpaper/{path}.png").convert("RGBA")
+        wall.save(f"{P}/wp_{code}.png")
+        glow = f"{src}/wallpaper/{folder}/glow/{name}.png"
+        (shutil.copyfile(glow, f"{P}/glow_{code}.png") if os.path.exists(glow) else blank1.save(f"{P}/glow_{code}.png"))
+        thumb = wall.resize((54, 48), Image.LANCZOS)
+        for suffix, overlay in (("", preview), ("_new", preview_new)):
+            for state, top in (("", 0), ("_hover", 50)):
+                slot = Image.new("RGBA", (56, 50), (0, 0, 0, 0)); slot.alpha_composite(thumb, (1, 1))
+                slot.alpha_composite(overlay.crop((0, top, 56, top + 50)))
+                slot.save(f"{P}/wps_{code}{suffix}{state}.png")
+    shutil.copyfile(f"{src}/wallpaper_scroll_background.png", f"{P}/wallpaper_scroll_background.png")
+    for name, out in (("pc_icon_options", "options"), ("pc_button_set_wallpaper", "set_wallpaper")):
+        image = Image.open(f"{src}/{name}.png").convert("RGBA")
+        normal, lit = image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
+        normal.save(f"{P}/{out}.png"); lit.save(f"{P}/{out}_hover.png"); lit.save(f"{P}/{out}_on.png"); lit.save(f"{P}/{out}_on_hover.png")
+    for name in ("none", "none_hover"): blank1.save(f"{P}/{name}.png")
     def two(path):
         image = Image.open(path).convert("RGBA")
         return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
@@ -5064,7 +5091,8 @@ def create_pc_ui():
                 fixed("moves_l", "Moves", (9, 163.5), 0.5, size=(63, 5), align="center")]
     controls += [label(f"move{n}", field(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]
     # the box screen at StorageWidget's place, and its 30 slots in 6 columns of 27
-    controls += [image("wallpaper", "pc/wallpaper", (85, 27), (174, 155), 2), image("grid", "pc/screen_grid", (92, 38), (160, 133), 3),
+    controls += [picture("wallpaper", "pc/wp_", field("wall"), (85, 27), (174, 155), 2), picture("glow", "pc/glow_", field("wall"), (68, 10), (208, 189), 3),
+                 image("grid", "pc/screen_grid", (92, 38), (160, 133), 3),
                  image("overlay", "pc/screen_overlay", (85, 27), (174, 155), 4),
                  label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center")]
     slots = [(92 + 27 * (n % 6), 38 + 27 * (n // 6)) for n in range(30)]
@@ -5074,6 +5102,10 @@ def create_pc_ui():
                      picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7),
                      picture(f"mark{n}", "pc/mark_", field(f"q{n}"), (x + 15, y + 15), (10, 10), 6)]
     party_controls = [image("party_panel", "pc/party_panel", (267, 8), (82, 169), 2)]
+    def while_(mode, control):
+        name, body = next(iter(control.items()))
+        return {name: {**body, "bindings": body.get("bindings", [{"binding_name": "#form_text"}]) + [
+            {"binding_type": "view", "source_property_name": f"({field('wmode')} = '{mode}')", "target_property_name": "#visible"}]}}
     for n, (x, y) in enumerate(slots[30:], 30):
         party_controls += [picture(f"icon{n}", "icons/", field(f"p{n - 30}"), (x + 1, y + 1), (23, 23), 5, True),
                            picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7)]
@@ -5103,7 +5135,23 @@ def create_pc_ui():
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
+    buttons = buttons[:30] + [while_("n", b) for b in buttons[30:]]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (126, 186), (58, 16)), button(39, (320, 186), (26, 13))]
+    # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
+    buttons += [button(40, (218, 186), (16, 16)), button(41, (242, 31), (20, 20))]
+    # WallpapersScrollingWidget in the party's place (274, 29, 68 by 146): a slot of 56 by 50 every 54, 4 in, scrolling
+    count = len(PC_WALLPAPERS)
+    wall_buttons = [button(42 + n, (4, 4 + 54 * n), (56, 50)) for n in range(count)]
+    wall_content = {"type": "panel", "size": [64, 54 * count + 4], "controls": [
+        {"slots": {"type": "collection_panel", "size": [64, 54 * count + 4], "collection_name": "form_buttons", "controls": wall_buttons}}]}
+    wall_panel = while_("y", {"wallpapers": {"type": "panel", "size": [68, 148], "offset": [274, 28], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 8,
+        "controls": [{"bg": {"type": "image", "texture": f"{T}/pc/wallpaper_scroll_background", "size": [68, 148], "layer": 1}},
+                     {"title": {"type": "label", "text": "Wallpaper", "shadow": True, "size": [100, 10], "text_alignment": "center", "layer": 2,
+                                "anchor_from": "top_left", "anchor_to": "top_left", "offset": [23 - 50, -17]}},
+                     {"scroll@common.scrolling_panel": {"size": [68, 146], "offset": [0, 1], "layer": 3, "$show_background": False,
+                                                          "$scrolling_content": "server_form.cobblemon_pc_wallpapers", "$scroll_size": [3, "100% - 4px"],
+                                                          "$scrolling_pane_size": ["100%", "100%"], "$scrolling_pane_offset": [0, 0],
+                                                          "$scroll_bar_right_padding_size": [0, 0]}}]}})
     # the pasture's buttons: the box slots, the arrows, the exit, then the four rows, Recall All and the page turn on the count
     pasture_buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots[:30])]
     pasture_buttons += [button(30, (117, 9), (14, 14)), button(31, (220, 9), (14, 14)), button(32, (320, 186), (26, 13))]
@@ -5114,13 +5162,15 @@ def create_pc_ui():
                 "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                              "source_property_name": f"(not ((#title_text - '{title}') = #title_text))", "target_property_name": "#visible"}],
                 "controls": controls + extra + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons_here}}]}
-    pc = screen("cbm:pc", party_controls, buttons)
+    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons)
     pasture = screen("cbm:pasture", pasture_controls + [fixed("recall_all_l", "Recall All", (273, 165), 1.0, size=(70, 10), align="center", layer=12)], pasture_buttons)
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
         file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
     print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon portraits")
-    return {"cobblemon_pc": pc, "cobblemon_pasture": pasture}
+    with open(f"{scriptsBedrock}/pc_layout.js", "a", encoding="utf-8") as file:
+        file.write("export const PC_WALLPAPERS = " + json.dumps([[c, u] for c, _, u in PC_WALLPAPERS]) + ";\n")
+    return {"cobblemon_pc": pc, "cobblemon_pasture": pasture, "cobblemon_pc_wallpapers": wall_content}
 
 
 # The Pokedex, after PokedexGUI: the dex's own coloured base under the screen, the region with its arrows, seen and
