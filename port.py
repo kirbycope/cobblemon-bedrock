@@ -4682,8 +4682,8 @@ TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("gr
 # health step an "h")
 # The health texts ("45/45", "100%") start with a colour code instead, and sit at the end of the body, so the colour
 # code's second byte cannot shift any other field.
-BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32)}
-BATTLE_SIDE = 31
+BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32), "gender": (32, 33), "owned": (33, 34)}
+BATTLE_SIDE = 33
 BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters, then the foe's, 9
 BATTLE_LOG = BATTLE_HPTEXT + 12 + 9
 # BattleSwitchPokemonSelection's tiles: each button's text carries its Pokemon as fixed-width fields
@@ -5442,6 +5442,8 @@ def create_battle_ui():
         shutil.copyfile(f"{guiMain}/battle/battle_status_{status}.png", f"{uiTextures}/battle/status_{status}.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
     shutil.copyfile(f"{guiMain}/battle/battle_log.png", f"{uiTextures}/battle/log.png")
+    shutil.copyfile(f"{guiMain}/battle/battle_owned_indicator.png", f"{uiTextures}/battle/owned_y.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/battle/owned_n.png")
     # the switch screen: the underlay, the slot frames (a fainted Pokemon's greyed, the one in battle held on its
     # second frame), the status bars and a 90-pixel health bar per step, as the tile draws them
     shutil.copyfile(f"{guiMain}/battle/selection_underlay.png", f"{uiTextures}/battle/underlay.png")
@@ -5487,7 +5489,18 @@ def create_battle_ui():
                        "offset": [140 - 28 - 5 + 1 if reversed_ else 6, 9], "keep_ratio": True,
                        "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                                     "source_property_name": f"('textures/ui/cobblemon/icons/' + {field(side, 'icon')})", "target_property_name": "#texture"}]}},
-            text_label("name", field(side, "name"), [info_x, 7]),
+            # the name moves 7 right when the species is caught, to make room for BattleOverlay's caught indicator
+            {"name": {**text_label("name", field(side, "name"), [info_x, 7])["name"], "bindings": text_label("name", field(side, "name"), [info_x, 7])["name"]["bindings"]
+                      + [{"binding_type": "view", "source_property_name": f"({field(side, 'owned')} = 'n')", "target_property_name": "#visible"}]}},
+            {"name_owned": {**text_label("name_owned", field(side, "name"), [info_x + 7, 7])["name_owned"],
+                            "bindings": text_label("name_owned", field(side, "name"), [info_x + 7, 7])["name_owned"]["bindings"]
+                            + [{"binding_type": "view", "source_property_name": f"({field(side, 'owned')} = 'y')", "target_property_name": "#visible"}]}},
+            {"owned": {"type": "image", "size": [5, 5], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [7, 9],   # x + 7, y + 9 on either tile, at half size
+                       "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                    "source_property_name": f"('{T}/battle/owned_' + {field(side, 'owned')})", "target_property_name": "#texture"}]}},
+            {"gender": {"type": "image", "size": [5, 7], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [info_x + 58, 8],
+                        "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                     "source_property_name": f"('{T}/summary/g' + {field(side, 'gender')})", "target_property_name": "#texture"}]}},
             text_label("level", field(side, "level"), [info_x + 66, 7]),
             {"hp_text": {**text_label("hp_text", field(side, "hptext"), [info_x + (39.5 if not reversed_ else 44.5) - 50, 22], scale=0.5)["hp_text"], "text_alignment": "center"}},
         ]

@@ -870,7 +870,10 @@ function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
         const step = f.hp > 0 ? Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50)) : 0;
-        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId);
+        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId)
+            // the gender, and whether the player has caught this species (BattleOverlay's caught indicator)
+            + ({ male: "m", female: "f" }[f.entity?.isValid ? genderOf(f.entity) : ""] ?? "o")
+            + (dexStatus(battle.player, f.entity?.typeId) >= 2 ? "y" : "n");
     };
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
     const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
