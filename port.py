@@ -4930,7 +4930,9 @@ def create_summary_ui():
 # JSON UI screen cannot draw a model.
 PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("portrait", 5), ("nature", 18), ("ability", 20)] \
     + [(f"move{n}", 16) for n in range(4)] + [("box", 12)] + [(f"b{n}", 5) for n in range(30)] + [(f"p{n}", 5) for n in range(6)] \
-    + [(f"s{n}", 1) for n in range(36)] + [("item", 0)]
+    + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
+    + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
+    + [("item", 0)]
 
 
 def pokemon_icons():
@@ -4938,10 +4940,9 @@ def pokemon_icons():
     folder = f"{uiTextures}/icons"
     os.makedirs(folder, exist_ok=True)
     made = 0
-    for pokemon in pokemons:
-        number = pokemon.split("_", 1)[0]
-        source = f"{texturesItemsBedrock}/{pokemon}_spawn_egg.png"
-        if not os.path.exists(source) or os.path.exists(f"{folder}/i{number}.png"): continue
+    for source in sorted(glob.glob(f"{texturesItemsBedrock}/*_spawn_egg.png")):
+        number = os.path.basename(source).split("_", 1)[0]
+        if not number.isdigit() or os.path.exists(f"{folder}/i{number}.png"): continue
         Image.open(source).convert("RGBA").save(f"{folder}/i{number}.png"); made += 1
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{folder}/i----.png")
     return made
@@ -4964,6 +4965,17 @@ def create_pc_ui():
     Image.new("RGBA", (25, 25), (0, 0, 0, 0)).save(f"{P}/slot.png"); overlay.save(f"{P}/slot_hover.png")
     overlay.save(f"{P}/slot_on.png"); overlay.save(f"{P}/slot_on_hover.png")
     for sel in ("n", "y"): (Image.open(f"{src}/pc_pointer.png").convert("RGBA") if sel == "y" else Image.new("RGBA", (1, 1), (0, 0, 0, 0))).save(f"{P}/sel_{sel}.png")
+    # the pasture panel (PastureWidget, PasturePokemonScrollList, RecallButton)
+    pas = f"{guiMain}/pasture"
+    blank1 = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    for name in ("pasture_panel", "pasture_scroll_overlay"): shutil.copyfile(f"{pas}/{name}.png", f"{P}/{name}.png")
+    shutil.copyfile(f"{pas}/pc_slot_icon_pasture.png", f"{P}/mark_y.png"); blank1.save(f"{P}/mark_n.png")
+    for kind, name in (("o", "pasture_slot_owner"), ("n", "pasture_slot")):
+        normal, hover = two(f"{pas}/{name}.png"); normal.save(f"{P}/row_{kind}.png"); hover.save(f"{P}/row_{kind}_hover.png")
+    Image.new("RGBA", (62, 29), (0, 0, 0, 0)).save(f"{P}/row_e.png"); Image.new("RGBA", (62, 29), (255, 255, 255, 40)).save(f"{P}/row_e_hover.png")
+    two(f"{pas}/pasture_slot_icon_move.png")[0].save(f"{P}/move_y.png"); blank1.save(f"{P}/move_n.png")
+    normal, hover = two(f"{pas}/pasture_button.png"); normal.save(f"{P}/recall_all.png"); hover.save(f"{P}/recall_all_hover.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{P}/page.png"); Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{P}/page_hover.png")
     icons = pokemon_icons()
 
     T = "textures/ui/cobblemon"
@@ -4978,8 +4990,8 @@ def create_pc_ui():
     def label(name, source, offset, scale=1.0, size=(100, 10), align="left", shadow=True, layer=6):
         return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": layer,
                        "font_scale_factor": scale, "text_alignment": align, "shadow": shadow, "text": "#value", "bindings": bound(source, "#value")}}
-    def fixed(name, text, offset, scale=1.0, size=(100, 10), align="left"):
-        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": 6,
+    def fixed(name, text, offset, scale=1.0, size=(100, 10), align="left", layer=6):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": layer,
                        "font_scale_factor": scale, "text_alignment": align, "shadow": True, "text": text}}
     def image(name, texture, offset, size, layer=3):
         return {name: {"type": "image", "texture": f"{T}/{texture}", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": False,
@@ -5008,14 +5020,30 @@ def create_pc_ui():
     # the box screen at StorageWidget's place, and its 30 slots in 6 columns of 27
     controls += [image("wallpaper", "pc/wallpaper", (85, 27), (174, 155), 2), image("grid", "pc/screen_grid", (92, 38), (160, 133), 3),
                  image("overlay", "pc/screen_overlay", (85, 27), (174, 155), 4),
-                 label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center"),
-                 image("party_panel", "pc/party_panel", (267, 8), (82, 169), 2)]
+                 label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center")]
     slots = [(92 + 27 * (n % 6), 38 + 27 * (n // 6)) for n in range(30)]
     slots += [(278 + (31 if n % 2 else 0), 35 + 31 * (n // 2) + (8 if n % 2 else 0)) for n in range(6)]
-    for n, (x, y) in enumerate(slots):
-        key = f"b{n}" if n < 30 else f"p{n - 30}"
-        controls += [picture(f"icon{n}", "icons/", field(key), (x + 1, y + 1), (23, 23), 5, True),
-                     picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7)]
+    for n, (x, y) in enumerate(slots[:30]):
+        controls += [picture(f"icon{n}", "icons/", field(f"b{n}"), (x + 1, y + 1), (23, 23), 5, True),
+                     picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7),
+                     picture(f"mark{n}", "pc/mark_", field(f"q{n}"), (x + 15, y + 15), (10, 10), 6)]
+    party_controls = [image("party_panel", "pc/party_panel", (267, 8), (82, 169), 2)]
+    for n, (x, y) in enumerate(slots[30:], 30):
+        party_controls += [picture(f"icon{n}", "icons/", field(f"p{n - 30}"), (x + 1, y + 1), (23, 23), 5, True),
+                           picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7)]
+    # the pasture panel at the party panel's place: the list 6 in and 31 down, rows of 29 three apart, four at a time
+    rows = [(277, 41 + 32 * n) for n in range(4)]
+    pasture_controls = [image("pasture_panel", "pc/pasture_panel", (267, 8), (82, 169), 2),
+                        image("scroll_overlay", "pc/pasture_scroll_overlay", (273, 26), (70, 131), 5),
+                        fixed("title", "Pasture", (267, 11.5), 1.0, size=(63, 10), align="center"),
+                        label("count", field("count"), (273, 32), 1.0, size=(70, 10), align="center", layer=12)]
+    for n, (x, y) in enumerate(rows):
+        # above the row buttons, whose faces are the slot texture
+        pasture_controls += [picture(f"ricon{n}", "icons/", field(f"r{n}icon"), (x + 11, y), (22, 22), 20, True),
+                             label(f"rlevel{n}", field(f"r{n}level"), (x + 29, y + 17), 0.5, size=(30, 5), align="right", layer=21),
+                             label(f"rname{n}", field(f"r{n}name"), (x + 11, y + 24), 0.5, size=(45, 5), shadow=False, layer=21),
+                             picture(f"rgender{n}", "summary/g", field(f"r{n}gender"), (x + 56.5, y + 24), (2.5, 3.5), 21),
+                             picture(f"rmove{n}", "pc/move_", field(f"r{n}move"), (x + 2, y + 11), (7, 7), 21)]
     def face(state):
         return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
                 "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
@@ -5030,15 +5058,23 @@ def create_pc_ui():
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (126, 186), (58, 16)), button(39, (320, 186), (26, 13))]
-    pc = {"type": "panel", "size": [349, 205], "anchor_from": "center", "anchor_to": "center",
-          "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
-                       "source_property_name": "(not ((#title_text - 'cbm:pc') = #title_text))", "target_property_name": "#visible"}],
-          "controls": controls + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons}}]}
+    # the pasture's buttons: the box slots, the arrows, the exit, then the four rows, Recall All and the page turn on the count
+    pasture_buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots[:30])]
+    pasture_buttons += [button(30, (117, 9), (14, 14)), button(31, (220, 9), (14, 14)), button(32, (320, 186), (26, 13))]
+    pasture_buttons += [button(33 + n, (x, y), (62, 29)) for n, (x, y) in enumerate(rows)]
+    pasture_buttons += [button(37, (273, 161), (70, 17)), button(38, (283, 30), (50, 12))]
+    def screen(title, extra, buttons_here):
+        return {"type": "panel", "size": [349, 205], "anchor_from": "center", "anchor_to": "center",
+                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                             "source_property_name": f"(not ((#title_text - '{title}') = #title_text))", "target_property_name": "#visible"}],
+                "controls": controls + extra + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons_here}}]}
+    pc = screen("cbm:pc", party_controls, buttons)
+    pasture = screen("cbm:pasture", pasture_controls + [fixed("recall_all_l", "Recall All", (273, 165), 1.0, size=(70, 10), align="center", layer=12)], pasture_buttons)
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
         file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
     print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon icons")
-    return {"cobblemon_pc": pc}
+    return {"cobblemon_pc": pc, "cobblemon_pasture": pasture}
 
 
 def create_battle_ui():
@@ -5172,7 +5208,7 @@ def create_battle_ui():
         "long_form": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
             {"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "((#title_text - 'cbm:') = #title_text)", "target_property_name": "#visible"}]}]},
         "cobblemon_forms": {"type": "panel", "size": ["100%", "100%"], "controls": [{"battle@server_form.cobblemon_battle": {}}, {"summary@server_form.cobblemon_summary": {}},
-                                                                                       {"pc@server_form.cobblemon_pc": {}}]},
+                                                                                       {"pc@server_form.cobblemon_pc": {}}, {"pasture@server_form.cobblemon_pasture": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],

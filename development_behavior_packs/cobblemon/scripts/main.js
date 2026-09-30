@@ -1492,7 +1492,10 @@ function openPc(block, player, state) {
     if (sel?.kind === "box") pcInfo(v, box(player, sel.box)[sel.slot], null);
     else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
     else pcInfo(v, null, null);
-    for (let n = 0; n < 30; n++) { v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n"; }
+    for (let n = 0; n < 30; n++) {
+        v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
+        v[`q${n}`] = contents[n]?.p ? "y" : "n";
+    }
     for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
     const body = PC_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pc").body(body);
@@ -1674,37 +1677,86 @@ function setPastureLamp(block, on) {
     if (top?.typeId === "cobblemon:pasture") setState(top, "cobblemon:on", on);
 }
 
-function openPasture(block, player) {
+// The pasture, laid out by ui/server_form.json as Cobblemon's PC with the pasture panel in place of the party: choose a
+// Pokemon in a box, then a row of the pasture list, to send it out; choose one of your own rows to bring it back; Recall
+// All brings back all of yours. The list shows four rows at a time; the count above it turns the page.
+function openPasture(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a pasture while in battle!"); return; }
-    tidyPastured(player);
-    const key = pastureKey(block), here = pasturedHere(block.dimension, key, block.location);
-    const mineHere = here.filter((e) => prop(e, OWNER) === player.id);
-    new ActionFormData().title("Pasture").body(`${here.length}/${PASTURE_LIMIT} Pokemon out in this pasture.`)
-        .button("Send out from PC").button("Bring back").button("Close")
-        .show(player).then((r) => {
-            if (r.canceled || r.selection === 2) return;
-            if (r.selection === 1) {
-                if (!mineHere.length) { player.sendMessage("§7None of your Pokemon are out in this pasture."); return; }
-                const form = new ActionFormData().title("Bring back which Pokemon?");
-                for (const e of mineHere) form.button(describe(snapshot(e)));
-                form.show(player).then((q) => { if (!q.canceled) recall(player, mineHere[q.selection], block); });
-                return;
-            }
-            if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); return; }
-            pickStored(player, "Pasture", (n, slot) => {
-                const contents = box(player, n), rec = contents[slot];
-                if (!rec || rec.p) { player.sendMessage("§7That Pokemon is already out in a pasture."); return; }
-                const at = { x: block.location.x + 0.5 + (Math.random() * 4 - 2), y: block.location.y, z: block.location.z + 0.5 + (Math.random() * 4 - 2) };
-                let entity;
-                try { entity = spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); return; }
-                system.run(() => {
-                    try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${n}:${slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
-                });
-                rec.p = key; saveBox(player, n, contents);
-                setPastureLamp(block, true);
-                player.sendMessage(`§a${describe(rec)} is out in the pasture.`);
-            }, () => { });
+    if (!state) { tidyPastured(player); state = { box: 0, sel: null, page: 0 }; }
+    const key = pastureKey(block), here = pasturedHere(block.dimension, key, block.location).filter((e) => e.isValid && !recalling.has(e.id));
+    // a slot marked out in this pasture whose Pokemon is gone (it fainted or left) comes back to the box
+    if (!state.sel && system.currentTick - (state.tidied ?? -100) > 40) {
+        state.tidied = system.currentTick;
+        const out = new Set(here.map((e) => prop(e, PASTURE_SLOT)));
+        for (let n = 0; n < PC_BOXES; n++) {
+            const c = box(player, n);
+            let changed = false;
+            c.forEach((rec, i) => { if (rec?.p === key && !out.has(`${n}:${i}`)) { delete rec.p; changed = true; } });
+            if (changed) saveBox(player, n, c);
+        }
+    }
+    const pages = Math.max(1, Math.ceil(here.length / 4));
+    state.page %= pages;
+    const contents = box(player, state.box), sel = state.sel;
+    const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, count: num(`${here.length}/${PASTURE_LIMIT}`) };
+    if (sel) pcInfo(v, box(player, sel.box)[sel.slot], null); else pcInfo(v, null, null);
+    for (let n = 0; n < 30; n++) {
+        v[`b${n}`] = iconOf(contents[n]?.t); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";
+        v[`q${n}`] = contents[n]?.p ? "y" : "n";
+    }
+    const shown = here.slice(state.page * 4, state.page * 4 + 4);
+    for (let n = 0; n < 4; n++) {
+        const e = shown[n];
+        if (!e) { Object.assign(v, { [`r${n}icon`]: "i----", [`r${n}gender`]: "o", [`r${n}slot`]: "e", [`r${n}move`]: "n" }); continue; }
+        const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
+        Object.assign(v, {
+            [`r${n}icon`]: iconOf(e.typeId), [`r${n}level`]: `Lv. ${prop(e, LEVEL) ?? info.level}`,
+            [`r${n}name`]: e.nameTag && e.nameTag !== "NPC" ? e.nameTag : info.name,
+            [`r${n}gender`]: { male: "m", female: "f" }[genderOf(e)] ?? "o", [`r${n}slot`]: own ? "o" : "n", [`r${n}move`]: own ? "y" : "n",
         });
+    }
+    const body = PC_LAYOUT.map(([k, width]) => (width ? padBytes(v[k] ?? "", width) : v[k] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:pasture").body(body);
+    for (let n = 0; n < 30; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
+    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("exit", `${PC_UI}/summary/exit`);
+    for (let n = 0; n < 4; n++) form.button("row", `${PC_UI}/pc/row_${v[`r${n}slot`]}`);
+    form.button("recall", `${PC_UI}/pc/recall_all`).button("page", `${PC_UI}/pc/page`);
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === 32) return;
+        const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPasture(block, player, state), delay);
+        if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 38) { state.page = (state.page + 1) % pages; again(); return; }
+        if (pick === 37) {
+            for (const e of here) if (prop(e, OWNER) === player.id) recall(player, e, block);
+            again(14); return;
+        }
+        if (pick < 30) {
+            const rec = contents[pick];
+            state.sel = rec && !rec.p && !(sel && sel.box === state.box && sel.slot === pick) ? { box: state.box, slot: pick } : null;
+            if (rec?.p) player.sendMessage("§7That Pokemon is already out in a pasture.");
+            again(); return;
+        }
+        const row = shown[pick - 33];
+        if (row) {
+            if (prop(row, OWNER) === player.id) { recall(player, row, block); again(14); }
+            else { player.sendMessage("§7That Pokemon isn't yours."); again(); }
+            return;
+        }
+        if (!sel) { again(); return; }
+        if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); again(); return; }
+        const pcBox = box(player, sel.box), rec = pcBox[sel.slot];
+        state.sel = null;
+        if (!rec || rec.p) { again(); return; }
+        const at = { x: block.location.x + 0.5 + (Math.random() * 4 - 2), y: block.location.y, z: block.location.z + 0.5 + (Math.random() * 4 - 2) };
+        let entity;
+        try { entity = spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); again(); return; }
+        system.run(() => {
+            try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${sel.box}:${sel.slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
+        });
+        rec.p = key; saveBox(player, sel.box, pcBox);
+        setPastureLamp(block, true);
+        again(14);
+    }).catch(() => { });
 }
 
 // back into its PC slot, carrying what changed while it was out (its health, a name given to it)
