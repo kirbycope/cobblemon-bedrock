@@ -5662,8 +5662,8 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
                "reg": (172, 173), "unknown": (173, 174)}
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
-                "note": (34, 36)}
-PARTY_RECORD = 36   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+                "note": (34, 36), "exp_text": (36, 46)}
+PARTY_RECORD = 46   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
 
 
 def scan_code(n):
@@ -5779,9 +5779,13 @@ def create_party_hud():
     shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
     shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/o.png")   # genderless, and an empty slot
-    # the slot's pop-ups: "nv" when an evolution is ready, "nn" for none
-    shutil.copyfile(f"{guiMain}/party/party_slot_notification_evolution.png", f"{party}/nv.png")
-    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/nn.png")
+    # the slot's pop-ups, two places: the first holds the evolution or the new move, the second the evolution when
+    # both show ("nv" evolution, "nm" new move, "vm" both, "nn" none)
+    evo, move = f"{guiMain}/party/party_slot_notification_evolution.png", f"{guiMain}/party/party_slot_notification_new_move.png"
+    blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    for note, first, second in (("nv", evo, None), ("nm", move, None), ("vm", move, evo), ("nn", None, None)):
+        (shutil.copyfile(first, f"{party}/a{note}.png") if first else blank.save(f"{party}/a{note}.png"))
+        (shutil.copyfile(second, f"{party}/b{note}.png") if second else blank.save(f"{party}/b{note}.png"))
     # the bars, 18 steps tall, filled from the bottom: health in getDepletableRedGreen's colours, experience in Cobblemon's blue
     for step in range(19):
         ratio = step / 18
@@ -5837,8 +5841,14 @@ def create_party_hud():
                 picture("hp", slot, "hp", [2, 18], [46, 5]),
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
                 picture("ball", slot, "ball", [9, 11], [43.5, 22], 3),
-                # PartyOverlay's pop-up beside the slot when an evolution is ready: the texture at half size, 56.5 in, 4 down
-                picture("note", slot, "note", [18.5, 10], [56.5, 4], 4))]]}}
+                # PartyOverlay's pop-ups beside the slot at half size: the new move or evolution 56.5 in and 4 down (under
+                # the gained experience), and the evolution at 78 when both show; the experience gained 57 in, 17 down
+                {"note_a": {"type": "image", "size": [18.5, 10], "offset": [56.5, 4], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                            "keep_ratio": False, "bindings": [from_data(f"('{T}/a' + {field(slot, 'note')})", "#texture")]}},
+                {"note_b": {"type": "image", "size": [18.5, 10], "offset": [78, 4], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                            "keep_ratio": False, "bindings": [from_data(f"('{T}/b' + {field(slot, 'note')})", "#texture")]}},
+                {"exp_text": {"type": "label", "size": [40, 5], "offset": [57, 17], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 4,
+                              "font_scale_factor": 0.5, "shadow": True, "text": "#value", "bindings": [from_data(field(slot, "exp_text"), "#value")]}})]]}}
     hud = {
         "namespace": "hud",
         "root_panel": {"modifications": [{"array_name": "controls", "operation": "insert_back", "value": {

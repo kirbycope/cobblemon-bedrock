@@ -937,6 +937,18 @@ function pickAction(battle, options) {
 // record per slot in a title starting "cbm:party" whenever it changes, and every five seconds for a HUD that rejoined
 const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS);
 const partySent = new Map();
+// the slot's pop-ups (PartyOverlayDataControl): the experience text for EXP_POPUP_TIME (63 ticks), and after the bar's
+// 17-tick update the new move and evolution pop-ups for POPUP_TIME (46 ticks: 3 in, 40 held, 3 out)
+function partyNotes(e) {
+    const now = system.currentTick;
+    let gain = {};
+    try { gain = JSON.parse(prop(e, GAIN_NOTE) ?? "{}"); } catch (err) { }
+    const since = now - (gain.tick ?? -1e9), popup = since >= 17 && since < 63;
+    const evoSince = now - (prop(e, EVO_NOTE) ?? -1e9), evo = evoSince >= 0 && evoSince < 46, move = popup && gain.move;
+    const note = evo && move ? "vm" : evo ? "nv" : move ? "nm" : "nn";
+    // ui.exp.number, "+N EXP", with a colour code first since a leading "+" reads as a number
+    return note + padBytes(since < 63 && gain.exp ? `§f+${gain.exp} EXP` : "", 10);
+}
 function partyRecord(e) {
     const info = POKEMON[e.typeId];
     const level = prop(e, LEVEL) ?? info.level, group = info.expGroup;
@@ -952,7 +964,7 @@ function partyRecord(e) {
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId)
-        + (system.currentTick - (prop(e, EVO_NOTE) ?? -1e9) < 46 ? "nv" : "nn");   // POPUP_TIME: 3 in, 40 held, 3 out
+        + partyNotes(e);
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -963,7 +975,7 @@ system.runInterval(() => {
                 .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn";
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10);
         const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
@@ -1036,15 +1048,21 @@ function endOfTurn(battle) {
 
 // experience for beating a Pokemon, and the levels and moves it brings
 // Pokemon that levelled up, asked about evolving once the battle (or the candy) is done
-const leveled = new Set(), EVO_NOTE = "cobblemon:evo_note";
+const leveled = new Set(), EVO_NOTE = "cobblemon:evo_note", GAIN_NOTE = "cobblemon:gain_note";
+const gained = new Map();   // entity -> { exp, move }: what each Pokemon gained since the party overlay last showed it
 // A level-up that makes an evolution ready (PartyOverlayDataControl): the party slot's evolution pop-up and the
 // notification jingle; the Summary's Evolve button then opens the choice. Nothing is asked.
 function offerLevelEvolutions(player) {
+    // PartyOverlayDataControl's pop-ups once the overlay is back: the experience gained, then a new move
+    for (const [e, g] of [...gained]) {
+        gained.delete(e);
+        if (e.isValid) setProp(e, GAIN_NOTE, JSON.stringify({ tick: system.currentTick, exp: g.exp, move: g.move }));
+    }
     let ready = false;
     for (const e of [...leveled]) {
         leveled.delete(e);
         if (!e.isValid || !readyEvolutions(e, player).length) continue;
-        setProp(e, EVO_NOTE, system.currentTick);
+        setProp(e, EVO_NOTE, system.currentTick + 17);
         ready = true;
     }
     if (ready) try { player.playSound("cobblemon.evolution.notification"); } catch (e) { }
@@ -1062,6 +1080,8 @@ function gainExperience(battle, f, foe, amount) {
     const group = f.info.expGroup;
     let exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, f.level)) + gain, level = f.level;
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
+    const note = gained.get(f.entity) ?? { exp: 0, move: false };
+    note.exp += gain; gained.set(f.entity, note);
     const ids = f.moves.map((m) => m.id);
     while (level < 100 && exp >= expFor(group, level + 1)) {
         level++;
@@ -1071,6 +1091,7 @@ function gainExperience(battle, f, foe, amount) {
         say(battle, `§b${f.info.name} grew to level ${level}!`);
         for (const [at, id] of f.info.learnset ?? []) {
             if (at !== level || ids.includes(id) || !MOVES[id]) continue;
+            note.move = true;
             if (ids.length < 4) { ids.push(id); say(battle, `§b${f.info.name} learned ${MOVES[id].name}!`); }
             else {
                 // the oldest move of the same kind makes way: an attack for an attack, a status move for a status move
@@ -1143,6 +1164,14 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:set_level") {
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:set_level <level>" puts a Pokemon back at a level,
+        // with that level's base experience and its species' default moves for it
+        const level = Math.max(1, Math.min(100, parseInt(event.message) || 1)), info = POKEMON[source.typeId];
+        if (!info) return;
+        setProp(source, LEVEL, level); setProp(source, EXP, expFor(info.expGroup, level));
+        setProp(source, MOVESET, undefined); setProp(source, GAIN_NOTE, undefined); setProp(source, EVO_NOTE, undefined);
+        refreshHealth(source);
     } else if (event.id === "cobblemon:clear_wild") {
         // testing: "/scriptevent cobblemon:clear_wild x y z r" removes the wild Pokemon in that sphere, never an owned one
         const [x, y, z, r] = event.message.split(/\s+/).map(Number);
