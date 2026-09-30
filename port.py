@@ -5794,6 +5794,196 @@ def create_dialogue_ui():
     return {"cobblemon_dialogue": dialogue}
 
 
+# The TM Machine (TMMachineScreen) without its inventory rows, which a form cannot hold: the screen on the left with
+# its three modes (the type slots, a type's TMs under the search bar, the chosen TM's disc with Start), the move's
+# power, accuracy, effect and description on the right with its recipe, and along the bar the blank disc slot and the
+# three ingredient slots with what the player carries of each. Body: TM_LAYOUT's fields in order. The recipe icons and
+# the blank disc slot are the textures of four buttons after the others, since a texture path padded to a field's
+# width names no texture.
+TM_LAYOUT = [("mode", 1), ("search", 24), ("power", 6), ("acc", 6), ("eff", 6), ("disc", 3)] \
+    + [(f"r{i}{k}", w) for i in range(3) for k, w in (("need", 4), ("have", 6))] + [("desc", 0)]
+TM_TYPE_SLOTS, TM_MOVE_ROWS = 19, 64
+
+
+def tm_recipe_icons():
+    """Every recipe item's icon path under textures/ (a tag's first item's), with the items a tag entry stands for."""
+    items, tags = [], {}
+    for path in sorted(glob.glob(f"{cobblemonData}/tms/*.json")):
+        with open(path, encoding="utf-8") as file: tm = json.load(file)
+        for r in tm.get("recipe", []):
+            key = r.get("item") or "#" + r.get("tag", "")
+            if key not in items: items.append(key)
+    for key in items:
+        if not key.startswith("#"): continue
+        ns, _, name = key[1:].partition(":")
+        if ns == "cobblemon": tags[key] = sorted(f"cobblemon:{i.split(':')[-1]}" if ":" in i else i for i in item_tag(name))
+        else: tags[key] = {"chicken_food": ["minecraft:wheat_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:beetroot_seeds"],
+                           "saplings": [f"minecraft:{w}_sapling" for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "cherry")] + ["minecraft:mangrove_propagule"],
+                           "wool": [f"minecraft:{c}_wool" for c in ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")]}.get(name, [])
+    vanilla = vanilla_texture_paths()
+    def path_of(item):
+        if item.startswith("cobblemon:"): p_ = item_icon_path(item)
+        else: name = item.split(":")[-1]; p_ = vanilla.get(VANILLA_TEXTURE_NAMES.get(name, name)) or vanilla.get(name)
+        return p_[len("textures/"):] if p_ and p_.startswith("textures/") else (p_ or "ui/cobblemon/tm/none")
+    return {key: path_of(tags[key][0] if key.startswith("#") and tags.get(key) else key) for key in items}, tags
+
+
+def create_tm_ui():
+    M = f"{uiTextures}/tm"
+    fresh(M)
+    src = f"{guiMain}/tmmachine"
+    blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    base = Image.open(f"{src}/base.png").convert("RGBA")
+    top = base.crop((0, 0, 191, 137)); edge = base.crop((0, 223, 191, 226))
+    frame = Image.new("RGBA", (191, 140)); frame.alpha_composite(top); frame.alpha_composite(edge, (0, 137)); frame.save(f"{M}/base.png")
+    for name in ("screen_overlay", "screen_saver_background", "search_bar", "tm_border", "tm_base_overlay", "tm_overlay_reflective", "scan_lines", "icon_search"):
+        shutil.copyfile(f"{src}/{name}.png", f"{M}/{name}.png")
+    shutil.copyfile(f"{cobblemon}/textures/item/tms/blank_disc_empty_slot.png", f"{M}/bl_empty.png")
+    shutil.copyfile(f"{cobblemon}/textures/item/tms/blank_disc.png", f"{M}/bl_have.png")
+    def frames(name, h):
+        image = Image.open(f"{src}/{name}.png").convert("RGBA")
+        return image.crop((0, 0, image.width, h)), image.crop((0, h, image.width, h * 2))
+    for name, out, h in (("icon_back", "back", 18), ("button_start", "start", 12), ("type_slot", "tslot", 24)):
+        normal, hover = frames(name, h); normal.save(f"{M}/{out}.png"); hover.save(f"{M}/{out}_hover.png")
+    frames("button_start_disabled", 12)[0].save(f"{M}/start_off.png"); frames("button_start_disabled", 12)[0].save(f"{M}/start_off_hover.png")
+    # StartButton draws its icon over the face, the double-size icon squeezed to the button's 22 by 12
+    start_icon = Image.open(f"{src}/button_icon_start.png").convert("RGBA").resize((22, 12), Image.LANCZOS)
+    for name in ("start", "start_hover", "start_off", "start_off_hover"):
+        face_ = Image.open(f"{M}/{name}.png").convert("RGBA"); face_.alpha_composite(start_icon); face_.save(f"{M}/{name}.png")
+    # the type slots, each with its type's icon (the "all" slot's own icon), normal and hovered
+    slot, slot_hover = frames("type_slot", 24)
+    small = Image.open(f"{guiMain}/types_small.png").convert("RGBA")
+    icons = [Image.open(f"{src}/type_slot_icon_all.png").convert("RGBA")] + [small.crop((n * 18, 0, n * 18 + 18, 18)) for n in range(len(TYPE_HUES))]
+    for n, icon in enumerate(icons):
+        for suffix, face in (("", slot), ("_hover", slot_hover)):
+            out = face.copy(); out.alpha_composite(icon, ((24 - icon.width) // 2, (24 - icon.height) // 2)); out.save(f"{M}/ty{n:02d}{suffix}.png")
+    # the move tiles (MoveSlotWidget's, tinted by type; the disabled one for a TM not yet learned) and the discs
+    move = Image.open(f"{guiMain}/summary/summary_move.png").convert("RGBA")
+    cover = Image.open(f"{guiMain}/summary/summary_move_overlay.png").convert("RGBA").crop((0, 0, 108, 22))
+    disabled = Image.open(f"{guiMain}/summary/summary_move_disabled.png").convert("RGBA").crop((0, 0, 108, 22))
+    # the disc as renderDisc draws it: the base in the type's primary colour, the reflection in its secondary, the border
+    disc_base = Image.open(f"{src}/tm_base.png").convert("RGBA")
+    disc_shine = Image.open(f"{src}/tm_overlay_reflective.png").convert("RGBA")
+    border = Image.open(f"{src}/tm_border.png").convert("RGBA")
+    with open(f"{pwd}/java/common/src/main/kotlin/com/cobblemon/mod/common/api/types/ElementalTypes.kt", encoding="utf-8") as file:
+        disc_colours = {m.group(1).lower(): (int(m.group(2), 16), int(m.group(3), 16)) for m in
+                        re.finditer(r'name = "(\w+)".*?primaryColor = 0x(\w+),\s*secondaryColor = 0x(\w+)', file.read(), re.S)}
+    def tint(image, rgb):
+        out = Image.new("RGBA", image.size); px, o = image.load(), out.load()
+        for x in range(image.width):
+            for y in range(image.height):
+                r, g, b, a = px[x, y]; o[x, y] = (r * rgb[0] // 255, g * rgb[1] // 255, b * rgb[2] // 255, a)
+        return out
+    for n, (type_name, hue) in enumerate(TYPE_HUES):
+        rgb = ((hue >> 16) & 255, (hue >> 8) & 255, hue & 255)
+        for suffix, top_ in (("", 0), ("_hover", 22)):
+            tile = tint(move.crop((0, top_, 108, top_ + 22)), rgb); tile.alpha_composite(cover); tile.save(f"{M}/mv{n:02d}{suffix}.png")
+            off = disabled.copy(); off.alpha_composite(cover); off.save(f"{M}/mv{n:02d}_off{suffix}.png")
+        primary, secondary = ((c >> 16 & 255, c >> 8 & 255, c & 255) for c in disc_colours[type_name])
+        disc = tint(disc_base, primary); disc.alpha_composite(tint(disc_shine, secondary)); disc.alpha_composite(border); disc.save(f"{M}/d{n:02d}.png")
+    for name in ("none", "none_hover", "dxx"): blank.save(f"{M}/{name}.png")
+
+    T = "textures/ui/cobblemon/tm"
+    offsets, at = {}, 0
+    for name, width in TM_LAYOUT: offsets[name] = (at, at + width); at += width
+    def field(name):
+        a, b = offsets[name]
+        if name == "desc": return f"(#form_text - ('%.{a}s' * #form_text))"
+        return f"('%.{b}s' * #form_text)" if a == 0 else f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
+    def bound(source, target):
+        return [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": source, "target_property_name": target}]
+    def image(name, texture, offset, size, layer=2):
+        return {name: {"type": "image", "texture": f"{T}/{texture}", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": False,
+                       "anchor_from": "top_left", "anchor_to": "top_left"}}
+    def picture(name, source, offset, size, layer=4, prefix=""):
+        return {name: {"type": "image", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": False,
+                       "anchor_from": "top_left", "anchor_to": "top_left", "bindings": bound(f"('{T}/{prefix}' + {source})", "#texture")}}
+    def label(name, source, offset, scale=0.5, size=(60, 5), align="left", layer=6, shadow=True):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": layer,
+                       "font_scale_factor": scale, "text_alignment": align, "shadow": shadow, "text": "#value", "bindings": bound(source, "#value")}}
+    def fixed(name, text, offset, scale=0.5, size=(60, 5), align="left", layer=6):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": layer,
+                       "font_scale_factor": scale, "text_alignment": align, "shadow": True, "text": text}}
+    def when(mode, control):
+        name, body = next(iter(control.items()))
+        return {name: {**body, "bindings": body.get("bindings", [{"binding_name": "#form_text"}]) + [
+            {"binding_type": "view", "source_property_name": f"({field('mode')} = '{mode}')", "target_property_name": "#visible"}]}}
+    controls = [image("base", "base", (0, 0), (191, 140), 1), image("screen", "screen_overlay", (1, 1), (118, 110), 3)]
+    # the right panel: power, accuracy and effect with their icons, the description, the recipe
+    for n, (key, text, icon) in enumerate((("power", "Power", "icon_power"), ("acc", "Accuracy", "icon_acc"), ("eff", "Effect", "icon_eff"))):
+        y = 8 + 12 * n
+        controls += [{f"i{key}": {"type": "image", "texture": f"textures/ui/cobblemon/summary/{icon}", "offset": [127.5, y - 0.5], "size": [5, 5], "layer": 4,
+                                  "anchor_from": "top_left", "anchor_to": "top_left"}},
+                     fixed(f"l{key}", text, (134.5, y), size=(40, 5)), label(f"v{key}", field(key), (143, y), size=(40, 5), align="right")]
+    controls.append(label("desc", field("desc"), (127, 44), size=(58, 30), shadow=False))
+    for i in range(3):
+        controls += [label(f"rneed{i}", field(f"r{i}need"), (129 + 18 * i, 101), size=(16, 5), align="right", layer=7),
+                     label(f"rhave{i}", field(f"r{i}have"), (129 + 18 * i, 127), size=(16, 5), align="right", layer=7)]
+    # the chosen TM's disc at the screen's middle (32, 50)
+    controls.append(when("s", picture("disc", field("disc"), (32, 50), (56, 56), 5)))
+    controls.append(when("m", image("search_bar", "search_bar", (0, 8), (120, 19), 4)))
+    controls.append(when("m", label("search", field("search"), (16, 13), 1.0, size=(96, 10), layer=6)))
+    controls.append(when("t", fixed("pick_type", "Select Type", (6, 11), 0.75, size=(108, 10), layer=6)))
+
+    def face(state, extra=None):
+        body = {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
+                "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                             {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}]}
+        if extra: body["controls"] = extra
+        return body
+    def button(index, offset, size, extra=None):
+        return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
+                                    "collection_index": index, "layer": 8, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "controls": [{"default": face("", extra)}, {"hover": face("_hover", extra)}, {"pressed": face("_hover", extra)}]}}
+    text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def part(a, b): return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+    move_labels = [{"name": {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.75, "size": [80, 8], "offset": [28, 4], "layer": 3,
+                             "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": part(3, 19), "target_property_name": "#value"}]}},
+                   {"pp": {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.5, "size": [40, 5], "offset": [62, 14], "layer": 3, "text_alignment": "right",
+                           "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": f"(#form_button_text - ('%.19s' * #form_button_text))", "target_property_name": "#value"}]}},
+                   {"type_icon": {"type": "image", "size": [18, 18], "offset": [3, 2], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
+                                  # the button's text leads with the move's type code, t and two digits, the Summary's type icon
+                                  "bindings": [text, {"binding_type": "view", "source_property_name": "('textures/ui/cobblemon/summary/' + ('%.3s' * #form_button_text))", "target_property_name": "#texture"}]}}]
+    type_buttons = [button(n, (2 + 27 * (n % 4), 3 + 27 * (n // 4)), (24, 24)) for n in range(TM_TYPE_SLOTS)]
+    move_buttons = [button(TM_TYPE_SLOTS + n, (2, 2 + 26 * n), (108, 22), move_labels) for n in range(TM_MOVE_ROWS)]
+    def scroll_list(name, content, offset, size, mode):
+        return when(mode, {name: {"type": "panel", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left", "layer": 6, "controls": [
+            {"scroll@common.scrolling_panel": {"size": ["100%", "100%"], "$show_background": False, "$scrolling_content": f"server_form.{content}",
+                                                 "$scroll_size": [3, "100% - 4px"], "$scrolling_pane_size": ["100%", "100%"], "$scrolling_pane_offset": [0, 0],
+                                                 "$scroll_bar_right_padding_size": [0, 0]}}]}})
+    types_content = {"type": "panel", "size": [112, 27 * 5 + 3], "controls": [
+        {"slots": {"type": "collection_panel", "size": [112, 27 * 5 + 3], "collection_name": "form_buttons", "controls": type_buttons}}]}
+    moves_content = {"type": "panel", "size": [114, 26 * TM_MOVE_ROWS + 2], "controls": [
+        {"slots": {"type": "collection_panel", "size": [114, 26 * TM_MOVE_ROWS + 2], "collection_name": "form_buttons", "controls": move_buttons}}]}
+    base_index = TM_TYPE_SLOTS + TM_MOVE_ROWS
+    buttons = [button(base_index, (3, 9), (10, 9)),       # back, IconButton at half size
+               button(base_index + 1, (5, 35), (22, 12)),  # start
+               button(base_index + 2, (16, 9), (96, 16))]  # the search bar
+    def shown(index, name, offset, layer=5):
+        # a button's texture drawn as a picture: the recipe items (in the recipe and again in the machine's slots), the blank disc
+        return {name: {"type": "image", "offset": list(offset), "size": [16, 16], "layer": layer, "keep_ratio": False, "collection_index": index,
+                       "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                    {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}}
+    for i in range(3): buttons += [shown(base_index + 3 + i, f"ricon{i}", (129 + 18 * i, 90)), shown(base_index + 3 + i, f"hicon{i}", (129 + 18 * i, 116))]
+    buttons.append(shown(base_index + 6, "blank", (105, 116)))
+    tm = {"type": "panel", "size": [191, 140], "anchor_from": "center", "anchor_to": "center",
+          "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "(not ((#title_text - 'cbm:tm') = #title_text))", "target_property_name": "#visible"}],
+          "controls": controls + [scroll_list("types", "cobblemon_tm_types", (4, 24), (114, 86), "t"), scroll_list("moves", "cobblemon_tm_moves", (4, 27), (116, 83), "m"),
+                                  {"buttons": {"type": "collection_panel", "size": [191, 140], "collection_name": "form_buttons", "controls": buttons}}]}
+    codes, tags = tm_recipe_icons()
+    with open(f"{scriptsBedrock}/tm_layout.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the TM Machine form's body fields and widths, and each recipe item's icon code and a tag's items\n")
+        file.write("export const TM_LAYOUT = " + json.dumps(TM_LAYOUT) + ";\n")
+        file.write("export const TM_ROWS = " + json.dumps({"types": TM_TYPE_SLOTS, "moves": TM_MOVE_ROWS}) + ";\n")
+        file.write("export const TM_ICONS = " + json.dumps(codes) + ";\n")
+        file.write("export const TM_TAGS = " + json.dumps(tags) + ";\n")
+    return {"cobblemon_tm": tm, "cobblemon_tm_types": types_content, "cobblemon_tm_moves": moves_content}
+
+
 def create_interact_ui():
     W = f"{uiTextures}/interact"
     fresh(W)
@@ -6064,7 +6254,8 @@ def create_battle_ui():
                                                                                        {"pc@server_form.cobblemon_pc": {}}, {"pasture@server_form.cobblemon_pasture": {}},
                                                                                        {"pokedex@server_form.cobblemon_pokedex": {}}, {"starter@server_form.cobblemon_starter": {}},
                                                                                        {"interact@server_form.cobblemon_interact": {}},
-                                                                                       {"dialogue@server_form.cobblemon_dialogue": {}}]},
+                                                                                       {"dialogue@server_form.cobblemon_dialogue": {}},
+                                                                                       {"tm@server_form.cobblemon_tm": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
@@ -6080,6 +6271,7 @@ def create_battle_ui():
     ui.update(create_starter_ui())
     ui.update(create_interact_ui())
     ui.update(create_dialogue_ui())
+    ui.update(create_tm_ui())
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")

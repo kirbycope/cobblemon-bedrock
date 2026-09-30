@@ -13,6 +13,7 @@ import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
 import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
+import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
@@ -675,6 +676,122 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     event.cancel = true;
     if (prop(target, OWNER) !== player.id) return;
     system.run(() => { if (target.isValid) teachTm(player, target, itemStack.typeId); });
+});
+
+// The TM Machine (TMMachineScreen, TMMachineBlockEntity), laid out by the resource pack (TM_LAYOUT in port.py). The
+// type slots lead to that type's TMs (the learned ones first, the rest greyed and not chosen), under a search; a TM
+// chosen shows its disc with Start, its power, accuracy, effect and description and its recipe. Start takes a blank
+// TM and the recipe from the player's inventory, as the machine's slots would hold them, burns for the machine's
+// 114 ticks with its sounds and the block's active state, and hands the TM over.
+const tmTypes = () => ["all", ...TYPE_ORDER];   // TYPE_ORDER is declared further down
+const burning = new Map();   // block key -> ticks left
+function tmKey(block) { return `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`; }
+function countIn(player, ids) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    let n = 0;
+    if (inv) for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (it && ids.includes(it.typeId)) n += it.amount; }
+    return n;
+}
+function takeFrom(player, ids, count) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    for (let i = 0; i < inv.size && count > 0; i++) {
+        const it = inv.getItem(i);
+        if (!it || !ids.includes(it.typeId)) continue;
+        const take = Math.min(count, it.amount); count -= take;
+        if (it.amount > take) { it.amount -= take; inv.setItem(i, it); } else inv.setItem(i, undefined);
+    }
+}
+const recipeIds = (entry) => (entry[0].startsWith("#") ? TM_TAGS[entry[0]] ?? [] : [entry[0]]);
+function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", tm: null }) {
+    const learned = learnedTms(player), v = { mode: state.mode, search: state.search ? `§f${state.search}` : "§7Search", disc: "dxx" };
+    const icons = [`${UI}/tm/none`, `${UI}/tm/none`, `${UI}/tm/none`];
+    let blank = `${UI}/tm/none`;
+    const typeName = tmTypes()[state.type];
+    let list = TMS.map((tm, n) => n).filter((n) => MOVES[TMS[n][0]] && (typeName === "all" || TMS[n][1] === typeName));
+    if (state.search) list = list.filter((n) => MOVES[TMS[n][0]].name.toLowerCase().includes(state.search.toLowerCase()));
+    list.sort((a, b) => (learned.has(TMS[b][0]) - learned.has(TMS[a][0])) || MOVES[TMS[a][0]].name.localeCompare(MOVES[TMS[b][0]].name));
+    list = list.slice(0, TM_ROWS.moves);
+    const chosen = state.tm !== null ? TMS[state.tm] : null, mv = chosen && MOVES[chosen[0]];
+    if (mv) {
+        v.power = num(mv.power > 0 ? mv.power : "-");
+        v.acc = num(mv.accuracy === true || !mv.accuracy ? "-" : `${mv.accuracy}%%`);
+        v.eff = num(mv.secondary?.chance ? `${mv.secondary.chance}%%` : "-");
+        v.desc = (MOVE_DESC[chosen[0]] ?? "").replace(/%/g, "%%");
+        v.disc = `d${String(Math.max(0, TYPE_ORDER.indexOf(chosen[1]))).padStart(2, "0")}`;
+        chosen[3].slice(0, 3).forEach((entry, i) => {
+            const have = countIn(player, recipeIds(entry));
+            icons[i] = `textures/${TM_ICONS[entry[0]] ?? "ui/cobblemon/tm/none"}`;
+            v[`r${i}need`] = num(entry[1]);
+            v[`r${i}have`] = (have >= entry[1] ? "§a" : "§c") + have;
+        });
+        blank = `${UI}/tm/bl_${countIn(player, ["cobblemon:blank_tm"]) ? "have" : "empty"}`;
+    }
+    const body = TM_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:tm").body(body);
+    for (let n = 0; n < TM_ROWS.types; n++) form.button(tmTypes()[n], `${UI}/tm/${state.mode === "t" ? `ty${String(n).padStart(2, "0")}` : "none"}`);
+    for (let n = 0; n < TM_ROWS.moves; n++) {
+        const k = list[n];
+        if (state.mode !== "m" || k === undefined) { form.button("", `${UI}/tm/none`); continue; }
+        const move = MOVES[TMS[k][0]], code = String(Math.max(0, TYPE_ORDER.indexOf(TMS[k][1]))).padStart(2, "0");
+        form.button(`t${code}` + padBytes(move.name, 16) + num(`${move.pp}PP`), `${UI}/tm/mv${code}${learned.has(TMS[k][0]) ? "" : "_off"}`);
+    }
+    const busy = burning.has(tmKey(block));
+    form.button("back", `${UI}/tm/${state.mode === "t" ? "none" : "back"}`);
+    form.button("start", `${UI}/tm/${state.mode !== "s" ? "none" : busy ? "start_off" : "start"}`);
+    form.button("search", `${UI}/tm/none`);
+    for (const icon of icons) form.button("", icon);
+    form.button("", blank);
+    try { setState(block, "cobblemon:open", true); } catch (e) { }
+    form.show(player).then((r) => {
+        const again = () => system.runTimeout(() => openTmMachine(block, player, state), 1);
+        if (r.canceled) { try { setState(block, "cobblemon:open", false); player.playSound("cobblemon.block.tm_machine.close"); } catch (e) { } return; }
+        const pick = r.selection, back = TM_ROWS.types + TM_ROWS.moves;
+        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        if (pick < TM_ROWS.types && state.mode === "t") { state.type = pick; state.mode = "m"; }
+        else if (pick < back && state.mode === "m") {
+            const k = list[pick - TM_ROWS.types];
+            if (k !== undefined && learned.has(TMS[k][0])) { state.tm = k; state.mode = "s"; }
+        }
+        else if (pick === back) state.mode = state.mode === "s" ? "m" : "t";
+        else if (pick === back + 1 && state.mode === "s" && chosen && !busy) {
+            const missing = !countIn(player, ["cobblemon:blank_tm"]) || chosen[3].some((entry) => countIn(player, recipeIds(entry)) < entry[1]);
+            if (missing) player.sendMessage("§cYou need a Blank TM and the recipe's items.");
+            else {
+                takeFrom(player, ["cobblemon:blank_tm"], 1);
+                for (const entry of chosen[3]) takeFrom(player, recipeIds(entry), entry[1]);
+                burnTm(block, player, chosen[0]);
+            }
+        }
+        else if (pick === back + 2 && state.mode === "m") {
+            new ModalFormData().title("Search").textField("Search", "", { defaultValue: state.search })
+                .show(player).then((q) => { if (!q.canceled) state.search = String(q.formValues?.[0] ?? "").replace(/[%§]/g, "").slice(0, 20); again(); }).catch(() => { });
+            return;
+        }
+        again();
+    }).catch(() => { try { setState(block, "cobblemon:open", false); } catch (e) { } });
+}
+// BURN_TOTAL_TIME at two a tick, then the craft and the disc's reset: 114 ticks, with the start, burn and craft sounds
+function burnTm(block, player, move) {
+    const key = tmKey(block), dim = block.dimension, at = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
+    burning.set(key, 114);
+    try { setState(block, "cobblemon:active", true); dim.playSound("cobblemon.block.tm_machine.start", at); } catch (e) { }
+    const loop = system.runInterval(() => {
+        const left = (burning.get(key) ?? 0) - 1;
+        burning.set(key, left);
+        if (left % 20 === 0 && left > 14) try { dim.playSound("cobblemon.block.tm_machine.burn_loop", at); } catch (e) { }
+        if (left > 0) return;
+        system.clearRun(loop); burning.delete(key);
+        try { setState(dim.getBlock(block.location), "cobblemon:active", false); dim.playSound("cobblemon.block.tm_machine.craft", at); } catch (e) { }
+        if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
+        else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
+    }, 1);
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { block, player, isFirstEvent } = event;
+    if (block?.typeId !== "cobblemon:tm_machine" || player.isSneaking) return;
+    event.cancel = true;
+    if (!isFirstEvent) return;
+    system.run(() => { syncTms(player); try { player.playSound("cobblemon.block.tm_machine.open"); } catch (e) { } openTmMachine(block, player); });
 });
 
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
