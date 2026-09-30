@@ -4719,8 +4719,8 @@ TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("gr
 # health step an "h")
 # The health texts ("45/45", "100%") start with a colour code instead, and sit at the end of the body, so the colour
 # code's second byte cannot shift any other field.
-BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27)}
-BATTLE_SIDE = 26
+BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32)}
+BATTLE_SIDE = 31
 BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters; the foe's runs to the end
 
 
@@ -4742,8 +4742,8 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [(f"m{n}{k}", w) for n in range(4) for k, w in (("name", 16), ("type", 3), ("pp", 9), ("sel", 1))] \
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
-    + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1))] \
-    + [("desc", 120), ("evolve", 6), ("item", 0)]
+    + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
+    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("item", 0)]
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
 
@@ -4884,7 +4884,9 @@ def create_summary_ui():
     party = [image("party_base", "party_background", (216, 24), (114, 113), 2)]
     for n in range(6):
         x, y = 216 + 6 + (51 if n % 2 else 0), 24 + 7 + 32 * (n // 2) + (8 if n % 2 else 0)
-        party += [label(f"pname{n}", field(f"p{n}name"), (x + 4, y + 20), 0.5, size=(40, 5), shadow=False, layer=8),
+        party += [{f"pmodel{n}": {"type": "image", "offset": [x + 2, y - 1], "size": [22, 22], "layer": 8, "keep_ratio": True, "anchor_from": "top_left",
+                                 "anchor_to": "top_left", "bindings": bound(f"('textures/ui/cobblemon/icons/' + {field(f'p{n}icon')})", "#texture")}},
+                  label(f"pname{n}", field(f"p{n}name"), (x + 4, y + 20), 0.5, size=(40, 5), shadow=False, layer=8),
                   label(f"plevel{n}", field(f"p{n}level"), (x + 21, y + 13), 0.5, size=(20, 5), align="center", layer=8),
                   picture(f"php{n}", field(f"p{n}hp"), (x + 4, y + 25), (37, 1), 8),
                   picture(f"pgender{n}", field(f"p{n}gender"), (x + 40, y + 20), (2.5, 3.5), 8, "g")]
@@ -4913,6 +4915,8 @@ def create_summary_ui():
         buttons += [button(16 + 2 * n, (90 - 11.5, 18 + 25 * n + 6), (4, 3)), button(17 + 2 * n, (90 - 11.5, 18 + 25 * n + 13), (4, 3))]
     buttons.append(button(24, (12, 14), (56, 9)))
     left = [image("portrait", "portrait_background", (6, 32), (66, 66), 1), image("base", "base", (0, 0), (331, 161), 2),
+            {"model": {"type": "image", "offset": [9, 35], "size": [60, 60], "layer": 3, "keep_ratio": True, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": bound(f"('textures/ui/cobblemon/icons/' + {field('portrait')})", "#texture")}},
             fixed("lv", "Lv.", (6, 4.5)), label("level", field("level"), (19, 4.5), size=(30, 10)),
             label("name", field("name"), (12, 15), 0.75, size=(76, 10)),
             picture("ball", field("ball"), (3.5, 15), (8, 8)),
@@ -4949,16 +4953,21 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
 
 
 def pokemon_icons():
-    """The box icon of each species, as textures/ui/cobblemon/icons/i<national number>."""
+    """Each species' portrait as textures/ui/cobblemon/icons/i<national number>: Cobblemon's own model rendered offline
+    (tools/render_portraits.py) posed as its PROFILE pose and turned as drawProfilePokemon turns it, since a JSON UI
+    screen cannot draw a model; the spawn egg icon stands in for a species that does not render."""
     folder = f"{uiTextures}/icons"
     os.makedirs(folder, exist_ok=True)
-    made = 0
+    sys.path.insert(0, os.path.join(pwd, "tools"))
+    import render_portraits
+    failures = render_portraits.render_all(folder, lambda name: f"i{name.split('_', 1)[0]}.png")
+    for name, error in failures: print(f"  no portrait for {name}: {error}")
     for source in sorted(glob.glob(f"{texturesItemsBedrock}/*_spawn_egg.png")):
         number = os.path.basename(source).split("_", 1)[0]
         if not number.isdigit() or os.path.exists(f"{folder}/i{number}.png"): continue
-        Image.open(source).convert("RGBA").save(f"{folder}/i{number}.png"); made += 1
+        Image.open(source).convert("RGBA").save(f"{folder}/i{number}.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{folder}/i----.png")
-    return made
+    return len(glob.glob(f"{folder}/i[0-9]*.png"))
 
 
 def create_pc_ui():
@@ -5086,7 +5095,7 @@ def create_pc_ui():
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
         file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
-    print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon icons")
+    print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon portraits")
     return {"cobblemon_pc": pc, "cobblemon_pasture": pasture}
 
 
@@ -5390,6 +5399,11 @@ def create_battle_ui():
             {"base": {"type": "image", "texture": f"{T}/battle/{'info_base_flipped' if reversed_ else 'info_base'}", "size": [140, 40], "layer": 1}},
             {"portrait": {"type": "image", "texture": f"{T}/battle/info_underlay", "size": [28, 28], "layer": 2,
                           "anchor_from": "top_left", "anchor_to": "top_left", "offset": [140 - 28 - 5 if reversed_ else 5, 8]}},
+            # the Pokemon's portrait in the tile's window, Cobblemon's model rendered offline
+            {"model": {"type": "image", "size": [26, 26], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "offset": [140 - 28 - 5 + 1 if reversed_ else 6, 9], "keep_ratio": True,
+                       "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                    "source_property_name": f"('textures/ui/cobblemon/icons/' + {field(side, 'icon')})", "target_property_name": "#texture"}]}},
             text_label("name", field(side, "name"), [info_x, 7]),
             text_label("level", field(side, "level"), [info_x + 66, 7]),
             {"hp_text": {**text_label("hp_text", field(side, "hptext"), [info_x + (39.5 if not reversed_ else 44.5) - 50, 22], scale=0.5)["hp_text"], "text_alignment": "center"}},
@@ -5496,8 +5510,8 @@ def create_battle_ui():
 # ---------------------------------------------------------------------------
 
 PARTY_MARKER = "cbm:party"
-PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29)}
-PARTY_RECORD = 29   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34)}
+PARTY_RECORD = 34   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
 
 
 def create_party_hud():
@@ -5556,6 +5570,8 @@ def create_party_hud():
                 {"slot": {"type": "image", "size": [62, 30], "layer": 1, "bindings": [from_data(f"('{T}/slot_' + {field(slot, 'state')})", "#texture")]}},
                 {"portrait": {"type": "image", "size": [21, 21], "offset": [22, 2], "layer": 2, "anchor_from": "top_left", "anchor_to": "top_left",
                               "bindings": [from_data(f"('{T}/portrait_' + {field(slot, 'state')})", "#texture")]}},
+                {"model": {"type": "image", "size": [19, 19], "offset": [23, 3], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
+                           "keep_ratio": True, "bindings": [from_data(f"('textures/ui/cobblemon/icons/' + {field(slot, 'icon')})", "#texture")]}},
                 {"level": {"type": "label", "size": [20, 6], "offset": [1, 14.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
                            "font_scale_factor": 0.5, "text_alignment": "left", "shadow": True, "text": "#value",
                            "bindings": [from_data(field(slot, "level"), "#value")]}},

@@ -804,7 +804,7 @@ function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
         const step = f.hp > 0 ? Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50)) : 0;
-        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3);
+        return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId);
     };
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
     const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
@@ -870,7 +870,7 @@ function partyRecord(e) {
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
-        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender;
+        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId);
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -881,7 +881,7 @@ system.runInterval(() => {
                 .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeo";
+        const empty = " ".repeat(18) + "h00e00bxxeoi----";
         const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
@@ -2662,7 +2662,8 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     const party = summaryParty(player);
     for (let n = 0; n < 6; n++) {
         const e = party[n];
-        if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; continue; }
+        if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; v[`p${n}icon`] = "i----"; continue; }
+        v[`p${n}icon`] = iconOf(e.typeId);
         const pi = POKEMON[e.typeId];
         let share = 1;
         try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
@@ -2673,6 +2674,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     }
     const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
     v.item = icon ?? `${SUMMARY_UI}/blank`;
+    v.portrait = iconOf(source.typeId);
     // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone
     const evolution = mine && !battles.has(player.id) ? evolutionFor(source, player) : null;
     v.evolve = evolution ? "Evolve" : "";
