@@ -6231,6 +6231,12 @@ def create_party_hud():
         state = field(slot, "state")
         body = dict(body); body["bindings"] = body.get("bindings", []) + [from_data(f"(({state} = 'n') or ({state} = 'x'))", "#visible")]
         return {name: body}
+    def guard(control):
+        # a part draws only while the kept title is a party record, never another HUD layer's
+        name, body = next(iter(control.items()))
+        body = dict(body); body["bindings"] = body.get("bindings", []) + [
+            from_data(f"(not ((#preserved_text - '{PARTY_MARKER}') = #preserved_text))", "#visible")]
+        return {name: body}
     def slot_panel(slot):
         return {f"slot_{slot}": {"type": "panel", "size": [62, 30], "controls": [
             {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
@@ -6240,7 +6246,7 @@ def create_party_hud():
                     f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string))",
                  "target_property_name": "#visible"}]}},
             # every part is a sibling of data_control, which is how a view binding finds it, and shows only for a filled slot
-            *[c for c in (
+            *[guard(c) for c in (
                 {"slot": {"type": "image", "size": [62, 30], "layer": 1, "bindings": [from_data(f"('{T}/slot_' + {field(slot, 'state')})", "#texture")]}},
                 {"portrait": {"type": "image", "size": [21, 21], "offset": [22, 2], "layer": 2, "anchor_from": "top_left", "anchor_to": "top_left",
                               "bindings": [from_data(f"('{T}/portrait_' + {field(slot, 'state')})", "#texture")]}},

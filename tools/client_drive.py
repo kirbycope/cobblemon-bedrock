@@ -11,6 +11,7 @@ The game window is found by its title, brought to the front, and driven with rea
     python tools/client_drive.py look 200 0           turn the view by a mouse delta
     python tools/client_drive.py join                 main menu -> Play -> Worlds -> LAN world (the server)
     python tools/client_drive.py leave                pause menu -> Save & Quit (lands on the Worlds list)
+    python tools/client_drive.py dropped              after a join: back out of a "Terracotta" drop, so join can run again
 
 Screen positions are for the 1920x1200 desktop with the game maximised.
 """
@@ -124,6 +125,15 @@ def join() -> None:
     except Exception as error: print("could not confirm the join through the bridge:", error)
 
 
+def dropped() -> bool:
+    """The first join after a deploy with a new pack version often drops a few seconds in with a "Terracotta"
+    disconnect while the client takes in the packs; True when that dialog is up, after pressing its Back to menu
+    (which lands on the main menu here), so join() can be called again."""
+    if not find_text(["terracotta", "disconnected from server"]): return False
+    click(395, 807); time.sleep(4)
+    return True
+
+
 def recover() -> None:
     """After a server restart the client shows a disconnect dialog whose Back to menu lands on the Play
     screen; back out to the main menu from there so join() starts where it expects."""
@@ -150,4 +160,5 @@ if __name__ == "__main__":
     elif cmd == "join": join()
     elif cmd == "leave": leave()
     elif cmd == "recover": recover()
+    elif cmd == "dropped": print(dropped())
     else: sys.exit(f"unknown command {cmd}")
