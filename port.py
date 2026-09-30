@@ -1212,17 +1212,19 @@ def create_sounds():
             events.update({"hurt": f"cobblemon.{key}.cry", "death": f"cobblemon.{key}.cry"})
             events["ambient"] = f"cobblemon.{key}.ambient" if f"cobblemon.{key}.ambient" in definitions else f"cobblemon.{key}.cry"
         if events: entities[entity_id(pokemon)] = {"volume": 1.0, "pitch": 1.0, "events": events}
-    # Cobblemon's Poke Ball sounds: throw, hit, open, shut, bounce, shake, capture, break, recall, send out
+    # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
+    # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith("poke_ball."): continue
+        if not key.startswith(("poke_ball.", "evolution.")): continue
+        folder = key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
             name = sound["name"] if isinstance(sound, dict) else sound
             source = f"{cobblemon}/sounds/{name.split(':', 1)[1]}.ogg"
             if not os.path.exists(source): continue
-            os.makedirs(f"{soundsBedrock}/poke_ball", exist_ok=True)
-            shutil.copyfile(source, f"{soundsBedrock}/poke_ball/{os.path.basename(source)}")
-            sounds.append({"name": f"sounds/poke_ball/{os.path.basename(source)[:-4]}", "volume": sound.get("volume", 1.0) if isinstance(sound, dict) else 1.0})
+            os.makedirs(f"{soundsBedrock}/{folder}", exist_ok=True)
+            shutil.copyfile(source, f"{soundsBedrock}/{folder}/{os.path.basename(source)}")
+            sounds.append({"name": f"sounds/{folder}/{os.path.basename(source)[:-4]}", "volume": sound.get("volume", 1.0) if isinstance(sound, dict) else 1.0})
         if sounds: definitions[f"cobblemon.{key}"] = {"category": "neutral", "sounds": sounds}
     os.makedirs(soundsBedrock, exist_ok=True)
     with open(f"{soundsBedrock}/sound_definitions.json", "w") as file:
@@ -4708,7 +4710,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
-    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("item", 0)]
+    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("item", 0)]
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
 
@@ -4753,6 +4755,11 @@ def create_summary_ui():
     Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/none_hover.png")
     Image.new("RGBA", (16, 16), (255, 255, 255, 50)).save(f"{S}/name_hover.png"); Image.new("RGBA", (16, 16), (0, 0, 0, 0)).save(f"{S}/name.png")
     normal, hover = two(Image.open(f"{src}/summary_evolve_button.png").convert("RGBA")); normal.save(f"{S}/evolve.png"); hover.save(f"{S}/evolve_hover.png")
+    # EvolutionSelectScreen: the scroll list's background and overlay, the slot and its Evolve button
+    normal, hover = two(Image.open(f"{src}/summary_evolve_select_button.png").convert("RGBA")); normal.save(f"{S}/evsel.png"); hover.save(f"{S}/evsel_hover.png")
+    for name, out in (("summary_scroll_background", "scroll_bg"), ("summary_scroll_overlay", "scroll_overlay"), ("summary_evolve_slot", "evslot_y")):
+        shutil.copyfile(f"{src}/{name}.png", f"{S}/{out}.png")
+    blank.save(f"{S}/evslot_n.png")
     for d in ("up", "down"):
         normal, hover = two(Image.open(f"{src}/summary_move_reorder_{d}.png").convert("RGBA")); normal.save(f"{S}/{d}.png"); hover.save(f"{S}/{d}_hover.png")
     # move tiles tinted by type, as the battle's are; the party health bar in 38 steps; the experience bar in 55
@@ -4879,6 +4886,34 @@ def create_summary_ui():
     for n in range(4):
         buttons += [button(16 + 2 * n, (90 - 11.5, 18 + 25 * n + 6), (4, 3)), button(17 + 2 * n, (90 - 11.5, 18 + 25 * n + 13), (4, 3))]
     buttons.append(button(24, (12, 14), (56, 9)))
+    # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
+    # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
+    # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
+    evolve = [image("list_bg", "scroll_bg", (0, 0), (108, 112), 1)]
+    evolve_frame = [image("list_overlay", "scroll_overlay", (0, -3), (108, 118), 6),
+                    fixed("list_label", "Evolution", (32.5 - 50, -13.5), 1.0, size=(100, 10), align="center", layer=7)]
+    evolve_buttons = []
+    for n in range(3):
+        x, y = 7.5, 4 + 30 * n
+        evolve += [picture(f"eslot{n}", field(f"e{n}slot"), (x, y), (91, 25), 2, "evslot_"),
+                   label(f"ename{n}", field(f"e{n}name"), (x + 4, y + 2), 0.75, size=(60, 10), layer=4),
+                   picture(f"etype1{n}", field(f"e{n}type1"), (x + 2.5, y + 13.5), (9, 9), 4),
+                   picture(f"etype2{n}", field(f"e{n}type2"), (x + 12, y + 13.5), (9, 9), 4),
+                   {f"emodel{n}": {"type": "image", "offset": [x + 64, y - 1], "size": [26, 26], "layer": 3, "keep_ratio": True, "anchor_from": "top_left",
+                                   "anchor_to": "top_left", "bindings": bound(f"('textures/ui/cobblemon/icons/' + {field(f'e{n}icon')})", "#texture")}}]
+        select = button(25 + n, (x + 23, y + 13), (40, 10))
+        body = select[f"button_{25 + n}"]
+        for state in body["controls"]:
+            face_ = next(iter(state.values()))
+            face_["controls"] = [{"text": {"type": "label", "text": "#form_button_text", "font_scale_factor": 0.5, "size": [40, 5], "text_alignment": "center",
+                                           "shadow": True, "layer": 1, "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection",
+                                                                                     "binding_collection_name": "form_buttons"}]}}]
+        evolve_buttons.append(select)
+    evolve_panel = {"evolve_panel": {"type": "panel", "size": [108, 112], "offset": [216, 23], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 10,
+                                     "bindings": bound(f"({field('side')} = 'e')", "#visible"),
+                                     "controls": [{"list": {"type": "panel", "size": [108, 112], "clips_children": True, "controls": evolve}}] + evolve_frame + [
+                                                  {"select": {"type": "collection_panel", "size": [108, 112], "collection_name": "form_buttons", "layer": 5,
+                                                              "controls": evolve_buttons}}]}}
     left = [image("portrait", "portrait_background", (6, 32), (66, 66), 1), image("base", "base", (0, 0), (331, 161), 2),
             {"model": {"type": "image", "offset": [9, 35], "size": [60, 60], "layer": 3, "keep_ratio": True, "anchor_from": "top_left", "anchor_to": "top_left",
                        "bindings": bound(f"('textures/ui/cobblemon/icons/' + {field('portrait')})", "#texture")}},
@@ -4897,7 +4932,7 @@ def create_summary_ui():
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))", "target_property_name": "#visible"}],
                "controls": left + [tab_panel("info", "i", "info_base", info), tab_panel("moves", "m", "moves_base", moves),
-                                   tab_panel("stats", "s", "stats_other_base", stats)] + party +
+                                   tab_panel("stats", "s", "stats_other_base", stats)] + party + [evolve_panel] +
                            [{"buttons": {"type": "collection_panel", "size": [331, 161], "collection_name": "form_buttons", "controls": buttons}}]}
     with open(f"{scriptsBedrock}/summary_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the Summary form's body, field by field, and each field's width in bytes\n")
@@ -5605,8 +5640,9 @@ def create_battle_ui():
 # ---------------------------------------------------------------------------
 
 PARTY_MARKER = "cbm:party"
-PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34)}
-PARTY_RECORD = 34   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
+                "note": (34, 36)}
+PARTY_RECORD = 36   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
 
 
 def create_party_hud():
@@ -5621,6 +5657,9 @@ def create_party_hud():
     shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
     shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/o.png")   # genderless, and an empty slot
+    # the slot's pop-ups: "nv" when an evolution is ready, "nn" for none
+    shutil.copyfile(f"{guiMain}/party/party_slot_notification_evolution.png", f"{party}/nv.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/nn.png")
     # the bars, 18 steps tall, filled from the bottom: health in getDepletableRedGreen's colours, experience in Cobblemon's blue
     for step in range(19):
         ratio = step / 18
@@ -5675,7 +5714,9 @@ def create_party_hud():
                 picture("gender", slot, "gender", [2.5, 3.5], [40, 25], 3),
                 picture("hp", slot, "hp", [2, 18], [46, 5]),
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
-                picture("ball", slot, "ball", [9, 11], [43.5, 22], 3))]]}}
+                picture("ball", slot, "ball", [9, 11], [43.5, 22], 3),
+                # PartyOverlay's pop-up beside the slot when an evolution is ready: the texture at half size, 56.5 in, 4 down
+                picture("note", slot, "note", [18.5, 10], [56.5, 4], 4))]]}}
     hud = {
         "namespace": "hud",
         "root_panel": {"modifications": [{"array_name": "controls", "operation": "insert_back", "value": {

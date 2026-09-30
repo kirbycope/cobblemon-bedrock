@@ -948,7 +948,8 @@ function partyRecord(e) {
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
-        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId);
+        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId)
+        + (system.currentTick - (prop(e, EVO_NOTE) ?? -1e9) < 46 ? "nv" : "nn");   // POPUP_TIME: 3 in, 40 held, 3 out
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -959,7 +960,7 @@ system.runInterval(() => {
                 .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeoi----";
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn";
         const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
@@ -1032,9 +1033,18 @@ function endOfTurn(battle) {
 
 // experience for beating a Pokemon, and the levels and moves it brings
 // Pokemon that levelled up, asked about evolving once the battle (or the candy) is done
-const leveled = new Set();
+const leveled = new Set(), EVO_NOTE = "cobblemon:evo_note";
+// A level-up that makes an evolution ready (PartyOverlayDataControl): the party slot's evolution pop-up and the
+// notification jingle; the Summary's Evolve button then opens the choice. Nothing is asked.
 function offerLevelEvolutions(player) {
-    for (const e of [...leveled]) { leveled.delete(e); if (e.isValid) offerEvolution(player, e); }
+    let ready = false;
+    for (const e of [...leveled]) {
+        leveled.delete(e);
+        if (!e.isValid || !readyEvolutions(e, player).length) continue;
+        setProp(e, EVO_NOTE, system.currentTick);
+        ready = true;
+    }
+    if (ready) try { player.playSound("cobblemon.evolution.notification"); } catch (e) { }
 }
 
 function gainExperience(battle, f, foe, amount) {
@@ -1248,19 +1258,18 @@ const evolving = [];
 world.beforeEvents.entityRemove.subscribe((event) => {
     const e = event.removedEntity;
     if (!POKEMON[e.typeId]) return;
-    let owner, kept = {}, name = "";
+    let owner, kept = {};
     try {
         owner = e.getDynamicProperty(OWNER);
         for (const id of e.getDynamicPropertyIds()) kept[id] = e.getDynamicProperty(id);
-        name = e.nameTag;
     } catch (err) { }
-    if (owner) evolving.push({ owner, kept, name, from: e.typeId, location: { ...e.location }, tick: system.currentTick });
+    if (owner) evolving.push({ owner, kept, from: e.typeId, location: { ...e.location }, tick: system.currentTick });
 });
 world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
     if (cause !== EntityInitializationCause.Transformed || !POKEMON[entity.typeId]) return;
     const i = evolving.findIndex((p) => system.currentTick - p.tick < 40 && Math.hypot(p.location.x - entity.location.x, p.location.z - entity.location.z) < 3);
     if (i < 0) return;
-    const { owner, kept, name, from } = evolving.splice(i, 1)[0];
+    const { owner, kept, from } = evolving.splice(i, 1)[0];
     const player = world.getPlayers().find((p) => p.id === owner);
     system.run(() => {
         try {
@@ -1276,7 +1285,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
             }
             entity.setDynamicProperty(OWNER, owner);
             if (player) register(player, entity.typeId, 2);
-            player?.sendMessage(`§aYour Pokemon evolved into ${POKEMON[entity.typeId].name}!`);
+            player?.sendMessage(`§a${kept?.[NICK] || POKEMON[from]?.name} evolved into ${POKEMON[entity.typeId].name}!`);
         } catch (e) { }
     });
 });
@@ -2660,25 +2669,19 @@ function meets(entity, f, r, player) {
         default: return false;
     }
 }
-function evolutionFor(entity, player) {
+// every evolution ready now, one a species (EvolutionSelectScreen lists them), at most three
+function readyEvolutions(entity, player) {
     const f = fighter(entity), info = POKEMON[entity.typeId];
-    if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return null;
-    return info.evolutions.find((e) => e.req.every((r) => meets(entity, f, r, player))) ?? null;
+    if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
+    const seen = new Set();
+    return info.evolutions.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
-function offerEvolution(player, entity) {
-    const evolution = evolutionFor(entity, player);
-    if (!evolution || !entity.isValid || prop(entity, "cobblemon:evolving")) return;
-    setProp(entity, "cobblemon:evolving", true);
-    const name = POKEMON[entity.typeId].name, into = POKEMON[evolution.to]?.name ?? "?";
-    new MessageFormData().title("Evolution").body(`What? ${name} is evolving into ${into}!`).button1("Evolve").button2("Not now")
-        .show(player).then((r) => {
-            if (!entity.isValid) return;
-            setProp(entity, "cobblemon:evolving", undefined);
-            if (r.canceled || r.selection !== 0) return;
-            // an evolution that needs a held item uses it up
-            if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
-            entity.triggerEvent(evolution.event);
-        }).catch(() => setProp(entity, "cobblemon:evolving", undefined));
+function evolve(entity, evolution) {
+    if (!entity.isValid) return;
+    // an evolution that needs a held item uses it up
+    if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
+    setProp(entity, EVO_NOTE, undefined);
+    entity.triggerEvent(evolution.event);
 }
 
 function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
@@ -2714,7 +2717,7 @@ function summaryParty(player) {
     } catch (e) { return []; }
 }
 
-function showSummary(source, tab = "i", viewer, selected = 0) {
+function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const player = viewer ?? world.getPlayers().find((p) => p.id === prop(source, OWNER)) ?? nearestPlayer(source);
     const f = source?.isValid ? fighter(source) : undefined;
     if (!player || !f) return;
@@ -2751,7 +2754,20 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
         v[`s${k}val`] = num(f.stats[k]); v[`s${k}iv`] = mine ? num(ivs[k]) : ""; v[`s${k}ev`] = mine ? num(evs[k]) : "";
         v[`s${k}mark`] = up !== down && k === up ? "u" : up !== down && k === down ? "d" : "n";
     }
-    const party = summaryParty(player);
+    // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone; it swaps the
+    // party for EvolutionSelectScreen
+    const evolutions = mine && !battles.has(player.id) ? readyEvolutions(source, player) : [];
+    if (!evolutions.length) side = "p";
+    v.side = side;
+    for (let n = 0; n < 3; n++) {
+        const e = side === "e" ? evolutions[n] : undefined, into = e && POKEMON[e.to];
+        v[`e${n}slot`] = into ? "y" : "n";
+        v[`e${n}name`] = into?.name ?? "";
+        v[`e${n}type1`] = into ? typeCode(into.types[0]) : "x--";
+        v[`e${n}type2`] = into?.types[1] ? typeCode(into.types[1]) : "x--";
+        v[`e${n}icon`] = into ? iconOf(e.to) : "i----";
+    }
+    const party = side === "e" ? [] : summaryParty(player);
     for (let n = 0; n < 6; n++) {
         const e = party[n];
         if (!e) { v[`p${n}hp`] = "q00"; v[`p${n}gender`] = "o"; v[`p${n}icon`] = "i----"; continue; }
@@ -2767,9 +2783,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
     v.item = icon ?? `${SUMMARY_UI}/blank`;
     v.portrait = iconOf(source.typeId);
-    // Cobblemon's evolve button shows while an evolution is ready, outside battle, without an Everstone
-    const evolution = mine && !battles.has(player.id) ? evolutionFor(source, player) : null;
-    v.evolve = evolution ? "Evolve" : "";
+    v.evolve = evolutions.length ? "Evolve" : "";
     const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
 
     const form = new ActionFormData().title("cbm:summary").body(body);
@@ -2778,18 +2792,26 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     form.button("item", `${SUMMARY_UI}/item`);
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
-    form.button("evolve", `${SUMMARY_UI}/${evolution ? "evolve" : "none"}`);
+    form.button("evolve", `${SUMMARY_UI}/${evolutions.length ? "evolve" : "none"}`);
     for (let n = 0; n < 4; n++) {
         form.button("up", `${SUMMARY_UI}/${mine && tab === "m" && n > 0 && f.moves[n] ? "up" : "none"}`);
         form.button("down", `${SUMMARY_UI}/${mine && tab === "m" && f.moves[n + 1] ? "down" : "none"}`);
     }
     form.button("name", `${SUMMARY_UI}/${mine ? "name" : "none"}`);
+    for (let n = 0; n < 3; n++) form.button(side === "e" && evolutions[n] ? "Evolve" : "", `${SUMMARY_UI}/${side === "e" && evolutions[n] ? "evsel" : "none"}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
-        if (pick === 15) { if (evolution) offerEvolution(player, source); return; }
+        if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
+        if (pick >= 25 && pick <= 27) {
+            // EvolveSlot's Evolve button closes the screen and starts the evolution
+            const chosen = side === "e" && evolutions[pick - 25];
+            if (chosen) { try { player.playSound("cobblemon.evolution.ui"); } catch (e) { } evolve(source, chosen); }
+            else showSummary(source, tab, player, selected, side);
+            return;
+        }
         if (pick >= 16 && pick <= 23 && mine && tab === "m") {
             // MoveSlotWidget's reorder arrows swap a move with the one above or below it
             const n = (pick - 16) >> 1, other = pick % 2 === 0 ? n - 1 : n + 1, ids = f.moves.map((mv) => mv.id);
@@ -2812,7 +2834,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
                 }).catch(() => { });
             return;
         }
-        if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player); return; }
+        if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player, 0, e ? "p" : side); return; }
         if (pick === 9 && mine) {
             const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
             const hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
