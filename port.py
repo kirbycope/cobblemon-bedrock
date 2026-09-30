@@ -5024,7 +5024,8 @@ def create_pc_ui():
                 slot.alpha_composite(overlay.crop((0, top, 56, top + 50)))
                 slot.save(f"{P}/wps_{code}{suffix}{state}.png")
     shutil.copyfile(f"{src}/wallpaper_scroll_background.png", f"{P}/wallpaper_scroll_background.png")
-    for name, out in (("pc_icon_options", "options"), ("pc_button_set_wallpaper", "set_wallpaper")):
+    for name, out in (("pc_icon_options", "options"), ("pc_button_set_wallpaper", "set_wallpaper"),
+                      *[(f"pc_button_sort_{k}{r}", f"sort_{k}{r}") for k in ("name", "level", "type", "pokedex_number", "gender") for r in ("", "_reverse")]):
         image = Image.open(f"{src}/{name}.png").convert("RGBA")
         normal, lit = image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
         normal.save(f"{P}/{out}.png"); lit.save(f"{P}/{out}_hover.png"); lit.save(f"{P}/{out}_on.png"); lit.save(f"{P}/{out}_on_hover.png")
@@ -5072,6 +5073,10 @@ def create_pc_ui():
     def picture(name, folder, source, offset, size, layer=4, keep=False):
         return {name: {"type": "image", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": keep,
                        "anchor_from": "top_left", "anchor_to": "top_left", "bindings": bound(f"('{T}/{folder}' + {source})", "#texture")}}
+    def while_(mode, control, key="wmode"):
+        name, body = next(iter(control.items()))
+        return {name: {**body, "bindings": body.get("bindings", [{"binding_name": "#form_text"}]) + [
+            {"binding_type": "view", "source_property_name": f"({field(key)} = '{mode}')", "target_property_name": "#visible"}]}}
     controls = [image("portrait_bg", "pc/portrait_background", (6, 27), (66, 66), 1), image("base", "pc/base", (0, 0), (349, 205), 2),
                 picture("portrait", "icons/", field("portrait"), (9, 30), (60, 60), 3, True),
                 fixed("lv", "Lv.", (6, 1.5)), label("level", field("level"), (19, 1.5), size=(40, 10)),
@@ -5092,20 +5097,18 @@ def create_pc_ui():
     controls += [label(f"move{n}", field(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]
     # the box screen at StorageWidget's place, and its 30 slots in 6 columns of 27
     controls += [picture("wallpaper", "pc/wp_", field("wall"), (85, 27), (174, 155), 2), picture("glow", "pc/glow_", field("wall"), (68, 10), (208, 189), 3),
-                 image("grid", "pc/screen_grid", (92, 38), (160, 133), 3),
+                 while_("n", image("grid", "pc/screen_grid", (92, 38), (160, 133), 3), "opts"),
+                 while_("y", image("grid_opts", "pc/screen_grid", (92, 43), (160, 133), 3), "opts"),
                  image("overlay", "pc/screen_overlay", (85, 27), (174, 155), 4),
                  label("box", field("box"), (126, 12), 0.75, size=(92, 10), align="center")]
     slots = [(92 + 27 * (n % 6), 38 + 27 * (n // 6)) for n in range(30)]
     slots += [(278 + (31 if n % 2 else 0), 35 + 31 * (n // 2) + (8 if n % 2 else 0)) for n in range(6)]
     for n, (x, y) in enumerate(slots[:30]):
-        controls += [picture(f"icon{n}", "icons/", field(f"b{n}"), (x + 1, y + 1), (23, 23), 5, True),
-                     picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7),
-                     picture(f"mark{n}", "pc/mark_", field(f"q{n}"), (x + 15, y + 15), (10, 10), 6)]
+        for opts, dy in (("n", 0), ("y", 5)):
+            controls += [while_(opts, c, "opts") for c in (picture(f"icon{n}{opts}", "icons/", field(f"b{n}"), (x + 1, y + 1 + dy), (23, 23), 5, True),
+                                                             picture(f"pointer{n}{opts}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6 + dy), (11, 8), 7),
+                                                             picture(f"mark{n}{opts}", "pc/mark_", field(f"q{n}"), (x + 15, y + 15 + dy), (10, 10), 6))]
     party_controls = [image("party_panel", "pc/party_panel", (267, 8), (82, 169), 2)]
-    def while_(mode, control):
-        name, body = next(iter(control.items()))
-        return {name: {**body, "bindings": body.get("bindings", [{"binding_name": "#form_text"}]) + [
-            {"binding_type": "view", "source_property_name": f"({field('wmode')} = '{mode}')", "target_property_name": "#visible"}]}}
     for n, (x, y) in enumerate(slots[30:], 30):
         party_controls += [picture(f"icon{n}", "icons/", field(f"p{n - 30}"), (x + 1, y + 1), (23, 23), 5, True),
                            picture(f"pointer{n}", "pc/sel_", field(f"s{n}"), (x + 7, y - 6), (11, 8), 7)]
@@ -5134,11 +5137,15 @@ def create_pc_ui():
                                                         {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
-    buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
-    buttons = buttons[:30] + [while_("n", b) for b in buttons[30:]]
+    buttons = [while_("n", button(n, (x, y), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
+    box_opts = [while_("y", button(n, (x, y + 5), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
+    buttons += [while_("n", button(n, (x, y), (25, 25))) for n, (x, y) in enumerate(slots[30:], 30)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (126, 186), (58, 16)), button(39, (320, 186), (26, 13))]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
-    buttons += [button(40, (218, 186), (16, 16)), button(41, (242, 31), (20, 20))]
+    # IconButton draws its texture at half size
+    buttons += [button(40, (218, 186), (8, 8)), button(41, (242, 31), (10, 10))]
+    # PokemonSortMode's five sort buttons, 12 apart from (92, 31), while the options show
+    buttons += [button(42 + len(PC_WALLPAPERS) + n, (92 + 12 * n, 31), (10, 10)) for n in range(5)]
     # WallpapersScrollingWidget in the party's place (274, 29, 68 by 146): a slot of 56 by 50 every 54, 4 in, scrolling
     count = len(PC_WALLPAPERS)
     wall_buttons = [button(42 + n, (4, 4 + 54 * n), (56, 50)) for n in range(count)]
@@ -5162,7 +5169,7 @@ def create_pc_ui():
                 "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                              "source_property_name": f"(not ((#title_text - '{title}') = #title_text))", "target_property_name": "#visible"}],
                 "controls": controls + extra + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons_here}}]}
-    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons)
+    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons + box_opts)
     pasture = screen("cbm:pasture", pasture_controls + [fixed("recall_all_l", "Recall All", (273, 165), 1.0, size=(70, 10), align="center", layer=12)], pasture_buttons)
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")

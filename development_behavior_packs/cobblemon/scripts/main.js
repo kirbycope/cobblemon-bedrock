@@ -1701,6 +1701,29 @@ system.runInterval(() => {
     }
 }, 20);
 
+// PokemonSortMode: name, level, primary type, National Pokedex number and gender (male, female, genderless), the empty
+// slots last. A Pokemon out in a pasture keeps its slot, since the pasture finds it there even while far away and unloaded
+const PC_SORTS = ["name", "level", "type", "pokedex_number", "gender"];
+function sortBox(player, n, mode, reverse) {
+    const contents = box(player, n);
+    const key = (rec) => {
+        const info = POKEMON[rec.t];
+        switch (mode) {
+            case "name": return rec.n || info?.name || "";
+            case "level": return rec.lv ?? 0;
+            case "type": return info?.types?.[0] ?? "";
+            case "pokedex_number": return info?.dex ?? DEX_INDEX.get(rec.t) ?? 0;
+            default: return ["male", "female"].indexOf(rec.k?.["cobblemon:gender"]) + 1 || 3;
+        }
+    };
+    const loose = contents.filter((rec) => !rec?.p).sort((a, b) => {
+        if (!a || !b) return (!a) - (!b);
+        const x = key(a), y = key(b), c = x < y ? -1 : x > y ? 1 : 0;
+        return reverse ? -c : c;
+    });
+    saveBox(player, n, contents.map((rec) => (rec?.p ? rec : loose.shift() ?? null)));
+}
+
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
     if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; }
@@ -1727,6 +1750,8 @@ function openPc(block, player, state) {
         const w = available[n];
         form.button("wall", `${PC_UI}/pc/${w ? `wps_${w[0]}${w[1] && unseen.includes(w[1]) ? "_new" : ""}` : "none"}`);
     }
+    // the sort buttons show their reverse face after a sort by them, as a shift-click would sort
+    for (const mode of PC_SORTS) form.button(mode, `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
@@ -1735,6 +1760,17 @@ function openPc(block, player, state) {
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
         if (pick === 41) {
             if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
+            again(); return;
+        }
+        if (pick >= 42 + PC_WALLPAPERS.length) {
+            const mode = PC_SORTS[pick - 42 - PC_WALLPAPERS.length];
+            if (state.opts && mode) {
+                // a second press of the same button sorts the other way, where Cobblemon's is a shift-click
+                const reverse = state.sorted === mode;
+                sortBox(player, state.box, mode, reverse);
+                state.sorted = reverse ? null : mode; state.sel = null;
+                try { player.playSound("cobblemon.pc.click"); } catch (e) { }
+            }
             again(); return;
         }
         if (pick >= 42) {
