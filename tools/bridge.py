@@ -82,7 +82,8 @@ def stage(bridge, entity, spot=TEST_SPOT, player=PLAYER):
               f"fill {x-1} {top} {z-1} {x+4} {top+3} {z+1} air",
               f"setblock {x} {top} {z} stone", f"setblock {x+2} {top} {z} stone",
               f"tp {player} {x}.5 {top+1} {z}.5 -90 30",   # face +x (the mob) and 30 degrees down onto it; 'facing' aims at the sky
-              f"kill @e[family=pokemon,x={x},y={y},z={z},r=16]",
+              # the wild ones only: a kill by family would take the player's own Pokemon with them
+              f"execute as {player} run scriptevent cobblemon:clear_wild {x} {y} {z} 16",
               f"summon {entity} {x+2}.5 {top+1} {z}.5"):
         print(c, "->", bridge.command(c))
 

@@ -545,6 +545,97 @@ function enter(battle, f, other) {
 // remembered on the entity when the claiming interaction succeeds.
 const OWNER = "cobblemon:owner";
 
+// Nicknames live in a property of their own, so the name tag can carry Cobblemon's label; a nickname from before
+// (a plain name tag, not a label) still counts
+const NICK = "cobblemon:nickname", BATTLE_WINS = "cobblemon:battle_wins";
+function nicknameOf(entity) {
+    const nick = prop(entity, NICK);
+    if (nick !== undefined) return nick;
+    let tag = "";
+    try { tag = entity.nameTag ?? ""; } catch (e) { }
+    return tag && tag !== "NPC" && !tag.includes("Lv. ") ? tag : "";
+}
+
+// The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
+// Pokemon, whatever is in hand; a plain right-click on a wild Pokemon with an empty hand challenges it, as Cobblemon's
+// send-out key aimed at it does. Items used on a Pokemon without sneaking keep their own handlers.
+const WHEEL_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
+function openWheel(player, target) {
+    if (!target?.isValid) return;
+    const rideable = target.hasComponent("minecraft:rideable");
+    const following = !prop(target, "cobblemon:staying");
+    const hand = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex)?.typeId;
+    const options = {
+        // offered when there is something to give or take, as InteractPokemonUIPacket's canHoldItem says
+        north: { icon: "held", tip: "Change held item", on: !!(heldItem(target) || hand), act: () => {
+            if (hand && !HOLD_BLACKLIST.includes(hand)) giveHeld(player, target); else if (heldItem(target)) takeHeld(target);
+            else player.sendMessage("§7Hold the item to give it.");
+        } },
+        northeast: { icon: "cosmetic", tip: "Change cosmetic item", on: false },
+        east: { icon: "summary", tip: "Summary", on: true, act: () => showSummary(target, "i", player) },
+        south: { icon: "follow", tip: following ? "Stay" : "Follow", on: true, act: () => {
+            try { target.triggerEvent(following ? "cobblemon:stay" : "cobblemon:follow"); } catch (e) { }
+            setProp(target, "cobblemon:staying", following ? true : undefined);
+        } },
+        west: { icon: "ride", tip: "Ride", on: rideable, act: () => { try { target.getComponent("minecraft:rideable").addRider(player); } catch (e) { } } },
+        northwest: { icon: "shoulder", tip: "Shoulder", on: false },
+    };
+    // each button's texture is its place, its icon and whether it is offered (the layout adds "_hover")
+    const form = new ActionFormData().title("cbm:interact").body("");
+    for (const o of WHEEL_ORDER) {
+        const opt = options[o];
+        form.button(opt?.tip ?? "", `textures/ui/cobblemon/interact/${o}_${!opt ? "none" : opt.on ? opt.icon : `${opt.icon}_off`}`);
+    }
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        const opt = options[WHEEL_ORDER[r.selection]];
+        if (opt?.on && target.isValid) opt.act();
+    }).catch(() => { });
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (!POKEMON[target?.typeId]) return;
+    const id = itemStack?.typeId, sneaking = player.isSneaking, mine = prop(target, OWNER) === player.id;
+    if (mine && sneaking && !id?.startsWith("cobblemon:pokedex_")) {
+        event.cancel = true;
+        system.run(() => openWheel(player, target));
+        return;
+    }
+    if (!mine && !id && !sneaking && !prop(target, OWNER) && !capturing.has(target.id)) {
+        event.cancel = true;
+        system.run(() => { if (!battles.has(player.id) && target.isValid) startBattle(player, target, false); });
+    }
+});
+
+// PokemonRenderer.renderNameTag's label: the Pokemon's name, or "???" while the nearest player has not registered its
+// species, then "Lv. N"; under a wild Pokemon that can be battled, "Press Use to battle." until that player's first win
+// (showChallengeLabel). It is the Pokemon's name tag, which Bedrock draws when the Pokemon is looked at, as Cobblemon
+// draws its label; Pokemon are not NPCs, so the tag is theirs to carry.
+function labelFor(player, e) {
+    const info = POKEMON[e.typeId];
+    let variant = 0;
+    try { variant = e.getComponent("minecraft:variant")?.value ?? 0; } catch (err) { }
+    const known = dexStatus(player, e.typeId) > 0 || prop(e, OWNER);
+    const name = known ? (nicknameOf(e) || info.variants?.[variant]?.name || info.name) : "???";
+    let label = `${name} §fLv. ${prop(e, LEVEL) ?? info.level}`;
+    const wild = !prop(e, OWNER) && !e.hasComponent(EntityComponentTypes.IsTamed);
+    if (wild && !(player.getDynamicProperty(BATTLE_WINS) > 0) && !battles.has(player.id) && !capturing.has(e.id)) label += "\n§7Press Use to battle.";
+    return label;
+}
+system.runInterval(() => {
+    const seen = new Set();
+    for (const player of world.getPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 64 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (seen.has(e.id) || !POKEMON[e.typeId]) continue;
+            seen.add(e.id);
+            const label = labelFor(player, e);
+            try { if (e.nameTag !== label) e.nameTag = label; } catch (err) { }
+        }
+    }
+}, 10);
+
 world.afterEvents.playerInteractWithEntity.subscribe((event) => {
     // itemStack is the hand after the interaction, empty once the last ball is used
     const { player, target } = event, itemStack = event.beforeItemStack ?? event.itemStack;
@@ -865,7 +956,7 @@ function partyRecord(e) {
     try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
     const fainted = !!prop(e, FAINTED);
     const steps = (r) => String(Math.max(0, Math.min(18, Math.round(r * 18)))).padStart(2, "0");
-    const tag = e.nameTag && e.nameTag !== "NPC" ? e.nameTag : "";   // the npc component names every entity "NPC"
+    const tag = nicknameOf(e);   // the npc component names every entity "NPC"
     const name = (tag || info.name).normalize("NFD").replace(/[^ -~]/g, "");
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
@@ -997,6 +1088,7 @@ function gainExperience(battle, f, foe, amount) {
 function faint(battle, fainted) {
     if (fainted === battle.foe) {
         say(battle, `§a${battle.foe.info.name} fainted! ${battle.ally.info.name} wins!`);
+        try { battle.player.setDynamicProperty(BATTLE_WINS, (battle.player.getDynamicProperty(BATTLE_WINS) ?? 0) + 1); } catch (e) { }
         try { battle.foe.entity.triggerEvent("cobblemon:vanish"); } catch (e) { }
         if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         gainExperience(battle, battle.ally, battle.foe);
@@ -1051,6 +1143,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:clear_wild") {
+        // testing: "/scriptevent cobblemon:clear_wild x y z r" removes the wild Pokemon in that sphere, never an owned one
+        const [x, y, z, r] = event.message.split(/\s+/).map(Number);
+        for (const e of source.dimension.getEntities({ families: ["pokemon"], location: { x, y, z }, maxDistance: r || 16 })) {
+            if (!prop(e, OWNER) && !e.hasComponent(EntityComponentTypes.IsTamed)) try { e.remove(); } catch (err) { }
+        }
     } else if (event.id === "cobblemon:fossil_time") {
         // testing: /execute as <player> run scriptevent cobblemon:fossil_time <seconds> sets what running machines have left
         loadMachines();
@@ -1189,7 +1287,6 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
                 const next = hidden >= 0 ? (after.hidden ?? [])[hidden] ?? (after.hidden ?? [])[0] : (after.abilities ?? [])[Math.max(0, slot)] ?? (after.abilities ?? [])[0];
                 if (next) entity.setDynamicProperty("cobblemon:ability", next);
             }
-            if (name && name !== "NPC") entity.nameTag = name;
             entity.setDynamicProperty(OWNER, owner);
             if (player) register(player, entity.typeId, 2);
             player?.sendMessage(`§aYour Pokemon evolved into ${POKEMON[entity.typeId].name}!`);
@@ -1469,7 +1566,7 @@ function snapshot(entity) {
     try { const h = entity.getComponent(EntityComponentTypes.Health); hp = h.currentValue / h.effectiveMax; } catch (e) { }
     return { t: entity.typeId, v: variant, lv: prop(entity, LEVEL) ?? species.level, xp: prop(entity, EXP) ?? 0,
              mv: prop(entity, MOVESET) ?? null, f: !!prop(entity, FAINTED), hp,
-             n: entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "",   // "NPC" is the name the panel component gives
+             n: nicknameOf(entity),   // "NPC" is the name the panel component gives
              k: Object.fromEntries(KEPT.map((key) => [key, prop(entity, key)]).filter(([, v]) => v !== undefined)) };
 }
 
@@ -1497,7 +1594,7 @@ function pcInfo(v, rec, entity) {
     let moves = [];
     try { moves = JSON.parse((rec ? rec.mv : prop(entity, MOVESET)) ?? "null") ?? movesAt(form, level); } catch (e) { moves = movesAt(form, level); }
     const ball = Object.keys(BALLS).indexOf(kept("cobblemon:caught_ball") ?? "cobblemon:poke_ball");
-    const tag = rec ? rec.n : (entity.nameTag && entity.nameTag !== "NPC" ? entity.nameTag : "");
+    const tag = rec ? rec.n : (nicknameOf(entity));
     Object.assign(v, {
         level: num(level), name: tag || form.name, portrait: iconOf(typeId),
         gender: { male: "m", female: "f" }[kept("cobblemon:gender")] ?? "o", ball: `b${String(Math.max(0, ball)).padStart(2, "0")}`,
@@ -1689,7 +1786,7 @@ function spawnStored(player, rec, at) {
             setProp(entity, OWNER, player.id); setProp(entity, LEVEL, rec.lv); setProp(entity, EXP, rec.xp);
             if (rec.mv) setProp(entity, MOVESET, rec.mv);
             if (rec.f) setProp(entity, FAINTED, true);
-            if (rec.n) entity.nameTag = rec.n;
+            if (rec.n) setProp(entity, NICK, rec.n);
             for (const [key, value] of Object.entries(rec.k ?? {})) setProp(entity, key, value);
             const h = entity.getComponent(EntityComponentTypes.Health);
             if (h) h.setCurrentValue(Math.max(1, Math.round(h.effectiveMax * rec.hp)));
@@ -1738,7 +1835,7 @@ function openPasture(block, player, state) {
         const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
         Object.assign(v, {
             [`r${n}icon`]: iconOf(e.typeId), [`r${n}level`]: `Lv. ${prop(e, LEVEL) ?? info.level}`,
-            [`r${n}name`]: e.nameTag && e.nameTag !== "NPC" ? e.nameTag : info.name,
+            [`r${n}name`]: nicknameOf(e) || info.name,
             [`r${n}gender`]: { male: "m", female: "f" }[genderOf(e)] ?? "o", [`r${n}slot`]: own ? "o" : "n", [`r${n}move`]: own ? "y" : "n",
         });
     }
@@ -2557,7 +2654,7 @@ function meets(entity, f, r, player) {
         case "prop":
             if (r.key === "gender") return genderOf(entity) === r.value;
             if (r.key === "nature") return natureOf(entity) === r.value;
-            if (r.key === "nickname") return entity.nameTag === r.value;
+            if (r.key === "nickname") return nicknameOf(entity) === r.value;
             if (r.key === "cocoon_species") {
                 // Wurmple's split: each Wurmple is one or the other, rolled once
                 let c = prop(entity, "cobblemon:cocoon");
@@ -2628,7 +2725,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
     if (!player || !f) return;
     const info = f.info, mine = prop(source, OWNER) === player.id;
     const v = { tab };
-    const tagged = source.nameTag && source.nameTag !== "NPC" ? source.nameTag : "";
+    const tagged = nicknameOf(source);
     Object.assign(v, {
         level: num(f.level), name: tagged || info.name, gender: { male: "m", female: "f" }[genderOf(source)] ?? "o",
         ball: `b${String(Math.max(0, Object.keys(BALLS).indexOf(prop(source, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"))).padStart(2, "0")}`,
@@ -2667,7 +2764,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
         const pi = POKEMON[e.typeId];
         let share = 1;
         try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
-        v[`p${n}name`] = e.nameTag && e.nameTag !== "NPC" ? e.nameTag : pi.name;
+        v[`p${n}name`] = nicknameOf(e) || pi.name;
         v[`p${n}level`] = `Lv. ${prop(e, LEVEL) ?? pi.level}`;
         v[`p${n}hp`] = `q${String(prop(e, FAINTED) ? 0 : Math.round(share * 37)).padStart(2, "0")}`;
         v[`p${n}gender`] = { male: "m", female: "f" }[genderOf(e)] ?? "o";
@@ -2714,7 +2811,7 @@ function showSummary(source, tab = "i", viewer, selected = 0) {
                 .show(player).then((q) => {
                     if (!q.canceled && source.isValid) {
                         const name = String(q.formValues?.[0] ?? "").trim().slice(0, 12);
-                        try { source.nameTag = name; } catch (e) { }
+                        setProp(source, NICK, name || undefined);
                     }
                     if (source.isValid) showSummary(source, tab, player, selected);
                 }).catch(() => { });
@@ -3150,7 +3247,7 @@ system.runInterval(() => {
                 if (left > 0) { setProp(e, "cobblemon:faint_timer", left); continue; }
                 setProp(e, FAINTED, undefined); setProp(e, "cobblemon:faint_timer", undefined);
                 health.setCurrentValue(Math.max(1, Math.ceil(health.effectiveMax * AWAKEN_SHARE)));
-                player.sendMessage(`${e.nameTag && e.nameTag !== "NPC" ? e.nameTag : POKEMON[e.typeId].name} has recovered from fainting.`);
+                player.sendMessage(`${nicknameOf(e) || POKEMON[e.typeId].name} has recovered from fainting.`);
             } else if (health.currentValue < health.effectiveMax) {
                 const left = (prop(e, "cobblemon:heal_timer") ?? HEAL_SECONDS) - 1;
                 if (left > 0) { setProp(e, "cobblemon:heal_timer", left); continue; }

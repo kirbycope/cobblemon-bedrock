@@ -1083,11 +1083,6 @@ def create_behavior_entities():
         types = [t for t in (species.get("primaryType"), species.get("secondaryType")) if t]
         combat = behaviour.get("combat", {})
         health = health_at(stats.get("hp", 40), level)
-        # the vanilla NPC's portrait (scale 1.75) frames a human; a Pokemon taller than a block is scaled
-        # down to fit, and positive y moves the model down, so it is lifted by half its framed height
-        world_height = hitbox["height"] * scale
-        portrait_scale = round(1.75 * min(1.0, 1.0 / world_height), 3)
-        portrait_height = world_height * portrait_scale / 1.75
         components = {
             "minecraft:nameable": {},
             "minecraft:type_family": {"family": ["mob", "pokemon", "npc"] + types},
@@ -1099,10 +1094,6 @@ def create_behavior_entities():
             "minecraft:despawn": {"despawn_from_distance": {}},
             "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
             "minecraft:conditional_bandwidth_optimization": {},
-            # the vanilla NPC's portrait offsets (translate y 50) frame a two-block human; positive y moves the
-            # model down, so a Pokemon is lifted by about half its own height in portrait units
-            # (the picker, at the vanilla values, already fits it)
-            "minecraft:npc": {"npc_data": {"skin_list": [{"variant": 0}], "portrait_offsets": {"scale": [portrait_scale] * 3, "translate": [0, round(5 - 14 * portrait_height), 0]}, "picker_offsets": {"scale": [1.7, 1.7, 1.7], "translate": [0, 20, 0]}}},
             "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 6, "probability": 0.02}
         }
         components.update(movement_components(species, kind))
@@ -1129,8 +1120,8 @@ def create_behavior_entities():
                                    # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
                                    "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True}},
-                    "animations": {"dialogue": f"controller.animation.{pokemon}.dialogue"},
-                    "scripts": {"animate": ["dialogue"]}
+                    "animations": {},
+                    "scripts": {"animate": []}
                 },
                 "component_groups": {},
                 "components": components,
@@ -1169,22 +1160,6 @@ def create_behavior_entities():
     print("Create behavior entities complete.")
 
 
-def create_dialogue_controllers():
-    """A behavior-side animation controller per Pokemon whose only state points the NPC at its own scene."""
-    print("Creating dialogue controllers...")
-    fresh(f"{behaviorPack}/animation_controllers")
-    controllers = {}
-    for pokemon in pokemons:
-        if not species_for(pokemon): continue
-        controllers[f"controller.animation.{pokemon}.dialogue"] = {
-            "initial_state": "default",
-            "states": {"default": {"on_entry": [f"/dialogue change @s cobblemon:{pokemon}"]}}
-        }
-    with open(f"{behaviorPack}/animation_controllers/dialogue.animation_controllers.json", "w") as file:
-        file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": controllers}, indent=4))
-    print("Create dialogue controllers complete.")
-
-
 def create_loot_tables():
     """What Cobblemon says a species drops; items Bedrock does not have (Cobblemon's own) are left out."""
     print("Creating loot tables...")
@@ -1201,32 +1176,6 @@ def create_loot_tables():
             pools.append(pool)
         with open(f"{lootTablesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps({"pools": pools}, indent=4))
     print("Create loot tables complete.")
-
-
-def create_dialogues():
-    """The panel a right-click opens: Bedrock's NPC dialogue, one scene per Pokemon; its Stats button opens the script's summary."""
-    print("Creating dialogues...")
-    fresh(dialogueBedrock)
-    scenes = []
-    for pokemon in pokemons:
-        species = species_for(pokemon)
-        if not species: continue
-        key = species_key(species); name = display_name(species)
-        types = " / ".join(type_name(t) for t in (species.get("primaryType"), species.get("secondaryType")) if t)
-        desc = lang.get(f"cobblemon.species.{key}.desc", "")
-        cry = [{"name": "Cry", "commands": [f"/playsound cobblemon.{key}.cry @initiator ~ ~ ~"]}] if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else []
-        scenes.append({
-            "scene_tag": f"cobblemon:{pokemon}",
-            "npc_name": name,
-            "text": f"{types} type\n{desc}",
-            "buttons": cry + [{"name": "Stats", "commands": ["/scriptevent cobblemon:summary go"]},
-                              {"name": "Battle", "commands": ["/scriptevent cobblemon:battle go"]},
-                              {"name": "Stay", "commands": ["/event entity @s cobblemon:stay"]}, {"name": "Follow", "commands": ["/event entity @s cobblemon:follow"]}]
-                       + ([{"name": "Ride", "commands": ["/ride @initiator start_riding @s teleport_rider"]}] if ride_behaviours(species) else [])
-        })
-    with open(f"{dialogueBedrock}/pokemon.dialogue.json", "w", encoding="utf-8") as file:
-        file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": scenes}}, indent=4, ensure_ascii=False))
-    print(f"Create dialogues complete: {len(scenes)} scenes.")
 
 
 def copy_cries():
@@ -2391,11 +2340,11 @@ def create_npcs():
     with open(f"{dialogueBedrock}/npcs.dialogue.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": scenes}}, indent=4, ensure_ascii=False))
     # a trainer sends out a Pokemon that fights the player for a minute, then leaves
-    for npc in NPCS:
-        controllers_path = f"{behaviorPack}/animation_controllers/dialogue.animation_controllers.json"
-        with open(controllers_path, encoding="utf-8") as file: controllers = json.load(file)
-        controllers["animation_controllers"][f"controller.animation.{npc}.dialogue"] = {"initial_state": "default", "states": {"default": {"on_entry": [f"/dialogue change @s cobblemon:{npc}"]}}}
-        with open(controllers_path, "w") as file: file.write(json.dumps(controllers, indent=4))
+    # each NPC points itself at its own scene
+    controllers = {f"controller.animation.{npc}.dialogue": {"initial_state": "default", "states": {"default": {"on_entry": [f"/dialogue change @s cobblemon:{npc}"]}}}
+                   for npc in NPCS}
+    with open(f"{behaviorPack}/animation_controllers/dialogue.animation_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": controllers}, indent=4))
     # spawn rules: a trainer now and then on plains and in forests, the professor rarer
     for npc, weight in (("npc_trainer", 2), ("npc_sacchi", 1)):
         rule = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": f"cobblemon:{npc}", "population_control": "animal"}, "conditions": [{
@@ -2619,7 +2568,9 @@ def create_battle_data():
             "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
             "variants": variant_battle_overrides(pokemon, species),
             # the cry the send-out and the Pokedex play, when the pack has one
-            "cry": f"cobblemon.{species_key(species)}.cry" if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else None
+            "cry": f"cobblemon.{species_key(species)}.cry" if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else None,
+            # the hitbox height in blocks, where PokemonRenderer draws the label (half a block above it)
+            "labelHeight": round(species.get("hitbox", {}).get("height", 1.0) * species.get("baseScale", 1.0), 2)
         }
     with open(f"{scriptsBedrock}/data.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py from Cobblemon's species files and Showdown's move table and type chart\n")
@@ -5345,6 +5296,69 @@ def create_starter_ui():
     return {"cobblemon_starter": starter}
 
 
+# The interact wheel, after InteractWheelGUI and createPokemonInteractGui: the 170 by 170 base with eight buttons around
+# it on Cobblemon's own button and icon textures, a disabled option drawn dim. Cobblemon's four options keep their
+# places (held item north, cosmetic item north-east, ride west, shoulder north-west); the port puts the Summary east
+# and Stay or Follow south, the keys it has no other way to reach. The hovered option's name shows in the middle.
+WHEEL = [("north", (55, 0), (60, 27)), ("northeast", (109, 12), (49, 49)), ("east", (143, 55), (27, 60)), ("southeast", (109, 109), (49, 49)),
+         ("south", (55, 143), (60, 27)), ("southwest", (12, 109), (49, 49)), ("west", (0, 55), (27, 60)), ("northwest", (12, 12), (49, 49))]
+WHEEL_ICON = {"north": (22, 5.5), "south": (22, 5.5), "west": (5.5, 22), "east": (5.5, 22), "northwest": (14.5, 14.5), "northeast": (18.5, 14.5),
+              "southeast": (18.5, 18.5), "southwest": (14.5, 18.5)}
+
+
+def create_interact_ui():
+    W = f"{uiTextures}/interact"
+    fresh(W)
+    src = f"{guiMain}/interact"
+    shutil.copyfile(f"{src}/interact_wheel_base.png", f"{W}/base.png")
+    def dim(image, alpha=0.45):
+        out = image.copy(); out.putalpha(out.getchannel("A").point(lambda v: int(v * alpha))); return out
+    # each option's icon is drawn onto its button (at twice the size, so the icons' half-pixel offsets land on a
+    # pixel), one texture per button, icon and state, since a form button carries a single texture
+    icons = {key: Image.open(f"{src}/interact_wheel_icon_{name}.png").convert("RGBA") for key, name in
+             (("held", "held_item"), ("cosmetic", "cosmetic_item"), ("ride", "ride"), ("shoulder", "shoulder"), ("battle", "battle"))}
+    # the port's own two: the Summary's info tab icon, and the pasture's move icon for Stay and Follow
+    icons["summary"] = Image.open(f"{guiMain}/summary/summary_tab_icon_info.png").convert("RGBA")
+    move = Image.open(f"{guiMain}/pasture/pasture_slot_icon_move.png").convert("RGBA")
+    icons["follow"] = move.crop((0, 0, move.width, move.height // 2))
+    for name, _, (w, h) in WHEEL:
+        frames = Image.open(f"{src}/interact_wheel_button_{name}.png").convert("RGBA")
+        normal, hover = (frames.crop((0, top, w, top + h)).resize((w * 2, h * 2), Image.NEAREST) for top in (0, h))
+        Image.new("RGBA", (w, h), (0, 0, 0, 0)).save(f"{W}/{name}_none.png"); Image.new("RGBA", (w, h), (0, 0, 0, 0)).save(f"{W}/{name}_none_hover.png")
+        ix, iy = WHEEL_ICON[name]
+        for key, icon in icons.items():
+            icon = icon.resize((32, 32), Image.NEAREST)
+            for state, frame in (("", normal), ("_hover", hover)):
+                out = frame.copy(); out.alpha_composite(icon, (int(ix * 2), int(iy * 2)))
+                out.save(f"{W}/{name}_{key}{state}.png")
+                dim(out).save(f"{W}/{name}_{key}_off{state}.png")
+
+    T = "textures/ui/cobblemon"
+    def face(state):
+        return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
+                "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                             {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}]}
+    controls = [{"base": {"type": "image", "texture": f"{T}/interact/base", "size": [170, 170], "layer": 1}}]
+    buttons = []
+    for index, (name, (x, y), (w, h)) in enumerate(WHEEL):
+        # the hovered option's name, in the middle of the wheel
+        tip = {"type": "label", "text": "#form_button_text", "size": [120, 10], "layer": 9, "text_alignment": "center", "shadow": True,
+               "anchor_from": "center", "anchor_to": "center", "offset": [85 - (x + w / 2), 85 - (y + h / 2)],
+               "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}]}
+        hover = face("_hover"); hover["controls"] = [{"tip": tip}]
+        buttons.append({f"button_{index}": {"type": "button", "size": [w, h], "offset": [x, y], "anchor_from": "top_left", "anchor_to": "top_left",
+                                            "collection_index": index, "layer": 5, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                                            "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                                {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                                            "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                            "controls": [{"default": face("")}, {"hover": hover}, {"pressed": face("_hover")}]}})
+    wheel = {"type": "panel", "size": [170, 170], "anchor_from": "center", "anchor_to": "center",
+             "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                          "source_property_name": "(not ((#title_text - 'cbm:interact') = #title_text))", "target_property_name": "#visible"}],
+             "controls": controls + [{"buttons": {"type": "collection_panel", "size": [170, 170], "collection_name": "form_buttons", "controls": buttons}}]}
+    return {"cobblemon_interact": wheel}
+
+
 def create_battle_ui():
     for folder in ("battle", "types"): os.makedirs(f"{uiTextures}/{folder}", exist_ok=True)
     def frames(name, height):
@@ -5482,7 +5496,8 @@ def create_battle_ui():
             {"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "((#title_text - 'cbm:') = #title_text)", "target_property_name": "#visible"}]}]},
         "cobblemon_forms": {"type": "panel", "size": ["100%", "100%"], "controls": [{"battle@server_form.cobblemon_battle": {}}, {"summary@server_form.cobblemon_summary": {}},
                                                                                        {"pc@server_form.cobblemon_pc": {}}, {"pasture@server_form.cobblemon_pasture": {}},
-                                                                                       {"pokedex@server_form.cobblemon_pokedex": {}}, {"starter@server_form.cobblemon_starter": {}}]},
+                                                                                       {"pokedex@server_form.cobblemon_pokedex": {}}, {"starter@server_form.cobblemon_starter": {}},
+                                                                                       {"interact@server_form.cobblemon_interact": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
@@ -5496,6 +5511,7 @@ def create_battle_ui():
     ui.update(create_pc_ui())
     ui.update(create_pokedex_ui())
     ui.update(create_starter_ui())
+    ui.update(create_interact_ui())
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
@@ -5736,12 +5752,10 @@ def main():
     create_render_controllers()
     create_client_entities()
     create_behavior_entities()
-    create_dialogue_controllers()
     create_ambient_particles()
     create_loot_tables()
     create_spawn_rules()
     create_sounds()
-    create_dialogues()
     create_items()
     create_poke_ball_entity()
     create_npcs()
