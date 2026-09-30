@@ -125,7 +125,7 @@ double-sided `entity_alphatest` draws both of their coincident faces, which z-fi
 `tools/client_drive.py` brings the Minecraft window to the front and drives it with real input, so a
 change can be looked at without touching the keyboard: `shot <name>` captures the screen into
 `captures/`, `click x y`, `key <key>`, `chat "/summon cobblemon:p0006_charizard ~ ~ ~5"` and `look dx dy`
-do what they say. Content errors show in `%APPDATA%\Minecraft Bedrock\logs\ContentLog*.txt`.
+do what they say; `join` joins the dedicated server's LAN tile by its name, and `dropped` backs out of the "Terracotta" disconnect the first join after a new pack version often gets, so `join` can run again. Content errors show in `%APPDATA%\Minecraft Bedrock\logs\ContentLog*.txt`.
 
 ## Developing against a local Bedrock Dedicated Server
 Keep this repository where it is and junction its two pack folders into the world on the server, so an
