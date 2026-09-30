@@ -697,6 +697,8 @@ function chooseBall(battle) {
     return form.show(battle.player).then((r) => (r.canceled ? undefined : held[r.selection][0]));
 }
 
+// Throwing a ball in battle: as in Cobblemon, the ball is thrown at the foe and plays the whole capture, judged by
+// the battle (its turn count, the foe's health and status); the result ends the battle or gives the foe its turn
 function throwBall(battle, id) {
     const inv = battle.player.getComponent(EntityComponentTypes.Inventory)?.container;
     if (!inv) return false;
@@ -704,20 +706,24 @@ function throwBall(battle, id) {
         const item = inv.getItem(i);
         if (!item || item.typeId !== id) continue;
         if (item.amount > 1) { item.amount -= 1; inv.setItem(i, item); } else inv.setItem(i, undefined);
-        const f = battle.foe, mult = ballMultiplier(battle, id);
-        // a sleeping or frozen Pokemon is easier to catch, and a burned, paralyzed or poisoned one a little easier
-        const bonus = f.status === "slp" || f.status === "frz" ? 2.5 : f.status ? 1.5 : 1;
-        const chance = ((3 * f.stats.hp - 2 * f.hp) * f.info.catchRate * mult * bonus) / (3 * f.stats.hp) / 255;
         say(battle, `§7You threw a ${BALLS[id].name}!`);
-        if (Math.random() < chance) {
-            say(battle, `§aGotcha! ${f.info.name} was caught!`);
-            register(battle.player, f.entity.typeId, 2);
-            keepCaught(battle.player, f.entity, id);
-            endBattle(battle);
-            return true;
-        }
-        say(battle, `§7Oh no! ${f.info.name} broke free!`);
-        return false;
+        const player = battle.player, foe = battle.foe.entity, dim = foe.dimension, from = handOf(player);
+        const to = bodyCentre(foe), projectile = [...BALL_FROM_PROJECTILE].find(([, ball]) => ball === id)?.[0];
+        let ball;
+        try { ball = captureBall(dim, id, from); } catch (e) { system.runTimeout(() => foeTurn(battle), 20); return true; }
+        try { dim.playSound("cobblemon.poke_ball.throw", from); } catch (e) { }
+        const FLIGHT = 12;
+        timeline(FLIGHT, (tick) => {
+            const k = tick / FLIGHT;
+            try { ball.teleport({ x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + Math.sin(k * Math.PI) * 1.2, z: from.z + (to.z - from.z) * k }); } catch (e) { }
+            if (tick < FLIGHT) return;
+            try { ball.remove(); } catch (e) { }
+            const d = { x: to.x - from.x, y: 0, z: to.z - from.z }, len = Math.hypot(d.x, d.z) || 1;
+            if (foe.isValid && projectile) startCapture(player, projectile, foe, { x: to.x - (d.x / len) * 0.4, y: to.y, z: to.z - (d.z / len) * 0.4 }, { x: d.x / len, y: 0, z: d.z / len }, battle);
+            else system.runTimeout(() => foeTurn(battle), 20);
+            return false;
+        });
+        return true;
     }
     return false;
 }
@@ -755,7 +761,7 @@ function turn(battle) {
             chooseBall(battle).then((id) => {
                 if (!battles.has(battle.player.id)) return;
                 if (!id) { battle.turn--; turn(battle); return; }
-                if (throwBall(battle, id)) return;
+                if (throwBall(battle, id)) return;   // the capture decides what comes next
                 foeTurn(battle);
             }).catch(() => endBattle(battle));
             return;
@@ -2960,14 +2966,16 @@ function recallEffect(player, entity, then) {
 
 // Cobblemon's capture calculator (CobblemonCaptureCalculator.processCapture): the modified catch rate from health,
 // half outside battle, the ball, status and a low-level bonus, then four shake checks of 65536 / (255 / rate)^0.1875
-function captureRoll(player, pokemon, ballId) {
-    const f = fighter(pokemon);
+function captureRoll(player, pokemon, ballId, battle) {
+    // in battle the foe as it stands (its health and status) and the battle's own rules for the ball; half the rate outside
+    const f = battle ? battle.foe : fighter(pokemon);
     if (!f) return { shakes: 0, caught: false };
-    let mult = worldBallMultiplier(player, f, ballId);
+    let mult = battle ? ballMultiplier(battle, ballId) : worldBallMultiplier(player, f, ballId);
     if (mult === Infinity) return { shakes: 3, caught: true };
     if (f.info.ultraBeast && BALLS[ballId]?.rule !== "beast") mult *= 0.1;
     const levelBonus = f.level < 13 ? Math.max(Math.trunc((36 - 2 * f.level) / 10), 1) : 1;
-    let rate = (((3 * f.stats.hp - 2 * f.hp) * f.info.catchRate * 0.5 * mult) / (3 * f.stats.hp)) * levelBonus;
+    const statusBonus = f.status === "slp" || f.status === "frz" ? 2.5 : f.status ? 1.5 : 1;
+    let rate = (((3 * f.stats.hp - 2 * f.hp) * f.info.catchRate * (battle ? 1 : 0.5) * mult) / (3 * f.stats.hp)) * levelBonus * statusBonus;
     const highest = Math.max(0, ...findParty(player, player.location).map((e) => fighter(e)?.level ?? 0));
     if (highest && highest < f.level && f.level - highest >= 50) rate *= 0.1;
     const chance = Math.round(65536 / Math.pow(255 / Math.max(rate, 0.0001), 0.1875));
@@ -2991,15 +2999,16 @@ function worldBallMultiplier(player, f, ballId) {
     return ballMultiplier({ foe: f, ally: party[0] ?? f, player, turn: 1 }, ballId);
 }
 
-function startCapture(player, projectileId, pokemon, hit, velocity) {
+const captureBattles = new Map();   // the battle a capture belongs to, by the Pokemon's id
+function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
     const ballId = BALL_FROM_PROJECTILE.get(projectileId), dim = pokemon.dimension;
     const wild = POKEMON[pokemon.typeId] && !prop(pokemon, OWNER) && !pokemon.hasComponent(EntityComponentTypes.IsTamed);
     let busy = capturing.has(pokemon.id);
-    try { busy = busy || pokemon.getProperty("cobblemon:battle"); } catch (e) { }
-    if (!wild || busy) { dropBall(dim, ballId, hit, player); return; }
+    try { busy = busy || (!battle && pokemon.getProperty("cobblemon:battle")); } catch (e) { }
+    if (!wild || busy) { dropBall(dim, ballId, hit, player); if (battle) system.runTimeout(() => foeTurn(battle), 20); return; }
     capturing.add(pokemon.id);
-    freeze(pokemon, true);
-    try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { }
+    if (battle) captureBattles.set(pokemon.id, battle);
+    else { freeze(pokemon, true); try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { } }
     register(player, pokemon.typeId, 1);
     let ball;
     try { ball = captureBall(dim, ballId, hit); } catch (e) { capturing.delete(pokemon.id); freeze(pokemon, false); dropBall(dim, ballId, hit, player); return; }
@@ -3051,7 +3060,7 @@ function fall(ball, pos, player, pokemon, ballId, gone) {
 
 // on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result
 function land(ball, pos, player, pokemon, ballId, gone) {
-    const dim = ball.dimension, roll = captureRoll(player, pokemon, ballId);
+    const dim = ball.dimension, roll = captureRoll(player, pokemon, ballId, captureBattles.get(pokemon.id));
     ballState(ball, "shake");
     let shake = 0;
     const steps = roll.shakes + 1;
@@ -3072,7 +3081,10 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
         if (pokemon.isValid) {
             try { pokemon.teleport(pos); } catch (e) { }
             player.sendMessage(`§aGotcha! ${name} was caught!`);
-            keepCaught(player, pokemon, ballId);
+            const battle = captureBattles.get(pokemon.id);
+            captureBattles.delete(pokemon.id);
+            keepCaught(player, pokemon, ballId);   // first, so the battle's end does not heal it as a wild one
+            if (battle && battles.has(battle.player.id)) endBattle(battle);
         }
         gone();
     }, BALLS[ballId]?.ancient ? 36 : 20);
@@ -3154,8 +3166,14 @@ function brokeFree(ball, pos, pokemon, ballId, gone) {
     system.runTimeout(() => {
         ballBurst(dim, ballId, { x: pos.x, y: pos.y + 0.3, z: pos.z });
         timeline(BEAM_SHRINK, (t) => { if (pokemon.isValid) setSize(pokemon, t / BEAM_SHRINK); });
-        freeze(pokemon, false);
         capturing.delete(pokemon.id);
+        const battle = captureBattles.get(pokemon.id);
+        captureBattles.delete(pokemon.id);
+        // in battle the Pokemon breaks out and the battle goes on, its move costing the player's turn
+        if (battle) {
+            if (pokemon.isValid) say(battle, `§7Oh no! ${battle.foe.info.name} broke free!`);
+            if (battles.has(battle.player.id)) system.runTimeout(() => foeTurn(battle), 20);
+        } else freeze(pokemon, false);
     }, 2);
     system.runTimeout(() => { try { if (ball.isValid) ball.remove(); } catch (e) { } }, 24);
 }
