@@ -11,6 +11,7 @@ import { ActionFormData, MessageFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { PC_LAYOUT } from "./pc_layout.js";
+import { DEX_LAYOUT } from "./dex_layout.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
@@ -2006,52 +2007,74 @@ system.runInterval(() => {
     }
 }, 60);
 
-const DEX_PAGE = 20;
-const STAT_LABELS = [["hp", "HP"], ["atk", "Atk"], ["def", "Def"], ["spa", "SpA"], ["spd", "SpD"], ["spe", "Spe"]];
 
-function dexEntry(player, typeId, back) {
-    const species = POKEMON[typeId], info = DEX_INFO[typeId] ?? {}, status = dexStatus(player, typeId);
-    const number = `#${String(info.n ?? 0).padStart(4, "0")}`;
-    let body;
-    if (!status) body = `${number} ???\n\nNot yet seen.`;
-    else {
-        body = `${number} ${species.name}\n${species.types.map(cap).join(" / ")} type\n`;
-        if (status === 2) {
-            body += `\n${info.d}\n\nHeight ${(info.h ?? 0) / 10} m   Weight ${(info.w ?? 0) / 10} kg\n`;
-            body += STAT_LABELS.map(([k, l]) => `${l} ${species.stats[k]}`).join("   ");
-        } else body += "\nSeen, not yet caught.";
+// The Pokedex, laid out by ui/server_form.json on Cobblemon's Pokedex textures (DEX_LAYOUT in port.py): the region
+// and its arrows, a page of 25 entries, and the chosen entry with its Info, Abilities and Stats tabs and the cry.
+const DEX_FILTERS = [["All", () => true], ["Seen", (st) => st !== "0"], ["Owned", (st) => st === "2"], ["Unregistered", (st) => st === "0"]];
+function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
+    const s = dexString(player), region = REGIONS[state.region];
+    const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n]));
+    const pages = Math.max(1, Math.ceil(entries.length / 25));
+    state.page = Math.min(state.page, pages - 1);
+    const shown = entries.slice(state.page * 25, state.page * 25 + 25);
+    const v = {
+        colour: { red: "r", blue: "b", green: "g", pink: "p", yellow: "y", black: "k", white: "w" }[colour] ?? "r", region: region.name, filter: DEX_FILTERS[state.filter][0],
+        seen: num(region.entries.filter((n) => s[n] !== "0").length), caught: num(region.entries.filter((n) => s[n] === "2").length),
+    };
+    for (let i = 0; i < 25; i++) {
+        const n = shown[i];
+        if (n === undefined) { Object.assign(v, { [`e${i}icon`]: "i----", [`e${i}state`]: "s", [`e${i}sel`]: "n" }); continue; }
+        const id = NATIONAL[n], st = s[n];
+        Object.assign(v, {
+            [`e${i}icon`]: st === "0" ? "i----" : iconOf(id), [`e${i}num`]: num(String(DEX_INFO[id]?.n ?? n + 1).padStart(4, "0")),
+            [`e${i}state`]: st === "0" ? "u" : st === "2" ? "c" : "s", [`e${i}sel`]: state.chosen === n ? "y" : "n",
+        });
     }
-    new ActionFormData().title("Pokedex").body(body).button("Back").show(player).then((r) => { if (!r.canceled && back) back(); });
+    const chosen = state.chosen;
+    if (chosen !== null) {
+        const id = NATIONAL[chosen], st = s[chosen], info = DEX_INFO[id] ?? {}, species = POKEMON[id];
+        v.num = num(String(info.n ?? chosen + 1).padStart(4, "0"));
+        v.name = st === "0" ? "???" : species.name;
+        v.caughtmark = st === "2" ? "y" : "n";
+        v.type1 = st === "0" ? "t--" : typeCode(species.types[0]); v.type2 = st === "0" ? "t--" : typeCode(species.types[1]);
+        v.portrait = st === "0" ? "i----" : iconOf(id);
+        v.platform = st === "0" ? "p--" : `p${typeCode(species.types[0]).slice(1)}`;
+        v.tab = state.tab;
+        if (st === "2" && state.tab === "i") v.desc = info.d ?? "";
+        if (st === "2" && state.tab === "a") {
+            v.line1 = `Abilities: ${(species.abilities ?? [species.ability]).map(abilityName).join(", ")}`;
+            v.line2 = species.hidden?.length ? `Hidden: ${species.hidden.map(abilityName).join(", ")}` : "";
+        }
+        if (st === "2" && state.tab === "s") for (const k of STAT_KEYS) v[`stat${k}`] = `${STAT_NAMES[k]} ${species.stats[k]}`;
+        if (st !== "2") v.line1 = st === "0" ? "Not yet seen." : "Seen, not yet caught.";
+    } else { Object.assign(v, { caughtmark: "n", type1: "t--", type2: "t--", portrait: "i----", platform: "p--", tab: "x" }); }
+    const body = DEX_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:pokedex").body(body);
+    for (let i = 0; i < 25; i++) form.button("entry", `${PC_UI}/pokedex/slot${v[`e${i}sel`] === "y" ? "_on" : ""}`);
+    form.button("up", `${PC_UI}/pokedex/arrow_up`).button("down", `${PC_UI}/pokedex/arrow_down`);
+    form.button("page up", `${PC_UI}/pokedex/arrow_up`).button("page down", `${PC_UI}/pokedex/arrow_down`);
+    for (const [letter, name] of [["i", "info"], ["a", "abilities"], ["s", "stats"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
+    form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" ? "cry" : "none"}`);
+    form.button("filter", `${PC_UI}/pokedex/filter`);
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        const pick = r.selection, again = () => openDex(player, colour, state);
+        if (pick < 25) { if (shown[pick] !== undefined) state.chosen = shown[pick]; }
+        else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
+        else if (pick === 27) state.page = (state.page + pages - 1) % pages;
+        else if (pick === 28) state.page = (state.page + 1) % pages;
+        else if (pick <= 31) state.tab = "ias"[pick - 29];
+        else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
+        else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
+        again();
+    }).catch(() => { });
 }
 
-function dexRegion(player, region, page) {
-    const s = dexString(player), entries = region.entries, pages = Math.ceil(entries.length / DEX_PAGE);
-    const slice = entries.slice(page * DEX_PAGE, (page + 1) * DEX_PAGE);
-    const seen = entries.filter((n) => s[n] !== "0").length, caught = entries.filter((n) => s[n] === "2").length;
-    const form = new ActionFormData().title(`${region.name} Pokedex`).body(`Seen ${seen}   Caught ${caught}   of ${entries.length}\nPage ${page + 1} of ${pages}`);
-    const buttons = [];
-    if (page > 0) { form.button("Previous page"); buttons.push(() => dexRegion(player, region, page - 1)); }
-    for (const n of slice) {
-        const id = NATIONAL[n], st = s[n], num = String(DEX_INFO[id]?.n ?? 0).padStart(4, "0");
-        form.button(st === "0" ? `#${num} ???` : `#${num} ${POKEMON[id].name}${st === "2" ? "  §2caught" : "  §7seen"}`);
-        buttons.push(() => dexEntry(player, id, () => dexRegion(player, region, page)));
-    }
-    if (page + 1 < pages) { form.button("Next page"); buttons.push(() => dexRegion(player, region, page + 1)); }
-    form.show(player).then((r) => { if (!r.canceled) buttons[r.selection]?.(); });
-}
-
-function openDex(player) {
-    const s = dexString(player);
-    const form = new ActionFormData().title("Pokedex")
-        .body(`Seen ${[...s].filter((c) => c !== "0").length}   Caught ${[...s].filter((c) => c === "2").length}   of ${NATIONAL.length}`);
-    for (const region of REGIONS) form.button(region.name);
-    form.show(player).then((r) => { if (!r.canceled) dexRegion(player, REGIONS[r.selection], 0); });
-}
-
-function scan(player, entity) {
+function scan(player, entity, colour) {
     register(player, entity.typeId, prop(entity, OWNER) === player.id ? 2 : 1);
     try { player.playSound("random.orb", { pitch: 1.5 }); } catch (e) { }
-    dexEntry(player, entity.typeId);
+    const n = DEX_INDEX.get(entity.typeId), at = REGIONS[0].entries.indexOf(n);
+    openDex(player, colour, { region: 0, page: Math.max(0, Math.floor(at / 25)), filter: 0, chosen: n ?? null, tab: "i" });
 }
 
 // right-clicking a Pokemon with a Pokedex scans it (in place of its panel); right-clicking anything else opens the register
@@ -2059,12 +2082,14 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     if (!event.itemStack?.typeId.startsWith("cobblemon:pokedex_") || !POKEMON[event.target.typeId]) return;
     event.cancel = true;
     const { player, target } = event;
-    system.run(() => scan(player, target));
+    const colour = event.itemStack.typeId.slice("cobblemon:pokedex_".length);
+    system.run(() => scan(player, target, colour));
 });
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
     const hit = player.getEntitiesFromViewDirection({ maxDistance: 12 }).find((h) => POKEMON[h.entity.typeId]);
-    if (hit) scan(player, hit.entity); else openDex(player);
+    const colour = itemStack.typeId.slice("cobblemon:pokedex_".length);
+    if (hit) scan(player, hit.entity, colour); else openDex(player, colour);
 });
 
 // Apricorns (ApricornBlock): a fruit ripens a stage on one random tick in five; used when ripe it drops its apricorn,
