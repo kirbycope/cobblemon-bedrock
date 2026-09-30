@@ -4744,7 +4744,8 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
-    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
+    + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("ksel", 3), ("ktitle", 48), ("kdesc", 120)] + [(f"k{i}", 3) for i in range(30)] \
+    + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
     + [("item", 0)]
 SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
@@ -4777,6 +4778,24 @@ def stat_wedges(folder):
                 img.save(f"{folder}/w{i}_{chr(97 + s0)}{chr(97 + s1)}.png", optimize=True)
 
 
+def cobblemon_marks():
+    """Cobblemon's marks (data/cobblemon/marks): each one's code (its place in the list in two base-36 digits, since
+    many share an indexNumber or have none), its sort order (the indexNumber), name, title
+    with the Pokemon's name in it, title colour, description, chance group, chance and the aspects that give it."""
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    out = []
+    for k, path in enumerate(sorted(glob.glob(f"{cobblemonData}/marks/*.json"))):
+        with open(path, encoding="utf-8") as file: mark = json.load(file)
+        key = os.path.basename(path)[:-5]
+        n = int(mark.get("indexNumber", 999))
+        title = lang.get(mark.get("title", ""), "")
+        out.append({"id": f"cobblemon:{key}", "code": "k" + digits[k // 36] + digits[k % 36], "index": n,
+                    "name": lang.get(mark["name"], key), "title": title.replace("%1$s", "{}"), "colour": mark.get("titleColor", "FFFFFF"),
+                    "desc": lang.get(mark.get("description", ""), ""), "group": mark.get("group"), "chance": mark.get("chance", 0),
+                    "texture": mark.get("texture", "")})
+    return out
+
+
 def create_summary_ui():
     S = f"{uiTextures}/summary"
     os.makedirs(S, exist_ok=True)
@@ -4795,11 +4814,19 @@ def create_summary_ui():
     for i, letter in enumerate("sveo"):
         for page in "sveo": (marker if page == letter else blank).save(f"{S}/smark{i}_{page}.png")
     stat_wedges(f"{S}/hex")
+    # MarksWidget: the base, the 16 by 16 slot (a hover frame below) and every mark's icon, named by marks_code
+    shutil.copyfile(f"{src}/summary_marks_base.png", f"{S}/marks_base.png")
+    slot = Image.open(f"{src}/summary_mark_slot.png").convert("RGBA")
+    slot.crop((0, 0, 16, 16)).save(f"{S}/mkslot.png"); slot.crop((0, 16, 16, 32)).save(f"{S}/mkslot_hover.png")
+    for mark in cobblemon_marks():
+        path = f"{cobblemon}/textures/gui/mark/{mark['texture'].split('/')[-1]}"
+        if os.path.exists(path): shutil.copyfile(path, f"{S}/mk_{mark['code']}.png")
+    blank.save(f"{S}/mk_kzz.png")   # codes carry a letter first, so "12" is never read as a number
     def two(image):   # a texture with a normal frame over a hover frame
         return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
     # tabs: the tab with its icon drawn at half size, at twice the resolution so the icon keeps its pixels
     tab = Image.open(f"{src}/summary_tab.png").convert("RGBA")
-    for name in ("info", "moves", "stats"):
+    for name in ("info", "moves", "stats", "marks"):
         icon = Image.open(f"{src}/summary_tab_icon_{name}.png").convert("RGBA")
         for state, lift in (("", 0), ("_hover", 40), ("_on", 70), ("_on_hover", 70)):
             big = tab.resize((78, 26), Image.NEAREST)
@@ -4967,6 +4994,15 @@ def create_summary_ui():
         image("other_base", "stats_other_base", (0, 0), (134, 148), 3),
         fixed("friend_l", "Friendship", (20, 20), 0.5, size=(60, 5)),
         label("friend_v", field("friendship"), (90, 20), 0.5, size=(30, 5), align="right")]}})
+    # MarksWidget: the chosen mark's icon at 12, 12 with its description beside it, the title (or the name) centred at 38,
+    # then MarksScrollingWidget's rows of six 16 by 16 slots from 9, 45, 20 apart and 19 down; a slot is a button
+    marks = [image("marks_base", "marks_base", (0, 0), (134, 148), 2),
+             picture("ksel", field("ksel"), (12, 12), (16, 16), 4, "mk_"),
+             label("kdesc", field("kdesc"), (38, 11), 0.5, size=(85, 24), shadow=True),
+             label("ktitle", field("ktitle"), (0, 38), 0.5, size=(134, 5), align="center")]
+    for i in range(30):
+        x, y = 9 + 20 * (i % 6), 45 + 3 + 19 * (i // 6)
+        marks += [image(f"kslot{i}", "mkslot", (x, y), (16, 16), 3), picture(f"k{i}", field(f"k{i}"), (x, y), (16, 16), 4, "mk_")]
     # the party, PartyWidget's slots: two columns 51 apart, rows 32 apart, the right column 8 lower
     party = [image("party_base", "party_background", (216, 24), (114, 113), 2)]
     for n in range(6):
@@ -5004,6 +5040,10 @@ def create_summary_ui():
     buttons += [button(28 + i, (29 + 7 * i, 102), (6, 6)) for i in range(6)]
     buttons += [button(34 + n, (77 + 13 + 114.5, 12 + 6 + 25 * n + 6.5), (6, 9)) for n in range(4)]
     stat_tab_buttons = [button(38 + SWAP_SLOTS + i, (77 + 31 + 24 * i - 12, 12 + 140), (24, 9)) for i in range(4)]
+    # the Marks tab (171, -1), then its 30 slots, then the chosen mark's icon, which clears the choice
+    stat_tab_buttons += [button(42 + SWAP_SLOTS, (171, -1), (39, 13))]
+    stat_tab_buttons += [button(43 + SWAP_SLOTS + i, (77 + 9 + 20 * (i % 6), 12 + 48 + 19 * (i // 6)), (16, 16)) for i in range(30)]
+    stat_tab_buttons += [button(73 + SWAP_SLOTS, (77 + 12, 12 + 12), (16, 16))]
     # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
     # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
     # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
@@ -5092,8 +5132,12 @@ def create_summary_ui():
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:summary') = #title_text))", "target_property_name": "#visible"}],
                "controls": left + [tab_panel("info", "i", "info_base", info), tab_panel("moves", "m", "moves_base", moves),
-                                   tab_panel("stats", "s", "stats_chart_base", stats)] + party + [evolve_panel, swap_panel] +
+                                   tab_panel("stats", "s", "stats_chart_base", stats), tab_panel("marks", "k", "marks_base", marks)] + party + [evolve_panel, swap_panel] +
                            [{"buttons": {"type": "collection_panel", "size": [331, 161], "collection_name": "form_buttons", "controls": buttons + stat_tab_buttons}}]}
+    with open(f"{scriptsBedrock}/marks.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: Cobblemon's marks by id: [code, name, title, colour, description, group, chance, order]\n")
+        file.write("export const MARKS = " + json.dumps({m["id"]: [m["code"], m["name"], m["title"], m["colour"], m["desc"], m["group"], m["chance"], m["index"]]
+                                                          for m in cobblemon_marks()}, ensure_ascii=False) + ";\n")
     with open(f"{scriptsBedrock}/summary_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the Summary form's body, field by field, and each field's width in bytes\n")
         file.write("export const SUMMARY_LAYOUT = " + json.dumps(SUMMARY_LAYOUT) + ";\n")

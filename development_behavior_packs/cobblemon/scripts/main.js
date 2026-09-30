@@ -11,6 +11,7 @@ import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/serve
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
+import { MARKS } from "./marks.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
@@ -1200,6 +1201,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:add_mark") {
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:add_mark <mark id>" gives it that mark
+        const id = `cobblemon:${event.message.trim().replace(/^cobblemon:/, "")}`;
+        if (MARKS[id] && !marksOf(source).includes(id)) setProp(source, MARK_LIST, JSON.stringify([...marksOf(source), id]));
     } else if (event.id === "cobblemon:inspect") {
         // testing: "/execute as <entity> run scriptevent cobblemon:inspect" logs its variant and dynamic properties
         const props = {};
@@ -1646,7 +1651,7 @@ function snapshot(entity) {
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
-    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings"];
+    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -2249,7 +2254,7 @@ function reel(cast) {
         const level = ri(spawn.level[0], spawn.level[1]);
         system.run(() => {
             try {
-                setProp(pokemon, LEVEL, level);
+                setProp(pokemon, LEVEL, level); setProp(pokemon, "cobblemon:fished", true);
                 if ((POKEMON[spawn.entity]?.weight ?? 0) < 900) {   // lighter than 90 kg: pulled to the player
                     const p = player.location, dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz) || 1;
                     pokemon.applyImpulse({ x: (dx / len) * Math.min(1.6, len * 0.12), y: 0.55, z: (dz / len) * Math.min(1.6, len * 0.12) });
@@ -3133,6 +3138,14 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         v[`s${k}val`] = num(f.stats[k]); v[`s${k}iv`] = mine ? num(ivs[k]) : ""; v[`s${k}ev`] = mine ? num(evs[k]) : "";
         v[`s${k}mark`] = up !== down && k === up ? "u" : up !== down && k === down ? "d" : "n";
     }
+    // MarksWidget: the marks in their index order, 30 slots; the chosen (active) mark's icon, description and title
+    const markIds = marksOf(source).filter((id) => MARKS[id]).sort((a, b) => MARKS[a][7] - MARKS[b][7] || (a < b ? -1 : 1));
+    for (let i = 0; i < 30; i++) v[`k${i}`] = markIds[i] ? MARKS[markIds[i]][0] : "kzz";
+    const active = MARKS[prop(source, ACTIVE_MARK)];
+    v.ksel = active ? active[0] : "kzz";
+    v.kdesc = active ? active[4] : "";
+    const shownName = tagged || info.name;
+    v.ktitle = active?.[2] ? active[2].replace("{}", shownName) : shownName;
     // the polygon: each vertex's share of 400 (a stat), 31 (an IV) or 252 (an EV), in 12 steps as letters
     const stab = summaryStatTab.get(player.id) ?? "s";
     v.stab = stab;
@@ -3217,10 +3230,21 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     }
     // StatWidget's page tabs, after the switch list's rows
     for (let i = 0; i < 4; i++) form.button("stat page", `${SUMMARY_UI}/none`);
+    form.button("marks", `${SUMMARY_UI}/tab_marks${tab === "k" ? "_on" : ""}`);
+    for (let i = 0; i < 30; i++) form.button("mark", `${SUMMARY_UI}/none`);   // the slot's face is drawn under it
+    form.button("mark chosen", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
+        if (pick === 42 + SWAP_ROWS) { showSummary(source, "k", player, selected); return; }
+        if (pick >= 43 + SWAP_ROWS && pick < 73 + SWAP_ROWS) {
+            // a mark chosen becomes the active one, whose title the Pokemon carries (SetActiveMarkPacket), only your own
+            const id = markIds[pick - 43 - SWAP_ROWS];
+            if (id && mine) { setProp(source, ACTIVE_MARK, id); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
+            showSummary(source, tab, player, selected); return;
+        }
+        if (pick === 73 + SWAP_ROWS) { if (mine) setProp(source, ACTIVE_MARK, undefined); showSummary(source, tab, player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
         if (pick >= 38 + SWAP_ROWS && pick < 42 + SWAP_ROWS) {
@@ -3648,12 +3672,53 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
 // A caught Pokemon becomes the player's, as Cobblemon's party.add does, and joins the party beside them; with six
 // already there it goes to the first free PC slot. The ball's capture effects apply (CaptureEffects): the Friend Ball
 // starts it at 150 friendship, the Heal Ball restores it fully.
+// Marks (Pokemon.applyPotentialMarks): a caught Pokemon rolls one mark from its potential ones, the rarest chance group
+// first, each group at its own chance; the potential marks are apply_potential_marks.molang's for the moment it is
+// caught (the time of day, the weather where it stands, the rare, uncommon and personality marks) and a fished one's
+const MARK_LIST = "cobblemon:marks", ACTIVE_MARK = "cobblemon:active_mark";
+function marksOf(e) { try { return JSON.parse(prop(e, MARK_LIST) ?? "[]"); } catch (err) { return []; } }
+function potentialMarks(pokemon) {
+    const out = Object.keys(MARKS).filter((id) => ["rare", "uncommon", "personality"].includes(MARKS[id][5]));
+    const time = world.getTimeOfDay(), dim = pokemon.dimension, loc = pokemon.location;
+    if (dim.id === "minecraft:overworld") {
+        out.push(time >= 22300 || time <= 5999 ? "cobblemon:mark_time_dawn" : time <= 11833 ? "cobblemon:mark_time_lunchtime"
+                 : time <= 13701 ? "cobblemon:mark_time_dusk" : "cobblemon:mark_time_sleepy-time");
+        if (loc.y > 191) out.push("cobblemon:mark_weather_cloudy");
+    }
+    let weather = "Clear", biome = "";
+    try { weather = dim.getWeather?.() ?? "Clear"; } catch (e) { }
+    try { biome = dim.getBiome(loc)?.id ?? ""; } catch (e) { }
+    const wet = weather !== "Clear", storm = weather === "Thunder";
+    const freezing = /frozen|snowy|ice|grove|jagged|peaks/.test(biome), sandy = /desert|badlands|beach/.test(biome);
+    if (!freezing && !sandy && wet) out.push(storm ? "cobblemon:mark_weather_stormy" : "cobblemon:mark_weather_rainy");
+    if (freezing && wet) out.push(storm ? "cobblemon:mark_weather_blizzard" : "cobblemon:mark_weather_snowy");
+    if (sandy && wet) out.push("cobblemon:mark_weather_sandstorm");
+    if (/jungle|swamp|mushroom|snowy_slopes|frozen_peaks|jagged_peaks/.test(biome)) out.push("cobblemon:mark_weather_misty");
+    if (/desert|badlands|savanna|nether/.test(biome) && !wet && time >= 6000 && time <= 12000) out.push("cobblemon:mark_weather_dry");
+    if (prop(pokemon, "cobblemon:fished")) out.push("cobblemon:mark_fishing");
+    return out.filter((id) => MARKS[id]);
+}
+function applyPotentialMarks(pokemon) {
+    const owned = marksOf(pokemon), potentials = potentialMarks(pokemon).filter((id) => !owned.includes(id));
+    const groups = new Map();
+    for (const id of potentials) { const [, , , , , group, chance] = MARKS[id]; const key = group ?? String(chance); (groups.get(key) ?? groups.set(key, { chance, ids: [] }).get(key)).ids.push(id); }
+    for (const g of [...groups.values()].sort((a, b) => a.chance - b.chance)) {
+        if (Math.random() * 100 < Math.min(1, Math.max(0, g.chance)) * 100) {
+            const id = g.ids[Math.floor(Math.random() * g.ids.length)];
+            setProp(pokemon, MARK_LIST, JSON.stringify([...owned, id]));
+            return id;
+        }
+    }
+    return null;
+}
+
 function keepCaught(player, pokemon, ballId) {
     if (!pokemon?.isValid || !player?.isValid) return;
     try { pokemon.triggerEvent("cobblemon:caught"); pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
     setProp(pokemon, OWNER, player.id);
     setProp(pokemon, "cobblemon:caught_ball", ballId);
     register(player, pokemon.typeId, 2, variantOf(pokemon));
+    applyPotentialMarks(pokemon);
     if (ballId === "cobblemon:friend_ball") setProp(pokemon, "cobblemon:friendship", 150);
     if (ballId === "cobblemon:heal_ball") healFully(pokemon);
     setSize(pokemon, 1, 0);
