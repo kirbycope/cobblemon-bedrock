@@ -12,6 +12,7 @@ import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, N
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { PC_LAYOUT } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
+import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
@@ -1076,6 +1077,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             }
             console.warn(`[formations] ${hits.length} buried suspicious blocks within ${radius} chunks of ${cx * 16} ${cz * 16}: ${hits.slice(0, 30).join(", ")}`);
         })());
+    } else if (event.id === "cobblemon:starter") {
+        // "/scriptevent cobblemon:starter [reset]" opens the starter screen for the running player; "reset" lets them choose again
+        const player = source?.typeId === "minecraft:player" ? source : nearestPlayer(source);
+        if (!player) return;
+        if (event.message?.trim() === "reset") player.setDynamicProperty(STARTER_CHOSEN, false);
+        openStarter(player);
     } else if (event.id === "cobblemon:test_beam") {
         // for testing: a beam from the running player's hand to 4 blocks in front of them, held for 10 seconds
         const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
@@ -3101,6 +3108,77 @@ world.afterEvents.worldLoad?.subscribe?.(() => {
             try { for (const e of dim.getEntities({ type })) e.remove(); } catch (e) { }
         }
     }
+});
+
+// Starter selection, laid out by ui/server_form.json on Cobblemon's starter textures: offered when a player joins
+// without having chosen, as Cobblemon's starter prompt is, until they choose. The starter comes out of its ball
+// beside them at the level StarterConfig gives it, and is registered as caught.
+const STARTER_CHOSEN = "cobblemon:starter_chosen";
+function openStarter(player, state = { page: 0, cat: 0, pick: 0 }) {
+    if (player.getDynamicProperty(STARTER_CHOSEN)) { player.sendMessage("§7You already selected a starter!"); return; }
+    const pages = Math.ceil(STARTERS.length / 3);
+    const chosen = STARTERS[state.cat].pokemon[state.pick], info = POKEMON[chosen.id];
+    const v = {
+        name: info.name, dex: num(`No. ${String(DEX_INFO[chosen.id]?.n ?? 0).padStart(4, "0")}`), portrait: iconOf(chosen.id),
+        type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), platform: `p${typeCode(info.types[0]).slice(1)}`, desc: DEX_INFO[chosen.id]?.d ?? "",
+    };
+    const shown = STARTERS.slice(state.page * 3, state.page * 3 + 3);
+    for (let k = 0; k < 3; k++) {
+        const cat = shown[k];
+        v[`c${k}name`] = cat?.name ?? "";
+        for (let n = 0; n < 3; n++) v[`c${k}p${n}icon`] = iconOf(cat?.pokemon[n]?.id);
+    }
+    const body = STARTER_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:starter").body(body);
+    for (let k = 0; k < 3; k++) for (let n = 0; n < 3; n++) {
+        const here = shown[k]?.pokemon[n], on = state.page * 3 + k === state.cat && n === state.pick;
+        form.button("starter", `${PC_UI}/starter/${here ? (on ? "slot_on" : "slot") : "none"}`);
+    }
+    form.button("choose", `${PC_UI}/starter/choose`).button("exit", `${PC_UI}/summary/exit`);
+    form.button("up", `${PC_UI}/pokedex/arrow_up`).button("down", `${PC_UI}/pokedex/arrow_down`);
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === 10) return;
+        const pick = r.selection;
+        if (pick < 9) {
+            const k = Math.floor(pick / 3), n = pick % 3;
+            if (shown[k]?.pokemon[n]) { state.cat = state.page * 3 + k; state.pick = n; try { const cry = POKEMON[shown[k].pokemon[n].id]?.cry; if (cry) player.playSound(cry); } catch (e) { } }
+            openStarter(player, state); return;
+        }
+        if (pick === 11 || pick === 12) { state.page = (state.page + (pick === 12 ? 1 : pages - 1)) % pages; openStarter(player, state); return; }
+        giveStarter(player, chosen);
+    }).catch(() => { });
+}
+
+function giveStarter(player, chosen) {
+    if (player.getDynamicProperty(STARTER_CHOSEN)) return;
+    player.setDynamicProperty(STARTER_CHOSEN, true);
+    const d = player.getViewDirection(), at = { x: player.location.x + d.x * 2, y: player.location.y, z: player.location.z + d.z * 2 };
+    const info = POKEMON[chosen.id];
+    let entity;
+    try { entity = player.dimension.spawnEntity(chosen.id, at); } catch (e) { player.setDynamicProperty(STARTER_CHOSEN, false); return; }
+    system.run(() => {
+        try {
+            entity.triggerEvent("cobblemon:caught");
+            entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
+            setProp(entity, OWNER, player.id); setProp(entity, LEVEL, chosen.level);
+            setProp(entity, EXP, expFor(info.expGroup, chosen.level));
+            setProp(entity, MOVESET, JSON.stringify(movesAt(info, chosen.level)));
+            setProp(entity, "cobblemon:caught_ball", chosen.ball);
+        } catch (e) { }
+        register(player, chosen.id, 2);
+        sendOutEffect(player, entity, chosen.ball);
+        player.sendMessage(`§aYou chose ${info.name}!`);
+    });
+}
+
+world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
+    if (!initialSpawn || player.getDynamicProperty(STARTER_CHOSEN)) return;
+    // a player who already has Pokemon (from before the starter screen existed) keeps them and is not asked
+    system.runTimeout(() => {
+        if (!player.isValid) return;
+        if (summaryParty(player).length) { player.setDynamicProperty(STARTER_CHOSEN, true); return; }
+        openStarter(player);
+    }, 60);
 });
 
 world.afterEvents.worldLoad?.subscribe?.(() => console.log("[cobblemon] battle script ready"));
