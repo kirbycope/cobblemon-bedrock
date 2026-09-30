@@ -1745,6 +1745,12 @@ function openPc(block, player, state) {
     if (sel?.kind === "box") {
         // a Pokemon stored before it rolled its IVs rolls them now and keeps them, as every Cobblemon Pokemon has them
         const contents = box(player, sel.box), rec = contents[sel.slot];
+        // one out in a pasture shows what the Pokemon itself carries, since that is what comes back on recall
+        if (rec?.p) {
+            let out;
+            try { out = player.dimension.getEntities({ families: ["owned"] }).find((e) => prop(e, OWNER) === player.id && prop(e, PASTURE_SLOT) === `${sel.box}:${sel.slot}`); } catch (e) { }
+            if (out) { ivsOf(out); evsOf(out); rec.k = { ...(rec.k ?? {}), "cobblemon:ivs": prop(out, "cobblemon:ivs"), "cobblemon:evs": prop(out, "cobblemon:evs") }; saveBox(player, sel.box, contents); }
+        }
         if (rec && !rec.k?.["cobblemon:ivs"]) {
             rec.k = { ...(rec.k ?? {}), "cobblemon:ivs": JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, Math.floor(Math.random() * 32)]))) };
             if (!rec.k["cobblemon:evs"]) rec.k["cobblemon:evs"] = JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, 0])));
