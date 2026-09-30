@@ -236,6 +236,12 @@ function inflict(battle, target, status, announceFailure, source) {
 
 // whether a Pokemon can act this turn, given its status
 function canAct(battle, f) {
+    if (f.flinched) {
+        f.flinched = false;
+        say(battle, `§7${f.info.name} flinched and couldn't move!`);
+        if (f.ability === "steadfast") boost(battle, f, { spe: 1 });
+        return false;
+    }
     if (f.status === "slp") {
         if (f.sleep > 0) { f.sleep -= f.ability === "earlybird" ? 2 : 1; if (f.sleep >= 0) { say(battle, `§7${f.info.name} is fast asleep.`); return false; } }
         f.status = null; f.sleep = 0; say(battle, `§7${f.info.name} woke up!`);
@@ -398,9 +404,21 @@ function useMove(battle, attacker, defender, move) {
     const contact = move.contact && held(attacker) !== "protective_pads" && !(held(attacker) === "punching_glove" && move.flags?.includes("punch"));
     if (move.secondary && !sheer && defAb !== "shielddust" && !(held(defender) === "covert_cloak" && !move.secondary.self) && Math.random() * 100 < move.secondary.chance * (atkAb === "serenegrace" ? 2 : 1)) {
         if (move.secondary.status && defender.hp > 0) inflict(battle, defender, move.secondary.status, false, attacker);
+        if (move.secondary.flinch && defender.hp > 0 && battle.movedFirst === attacker && defender.ability !== "innerfocus") defender.flinched = true;
         if (move.secondary.boosts) boost(battle, move.secondary.self ? attacker : defender, move.secondary.boosts, attacker);
     }
     if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
+    if (dealt && defender.hp > 0 && !move.secondary?.flinch && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang")
+        && defender.ability !== "innerfocus" && Math.random() < 0.1) defender.flinched = true;
+    // Eject Button sends its holder back when it is hit; Red Card sends back the Pokemon that hit its holder
+    if (dealt && defender.hp > 0 && attacker.hp > 0) {
+        if (held(defender) === "eject_button" && defender === battle.ally) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectAlly = true; }
+        else if (held(defender) === "red_card" && attacker === battle.ally) { useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`); battle.ejectAlly = true; }
+        else if (held(defender) === "red_card" && attacker === battle.foe) {
+            useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`);
+            if (!battle.trainer) battle.dragFoe = true;   // a wild Pokemon is sent away, which ends the battle
+        }
+    }
     if (move === STRUGGLE) { attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 4))); say(battle, `§7${name} is damaged by recoil!`); syncHealth(attacker); }
     if (dealt && held(attacker) === "life_orb" && !sheer) hurt(battle, attacker, attacker.stats.hp / 10, `${name} lost some of its HP!`);
     if (dealt && contact && held(defender) === "rocky_helmet") hurt(battle, attacker, attacker.stats.hp / 6, `${name} was hurt by the Rocky Helmet!`);
@@ -478,6 +496,13 @@ system.runInterval(() => {
                 const block = e.dimension.getBlock(e.getHeadLocation());
                 const under = !!block && (block.typeId === "minecraft:water" || block.typeId === "minecraft:flowing_water" || block.isWaterlogged);
                 if (e.getProperty("cobblemon:submerged") !== under) e.setProperty("cobblemon:submerged", under);
+                // the sand underfoot, within two blocks, as Cobblemon's is_standing_on_blocks(2, sand, red sand) reads it
+                let sand = 0;
+                for (let dy = 1; dy <= 2 && !sand; dy++) {
+                    const below = e.dimension.getBlock({ x: e.location.x, y: e.location.y - dy + 0.5, z: e.location.z })?.typeId;
+                    sand = below === "minecraft:sand" ? 1 : below === "minecraft:red_sand" ? 2 : 0;
+                }
+                if (e.getProperty("cobblemon:on_sand") !== sand) e.setProperty("cobblemon:on_sand", sand);
                 const holding = !!prop(e, "cobblemon:held");   // the poses that show a held item
                 if (e.getProperty("cobblemon:holding") !== holding) e.setProperty("cobblemon:holding", holding);
                 if (e.getProperty("cobblemon:held_index") !== ((prop(e, "cobblemon:held") && HELD_INDEX[prop(e, "cobblemon:held")]) || 0)) showHeld(e);
@@ -766,6 +791,7 @@ function pickFoeMove(foe) {
 
 function foeTurn(battle) {
     const { ally, foe } = battle;
+    battle.movedFirst = null;   // the player used an item or switched; the foe's move can make nobody flinch
     if (foe.hp > 0 && ally.hp > 0) useMove(battle, foe, ally, pickFoeMove(foe));
     endOfTurn(battle);
 }
@@ -804,8 +830,19 @@ function endOfTurn(battle) {
         }
         heldBerry(battle, f);
     }
+    for (const f of [battle.ally, battle.foe]) f.flinched = false;
     if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
+    if (battle.dragFoe) { battle.dragFoe = false; endBattle(battle, `§7The wild ${battle.foe.info.name} fled!`); return; }
+    if (battle.ejectAlly) {
+        battle.ejectAlly = false;
+        chooseSwitch(battle, true).then((entity) => {
+            if (!battles.has(battle.player.id)) return;
+            if (entity) switchTo(battle, entity);
+            system.runTimeout(() => turn(battle), 20);
+        }).catch(() => endBattle(battle));
+        return;
+    }
     system.runTimeout(() => turn(battle), 30);
 }
 
@@ -917,6 +954,38 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:fish_now") {
         // testing: /execute as <player> run scriptevent cobblemon:fish_now makes a floating bobber bite at once
         for (const cast of fishing.values()) if (cast.phase === "waiting" || cast.phase === "travel") { cast.phase = "travel"; cast.travel = 1; }
+    } else if (event.id === "cobblemon:scan") {
+        // for testing: "/scriptevent cobblemon:scan x y z dx dy dz" logs the blocks in that box by type, to find
+        // what a structure or a formation left in generated terrain
+        const [x, y, z, dx, dy, dz] = event.message.split(/\s+/).map(Number);
+        const counts = {};
+        for (let i = 0; i <= dx; i++) for (let j = 0; j <= dy; j++) for (let k = 0; k <= dz; k++) {
+            let t; try { t = source.dimension.getBlock({ x: x + i, y: y + j, z: z + k })?.typeId; } catch (e) { }
+            if (t) counts[t] = (counts[t] ?? 0) + 1;
+        }
+        console.warn(`[scan] ${x} ${y} ${z} +${dx} ${dy} ${dz}: ` + Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${t}=${n}`).join(" "));
+    } else if (event.id === "cobblemon:find_formations") {
+        // for testing: looks through the chunks within the given radius (in chunks) for suspicious gravel or sand
+        // buried 3 to 24 blocks under the surface, which is where the fossil formations put theirs, and logs them
+        const radius = Number(event.message) || 6, dim = source.dimension;
+        const cx = Math.floor(source.location.x / 16), cz = Math.floor(source.location.z / 16);
+        const hits = [];
+        system.runJob((function* () {
+            for (let i = -radius; i <= radius; i++) for (let j = -radius; j <= radius; j++) {
+                for (let bx = 0; bx < 16; bx++) for (let bz = 0; bz < 16; bz++) {
+                    const x = (cx + i) * 16 + bx, z = (cz + j) * 16 + bz;
+                    let top;
+                    try { top = dim.getTopmostBlock({ x, z })?.location.y; } catch (e) { }
+                    if (top === undefined) continue;
+                    for (let y = top - 24; y <= top - 3; y++) {
+                        let t; try { t = dim.getBlock({ x, y, z })?.typeId; } catch (e) { }
+                        if (t === "minecraft:suspicious_gravel" || t === "minecraft:suspicious_sand") hits.push(`${x} ${y} ${z} ${t.slice(21)}`);
+                    }
+                }
+                yield;
+            }
+            console.warn(`[formations] ${hits.length} buried suspicious blocks within ${radius} chunks of ${cx * 16} ${cz * 16}: ${hits.slice(0, 30).join(", ")}`);
+        })());
     } else if (event.id === "cobblemon:claim") {
         // for testing: the nearest wild Pokemon within 8 blocks becomes the running player's own, as a claim does
         const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
@@ -1857,10 +1926,17 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 });
 
 function plateCheck(block) {
+    if (!block?.typeId?.endsWith("_pressure_plate")) return;   // a step off can come after the plate is broken
     const { x, y, z } = block.location;
     let on = false;
-    // anything standing over the plate, anywhere on its 14 pixels, in a box the height of a step
-    try { on = block.dimension.getEntities({ location: { x: x + 0.0625, y, z: z + 0.0625 }, volume: { x: 0.875, y: 0.5, z: 0.875 } }).some((e) => e.typeId !== "minecraft:item"); } catch (e) { }
+    // anything whose feet are on the plate: over its 14 pixels and no more than a step above it. A wooden plate,
+    // as Cobblemon's apricorn and saccharine ones are, is pressed by items too
+    try {
+        on = block.dimension.getEntities({ location: { x: x + 0.5, y, z: z + 0.5 }, maxDistance: 1.5 }).some((e) => {
+            const p = e.location;
+            return p.x >= x + 0.0625 && p.x <= x + 0.9375 && p.z >= z + 0.0625 && p.z <= z + 0.9375 && p.y >= y - 0.05 && p.y <= y + 0.5;
+        });
+    } catch (e) { }
     if (on === block.permutation.getState("cobblemon:powered")) return;
     block.setPermutation(block.permutation.withState("cobblemon:powered", on));
     try { block.dimension.playSound(on ? "click_on.wooden_pressure_plate" : "click_off.wooden_pressure_plate", block.location); } catch (e) { }
@@ -1882,8 +1958,21 @@ function registerModelBlockComponents(registry) {
     });
     registry.registerCustomComponent("cobblemon:grows", {
         onRandomTick({ block }) {
+            let half;
+            try { half = block.permutation.getState("cobblemon:half"); } catch (e) { }
+            if (half === "upper") return;   // a tall crop grows from its lower half, which carries the upper along
             const age = block.permutation.getState("cobblemon:age");
-            if (Math.random() < 0.2) { try { block.setPermutation(block.permutation.withState("cobblemon:age", age + 1)); } catch (e) { } }
+            if (Math.random() >= 0.2) return;
+            let next;
+            try { next = block.permutation.withState("cobblemon:age", age + 1); } catch (e) { return; }   // fully grown
+            block.setPermutation(next);
+            // Hearty Grains: from stage 4 the crop stands two blocks tall
+            if (half === "lower" && age + 1 >= 4) {
+                const above = block.above();
+                if (above && (above.isAir || above.typeId === block.typeId)) {
+                    try { above.setPermutation(next.withState("cobblemon:half", "upper")); } catch (e) { }
+                }
+            }
         }
     });
     registry.registerCustomComponent("cobblemon:openable", {
@@ -1894,6 +1983,44 @@ function registerModelBlockComponents(registry) {
         }
     });
 }
+
+// Gilded chests: the block Cobblemon's item places becomes a chest entity with Cobblemon's model and 27 slots
+// (a Bedrock custom block holds no items). The lid opens when a player uses it and shuts when nobody is near.
+const CHEST_TURN = { north: 180, south: 0, east: 270, west: 90 };
+function chestFromBlock(block) {
+    if (!/^cobblemon:(\w+_)?gilded_chest$/.test(block?.typeId ?? "")) return null;
+    let facing = "north";
+    try { facing = block.permutation.getState("minecraft:cardinal_direction") ?? "north"; } catch (e) { }
+    const { x, y, z } = block.location, dim = block.dimension, id = `${block.typeId}_entity`;
+    block.setType("minecraft:air");
+    const chest = dim.spawnEntity(id, { x: x + 0.5, y, z: z + 0.5 });
+    try { chest.setRotation({ x: 0, y: CHEST_TURN[facing] ?? 0 }); } catch (e) { }
+    // the chest screen takes its title from the entity's name
+    try { chest.nameTag = itemName(id.replace(/_entity$/, "")); } catch (e) { }
+    return chest;
+}
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => { if (/gilded_chest$/.test(block.typeId)) chestFromBlock(block); });
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (!/^cobblemon:(\w+_)?gilded_chest$/.test(event.block.typeId) || !event.isFirstEvent) return;
+    event.cancel = true;   // a chest block a structure placed becomes the chest on first use
+    const block = event.block;
+    system.run(() => chestFromBlock(block));
+});
+world.afterEvents.playerInteractWithEntity.subscribe(({ target }) => {
+    if (!target.typeId.endsWith("gilded_chest_entity")) return;
+    try { if (!target.getProperty("cobblemon:open")) { target.setProperty("cobblemon:open", true); target.dimension.playSound("random.chestopen", target.location); } } catch (e) { }
+});
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let chests;
+        try { chests = player.dimension.getEntities({ families: ["gilded_chest"], location: player.location, maxDistance: 16 }); } catch (e) { continue; }
+        for (const c of chests) {
+            if (!c.getProperty("cobblemon:open")) continue;
+            const near = c.dimension.getPlayers({ location: c.location, maxDistance: 4 }).length > 0;
+            if (!near) { c.setProperty("cobblemon:open", false); try { c.dimension.playSound("random.chestclosed", c.location); } catch (e) { } }
+        }
+    }
+}, 10);
 
 function registerWoodComponents(registry) {
     registry.registerCustomComponent("cobblemon:door", {

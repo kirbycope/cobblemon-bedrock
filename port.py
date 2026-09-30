@@ -1005,6 +1005,12 @@ def movement_components(species, kind):
     moving = species.get("behaviour", {}).get("moving", {})
     walk_speed = moving.get("walk", {}).get("walkSpeed", 0.25)
     swim_speed = moving.get("swim", {}).get("swimSpeed", 0.1)
+    # a speed Cobblemon gives as Molang (faster on sand) is a number here: the speed away from sand, the last one named
+    def plain(speed, fallback):
+        if isinstance(speed, (int, float)): return speed
+        numbers = re.findall(r"\d*\.\d+|\d+", str(speed))
+        return float(numbers[-1]) if numbers else fallback
+    walk_speed, swim_speed = plain(walk_speed, 0.25), plain(swim_speed, 0.1)
     avoids_water = moving.get("swim", {}).get("avoidsWater", False)
     breathes_water = moving.get("swim", {}).get("canBreatheUnderwater", False)
     if kind == "fish":
@@ -1112,7 +1118,8 @@ def create_behavior_entities():
                     "properties": {"cobblemon:battle": {"type": "bool", "default": False, "client_sync": True},
                                    "cobblemon:submerged": {"type": "bool", "default": False, "client_sync": True},
                                    "cobblemon:holding": {"type": "bool", "default": False, "client_sync": True},
-                                   "cobblemon:held_index": {"type": "int", "range": [0, 1023], "default": 0, "client_sync": True}},
+                                   "cobblemon:held_index": {"type": "int", "range": [0, 1023], "default": 0, "client_sync": True},
+                                   "cobblemon:on_sand": {"type": "int", "range": [0, 2], "default": 0, "client_sync": True}},
                     "animations": {"dialogue": f"controller.animation.{pokemon}.dialogue"},
                     "scripts": {"animate": ["dialogue"]}
                 },
@@ -2334,6 +2341,7 @@ def showdown_moves():
             status = re.search(r'status: "(\w+)"', text)
             if status: effect["status"] = status.group(1)
             if boosts(text): effect["boosts"] = boosts(text); effect["self"] = "self: {" in text
+            if re.search(r"volatileStatus: ['\"]flinch['\"]", text): effect["flinch"] = True
             if len(effect) > 1: move["secondary"] = effect
         moves[match.group(1)] = move
     return moves
@@ -2692,7 +2700,7 @@ lootBlocksBedrock = f"{behaviorPack}/loot_tables/blocks"
 # vanilla Java textures a Cobblemon model borrows, by their Bedrock file
 VANILLA_TEXTURES = {"block/farmland_moist": "textures/blocks/farmland_wet", "block/farmland": "textures/blocks/farmland_dry"}
 BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", "minecraft:podzol", "minecraft:coarse_dirt",
-               "minecraft:rooted_dirt", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots"]
+               "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots"]
 terrain_textures = {}
 
 
@@ -2714,8 +2722,28 @@ def java_texture(ref):
     return key
 
 
+def vanilla_template_elements(parent):
+    """The elements of Minecraft's own template models a Cobblemon model may name as its parent."""
+    full = lambda faces: [{"from": [0, 0, 0], "to": [16, 16, 16], "faces": {f: {"texture": t} for f, t in faces.items()}}]
+    plane = lambda f, t, a, b: {"from": f, "to": t, "faces": {a: {"texture": "#crop"}, b: {"texture": "#crop"}}}
+    parent = parent.split(":", 1)[-1]
+    if parent == "block/orientable":
+        return full({"north": "#front", "south": "#side", "east": "#side", "west": "#side", "up": "#top", "down": "#bottom"})
+    if parent == "block/orientable_with_bottom":
+        return full({"north": "#front", "south": "#side", "east": "#side", "west": "#side", "up": "#top", "down": "#bottom"})
+    if parent == "block/crop":
+        return [plane([4, -1, 0], [4, 15, 16], "east", "west"), plane([12, -1, 0], [12, 15, 16], "east", "west"),
+                plane([0, -1, 4], [16, 15, 4], "north", "south"), plane([0, -1, 12], [16, 15, 12], "north", "south")]
+    if parent == "block/cross":
+        cross = lambda angle: {"from": [0.8, 0, 8], "to": [15.2, 16, 8], "rotation": {"origin": [8, 8, 8], "axis": "y", "angle": angle},
+                               "faces": {"north": {"texture": "#cross"}, "south": {"texture": "#cross"}}}
+        return [cross(45), cross(-45)]
+    return None
+
+
 def java_model(name):
-    """A Java block model with its parents' elements and textures filled in."""
+    """A Java block model with its parents' elements and textures filled in, and the elements of Minecraft's own
+    template parents (orientable, crop, cross) where the model has none of its own."""
     path = f"{modelsJavaMain}/{name.split(':', 1)[-1]}.json"
     if not os.path.exists(path): return None
     with open(path, encoding="utf-8") as file: model = json.load(file)
@@ -2723,6 +2751,12 @@ def java_model(name):
     if parent and parent.startswith("cobblemon:"):
         base = java_model(parent) or {}
         model = {"textures": {**base.get("textures", {}), **model.get("textures", {})}, "elements": model.get("elements", base.get("elements", []))}
+    elif parent and not model.get("elements"):
+        elements = vanilla_template_elements(parent)
+        if elements:
+            textures = dict(model.get("textures", {}))
+            textures.setdefault("bottom", textures.get("top"))
+            model = {"textures": textures, "elements": elements}
     return model
 
 
@@ -3195,7 +3229,7 @@ FORMATION_BIOME_IDS = {
 }
 brush_loot = {}
 # what a buried formation may replace: the ground it is buried in
-FORMATION_REPLACEABLE = [f"minecraft:{b}" for b in ("air", "stone", "dirt", "grass_block", "coarse_dirt", "rooted_dirt", "podzol", "mud", "clay",
+FORMATION_REPLACEABLE = [f"minecraft:{b}" for b in ("air", "stone", "dirt", "grass_block", "coarse_dirt", "dirt_with_roots", "podzol", "mud", "clay",
     "gravel", "sand", "red_sand", "sandstone", "red_sandstone", "hardened_clay", "granite", "diorite", "andesite", "tuff", "deepslate",
     "calcite", "dripstone_block", "moss_block", "snow", "snow_layer", "ice", "packed_ice", "blue_ice", "water", "seagrass", "kelp",
     "short_grass", "tall_grass", "fern", "mycelium", "coal_ore", "iron_ore", "copper_ore", "cobblestone", "mossy_cobblestone")]
@@ -3264,7 +3298,9 @@ def create_fossil_formations(convert, parse_processors, invalid, unmapped):
             with open(f"{featuresBedrock}/{piece}_piece.json", "w") as file:
                 file.write(json.dumps({"format_version": "1.13.0", "minecraft:structure_template_feature": {
                     "description": {"identifier": f"cobblemon:{piece}_piece"}, "structure_name": f"cobblemon:{piece}",
-                    "adjustment_radius": 0, "facing_direction": "random", "constraints": {"block_intersection": {"block_allowlist": FORMATION_REPLACEABLE}}}}, indent=2))
+                    # Cobblemon's own structure feature places a formation wherever its roll lands, with no check of what
+                    # it buries itself in; grounded, which a buried piece always is, is the loosest Bedrock allows
+                    "adjustment_radius": 0, "facing_direction": "random", "constraints": {"grounded": {}}}}, indent=2))
             features.append([f"cobblemon:{piece}_piece", 1])
         if not features: continue
         brush_loot["formations"].append({"name": name, "biomes": FORMATION_BIOME_IDS.get(FORMATION_BIOMES[name], "."), "tables": counts})
@@ -3650,7 +3686,7 @@ def create_apricorns():
     for colour in APRICORN_COLOURS:
         item(f"{colour}_apricorn", f"{cobblemon}/textures/item/{colour}_apricorn.png")
         item(f"{colour}_apricorn_seed", f"{cobblemon}/textures/item/wood/{colour}_apricorn_seed.png",
-             {"minecraft:block_placer": {"block": f"cobblemon:{colour}_apricorn_sapling", "use_on": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:rooted_dirt", "minecraft:moss_block", "minecraft:mud", "minecraft:farmland"]}})
+             {"minecraft:block_placer": {"block": f"cobblemon:{colour}_apricorn_sapling", "use_on": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:farmland"]}})
         # the sapling: a cross of its texture
         with open(f"{lootBlocksBedrock}/{colour}_apricorn_sapling.json", "w") as file:
             file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{colour}_apricorn_seed"}]}]}))
@@ -3662,7 +3698,7 @@ def create_apricorns():
                                "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 13, 12]},
                                "minecraft:destructible_by_mining": {"seconds_to_destroy": 0}, "minecraft:light_dampening": 0,
                                "minecraft:loot": f"loot_tables/blocks/{colour}_apricorn_sapling.json",
-                               "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:rooted_dirt", "minecraft:moss_block", "minecraft:mud", "minecraft:farmland"]}]},
+                               "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:farmland"]}]},
                                "cobblemon:apricorn_sapling": {}}}}, indent=2))
         # the fruit: stage models 0 to 2 are shared, 3 is the colour's own; it faces the leaf it hangs from
         permutations = []
@@ -4222,6 +4258,55 @@ def item_icon_path(item):
     return (entry[0] if isinstance(entry, list) else entry) if entry else None
 
 
+# vanilla items a Pokemon may be given from the summary and is drawn holding, as Cobblemon draws any held item;
+# their textures come from Mojang's bedrock-samples texture lists (fetched into the git-ignored java/ folder)
+VANILLA_HELD = ["poppy", "dandelion", "blue_orchid", "allium", "azure_bluet", "red_tulip", "orange_tulip", "white_tulip", "pink_tulip",
+                "oxeye_daisy", "cornflower", "lily_of_the_valley", "wither_rose", "torchflower", "apple", "golden_apple", "carrot", "golden_carrot",
+                "bread", "cookie", "melon_slice", "sweet_berries", "glow_berries", "cooked_beef", "cooked_chicken", "cooked_cod", "cod", "salmon",
+                "pumpkin_pie", "honey_bottle", "diamond", "emerald", "gold_ingot", "iron_ingot", "netherite_ingot", "copper_ingot", "amethyst_shard",
+                "stick", "bone", "feather", "egg", "string", "slime_ball", "ender_pearl", "blaze_rod", "nether_star", "heart_of_the_sea",
+                "nautilus_shell", "totem_of_undying", "name_tag", "lead", "compass", "clock", "book", "paper", "wheat", "sugar_cane", "bamboo",
+                "wooden_sword", "stone_sword", "iron_sword", "golden_sword", "diamond_sword", "netherite_sword", "wooden_pickaxe", "iron_pickaxe",
+                "diamond_pickaxe", "iron_axe", "diamond_axe", "iron_shovel", "fishing_rod", "bow", "trident", "shears", "stone", "glowstone_dust"]
+VANILLA_TEXTURE_NAMES = {"poppy": "flower_rose", "dandelion": "flower_dandelion", "blue_orchid": "flower_blue_orchid", "allium": "flower_allium",
+                         "azure_bluet": "flower_houstonia", "red_tulip": "flower_tulip_red", "orange_tulip": "flower_tulip_orange",
+                         "white_tulip": "flower_tulip_white", "pink_tulip": "flower_tulip_pink", "oxeye_daisy": "flower_oxeye_daisy",
+                         "cornflower": "flower_cornflower", "lily_of_the_valley": "flower_lily_of_the_valley", "wither_rose": "flower_wither_rose",
+                         "torchflower": "torchflower", "melon_slice": "melon", "sugar_cane": "reeds", "honey_bottle": "honey_bottle",
+                         "fishing_rod": "fishing_rod_uncast", "bow": "bow_standby", "wooden_sword": "wood_sword", "wooden_pickaxe": "wood_pickaxe",
+                         "golden_sword": "gold_sword", "golden_apple": "apple_golden", "golden_carrot": "carrot_golden", "cod": "fish_raw",
+                         "cooked_cod": "fish_cooked", "salmon": "fish_salmon_raw", "slime_ball": "slimeball", "ender_pearl": "ender_pearl",
+                         "heart_of_the_sea": "heartofthesea_closed", "totem_of_undying": "totem", "clock": "clock_item", "compass": "compass_item",
+                         "book": "book_normal", "glow_berries": "glow_berries", "stone": "stone"}
+
+
+def vanilla_texture_paths():
+    """Every texture path Mojang's item and terrain texture lists name, by file name."""
+    out = {}
+    for name in ("item_texture", "terrain_texture"):
+        path = os.path.join(pwd, "java", "bedrock-samples", f"{name}.json")
+        if not os.path.exists(path):
+            try: urllib.request.urlretrieve(f"https://raw.githubusercontent.com/Mojang/bedrock-samples/main/resource_pack/textures/{name}.json", path)
+            except Exception as error: print(f"  no {name}.json: {error}"); continue
+        with open(path, encoding="utf-8") as file: text = re.sub(r"//.*", "", file.read())
+        for entry in json.loads(text)["texture_data"].values():
+            textures = entry.get("textures")
+            for t in textures if isinstance(textures, list) else [textures]:
+                t = t.get("path") if isinstance(t, dict) else t
+                if isinstance(t, str): out.setdefault(t.rsplit("/", 1)[-1], t)
+    return out
+
+
+def vanilla_held_icons():
+    """[(item id, texture path)] for the vanilla items a Pokemon is drawn holding."""
+    paths, out = vanilla_texture_paths(), []
+    for name in VANILLA_HELD:
+        words = name.split("_")
+        for candidate in (VANILLA_TEXTURE_NAMES.get(name), name, "_".join(reversed(words))):
+            if candidate and candidate in paths: out.append((f"minecraft:{name}", paths[candidate])); break
+    return out
+
+
 def create_held_display():
     """Each Pokemon's held item on its model: a second render pass over its held geometry, whose texture is the held
     item's icon, picked by the cobblemon:held_index property the script sets; the quad shown is the face or hat one
@@ -4234,9 +4319,13 @@ def create_held_display():
     held = held_item_ids(defined)
     order = [i for i in held if i not in tags["face"] and i not in tags["hat"]] + [i for i in held if i in tags["face"]] + [i for i in held if i in tags["hat"]]
     order = [i for i in order if i not in tags["hidden"] and item_icon_path(i)]
+    vanilla = vanilla_held_icons()
     face_from = 1 + sum(1 for i in order if i not in tags["face"] and i not in tags["hat"])
     hat_from = face_from + sum(1 for i in order if i in tags["face"])
-    paths = [item_icon_path(i) for i in order]
+    # the vanilla items go after the hat items, so they are held in the hand
+    vanilla_from = 1 + len(order)
+    paths = [item_icon_path(i) for i in order] + [t for _, t in vanilla]
+    order = order + [i for i, _ in vanilla]
     with open(f"{scriptsBedrock}/held_display.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the index of each held item's icon on the model (0 shows nothing)" + chr(10))
         file.write("export const HELD_INDEX = " + json.dumps({i: n + 1 for n, i in enumerate(order)}) + ";" + chr(10))
@@ -4271,10 +4360,11 @@ def create_held_display():
         index = "q.property('cobblemon:held_index')"
         some = next(iter(spots.values()))
         face_here = "held_item_face" in some; hat_here = "held_item_hat" in some
-        hand = f"{index} > 0 && ({index} < {face_from}" + ("" if face_here else f" || ({index} >= {face_from} && {index} < {hat_from})") + ("" if hat_here else f" || {index} >= {hat_from}") + ")"
+        hand = (f"{index} > 0 && ({index} < {face_from} || {index} >= {vanilla_from}" + ("" if face_here else f" || ({index} >= {face_from} && {index} < {hat_from})")
+                + ("" if hat_here else f" || ({index} >= {hat_from} && {index} < {vanilla_from})") + ")")
         visibility = [{"*": False}, {"held_item": hand}]
         if face_here: visibility.append({"held_item_face": f"{index} >= {face_from} && {index} < {hat_from}"})
-        if hat_here: visibility.append({"held_item_hat": f"{index} >= {hat_from}"})
+        if hat_here: visibility.append({"held_item_hat": f"{index} >= {hat_from} && {index} < {vanilla_from}"})
         name = main_name + "_held"
         rc["render_controllers"][name] = {
             "materials": [{"*": "Material.held"}],
@@ -4389,6 +4479,65 @@ def block_loot_count(name, count, items):
     return f"loot_tables/blocks/{name}_{count}.json"
 
 
+GILDED_COLOURS = ["", "black_", "blue_", "green_", "pink_", "white_", "yellow_"]
+
+
+def create_gilded_chests():
+    """Gilded chests as entities: a Bedrock custom block cannot hold items, so the chest block Cobblemon's item
+    places is swapped by the script for an entity drawn with Cobblemon's own block-entity model, texture and lid
+    animations (bedrock/block_entities), holding GildedChestBlockEntity's 27 slots. Breaking it drops the chest
+    item and what it holds."""
+    src = f"{cobblemon}/bedrock/block_entities"
+    os.makedirs(f"{resourcePack}/models/entity/gilded_chest", exist_ok=True)
+    shutil.copyfile(f"{src}/models/gilded_chest.geo.json", f"{resourcePack}/models/entity/gilded_chest/gilded_chest.geo.json")
+    os.makedirs(f"{animationsBedrock}/gilded_chest", exist_ok=True)
+    shutil.copyfile(f"{src}/animations/gilded_chest.animation.json", f"{animationsBedrock}/gilded_chest/gilded_chest.animation.json")
+    os.makedirs(f"{resourcePack}/textures/entity/gilded_chest", exist_ok=True)
+    controller = {"format_version": "1.10.0", "animation_controllers": {"controller.animation.gilded_chest.lid": {"initial_state": "closed", "states": {
+        "closed": {"transitions": [{"opening": "q.property('cobblemon:open')"}]},
+        "opening": {"animations": ["opening"], "transitions": [{"open": "q.all_animations_finished"}, {"closing": "!q.property('cobblemon:open')"}]},
+        "open": {"animations": ["open"], "transitions": [{"closing": "!q.property('cobblemon:open')"}]},
+        "closing": {"animations": ["closing"], "transitions": [{"closed": "q.all_animations_finished"}, {"opening": "q.property('cobblemon:open')"}]}}}}}
+    with open(f"{animationControllersBedrock}/gilded_chest.animation_controllers.json", "w") as file: file.write(json.dumps(controller, indent=2))
+    with open(f"{renderControllersBedrock}/gilded_chest.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.gilded_chest": {
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Texture.default"]}}}, indent=2))
+    made = []
+    for colour in GILDED_COLOURS:
+        name = f"{colour}gilded_chest"
+        texture = f"{cobblemon}/textures/block/functional/{name}.png"
+        if not os.path.exists(texture): continue
+        shutil.copyfile(texture, f"{resourcePack}/textures/entity/gilded_chest/{name}.png")
+        identifier = f"cobblemon:{name}_entity"
+        with open(f"{entityBedrock}/{name}_entity.entity.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+                "identifier": identifier, "materials": {"default": "entity_alphatest"},
+                "textures": {"default": f"textures/entity/gilded_chest/{name}"}, "geometry": {"default": "geometry.gilded_chest"},
+                "animations": {"opening": "animation.gilded_chest.opening", "open": "animation.gilded_chest.open", "closing": "animation.gilded_chest.closing",
+                               "lid": "controller.animation.gilded_chest.lid"},
+                "scripts": {"animate": ["lid"]}, "render_controllers": ["controller.render.gilded_chest"]}}}, indent=2))
+        loot = f"{behaviorPack}/loot_tables/entities/{name}_entity.json"
+        os.makedirs(os.path.dirname(loot), exist_ok=True)
+        with open(loot, "w") as file: file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{name}"}]}]}))
+        with open(f"{behaviorPack}/entities/{name}_entity.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+                "description": {"identifier": identifier, "is_spawnable": False, "is_summonable": True, "is_experimental": False,
+                                "properties": {"cobblemon:open": {"type": "bool", "default": False, "client_sync": True}}},
+                "components": {
+                    "minecraft:type_family": {"family": ["inanimate", "gilded_chest"]},
+                    "minecraft:inventory": {"container_type": "container", "inventory_size": 27},
+                    "minecraft:collision_box": {"width": 0.9, "height": 0.9},
+                    "minecraft:health": {"value": 1, "max": 1},
+                    # only a player breaks it, and it takes a hit, not fire or falling
+                    "minecraft:damage_sensor": {"triggers": [{"on_damage": {"filters": {"test": "is_family", "subject": "other", "value": "player"}}, "deals_damage": "yes"},
+                                                             {"cause": "all", "deals_damage": "no"}]},
+                    "minecraft:loot": {"table": f"loot_tables/entities/{name}_entity.json"},
+                    "minecraft:knockback_resistance": {"value": 1.0}, "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                    "minecraft:physics": {}, "minecraft:persistent": {}, "minecraft:nameable": {}, "minecraft:movement": {"value": 0}}}}, indent=2))
+        made.append(name)
+    return made
+
+
 def create_model_blocks():
     """The Cobblemon blocks with element models the pack has not made elsewhere."""
     made, placers = [], 0
@@ -4421,7 +4570,11 @@ def create_model_blocks():
             name = block[:-len("_block")] if block.endswith("_block") else block
             label = lang.get(f"block.cobblemon.{name}") or lang.get(f"item.cobblemon.{name}") or name.replace("_", " ").title()
             file.write(f"tile.cobblemon:{block}.name={label}" + chr(10))
-    print(f"Create model blocks complete: {len(made)} blocks, {placers} items that place theirs.")
+    chests = create_gilded_chests()
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for chest in chests:
+            file.write(f"entity.cobblemon:{chest}_entity.name={lang.get('block.cobblemon.' + chest, chest.replace('_', ' ').title())}" + chr(10))
+    print(f"Create model blocks complete: {len(made)} blocks, {placers} items that place theirs, {len(chests)} gilded chests.")
     return made
 
 

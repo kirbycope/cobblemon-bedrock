@@ -41,6 +41,7 @@ BATTLE = "q.property('cobblemon:battle')"
 SUBMERGED = "q.property('cobblemon:submerged')"
 IN_WATER = "q.is_in_water"
 HOLDING = "q.property('cobblemon:holding')"
+SAND = "q.property('cobblemon:on_sand')"   # 1 sand, 2 red sand within two blocks below, set by the script
 # the queries the translated Molang may use; anything else Cobblemon asks is unknown to Bedrock and reads as false
 BEDROCK_QUERIES = {"q.property", "q.is_on_ground", "q.has_rider", "q.is_in_water", "q.is_in_water_or_rain", "q.time_of_day",
                    "q.ground_speed", "q.vertical_speed", "q.is_tamed", "q.is_riding", "q.is_sleeping"}
@@ -237,7 +238,7 @@ MOLANG_QUERIES = [
     (r"q\.riding_style\s*==\s*'LIQUID'", "q.is_in_water"), (r"q\.riding_style\s*!=\s*'AIR'", "q.is_on_ground"),
     (r"q\.riding_style\s*!=\s*'LAND'", "!q.is_on_ground"), (r"q\.riding_style\s*!=\s*'LIQUID'", "!q.is_in_water"), (r"q\.is_air\b", "!q.is_on_ground"),
     (r"q\.horizontal_velocity\b", "(q.ground_speed / 20)"),   # Cobblemon's is blocks a tick
-    (r"q\.has_aspect\([^)]*\)", "0"), (r"!\s*q\.is_standing_on_blocks\([^)]*\)", "1"), (r"q\.is_standing_on_blocks\([^)]*\)", "0"),
+    (r"q\.has_aspect\([^)]*\)", "0"), (r"q\.is_standing_on_blocks\([^)]*\)", f"({SAND} > 0)"),
 ]
 
 
@@ -348,15 +349,16 @@ KOTLIN_CONDITIONS = [(r"\bisBattling\b", BATTLE), (r"\bisInWater\b", IN_WATER), 
                      (r"\bisInWaterOrRain\b", "q.is_in_water_or_rain"), (r"\bisWild\b", "!q.is_tamed"), (r"\bisPosedIn\([^)]*\)", "1")]
 
 
-# Cobblemon's entity checks: dusk is day time 12000 to 13000; Bedrock Molang cannot see the block underfoot, so a
-# pose for standing on sand never applies and its plain counterpart always does
+# Cobblemon's entity checks: dusk is day time 12000 to 13000; the sand underfoot is a property the script sets
 DUSK = "(q.time_of_day >= 0.5 && q.time_of_day <= 0.5417)"
 FALLING = "(!q.is_on_ground && q.vertical_speed < -0.5)"
 ENTITY = r"\(?it\.getEntity\(\)(?:\s+as\?\s+PokemonEntity\))?\)?\?\."
 KOTLIN_ENTITY = [
     (ENTITY + r"isDusk\(\)\s*==\s*true", DUSK), (ENTITY + r"isDusk\(\)\s*!=\s*true", "!" + DUSK),
     (ENTITY + r"isFalling\(\)\s*==\s*true", FALLING), (ENTITY + r"isFalling\(\)\s*!=\s*true", "!" + FALLING),
-    (ENTITY + r"isStandingOn\(setOf\([^)]*\)\)\s*==\s*true", "0"), (ENTITY + r"isStandingOn\(setOf\([^)]*\)\)\s*!=\s*true", "1"),
+    (ENTITY + r'isStandingOn\(setOf\("minecraft:sand"\)\)\s*==\s*true', f"({SAND} == 1)"), (ENTITY + r'isStandingOn\(setOf\("minecraft:sand"\)\)\s*!=\s*true', f"({SAND} != 1)"),
+    (ENTITY + r'isStandingOn\(setOf\("minecraft:red_sand"\)\)\s*==\s*true', f"({SAND} == 2)"), (ENTITY + r'isStandingOn\(setOf\("minecraft:red_sand"\)\)\s*!=\s*true', f"({SAND} != 2)"),
+    (ENTITY + r"isStandingOn\(setOf\([^)]*\)\)\s*==\s*true", f"({SAND} > 0)"), (ENTITY + r"isStandingOn\(setOf\([^)]*\)\)\s*!=\s*true", f"({SAND} == 0)"),
 ]
 
 
@@ -366,7 +368,7 @@ def kotlin_condition(body):
     text = re.sub(r"\bit\.", "", text)
     for pattern, replacement in KOTLIN_CONDITIONS: text = re.sub(pattern, replacement, text)
     # anything still Kotlin (aspects, blocks underfoot, time of day) cannot be read on Bedrock
-    if re.search(r"[A-Za-z_]\w*\(|\?\.|==|DataKeys|getEntity", re.sub(r"q\.(property|is_\w+)\([^)]*\)|q\.\w+", "", text)): return None
+    if re.search(r"[A-Za-z_]\w*\(|\?\.|DataKeys|getEntity|== *true|!= *true", re.sub(r"q\.(property|is_\w+)\([^)]*\)|q\.\w+", "", text)): return None
     return text or "1"
 
 
