@@ -1,0 +1,1562 @@
+{
+  "namespace": "hud",
+  "root_panel": {
+    "modifications": [
+      {
+        "array_name": "controls",
+        "operation": "insert_back",
+        "value": {
+          "cobblemon_party": {
+            "type": "panel",
+            "size": [
+              "100%",
+              "100%"
+            ],
+            "controls": [
+              {
+                "slots": {
+                  "type": "stack_panel",
+                  "orientation": "vertical",
+                  "size": [
+                    62,
+                    200
+                  ],
+                  "anchor_from": "left_middle",
+                  "anchor_to": "left_middle",
+                  "offset": [
+                    2.5,
+                    0
+                  ],
+                  "controls": [
+                    {
+                      "slot_0": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.37s' * #preserved_text) - ('%.36s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.37s' * #preserved_text) - ('%.36s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.27s' * #preserved_text) - ('%.21s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.21s' * #preserved_text) - ('%.9s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.38s' * #preserved_text) - ('%.37s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.30s' * #preserved_text) - ('%.27s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.33s' * #preserved_text) - ('%.30s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.36s' * #preserved_text) - ('%.33s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "gap_0": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          4
+                        ]
+                      }
+                    },
+                    {
+                      "slot_1": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.66s' * #preserved_text) - ('%.65s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.66s' * #preserved_text) - ('%.65s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.56s' * #preserved_text) - ('%.50s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.50s' * #preserved_text) - ('%.38s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.67s' * #preserved_text) - ('%.66s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.59s' * #preserved_text) - ('%.56s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.62s' * #preserved_text) - ('%.59s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.65s' * #preserved_text) - ('%.62s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "gap_1": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          4
+                        ]
+                      }
+                    },
+                    {
+                      "slot_2": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.95s' * #preserved_text) - ('%.94s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.95s' * #preserved_text) - ('%.94s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.85s' * #preserved_text) - ('%.79s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.79s' * #preserved_text) - ('%.67s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.96s' * #preserved_text) - ('%.95s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.88s' * #preserved_text) - ('%.85s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.91s' * #preserved_text) - ('%.88s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.94s' * #preserved_text) - ('%.91s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "gap_2": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          4
+                        ]
+                      }
+                    },
+                    {
+                      "slot_3": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.124s' * #preserved_text) - ('%.123s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.124s' * #preserved_text) - ('%.123s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.114s' * #preserved_text) - ('%.108s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.108s' * #preserved_text) - ('%.96s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.125s' * #preserved_text) - ('%.124s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.117s' * #preserved_text) - ('%.114s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.120s' * #preserved_text) - ('%.117s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.123s' * #preserved_text) - ('%.120s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "gap_3": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          4
+                        ]
+                      }
+                    },
+                    {
+                      "slot_4": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.153s' * #preserved_text) - ('%.152s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.153s' * #preserved_text) - ('%.152s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.143s' * #preserved_text) - ('%.137s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.137s' * #preserved_text) - ('%.125s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.154s' * #preserved_text) - ('%.153s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.146s' * #preserved_text) - ('%.143s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.149s' * #preserved_text) - ('%.146s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.152s' * #preserved_text) - ('%.149s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "gap_4": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          4
+                        ]
+                      }
+                    },
+                    {
+                      "slot_5": {
+                        "type": "panel",
+                        "size": [
+                          62,
+                          30
+                        ],
+                        "controls": [
+                          {
+                            "data_control": {
+                              "type": "panel",
+                              "size": [
+                                0,
+                                0
+                              ],
+                              "property_bag": {
+                                "#preserved_text": ""
+                              },
+                              "bindings": [
+                                {
+                                  "binding_name": "#hud_title_text_string"
+                                },
+                                {
+                                  "binding_name": "#hud_title_text_string",
+                                  "binding_name_override": "#preserved_text",
+                                  "binding_condition": "visibility_changed"
+                                },
+                                {
+                                  "binding_type": "view",
+                                  "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:party') = #hud_title_text_string))",
+                                  "target_property_name": "#visible"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "slot": {
+                              "type": "image",
+                              "size": [
+                                62,
+                                30
+                              ],
+                              "layer": 1,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/slot_' + (('%.182s' * #preserved_text) - ('%.181s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "portrait": {
+                              "type": "image",
+                              "size": [
+                                21,
+                                21
+                              ],
+                              "offset": [
+                                22,
+                                2
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/portrait_' + (('%.182s' * #preserved_text) - ('%.181s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "level": {
+                              "type": "label",
+                              "size": [
+                                20,
+                                6
+                              ],
+                              "offset": [
+                                1,
+                                14.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "text_alignment": "left",
+                              "shadow": true,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.172s' * #preserved_text) - ('%.166s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "name": {
+                              "type": "label",
+                              "size": [
+                                60,
+                                5
+                              ],
+                              "offset": [
+                                2.5,
+                                24.5
+                              ],
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "layer": 3,
+                              "font_scale_factor": 0.5,
+                              "shadow": false,
+                              "text": "#value",
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "(('%.166s' * #preserved_text) - ('%.154s' * #preserved_text))",
+                                  "target_property_name": "#value"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "gender": {
+                              "type": "image",
+                              "size": [
+                                2.5,
+                                3.5
+                              ],
+                              "offset": [
+                                40,
+                                25
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.183s' * #preserved_text) - ('%.182s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "hp": {
+                              "type": "image",
+                              "size": [
+                                2,
+                                18
+                              ],
+                              "offset": [
+                                46,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.175s' * #preserved_text) - ('%.172s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "exp": {
+                              "type": "image",
+                              "size": [
+                                1,
+                                18
+                              ],
+                              "offset": [
+                                49,
+                                5
+                              ],
+                              "layer": 2,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.178s' * #preserved_text) - ('%.175s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "ball": {
+                              "type": "image",
+                              "size": [
+                                9,
+                                11
+                              ],
+                              "offset": [
+                                43.5,
+                                22
+                              ],
+                              "layer": 3,
+                              "anchor_from": "top_left",
+                              "anchor_to": "top_left",
+                              "keep_ratio": false,
+                              "bindings": [
+                                {
+                                  "binding_type": "view",
+                                  "source_control_name": "data_control",
+                                  "resolve_sibling_scope": true,
+                                  "source_property_name": "('textures/ui/cobblemon/party/' + (('%.181s' * #preserved_text) - ('%.178s' * #preserved_text)))",
+                                  "target_property_name": "#texture"
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "hud_title_text": {
+    "modifications": [
+      {
+        "array_name": "bindings",
+        "operation": "insert_back",
+        "value": [
+          {
+            "binding_name": "#hud_title_text_string",
+            "binding_type": "global"
+          },
+          {
+            "binding_type": "view",
+            "source_property_name": "((#hud_title_text_string - 'cbm:party') = #hud_title_text_string)",
+            "target_property_name": "#visible"
+          }
+        ]
+      }
+    ]
+  }
+}

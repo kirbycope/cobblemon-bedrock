@@ -4868,6 +4868,101 @@ def create_battle_ui():
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
 
 
+# ---------------------------------------------------------------------------
+# Party HUD, after PartyOverlay: six 62 by 30 slots down the middle of the left edge, each with its level, name,
+# gender, a vertical health bar and experience bar, the ball it was caught in, and the fainted slot when it has
+# fainted. main.js sends the party as a title starting "cbm:party" with one fixed-width record per slot; the HUD
+# keeps the last such title (bedrock.dev's preserved title pattern) and hides the vanilla title for it. The bars
+# and ball icons are textures picked by name from the record, since a field of digits alone is read as a number.
+# ---------------------------------------------------------------------------
+
+PARTY_MARKER = "cbm:party"
+PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29)}
+PARTY_RECORD = 29   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+
+
+def create_party_hud():
+    party = f"{uiTextures}/party"
+    os.makedirs(party, exist_ok=True)
+    for state, name in (("n", "party_slot"), ("x", "party_slot_fainted")):
+        shutil.copyfile(f"{guiMain}/party/{name}.png", f"{party}/slot_{state}.png")
+    for state in ("n", "x"): shutil.copyfile(f"{guiMain}/party/party_slot_portrait_background.png", f"{party}/portrait_{state}.png")
+    # an empty slot's record (state "e", ball "bxx") draws nothing: a view binding cannot hide these parts
+    for name in ("slot_e", "portrait_e", "bxx"): Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/{name}.png")
+    # named by the record's gender field, which the texture binding appends to the folder
+    shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
+    shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/o.png")   # genderless, and an empty slot
+    # the bars, 18 steps tall, filled from the bottom: health in getDepletableRedGreen's colours, experience in Cobblemon's blue
+    for step in range(19):
+        ratio = step / 18
+        r, g = depletable_red_green(ratio)
+        for kind, width, colour in (("h", 2, (round(r * 0.8 * 255), round(g * 0.8 * 255), round(0.27 * 255), 255)), ("e", 1, (51, 166, 214, 255))):
+            bar = Image.new("RGBA", (width, 18), (0, 0, 0, 0))
+            for y in range(18 - step, 18):
+                for x in range(width): bar.putpixel((x, y), colour)
+            bar.save(f"{party}/{kind}{step:02d}.png")
+    for n, info in enumerate(poke_balls()):
+        icon = f"{guiMain}/ball/{info['name']}.png"
+        if not os.path.exists(icon): icon = f"{guiMain}/ball/poke_ball.png"
+        image = Image.open(icon).convert("RGBA")
+        image.crop((0, 0, image.width, image.height // 2)).save(f"{party}/b{n:02d}.png")
+
+    T = "textures/ui/cobblemon/party"
+    def field(slot, name):
+        a, b = PARTY_FIELDS[name]
+        a, b = len(PARTY_MARKER) + slot * PARTY_RECORD + a, len(PARTY_MARKER) + slot * PARTY_RECORD + b
+        return f"(('%.{b}s' * #preserved_text) - ('%.{a}s' * #preserved_text))"
+    def from_data(source, target):
+        return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
+                "source_property_name": source, "target_property_name": target}
+    def picture(name, slot, kind, size, offset, layer=2):
+        return {name: {"type": "image", "size": size, "offset": offset, "layer": layer, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "keep_ratio": False, "bindings": [from_data(f"('{T}/' + {field(slot, kind)})", "#texture")]}}
+    def shown(slot, control):
+        name, body = next(iter(control.items()))
+        state = field(slot, "state")
+        body = dict(body); body["bindings"] = body.get("bindings", []) + [from_data(f"(({state} = 'n') or ({state} = 'x'))", "#visible")]
+        return {name: body}
+    def slot_panel(slot):
+        return {f"slot_{slot}": {"type": "panel", "size": [62, 30], "controls": [
+            {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
+                {"binding_name": "#hud_title_text_string"},
+                {"binding_name": "#hud_title_text_string", "binding_name_override": "#preserved_text", "binding_condition": "visibility_changed"},
+                {"binding_type": "view", "source_property_name":
+                    f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string))",
+                 "target_property_name": "#visible"}]}},
+            # every part is a sibling of data_control, which is how a view binding finds it, and shows only for a filled slot
+            *[c for c in (
+                {"slot": {"type": "image", "size": [62, 30], "layer": 1, "bindings": [from_data(f"('{T}/slot_' + {field(slot, 'state')})", "#texture")]}},
+                {"portrait": {"type": "image", "size": [21, 21], "offset": [22, 2], "layer": 2, "anchor_from": "top_left", "anchor_to": "top_left",
+                              "bindings": [from_data(f"('{T}/portrait_' + {field(slot, 'state')})", "#texture")]}},
+                {"level": {"type": "label", "size": [20, 6], "offset": [1, 14.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                           "font_scale_factor": 0.5, "text_alignment": "left", "shadow": True, "text": "#value",
+                           "bindings": [from_data(field(slot, "level"), "#value")]}},
+                {"name": {"type": "label", "size": [60, 5], "offset": [2.5, 24.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                          "font_scale_factor": 0.5, "shadow": False, "text": "#value", "bindings": [from_data(field(slot, "name"), "#value")]}},
+                picture("gender", slot, "gender", [2.5, 3.5], [40, 25], 3),
+                picture("hp", slot, "hp", [2, 18], [46, 5]),
+                picture("exp", slot, "exp", [1, 18], [49, 5]),
+                picture("ball", slot, "ball", [9, 11], [43.5, 22], 3))]]}}
+    hud = {
+        "namespace": "hud",
+        "root_panel": {"modifications": [{"array_name": "controls", "operation": "insert_back", "value": {
+            # a full-screen panel, so the slots sit at the screen's own left edge as PartyOverlay's do
+            "cobblemon_party": {"type": "panel", "size": ["100%", "100%"], "controls": [{"slots": {
+                "type": "stack_panel", "orientation": "vertical", "size": [62, 200], "anchor_from": "left_middle", "anchor_to": "left_middle",
+                "offset": [2.5, 0],   # the HUD's root panel reaches 2.5 past the screen's left edge
+                "controls": [c for n in range(6) for c in ([slot_panel(n)] + ([{f"gap_{n}": {"type": "panel", "size": [62, 4]}}] if n < 5 else []))]}}]}}}]},
+        # a title carrying the party is data, not something to show
+        "hud_title_text": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
+            {"binding_name": "#hud_title_text_string", "binding_type": "global"},
+            {"binding_type": "view", "source_property_name": f"((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string)", "target_property_name": "#visible"}]}]},
+    }
+    with open(f"{resourcePack}/ui/hud_screen.json", "w", encoding="utf-8") as file: file.write(json.dumps(hud, indent=2))
+    print("  party HUD: Cobblemon's party slots down the left edge")
+
+
 def create_model_blocks():
     """The Cobblemon blocks with element models the pack has not made elsewhere."""
     made, placers = [], 0
@@ -4902,6 +4997,7 @@ def create_model_blocks():
             file.write(f"tile.cobblemon:{block}.name={label}" + chr(10))
     chests = create_gilded_chests()
     create_battle_ui()
+    create_party_hud()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         for chest in chests:
             file.write(f"entity.cobblemon:{chest}_entity.name={lang.get('block.cobblemon.' + chest, chest.replace('_', ' ').title())}" + chr(10))

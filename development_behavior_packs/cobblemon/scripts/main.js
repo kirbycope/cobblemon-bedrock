@@ -833,6 +833,44 @@ function pickAction(battle, options) {
     });
 }
 
+// The party HUD (ui/hud_screen.json): the player's own Pokemon nearby, fainted ones included, sent as one fixed-width
+// record per slot in a title starting "cbm:party" whenever it changes, and every five seconds for a HUD that rejoined
+const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS);
+const partySent = new Map();
+function partyRecord(e) {
+    const info = POKEMON[e.typeId];
+    const level = prop(e, LEVEL) ?? info.level, group = info.expGroup;
+    const exp = Math.max(prop(e, EXP) ?? 0, expFor(group, level));
+    const span = Math.max(1, expFor(group, level + 1) - expFor(group, level));
+    let share = 1;
+    try { const h = e.getComponent(EntityComponentTypes.Health); share = Math.max(0, h.currentValue) / h.effectiveMax; } catch (err) { }
+    const fainted = !!prop(e, FAINTED);
+    const steps = (r) => String(Math.max(0, Math.min(18, Math.round(r * 18)))).padStart(2, "0");
+    const tag = e.nameTag && e.nameTag !== "NPC" ? e.nameTag : "";   // the npc component names every entity "NPC"
+    const name = (tag || info.name).normalize("NFD").replace(/[^ -~]/g, "");
+    const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
+    const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
+    return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
+        + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender;
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let mine = [];
+        try {
+            // Cobblemon hides the party overlay while its battle overlay is up
+            if (!battles.has(player.id)) mine = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
+                .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture"))
+                .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
+        } catch (e) { continue; }
+        const empty = " ".repeat(18) + "h00e00bxxeo";
+        const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
+        const last = partySent.get(player.id);
+        if (last && last.text === text && system.currentTick - last.tick < 100) continue;
+        partySent.set(player.id, { text, tick: system.currentTick });
+        try { player.onScreenDisplay.setTitle(text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
+    }
+}, 10);
+
 function pickFoeMove(foe) {
     const usable = foe.moves.filter((m) => m.left > 0);
     return usable.length ? usable[Math.floor(Math.random() * usable.length)] : STRUGGLE;
