@@ -12,6 +12,7 @@ import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, N
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
 import { MARKS } from "./marks.js";
+import { TMS, TM_SPECIES } from "./tms.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
@@ -574,7 +575,7 @@ system.runInterval(() => {
         const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
         if (!inv) continue;
         for (let i = 0; i < inv.size; i++) {
-            const item = inv.getItem(i), lines = item && TOOLTIPS[item.typeId];
+            const item = inv.getItem(i), lines = item && (TOOLTIPS[item.typeId] ?? tmLore(item.typeId));
             if (!lines || item.getLore().length) continue;
             try { item.setLore(lines.map((line) => `§7${line}`)); inv.setItem(i, item); } catch (e) { }
         }
@@ -609,6 +610,71 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     if (!NPC_SCENES[target?.typeId]) return;
     event.cancel = true;
     system.run(() => showScene(player, target, target.typeId));
+});
+
+// TMs (TechnicalMachineItem, TMMoveManager). A TM used on one of your own Pokemon teaches its move when the species
+// can learn it from a TM and does not know it or have it to relearn; with four moves known it goes to the moves the
+// Pokemon can relearn (BenchedMoves). A player learns a TM, for the TM Machine, as soon as one of their Pokemon can
+// learn its move without one (its level-up moves so far, its moves and relearnable moves), and the default TMs from
+// the start; the unlock is told in chat, where Cobblemon shows a toast.
+const TM_INDEX = new Map(TMS.map((tm, n) => [`cobblemon:tm_${tm[0]}`, n])), TM_BY_MOVE = new Map(TMS.map((tm, n) => [tm[0], n]));
+const LEARNED_TMS = "cobblemon:learned_tms", BENCHED = "cobblemon:benched";
+function tmLore(typeId) { const n = TM_INDEX.get(typeId); return n === undefined ? undefined : [MOVES[TMS[n][0]]?.name ?? "Unknown Move"]; }
+function benchedOf(e) { try { return JSON.parse(prop(e, BENCHED) ?? "[]"); } catch (err) { return []; } }
+function learnedTms(player) { return new Set(jsonProp(player, LEARNED_TMS, [])); }
+function learnTms(player, moves) {
+    const known = learnedTms(player), fresh = moves.filter((m) => TM_BY_MOVE.has(m) && !known.has(m));
+    if (!fresh.length) return;
+    for (const m of fresh) known.add(m);
+    player.setDynamicProperty(LEARNED_TMS, JSON.stringify([...known]));
+    player.sendMessage(fresh.length === 1 ? `§bYou unlocked the ${MOVES[fresh[0]]?.name ?? fresh[0]} TM!` : "§bNew TMs Learned! §7Check the TM Machine");
+}
+// a Pokemon's moves learned without a TM: its level-up moves to its level, its moves and the ones it can relearn
+function accessibleMoves(typeId, level, moves, benched) {
+    const out = new Set([...(moves ?? []), ...(benched ?? [])]);
+    for (const [at, id] of POKEMON[typeId]?.learnset ?? []) if (at <= level) out.add(id);
+    return out;
+}
+function syncTms(player) {
+    const moves = new Set();
+    for (const id of TMS.filter((tm) => tm[2] === "default" || tm[2] === "advancement").map((tm) => tm[0])) moves.add(id);
+    let mine = [];
+    try { mine = player.dimension.getEntities({ families: ["owned"] }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id); } catch (e) { }
+    for (const e of mine) {
+        let known = [];
+        try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? []; } catch (err) { }
+        for (const m of accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
+    }
+    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) {
+        if (!rec?.t) continue;
+        let known = [], benched = [];
+        try { known = JSON.parse(rec.mv ?? "null") ?? []; benched = JSON.parse(rec.k?.[BENCHED] ?? "[]"); } catch (err) { }
+        for (const m of accessibleMoves(rec.t, rec.lv ?? 1, known, benched)) moves.add(m);
+    }
+    learnTms(player, [...moves]);
+}
+system.runInterval(() => { for (const player of world.getPlayers()) syncTms(player); }, 200);
+function teachTm(player, target, itemId) {
+    const n = TM_INDEX.get(itemId), move = TMS[n][0], info = POKEMON[target.typeId], name = nicknameOf(target) || info.name;
+    const moveName = MOVES[move]?.name ?? move;
+    // a move the battles do not carry (33 of the TMs) cannot be taught, as no battle could use it
+    if (!MOVES[move] || !(TM_SPECIES[target.typeId] ?? []).includes(n)) { player.onScreenDisplay.setActionBar(`§c${name} cannot learn ${moveName}!`); return; }
+    const f = fighter(target), ids = f.moves.map((mv) => mv.id), benched = benchedOf(target);
+    if (ids.includes(move) || benched.includes(move) || accessibleMoves(target.typeId, f.level, [], []).has(move)) {
+        player.onScreenDisplay.setActionBar(`§c${name} already knows ${moveName}!`); return;
+    }
+    if (player.getGameMode?.() !== "Creative") consumeHand(player);
+    if (ids.length < 4) setProp(target, MOVESET, JSON.stringify([...ids, move]));
+    else setProp(target, BENCHED, JSON.stringify([...benched, move]));
+    player.onScreenDisplay.setActionBar(`§a${name} learned ${moveName}!`);
+    try { player.playSound("cobblemon.gui.move_learn"); player.playSound("cobblemon.item.tm.use"); } catch (e) { }
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (!TM_INDEX.has(itemStack?.typeId) || !POKEMON[target?.typeId] || player.isSneaking) return;
+    event.cancel = true;
+    if (prop(target, OWNER) !== player.id) return;
+    system.run(() => { if (target.isValid) teachTm(player, target, itemStack.typeId); });
 });
 
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
@@ -1657,7 +1723,7 @@ function snapshot(entity) {
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
-    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark"];
+    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3105,6 +3171,7 @@ const summaryStatTab = new Map(), HEX_ORDER = ["hp", "atk", "def", "spe", "spd",
 function relearnable(entity, f) {
     const known = f.moves.map((m) => m.id), out = [];
     for (const [at, id] of f.info.learnset ?? []) if (at <= f.level && MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);
+    for (const id of benchedOf(entity)) if (MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);   // taught by a TM
     return out;
 }
 function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
@@ -3270,9 +3337,14 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
             const row = pick - 38, ids = f.moves.map((m) => m.id);
             if (side === "s" && row < swapRows.length) {
                 const id = swapRows[row];
+                // the move that leaves goes to the benched moves, as Cobblemon's BenchMovePacket does, so a TM's is kept
+                const out = !id || swapSlot < ids.length ? ids[swapSlot] : undefined;
                 if (!id) ids.splice(swapSlot, 1);                  // Forget
                 else if (swapSlot < ids.length) ids[swapSlot] = id;   // the chosen move takes the slot
                 else ids.push(id);                                 // or fills the empty one
+                const benched = benchedOf(source).filter((b) => b !== id);
+                if (out && !benched.includes(out)) benched.push(out);
+                setProp(source, BENCHED, benched.length ? JSON.stringify(benched) : undefined);
                 setProp(source, MOVESET, JSON.stringify(ids));
                 try { player.playSound("cobblemon.gui.click"); } catch (e) { }
                 showSummary(source, tab, player, Math.min(selected, ids.length - 1), "p"); return;
