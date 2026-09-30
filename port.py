@@ -6164,6 +6164,10 @@ def create_scan_hud():
             text_x = x + (((120 - 28) / 2 + (0 if side == "l" else 28)) if inner else 92 / 2)
             text_y = y + {0: 5, 1: 4, 2: 8, 3: 42}[k]
             controls.append(text(f"text{k}{side}", field(f"t{k}{side}"), (text_x, text_y + 5)))
+    # every part draws only while the kept title is a scan record: the title can be kept from another layer's record
+    for control in controls[1:]:
+        body = next(iter(control.values()))
+        body["bindings"] = body.get("bindings", []) + [from_data(f"(not ((#preserved_text - '{SCAN_MARKER}') = #preserved_text))", "#visible")]
     return {"cobblemon_scan": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 

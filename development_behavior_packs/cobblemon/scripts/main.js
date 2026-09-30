@@ -555,6 +555,10 @@ const OWNER = "cobblemon:owner";
 // Nicknames live in a property of their own, so the name tag can carry Cobblemon's label; a nickname from before
 // (a plain name tag, not a label) still counts
 const NICK = "cobblemon:nickname", BATTLE_WINS = "cobblemon:battle_wins";
+function titled(e, name) {
+    const mark = MARKS[prop(e, "cobblemon:active_mark")];
+    return mark?.[2] ? mark[2].replace("{}", name) : name;
+}
 function nicknameOf(entity) {
     const nick = prop(entity, NICK);
     if (nick !== undefined) return nick;
@@ -667,7 +671,8 @@ function labelFor(player, e) {
     let variant = 0;
     try { variant = e.getComponent("minecraft:variant")?.value ?? 0; } catch (err) { }
     const known = dexStatus(player, e.typeId) > 0 || prop(e, OWNER);
-    const name = known ? (nicknameOf(e) || info.variants?.[variant]?.name || info.name) : "???";
+    // PokemonEntity.getTitledName: the name carries the active mark's title ("Pikachu the Early Riser")
+    const name = known ? titled(e, nicknameOf(e) || info.variants?.[variant]?.name || info.name) : "???";
     let label = `${name} §fLv. ${prop(e, LEVEL) ?? info.level}`;
     const wild = !prop(e, OWNER) && !e.hasComponent(EntityComponentTypes.IsTamed);
     if (wild && !(player.getDynamicProperty(BATTLE_WINS) > 0) && !battles.has(player.id) && !capturing.has(e.id)) label += "\n§7Press Use to battle.";
@@ -727,7 +732,7 @@ function sendOut(battle, entity, spot) {
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
     sendOutEffect(battle.player, entity);
     battle.ally = f;
-    say(battle, `§6Go, ${f.info.name}! §7(Lv ${f.level})`);
+    say(battle, `§6Go! ${titled(f.entity, nicknameOf(f.entity) || f.info.name)}! §7(Lv ${f.level})`);   // battle.switch.self, with the title
     enter(battle, f, battle.foe);
     return f;
 }
@@ -1202,9 +1207,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
     } else if (event.id === "cobblemon:add_mark") {
-        // testing: "/execute as <pokemon> run scriptevent cobblemon:add_mark <mark id>" gives it that mark
-        const id = `cobblemon:${event.message.trim().replace(/^cobblemon:/, "")}`;
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:add_mark <mark id> [active]" gives it that mark
+        const [name, active] = event.message.trim().split(/\s+/), id = `cobblemon:${name.replace(/^cobblemon:/, "")}`;
         if (MARKS[id] && !marksOf(source).includes(id)) setProp(source, MARK_LIST, JSON.stringify([...marksOf(source), id]));
+        if (MARKS[id] && active === "active") setProp(source, ACTIVE_MARK, id);
     } else if (event.id === "cobblemon:inspect") {
         // testing: "/execute as <entity> run scriptevent cobblemon:inspect" logs its variant and dynamic properties
         const props = {};
