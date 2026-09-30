@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
@@ -702,17 +702,40 @@ function startBattle(player, foeEntity, trainer) {
     system.runTimeout(() => turn(battle), 20);
 }
 
-// Switch: the player picks another party member; the one leaving steps aside and stops fighting
+// Switch: BattleSwitchPokemonSelection's party tiles, laid out by the resource pack (SWITCH_FIELDS in port.py). The one in
+// battle and the fainted show greyed and cannot be picked; the one leaving steps aside and stops fighting
+function switchTile(battle, e) {
+    const f = e.id === battle.ally.entity.id ? battle.ally : fighter(e);
+    const fainted = !!prop(e, FAINTED) || f.hp <= 0;
+    const step = fainted ? 0 : Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50));
+    const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
+    const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
+    const status = !fainted && f.status ? { tox: "psn" }[f.status] ?? f.status : "non";
+    return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId)
+        + "b" + String(ball).padStart(2, "0") + `§f${Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
+}
 function chooseSwitch(battle, forced) {
-    const party = findParty(battle.player, battle.foe.entity.location).filter((e) => e.id !== battle.ally.entity.id);
-    if (!party.length) return Promise.resolve(undefined);
-    const form = new ActionFormData().title(forced ? "Send out which Pokemon?" : "Switch to which Pokemon?");
-    for (const e of party) {
-        const f = fighter(e);
-        form.button(`${f.info.name} Lv ${f.level}\n§7${f.hp}/${f.stats.hp} HP`);
+    const player = battle.player, ally = battle.ally.entity;
+    const ready = findParty(player, battle.foe.entity.location).filter((e) => e.id !== ally.id);
+    if (!ready.length) return Promise.resolve(undefined);
+    let fainted = [];
+    try {
+        fainted = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
+            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && prop(e, FAINTED) && !prop(e, "cobblemon:pasture"));
+    } catch (e) { }
+    const tiles = [...(ally.isValid && !forced ? [ally] : []), ...ready, ...fainted].slice(0, 6);
+    const form = new ActionFormData().title("cbm:battle_switch").body(battleBody(battle));
+    for (let i = 0; i < 6; i++) {
+        const e = tiles[i];
+        const picked = e && ready.includes(e);
+        form.button(e ? switchTile(battle, e) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
     }
-    if (!forced) form.button("Back");
-    return form.show(battle.player).then((r) => (r.canceled || r.selection >= party.length ? undefined : party[r.selection]));
+    form.button(forced ? "" : "Back", `${UI}/battle/back`);
+    return form.show(player).then((r) => {
+        if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced) : undefined;
+        const e = tiles[r.selection];
+        return e && ready.includes(e) ? e : chooseSwitch(battle, forced);
+    });
 }
 
 function switchTo(battle, entity) {
@@ -772,57 +795,6 @@ function ballMultiplier(battle, id) {
     }
 }
 
-function ballsHeld(player) {
-    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, held = new Map();
-    if (!inv) return held;
-    for (let i = 0; i < inv.size; i++) {
-        const item = inv.getItem(i);
-        if (item && BALLS[item.typeId]) held.set(item.typeId, (held.get(item.typeId) ?? 0) + item.amount);
-    }
-    return held;
-}
-
-// Which ball to throw: the only kind held, or the player's pick when there are several.
-function chooseBall(battle) {
-    const held = [...ballsHeld(battle.player)];
-    if (held.length === 0) { say(battle, "§cYou have no Poke Balls."); return Promise.resolve(undefined); }
-    if (held.length === 1) return Promise.resolve(held[0][0]);
-    const form = new ActionFormData().title("Throw which ball?");
-    for (const [id, count] of held) form.button(`${BALLS[id].name} x${count}
-§7${ballMultiplier(battle, id) === Infinity ? "certain" : ballMultiplier(battle, id) + "x"}`);
-    return form.show(battle.player).then((r) => (r.canceled ? undefined : held[r.selection][0]));
-}
-
-// Throwing a ball in battle: as in Cobblemon, the ball is thrown at the foe and plays the whole capture, judged by
-// the battle (its turn count, the foe's health and status); the result ends the battle or gives the foe its turn
-function throwBall(battle, id) {
-    const inv = battle.player.getComponent(EntityComponentTypes.Inventory)?.container;
-    if (!inv) return false;
-    for (let i = 0; i < inv.size; i++) {
-        const item = inv.getItem(i);
-        if (!item || item.typeId !== id) continue;
-        if (item.amount > 1) { item.amount -= 1; inv.setItem(i, item); } else inv.setItem(i, undefined);
-        say(battle, `§7You threw a ${BALLS[id].name}!`);
-        const player = battle.player, foe = battle.foe.entity, dim = foe.dimension, from = handOf(player);
-        const to = bodyCentre(foe), projectile = [...BALL_FROM_PROJECTILE].find(([, ball]) => ball === id)?.[0];
-        let ball;
-        try { ball = captureBall(dim, id, from); } catch (e) { system.runTimeout(() => foeTurn(battle), 20); return true; }
-        try { dim.playSound("cobblemon.poke_ball.throw", from); } catch (e) { }
-        const FLIGHT = 12;
-        timeline(FLIGHT, (tick) => {
-            const k = tick / FLIGHT;
-            try { ball.teleport({ x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + Math.sin(k * Math.PI) * 1.2, z: from.z + (to.z - from.z) * k }); } catch (e) { }
-            if (tick < FLIGHT) return;
-            try { ball.remove(); } catch (e) { }
-            const d = { x: to.x - from.x, y: 0, z: to.z - from.z }, len = Math.hypot(d.x, d.z) || 1;
-            if (foe.isValid && projectile) startCapture(player, projectile, foe, { x: to.x - (d.x / len) * 0.4, y: to.y, z: to.z - (d.z / len) * 0.4 }, { x: d.x / len, y: 0, z: d.z / len }, battle);
-            else system.runTimeout(() => foeTurn(battle), 20);
-            return false;
-        });
-        return true;
-    }
-    return false;
-}
 
 function statusTag(f) { return f.status ? ` ${STATUS_TAG[f.status]}` : ""; }
 
@@ -835,13 +807,15 @@ function turn(battle) {
     const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
     const canSwitch = findParty(battle.player, foe.entity.location).some((e) => e.id !== ally.entity.id);
     if (canSwitch) options.push({ kind: "switch" });
-    options.push({ kind: "bag" }, { kind: "ball" }, { kind: "run" });
+    options.push({ kind: "run" });
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
         for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
     }
     pickAction(battle, options).then((choice) => {
         if (!battles.has(battle.player.id)) return;
-        if (!choice) { battle.turn--; system.runTimeout(() => turn(battle), 20); return; }
+        if (!choice) { minimise(battle); return; }
+        if (choice.kind === "catch") { minimise(battle, "§7Throw a Poke Ball at your opponent to capture it."); return; }
+        if (choice.kind === "forfeit") { endBattle(battle, "§7You forfeited the battle."); return; }
         if (choice.kind === "run") { endBattle(battle, "§7Got away safely."); return; }
         if (choice.kind === "switch") {
             chooseSwitch(battle, false).then((entity) => {
@@ -852,25 +826,7 @@ function turn(battle) {
             }).catch(() => endBattle(battle));
             return;
         }
-        if (choice.kind === "ball") {
-            if (battle.trainer) { battle.turn--; turn(battle); return; }
-            chooseBall(battle).then((id) => {
-                if (!battles.has(battle.player.id)) return;
-                if (!id) { battle.turn--; turn(battle); return; }
-                if (throwBall(battle, id)) return;   // the capture decides what comes next
-                foeTurn(battle);
-            }).catch(() => endBattle(battle));
-            return;
-        }
         if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
-        if (choice.kind === "bag") {
-            chooseBagItem(battle).then((id) => {
-                if (!battles.has(battle.player.id)) return;
-                if (!id || !useBagItem(battle, id)) { battle.turn--; turn(battle); return; }
-                foeTurn(battle);
-            }).catch(() => endBattle(battle));
-            return;
-        }
         const move = choice.move;
         if (held(ally)?.startsWith("choice_") && move !== STRUGGLE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
@@ -910,29 +866,39 @@ function battleBody(battle) {
 }
 
 // BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
+// The battle screen minimised (ClientBattle.minimised), as Catch and closing the screen leave it: the player can throw a
+// ball at the foe or use medicine on their own Pokemon, either taking the turn, and sneaking brings the screen back,
+// where Cobblemon's R key does
+function minimise(battle, prompt) {
+    battle.minimised = true;
+    if (prompt) battle.player.sendMessage(prompt);
+    try { battle.player.onScreenDisplay.setActionBar("§7Sneak to return to the battle."); } catch (e) { }
+}
+function restore(battle) {
+    if (!battle.minimised) return false;
+    battle.minimised = false;
+    return true;
+}
+world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
+    if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed) return;
+    const battle = battles.get(player.id);
+    if (battle && restore(battle)) { battle.turn--; turn(battle); }
+});
+
+// BattleGeneralActionSelection: Fight, Switch, then Catch and Run against a wild Pokemon or Forfeit against a trainer
 function pickAction(battle, options) {
     const menu = new ActionFormData().title("cbm:battle_menu").body(battleBody(battle))
-        .button("Fight", `${UI}/battle/menu_fight`).button("Bag", `${UI}/battle/menu_bag`)
-        .button("Switch", `${UI}/battle/menu_switch`).button("Run", `${UI}/battle/menu_run`);
+        .button("Fight", `${UI}/battle/menu_fight`).button("Switch", `${UI}/battle/menu_switch`);
+    if (battle.trainer) menu.button("Forfeit", `${UI}/battle/menu_forfeit`);
+    else menu.button("Catch", `${UI}/battle/menu_bag`).button("Run", `${UI}/battle/menu_run`);
     return menu.show(battle.player).then((r) => {
         if (r.canceled || !battles.has(battle.player.id)) return undefined;
         if (r.selection === 3) return options.find((o) => o.kind === "run");
-        if (r.selection === 2) {
+        if (r.selection === 2) return { kind: battle.trainer ? "forfeit" : "catch" };
+        if (r.selection === 1) {
             const sw = options.find((o) => o.kind === "switch");
             if (!sw) { say(battle, "§7There is no other Pokemon to switch to."); return pickAction(battle, options); }
             return sw;
-        }
-        if (r.selection === 1) {
-            // the Bag holds medicine and, against a wild Pokemon, the Poke Balls
-            const bag = new ActionFormData().title("Bag").button("Medicine");
-            if (!battle.trainer) bag.button("Poke Balls");
-            bag.button("Back");
-            return bag.show(battle.player).then((b) => {
-                if (b.canceled || !battles.has(battle.player.id)) return pickAction(battle, options);
-                if (b.selection === 0) return options.find((o) => o.kind === "bag");
-                if (b.selection === 1 && !battle.trainer) return options.find((o) => o.kind === "ball");
-                return pickAction(battle, options);
-            });
         }
         const moves = options.filter((o) => o.kind === "move");
         const form = new ActionFormData().title("cbm:battle_moves").body(battleBody(battle));
@@ -2563,7 +2529,7 @@ function applyCandy(player, entity, candy) {
 
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target, itemStack } = event, id = itemStack?.typeId;
-    if (!id || !POKEMON[target.typeId]) return;
+    if (!id || !POKEMON[target.typeId] || player.isSneaking) return;   // sneaking opens the wheel instead
     const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
     const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
     const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id];
@@ -2572,7 +2538,15 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     event.cancel = true;
     system.run(() => {
         if (!target.isValid) return;
-        if (battles.has(player.id)) { player.sendMessage("§7Use items from the Bag during a battle."); return; }
+        // in battle, medicine on the Pokemon fighting is the turn's action (PokemonSelectingItem.applyToBattlePokemon)
+        const battle = battles.get(player.id);
+        if (battle) {
+            if (!medicine || !battle.minimised || battle.ally.entity?.id !== target.id) { player.sendMessage("§cYou cannot use items right now."); return; }
+            if (!useBagItem(battle, id)) return;
+            restore(battle);
+            foeTurn(battle);
+            return;
+        }
         const name = POKEMON[target.typeId].name;
         if (evItem) {
             // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
@@ -2857,14 +2831,7 @@ function takeHeld(source) {
     player.sendMessage(`§aYou took the ${itemName(held)} from ${POKEMON[source.typeId].name}.`);
 }
 
-// the Bag in battle: medicine from the inventory, used on the Pokemon fighting
-function medicineHeld(player) {
-    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, found = new Map();
-    if (!inv) return found;
-    for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (it && MEDICINE[it.typeId]) found.set(it.typeId, (found.get(it.typeId) ?? 0) + it.amount); }
-    return found;
-}
-
+// medicine used in battle on the Pokemon fighting, from the hand
 function useBagItem(battle, id) {
     const f = battle.ally, effect = MEDICINE[id];
     let used = false;
@@ -2888,15 +2855,6 @@ function useBagItem(battle, id) {
         break;
     }
     return true;
-}
-
-function chooseBagItem(battle) {
-    const held = [...medicineHeld(battle.player)];
-    if (!held.length) { say(battle, "§7You have no medicine."); return Promise.resolve(undefined); }
-    const form = new ActionFormData().title("Bag");
-    for (const [id, count] of held) form.button(`${itemName(id)} x${count}`);
-    form.button("Back");
-    return form.show(battle.player).then((r) => (r.canceled || r.selection >= held.length ? undefined : held[r.selection][0]));
 }
 
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
@@ -3107,6 +3065,8 @@ function worldBallMultiplier(player, f, ballId) {
 
 const captureBattles = new Map();   // the battle a capture belongs to, by the Pokemon's id
 function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
+    const mine = battles.get(player.id);
+    if (!battle && mine?.minimised && mine.foe.entity?.id === pokemon.id && !mine.trainer) { restore(mine); battle = mine; }
     const ballId = BALL_FROM_PROJECTILE.get(projectileId), dim = pokemon.dimension;
     const wild = POKEMON[pokemon.typeId] && !prop(pokemon, OWNER) && !pokemon.hasComponent(EntityComponentTypes.IsTamed);
     let busy = capturing.has(pokemon.id);

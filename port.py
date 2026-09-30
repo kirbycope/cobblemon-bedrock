@@ -1648,8 +1648,8 @@ def add_sleep(entity, species, kind):
 #   Pokemon: EmptyPokeBallEntity's sequence (bounce, open, the red beam, fall, shakes), then Cobblemon's
 #   catch roll; on a success the Pokemon drops a filled ball item, cobblemon:poke_ball_<id>, and vanishes.
 # - a filled ball places its Pokemon back with the cobblemon:released event, which makes it claimable.
-# - interacting with a Pokemon while holding an empty Poke Ball tames it (minecraft:tameable): at the
-#   catch rate for a wild one, always for a released one. Bedrock offers no other way to set an owner.
+# - a wild Pokemon is tamed (minecraft:tameable) only by the script, when a capture succeeds; interacting while
+#   holding an empty Poke Ball throws it. A released one can still be claimed with a ball in hand.
 # - an owned Pokemon follows its owner, fights what the owner fights and what attacks the owner,
 #   attacks hostile mobs on its own, never despawns, and its panel gains Stay and Follow buttons.
 # ---------------------------------------------------------------------------
@@ -1935,7 +1935,8 @@ def add_capture(entity, species, pokemon, kind):
     despawn = components.pop("minecraft:despawn", {"despawn_from_distance": {}})
     groups["cobblemon:wild"] = {"minecraft:despawn": despawn}
     balls = poke_balls(); ball_items = [b["item"] for b in balls]; classes = sorted({b["catch"] for b in balls})
-    components["minecraft:tameable"] = {"probability": round(rate / 255, 3), "tame_items": ball_items, "tame_event": {"event": "cobblemon:caught", "target": "self"}}
+    # tamed only by the script when a capture succeeds, so a ball in hand is always thrown, as Cobblemon's is
+    components["minecraft:tameable"] = {"probability": round(rate / 255, 3), "tame_items": [], "tame_event": {"event": "cobblemon:caught", "target": "self"}}
     # a thrown ball never hurts; scripts/main.js plays the capture and rolls the catch
     components["minecraft:damage_sensor"] = {"triggers": [{"on_damage": {"filters": {"test": "is_family", "subject": "damager", "value": "poke_ball"}}, "deals_damage": False}]}
     groups["cobblemon:released"] = {"minecraft:tameable": {"probability": 1.0, "tame_items": ball_items, "tame_event": {"event": "cobblemon:caught", "target": "self"}}, "minecraft:persistent": {}}
@@ -4673,7 +4674,10 @@ TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("gr
 BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32)}
 BATTLE_SIDE = 31
 BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters, then the foe's, 9
-BATTLE_LOG = BATTLE_HPTEXT + 12 + 9   # the battle log's last lines run from here to the end
+BATTLE_LOG = BATTLE_HPTEXT + 12 + 9
+# BattleSwitchPokemonSelection's tiles: each button's text carries its Pokemon as fixed-width fields
+SWITCH_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "status": (21, 24), "icon": (24, 29), "ball": (29, 32)}
+SWITCH_HPTEXT = 32   # the health as a number runs from here to the end   # the battle log's last lines run from here to the end
 
 
 def depletable_red_green(ratio):
@@ -5365,7 +5369,7 @@ def create_battle_ui():
     def frames(name, height):
         image = Image.open(f"{guiMain}/battle/{name}.png").convert("RGBA")
         return image.crop((0, 0, image.width, height)), image.crop((0, height, image.width, height * 2))
-    for option in ("fight", "bag", "switch", "run"):
+    for option in ("fight", "bag", "switch", "run", "forfeit"):
         normal, hover = frames(f"battle_menu_{option}", 26)
         normal.save(f"{uiTextures}/battle/menu_{option}.png"); hover.save(f"{uiTextures}/battle/menu_{option}_hover.png")
     normal, hover = frames("battle_back", 34)
@@ -5394,6 +5398,25 @@ def create_battle_ui():
         shutil.copyfile(f"{guiMain}/battle/battle_status_{status}.png", f"{uiTextures}/battle/status_{status}.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
     shutil.copyfile(f"{guiMain}/battle/battle_log.png", f"{uiTextures}/battle/log.png")
+    # the switch screen: the underlay, the slot frames (a fainted Pokemon's greyed, the one in battle held on its
+    # second frame), the status bars and a 90-pixel health bar per step, as the tile draws them
+    shutil.copyfile(f"{guiMain}/battle/selection_underlay.png", f"{uiTextures}/battle/underlay.png")
+    for name, out in (("party_select", "pselect"), ("party_select_disabled", "pselect_off")):
+        normal, hover = frames(name, 29)
+        normal.save(f"{uiTextures}/battle/{out}.png"); hover.save(f"{uiTextures}/battle/{out}_hover.png")
+    frames("party_select_disabled", 29)[0].save(f"{uiTextures}/battle/pselect_off_hover.png")
+    for suffix in ("", "_hover"): frames("party_select_disabled", 29)[1].save(f"{uiTextures}/battle/pselect_on{suffix}.png")
+    frames("party_select_disabled", 29)[1].crop((0, 0, 94, 22)).save(f"{uiTextures}/battle/pselect_empty.png")
+    for status in ("brn", "par", "psn", "tox", "slp", "frz"):
+        shutil.copyfile(f"{guiMain}/interact/party_select_status_{status}.png", f"{uiTextures}/battle/pstatus_{status.upper()}.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/battle/pstatus_NON.png")
+    for step in range(51):
+        width = round(90 * step / 50)
+        bar = Image.new("RGBA", (90, 1), (0, 0, 0, 0))
+        if width:
+            r, g = depletable_red_green(step / 50)
+            bar.paste((int(r * 0.8 * 255), int(g * 0.8 * 255), int(0.27 * 255), 255), (0, 0, width, 1))
+        bar.save(f"{uiTextures}/battle/hpbar_h{step:02d}.png")
 
     T = "textures/ui/cobblemon"
     def field(side, name):
@@ -5487,9 +5510,46 @@ def create_battle_ui():
     battle_log = {"log": {"type": "panel", "size": [169, 55], "anchor_from": "bottom_right", "anchor_to": "bottom_right", "offset": [-12, -30], "controls": [
         {"frame": {"type": "image", "texture": f"{T}/battle/log", "size": [169, 55], "layer": 1}},
         {"box": {"type": "panel", "size": [153, 46], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "controls": [
-            {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, 1], "layer": 3,
+            {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, -1], "layer": 3,
                        "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                        "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}}]}}
+    # BattleSwitchPokemonSelection: the underlay across the screen, "Party", and six 94 by 29 tiles two by three
+    # from the middle (4 apart across, 2 down), each with its level, name, portrait, ball, health bar and number and
+    # status; the Back button at the bottom left when the switch is not forced
+    def tile_field(name):
+        if name == "hptext": return f"(#form_button_text - ('%.{SWITCH_HPTEXT}s' * #form_button_text))"
+        a, b = SWITCH_FIELDS[name]
+        return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+    def tile_image(name, size, offset, source, layer=4):
+        return {name: {"type": "image", "size": size, "offset": offset, "layer": layer, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [text_binding, {"binding_type": "view", "source_property_name": source, "target_property_name": "#texture"}]}}
+    tile_labels = [button_label("level", tile_field("level"), [5, 4]), button_label("name", tile_field("name"), [5, 12]),
+                   tile_image("portrait", [26, 26], [62, 0], f"('{T}/icons/' + {tile_field('icon')})", 3),
+                   tile_image("ball", [9, 11], [85, -3], f"('{T}/party/' + {tile_field('ball')})", 5),
+                   tile_image("hp", [90, 1], [1, 22], f"('{T}/battle/hpbar_' + {tile_field('hp')})"),
+                   button_label("hptext", tile_field("hptext"), [14 - 20, 24], scale=0.5, size=(40, 6), align="center"),
+                   tile_image("status", [37, 5], [27, 24], f"('{T}/battle/pstatus_' + {tile_field('status')})"),
+                   # no status leaves the field "NON", which the label subtracts away
+                   button_label("status_text", f"({tile_field('status')} - 'NON')", [32, 24.5], scale=0.5, size=(20, 5))]
+    switch_buttons = []
+    for index in range(6):
+        column, row = index % 2, index // 2
+        offset = [1 + column * 98, 34 + row * 31]
+        switch_buttons.append({f"empty_{index}": {"type": "image", "texture": f"{T}/battle/pselect_empty", "size": [94, 22], "offset": offset, "layer": 1,
+                                                  "anchor_from": "top_left", "anchor_to": "top_left"}})
+        switch_buttons.append({f"slot_{index}": {**button([94, 29], tile_labels), "collection_index": index, "offset": offset,
+                                                 "anchor_from": "top_left", "anchor_to": "top_left",
+                                                 "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}})
+    switch_screen = {"switch": {"type": "panel", "size": ["100%", "100%"],
+                                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                                             "source_property_name": "(not ((#title_text - 'cbm:battle_switch') = #title_text))", "target_property_name": "#visible"}],
+                                "controls": [
+        {"underlay": {"type": "image", "texture": f"{T}/battle/underlay", "size": ["100%", 148], "keep_ratio": False, "layer": 1}},
+        {"title": {"type": "label", "text": "Party", "shadow": True, "size": [100, 10], "text_alignment": "center", "offset": [0, 17 - 74 + 5], "layer": 2}},
+        {"tiles": {"type": "collection_panel", "collection_name": "form_buttons", "size": [192, 148], "layer": 2, "controls": switch_buttons}},
+        {"back_panel": {"type": "collection_panel", "collection_name": "form_buttons", "size": ["100%", "100%"], "layer": 5, "controls": [
+            {"back": {**button([29, 17], []), "collection_index": 6, "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [9, -5],
+                      "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}}]}}]}}
     def grid(name, template, item_size, offset, marker):
         return {name: {"type": "grid", "size": [item_size[0] * 2, item_size[1] * 3], "grid_dimensions": [2, 3],
                        "grid_item_template": f"server_form.{template}", "collection_name": "form_buttons",
@@ -5511,7 +5571,7 @@ def create_battle_ui():
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
-                             "controls": [info_tile(0), info_tile(1), battle_log,
+                             "controls": [info_tile(0), info_tile(1), battle_log, switch_screen,
                                           grid("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
                                           grid("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
         "cobblemon_menu_item": menu_item,
