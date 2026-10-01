@@ -31155,12 +31155,12 @@
               "button_99": {
                 "type": "button",
                 "size": [
-                  16,
-                  16
+                  60,
+                  60
                 ],
                 "offset": [
-                  136,
-                  74.5
+                  114,
+                  56
                 ],
                 "anchor_from": "top_left",
                 "anchor_to": "top_left",
@@ -31198,69 +31198,1363 @@
                 "controls": [
                   {
                     "default": {
-                      "type": "image",
+                      "type": "panel",
                       "size": [
                         "100%",
                         "100%"
-                      ],
-                      "layer": 2,
-                      "keep_ratio": false,
-                      "bindings": [
-                        {
-                          "binding_name": "#form_button_texture",
-                          "binding_type": "collection",
-                          "binding_collection_name": "form_buttons"
-                        },
-                        {
-                          "binding_type": "view",
-                          "source_property_name": "(#form_button_texture + '')",
-                          "target_property_name": "#texture"
-                        }
                       ]
                     }
                   },
                   {
                     "hover": {
-                      "type": "image",
+                      "type": "panel",
                       "size": [
                         "100%",
                         "100%"
                       ],
-                      "layer": 2,
-                      "keep_ratio": false,
-                      "bindings": [
+                      "controls": [
                         {
-                          "binding_name": "#form_button_texture",
-                          "binding_type": "collection",
-                          "binding_collection_name": "form_buttons"
-                        },
-                        {
-                          "binding_type": "view",
-                          "source_property_name": "(#form_button_texture + '_hover')",
-                          "target_property_name": "#texture"
+                          "highlight": {
+                            "type": "panel",
+                            "size": [
+                              "100%",
+                              "100%"
+                            ],
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "((('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)) = 'y')",
+                                "target_property_name": "#visible"
+                              }
+                            ],
+                            "controls": [
+                              {
+                                "chart": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/summary/stats_chart_pentagon_highlight",
+                                  "size": [
+                                    93,
+                                    88
+                                  ],
+                                  "offset": [
+                                    -16.5,
+                                    -22
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "poly_a": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'a')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_w": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'w')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_l": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'l')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "icon": {
+                                  "type": "image",
+                                  "size": [
+                                    16,
+                                    16
+                                  ],
+                                  "offset": [
+                                    22,
+                                    18.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 3,
+                                  "keep_ratio": false,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('textures/ui/cobblemon/summary/r' + (('%.11s' * #form_button_text) - ('%.9s' * #form_button_text)))",
+                                      "target_property_name": "#texture"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
                         }
                       ]
                     }
                   },
                   {
                     "pressed": {
-                      "type": "image",
+                      "type": "panel",
                       "size": [
                         "100%",
                         "100%"
                       ],
-                      "layer": 2,
-                      "keep_ratio": false,
-                      "bindings": [
+                      "controls": [
                         {
-                          "binding_name": "#form_button_texture",
-                          "binding_type": "collection",
-                          "binding_collection_name": "form_buttons"
-                        },
-                        {
-                          "binding_type": "view",
-                          "source_property_name": "(#form_button_texture + '_hover')",
-                          "target_property_name": "#texture"
+                          "highlight": {
+                            "type": "panel",
+                            "size": [
+                              "100%",
+                              "100%"
+                            ],
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "((('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)) = 'y')",
+                                "target_property_name": "#visible"
+                              }
+                            ],
+                            "controls": [
+                              {
+                                "chart": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/summary/stats_chart_pentagon_highlight",
+                                  "size": [
+                                    93,
+                                    88
+                                  ],
+                                  "offset": [
+                                    -16.5,
+                                    -22
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "poly_a": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'a')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_w": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'w')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_l": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -37,
+                                    -44
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'l')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "icon": {
+                                  "type": "image",
+                                  "size": [
+                                    16,
+                                    16
+                                  ],
+                                  "offset": [
+                                    22,
+                                    18.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 3,
+                                  "keep_ratio": false,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('textures/ui/cobblemon/summary/r' + (('%.11s' * #form_button_text) - ('%.9s' * #form_button_text)))",
+                                      "target_property_name": "#texture"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
                         }
                       ]
                     }
@@ -34403,6 +35697,1507 @@
                                 "binding_type": "view",
                                 "source_property_name": "(('%.1s' * #form_button_text) = 'x')",
                                 "target_property_name": "#visible"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_101": {
+                "type": "button",
+                "size": [
+                  16,
+                  16
+                ],
+                "offset": [
+                  136,
+                  74.5
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 101,
+                "layer": 6,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "panel",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "panel",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "controls": [
+                        {
+                          "highlight": {
+                            "type": "panel",
+                            "size": [
+                              "100%",
+                              "100%"
+                            ],
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "((('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)) = 'y')",
+                                "target_property_name": "#visible"
+                              }
+                            ],
+                            "controls": [
+                              {
+                                "chart": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/summary/stats_chart_pentagon_highlight",
+                                  "size": [
+                                    93,
+                                    88
+                                  ],
+                                  "offset": [
+                                    -38.5,
+                                    -40.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "poly_a": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'a')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_w": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'w')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_l": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'l')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "icon": {
+                                  "type": "image",
+                                  "size": [
+                                    16,
+                                    16
+                                  ],
+                                  "offset": [
+                                    0,
+                                    0.0
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 3,
+                                  "keep_ratio": false,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('textures/ui/cobblemon/summary/r' + (('%.11s' * #form_button_text) - ('%.9s' * #form_button_text)))",
+                                      "target_property_name": "#texture"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/summary/tooltip",
+                            "nineslice_size": 3,
+                            "size": [
+                              "100%c + 8px",
+                              "100%c + 8px"
+                            ],
+                            "offset": [
+                              20,
+                              -12
+                            ],
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "layer": 30,
+                            "controls": [
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    "default"
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 1,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "(#form_button_text - ('%.11s' * #form_button_text))",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "panel",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "controls": [
+                        {
+                          "highlight": {
+                            "type": "panel",
+                            "size": [
+                              "100%",
+                              "100%"
+                            ],
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "((('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)) = 'y')",
+                                "target_property_name": "#visible"
+                              }
+                            ],
+                            "controls": [
+                              {
+                                "chart": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/summary/stats_chart_pentagon_highlight",
+                                  "size": [
+                                    93,
+                                    88
+                                  ],
+                                  "offset": [
+                                    -38.5,
+                                    -40.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "poly_a": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'a')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.27450980392156865,
+                                          1.0,
+                                          0.7647058823529411
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_w": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'w')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          0.37254901960784315,
+                                          0.6470588235294118,
+                                          1.0
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "poly_l": {
+                                  "type": "panel",
+                                  "size": [
+                                    134,
+                                    148
+                                  ],
+                                  "offset": [
+                                    -59,
+                                    -62.5
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "((('%.8s' * #form_button_text) - ('%.7s' * #form_button_text)) = 'l')",
+                                      "target_property_name": "#visible"
+                                    }
+                                  ],
+                                  "controls": [
+                                    {
+                                      "w0": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w0_' + (('%.3s' * #form_button_text) - ('%.1s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w1": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w1_' + (('%.4s' * #form_button_text) - ('%.2s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w2": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w2_' + (('%.5s' * #form_button_text) - ('%.3s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w3": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w3_' + (('%.6s' * #form_button_text) - ('%.4s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    {
+                                      "w4": {
+                                        "type": "image",
+                                        "offset": [
+                                          18,
+                                          22
+                                        ],
+                                        "size": [
+                                          98,
+                                          98
+                                        ],
+                                        "layer": 2,
+                                        "keep_ratio": false,
+                                        "color": [
+                                          1.0,
+                                          0.7647058823529411,
+                                          0.11764705882352941
+                                        ],
+                                        "anchor_from": "top_left",
+                                        "anchor_to": "top_left",
+                                        "bindings": [
+                                          {
+                                            "binding_name": "#form_button_text",
+                                            "binding_type": "collection",
+                                            "binding_collection_name": "form_buttons"
+                                          },
+                                          {
+                                            "binding_type": "view",
+                                            "source_property_name": "('textures/ui/cobblemon/summary/pent/w4_' + (('%.7s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                            "target_property_name": "#texture"
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "icon": {
+                                  "type": "image",
+                                  "size": [
+                                    16,
+                                    16
+                                  ],
+                                  "offset": [
+                                    0,
+                                    0.0
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_left",
+                                  "layer": 3,
+                                  "keep_ratio": false,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('textures/ui/cobblemon/summary/r' + (('%.11s' * #form_button_text) - ('%.9s' * #form_button_text)))",
+                                      "target_property_name": "#texture"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/summary/tooltip",
+                            "nineslice_size": 3,
+                            "size": [
+                              "100%c + 8px",
+                              "100%c + 8px"
+                            ],
+                            "offset": [
+                              20,
+                              -12
+                            ],
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "layer": 30,
+                            "controls": [
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    "default"
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 1,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "(#form_button_text - ('%.11s' * #form_button_text))",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
                               }
                             ]
                           }

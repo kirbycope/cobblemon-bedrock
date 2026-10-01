@@ -4241,6 +4241,8 @@ function summaryParty(player) {
 // not know), and Forget when it knows more than one, for the move whose swap button was pressed; an add button on an
 // empty slot offers the same moves without Forget
 const summarySwap = new Map(), SWAP_ROWS = 20;
+// lang ui.ride_style.<style>.<kind>, by the Ride page's icon code (RIDE_ICONS in port.py)
+const RIDE_STYLE_NAMES = { i0: "Bird", i1: "Hover", i2: "Jet", i3: "Rocket", i4: "Standard", i5: "Cart", i6: "Boat", i7: "Dolphin", i8: "Submarine" };
 // StatWidget's pages (Stat, IVs, EVs, Other), by player; the polygon's vertices in drawStatPolygon's order
 const summaryRideStyle = new Map();   // player id -> the riding behaviour the Ride page shows
 const summaryStatTab = new Map(), HEX_ORDER = ["hp", "atk", "def", "spe", "spd", "spa"], HEX_LABELS = ["HP", "Atk", "Def", "Speed", "Sp.Def", "Sp.Atk"];   // player id -> the move slot being swapped
@@ -4416,14 +4418,18 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     for (let i = 0; i < 30; i++) form.button("mark", `${SUMMARY_UI}/none`);   // the slot's face is drawn under it
     form.button("mark chosen", `${SUMMARY_UI}/none`);
     for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
-    form.button("ride style", `${SUMMARY_UI}/none`);
+    // the Ride page's centre and icon: "P", the polygon, the style, whether it can switch, the icon, the tooltip
+    const rideCentre = tab === "s" && stab === "r" && rides ? `P${v.pent}${v.rsty}${rides.length > 1 ? "y" : "n"}${v.rico}${RIDE_STYLE_NAMES[v.rico]} | ${cap(rides[(summaryRideStyle.get(player.id) ?? 0) % rides.length][0])}` : "";
+    form.button(rideCentre, `${SUMMARY_UI}/none`);
     // the chart's hover text: "R" and the Ride page's readout, or "x" and the IV or EV page's (each out of its most, then
     // as a share of it), or nothing on the other pages
     const hexHover = () => HEX_ORDER.map((k) => {
         const val = (stab === "v" ? ivs[k] : evs[k]) ?? 0, most = stab === "v" ? 31 : 252;
         return padBytes(num(`${val}/${most}`), 14) + padBytes(num(Math.floor((val / most) * 100)), 7);
     }).join("");
-    form.button(tab !== "s" ? "" : stab === "r" ? "R" + rideHover : (stab === "v" || stab === "e") && mine ? "x" + hexHover() : "", `${SUMMARY_UI}/none`);
+    const labelsText = tab !== "s" ? "" : stab === "r" ? "R" + rideHover : (stab === "v" || stab === "e") && mine ? "x" + hexHover() : "";
+    form.button(labelsText, `${SUMMARY_UI}/none`);
+    form.button(rideCentre, `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -4439,7 +4445,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
         if (pick === 80 + SWAP_ROWS) { showSummary(source, tab, player, selected, side); return; }
-        if (pick === 79 + SWAP_ROWS) {
+        if (pick === 79 + SWAP_ROWS || pick === 81 + SWAP_ROWS) {
             if (stab === "r" && rides?.length > 1) { summaryRideStyle.set(player.id, ((summaryRideStyle.get(player.id) ?? 0) + 1) % rides.length); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
             showSummary(source, tab, player, selected, side); return;
         }

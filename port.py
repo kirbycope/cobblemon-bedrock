@@ -5186,6 +5186,15 @@ def create_summary_ui():
     stat_wedges(f"{S}/hex")
     stat_wedges(f"{S}/pent", sides=5)
     shutil.copyfile(f"{src}/summary_stats_chart_pentagon.png", f"{S}/stats_chart_pentagon.png")
+    shutil.copyfile(f"{src}/summary_stats_chart_pentagon_highlight.png", f"{S}/stats_chart_pentagon_highlight.png")
+    tip = Image.new("RGBA", (9, 9), (0, 0, 0, 0)); d = ImageDraw.Draw(tip)
+    d.rectangle((1, 0, 7, 8), fill=(16, 0, 16, 240)); d.rectangle((0, 1, 8, 7), fill=(16, 0, 16, 240))
+    for y in range(1, 8):
+        t = (y - 1) / 6
+        c = (int(0x50 + (0x28 - 0x50) * t), 0, int(0xFF + (0x7F - 0xFF) * t), 0x50)
+        d.point((1, y), fill=c); d.point((7, y), fill=c)
+    d.line((1, 1, 7, 1), fill=(0x50, 0, 0xFF, 0x50)); d.line((1, 7, 7, 7), fill=(0x28, 0, 0x7F, 0x50))
+    tip.save(f"{S}/tooltip.png")
     for n, (style, kind) in enumerate(RIDE_ICONS): shutil.copyfile(f"{src}/icon_ride_{style}_{kind}.png", f"{S}/ri{n}.png")
     # each rideable species' riding behaviours in its file's order: the style, the behaviour's icon and its stat ranges
     rides = {}
@@ -5518,7 +5527,44 @@ def create_summary_ui():
     stat_tab_buttons += [button(43 + SWAP_SLOTS + i, (77 + 9 + 20 * (i % 6), 12 + 48 + 19 * (i // 6)), (16, 16)) for i in range(30)]
     stat_tab_buttons += [button(73 + SWAP_SLOTS, (77 + 12, 12 + 12), (16, 16))]
     stat_tab_buttons += [button(74 + SWAP_SLOTS + i, (77 + 23 + 22 * i - 11, 12 + 140), (22, 9)) for i in range(5)]
-    stat_tab_buttons += [button(79 + SWAP_SLOTS, (77 + 59, 12 + 62.5), (16, 16))]
+    # StatWidget's centre: hovered (60 by 60 round the middle, 67, 74) with more than one riding style, the chart is the
+    # highlighted one and the polygon brighter, and a click switches the style; over the icon, a tooltip names the style
+    # and its kind ("Bird | Air"). Both hover faces read the button text, "P", the polygon's six letters, the style
+    # (a, w, l), whether it can switch (y, n), the icon, then the tooltip; the faces are under the label button's
+    centre_text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def centre_part(a, b=None):
+        return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))" if b else f"(#form_button_text - ('%.{a}s' * #form_button_text))"
+    def centre_highlight(ox, oy):
+        # the chart and polygon drawn again over the plain ones, from the face's own corner (ox, oy in the page)
+        controls = [{"chart": {"type": "image", "texture": f"{T}/stats_chart_pentagon_highlight", "size": [93, 88], "offset": [20.5 - ox, 22 - oy],
+                               "anchor_from": "top_left", "anchor_to": "top_left", "layer": 1}}]
+        for style, colour in (("a", (70 / 255, 1.0, 195 / 255)), ("w", (95 / 255, 165 / 255, 1.0)), ("l", (1.0, 195 / 255, 30 / 255))):
+            wedges = [{f"w{i}": {"type": "image", "offset": [18, 22], "size": [98, 98], "layer": 2, "keep_ratio": False, "color": list(colour),
+                                 "anchor_from": "top_left", "anchor_to": "top_left",
+                                 "bindings": [centre_text, {"binding_type": "view", "source_property_name": f"('{T}/pent/w{i}_' + {centre_part(1 + i, 3 + i)})", "target_property_name": "#texture"}]}}
+                      for i in range(5)]
+            controls.append({f"poly_{style}": {"type": "panel", "size": [134, 148], "offset": [-ox, -oy], "anchor_from": "top_left", "anchor_to": "top_left",
+                                               "bindings": [centre_text, {"binding_type": "view", "source_property_name": f"({centre_part(7, 8)} = '{style}')", "target_property_name": "#visible"}],
+                                               "controls": wedges}})
+        controls.append({"icon": {"type": "image", "size": [16, 16], "offset": [59 - ox, 62.5 - oy], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                                  "keep_ratio": False, "bindings": [centre_text, {"binding_type": "view", "source_property_name": f"('{T}/r' + {centre_part(9, 11)})", "target_property_name": "#texture"}]}})
+        return {"highlight": {"type": "panel", "size": ["100%", "100%"],
+                              "bindings": [centre_text, {"binding_type": "view", "source_property_name": f"({centre_part(8, 9)} = 'y')", "target_property_name": "#visible"}],
+                              "controls": controls}}
+    def centre_faces(index, ox, oy, size, tooltip):
+        b = button(index, (77 + ox, 12 + oy), size)
+        body = b[f"button_{index}"]
+        hovered = [centre_highlight(ox, oy)]
+        if tooltip:
+            hovered.append({"tooltip": {"type": "image", "texture": f"{T}/tooltip", "nineslice_size": 3, "size": ["100%c + 8px", "100%c + 8px"],
+                                        "offset": [20, -12], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 30, "controls": [
+                {"text": {"type": "label", "text": "#value", "size": ["default", "default"], "shadow": True, "color": [1, 1, 1], "layer": 1,
+                          "bindings": [centre_text, {"binding_type": "view", "source_property_name": centre_part(11), "target_property_name": "#value"}]}}]}})
+        body["controls"] = [{"default": {"type": "panel", "size": ["100%", "100%"]}},
+                            {"hover": {"type": "panel", "size": ["100%", "100%"], "controls": hovered}},
+                            {"pressed": {"type": "panel", "size": ["100%", "100%"], "controls": hovered}}]
+        return b
+    stat_tab_buttons += [centre_faces(79 + SWAP_SLOTS, 67 - 30, 74 - 30, (60, 60), False)]
     # the Ride, IV and EV pages' labels as one hover area over the chart, under the style button (two buttons there would
     # take each other's hovers, since a button is live whatever its faces show)
     hover_area = button(80 + SWAP_SLOTS, (77, 12 + RIDE_LABELS[0]), (134, RIDE_LABELS[1]))
@@ -5536,6 +5582,9 @@ def create_summary_ui():
     hovered = {"type": "panel", "size": ["100%", "100%"], "controls": ride_hovered + hex_hovered}
     body["controls"] = [{"default": plain}, {"hover": hovered}, {"pressed": hovered}]
     stat_tab_buttons.append(hover_area)
+    icon_button = centre_faces(81 + SWAP_SLOTS, 59, 62.5, (16, 16), True)
+    icon_button[f"button_{81 + SWAP_SLOTS}"]["layer"] = 6
+    stat_tab_buttons.append(icon_button)
     # the Marks tab's slots and the Moves tab's tiles, arrows and swap buttons are live on their own tab only, since
     # their faces are empty elsewhere and they would take the clicks and hovers meant for the other tabs
     for b in buttons + stat_tab_buttons:
