@@ -1740,7 +1740,11 @@ function sendOut(battle, entity, spot) {
     if (!f) return undefined;
     // a Pokemon coming back in keeps the PP and status it left with
     const kept = battle.kept?.[entity.id];
-    if (kept) { f.moves = kept.moves; f.status = kept.status; f.sleep = kept.sleep; }
+    if (kept) {
+        f.moves = kept.moves; f.status = kept.status; f.sleep = kept.sleep;
+        // and the health it left with: a Pokemon on the bench stands in the world, where a mob can reach it
+        if (typeof kept.hp === "number") f.hp = Math.min(f.stats.hp, Math.max(0, kept.hp));
+    }
     freeze(entity, true);
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
     sendOutEffect(battle.player, entity);
