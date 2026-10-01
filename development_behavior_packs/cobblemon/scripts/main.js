@@ -3520,7 +3520,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     for (const [letter, name] of [["i", "info"], ["a", "abilities"], ["s", "stats"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
     form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" ? "cry" : "none"}`);
     form.button("filter", `${PC_UI}/pokedex/filter`);
-    form.button("search", `${PC_UI}/pokedex/filter`).button("search by", `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);
+    form.button("search", `${PC_UI}/pokedex/filter`).button(`Search by ${DEX_SEARCH[state.by][1]}`, `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);   // its text is the tooltip
     for (const [letter, name] of [["z", "size"], ["d", "drops"], ["m", "moves"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
     const arrows = chosen !== null && (state.forms ?? 1) > 1;
     form.button("form left", `${PC_UI}/pokedex/${arrows ? "forms_arrow_left" : "none"}`).button("form right", `${PC_UI}/pokedex/${arrows ? "forms_arrow_right" : "none"}`);
@@ -3536,7 +3536,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         else if (pick === 39 || pick === 40) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
-        else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; player.sendMessage(`§7Search by ${DEX_SEARCH[state.by][1]}`); }
+        else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; }   // the button's tooltip names the new one
         else if (pick === 34) {
             // the search box: forms cannot type into a layout, so it asks, up to SearchWidget's 23 characters
             new ModalFormData().title(`Search by ${DEX_SEARCH[state.by][1]}`).textField("Search", "", { defaultValue: state.search ?? "" })

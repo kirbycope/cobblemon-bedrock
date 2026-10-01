@@ -6111,6 +6111,7 @@ def create_pokedex_ui():
     for name in ("species", "abilities", "moves", "drops"):
         face = Image.open(f"{src}/tab_{name}.png").convert("RGBA")
         face.crop((0, 0, 16, 16)).save(f"{D}/by_{name}.png"); face.crop((0, 16, 16, 32)).save(f"{D}/by_{name}_hover.png")
+    for name in ("tooltip_background", "tooltip_edge"): shutil.copyfile(f"{guiMain}/pokedex/{name}.png", f"{D}/{name}.png")
     bar = Image.open(f"{src}/pokedex_screen_bar_category.png").convert("RGBA")
     Image.new("RGBA", bar.size, (0, 0, 0, 0)).save(f"{D}/filter.png"); Image.new("RGBA", bar.size, (255, 255, 255, 40)).save(f"{D}/filter_hover.png")
 
@@ -6181,12 +6182,27 @@ def create_pokedex_ui():
                                                         {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
+    def dex_tooltip(b, dy):
+        # PokedexTooltip's renderTooltip: its background stretched to the text and 6 more, an edge each side, 11 high,
+        # centred on the button and dy from its top, the button's text in bold; hovered only
+        tip_text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        tip = {"tooltip": {"type": "image", "texture": f"{T}/pokedex/tooltip_background", "size": ["100%c + 6px", 11], "offset": [0, dy],
+                           "anchor_from": "top_middle", "anchor_to": "top_middle", "layer": 40, "keep_ratio": False, "controls": [
+            {"left": {"type": "image", "texture": f"{T}/pokedex/tooltip_edge", "size": [1, 11], "anchor_from": "top_left", "anchor_to": "top_right", "layer": 1}},
+            {"right": {"type": "image", "texture": f"{T}/pokedex/tooltip_edge", "size": [1, 11], "anchor_from": "top_right", "anchor_to": "top_left", "layer": 1}},
+            {"text": {"type": "label", "text": "#value", "size": ["default", 10], "offset": [0, 1], "shadow": True, "color": [1, 1, 1], "layer": 2,
+                      "bindings": [tip_text, {"binding_type": "view", "source_property_name": "('§l' + #form_button_text)", "target_property_name": "#value"}]}}]}}
+        body = next(iter(b.values()))
+        for state in body["controls"]:
+            key = next(iter(state))
+            if key != "default": state[key] = {**state[key], "controls": state[key].get("controls", []) + [tip]}
+        return b
     buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
     buttons += [button(25, (95, 14.5), (4, 6)), button(26, (95, 19.5), (4, 6)),        # region up and down
                 button(27, (160, 44), (4, 6)), button(28, (160, 170), (4, 6)),          # page up and down
                 button(29, (190.5, 181.5), (8, 8)), button(30, (212.5, 181.5), (8, 8)), button(31, (256.5, 181.5), (8, 8)),   # info, abilities, stats
                 button(32, (ix + 114, iy + 81), (22, 10)), button(33, (26, 180), (139, 11)),
-                button(34, (26, 28), (126, 11)), button(35, (154.5, 29.5), (8, 8)),        # the search bar, and search by
+                button(34, (26, 28), (126, 11)), dex_tooltip(button(35, (154.5, 29.5), (8, 8)), -14),        # the search bar, and search by
                 button(36, (234.5, 181.5), (8, 8)), button(37, (278.5, 181.5), (8, 8)), button(38, (300.5, 181.5), (8, 8)),   # size, drops, moves
                 button(39, (ix + 18, iy + 55.5), (5, 8)), button(40, (ix + 116, iy + 55.5), (5, 8))]                         # the form arrows
     dex = {"type": "panel", "size": [345, 207], "anchor_from": "center", "anchor_to": "center",
