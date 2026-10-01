@@ -6634,8 +6634,11 @@ def create_pot_ui():
             {"icon": {"type": "image", "size": [16, 16], "layer": 2, "keep_ratio": False,
                       "bindings": [texture, {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}},
             {"count": {"type": "label", "text": "#value", "shadow": True, "size": [18, 9], "offset": [1, 0.5], "anchor_from": "bottom_right", "anchor_to": "bottom_right",
-                       "text_alignment": "right", "layer": 4, "bindings": [text, {"binding_type": "view", "source_property_name": "#form_button_text", "target_property_name": "#value"}]}}]}
-        if hover: face["controls"].append({"hover": {"type": "image", "texture": f"{T}/slot_hover", "size": [16, 16], "layer": 3}})
+                       "text_alignment": "right", "layer": 4, "bindings": [text, {"binding_type": "view", "source_property_name": "(('%.5s' * #form_button_text) - ' ')", "target_property_name": "#value"}]}}]}
+        if hover:
+            # a hovered item's name, as a container screen shows it
+            face["controls"] += [{"hover": {"type": "image", "texture": f"{T}/slot_hover", "size": [16, 16], "layer": 3}},
+                                 java_tooltip("(#form_button_text - ('%.5s' * #form_button_text))", "(not (#form_button_text = ''))", (12, -12))]
         return face
     def button(index, offset, size, faces):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
@@ -6674,6 +6677,17 @@ RB_SLOTS = 20          # RecipeBookPage's 5 by 4 recipe buttons
 RB_TABS = 5            # the campfire pot's tabs: search, foods, medicines, complex dishes, misc
 RB_OVERLAY = 16        # OverlayRecipeComponent's buttons, four to a row
 RB_FIRST = 51          # the book's form buttons follow the pot's 51
+
+
+def java_tooltip(source, visible, offset):
+    """A Java tooltip box (TooltipRenderUtil's, the Summary's tooltip texture, nine-sliced) for a button's hover face:
+    its text is the view source over the button's text, shown while the visible source is true."""
+    text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    return {"tooltip": {"type": "image", "texture": "textures/ui/cobblemon/summary/tooltip", "nineslice_size": 3, "size": ["100%c + 8px", "100%c + 8px"],
+                        "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left", "layer": 40,
+                        "bindings": [text, {"binding_type": "view", "source_property_name": visible, "target_property_name": "#visible"}],
+                        "controls": [{"text": {"type": "label", "text": "#value", "size": ["default", "default"], "shadow": True, "color": [1, 1, 1], "layer": 1,
+                                               "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}]}}
 
 
 def nine_slice(image, width, height, border):
@@ -6742,7 +6756,8 @@ def pot_recipe_book(P, T, field, bound, texture, text, button):
 
     buttons = []
     # the filter: its sprite named by the button's texture, highlighted while hovered
-    buttons.append(button(RB_FIRST + 1, (110, 12), (26, 16), faces([image_from_texture("face", (0, 0), (26, 16))], [image_from_texture("face", (0, 0), (26, 16), "_highlighted")])))
+    buttons.append(button(RB_FIRST + 1, (110, 12), (26, 16), faces([image_from_texture("face", (0, 0), (26, 16))],
+        [image_from_texture("face", (0, 0), (26, 16), "_highlighted"), java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (20, -12))])))
     # the page arrows, each hidden ("none") where there is no page to turn to
     for n, x in ((2, 38), (3, 93)):
         buttons.append(shown_with_texture(button(RB_FIRST + n, (x, 137), (12, 17), faces([image_from_texture("face", (0, 0), (12, 17))], [image_from_texture("face", (0, 0), (12, 17), "_highlighted")]))))
@@ -6760,8 +6775,12 @@ def pot_recipe_book(P, T, field, bound, texture, text, button):
         buttons.append(shown_with_text(button(RB_FIRST + 5 + l, (-30, 3 + 27 * l), (35, 27), tab_faces)))
     # the recipe buttons: the slot sprite by the text's code (c, u, many_c, many_u), the shown result's icon 4 in
     for l in range(RB_SLOTS):
-        slot = [image_by_code("bg", (0, 0), (25, 25), "rb_slot_"), image_from_texture("icon", (4, 4), (16, 16))]
-        buttons.append(shown_with_text(button(RB_FIRST + 10 + l, (11 + 25 * (l % 5), 31 + 25 * (l // 5)), (25, 25), faces(slot, slot))))
+        slot = [at(f"bg_{code}", (0, 0), (25, 25), {"type": "image", "texture": f"{T}/rb_slot_{sprite}", "layer": 1,
+                                                      "bindings": [text, {"binding_type": "view", "source_property_name": f"(('%.1s' * #form_button_text) = '{code}')", "target_property_name": "#visible"}]})
+                for code, sprite in (("~", "craftable"), ("^", "uncraftable"), ("_", "many_craftable"), ("|", "many_uncraftable"))]
+        slot.append(image_from_texture("icon", (4, 4), (16, 16)))
+        tip = java_tooltip("(#form_button_text - ('%.1s' * #form_button_text))", "(not (#form_button_text = ''))", (20, -12))
+        buttons.append(shown_with_text(button(RB_FIRST + 10 + l, (11 + 25 * (l % 5), 31 + 25 * (l // 5)), (25, 25), faces(slot, slot + [tip]))))
     # the overlay: its panel sized by the body's "ovl" (columns x rows), and its buttons over the recipe buttons, each
     # recipe's ingredients 6 wide at 7 apart in their grid places (OverlayRecipeButton's 0.375 scale)
     overlay_first = RB_FIRST + 40

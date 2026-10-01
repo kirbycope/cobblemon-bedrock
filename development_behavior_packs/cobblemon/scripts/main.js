@@ -1224,14 +1224,16 @@ function openPot(block, player) {
                 search: state.search ? state.search : "§7§oSearch...",
                 ovl: ovl ? `o${Math.min(4, ovl.length)}x${Math.ceil(ovl.length / 4)}` : "none" };
     const form = new ActionFormData().title("cbm:pot").body(POT_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join(""));
-    for (let n = 0; n < 13; n++) { const s = data.s[n]; form.button(s && s[1] > 1 ? String(s[1]) : "", potIcon(s?.[0])); }
-    for (const slot of POT_INV) { const it = inv?.getItem(slot); form.button(it && it.amount > 1 ? String(it.amount) : "", potIcon(it?.typeId)); }
+    // each slot's text: its count (5 bytes) then the item's name, the hovered tooltip; nothing for an empty slot
+    const slotText = (id, count, shown) => !id ? "" : padBytes(count > 1 ? `\u00a7r${count}` : "", 5) + (id ? (shown ?? itemName(id)).replace(/\u00a7./g, "") : "");
+    for (let n = 0; n < 13; n++) { const s = data.s[n]; form.button(slotText(s?.[0], s?.[1] ?? 0, s ? slotStack(s).nameTag : undefined), potIcon(s?.[0])); }
+    for (const slot of POT_INV) { const it = inv?.getItem(slot); form.button(slotText(it?.typeId, it?.amount ?? 0, it?.nameTag), potIcon(it?.typeId)); }
     form.button("cook", `${UI}/pot/cook_${colour}_${lid ? "closed" : "open"}`);
     form.button("", recipe && !data.s[0] ? potIcon(recipe.out) : `${UI}/pot/none`);   // the result's preview
     // the recipe book: its button, the filter, page arrows, search box, tabs and recipe buttons, then the ghost slots
     const P = `${UI}/pot/rb_`, none = `${UI}/pot/none`;
     form.button("book", `${P}button`);
-    form.button("filter", `${P}filter_${book.set.filter ? "enabled" : "disabled"}`);
+    form.button(book.set.filter ? "Showing Cookable" : "Showing All", `${P}filter_${book.set.filter ? "enabled" : "disabled"}`);
     form.button("back", book.page > 0 ? `${P}page_backward` : none);
     form.button("forward", book.page < book.pages - 1 ? `${P}page_forward` : none);
     form.button("search", none);
@@ -1241,7 +1243,7 @@ function openPot(block, player) {
         const c = onPage[l];
         if (!c) { form.button("", none); continue; }
         const any = c.some(book.craftable), first = c.find(book.craftable) ?? c[0];
-        form.button(`${c.length > 1 ? "many_" : ""}${any ? "craftable" : "uncraftable"}`, potIcon(first.out));
+        form.button((c.length > 1 ? (any ? "_" : "|") : any ? "~" : "^") + itemName(first.out), potIcon(first.out));
     }
     const ghost = open && state.ghost ? RB_ALL.find((r) => r.id === state.ghost) : null, ghostAt = ghost ? rbPlace(ghost) : [];
     form.button("", ghost && !data.s[0] ? potIcon(ghost.out) : none);
