@@ -33,6 +33,7 @@ import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
+import { COSMETICS } from "./cosmetics.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -1505,6 +1506,49 @@ system.runInterval(() => {
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
 // Pokemon, whatever is in hand; a plain right-click on a wild Pokemon with an empty hand challenges it, as Cobblemon's
 // send-out key aimed at it does. Items used on a Pokemon without sneaking keep their own handlers.
+// Cosmetic items (CosmeticItemAssignment, PokemonEntity.offerCosmeticItem): a Pokemon whose species can wear an item
+// (data/cosmetic_items: Pikachu's caps, Conkeldurr's concrete, Timburr's logs and the rest) puts it on from the wheel's
+// cosmetic option, taking one from the hand; it then has the look the item's aspect gives, the variant with that form
+// and its own gender and shininess. With an empty hand the option takes the item back and the plain look returns, and
+// another item it can wear swaps for the one it has. The item stays with it through the PC, trades and evolution.
+const COSMETIC = "cobblemon:cosmetic";
+// the variant an item puts on, or null when the species cannot wear it (or not in its present form)
+function cosmeticLook(entity, item) {
+    const info = COSMETICS[entity?.typeId], aspect = item && info?.items[item];
+    if (!aspect) return null;
+    const worn = new Set(Object.values(info.items)), [form, female, shiny] = info.looks[variantOf(entity)] ?? [null, 0, 0];
+    if (form && (info.not.includes(form) || !worn.has(form))) return null;
+    const n = info.looks.findIndex(([f, g, s]) => f === aspect && g === female && s === shiny);
+    return n < 0 ? null : n;
+}
+// the plain look under a cosmetic one
+function cosmeticBase(entity) {
+    const info = COSMETICS[entity.typeId], [form, female, shiny] = info?.looks[variantOf(entity)] ?? [];
+    if (!info || !form || !new Set(Object.values(info.items)).has(form)) return null;
+    const n = info.looks.findIndex(([f, g, s]) => f === null && g === female && s === shiny);
+    return n < 0 ? null : n;
+}
+function offerCosmetic(player, target) {
+    if (!target?.isValid || prop(target, OWNER) !== player.id) return;
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
+    const worn = prop(target, COSMETIC), name = nicknameOf(target) || POKEMON[target.typeId].name;
+    if (hand && hand === worn) { player.sendMessage(`§c${name} is already wearing ${itemName(hand)}!`); return; }
+    const look = hand ? cosmeticLook(target, hand) : null;
+    if (hand && look === null) return;
+    if (!hand) {
+        const base = cosmeticBase(target);
+        if (base !== null) try { target.triggerEvent(`cobblemon:set_variant_${base}`); } catch (e) { }
+        setProp(target, COSMETIC, undefined);
+    } else {
+        consumeHand(player);
+        setProp(target, COSMETIC, hand);
+        try { target.triggerEvent(`cobblemon:set_variant_${look}`); } catch (e) { }
+    }
+    if (worn) giveOrDrop(player, worn);
+    player.sendMessage(!hand ? `You retrieved ${itemName(worn)} from ${name}.` : !worn ? `${name} was given ${itemName(hand)} to wear.`
+        : `You retrieved ${itemName(worn)} from ${name} and gave it ${itemName(hand)} to wear.`);
+    try { player.dimension.playSound("random.pop", target.location, { volume: 0.6, pitch: 1.4 }); } catch (e) { }
+}
 const WHEEL_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
 function openWheel(player, target) {
     if (!target?.isValid) return;
@@ -1517,7 +1561,9 @@ function openWheel(player, target) {
             if (hand && !HOLD_BLACKLIST.includes(hand)) giveHeld(player, target); else if (heldItem(target)) takeHeld(target);
             else player.sendMessage("§7Hold the item to give it.");
         } },
-        northeast: { icon: "cosmetic", tip: "Change cosmetic item", on: false },
+        // offered when the item in hand is one it can wear, or it wears one and the hand is empty (canGiveCosmetic)
+        northeast: { icon: "cosmetic", tip: "Change cosmetic item", on: (!!prop(target, COSMETIC) && !hand) || cosmeticLook(target, hand) !== null,
+                     act: () => offerCosmetic(player, target) },
         east: { icon: "summary", tip: "Summary", on: true, act: () => showSummary(target, "i", player) },
         south: { icon: "follow", tip: following ? "Stay" : "Follow", on: true, act: () => {
             try { target.triggerEvent(following ? "cobblemon:stay" : "cobblemon:follow"); } catch (e) { }
@@ -2370,6 +2416,11 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
+    } else if (event.id === "cobblemon:wheel") {
+        // for testing: "/execute as <pokemon> run scriptevent cobblemon:wheel" opens its interact wheel for its owner,
+        // as a sneaking right-click on it does, with whatever the owner holds
+        const owner = world.getPlayers().find((p) => p.id === prop(source, OWNER));
+        if (owner && POKEMON[source.typeId]) openWheel(owner, source);
     } else if (event.id === "cobblemon:container") {
         // for testing: "/execute as <entity> at @s run scriptevent cobblemon:container dx dy dz" logs the items in the
         // container that far from the block it stands in, and a campfire pot's slots
@@ -2435,6 +2486,8 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
             if (player) entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
             else entity.triggerEvent("cobblemon:caught");   // an owner who is not a player here (the test trader) still owns it
             if (kept?.["cobblemon:staying"]) entity.triggerEvent("cobblemon:stay");
+            const look = cosmeticLook(entity, kept?.[COSMETIC]);
+            if (look !== null) entity.triggerEvent(`cobblemon:set_variant_${look}`);
             // level, experience, moves, IVs, EVs, nature, friendship and held item carry over; the ability keeps its slot
             for (const [key, value] of Object.entries(kept ?? {})) { try { entity.setDynamicProperty(key, value); } catch (e) { } }
             const before = POKEMON[from], after = POKEMON[entity.typeId], ability = kept?.["cobblemon:ability"];
@@ -2730,7 +2783,7 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
