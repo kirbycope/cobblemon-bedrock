@@ -6936,6 +6936,219 @@ def pot_recipe_book(P, T, field, bound, texture, text, button):
     return book_panel, [toggle], ghosts
 
 
+# TradeGUI as a form (cbm:trade): main.js fills the body with TRADE_LAYOUT's fields in order, each padded to its width
+TRADE_STATS = ("hp", "atk", "def", "spa", "spd", "spe")
+TRADE_LAYOUT = [("state", 4), ("me", 16), ("them", 16)] + [
+    (f"{side}{key}", width) for side in "mo" for key, width in
+    (("has", 1), ("level", 6), ("ball", 3), ("name", 16), ("gender", 1), ("shiny", 1), ("icon", 5), ("type1", 3), ("type2", 3), ("spacer", 1),
+     ("nature", 20), ("ability", 22), ("move0", 18), ("move1", 18), ("move2", 18), ("move3", 18))
+    + tuple((f"iv{k}", 5) for k in TRADE_STATS) + tuple((f"ev{k}", 6) for k in TRADE_STATS)] + [("end", 0)]
+
+
+def create_trade_ui():
+    """TradeGUI (293 by 212): the trade background behind the two offered Pokemon's portraits, the base over it, each
+    side's party of six 25 by 25 slots (PartySlot: the portrait, "Lv. N" and the gender, the pointer over the one on
+    offer, the hover frame on the player's own), and for each offer its level, ball, name and gender across the top,
+    the held item, the shiny star, the type spacer and types, nature, ability, moves, IVs and EVs; the Trade button
+    (TradeButton: disabled, ready, or the dots while waiting on the other side), the ready bars and arrows at the top
+    as each side accepts, the trade animation while it goes through, both names above, and the exit button."""
+    src = f"{guiMain}/trade"
+    D = f"{uiTextures}/trade"
+    os.makedirs(D, exist_ok=True)
+    for name in ("trade_base", "trade_background", "trade_party_slot_hover", "trade_slot_icon_locked", "trade_animation", "trade_animation_arrows",
+                 "trade_ready", "trade_ready_opposing", "trade_ready_top", "trade_ready_top_opposing"):
+        shutil.copyfile(f"{src}/{name}.png", f"{D}/{name}.png")
+    # the type spacer's two halves (the player's on top, the other side's below), plain, single and double
+    for kind, name in (("e", "type_spacer"), ("s", "type_spacer_single"), ("d", "type_spacer_double")):
+        sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
+        sheet.crop((0, 0, 134, 12)).save(f"{D}/sp_m{kind}.png"); sheet.crop((0, 12, 134, 24)).save(f"{D}/sp_o{kind}.png")
+    # the Trade button: normal, active and disabled, each with its hovered half
+    for state, name in (("r", "trade_button"), ("a", "trade_button_active"), ("d", "trade_button_disabled")):
+        sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
+        sheet.crop((0, 0, 53, 14)).save(f"{D}/btn_{state}.png"); sheet.crop((0, 14, 53, 28)).save(f"{D}/btn_{state}_hover.png")
+    shutil.copyfile(f"{guiMain}/summary/icon_shiny.png", f"{D}/shiny_y.png")
+    blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    for name in ("shiny_n", "none", "none_hover", "slot", "slot_hover_n"): blank.save(f"{D}/{name}.png")
+    shutil.copyfile(f"{src}/trade_party_slot_hover.png", f"{D}/slot_hover.png")
+
+    T = "textures/ui/cobblemon"
+    offsets, at = {}, 0
+    for name, width in TRADE_LAYOUT: offsets[name] = (at, at + width); at += width
+    def field(name):
+        a, b = offsets[name]
+        if b == a: return f"(#form_text - ('%.{a}s' * #form_text))"
+        return f"('%.{b}s' * #form_text)" if a == 0 else f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
+    def bound(source, target):
+        return [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": source, "target_property_name": target}]
+    def at_(name, offset, size, extra):
+        return {name: {"offset": list(offset), "size": list(size), "anchor_from": "top_left", "anchor_to": "top_left", **extra}}
+    def label(name, source, offset, scale=1.0, size=(100, 10), align="left", shadow=True, layer=6, color=(1, 1, 1)):
+        return at_(name, offset, size, {"type": "label", "layer": layer, "font_scale_factor": scale, "text_alignment": align, "shadow": shadow,
+                                        "color": list(color), "text": "#value", "bindings": bound(source, "#value")})
+    def fixed(name, text, offset, scale=1.0, size=(100, 10), align="left", shadow=True, layer=6, color=(1, 1, 1)):
+        return at_(name, offset, size, {"type": "label", "layer": layer, "font_scale_factor": scale, "text_alignment": align, "shadow": shadow,
+                                        "color": list(color), "text": text})
+    def image(name, texture, offset, size, layer=3, extra=None):
+        return at_(name, offset, size, {"type": "image", "texture": f"{T}/{texture}", "layer": layer, "keep_ratio": False, **(extra or {})})
+    def picture(name, prefix, source, offset, size, layer=4, extra=None):
+        return at_(name, offset, size, {"type": "image", "layer": layer, "keep_ratio": False,
+                                        "bindings": bound(f"('{T}/{prefix}' + {source})", "#texture"), **(extra or {})})
+    def when(control, source):
+        key = next(iter(control)); control[key]["bindings"] = control[key].get("bindings", []) + bound(source, "#visible")[1:] if control[key].get("bindings") else bound(source, "#visible")
+        return control
+    def state(n): return f"(('%.{n + 1}s' * #form_text) - ('%.{n}s' * #form_text))"   # state letters: mine accepted, theirs accepted, processing, button
+    # centred labels in TradeGUI are drawn centred on a point: a label of width w centred at x sits at x - w / 2
+    def centred(name, source_or_text, x, y, w=60, scale=0.5, is_field=True, layer=6, shadow=True):
+        make = label if is_field else fixed
+        return make(name, source_or_text, (x - w / 2, y), scale, size=(w, 6 if scale == 0.5 else 10), align="center", layer=layer, shadow=shadow)
+    controls = [image("background", "trade/trade_background", (68, 23), (157, 85), 1),
+                image("base", "trade/trade_base", (0, 0), (293, 212), 4)]
+    # the portraits, 78 square at 70, 30 and 145, 30, hidden while the trade animation runs
+    for side, x in (("m", 70), ("o", 145)):
+        controls.append(when(picture(f"portrait_{side}", "icons/", field(f"{side}icon"), (x + 9, 30 + 8), (60, 60), 2), f"({state(2)} = 'n')"))
+    controls += [fixed("party_label", "\u00a7lParty", (25.5 - 30, 7), 1.0, size=(60, 10), align="center"),
+                 label("my_name", f"('\u00a7l' + {field('me')})", (13, -10.5), 1.0, size=(120, 10)),
+                 label("their_name", f"('\u00a7l' + {field('them')})", (280 - 120, -10.5), 1.0, size=(120, 10), align="right")]
+    for side, base in (("m", 0), ("o", 77)):
+        lx = 108 + base
+        mine = side == "m"
+        controls += [centred(f"{side}nature_l", "\u00a7lNature", 108 if mine else 185, 139.5, is_field=False),
+                     centred(f"{side}ability_l", "\u00a7lAbility", 108 if mine else 185, 156.5, is_field=False),
+                     centred(f"{side}moves_l", "\u00a7lMoves", 108 if mine else 185, 173.5, is_field=False),
+                     centred(f"{side}held_l", "Held Item", 22.5 if mine else 270.5, 135.5, is_field=False),
+                     centred(f"{side}ivs_l", "\u00a7lIVs", 47 if mine else 265, 147.5 if mine else 148, w=20, is_field=False),
+                     centred(f"{side}evs_l", "\u00a7lEVs", 62.5 if mine else 280.5, 147.5 if mine else 148, w=20, is_field=False)]
+        for k, (stat, text) in enumerate(zip(TRADE_STATS, ("HP", "Atk", "Def", "Sp. Atk", "Sp. Def", "Speed"))):
+            controls.append(fixed(f"{side}stat_{stat}", text, (9.5 if mine else 227.5, 155.5 + 8 * k), 0.5, size=(40, 6)))
+        # the offer, while there is one
+        has = f"({field(f'{side}has')} = 'y')"
+        offer = [fixed(f"{side}lv_l", "\u00a7lLv.", (76 + (0 if mine else 117), 2), 0.8, size=(20, 10)),
+                 label(f"{side}level", f"('\u00a7l' + {field(f'{side}level')})", (89 + (0 if mine else 117), 2), 0.8, size=(30, 10)),
+                 picture(f"{side}ball", "summary/", field(f"{side}ball"), (73.5 + (0 if mine else 75), 12), (8, 8), 6),
+                 # Cobblemon's narrow DEFAULT_LARGE font fits a name before the gender at 139, Bedrock's wider one does not:
+                 # the name is drawn at 0.8 in a strip that stops at the gender
+                 at_(f"{side}name_clip", (82 + (0 if mine else 75), 12), (56.5, 10), {"type": "panel", "clips_children": True, "layer": 6, "controls": [
+                     label(f"{side}name", f"('\u00a7l' + {field(f'{side}name')})", (0, 0), 0.8, size=(120, 10))]}),
+                 picture(f"{side}gender", "summary/g", field(f"{side}gender"), (139 + (0 if mine else 75), 12.5), (3.5, 5), 6),
+                 picture(f"{side}shiny", "trade/shiny_", field(f"{side}shiny"), (71.5 if mine else 213.5, 33.5), (8, 8), 6),
+                 picture(f"{side}type1", "summary/", field(f"{side}type1"), ((106 if mine else 187) - 4.5, 112 - 1), (9, 9), 6),
+                 picture(f"{side}type2", "summary/", field(f"{side}type2"), ((106 if mine else 187) + 0.5, 112 - 1), (9, 9), 6),
+                 centred(f"{side}nature", field(f"{side}nature"), lx, 146.5),
+                 centred(f"{side}ability", field(f"{side}ability"), lx, 163.5)]
+        offer += [centred(f"{side}move{i}", field(f"{side}move{i}"), lx, 180.5 + 7 * i) for i in range(4)]
+        for k, stat in enumerate(TRADE_STATS):
+            offer += [centred(f"{side}iv_{stat}", field(f"{side}iv{stat}"), 60 + (-13 if mine else 205), 155.5 + 8 * k, w=16, shadow=False),
+                      centred(f"{side}ev_{stat}", field(f"{side}ev{stat}"), 60 + (3 if mine else 221), 155.5 + 8 * k, w=16, shadow=False)]
+        controls.append({f"{side}offer": {"type": "panel", "size": [293, 212], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 5,
+                                          "bindings": bound(has, "#visible"), "controls": offer}})
+        # the type spacer under the types: plain without an offer, single or double with one
+        controls.append(picture(f"{side}spacer", f"trade/sp_{side}", field(f"{side}spacer"), (73 if mine else 153, 113.5), (67, 6), 5))
+    # the ready bars (6 frames, one each 6 ticks) and their tops while each side has accepted, the arrows and the trade
+    # animation while the trade goes through
+    def flip(texture, offset, size, uv, frames, fps, layer=6):
+        return image(f"flip_{texture.split('/')[-1]}_{offset[0]}", texture, offset, size, layer, {
+            "uv_size": list(uv), "uv": f"@server_form.cobblemon_trade_{texture.split('/')[-1]}"})
+    anims = {}
+    for texture, uv, frames, fps in (("trade_ready", (28, 6), 6, 20 / 6), ("trade_ready_opposing", (28, 6), 6, 20 / 6),
+                                      ("trade_ready_top", (28, 5), 6, 20 / 6), ("trade_ready_top_opposing", (28, 5), 6, 20 / 6),
+                                      ("trade_animation", (114, 133), 13, 20), ("trade_animation_arrows", (69, 5), 18, 20)):
+        anims[f"cobblemon_trade_{texture}"] = {"anim_type": "flip_book", "initial_uv": [0, 0], "frame_count": frames, "frame_step": uv[1], "fps": round(fps, 3), "looping": True}
+    controls += [when(flip("trade/trade_ready", (85, 126), (28, 6), (28, 6), 6, 3), f"({state(0)} = 'y')"),
+                 when(flip("trade/trade_ready_top", (112, 2), (28, 5), (28, 5), 6, 3), f"({state(0)} = 'y')"),
+                 when(flip("trade/trade_ready_opposing", (180, 126), (28, 6), (28, 6), 6, 3), f"({state(1)} = 'y')"),
+                 when(flip("trade/trade_ready_top_opposing", (153, 2), (28, 5), (28, 5), 6, 3), f"({state(1)} = 'y')"),
+                 when(flip("trade/trade_animation", (80.5, 31), (57, 66.5), (114, 133), 13, 20, 3), f"({state(2)} = 'y')"),
+                 when(flip("trade/trade_animation", (155.5, 31), (57, 66.5), (114, 133), 13, 20, 3), f"({state(2)} = 'y')"),
+                 when(flip("trade/trade_animation_arrows", (112, 2), (69, 5), (69, 5), 18, 20, 7), f"({state(2)} = 'y')")]
+    # the buttons: the twelve party slots (the player's six, then the other side's), Trade, exit, and the two held items
+    text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    texture = {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def own(a, b=None):
+        return f"(#form_button_text - ('%.{a}s' * #form_button_text))" if b is None else \
+            (f"('%.{b}s' * #form_button_text)" if a == 0 else f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))")
+    def button(index, offset, size, faces, layer=8):
+        return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
+                                    "collection_index": index, "layer": layer, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "controls": [{"default": faces(False)}, {"hover": faces(True)}, {"pressed": faces(True)}]}}
+    def view(source, target): return {"binding_type": "view", "source_property_name": source, "target_property_name": target}
+    # a slot's text: the portrait (5), "y" or "n" for on offer, the gender (1), "y" when it can be offered, then "Lv. N"
+    def slot_faces(mine):
+        def faces(hover):
+            parts = [{"icon": {"type": "image", "size": [22, 22], "offset": [1.5, 2], "layer": 2, "keep_ratio": True, "anchor_from": "top_left", "anchor_to": "top_left",
+                               "bindings": [text, view(f"('{T}/icons/' + {own(0, 5)})", "#texture")]}},
+                     {"level": {"type": "label", "text": "#value", "size": [24, 5], "offset": [1, 1], "layer": 4, "font_scale_factor": 0.5, "shadow": True,
+                                "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, view(own(8), "#value")]}},
+                     {"gender": {"type": "image", "size": [3, 4], "offset": [21, 1], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                                 "bindings": [text, view(f"('{T}/summary/g' + {own(6, 7)})", "#texture")]}},
+                     {"pointer": {"type": "image", "texture": f"{T}/pc/pointer", "size": [5.5, 4], "offset": [10, -4.5], "layer": 5,
+                                  "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, view(f"({own(5, 6)} = 'y')", "#visible")]}}]
+            if mine and hover:
+                parts.append({"hover": {"type": "image", "texture": f"{T}/trade/slot_hover", "size": [25, 25], "layer": 1,
+                                        "bindings": [text, view(f"({own(7, 8)} = 'y')", "#visible")]}})
+            return {"type": "panel", "size": ["100%", "100%"], "controls": parts}
+        return faces
+    def slots(origin, upward):
+        out = []
+        for n in range(6):
+            x, y = origin
+            if n > 0:
+                even = n % 2 == 0
+                index = (n - (0 if even else 1)) // 2
+                x += 0 if even else 25 + 4
+                y += (25 + 4) * index + (0 if even else (-8 if upward else 8))
+            out.append((x, y))
+        return out
+    buttons = [button(n, xy, (25, 25), slot_faces(True)) for n, xy in enumerate(slots((9, 38), True))]
+    buttons += [button(6 + n, xy, (25, 25), slot_faces(False)) for n, xy in enumerate(slots((230, 30), False))]
+    def trade_faces(hover):
+        suffix = "_hover" if hover else ""
+        return {"type": "panel", "size": ["100%", "100%"], "controls": [
+            {"face": {"type": "image", "size": ["100%", "100%"], "layer": 1, "keep_ratio": False,
+                      "bindings": [texture, view(f"(#form_button_texture + '{suffix}')", "#texture")]}},
+            {"label": {"type": "label", "text": "#value", "size": ["100%", 10], "offset": [0, 3], "layer": 2, "text_alignment": "center", "shadow": True,
+                       "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, view("#form_button_text", "#value")]}}]}
+    buttons.append(button(12, (120, 119), (53, 14), trade_faces))
+    def plain_faces(hover):
+        return {"type": "image", "size": ["100%", "100%"], "layer": 1, "keep_ratio": False,
+                "bindings": [texture, view(f"(#form_button_texture + '{'_hover' if hover else ''}')", "#texture")]}
+    buttons.append(button(13, (265, 6), (26, 13), plain_faces))
+    def item_faces(hover):
+        controls = [{"icon": {"type": "image", "size": ["100%", "100%"], "layer": 1, "keep_ratio": False,
+                              "bindings": [texture, view("#form_button_texture", "#texture")]}}]
+        if hover: controls.append(java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (12, -12)))
+        return {"type": "panel", "size": ["100%", "100%"], "controls": controls}
+    buttons += [button(14, (50, 125), (16, 16), item_faces), button(15, (227, 125), (16, 16), item_faces)]
+    panel = {"type": "panel", "size": [293, 212], "anchor_from": "center", "anchor_to": "center",
+             "bindings": [{"binding_name": "#title_text"}, view("(not ((#title_text - 'cbm:trade') = #title_text))", "#visible")],
+             "controls": controls + [{"buttons": {"type": "collection_panel", "size": [293, 212], "collection_name": "form_buttons", "controls": buttons}}]}
+    with open(f"{scriptsBedrock}/trade_layout.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the trade form's body fields and widths, and the trade evolutions\n")
+        file.write("export const TRADE_LAYOUT = " + json.dumps(TRADE_LAYOUT) + ";\n")
+        file.write("export const TRADE_EVOLUTIONS = " + json.dumps(trade_evolutions(), separators=(",", ":")) + ";\n")
+    return {"cobblemon_trade": panel, **{k: v for k, v in anims.items()}}
+
+
+def trade_evolutions():
+    """Each species' trade evolutions (TradeEvolution): the evolve event, the item it must hold (used up when
+    consumeHeldItem says), and the species it must be traded for (requiredContext)."""
+    out = {}
+    for pokemon in pokemons:
+        species = species_for(pokemon) or {}
+        for evolution in species.get("evolutions", []):
+            if evolution.get("variant") != "trade": continue
+            result = pokemon_for_species_name(evolution.get("result", ""))
+            if not result: continue
+            held = next((r.get("itemCondition") for r in evolution.get("requirements", []) if r.get("variant") == "held_item"), None)
+            other = pokemon_for_species_name(evolution["requiredContext"]) if evolution.get("requiredContext") else None
+            out.setdefault(entity_id(pokemon), []).append({"event": f"cobblemon:evolve_to_{result}", "held": held,
+                                                          "use": bool(evolution.get("consumeHeldItem")), "with": entity_id(other) if other else None})
+    return out
+
+
+
 def create_tm_ui():
     M = f"{uiTextures}/tm"
     fresh(M)
@@ -7132,7 +7345,9 @@ def create_interact_ui():
     # each option's icon is drawn onto its button (at twice the size, so the icons' half-pixel offsets land on a
     # pixel), one texture per button, icon and state, since a form button carries a single texture
     icons = {key: Image.open(f"{src}/interact_wheel_icon_{name}.png").convert("RGBA") for key, name in
-             (("held", "held_item"), ("cosmetic", "cosmetic_item"), ("ride", "ride"), ("shoulder", "shoulder"), ("battle", "battle"))}
+             (("held", "held_item"), ("cosmetic", "cosmetic_item"), ("ride", "ride"), ("shoulder", "shoulder"), ("battle", "battle"), ("trade", "trade"))}
+    # the player wheel's Trade with a pending request carries the exclamation mark above its icon (secondaryIconResource)
+    exclamation = Image.open(f"{src}/interact_wheel_icon_exclamation.png").convert("RGBA").resize((32, 32), Image.NEAREST)
     # the port's own two: the Summary's info tab icon, and the pasture's move icon for Stay and Follow
     icons["summary"] = Image.open(f"{guiMain}/summary/summary_tab_icon_info.png").convert("RGBA")
     move = Image.open(f"{guiMain}/pasture/pasture_slot_icon_move.png").convert("RGBA")
@@ -7148,6 +7363,10 @@ def create_interact_ui():
                 out = frame.copy(); out.alpha_composite(icon, (int(ix * 2), int(iy * 2)))
                 out.save(f"{W}/{name}_{key}{state}.png")
                 dim(out).save(f"{W}/{name}_{key}_off{state}.png")
+                if key == "trade":
+                    top = int(iy * 2) - 32
+                    out.alpha_composite(exclamation.crop((0, max(0, -top), 32, 32)), (int(ix * 2), max(0, top)))
+                    out.save(f"{W}/{name}_trade_new{state}.png")
 
     T = "textures/ui/cobblemon"
     def face(state):
@@ -7429,7 +7648,8 @@ def create_battle_ui():
                                                                                        {"pokedex@server_form.cobblemon_pokedex": {}}, {"starter@server_form.cobblemon_starter": {}},
                                                                                        {"interact@server_form.cobblemon_interact": {}},
                                                                                        {"dialogue@server_form.cobblemon_dialogue": {}},
-                                                                                       {"tm@server_form.cobblemon_tm": {}}, {"pot@server_form.cobblemon_pot": {}}]},
+                                                                                       {"tm@server_form.cobblemon_tm": {}}, {"pot@server_form.cobblemon_pot": {}},
+                                                                                       {"trade@server_form.cobblemon_trade": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
@@ -7448,6 +7668,7 @@ def create_battle_ui():
     ui.update(create_dialogue_ui())
     ui.update(create_tm_ui())
     ui.update(create_pot_ui())
+    ui.update(create_trade_ui())
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")

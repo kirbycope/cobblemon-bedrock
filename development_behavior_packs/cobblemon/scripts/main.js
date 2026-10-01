@@ -7,7 +7,7 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause } from "@minecraft/server";
-import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
+import { ActionFormData, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
@@ -32,6 +32,7 @@ import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishi
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
+import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -669,7 +670,7 @@ function showScene(player, npc, tag) {
 }
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target } = event;
-    if (!NPC_SCENES[target?.typeId]) return;
+    if (!NPC_SCENES[target?.typeId] || (player.isSneaking && target.hasTag("cobblemon:test_trader"))) return;
     event.cancel = true;
     system.run(() => showScene(player, target, target.typeId));
 });
@@ -2305,6 +2306,23 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
+    } else if (event.id === "cobblemon:trade_test") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:trade_test [species ...]" puts a scripted trader two
+        // blocks in front of the player, owning a Shelmet, a Graveler and a Kadabra (or the species given), staying beside it
+        const player = source.typeId === "minecraft:player" ? source : nearestPlayer(source);
+        if (!player) return;
+        const view = player.getViewDirection(), at = { x: player.location.x + view.x * 2, y: player.location.y, z: player.location.z + view.z * 2 };
+        let trader;
+        try { trader = player.dimension.spawnEntity("cobblemon:npc_trainer", at); } catch (e) { console.warn(`trade_test: ${e}`); return; }
+        trader.addTag(TEST_TRADER); trader.nameTag = "Test Trader";
+        system.runTimeout(() => { if (trader.isValid) trader.nameTag = "Test Trader"; }, 10);   // the NPC names itself as it spawns
+        const species = event.message.trim() ? event.message.trim().split(/\s+/) : ["shelmet", "graveler", "kadabra"];
+        const part = tradeParticipant(trader);
+        species.forEach((name, n) => {
+            const typeId = Object.keys(POKEMON).find((id) => id.endsWith(`_${name}`));
+            if (!typeId) return;
+            spawnForParticipant(part, { t: typeId, v: 0, lv: 20 + n * 5, xp: expFor(POKEMON[typeId].expGroup, 20 + n * 5), mv: null, k: {} }, { x: at.x + 1.5 * (n - 1), y: at.y, z: at.z + 1.5 });
+        });
     } else if (event.id === "cobblemon:trainer") {
         const player = nearestPlayer(source);
         const typeId = `cobblemon:${event.message.trim()}`;
@@ -2320,10 +2338,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
 
 // Evolution by item transforms a Pokemon into a new entity, which comes out wild. The old one's owner is
 // noted as it is removed, and the transformed entity that appears in its place is tamed back to them.
-const evolving = [];
+const evolving = [], notEvolving = new Set();   // removed for other reasons (a trade), so not taken for an evolution
 world.beforeEvents.entityRemove.subscribe((event) => {
     const e = event.removedEntity;
-    if (!POKEMON[e.typeId]) return;
+    if (!POKEMON[e.typeId] || notEvolving.delete(e.id)) return;
     let owner, kept = {};
     try {
         owner = e.getDynamicProperty(OWNER);
@@ -2341,6 +2359,8 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
         try {
             if (!entity.isValid) return;
             if (player) entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
+            else entity.triggerEvent("cobblemon:caught");   // an owner who is not a player here (the test trader) still owns it
+            if (kept?.["cobblemon:staying"]) entity.triggerEvent("cobblemon:stay");
             // level, experience, moves, IVs, EVs, nature, friendship and held item carry over; the ability keeps its slot
             for (const [key, value] of Object.entries(kept ?? {})) { try { entity.setDynamicProperty(key, value); } catch (e) { } }
             const before = POKEMON[from], after = POKEMON[entity.typeId], ability = kept?.["cobblemon:ability"];
@@ -2635,7 +2655,8 @@ function snapshot(entity) {
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
-    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale"];
+    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
+    "cobblemon:ot", "cobblemon:friendship_by"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -4500,7 +4521,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), status: prop(source, FAINTED) ? "fnt" : statusOf(source) ?? "non",
         dex: num(String(info.dex ?? DEX_INDEX.get(source.typeId) + 1 ?? 0).padStart(4, "0")), species: info.name,
         types: info.types.map(cap).join(" / "),
-        ot: mine ? player.name : (world.getPlayers().find((p) => p.id === prop(source, OWNER))?.name ?? "-"),
+        // the original trainer, kept through trades, else the one who has it
+        ot: prop(source, "cobblemon:ot") ?? (mine ? player.name : (world.getPlayers().find((p) => p.id === prop(source, OWNER))?.name ?? prop(source, OWNER_NAME) ?? "-")),
         nature: mine ? natureName(effectiveNature(source)) : "-", ability: abilityName(f.ability), desc: ABILITY_DESC[f.ability] ?? "",
         friendship: num(friendshipOf(source)),
     });
@@ -5419,3 +5441,271 @@ world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
 });
 
 world.afterEvents.worldLoad?.subscribe?.(() => console.log("[cobblemon] battle script ready"));
+
+// Trading (TradeManager, ActiveTrade, TradeGUI). Sneaking and right-clicking another player opens Cobblemon's player
+// wheel: Battle (shown greyed, the port has no battles between players) and Trade. Trade sends a request, which the
+// other player accepts from their own wheel on the sender (the Trade icon carries the exclamation mark) within 20
+// seconds; both must have a Pokemon and be within 12 blocks. The trade screen then opens for both: each offers one
+// Pokemon from their party, sees the other's, and presses Trade to accept the other's offer; changing an offer takes
+// both acceptances back. Once both have accepted the trade animation plays and the two swap owners: each one's
+// friendship is kept for the trainer it leaves and given back if it ever returns to one it had, otherwise it starts
+// again at its species' base (cacheFriendship, restoreFriendship), it keeps its original trainer, and a trade
+// evolution happens when its conditions are met (the held item, used up when it says so, or the species it was traded
+// for). The screen stays open for more trades until either side leaves it.
+// "/scriptevent cobblemon:trade_test" puts a scripted trader beside the running player, with three Pokemon of its own,
+// which accepts a request, offers its first Pokemon and accepts the player's offer, for testing with one player.
+const TRADE_RANGE = 12, TRADE_EXPIRY = 20 * 20, OT = "cobblemon:ot", FRIENDSHIP_BY = "cobblemon:friendship_by", TEST_TRADER = "cobblemon:test_trader";
+const tradeRequests = [];   // { from: participant, to: participant, at: tick }
+const trades = new Map();   // participant id -> the trade it is in
+function tradeParticipant(entity) {
+    if (!entity?.isValid) return null;
+    if (entity.typeId === "minecraft:player") return { id: entity.id, name: entity.name, player: entity, entity };
+    if (entity.hasTag(TEST_TRADER)) return { id: `trader:${entity.id}`, name: entity.nameTag || "Trader", bot: entity, entity };
+    return null;
+}
+function tradeParty(part) {
+    if (part.player) return summaryParty(part.player);
+    try {
+        return part.bot.dimension.getEntities({ families: ["owned"], location: part.bot.location, maxDistance: 32 })
+            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === part.id).sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
+    } catch (e) { return []; }
+}
+function tradeTell(part, text) { if (part.player?.isValid) part.player.sendMessage(text); }
+function tradeDistance(a, b) {
+    const p = a.entity.location, q = b.entity.location;
+    return a.entity.dimension.id === b.entity.dimension.id ? Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) : Infinity;
+}
+// the player wheel (createPlayerInteractGui), on a player or the test trader
+function openPlayerWheel(player, target) {
+    const me = tradeParticipant(player), other = tradeParticipant(target);
+    if (!me || !other) return;
+    const pending = tradeRequests.find((r) => r.from.id === other.id && r.to.id === me.id);
+    const options = {
+        north: { icon: "battle", on: false, tip: "Target is currently unavailable for that action." },
+        northeast: { icon: pending ? "trade_new" : "trade", on: !trades.has(other.id), tip: trades.has(other.id) ? "Target is currently unavailable for that action." : "Trade",
+                     act: () => requestTrade(me, other) },
+    };
+    const form = new ActionFormData().title("cbm:interact").body("");
+    for (const o of WHEEL_ORDER) {
+        const opt = options[o];
+        form.button(opt?.tip ?? "", `textures/ui/cobblemon/interact/${o}_${!opt ? "none" : opt.on ? opt.icon : `${opt.icon}_off`}`);
+    }
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        const opt = options[WHEEL_ORDER[r.selection]];
+        if (opt?.on && target.isValid) opt.act();
+    }).catch(() => { });
+}
+function requestTrade(me, other) {
+    if (tradeDistance(me, other) > TRADE_RANGE) { tradeTell(me, "§cTarget is too far away!"); return; }
+    const theirs = tradeRequests.findIndex((r) => r.from.id === other.id && r.to.id === me.id);
+    if (theirs >= 0) {
+        const request = tradeRequests.splice(theirs, 1)[0];
+        tradeTell(me, `§aYou accepted §b${other.name}§a's trade request!`);
+        tradeTell(other, `§b${me.name}§a accepted your trade request!`);
+        startTrade(request.to, request.from);
+        return;
+    }
+    if (tradeRequests.some((r) => r.from.id === me.id && r.to.id === other.id)) { tradeTell(me, `§cYou already sent a trade request to §b${other.name}§c!`); return; }
+    if (!tradeParty(me).length) { tradeTell(me, "§cYou don't have any Pokémon to trade!"); return; }
+    if (!tradeParty(other).length) { tradeTell(me, `§b${other.name}§c doesn't have any Pokémon to trade!`); return; }
+    tradeRequests.push({ from: me, to: other, at: system.currentTick });
+    tradeTell(me, `§aRequested to trade with §b${other.name}§a.`);
+    tradeTell(other, `§b${me.name}§a requested to trade Pokémon with you!`);
+    try { other.player?.playSound("random.orb"); } catch (e) { }
+    // the scripted trader accepts after a second
+    if (other.bot) system.runTimeout(() => { if (other.bot.isValid && me.player?.isValid) requestTrade(tradeParticipant(other.bot), me); }, 20);
+}
+system.runInterval(() => {
+    for (let i = tradeRequests.length - 1; i >= 0; i--) {
+        const r = tradeRequests[i];
+        if (system.currentTick - r.at < TRADE_EXPIRY && r.from.entity.isValid && r.to.entity.isValid) continue;
+        tradeRequests.splice(i, 1);
+        tradeTell(r.from, `§7Your request to trade with §b${r.to.name}§7 has timed out!`);
+        tradeTell(r.to, `§7The trade request from §b${r.from.name}§7 has timed out!`);
+    }
+}, 20);
+function startTrade(a, b) {
+    // TradeManager.onAccept: the receiver is player 1
+    const trade = { parts: [a, b], offer: [null, null], accepted: [false, false], processing: false, shown: [0, 0] };
+    trades.set(a.id, trade); trades.set(b.id, trade);
+    showTrades(trade);
+    for (const side of [0, 1]) if (trade.parts[side].bot) botOffer(trade, side);
+}
+function botOffer(trade, side) {
+    system.runTimeout(() => {
+        if (trades.get(trade.parts[side].id) !== trade || trade.offer[side]) return;
+        const first = tradeParty(trade.parts[side])[0];
+        if (first) updateTradeOffer(trade, side, first);
+    }, 20);
+}
+function updateTradeOffer(trade, side, entity) {
+    trade.offer[side] = entity?.id ?? null;
+    // a new offer takes back both acceptances (ActiveTrade.updateOffer, setOfferedPokemon)
+    trade.accepted = [false, false];
+    showTrades(trade);
+}
+function changeTradeAcceptance(trade, side, accepted) {
+    trade.accepted[side] = accepted;
+    if (trade.accepted[0] && trade.accepted[1]) startTradeProcess(trade);
+    else {
+        showTrades(trade);
+        // the scripted trader accepts what it is offered a second later
+        const other = 1 - side;
+        if (accepted && trade.parts[other].bot && !trade.accepted[other])
+            system.runTimeout(() => { if (trades.get(trade.parts[other].id) === trade && trade.accepted[side] && trade.offer[side]) changeTradeAcceptance(trade, other, true); }, 20);
+    }
+}
+function startTradeProcess(trade) {
+    trade.processing = true;
+    showTrades(trade);
+    for (const part of trade.parts) try { part.player?.playSound("cobblemon.gui.trade"); } catch (e) { }
+    // the animation's length (MAX_TRADE_PROGRESS), then the swap and the cries
+    system.runTimeout(() => {
+        if (trades.get(trade.parts[0].id) !== trade) return;
+        performTrade(trade);
+        // shown again once the two have come out with their new trainers and any trade evolution is done
+        system.runTimeout(() => {
+            if (trades.get(trade.parts[0].id) !== trade) return;
+            trade.processing = false;
+            trade.offer = [null, null]; trade.accepted = [false, false];
+            showTrades(trade);
+        }, 20);
+    }, 50);
+}
+function entityById(dimension, id) {
+    try { return world.getEntity(id); } catch (e) { return undefined; }
+}
+// TradeManager.performTrade, as records: each leaves its trainer and comes out beside the other
+function performTrade(trade) {
+    const [a, b] = trade.parts, ea = entityById(a.entity.dimension, trade.offer[0]), eb = entityById(b.entity.dimension, trade.offer[1]);
+    if (!ea?.isValid || !eb?.isValid || prop(ea, OWNER) !== a.id || prop(eb, OWNER) !== b.id) { cancelTrade(trade); return; }
+    const ra = snapshot(ea), rb = snapshot(eb);
+    for (const [rec, from, to] of [[ra, a, b], [rb, b, a]]) {
+        const k = rec.k;
+        if (!k[OT]) k[OT] = from.name;
+        let cache = {}; try { cache = JSON.parse(k[FRIENDSHIP_BY] ?? "{}"); } catch (e) { }
+        cache[from.id] = k["cobblemon:friendship"] ?? POKEMON[rec.t]?.friendship ?? 50;
+        k["cobblemon:friendship"] = cache[to.id] ?? POKEMON[rec.t]?.friendship ?? 50;
+        k[FRIENDSHIP_BY] = JSON.stringify(cache);
+    }
+    const placeA = eb.location, placeB = ea.location;
+    // each comes out where the other was, so neither removal may pass for the other's trade evolution
+    for (const gone of [ea, eb]) { notEvolving.add(gone.id); try { gone.remove(); } catch (e) { notEvolving.delete(gone.id); } }
+    const na = spawnForParticipant(b, ra, placeA), nb = spawnForParticipant(a, rb, placeB);
+    // TradeEvolution.attemptEvolution, once the new ones are set up
+    system.runTimeout(() => { tradeEvolution(na, rb.t); tradeEvolution(nb, ra.t); }, 10);
+}
+function spawnForParticipant(part, rec, at) {
+    if (part.player) return spawnStored(part.player, rec, at);
+    const entity = part.bot.dimension.spawnEntity(rec.t, at);
+    system.run(() => {
+        try {
+            entity.triggerEvent(`cobblemon:set_variant_${rec.v}`);
+            entity.triggerEvent("cobblemon:caught"); entity.triggerEvent("cobblemon:stay");
+            setProp(entity, OWNER, part.id); setProp(entity, OWNER_NAME, part.name); setProp(entity, "cobblemon:staying", true);
+            setProp(entity, LEVEL, rec.lv); setProp(entity, EXP, rec.xp);
+            if (rec.mv) setProp(entity, MOVESET, rec.mv);
+            if (rec.n) setProp(entity, NICK, rec.n);
+            for (const [key, value] of Object.entries(rec.k ?? {})) setProp(entity, key, value);
+        } catch (e) { }
+    });
+    return entity;
+}
+function tradeEvolution(entity, tradedFor) {
+    if (!entity?.isValid || prop(entity, HELD) === "cobblemon:everstone") return;
+    const evolution = (TRADE_EVOLUTIONS[entity.typeId] ?? []).find((e) => (!e.held || prop(entity, HELD) === e.held) && (!e.with || e.with === tradedFor));
+    if (!evolution) return;
+    if (evolution.held && evolution.use) setProp(entity, HELD, undefined);
+    try { entity.triggerEvent(evolution.event); } catch (e) { }
+}
+function cancelTrade(trade) {
+    for (const part of trade.parts) {
+        if (trades.get(part.id) === trade) trades.delete(part.id);
+        if (part.player?.isValid) { trade.shown[trade.parts.indexOf(part)]++; try { uiManager.closeAllForms(part.player); } catch (e) { } }
+    }
+}
+// TradeGUI for each player in the trade, shown again whenever the trade changes
+function showTrades(trade) {
+    trade.parts.forEach((part, side) => {
+        if (!part.player?.isValid) return;
+        const version = ++trade.shown[side];
+        try { uiManager.closeAllForms(part.player); } catch (e) { }
+        system.run(() => { if (trade.shown[side] === version && trades.get(part.id) === trade) showTradeForm(trade, side, version); });
+    });
+}
+function tradeOfferFields(entity, side, v) {
+    const p = side;
+    if (!entity?.isValid) { Object.assign(v, { [`${p}has`]: "n", [`${p}spacer`]: "e", [`${p}icon`]: "i----" }); return; }
+    const f = fighter(entity), info = f.info, ivs = ivsOf(entity), evs = evsOf(entity);
+    Object.assign(v, {
+        [`${p}has`]: "y", [`${p}level`]: num(f.level), [`${p}name`]: nicknameOf(entity) || info.name,
+        [`${p}ball`]: `b${String(Math.max(0, BALL_INDEX.indexOf(prop(entity, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"))).padStart(2, "0")}`,
+        [`${p}gender`]: { male: "m", female: "f" }[genderOf(entity)] ?? "o",
+        [`${p}shiny`]: (SHINY_VARIANTS[entity.typeId] ?? []).includes(variantOf(entity)) ? "y" : "n",
+        [`${p}icon`]: iconOf(entity.typeId, variantOf(entity)),
+        [`${p}type1`]: typeCode(info.types[0]), [`${p}type2`]: typeCode(info.types[1]), [`${p}spacer`]: info.types[1] ? "d" : "s",
+        [`${p}nature`]: natureName(prop(entity, "cobblemon:mint") ?? prop(entity, "cobblemon:nature")),
+        [`${p}ability`]: abilityName(prop(entity, "cobblemon:ability") ?? info.ability),
+    });
+    for (let i = 0; i < 4; i++) v[`${p}move${i}`] = f.moves[i]?.name ?? "";
+    for (const k of ["hp", "atk", "def", "spa", "spd", "spe"]) { v[`${p}iv${k}`] = num(ivs[k] ?? 0); v[`${p}ev${k}`] = num(evs[k] ?? 0); }
+}
+// a field padded with "§r" codes, which draw nothing, rather than spaces, so centred text stays centred and a name
+// never runs past its label into the "..." Bedrock puts on text too long for it
+function tradePad(value, width) {
+    const text = padBytes(value, width).trimEnd();
+    let left = width;
+    for (const ch of text) left -= utf8Length(ch);
+    return text + "§r".repeat(Math.floor(left / 3)) + " ".repeat(left % 3);
+}
+function showTradeForm(trade, side, version) {
+    const me = trade.parts[side], them = trade.parts[1 - side], player = me.player;
+    const mine = tradeParty(me), theirs = tradeParty(them);
+    const myOffer = entityById(null, trade.offer[side]), theirOffer = entityById(null, trade.offer[1 - side]);
+    const v = { state: `${trade.accepted[side] ? "y" : "n"}${trade.accepted[1 - side] ? "y" : "n"}${trade.processing ? "y" : "n"}`, me: me.name, them: them.name };
+    tradeOfferFields(myOffer, "m", v); tradeOfferFields(theirOffer, "o", v);
+    const body = TRADE_LAYOUT.map(([key, width]) => (width ? tradePad(v[key] ?? "", width) : v[key] ?? "")).join("");
+    const form = new ActionFormData().title("cbm:trade").body(body);
+    const locked = trade.accepted[side] || trade.processing;
+    const slot = (e, offered, own) => !e ? "i----non" : iconOf(e.typeId, variantOf(e)) + (offered ? "y" : "n") + ({ male: "m", female: "f" }[genderOf(e)] ?? "o")
+        + (own && !locked ? "y" : "n") + `Lv. ${prop(e, LEVEL) ?? POKEMON[e.typeId].level}`;
+    for (let n = 0; n < 6; n++) form.button(slot(mine[n], mine[n]?.id === trade.offer[side], true), `${UI}/trade/none`);
+    for (let n = 0; n < 6; n++) form.button(slot(theirs[n], theirs[n]?.id === trade.offer[1 - side], false), `${UI}/trade/none`);
+    // TradeButton: disabled until both have offered, ready, then the dots while waiting on the other side
+    const enabled = !!(myOffer && theirOffer) && !trade.processing, active = trade.accepted[side] && !trade.accepted[1 - side];
+    form.button(active ? "..." : "Trade", `${UI}/trade/btn_${!enabled ? "d" : active ? "a" : "r"}`);
+    form.button("exit", `${UI}/summary/exit`);
+    for (const e of [myOffer, theirOffer]) {
+        const held = e?.isValid ? heldItem(e) : null;
+        form.button(held ? itemName(held) : "", (held && HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1]) || `${UI}/trade/none`);
+    }
+    form.show(player).then((r) => {
+        if (trade.shown[side] !== version) return;   // shown again since, or the trade is over
+        if (r.canceled || r.selection === 13) { cancelTrade(trade); return; }
+        const pick = r.selection;
+        if (pick < 6 && mine[pick] && !locked) {
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            updateTradeOffer(trade, side, trade.offer[side] === mine[pick].id ? null : mine[pick]);
+            return;
+        }
+        if (pick === 12 && enabled) {
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            changeTradeAcceptance(trade, side, !trade.accepted[side]);
+            return;
+        }
+        showTrades(trade);
+    }).catch(() => cancelTrade(trade));
+}
+world.afterEvents.playerLeave.subscribe(({ playerId }) => {
+    const trade = trades.get(playerId);
+    if (trade) cancelTrade(trade);
+    for (let i = tradeRequests.length - 1; i >= 0; i--) if (tradeRequests[i].from.id === playerId || tradeRequests[i].to.id === playerId) tradeRequests.splice(i, 1);
+});
+// a sneaking right-click on another player, or on the test trader, opens the player wheel
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target } = event;
+    if (!player.isSneaking || !(target?.typeId === "minecraft:player" || target?.hasTag?.(TEST_TRADER))) return;
+    event.cancel = true;
+    system.run(() => openPlayerWheel(player, target));
+});
