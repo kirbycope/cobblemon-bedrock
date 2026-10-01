@@ -3007,6 +3007,51 @@ def minecraft_model(name):
     return None
 
 
+def minecraft_texture(path):
+    """A texture from the Java client's own assets (item/bowl), read from the newest Minecraft jar, as an image."""
+    import zipfile, io
+    jars = sorted(glob.glob(os.path.join(os.environ.get("APPDATA", ""), ".minecraft", "versions", "*", "*.jar")), key=os.path.getmtime)
+    for jar in reversed(jars):
+        try:
+            with zipfile.ZipFile(jar) as z: return Image.open(io.BytesIO(z.read(f"assets/minecraft/textures/{path}.png"))).convert("RGBA")
+        except (KeyError, zipfile.BadZipFile, OSError): continue
+    return None
+
+
+def create_cooking_items():
+    """The campfire pot's foods the item generator leaves without their use: Ponigiri eaten as PonigiriItem's food
+    (nutrition 2 at 0.55), and Sinister Tea (SinisterTeaItem: drunk whenever, nothing to eat, leaving its bowl), its icon
+    the bowl with Cobblemon's tea over it as the item model layers them."""
+    print("Creating cooking items...")
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    path = f"{itemsBedrock}/general/ponigiri.json"
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as file: item = json.load(file)
+        item["minecraft:item"]["components"].update({"minecraft:food": {"nutrition": 2, "saturation_modifier": 0.55},
+                                                     "minecraft:use_animation": "eat", "minecraft:use_modifiers": {"use_duration": 1.6, "movement_modifier": 0.35}})
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+    bowl = minecraft_texture("item/bowl")
+    if bowl:
+        icon = bowl.copy()
+        icon.alpha_composite(Image.open(f"{cobblemon}/textures/item/food/sinister_tea/sinister_tea_overlay.png").convert("RGBA"))
+        os.makedirs(f"{texturesItemsBedrock}/food", exist_ok=True)
+        icon.save(f"{texturesItemsBedrock}/food/sinister_tea.png")
+        itemTextureData["texture_data"]["sinister_tea"] = {"textures": "textures/items/food/sinister_tea"}
+        with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+        with open(f"{itemsBedrock}/general/sinister_tea.json", "w", encoding="utf-8") as file:
+            file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
+                "description": {"identifier": "cobblemon:sinister_tea", "menu_category": {"category": "items"}},
+                "components": {"minecraft:icon": "sinister_tea", "minecraft:display_name": {"value": "item.cobblemon:sinister_tea.name"}, "minecraft:max_stack_size": 16,
+                               "minecraft:food": {"nutrition": 0, "saturation_modifier": 0, "can_always_eat": True, "using_converts_to": "minecraft:bowl"},
+                               "minecraft:use_animation": "drink", "minecraft:use_modifiers": {"use_duration": 1.6, "movement_modifier": 0.35}}}}, indent=2))
+        lang_path = f"{textsBedrock}/en_US.lang"
+        with open(lang_path, encoding="utf-8") as file: written = file.read()
+        if "item.cobblemon:sinister_tea.name=" not in written:
+            with open(lang_path, "a", encoding="utf-8") as file: file.write(f"item.cobblemon:sinister_tea.name={lang.get('item.cobblemon.sinister_tea', 'Sinister Tea')}" + chr(10))
+    print("Create cooking items complete.")
+
+
 CAMPFIRE_POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"]
 
 
@@ -7125,6 +7170,7 @@ def main():
     write_item_names(general_items)
     create_model_blocks()
     create_campfire_blocks()
+    create_cooking_items()
     create_recipes()
     create_structures()
     create_battle_data()

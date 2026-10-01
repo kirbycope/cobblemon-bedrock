@@ -907,8 +907,8 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     dropPot(block.dimension, block.location, potData(block), colour);
     savePot(block, null);
 });
-// CookingPotScreen: a slot clicked in the inventory is picked up (framed), and a grid or seasoning slot clicked then
-// takes it (a different stack there swaps back); the picked slot clicked again moves its stack in as a shift-click
+// CookingPotScreen: a slot clicked in the inventory is picked up (framed), and an empty grid or seasoning slot clicked
+// then takes one of it (the same item there takes the stack, a different one swaps back); the picked slot clicked again moves its stack in as a shift-click
 // does (CookingPotMenu.quickMoveStack: the grid, and for a seasoning the seasoning slots after it), and a pot slot
 // clicked with nothing picked goes back to the inventory. The Cook button opens and closes the lid. The screen is shown
 // again after every click.
@@ -976,6 +976,37 @@ function aprijuiceQuality(boosts) {
     const total = Object.values(boosts).reduce((a, b) => a + b, 0), order = ["LOW", "MEDIUM", "HIGH"];
     return Object.entries(APRIJUICES.cookingQualityPointThresholds).filter(([at]) => total >= Number(at)).map(([, q]) => q).sort((a, b) => order.indexOf(b) - order.indexOf(a))[0] ?? "LOW";
 }
+// The other seasoning processors: mob_effects (MobEffectUtils.mergeEffects: the strongest amplifier, durations
+// summed at 1, 0.75, 0.5 and 0.25 from the longest), food (FoodUtils.merge on the result's own nutrition, scaled by
+// 1, 0.8, 0.6 or 0.4 with the number of seasonings), ingredient (the seasonings' ids: a Ponigiri with sweet berries
+// is a Jelly Donut); a seasoning is used up when one of the recipe's processors reads it (consumesItem)
+const BASE_FOOD = { "cobblemon:ponigiri": [2, 2.2] };   // PonigiriItem's nutrition 2 at 0.55
+const effectName = (id) => id.split(":").pop().split("_").map(cap).join(" ");
+const ROMAN = ["", " II", " III", " IV", " V", " VI"];
+function seasonResult(recipe, ids) {
+    const meta = {}, data = ids.map((id) => SEASONINGS[id] ?? {});
+    if (recipe.proc.includes("mob_effects")) {
+        const groups = {};
+        for (const s of data) for (const e of s.mobEffects ?? []) (groups[e.effect] ??= []).push(e);
+        meta.effects = Object.entries(groups).map(([effect, group]) => ({ e: effect, a: Math.max(...group.map((g) => g.amplifier ?? 0)),
+            d: Math.ceil(group.map((g) => g.duration).sort((a, b) => b - a).reduce((sum, d, i) => sum + d * ([1, 0.75, 0.5][i] ?? 0.25), 0)) }));
+    }
+    if (recipe.proc.includes("food")) {
+        const foods = data.filter((s) => s.food).map((s) => s.food), [h0, s0] = BASE_FOOD[recipe.out] ?? [0, 0];
+        if (foods.length) {
+            const k = [1, 0.8, 0.6][foods.length - 1] ?? 0.4;
+            meta.food = [Math.ceil((foods.reduce((a, f) => a + (f.hunger ?? 0), 0) + h0) * k), Math.round((foods.reduce((a, f) => a + (f.saturation ?? 0), 0) + s0) * k * 100) / 100];
+        } else meta.food = [h0, s0];
+    }
+    if (recipe.proc.includes("ingredient")) meta.ing = ids.filter((id) => SEASONINGS[id]);
+    return Object.keys(meta).length ? meta : undefined;
+}
+function consumesSeasoning(recipe, id) {
+    const s = SEASONINGS[id];
+    if (!s) return false;
+    return recipe.proc.some((p) => (p === "ride_boosts" ? Object.keys(s.flavours ?? {}).length : p === "mob_effects" ? !!s.mobEffects : p === "food" ? !!s.food
+        : p === "spawn_bait" ? !!s.baitEffects?.length : p === "ingredient" || p === "food_colour"));
+}
 // a slot's item as an ItemStack, with an Aprijuice's name and boosts
 function slotStack(s) {
     const stack = new ItemStack(s[0], s[1]);
@@ -986,6 +1017,18 @@ function slotStack(s) {
         stack.nameTag = `§r${prefix} ${cap(colour.toLowerCase())} Aprijuice`;
         if (has) stack.setLore([`§7Quality: ${cap(quality.toLowerCase())}`, "§7Riding Stat Boosts:",
             ...RIDE_STATS.filter((k) => boosts[k]).map((k) => `${RIDE_COLOURS[k]}${RIDE_STAT_NAMES[k]}§7: ${boosts[k] < 0 ? `§c${boosts[k]}` : `§a+${boosts[k]}`}`)]);
+    }
+    const meta = s[2];
+    if (meta && !colour) {
+        const lore = [];
+        if (meta.effects?.length) {
+            lore.push("§7Effect:");
+            for (const e of meta.effects) lore.push(`§9${effectName(e.e)}${ROMAN[e.a] ?? ` ${e.a + 1}`} (${Math.floor(e.d / 1200)}:${String(Math.floor(e.d / 20) % 60).padStart(2, "0")})`);
+        }
+        if (meta.food) lore.push("§7Nutrition:", `§a+${meta.food[0]} Hunger, +${meta.food[1]} Saturation`);
+        if (meta.ing?.length) lore.push(`§8Seasonings: ${meta.ing.map((id) => itemName(id)).join(", ")}`);
+        if (meta.ing?.includes("minecraft:sweet_berries") && s[0] === "cobblemon:ponigiri") stack.nameTag = "§rJelly Donut";
+        if (lore.length) stack.setLore(lore);
     }
     return stack;
 }
@@ -999,9 +1042,37 @@ function stackSlot(item) {
             if (m) boosts[Object.keys(RIDE_STAT_NAMES).find((k) => RIDE_STAT_NAMES[k] === m[1])] = Number(m[2]);
         }
         out.push({ boosts });
+        return out;
     }
+    const lore = item.getLore?.() ?? [], meta = {};
+    for (const raw of lore) {
+        const line = raw.replace(/§./g, "");
+        const effect = line.match(/^(.+?)( II| III| IV| V| VI)? \((\d+):(\d\d)\)$/);
+        if (effect) {
+            const id = Object.values(SEASONINGS).flatMap((s) => s.mobEffects ?? []).map((e) => e.effect).find((e) => effectName(e) === effect[1]) ?? `minecraft:${effect[1].toLowerCase().replace(/ /g, "_")}`;
+            (meta.effects ??= []).push({ e: id, a: ROMAN.indexOf(effect[2] ?? ""), d: Number(effect[3]) * 1200 + Number(effect[4]) * 20 });
+        }
+        const food = line.match(/^\+(\d+) Hunger, \+([\d.]+) Saturation$/);
+        if (food) meta.food = [Number(food[1]), Number(food[2])];
+        const ing = line.match(/^Seasonings: (.+)$/);
+        if (ing) meta.ing = ing[1].split(", ").map((name) => Object.keys(SEASONINGS).find((id) => itemName(id) === name)).filter(Boolean);
+    }
+    if (Object.keys(meta).length) out.push(meta);
     return out;
 }
+// drinking a tea gives its effects (SinisterTeaItem), eating a Ponigiri adds its nutrition on top (PonigiriItem)
+world.afterEvents.itemCompleteUse.subscribe(({ itemStack, source }) => {
+    const meta = stackSlot(itemStack)?.[2];
+    if (!meta || aprijuiceColour(itemStack.typeId)) return;
+    for (const e of meta.effects ?? []) try { source.addEffect(e.e.split(":").pop(), Math.max(1, e.d), { amplifier: e.a }); } catch (err) { }
+    if (meta.food) {
+        try {
+            const hunger = source.getComponent("minecraft:player.hunger"), saturation = source.getComponent("minecraft:player.saturation");
+            hunger.setCurrentValue(Math.min(20, hunger.currentValue + meta.food[0]));
+            saturation.setCurrentValue(Math.min(hunger.currentValue, saturation.currentValue + meta.food[1]));
+        } catch (err) { }
+    }
+});
 const sameSlot = (a, b) => a && b && a[0] === b[0] && JSON.stringify(a[2] ?? null) === JSON.stringify(b[2] ?? null);
 const REMAINDERS = { "minecraft:milk_bucket": "minecraft:bucket", "minecraft:water_bucket": "minecraft:bucket", "minecraft:honey_bottle": "minecraft:glass_bottle",
                      "minecraft:potion": "minecraft:glass_bottle", "minecraft:dragon_breath": "minecraft:glass_bottle" };
@@ -1044,8 +1115,9 @@ function openPot(block, player) {
             const held = st.picked !== null ? invGet(st.picked) : null;
             if (held && pick > 0 && (pick < 10 || SEASONINGS[held[0]])) {
                 const there = d.s[pick];
-                if (pick >= 10 && !there) {
-                    // a seasoning slot takes one (each counts once, as a stack), and the rest stays picked for the next slot
+                if (!there) {
+                    // an empty slot takes one, as a right-click places one, and the rest stays picked for the next slot
+                    // (a seasoning counts once whatever its count, and a recipe takes one from each grid slot)
                     d.s[pick] = [held[0], 1, ...held.slice(2)]; invSet(st.picked, held[1] > 1 ? [held[0], held[1] - 1, ...held.slice(2)] : null);
                     if (held[1] > 1) { savePot(block, d); showPotContents(block, d); system.run(() => openPot(block, player)); return; }
                 } else if (sameSlot(there, held)) {
@@ -1088,7 +1160,7 @@ system.runInterval(() => {
         // the seasonings the recipe takes (its seasoningTag) and what they make of the result
         const filter = SEASONING_FILTERS[recipe?.tag] ?? [], seasoned = [10, 11, 12].filter((n) => data.s[n] && filter.includes(data.s[n][0]));
         const meta = recipe?.proc.includes("ride_boosts") && aprijuiceColour(recipe.out)
-            ? { boosts: aprijuiceBoosts(aprijuiceColour(recipe.out), seasoned.map((n) => data.s[n][0])) } : undefined;
+            ? { boosts: aprijuiceBoosts(aprijuiceColour(recipe.out), seasoned.map((n) => data.s[n][0])) } : recipe && seasonResult(recipe, seasoned.map((n) => data.s[n][0]));
         const made = meta ? [recipe.out, recipe.n, meta] : recipe && [recipe.out, recipe.n];
         if (!recipe || !lid || (out && (!sameSlot(out, made) || out[1] + recipe.n > maxStack(recipe.out)))) progress = 0;
         else {
@@ -1097,7 +1169,7 @@ system.runInterval(() => {
                 progress = 0;
                 data.s[0] = [recipe.out, (out?.[1] ?? 0) + recipe.n, ...made.slice(2)];
                 // a seasoning with flavours is used up (RideBoostsSeasoningProcessor.consumesItem)
-                if (meta) for (const n of seasoned) if (Object.keys(SEASONINGS[data.s[n][0]]?.flavours ?? {}).length) data.s[n] = data.s[n][1] > 1 ? [data.s[n][0], data.s[n][1] - 1, ...data.s[n].slice(2)] : null;
+                for (const n of seasoned) if (consumesSeasoning(recipe, data.s[n][0])) data.s[n] = data.s[n][1] > 1 ? [data.s[n][0], data.s[n][1] - 1, ...data.s[n].slice(2)] : null;
                 for (let n = 1; n <= 9; n++) {
                     const s = data.s[n];
                     if (!s) continue;
