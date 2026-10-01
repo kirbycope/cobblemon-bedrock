@@ -33,7 +33,7 @@ import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
-import { COSMETICS } from "./cosmetics.js";
+import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -1512,6 +1512,16 @@ system.runInterval(() => {
 // and its own gender and shininess. With an empty hand the option takes the item back and the plain look returns, and
 // another item it can wear swaps for the one it has. The item stays with it through the PC, trades and evolution.
 const COSMETIC = "cobblemon:cosmetic";
+// the Summary's and the PC's held and cosmetic item toggle (showCosmeticItem), per player, off each time a screen opens
+const showCosmetic = new Set();
+// the item slot's icon, tooltip and toggle state for the held item or, toggled, the cosmetic one
+function itemSlot(v, held, cosmetic, player, blank) {
+    const shown = showCosmetic.has(player.id) ? cosmetic : held;
+    v.imode = showCosmetic.has(player.id) ? "c" : "h";
+    v.ilabel = showCosmetic.has(player.id) ? "Cosmetic Item" : "Held Item";
+    v.item = (shown && (showCosmetic.has(player.id) ? COSMETIC_ICONS[shown] && `textures/${COSMETIC_ICONS[shown].replace(/^textures\//, "")}` : HELD_ICONS[(HELD_INDEX[shown] ?? 0) - 1])) || blank;
+    v.itemName = shown ? itemName(shown) : "";
+}
 // the variant an item puts on, or null when the species cannot wear it (or not in its present form)
 function cosmeticLook(entity, item) {
     const info = COSMETICS[entity?.typeId], aspect = item && info?.items[item];
@@ -1564,7 +1574,7 @@ function openWheel(player, target) {
         // offered when the item in hand is one it can wear, or it wears one and the hand is empty (canGiveCosmetic)
         northeast: { icon: "cosmetic", tip: "Change cosmetic item", on: (!!prop(target, COSMETIC) && !hand) || cosmeticLook(target, hand) !== null,
                      act: () => offerCosmetic(player, target) },
-        east: { icon: "summary", tip: "Summary", on: true, act: () => showSummary(target, "i", player) },
+        east: { icon: "summary", tip: "Summary", on: true, act: () => { showCosmetic.delete(player.id); showSummary(target, "i", player); } },
         south: { icon: "follow", tip: following ? "Stay" : "Follow", on: true, act: () => {
             try { target.triggerEvent(following ? "cobblemon:stay" : "cobblemon:follow"); } catch (e) { }
             setProp(target, "cobblemon:staying", following ? true : undefined);
@@ -2836,9 +2846,7 @@ function pcInfo(v, rec, entity) {
         nature: natureName(kept("cobblemon:mint") ?? kept("cobblemon:nature")), ability: abilityName(kept("cobblemon:ability") ?? form.ability),
     });
     moves.slice(0, 4).forEach((id, n) => { v[`move${n}`] = MOVES[id]?.name ?? ""; });
-    const held = kept(HELD);
-    v.item = (held && HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1]) || `${PC_UI}/summary/blank`;
-    v.itemName = held ? itemName(held) : "";   // the held item's tooltip
+    v.held = kept(HELD) ?? null; v.cosmetic = kept(COSMETIC) ?? null;   // the item slot's, set by itemSlot
 }
 
 // PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
@@ -2941,7 +2949,7 @@ const PC_NAMES = "cobblemon:pc_names";
 
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
-    if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; }
+    if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; showCosmetic.delete(player.id); }
     const done = () => { try { setPcScreen(block, false); } catch (e) { } };
     const party = summaryParty(player), contents = box(player, state.box);
     const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
@@ -2967,6 +2975,7 @@ function openPc(block, player, state) {
     }
     else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
     else pcInfo(v, null, null);
+    itemSlot(v, v.held, v.cosmetic, player, `${PC_UI}/summary/blank`);
     for (let n = 0; n < 30; n++) {
         const shown = pcPasses(contents[n], state.filter);
         v[`b${n}`] = shown ? iconOf(contents[n]?.t, contents[n]?.v) : "i----"; v[`s${n}`] = sel?.kind === "box" && sel.box === state.box && sel.slot === n ? "y" : "n";
@@ -2993,6 +3002,7 @@ function openPc(block, player, state) {
     form.button("filter", `${PC_UI}/pc/bar`).button("box name", `${PC_UI}/pc/bar`);
     // the hover areas: the filter's icon (its format, lang ui.pc.filter.tooltip) and the held item (its name)
     form.button("Format: pikachu shiny held_item lvl=1...", `${PC_UI}/pc/none`).button(v.itemName ?? "", `${PC_UI}/pc/none`);
+    form.button("item toggle", `${PC_UI}/summary/itog_${v.imode === "c" ? "h" : "c"}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
@@ -3001,6 +3011,11 @@ function openPc(block, player, state) {
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
         if (pick === 41) {
             if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
+            again(); return;
+        }
+        if (pick === 47 + PC_WALLPAPERS.length + PC_SORTS.length) {   // the held and cosmetic item toggle
+            if (showCosmetic.has(player.id)) showCosmetic.delete(player.id); else showCosmetic.add(player.id);
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
             again(); return;
         }
         if (pick >= 45 + PC_WALLPAPERS.length + PC_SORTS.length) { again(); return; }   // the tooltips' hover areas
@@ -4801,8 +4816,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         v[`p${n}hp`] = `q${String(prop(e, FAINTED) ? 0 : Math.round(share * 37)).padStart(2, "0")}`;
         v[`p${n}gender`] = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     }
-    const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
-    v.item = icon ?? `${SUMMARY_UI}/blank`;
+    const held = heldItem(source);
+    itemSlot(v, held, prop(source, COSMETIC), player, `${SUMMARY_UI}/blank`);
     // InfoWidget's size icon (the port has no alphas)
     v.size = "abcde"[["XS", "S", "M", "L", "XL"].indexOf(sizeCategory(source))] ?? "c";
     v.portrait = iconOf(source.typeId, variantOf(source));
@@ -4812,7 +4827,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const form = new ActionFormData().title("cbm:summary").body(body);
     for (const [key, name] of [["i", "info"], ["m", "moves"], ["s", "stats"]]) form.button(name, `${SUMMARY_UI}/tab_${name}${tab === key ? "_on" : ""}`);
     for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
-    form.button(held ? itemName(held) : "", `${SUMMARY_UI}/item`);   // its text is the hovered tooltip
+    form.button(v.itemName, `${SUMMARY_UI}/item`);   // its text is the hovered tooltip
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
     form.button("evolve", `${SUMMARY_UI}/${evolutions.length ? "evolve" : "none"}`);
@@ -4860,6 +4875,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button(labelsText, `${SUMMARY_UI}/none`);
     form.button(rideCentre, `${SUMMARY_UI}/none`);
     form.button(tab === "i" ? `Size: ${sizeCategory(source)}` : "", `${SUMMARY_UI}/none`);   // the size icon's tooltip
+    form.button("item toggle", `${SUMMARY_UI}/itog_${v.imode === "c" ? "h" : "c"}`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -4949,6 +4965,12 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
             return;
         }
         if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player, 0, e ? "p" : side); return; }
+        if (pick === 83 + SWAP_ROWS) {
+            if (showCosmetic.has(player.id)) showCosmetic.delete(player.id); else showCosmetic.add(player.id);
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            showSummary(source, tab, player, selected, side); return;
+        }
+        if (pick === 9 && mine && showCosmetic.has(player.id)) { showSummary(source, tab, player, selected, side); return; }
         if (pick === 9 && mine) {
             const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
             const hand = inv?.getItem(player.selectedSlotIndex)?.typeId;
