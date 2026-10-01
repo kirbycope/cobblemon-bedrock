@@ -192,13 +192,16 @@ function speedOf(f, battle) {
 }
 
 // every battle message goes to chat and to the battle screen's log (BattleMessagePane), which keeps the last 40 to scroll back through
-function say(battle, text) {
-    battle.player.sendMessage(text);
-    (battle.log ??= []).push(text);
-    if (battle.log.length > 40) battle.log.shift();
+function say(battle, text) { sayEach(battle, text, text); }
+// a line for each side of a battle between players (the other side's own form of it), each into that side's log
+function sayEach(battle, own, other) {
+    const push = (log, t) => { log.push(t); if (log.length > 40) log.shift(); };
+    battle.player.sendMessage(own); push(battle.log ??= [], own);
+    if (battle.pvp && battle.opponent?.isValid) { battle.opponent.sendMessage(other); push(battle.opponentLog, other); }
 }
 
 function syncHealth(f) {
+    if (f.clone) return;   // a level rule's clone keeps its health in the battle only
     try {
         const health = f.entity.getComponent(EntityComponentTypes.Health);
         if (health) health.setCurrentValue(Math.max(1, Math.ceil((f.hp / f.stats.hp) * health.effectiveMax)));
@@ -437,10 +440,12 @@ function useMove(battle, attacker, defender, move) {
     // Eject Button sends its holder back when it is hit; Red Card sends back the Pokemon that hit its holder
     if (dealt && defender.hp > 0 && attacker.hp > 0) {
         if (held(defender) === "eject_button" && defender === battle.ally) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectAlly = true; }
+        else if (held(defender) === "eject_button" && defender === battle.foe && battle.pvp) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectFoe = true; }
         else if (held(defender) === "red_card" && attacker === battle.ally) { useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`); battle.ejectAlly = true; }
         else if (held(defender) === "red_card" && attacker === battle.foe) {
             useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`);
             if (!battle.trainer) battle.dragFoe = true;   // a wild Pokemon is sent away, which ends the battle
+            else if (battle.pvp) battle.ejectFoe = true;   // another player's goes back for one they choose
         }
     }
     if (move === STRUGGLE) { attacker.hp = Math.max(0, attacker.hp - Math.max(1, Math.floor(attacker.stats.hp / 4))); say(battle, `§7${name} is damaged by recoil!`); syncHealth(attacker); }
@@ -542,13 +547,20 @@ system.runInterval(() => {
 }, 5);
 
 function endBattle(battle, text) {
+    if (battle.side === 1) battle = battle.mirror;   // a battle between players, ended from the second player's side
     battles.delete(battle.player.id);
-    if (battle.ally?.entity) keepStatus(battle.ally.entity, battle.ally.hp > 0 ? battle.ally.status : null);
+    if (battle.pvp) {
+        battles.delete(battle.opponent.id);
+        for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
+    }
+    const sides = battle.pvp ? [battle.ally, battle.foe] : [battle.ally];
+    for (const f of sides) if (f?.entity && !f.clone) keepStatus(f.entity, f.hp > 0 ? f.status : null);
     for (const [id, k] of Object.entries(battle.kept ?? {})) {
-        if (id === battle.ally?.entity?.id) continue;
+        if (battle.adjustLevel > 0 || sides.some((f) => id === f?.entity?.id)) continue;
         try { keepStatus(world.getEntity(id), k.status); } catch (e) { }
     }
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
+    if (battle.pvp && battle.opponent.isValid) system.runTimeout(() => offerLevelEvolutions(battle.opponent), 40);
     for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
     // PokemonBattle.end: a wild Pokemon still out heals fully, whether it won, fled or was left
     const foe = battle.foe?.entity;
@@ -1724,7 +1736,7 @@ function findParty(player, near) {
 }
 
 function sendOut(battle, entity, spot) {
-    const f = fighter(entity);
+    const f = battleFighter(battle, entity);
     if (!f) return undefined;
     // a Pokemon coming back in keeps the PP and status it left with
     const kept = battle.kept?.[entity.id];
@@ -1733,7 +1745,8 @@ function sendOut(battle, entity, spot) {
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
     sendOutEffect(battle.player, entity);
     battle.ally = f;
-    say(battle, `§6Go! ${titled(f.entity, nicknameOf(f.entity) || f.info.name)}! §7(Lv ${f.level})`);   // battle.switch.self, with the title
+    const sent = titled(f.entity, nicknameOf(f.entity) || f.info.name);
+    sayEach(battle, `§6Go! ${sent}! §7(Lv ${f.level})`, `§6${battle.player.name} sent out ${sent}! §7(Lv ${f.level})`);   // battle.switch.self and .other
     enter(battle, f, battle.foe);
     return f;
 }
@@ -1757,24 +1770,25 @@ function startBattle(player, foeEntity, trainer) {
 // Switch: BattleSwitchPokemonSelection's party tiles, laid out by the resource pack (SWITCH_FIELDS in port.py). The one in
 // battle and the fainted show greyed and cannot be picked; the one leaving steps aside and stops fighting
 function switchTile(battle, e) {
-    const f = e.id === battle.ally.entity.id ? battle.ally : fighter(e);
-    const fainted = !!prop(e, FAINTED) || f.hp <= 0;
+    const f = e.id === battle.ally.entity.id ? battle.ally : battleFighter(battle, e);
+    const fainted = (!f.clone && !!prop(e, FAINTED)) || f.hp <= 0 || !!battle.down?.has(e.id);
     const step = fainted ? 0 : Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50));
     const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const status = !fainted && f.status ? { tox: "psn" }[f.status] ?? f.status : "non";
     return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId, variantOf(e))
-        + "b" + String(ball).padStart(2, "0") + `§f${Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
+        + "b" + String(ball).padStart(2, "0") + `§f${fainted ? 0 : Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
 }
 function chooseSwitch(battle, forced) {
     const player = battle.player, ally = battle.ally.entity;
-    const ready = findParty(player, battle.foe.entity.location).filter((e) => e.id !== ally.id);
+    const ready = battle.pvp ? pvpReady(battle) : findParty(player, battle.foe.entity.location).filter((e) => e.id !== ally.id);
     if (!ready.length) return Promise.resolve(undefined);
     let fainted = [];
     try {
         fainted = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
             .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && prop(e, FAINTED) && !prop(e, "cobblemon:pasture"));
     } catch (e) { }
+    if (battle.pvp) fainted = summaryParty(player).filter((e) => e.id !== ally.id && !ready.includes(e));
     const tiles = [...(ally.isValid && !forced ? [ally] : []), ...ready, ...fainted].slice(0, 6);
     const form = new ActionFormData().title("cbm:battle_switch").body(battleBody(battle));
     for (let i = 0; i < 6; i++) {
@@ -1798,11 +1812,11 @@ function switchTo(battle, entity) {
     const leaving = battle.ally;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
-    battle.kept[old.id] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep };
+    battle.kept[old.id] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
     const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
     if (old.isValid) {
         freeze(old, false);
-        say(battle, `§7${battle.ally.info.name}, come back!`);
+        sayEach(battle, `§7${battle.ally.info.name}, come back!`, `§7${battle.player.name} withdrew ${battle.ally.info.name}!`);
         recallEffect(battle.player, old, () => {
             try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
             setSize(old, 1);
@@ -1943,7 +1957,7 @@ function restore(battle) {
 world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
     if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed) return;
     const battle = battles.get(player.id);
-    if (battle && restore(battle)) { battle.turn--; turn(battle); }
+    if (battle && restore(battle)) { if (battle.pvp) pvpAsk(battle); else { battle.turn--; turn(battle); } }
 });
 
 // BattleGeneralActionSelection: Fight, Switch, then Catch and Run against a wild Pokemon or Forfeit against a trainer
@@ -1955,7 +1969,7 @@ function pickAction(battle, options) {
     menu.button("", LOG_TOGGLE);
     return menu.show(battle.player).then((r) => {
         if (r.canceled || !battles.has(battle.player.id)) return undefined;
-        if (r.selection === 4) { toggleLog(battle); return pickAction(battle, options); }
+        if (r.selection === (battle.trainer ? 3 : 4)) { toggleLog(battle); return pickAction(battle, options); }   // the log toggle, after Forfeit or Run
         if (r.selection === 3) return options.find((o) => o.kind === "run");
         if (r.selection === 2) return { kind: battle.trainer ? "forfeit" : "catch" };
         if (r.selection === 1) {
@@ -2086,6 +2100,7 @@ function endOfTurn(battle) {
         heldBerry(battle, f);
     }
     for (const f of [battle.ally, battle.foe]) f.flinched = false;
+    if (battle.pvp) { pvpAfterTurn(battle); return; }
     if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
     if (battle.dragFoe) { battle.dragFoe = false; endBattle(battle, `§7The wild ${battle.foe.info.name} fled!`); return; }
@@ -2133,7 +2148,9 @@ function gainExperience(battle, f, foe, amount) {
         if (POWER_ITEMS[held(f)]) addEvs(f.entity, POWER_ITEMS[held(f)], 8);
     }
     const group = f.info.expGroup;
-    let exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, f.level)) + gain, level = f.level;
+    // from the level it has already reached in this battle (the fighter's own is the one it entered with)
+    let level = Math.max(f.level, prop(f.entity, LEVEL) ?? f.level), exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level)) + gain;
+    const startLevel = level;
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
     const note = gained.get(f.entity) ?? { exp: 0, move: false };
     note.exp += gain; gained.set(f.entity, note);
@@ -2159,6 +2176,12 @@ function gainExperience(battle, f, foe, amount) {
         }
     }
     setProp(f.entity, EXP, exp); setProp(f.entity, LEVEL, level); setProp(f.entity, MOVESET, JSON.stringify(ids));
+    // the fighter goes on at its new level, its health rising by what its maximum gained, as Pokemon.levelUp does
+    if (level > startLevel && !f.clone && f.level < level) {
+        const stats = statsOf(f.entity, f.info, level);
+        f.hp = Math.max(0, f.hp + (stats.hp - f.stats.hp)); f.stats = stats; f.level = level;
+        syncHealth(f);
+    }
 }
 
 function faint(battle, fainted) {
@@ -2188,6 +2211,260 @@ function faint(battle, fainted) {
         system.runTimeout(() => turn(battle), 20);
     }).catch(() => endBattle(battle));
 }
+
+// Battles between players (ChallengeManager, BattleConfigureGUI, BattleBuilder.pvp1v1). The player wheel's Battle opens
+// BattleConfigureGUI on the other player: a Single Battle with its level rule (Anything Goes, Level 50, Level 100 or
+// Level 5, chosen with the arrows under the tile), and Challenge sends it; the other player opens their wheel on the
+// challenger, its Battle marked with the exclamation, to Accept or Decline within 20 seconds, both within 32 blocks
+// (battlePvPMaxDistance). The battle is the same engine as against a trainer, run for both sides: each player has
+// the battle screen from their own side and picks Fight, Switch or Forfeit, the turn resolving once both have chosen;
+// a fainted Pokemon gives the other side's experience (allowExperienceFromPvP) and its trainer picks the next, and the
+// side out of usable Pokemon loses. A level rule battles clones (BattleBuilder's clone and heal): every Pokemon fights
+// at that level at full health, nothing it loses is kept, and no experience is given. The second player's side is a
+// view of the same battle with the two sides' fields swapped (mirrorOf), so every part of the engine reads it from
+// that player's side.
+const CHALLENGE_EXPIRY = 20 * 20, PVP_RANGE = 32, LEVEL_RULES = [-1, 50, 100, 5];
+const challenges = [];   // { from, to, level, at }
+const challengeRule = new Map();   // player id -> the level rule chosen on the challenge screen
+function mirrorOf(battle) {
+    const m = Object.create(battle);
+    const link = (key, other) => Object.defineProperty(m, key, { get: () => battle[other], set: (v) => { battle[other] = v; }, configurable: true });
+    for (const [a, b] of [["player", "opponent"], ["ally", "foe"], ["spot", "foeSpot"], ["ejectAlly", "ejectFoe"], ["log", "opponentLog"]]) { link(a, b); link(b, a); }
+    Object.defineProperty(m, "trainer", { get: () => battle.player.name, configurable: true });
+    Object.assign(m, { side: 1, mirror: battle, choiceLock: null, minimised: false, logExpanded: false });
+    battle.mirror = m;
+    return m;
+}
+const realBattle = (view) => (view.side === 1 ? view.mirror : view);
+// a Pokemon as it fights here: under a level rule, a clone at that level that starts at full health and keeps what
+// happens to it in the battle only
+function battleFighter(battle, entity) {
+    const f = fighter(entity);
+    if (!f || !(battle?.adjustLevel > 0)) return f;
+    const kept = battle.kept?.[entity.id];
+    f.level = battle.adjustLevel; f.stats = statsOf(entity, f.info, f.level); f.clone = true;
+    f.hp = kept?.hp ?? f.stats.hp; f.status = kept ? kept.status : null;
+    return f;
+}
+// the Pokemon a side can still send in
+function pvpReady(view) {
+    const party = view.adjustLevel > 0 ? summaryParty(view.player) : summaryParty(view.player).filter((e) => !prop(e, FAINTED));
+    return party.filter((e) => e.id !== view.ally?.entity?.id && !view.down.has(e.id));
+}
+function pvpLead(player, level) {
+    return (level > 0 ? summaryParty(player) : summaryParty(player).filter((e) => !prop(e, FAINTED)))[0];
+}
+function pvpSpot(from, to, share) {
+    return { x: from.x + (to.x - from.x) * share, y: from.y, z: from.z + (to.z - from.z) * share };
+}
+function startPvp(p1, p2, level) {
+    if (battles.has(p1.id) || battles.has(p2.id)) return;
+    const a = pvpLead(p1, level), b = pvpLead(p2, level);
+    if (!a || !b) {
+        for (const [p, other, has] of [[p1, p2, a], [p2, p1, b]]) if (!has) { p.sendMessage("§cYou don't have any Pokémon to battle with!"); other.sendMessage(`§b${p.name}§c doesn't have any Pokémon to battle with!`); }
+        return;
+    }
+    const battle = { pvp: true, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
+                     kept: {}, down: new Set(), choices: [], choiceLock: null,
+                     spot: pvpSpot(p1.location, p2.location, 0.3), foeSpot: pvpSpot(p2.location, p1.location, 0.3) };
+    const m = mirrorOf(battle);
+    battles.set(p1.id, battle); battles.set(p2.id, m);
+    battle.ally = battleFighter(battle, a); battle.foe = battleFighter(battle, b);
+    for (const [view, f, other] of [[battle, battle.ally, battle.foe], [m, battle.foe, battle.ally]]) {
+        freeze(f.entity, true);
+        try { f.entity.teleport({ ...view.spot, y: f.entity.location.y }, { facingLocation: other.entity.location }); } catch (e) { }
+        sendOutEffect(view.player, f.entity);
+        const name = titled(f.entity, nicknameOf(f.entity) || f.info.name);
+        sayEach(view, `§6Go! ${name}! §7(Lv ${f.level})`, `§6${view.player.name} sent out ${name}! §7(Lv ${f.level})`);
+        register(view.opponent, f.entity.typeId, 1, variantOf(f.entity));
+    }
+    enter(battle, battle.ally, battle.foe); enter(m, battle.foe, battle.ally);
+    system.runTimeout(() => pvpTurn(battle), 20);
+}
+function pvpLive(battle) { return battles.get(battle.player.id) === battle && battles.get(battle.opponent.id) === battle.mirror; }
+function pvpTurn(battle) {
+    if (!pvpLive(battle)) return;
+    for (const v of [battle, battle.mirror]) {
+        if (!v.player.isValid || !v.ally.entity.isValid) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
+    }
+    battle.turn++;
+    battle.choices = [undefined, undefined];
+    pvpAsk(battle); pvpAsk(battle.mirror);
+}
+// BattleGeneralActionSelection for one side; closing it minimises the screen until sneak brings it back
+function pvpAsk(view) {
+    const battle = realBattle(view);
+    if (!pvpLive(battle) || battle.choices[view.side]) return;
+    const { ally } = view;
+    const usable = ally.moves.filter((m) => m.left > 0);
+    const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
+    if (pvpReady(view).length) options.push({ kind: "switch" });
+    if (view.choiceLock && held(ally)?.startsWith("choice_")) {
+        for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== view.choiceLock) o.locked = true;
+    }
+    pickAction(view, options).then((choice) => {
+        if (!pvpLive(battle) || battle.choices[view.side]) return;
+        if (!choice) { minimise(view); return; }
+        if (choice.kind === "forfeit") { pvpEnd(battle, view, `§7${view.player.name} forfeited the battle!`); return; }
+        if (choice.kind === "switch") {
+            chooseSwitch(view, false).then((entity) => {
+                if (!pvpLive(battle)) return;
+                if (!entity) { pvpAsk(view); return; }
+                pvpChoose(view, { kind: "switch", entity });
+            }).catch(() => minimise(view));
+            return;
+        }
+        if (choice.locked) { view.player.sendMessage(`§7${ally.info.name} can only use ${MOVES[view.choiceLock]?.name}!`); pvpAsk(view); return; }
+        if (choice.move !== STRUGGLE && choice.move.left <= 0) { view.player.sendMessage("§cThere's no PP left for this move!"); pvpAsk(view); return; }
+        pvpChoose(view, choice);
+    }).catch(() => minimise(view));
+}
+function pvpChoose(view, choice) {
+    const battle = realBattle(view);
+    battle.choices[view.side] = choice;
+    if (choice.kind === "move" && held(view.ally)?.startsWith("choice_") && choice.move !== STRUGGLE) view.choiceLock = view.choiceLock ?? choice.move.id;
+    if (!battle.choices[1 - view.side]) {
+        try { view.player.onScreenDisplay.setActionBar(`§7Waiting for ${view.opponent.name}...`); } catch (e) { }
+        return;
+    }
+    pvpResolve(battle);
+}
+// the turn: switches (and items, already used) first, then the moves by priority and speed, as turn() orders them
+function pvpResolve(battle) {
+    const [ca, cb] = battle.choices, m = battle.mirror;
+    battle.movedFirst = null;
+    for (const [v, c] of [[battle, ca], [m, cb]]) if (c.kind === "switch" && c.entity?.isValid) switchTo(v, c.entity);
+    const { ally, foe } = battle;
+    if (ca.kind === "move" && cb.kind === "move") {
+        const move = ca.move, foeMove = cb.move;
+        const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
+        const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
+        const allyClaw = claw(ally), foeClaw = claw(foe);
+        if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
+        const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
+        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
+            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : speedOf(ally, battle) >= speedOf(foe, battle)));
+        battle.movedFirst = allyFirst ? ally : foe;
+        const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
+        for (const [a, d, mv] of order) if (a.hp > 0 && d.hp > 0) useMove(battle, a, d, mv);
+    } else {
+        for (const [a, d, c] of [[ally, foe, ca], [foe, ally, cb]]) if (c.kind === "move" && a.hp > 0 && d.hp > 0) useMove(battle, a, d, c.move);
+    }
+    endOfTurn(battle);
+}
+// after the turn: fainted Pokemon, the side that is out of them losing, then replacements and ejected ones
+function pvpAfterTurn(battle) {
+    const views = [battle, battle.mirror];
+    const down = views.filter((v) => v.ally.hp <= 0);
+    for (const v of down) {
+        const f = v.ally;
+        say(battle, `§c${f.info.name} fainted!`);
+        battle.down.add(f.entity.id);
+        if (!f.clone) setProp(f.entity, FAINTED, true);
+        freeze(f.entity, false);
+        try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
+        const w = v.mirror;
+        if (w.ally.hp > 0 && !w.ally.clone) gainExperience(w, w.ally, f);
+    }
+    const out = down.filter((v) => !pvpReady(v).length);
+    if (out.length === 2) { pvpEnd(battle, null, "§7Both trainers are out of usable Pokémon!"); return; }
+    if (out.length) { pvpEnd(battle, out[0], `§c${out[0].player.name} is out of usable Pokémon!`); return; }
+    const forced = views.filter((v) => down.includes(v) || (v.ejectAlly && pvpReady(v).length));
+    battle.ejectAlly = false; battle.ejectFoe = false;
+    if (!forced.length) { system.runTimeout(() => pvpTurn(battle), 30); return; }
+    for (const v of views) if (!forced.includes(v)) { try { v.player.onScreenDisplay.setActionBar(`§7Waiting for ${v.opponent.name}...`); } catch (e) { } }
+    Promise.all(forced.map((v) => chooseSwitch(v, true).then((entity) => { if (entity && pvpLive(battle)) switchTo(v, entity); }))).then(() => {
+        if (pvpLive(battle)) system.runTimeout(() => pvpTurn(battle), 20);
+    }).catch(() => endBattle(battle));
+}
+function pvpEnd(battle, loser, text) {
+    battle = realBattle(battle);
+    if (!pvpLive(battle)) return;
+    if (text) say(battle, text);
+    if (loser) say(battle, `§6${loser.mirror.player.name} won!`);
+    endBattle(battle);
+}
+
+// ChallengeManager's requests: sent from BattleConfigureGUI, answered from the receiver's own one, gone after 20 seconds
+function pvpDistance(a, b) {
+    const p = a.location, q = b.location;
+    return a.dimension.id === b.dimension.id ? Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) : Infinity;
+}
+function ruleName(level) { return level > 0 ? `Level ${level} All` : "Anything Goes"; }
+// BattleConfigureGUI, laid out by ui/server_form.json (CHALLENGE_LAYOUT in port.py): the Single Battle tile, the level
+// rule between its arrows, the target's name, and Challenge, or Accept and Decline for a challenge received
+function openChallenge(player, target) {
+    const pending = challenges.find((c) => c.from.id === target.id && c.to.id === player.id);
+    const index = pending ? Math.max(0, LEVEL_RULES.indexOf(pending.level)) : challengeRule.get(player.id) ?? 0;
+    const level = LEVEL_RULES[index];
+    const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + "Single Battle";
+    const T = `${UI}/request`, none = `${UI}/request/none`;
+    const form = new ActionFormData().title("cbm:challenge").body(body);
+    form.button(pending ? "accept" : "Challenge", pending ? `${T}/accept` : `${T}/battle`);
+    form.button(pending ? "decline" : "", pending ? `${T}/decline` : none);   // in a challenge, the Challenge button's right half
+    form.button("", pending ? none : `${T}/arrow_left`).button("", pending ? none : `${T}/arrow_right`);
+    form.button("", pending ? none : `${T}/label_arrow_left`).button("", pending ? none : `${T}/label_arrow_right`);
+    form.show(player).then((r) => {
+        if (r.canceled || !target.isValid) return;
+        const pick = r.selection;
+        const click = () => { try { player.playSound("cobblemon.gui.click"); } catch (e) { } };
+        if (pending) {
+            const i = challenges.indexOf(pending);
+            if (i < 0) { player.sendMessage("§7That request has already expired!"); return; }
+            if (pick === 0) { challenges.splice(i, 1); acceptChallenge(pending); }
+            else if (pick === 1) {
+                challenges.splice(i, 1);
+                target.sendMessage(`§b${player.name}§7 declined your challenge...`); player.sendMessage(`§7You declined §b${target.name}§7's challenge.`);
+            }
+            else openChallenge(player, target);
+            return;
+        }
+        if (pick === 4 || pick === 5) { click(); challengeRule.set(player.id, (index + (pick === 5 ? 1 : LEVEL_RULES.length - 1)) % LEVEL_RULES.length); openChallenge(player, target); return; }
+        if (pick === 2 || pick === 3) { click(); openChallenge(player, target); return; }   // the Single Battle is the one format
+        if (pick === 0 || pick === 1) sendChallenge(player, target, level);
+    }).catch(() => { });
+}
+function sendChallenge(player, target, level) {
+    if (battles.has(player.id) || battles.has(target.id)) { player.sendMessage("§cTarget is currently unavailable for that action."); return; }
+    if (pvpDistance(player, target) > PVP_RANGE) { player.sendMessage("§cTarget is too far away!"); return; }
+    if (challenges.some((c) => c.from.id === player.id && c.to.id === target.id)) { player.sendMessage(`§cYou already have a pending battle request sent to §b${target.name}§c.`); return; }
+    if (!pvpLead(player, level)) { player.sendMessage("§cYou don't have any Pokémon to battle with!"); return; }
+    if (!pvpLead(target, level)) { player.sendMessage(`§b${target.name}§c doesn't have any Pokémon to battle with!`); return; }
+    challenges.push({ from: player, to: target, level, at: system.currentTick });
+    player.sendMessage(`§aYou challenged §b${target.name}§a to a Single Battle.`);
+    target.sendMessage(`§b${player.name}§a challenged you to a Single Battle! §7(${ruleName(level)})`);
+    try { target.playSound("random.orb"); } catch (e) { }
+}
+function acceptChallenge(c) {
+    if (!c.from.isValid || !c.to.isValid) return;
+    if (pvpDistance(c.from, c.to) > PVP_RANGE) { c.to.sendMessage("§cTarget is too far away!"); return; }
+    c.from.sendMessage(`§b${c.to.name}§a accepted the challenge!`);
+    c.to.sendMessage(`§aYou accepted §b${c.from.name}§a's challenge!`);
+    startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
+}
+system.runInterval(() => {
+    for (let i = challenges.length - 1; i >= 0; i--) {
+        const c = challenges[i];
+        if (system.currentTick - c.at < CHALLENGE_EXPIRY && c.from.isValid && c.to.isValid) continue;
+        challenges.splice(i, 1);
+        if (c.from.isValid) c.from.sendMessage(`§7Your challenge to §b${c.to.isValid ? c.to.name : "them"}§7 has timed out!`);
+        if (c.to.isValid) c.to.sendMessage(`§7The challenge from §b${c.from.isValid ? c.from.name : "them"}§7 has timed out!`);
+    }
+}, 20);
+world.afterEvents.playerLeave.subscribe(({ playerId }) => {
+    for (let i = challenges.length - 1; i >= 0; i--) if (challenges[i].from.id === playerId || challenges[i].to.id === playerId) challenges.splice(i, 1);
+    const view = battles.get(playerId);
+    if (!view?.pvp) return;
+    const battle = realBattle(view);
+    battles.delete(playerId);
+    const other = view.opponent;
+    if (other?.isValid) {
+        for (const line of [`§7${view.player.name ?? "Your opponent"} forfeited the battle!`, `§6${other.name} won!`]) other.sendMessage(line);
+        battles.delete(other.id);
+        try { uiManager.closeAllForms(other); } catch (e) { }
+    }
+    for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
+});
 
 // Heal a player's Pokemon: full health, and fit to battle again
 function healAround(dimension, location, player) {
@@ -2437,6 +2714,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (let w = 0; w < 4; w += 0.005) { if (hits({ x: l.x + w, y: l.y + top / 2, z: l.z - 4 }, { x: 0, y: 0, z: 1 })) half = w; }
         let scale; try { scale = source.getComponent("minecraft:scale")?.value; } catch (e) { }
         console.warn(`[cobblemon] hitbox ${source.typeId}: height ${top.toFixed(2)} width ${(half * 2).toFixed(2)} scale ${scale}`);
+    } else if (event.id === "cobblemon:accept_challenge") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:accept_challenge" accepts the battle challenge
+        // waiting for that player, as Accept on their Battle Request screen does
+        const i = challenges.findIndex((c) => c.to.id === source.id);
+        if (i < 0) { console.warn(`[cobblemon] no challenge for ${source.name ?? source.typeId}`); return; }
+        acceptChallenge(challenges.splice(i, 1)[0]);
     } else if (event.id === "cobblemon:wheel") {
         // for testing: "/execute as <pokemon> run scriptevent cobblemon:wheel" opens its interact wheel for its owner,
         // as a sneaking right-click on it does, with whatever the owner holds
@@ -4280,9 +4563,10 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         const battle = battles.get(player.id);
         if (battle) {
             if (!medicine || !battle.minimised || battle.ally.entity?.id !== target.id) { player.sendMessage("§cYou cannot use items right now."); return; }
+            if (battle.pvp && realBattle(battle).choices[battle.side]) { player.sendMessage("§cYou cannot use items right now."); return; }
             if (!useBagItem(battle, id)) return;
             restore(battle);
-            foeTurn(battle);
+            if (battle.pvp) pvpChoose(battle, { kind: "item" }); else foeTurn(battle);
             return;
         }
         const name = POKEMON[target.typeId].name;
@@ -5698,7 +5982,9 @@ function openPlayerWheel(player, target) {
     if (!me || !other) return;
     const pending = tradeRequests.find((r) => r.from.id === other.id && r.to.id === me.id);
     const options = {
-        north: { icon: "battle", on: false, tip: "Target is currently unavailable for that action." },
+        north: other.player && !battles.has(me.id) && !battles.has(other.id)
+            ? { icon: challenges.some((c) => c.from.id === other.id && c.to.id === me.id) ? "battle_new" : "battle", on: true, tip: "Battle", act: () => openChallenge(player, target) }
+            : { icon: "battle", on: false, tip: "Target is currently unavailable for that action." },
         northeast: { icon: pending ? "trade_new" : "trade", on: !trades.has(other.id), tip: trades.has(other.id) ? "Target is currently unavailable for that action." : "Trade",
                      act: () => requestTrade(me, other) },
     };

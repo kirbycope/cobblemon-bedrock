@@ -88,8 +88,8 @@ def find_text(names):
     """Where on screen a line of text containing one of names is, by Windows' OCR (tools/ocr.ps1), or None."""
     path = shot("ocr")
     out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", os.path.join(os.path.dirname(__file__), "ocr.ps1"), "-Path", path],
-                         capture_output=True, text=True, stdin=subprocess.DEVNULL).stdout
-    for line in out.splitlines():
+                         capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL).stdout
+    for line in (out or "").splitlines():
         box, _, text = line.partition("	")
         if any(n in text.lower() for n in names):
             x, y, w, h = map(int, box.split(","))
