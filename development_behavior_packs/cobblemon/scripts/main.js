@@ -2206,10 +2206,15 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             console.warn(`[formations] ${hits.length} buried suspicious blocks within ${radius} chunks of ${cx * 16} ${cz * 16}: ${hits.slice(0, 30).join(", ")}`);
         })());
     } else if (event.id === "cobblemon:starter") {
-        // "/scriptevent cobblemon:starter [reset]" opens the starter screen for the running player; "reset" lets them choose again
+        // "/scriptevent cobblemon:starter [reset]" opens the starter screen for the running player; "reset" lets them choose again;
         const player = source?.typeId === "minecraft:player" ? source : nearestPlayer(source);
         if (!player) return;
-        if (event.message?.trim() === "reset") player.setDynamicProperty(STARTER_CHOSEN, false);
+        // testing: "unset" and "set" clear and set the chosen flag without opening the screen, "toast" shows the starter toast
+        const word = event.message?.trim();
+        if (word === "unset") { player.setDynamicProperty(STARTER_CHOSEN, false); return; }
+        if (word === "set") { player.setDynamicProperty(STARTER_CHOSEN, true); starterToast(player, false); return; }
+        if (word === "toast") { starterToast(player, true); return; }
+        if (word === "reset") player.setDynamicProperty(STARTER_CHOSEN, false);
         openStarter(player);
     } else if (event.id === "cobblemon:test_beam") {
         // for testing: a beam from the running player's hand to 4 blocks in front of them, held for 10 seconds
@@ -5381,15 +5386,34 @@ function giveStarter(player, chosen) {
         register(player, chosen.id, 2);
         sendOutEffect(player, entity, chosen.ball);
         player.sendMessage(`§aYou chose ${info.name}!`);
+        starterToast(player, false);
     });
 }
 
+// PartyOverlay's starter toast: while a player has no starter and no Pokemon, "Check out the starters!" with a Poke Ball
+// shows at the top right until they choose one. Cobblemon's description names the key that opens the starter screen
+// (the Summary key); a Bedrock player has none, so sneaking twice in quick succession opens it, and the toast says so.
+function starterToast(player, shown) {
+    const field = (text, width) => text + " ".repeat(Math.max(0, width - text.length));
+    try {
+        player.onScreenDisplay.setTitle(`cbm:toast${shown ? "y" : "n"}${field("textures/items/poke_ball", 40)}${field("Check out the starters!", 40)}Sneak twice`,
+                                        { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 });
+    } catch (e) { }
+}
+const lastSneak = new Map();   // player id -> tick of their last sneak press
+world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
+    if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed || player.getDynamicProperty(STARTER_CHOSEN)) return;
+    const last = lastSneak.get(player.id) ?? -100;
+    lastSneak.set(player.id, system.currentTick);
+    if (system.currentTick - last <= 10 && !summaryParty(player).length) { lastSneak.delete(player.id); openStarter(player); }
+});
 world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
     if (!initialSpawn || player.getDynamicProperty(STARTER_CHOSEN)) return;
     // a player who already has Pokemon (from before the starter screen existed) keeps them and is not asked
     system.runTimeout(() => {
         if (!player.isValid) return;
         if (summaryParty(player).length) { player.setDynamicProperty(STARTER_CHOSEN, true); return; }
+        starterToast(player, true);
         openStarter(player);
     }, 60);
 });

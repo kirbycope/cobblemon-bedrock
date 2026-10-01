@@ -7581,6 +7581,45 @@ def create_scan_hud():
 
 
 RIDE_MARKER = "cbm:ride"
+TOAST_MARKER = "cbm:toast"
+
+
+def create_toast_hud():
+    """CobblemonToast at the screen's top right, as Minecraft's ToastManager places a toast: the Java client's
+    advancement toast frame (160 by 32), the toast's item at 8, 8, its title at 30, 7 in its colour and its description
+    under it at 30, 18. main.js sends "cbm:toast", "y" or "n" for shown or not, the item's icon field (40), the title (40)
+    and the description; PartyOverlay's starter toast is the one sent, while a player has no starter."""
+    out = f"{uiTextures}/toast"
+    os.makedirs(out, exist_ok=True)
+    frame = minecraft_texture("gui/sprites/toast/advancement", prefer="1.21")
+    if frame is not None: frame.save(f"{out}/advancement.png")
+    T = "textures/ui/cobblemon/toast"
+    def from_data(source, target):
+        return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
+                "source_property_name": source, "target_property_name": target}
+    start = len(TOAST_MARKER)
+    def part(a, b=None):
+        if b is None: return f"(#preserved_text - ('%.{start + a}s' * #preserved_text))"
+        return f"((('%.{start + b}s' * #preserved_text) - ('%.{start + a}s' * #preserved_text)) - ' ')"
+    shown = from_data(f"((('%.{start + 1}s' * #preserved_text) - ('%.{start}s' * #preserved_text)) = 'y')", "#visible")
+    place = {"anchor_from": "top_right", "anchor_to": "top_right"}
+    parts = [{"frame": {"type": "image", "texture": f"{T}/advancement", "size": [160, 32], "offset": [0, 0], "layer": 70, **place, "bindings": [shown]}},
+             {"icon": {"type": "image", "size": [16, 16], "offset": [-(160 - 8 - 16), 8], "layer": 71, **place, "keep_ratio": False,
+                       "bindings": [shown, from_data(part(1, 41), "#texture")]}},
+             # the title wide enough that its padding never ends it in "..." (taking the spaces off would take its own);
+             # a sibling of data_control, as every part must be for its view binding to find it
+             {"title": {"type": "label", "text": "#value", "size": [400, 9], "offset": [-(160 - 30 - 400), 7], "layer": 71, **place, "shadow": False,
+                        "color": [1.0, 85 / 255, 85 / 255], "bindings": [shown, from_data(f"(('%.{start + 81}s' * #preserved_text) - ('%.{start + 41}s' * #preserved_text))", "#value")]}},
+             {"description": {"type": "label", "text": "#value", "size": [125, 10], "offset": [-(160 - 30 - 125), 18], "layer": 71, **place, "shadow": False,
+                              "color": [85 / 255, 85 / 255, 85 / 255], "bindings": [shown, from_data(part(81), "#value")]}}]
+    controls = [
+        {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
+            {"binding_name": "#hud_title_text_string"},
+            {"binding_name": "#hud_title_text_string", "binding_name_override": "#preserved_text", "binding_condition": "visibility_changed"},
+            {"binding_type": "view", "source_property_name":
+                f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{TOAST_MARKER}') = #hud_title_text_string))",
+             "target_property_name": "#visible"}]}}] + parts
+    return {"cobblemon_toast": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 
 def create_ride_hud():
@@ -7743,12 +7782,15 @@ def create_party_hud():
             {"binding_name": "#hud_title_text_string", "binding_type": "global"},
             {"binding_type": "view", "source_property_name": f"(((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string) and "
                                                              f"((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string) and "
-                                                             f"((#hud_title_text_string - '{RIDE_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
+                                                             f"((#hud_title_text_string - '{RIDE_MARKER}') = #hud_title_text_string) and "
+                                                             f"((#hud_title_text_string - '{TOAST_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
     }
     hud.update(create_scan_hud())
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_scan@hud.cobblemon_scan": {}}})
     hud.update(create_ride_hud())
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_ride@hud.cobblemon_ride": {}}})
+    hud.update(create_toast_hud())
+    hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_toast@hud.cobblemon_toast": {}}})
     with open(f"{resourcePack}/ui/hud_screen.json", "w", encoding="utf-8") as file: file.write(json.dumps(hud, indent=2))
     print("  party HUD: Cobblemon's party slots down the left edge")
 
