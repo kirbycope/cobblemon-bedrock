@@ -4310,6 +4310,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     v.ktitle = active?.[2] ? active[2].replace("{}", shownName) : shownName;
     // the polygon: each vertex's share of 400 (a stat), 31 (an IV) or 252 (an EV), in 12 steps as letters
     const rides = RIDES[source.typeId];
+    let rideHover = "";
     let stab = summaryStatTab.get(player.id) ?? "s";
     if (stab === "r" && !rides) stab = "s";
     v.stab = stab; v.rtabs = rides ? "r" : "n";
@@ -4323,6 +4324,12 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         const steps = values.map((val) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round((val / 100) * 12)))));
         v.pent = steps.join("") + steps[0]; v.rsty = { air: "a", liquid: "w" }[style] ?? "l"; v.rico = `i${icon}`;
         values.forEach((val, i) => { v[`rv${i}`] = num(Math.floor(val)); });
+        // hovered (the text of the labels' button): the stat out of its range's top, and the boost as a share of the
+        // widest range among the species' behaviours (Pokemon.getMaxRideBoost)
+        rideHover = ["acceleration", "skill", "speed", "stamina", "jump"].map((k, i) => {
+            const most = Math.max(0, ...rides.map(([, , r]) => (r[k] ? r[k][1] - r[k][0] : 0)));
+            return padBytes(num(`${Math.floor(values[i])}/${ranges[k]?.[1] ?? 0}`), 10) + padBytes(num(`+${most ? Math.floor(((boosts[k.toUpperCase()] ?? 0) / most) * 100) : 0}`), 7);
+        }).join("");
     }
     const share = (k) => (stab === "v" ? (ivs[k] ?? 0) / 31 : stab === "e" ? (evs[k] ?? 0) / 252 : (k === "hp" ? f.stats.hp : f.stats[k]) / 400);
     const steps = HEX_ORDER.map((k) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round(share(k) * 12)))));
@@ -4410,6 +4417,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button("mark chosen", `${SUMMARY_UI}/none`);
     for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
     form.button("ride style", `${SUMMARY_UI}/none`);
+    form.button(tab === "s" && stab === "r" ? rideHover : "", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -4424,6 +4432,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         if (pick === 73 + SWAP_ROWS) { if (mine) setProp(source, ACTIVE_MARK, undefined); showSummary(source, tab, player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
+        if (pick === 80 + SWAP_ROWS) { showSummary(source, tab, player, selected, side); return; }
         if (pick === 79 + SWAP_ROWS) {
             if (stab === "r" && rides?.length > 1) { summaryRideStyle.set(player.id, ((summaryRideStyle.get(player.id) ?? 0) + 1) % rides.length); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
             showSummary(source, tab, player, selected, side); return;
