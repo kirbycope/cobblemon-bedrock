@@ -5791,7 +5791,7 @@ def create_pc_ui():
 # entry's PokemonInfoWidget: number, name, caught icon, types, the portrait over the platform, the cry button, and the
 # Info, Abilities and Stats tabs below it. Entries show the species' box icon where Cobblemon draws its model.
 DEX_TABS = "iazsdm"   # PokedexGUI's tabs: info, abilities, size, stats, drops, moves
-DEX_LAYOUT = [("colour", 1), ("region", 12), ("seen", 8), ("caught", 8), ("filter", 12), ("search", 30)] \
+DEX_LAYOUT = [("colour", 1), ("region", 12), ("seen", 8), ("caught", 8), ("filter", 22), ("search", 30)] \
     + [(f"e{n}{k}", w) for n in range(25) for k, w in (("icon", 5), ("num", 7), ("state", 1), ("sel", 1))] \
     + [("num", 7), ("name", 16), ("caughtmark", 1), ("type1", 3), ("type2", 3), ("portrait", 5), ("platform", 3), ("tab", 1),
        ("line1", 40), ("line2", 40)] + [(f"stat{k}", 14) for k in ("hp", "atk", "def", "spa", "spd", "spe")] + [("desc", 0)]
@@ -5875,7 +5875,7 @@ def create_pokedex_ui():
                 image("search_icon", "pokedex/search_icon", (27.5, 29), (7, 7), 4),
                 label("search", field("search"), (37, 29.5), 1.0, size=(220, 10), layer=5),   # wide, so the padding never ellipsizes
                 image("category", "pokedex/screen_bar_category", (26, 180), (139, 11)),
-                image("filter_icon", "pokedex/category_icon", (29, 182), (7, 7)), label("filter", field("filter"), (39, 181), size=(100, 10))]
+                image("filter_icon", "pokedex/category_icon", (29, 182), (7, 7)), label("filter", field("filter"), (39, 181), size=(160, 10))]
     slots = [(27 + 27 * (n % 5), 39 + 3 + 3 + 27 * (n // 5)) for n in range(25)]
     for n, (x, y) in enumerate(slots):
         controls += [image(f"slot{n}", "pokedex/slot", (x, y), (25, 25), 3),

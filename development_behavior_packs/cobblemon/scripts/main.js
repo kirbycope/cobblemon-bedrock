@@ -3168,7 +3168,18 @@ system.runInterval(() => {
 
 // The Pokedex, laid out by ui/server_form.json on Cobblemon's Pokedex textures (DEX_LAYOUT in port.py): the region
 // and its arrows, a page of 25 entries, and the chosen entry with its Info, Abilities and Stats tabs and the cry.
-const DEX_FILTERS = [["All", () => true], ["Seen", (st) => st !== "0"], ["Owned", (st) => st === "2"], ["Unregistered", (st) => st === "0"]];
+// PokedexCategoryFilterType in its order: All, Owned, Seen, Unregistered, then Undiscovered TM Move (a registered
+// species with a level-up move whose TM the player has not learned, at a level none of their own of that species has
+// reached; the port keeps no record of the highest level met, so their Pokemon's levels stand in) and Rideable
+const DEX_FILTERS = [["All", () => true], ["Owned", (st) => st === "2"], ["Seen", (st) => st !== "0"], ["Unregistered", (st) => st === "0"],
+    ["Undiscovered TM Move", (st, n, ctx) => st !== "0" && undiscoveredTm(n, ctx)], ["Rideable", (st, n) => st !== "0" && !!RIDES[NATIONAL[n]]]];
+function undiscoveredTm(n, ctx) {
+    const id = NATIONAL[n], top = ctx.levels.get(id) ?? 0;
+    return (POKEMON[id]?.learnset ?? []).some(([level, move]) => {
+        const k = TM_BY_MOVE.get(move);
+        return k !== undefined && TMS[k][2] !== "default" && TMS[k][2] !== "advancement" && !ctx.learned.has(move) && level > top;
+    });
+}
 // SearchFilter: an entry matches when its species is registered and, by species, its name holds the search; by ability
 // or move, only once caught, one of its abilities or level-up moves does. Cobblemon's fourth kind, drops, is left out:
 // the port keeps no drop lists in the script's data
@@ -3195,7 +3206,14 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     if (!state.kept) { registerKept(player); state.kept = true; }
     const s = dexString(player), region = REGIONS[state.region];
     state.by ??= 0;
-    const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n]) && dexMatches(n, s[n], state.search, state.by));
+    // what Undiscovered TM Move reads: the TMs learned and the highest level of each species the player keeps
+    const ctx = { learned: learnedTms(player), levels: new Map() };
+    if (state.filter === 4) {
+        const note = (t, lv) => ctx.levels.set(t, Math.max(ctx.levels.get(t) ?? 0, lv ?? 0));
+        for (let b = 0; b < PC_BOXES; b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
+        try { for (const e of player.dimension.getEntities({ families: ["owned"] })) if (prop(e, OWNER) === player.id) note(e.typeId, prop(e, LEVEL)); } catch (e) { }
+    }
+    const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n], n, ctx) && dexMatches(n, s[n], state.search, state.by));
     const pages = Math.max(1, Math.ceil(entries.length / 25));
     state.page = Math.min(state.page, pages - 1);
     const shown = entries.slice(state.page * 25, state.page * 25 + 25);
