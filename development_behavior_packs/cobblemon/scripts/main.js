@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -1138,6 +1138,22 @@ function openPot(block, player) {
 // the broth shows while anything is in the pot (CampfirePotBlock.OCCUPIED), in the colour of the seasonings' dominant
 // flavours (getColourMixFromSeasonings: the flavours summed in the order they are met, the first of the strongest
 // weighted most), or the base broth without any
+// the dominant flavours of the pot's seasonings, in the order met (getColourMixFromSeasonings)
+function potDominant(data) {
+    const sums = new Map();
+    for (const n of [10, 11, 12]) for (const [flavour, value] of Object.entries(SEASONINGS[data.s[n]?.[0]]?.flavours ?? {})) sums.set(flavour, (sums.get(flavour) ?? 0) + value);
+    const top = Math.max(...sums.values());
+    return [...sums].filter(([f, v]) => v === top && f !== "MILD").map(([f]) => f);
+}
+// the bubbles' colour: bubbleColourMap's mix (the first at 0.7), or BASE_BROTH_BUBBLE_COLOR
+const BUBBLE_COLOURS = { SPICY: 0xFFD9AD, DRY: 0xBCF8FE, SWEET: 0xFEE3F9, BITTER: 0xC8F7BC, SOUR: 0xFDFAB8 };
+function bubbleColour(data) {
+    const cols = potDominant(data).map((f) => BUBBLE_COLOURS[f]);
+    if (!cols.length) return { red: 0xFE / 255, green: 0xFD / 255, blue: 0xE4 / 255, alpha: 1 };
+    const w = cols.length === 1 ? [1] : [0.7, ...cols.slice(1).map(() => 0.3 / (cols.length - 1))];
+    const ch = (sh) => Math.floor(cols.reduce((a, c, i) => a + ((c >> sh) & 255) * w[i], 0)) / 255;
+    return { red: ch(16), green: ch(8), blue: ch(0), alpha: 1 };
+}
 function showPotContents(block, data) {
     setState(block, "cobblemon:occupied", data.s.slice(1).some(Boolean));
     const sums = new Map();
@@ -1192,6 +1208,13 @@ system.runInterval(() => {
         }
         potProgress.set(key, progress);
         if (before !== progress > 0) setState(block, "cobblemon:cooking", progress > 0);
+        // while it cooks the broth bubbles once a second (particleCooldown 20), in the bubble colour
+        if (progress > 0 && system.currentTick % 20 === 0) {
+            try {
+                const vars = new MolangVariableMap(); vars.setColorRGBA("variable.broth", bubbleColour(data));
+                block.dimension.spawnParticle("cobblemon:broth_bubbles", { x: x + 0.5, y: y + 0.5375, z: z + 0.5 }, vars);
+            } catch (e) { }
+        }
     }
 }, 1);
 
@@ -1887,6 +1910,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const d = { x: target.location.x - player.location.x, y: 0, z: target.location.z - player.location.z }, len = Math.hypot(d.x, d.z) || 1;
         const hit = { x: target.location.x - (d.x / len) * 0.5, y: target.location.y + 0.4, z: target.location.z - (d.z / len) * 0.5 };
         startCapture(player, projectile, target, hit, { x: d.x / len, y: 0, z: d.z / len });
+    } else if (event.id === "cobblemon:particle") {
+        // for testing: "/scriptevent cobblemon:particle <id> x y z" spawns a particle, its variable.broth white
+        const [id, x, y, z] = event.message.split(" ");
+        try { const vars = new MolangVariableMap(); vars.setColorRGBA("variable.broth", { red: 1, green: 1, blue: 1, alpha: 1 }); source.dimension.spawnParticle(id, { x: Number(x), y: Number(y), z: Number(z) }, vars); } catch (e) { console.warn(`particle: ${e}`); }
     } else if (event.id === "cobblemon:claim") {
         // for testing: "/scriptevent cobblemon:claim [level]" makes the running Pokemon, or else the nearest wild one within
         // 8 blocks of the running player, that player's own, as a claim does, at the level given

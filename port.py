@@ -1528,6 +1528,9 @@ def copy_particles():
                 collision["enabled"] = True   # a truncated expression such as "positio" is an export artefact
             identifier = effect.get("description", {}).get("identifier")
             if not identifier: continue
+            if identifier == "cobblemon:broth_bubbles":
+                # ParticleStorm's getParticleColor: the pot's bubble colour, which the script passes as variable.broth
+                data["particle_effect"]["components"]["minecraft:particle_appearance_tinting"] = {"color": ["v.broth.r", "v.broth.g", "v.broth.b", "v.broth.a"]}
             relative = os.path.relpath(os.path.join(root, name), particlesMain).replace(os.sep, "/")
             particle_ids[identifier] = relative
             os.makedirs(os.path.dirname(f"{particlesBedrock}/{relative}"), exist_ok=True)
