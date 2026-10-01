@@ -1216,7 +1216,7 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "pc.", "gui.")): continue
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "pokemon.gimmighoul.", "pc.", "gui.")): continue
         folder = key.split(".")[-2] if key.startswith(("item.", "block.")) else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
@@ -2522,12 +2522,15 @@ def level_evolutions(species):
             elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
             elif v == "weather": req.append({"t": "weather", "rain": r.get("isRaining"), "thunder": r.get("isThundering")})
             elif v == "moon_phase": req.append({"t": "moon", "phase": r.get("moonPhase")})
+            elif v == "blocks_traveled": req.append({"t": "steps", "min": r.get("amount", 0)})
             elif v == "stat_compare": req.append({"t": "stat_gt", "hi": STAT_KEYS.get(r.get("highStat")), "lo": STAT_KEYS.get(r.get("lowStat"))})
             elif v == "stat_equal": req.append({"t": "stat_eq", "a": STAT_KEYS.get(r.get("statOne")), "b": STAT_KEYS.get(r.get("statTwo"))})
             elif v == "properties":
                 target = str(r.get("target", ""))
                 m = re.search(r"(gender|nature|nickname|cocoon_species)=(\S+)", target)
+                stash = re.search(r"(gimmighoul_coins)=(\d+)", target)
                 if m: req.append({"t": "prop", "key": m.group(1), "value": m.group(2)})
+                elif stash: req.append({"t": "feature", "key": stash.group(1), "value": int(stash.group(2))})
                 else: req.append({"t": "never", "why": target})
             else: req.append({"t": "never", "why": v})
         out.append({"to": entity_id(result), "event": f"cobblemon:evolve_to_{result}", "req": req})
@@ -4789,7 +4792,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
     + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("ksel", 3), ("ktitle", 48), ("kdesc", 120)] + [(f"k{i}", 3) for i in range(30)] \
     + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
-    + [(f"{bar}{k}", w) for bar in ("fr", "fu") for k, w in (("val", 6), ("bar", 4), ("pct", 8))] + [("item", 0)]
+    + [(f"b{n}{k}", w) for n in range(4) for k, w in (("un", 2), ("val", 6), ("bar", 4), ("ov", 3), ("pct", 8))] + [("item", 0)]
 SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
@@ -4839,6 +4842,27 @@ def cobblemon_marks():
     return out
 
 
+def feature_bars():
+    """The integer species features with a display (Gimmighoul's coin and scrap stashes, the global blocks travelled):
+    the key, range, name, colour, overlay, the items that add to it (itemPoints, StashHandler) and the species it is
+    assigned to (species_feature_assignments; a global one is every species')."""
+    assigned = {}
+    for path in sorted(glob.glob(f"{cobblemonData}/species_feature_assignments/*.json")):
+        with open(path, encoding="utf-8") as file: a = json.load(file)
+        for f in a.get("features", []): assigned.setdefault(f, []).extend(a.get("pokemon", []))
+    bars = []
+    for folder in ("species_features", "global_species_features"):
+        for path in sorted(glob.glob(f"{cobblemonData}/{folder}/*.json")):
+            with open(path, encoding="utf-8") as file: feature = json.load(file)
+            display = feature.get("display")
+            if feature.get("type") != "integer" or not display or not feature.get("visible", True): continue
+            key = feature["keys"][0]
+            bars.append({"key": key, "min": feature.get("min", 0), "max": feature.get("max", 100), "name": lang.get(display["name"], display["name"]),
+                         "colour": display.get("colour", [255, 255, 255]), "overlay": display["overlay"].split("/")[-1][:-4],
+                         "items": feature.get("itemPoints", {}), "species": None if folder.startswith("global") else assigned.get(key, [])})
+    return bars
+
+
 def create_summary_ui():
     S = f"{uiTextures}/summary"
     os.makedirs(S, exist_ok=True)
@@ -4852,11 +4876,18 @@ def create_summary_ui():
     # the Other page's bars: the underlay, each bar's overlay (drawn at half scale, so 110 by 10), and the fill at every
     # width Mth.ceil(ratio * 110) can take, in the bar's colours: friendship below 160 and from 160 (FriendshipFeatureRenderer),
     # fullness to a third, two thirds and above (FullnessFeatureRenderer)
-    shutil.copyfile(f"{src}/summary_stats_other_bar.png", f"{S}/other_bar.png")
-    for bar, name in (("fr", "friendship"), ("fu", "fullness")):
-        shutil.copyfile(f"{src}/summary_stats_{name}_overlay.png", f"{S}/{bar}_overlay.png")
+    shutil.copyfile(f"{src}/summary_stats_other_bar.png", f"{S}/uy.png"); blank.save(f"{S}/un.png"); blank.save(f"{S}/v--.png"); blank.save(f"{S}/o---.png")
+    bars = feature_bars()
+    overlays = ["summary_stats_friendship_overlay", "summary_stats_fullness_overlay"] + [b["overlay"] for b in bars]
+    for n, name in enumerate(overlays): shutil.copyfile(f"{src}/{name}.png", f"{S}/v{n:02d}.png")
     digits = "0123456789abcdefghijklmnopqrstuvwxyz"
-    for code, rgb in (("a", (255, 143, 163)), ("b", (255, 71, 102)), ("c", (120, 200, 80)), ("d", (240, 200, 65)), ("e", (230, 80, 65))):
+    colours = [("a", (255, 143, 163)), ("b", (255, 71, 102)), ("c", (120, 200, 80)), ("d", (240, 200, 65)), ("e", (230, 80, 65))] \
+        + [(chr(ord("f") + n), tuple(b["colour"])) for n, b in enumerate(bars)]
+    with open(f"{scriptsBedrock}/features.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the integer species features the Summary's Other page draws as bars (species_features and\n"
+                   "// global_species_features with a display), each with its fill colour and overlay codes, and the species each is assigned to\n")
+        file.write("export const FEATURE_BARS = " + json.dumps([{**b, "fill": chr(ord("f") + n), "ov": f"v{n + 2:02d}"} for n, b in enumerate(bars)]) + ";\n")
+    for code, rgb in colours:
         for w in range(111):
             fill = Image.new("RGBA", (110, 10), (0, 0, 0, 0))
             if w: fill.paste(Image.new("RGBA", (w, 10), rgb + (255,)), (0, 0))
@@ -5043,18 +5074,24 @@ def create_summary_ui():
     for i, name in enumerate(("Stat", "IVs", "EVs", "Other")):
         stats.append(fixed(f"stab{i}", name, (31 + 24 * i - 12, 143), 0.5, size=(24, 5), align="center"))
         stats.append(picture(f"smark{i}", field("stab"), (31 + 24 * i - 2, 140), (4, 2), 6, f"smark{i}_"))
-    # the Other page: StatWidget's universal bars, friendship then fullness, from 9, 15 and 29 apart, each as
-    # BarSummarySpeciesFeatureRenderer draws it: the underlay, the fill (a pre-drawn width, "o", its colour and the width
-    # in two base-36 digits), the overlay, the name over it, the value at the left and the share at the right
+    # the Other page: StatWidget's four bar slots from 9, 15 and 29 apart, filled with the universal bars (friendship,
+    # fullness) then the species' own (FEATURE_BARS), each as BarSummarySpeciesFeatureRenderer draws it: the underlay
+    # ("uy", or "un" for an empty slot), the fill (a pre-drawn width, "o", its colour and the width in two base-36
+    # digits), the overlay (its "v" code), the name over it (a fixed label for each bar, shown by its overlay code, since
+    # a field's padding is text and would push a centred name aside), the value at the left and the share at the right
     other = [image("other_base", "stats_other_base", (0, 0), (134, 148), 3)]
-    for n, (bar, text) in enumerate((("fr", "Friendship"), ("fu", "Fullness"))):
+    bar_names = ["Friendship", "Fullness"] + [b["name"] for b in feature_bars()]
+    for n in range(4):
+        for k, text in enumerate(bar_names):
+            other.append({f"b{n}_name{k}": {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 15 + 29 * n + 2.5],
+                                            "size": [116, 8], "layer": 7, "font_scale_factor": 0.75, "text_alignment": "center", "shadow": True,
+                                            "text": f"\u00a7l{text}", "bindings": bound(f"({field(f'b{n}ov')} = 'v{k:02d}')", "#visible")}})
         bx, by = 9, 15 + 29 * n
-        other += [image(f"{bar}_under", "other_bar", (bx, by), (116, 24), 4),
-                  picture(f"{bar}_fill", field(f"{bar}bar"), (bx + 3, by + 13), (110, 10), 5),
-                  image(f"{bar}_over", f"{bar}_overlay", (bx + 3, by + 13), (110, 10), 6),
-                  fixed(f"{bar}_name", f"§l{text}", (bx, by + 2.5), 0.75, size=(116, 8), align="center", layer=7),
-                  label(f"{bar}_val", field(f"{bar}val"), (bx + 9 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7),
-                  label(f"{bar}_pct", field(f"{bar}pct"), (bx + 107 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7)]
+        other += [picture(f"b{n}_under", field(f"b{n}un"), (bx, by), (116, 24), 4),
+                  picture(f"b{n}_fill", field(f"b{n}bar"), (bx + 3, by + 13), (110, 10), 5),
+                  picture(f"b{n}_over", field(f"b{n}ov"), (bx + 3, by + 13), (110, 10), 6),
+                  label(f"b{n}_val", field(f"b{n}val"), (bx + 9 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7),
+                  label(f"b{n}_pct", field(f"b{n}pct"), (bx + 107 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7)]
     stats.append({"other": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
                             "bindings": bound(f"({field('stab')} = 'o')", "#visible"), "controls": other}})
     # MarksWidget: the chosen mark's icon at 12, 12 with its description beside it, the title (or the name) centred at 38,

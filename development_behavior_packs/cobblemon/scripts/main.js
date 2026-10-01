@@ -13,6 +13,7 @@ import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
 import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
+import { FEATURE_BARS } from "./features.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
@@ -1880,7 +1881,8 @@ function snapshot(entity) {
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
-    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness"];
+    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
+    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3158,9 +3160,12 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
     const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
     const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id];
-    if (!medicine && candy === undefined && !held && !changer && !evItem && !mint && !evBerry) return;
+    const stash = featureBarsFor(target.typeId).some((b) => b.species && b.items[id]);
+    if (!medicine && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
+    // StashHandler.interactMob comes first: the item goes into the stash rather than being held
+    if (stash) { system.run(() => { if (target.isValid && stashItem(target, id)) consumeHand(player); }); return; }
     system.run(() => {
         if (!target.isValid) return;
         // in battle, medicine on the Pokemon fighting is the turn's action (PokemonSelectingItem.applyToBattlePokemon)
@@ -3252,6 +3257,8 @@ function meets(entity, f, r, player) {
     switch (r.t) {
         case "level": return f.level >= r.min;
         case "friendship": return friendshipOf(entity) >= r.min;
+        case "steps": return (prop(entity, STEPS) ?? 0) >= r.min;
+        case "feature": return (prop(entity, `cobblemon:${r.key}`) ?? 0) === r.value;
         case "time": return inTimeRange(r.range);
         case "held": return prop(entity, "cobblemon:held") === r.item;
         case "move": return f.moves.some((m) => m.id === r.move);
@@ -3329,6 +3336,40 @@ system.runInterval(() => {
         }
     }
 }, 20);
+// The species' integer features shown as bars (IntSpeciesFeature): Gimmighoul's coin and scrap stashes, which the
+// items in its itemPoints add to (StashHandler, capped at the most), and the blocks travelled, counted for a Pokemon
+// whose evolution asks for them as PokemonEntity.updateBlocksTraveled does (the squared distance between block
+// positions, not while riding or falling)
+const STEPS = "cobblemon:blocks_traveled";
+const speciesKey = (typeId) => (POKEMON[typeId]?.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const needsSteps = (typeId) => (POKEMON[typeId]?.evolutions ?? []).some((evo) => evo.req.some((r) => r.t === "steps"));
+function featureBarsFor(typeId) {
+    return FEATURE_BARS.filter((b) => (b.species ? b.species.includes(speciesKey(typeId)) : b.key !== "blocks_traveled" || needsSteps(typeId)));
+}
+function stashItem(entity, id) {
+    for (const b of featureBarsFor(entity.typeId)) {
+        if (!b.species || !b.items[id]) continue;
+        setProp(entity, `cobblemon:${b.key}`, Math.min(b.max, (prop(entity, `cobblemon:${b.key}`) ?? b.min) + b.items[id]));
+        try { entity.dimension.playSound("cobblemon.pokemon.gimmighoul.give_item", entity.location); } catch (e) { }
+        return true;
+    }
+    return false;
+}
+const stepsFrom = new Map();   // entity id -> its last block position
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let owned = [];
+        try { owned = world.getDimension(dim).getEntities({ families: ["owned"] }); } catch (e) { continue; }
+        for (const e of owned) {
+            if (!POKEMON[e.typeId] || !needsSteps(e.typeId)) continue;
+            const at = { x: Math.floor(e.location.x), y: Math.floor(e.location.y), z: Math.floor(e.location.z) }, from = stepsFrom.get(e.id);
+            stepsFrom.set(e.id, at);
+            if (!from || e.isFalling || e.getComponent("minecraft:riding")) continue;
+            const d = (at.x - from.x) ** 2 + (at.y - from.y) ** 2 + (at.z - from.z) ** 2;
+            if (d > 0 && d < 64) setProp(e, STEPS, (prop(e, STEPS) ?? 0) + d);
+        }
+    }
+}, 2);
 function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
 
 // the entity's health follows its battle HP, so a change to its HP stat keeps the same share of health
@@ -3391,14 +3432,19 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         nature: mine ? natureName(effectiveNature(source)) : "-", ability: abilityName(f.ability), desc: ABILITY_DESC[f.ability] ?? "",
         friendship: num(friendshipOf(source)),
     });
-    // the Other page's bars (BarSummarySpeciesFeatureRenderer): the value, the fill's colour and width, the share
-    const bar = (key, value, max, colour) => {
-        const ratio = Math.min(1, value / max), width = Math.ceil(ratio * 110);
-        v[`${key}val`] = num(value); v[`${key}bar`] = `o${colour(ratio)}${B36(width)}`; v[`${key}pct`] = num(`${Math.floor(ratio * 100)}%%`);
-    };
-    const friendship = friendshipOf(source);
-    bar("fr", friendship, 255, () => (friendship >= 160 ? "b" : "a"));
-    bar("fu", fullnessOf(source), maxFullness(source.typeId), (r) => (r <= 0.33 ? "c" : r <= 0.66 ? "d" : "e"));
+    // the Other page's bars (BarSummarySpeciesFeatureRenderer): friendship and fullness, then the species' own (the
+    // blocks travelled only while one of its evolutions asks for them), four at most as on StatWidget's first page
+    const friendship = friendshipOf(source), bars = [
+        ["Friendship", friendship, 0, 255, () => (friendship >= 160 ? "b" : "a"), "v00"],
+        ["Fullness", fullnessOf(source), 0, maxFullness(source.typeId), (r) => (r <= 0.33 ? "c" : r <= 0.66 ? "d" : "e"), "v01"],
+        ...featureBarsFor(source.typeId).map((b) => [b.name, prop(source, `cobblemon:${b.key}`) ?? b.min, b.min, b.max, () => b.fill, b.ov])];
+    for (let n = 0; n < 4; n++) {
+        const b = bars[n];
+        if (!b) { Object.assign(v, { [`b${n}un`]: "un", [`b${n}bar`]: "o---", [`b${n}ov`]: "v--" }); continue; }
+        const [name, value, min, max, colour, ov] = b, ratio = Math.min(1, (value - min) / Math.max(1, max - min)), width = Math.ceil(ratio * 110);
+        Object.assign(v, { [`b${n}un`]: "uy",  [`b${n}val`]: num(value), [`b${n}bar`]: `o${colour(ratio)}${B36(width)}`,
+                           [`b${n}ov`]: ov, [`b${n}pct`]: num(`${Math.floor(ratio * 100)}%%`) });
+    }
     const group = info.expGroup, exp = Math.max(prop(source, EXP) ?? 0, expFor(group, f.level));
     const span = Math.max(1, expFor(group, f.level + 1) - expFor(group, f.level));
     v.exp = num(exp); v.tonext = num(f.level >= 100 ? 0 : expFor(group, f.level + 1) - exp);
