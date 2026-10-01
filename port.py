@@ -4931,7 +4931,8 @@ TYPE_HUES = [("normal", 0xE8E8DA), ("fire", 0xFF6E21), ("water", 0x3FA5FF), ("gr
 BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (24, 27), "icon": (27, 32), "gender": (32, 33), "owned": (33, 34)}
 BATTLE_SIDE = 33
 BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters, then the foe's, 9
-BATTLE_LOG = BATTLE_HPTEXT + 12 + 9
+BATTLE_LOG_FLAG = BATTLE_HPTEXT + 13 + 9   # after the two health texts in bytes (each colour code is 3): "e" while the log is expanded, "c" while not
+BATTLE_LOG = BATTLE_LOG_FLAG + 1
 # BattleSwitchPokemonSelection's tiles: each button's text carries its Pokemon as fixed-width fields
 SWITCH_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "status": (21, 24), "icon": (24, 29), "ball": (29, 32)}
 SWITCH_HPTEXT = 32   # the health as a number runs from here to the end   # the battle log's last lines run from here to the end
@@ -6626,6 +6627,10 @@ def create_battle_ui():
         strip.crop((74 - 37, 0, 74, 7)).save(f"{uiTextures}/battle/status_{status}.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
     shutil.copyfile(f"{guiMain}/battle/battle_log.png", f"{uiTextures}/battle/log.png")
+    shutil.copyfile(f"{guiMain}/battle/battle_log_expanded.png", f"{uiTextures}/battle/log_expanded.png")
+    # the expand toggle's face: nothing (the frame draws its arrow), a faint highlight when hovered
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/battle/log_toggle.png")
+    Image.new("RGBA", (1, 1), (255, 255, 255, 90)).save(f"{uiTextures}/battle/log_toggle_hover.png")
     shutil.copyfile(f"{guiMain}/battle/battle_owned_indicator.png", f"{uiTextures}/battle/owned_y.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/battle/owned_n.png")
     # the switch screen: the underlay, the slot frames (a fainted Pokemon's greyed, the one in battle held on its
@@ -6651,7 +6656,7 @@ def create_battle_ui():
     T = "textures/ui/cobblemon"
     def field(side, name):
         if name == "hptext":
-            if side == 1: return f"(('%.{BATTLE_LOG}s' * #form_text) - ('%.{BATTLE_HPTEXT + 12}s' * #form_text))"
+            if side == 1: return f"(('%.{BATTLE_LOG_FLAG}s' * #form_text) - ('%.{BATTLE_HPTEXT + 12}s' * #form_text))"
             return f"(('%.{BATTLE_HPTEXT + 12}s' * #form_text) - ('%.{BATTLE_HPTEXT}s' * #form_text))"
         a, b = BATTLE_FIELDS[name]
         a, b = a + side * BATTLE_SIDE, b + side * BATTLE_SIDE
@@ -6751,12 +6756,26 @@ def create_battle_ui():
                                {"binding_type": "view", "source_property_name": is_back, "target_property_name": "#visible"}]}}]}
     # BattleMessagePane: the 169 by 55 log frame 12 in from the right and 30 up from the bottom, its text box 6 in,
     # 153 by 46, showing the last lines (Bedrock's font drawn at 0.8 to fit Cobblemon's 146-pixel lines) with the newest at the bottom
-    battle_log = {"log": {"type": "panel", "size": [169, 55], "anchor_from": "bottom_right", "anchor_to": "bottom_right", "offset": [-12, -30], "controls": [
-        {"frame": {"type": "image", "texture": f"{T}/battle/log", "size": [169, 55], "layer": 1}},
-        {"box": {"type": "panel", "size": [153, 46], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "controls": [
-            {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, -1], "layer": 3,
-                       "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
-                       "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}}]}}
+    # BattleMessagePane: the 169 by 55 frame (101 expanded), its text box 153 by 46 (twice that expanded) 5 in and 6
+    # down, and the expand toggle (5 by 5 at 160, 46, or 92 expanded); the toggle is the form's button whose texture
+    # is battle/log_toggle, wherever it falls among a form's buttons
+    def log_panel(flag, height, box_height, toggle_y):
+        toggles = [{f"toggle_{i}": {**button([7, 7], []), "collection_index": i, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [159, toggle_y - 1],
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
+                                                 {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                                 {"binding_type": "view", "source_property_name": f"(#form_button_texture = '{T}/battle/log_toggle')", "target_property_name": "#visible"}]}}
+                   for i in range(2, 8)]
+        return {f"log_{flag}": {"type": "panel", "size": [169, height], "anchor_from": "bottom_right", "anchor_to": "bottom_right", "offset": [-12, -30],
+                                "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                             "source_property_name": f"((('%.{BATTLE_LOG}s' * #form_text) - ('%.{BATTLE_LOG_FLAG}s' * #form_text)) = '{flag}')", "target_property_name": "#visible"}],
+                                "controls": [
+            {"frame": {"type": "image", "texture": f"{T}/battle/{'log_expanded' if flag == 'e' else 'log'}", "size": [169, height], "layer": 1}},
+            {"box": {"type": "panel", "size": [153, box_height], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "controls": [
+                {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, -1], "layer": 3,
+                           "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                           "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}},
+            {"toggles": {"type": "collection_panel", "collection_name": "form_buttons", "size": [169, height], "layer": 6, "controls": toggles}}]}}
+    battle_log = {"log": {"type": "panel", "size": ["100%", "100%"], "controls": [log_panel("c", 55, 46, 46), log_panel("e", 101, 92, 92)]}}
     # BattleSwitchPokemonSelection: the underlay across the screen, "Party", and six 94 by 29 tiles two by three
     # from the middle (4 apart across, 2 down), each with its level, name, portrait, ball, health bar and number and
     # status; the Back button at the bottom left when the switch is not forced

@@ -1440,8 +1440,9 @@ function chooseSwitch(battle, forced) {
         const picked = e && ready.includes(e);
         form.button(e ? switchTile(battle, e) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
     }
-    form.button(forced ? "" : "Back", `${UI}/battle/back`);
+    form.button(forced ? "" : "Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
     return form.show(player).then((r) => {
+        if (r.selection === 7 && battles.has(player.id)) { toggleLog(battle); return chooseSwitch(battle, forced); }
         if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced) : undefined;
         const e = tiles[r.selection];
         return e && ready.includes(e) ? e : chooseSwitch(battle, forced);
@@ -1562,6 +1563,9 @@ function turn(battle) {
 // title picks the layout and its body carries both Pokemon as fixed-width fields (see BATTLE_FIELDS in port.py).
 const UI = "textures/ui/cobblemon";
 function pad(value, width) { const s = String(value ?? ""); return s.length >= width ? s.slice(0, width) : s + " ".repeat(width - s.length); }
+// BattleMessagePane's expand toggle: the log grows to twice its height, showing more lines, until toggled back
+const LOG_TOGGLE = "textures/ui/cobblemon/battle/log_toggle";
+function toggleLog(battle) { battle.logExpanded = !battle.logExpanded; try { battle.player.playSound("cobblemon.gui.click"); } catch (e) { } }
 function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
@@ -1574,8 +1578,8 @@ function battleBody(battle) {
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
     const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
     // the log follows the fixed fields; a lone % would be read as a format there too
-    const log = (battle.log ?? []).slice(-6).map((line) => line.replace(/%/g, "%%")).join("\n");
-    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + log;
+    const log = (battle.log ?? []).slice(battle.logExpanded ? -13 : -6).map((line) => line.replace(/%/g, "%%")).join("\n");
+    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + log;
 }
 
 // BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
@@ -1604,8 +1608,10 @@ function pickAction(battle, options) {
         .button("Fight", `${UI}/battle/menu_fight`).button("Switch", `${UI}/battle/menu_switch`);
     if (battle.trainer) menu.button("Forfeit", `${UI}/battle/menu_forfeit`);
     else menu.button("Catch", `${UI}/battle/menu_bag`).button("Run", `${UI}/battle/menu_run`);
+    menu.button("", LOG_TOGGLE);
     return menu.show(battle.player).then((r) => {
         if (r.canceled || !battles.has(battle.player.id)) return undefined;
+        if (r.selection === 4) { toggleLog(battle); return pickAction(battle, options); }
         if (r.selection === 3) return options.find((o) => o.kind === "run");
         if (r.selection === 2) return { kind: battle.trainer ? "forfeit" : "catch" };
         if (r.selection === 1) {
@@ -1614,18 +1620,22 @@ function pickAction(battle, options) {
             return sw;
         }
         const moves = options.filter((o) => o.kind === "move");
+        const showMoves = () => {
         const form = new ActionFormData().title("cbm:battle_moves").body(battleBody(battle));
         for (const o of moves) {
             const m = o.move, off = o.locked || (m !== STRUGGLE && m.left <= 0);
             const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
             form.button(pad(m.name, 16) + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
-        form.button("Back", `${UI}/battle/back`);
+        form.button("Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
         return form.show(battle.player).then((m) => {
             if (m.canceled || !battles.has(battle.player.id)) return undefined;
+            if (m.selection === moves.length + 1) { toggleLog(battle); return showMoves(); }
             if (m.selection >= moves.length) return pickAction(battle, options);
             return moves[m.selection];
         });
+        };
+        return showMoves();
     });
 }
 
