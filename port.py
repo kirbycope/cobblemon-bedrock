@@ -1216,7 +1216,7 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "block.tm_machine.", "pc.", "gui.")): continue
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "pc.", "gui.")): continue
         folder = key.split(".")[-2] if key.startswith(("item.", "block.")) else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
@@ -4181,6 +4181,8 @@ def create_general_items():
         file.write("export const MINTS = " + json.dumps({k: v for k, v in mints.items() if k in defined}) + ";" + chr(10))
         file.write("export const EV_BERRIES = " + json.dumps({k: v for k, v in ev_berries.items() if k in defined}) + ";" + chr(10))
         file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
+        # the Poke food (tags/item/poke_food), which a full Pokemon will not take
+        file.write("export const POKE_FOOD = " + json.dumps(sorted(item_tag("poke_food"))) + ";" + chr(10))
         # CobblemonTooltipGenerator: the gray lines under an item's name, its ".tooltip" key then "_1", "_2" and on,
         # shown as the item's lore, wrapped to Bedrock's 50 characters a line (the colour code counts)
         tooltips = {}
@@ -4787,7 +4789,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball"
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
     + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("ksel", 3), ("ktitle", 48), ("kdesc", 120)] + [(f"k{i}", 3) for i in range(30)] \
     + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
-    + [("item", 0)]
+    + [(f"{bar}{k}", w) for bar in ("fr", "fu") for k, w in (("val", 6), ("bar", 4), ("pct", 8))] + [("item", 0)]
 SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
@@ -4847,6 +4849,18 @@ def create_summary_ui():
     blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
     for name in ("blank", "stat_n", "t--", "x--", "sel_n", "b--"): blank.save(f"{S}/{name}.png")
     shutil.copyfile(f"{src}/summary_move_selected_overlay.png", f"{S}/sel_y.png")
+    # the Other page's bars: the underlay, each bar's overlay (drawn at half scale, so 110 by 10), and the fill at every
+    # width Mth.ceil(ratio * 110) can take, in the bar's colours: friendship below 160 and from 160 (FriendshipFeatureRenderer),
+    # fullness to a third, two thirds and above (FullnessFeatureRenderer)
+    shutil.copyfile(f"{src}/summary_stats_other_bar.png", f"{S}/other_bar.png")
+    for bar, name in (("fr", "friendship"), ("fu", "fullness")):
+        shutil.copyfile(f"{src}/summary_stats_{name}_overlay.png", f"{S}/{bar}_overlay.png")
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    for code, rgb in (("a", (255, 143, 163)), ("b", (255, 71, 102)), ("c", (120, 200, 80)), ("d", (240, 200, 65)), ("e", (230, 80, 65))):
+        for w in range(111):
+            fill = Image.new("RGBA", (110, 10), (0, 0, 0, 0))
+            if w: fill.paste(Image.new("RGBA", (w, 10), rgb + (255,)), (0, 0))
+            fill.save(f"{S}/o{code}{digits[w // 36]}{digits[w % 36]}.png")
     for key in ("power", "accuracy", "effect"):
         shutil.copyfile(f"{src}/summary_moves_icon_{key}.png", f"{S}/icon_{key[:3] if key != 'power' else key}.png")
     shutil.copyfile(f"{S}/stats_icon_increase.png", f"{S}/stat_u.png"); shutil.copyfile(f"{S}/stats_icon_decrease.png", f"{S}/stat_d.png")
@@ -5029,12 +5043,20 @@ def create_summary_ui():
     for i, name in enumerate(("Stat", "IVs", "EVs", "Other")):
         stats.append(fixed(f"stab{i}", name, (31 + 24 * i - 12, 143), 0.5, size=(24, 5), align="center"))
         stats.append(picture(f"smark{i}", field("stab"), (31 + 24 * i - 2, 140), (4, 2), 6, f"smark{i}_"))
-    # the Other page: friendship, as StatWidget's other bars show it
+    # the Other page: StatWidget's universal bars, friendship then fullness, from 9, 15 and 29 apart, each as
+    # BarSummarySpeciesFeatureRenderer draws it: the underlay, the fill (a pre-drawn width, "o", its colour and the width
+    # in two base-36 digits), the overlay, the name over it, the value at the left and the share at the right
+    other = [image("other_base", "stats_other_base", (0, 0), (134, 148), 3)]
+    for n, (bar, text) in enumerate((("fr", "Friendship"), ("fu", "Fullness"))):
+        bx, by = 9, 15 + 29 * n
+        other += [image(f"{bar}_under", "other_bar", (bx, by), (116, 24), 4),
+                  picture(f"{bar}_fill", field(f"{bar}bar"), (bx + 3, by + 13), (110, 10), 5),
+                  image(f"{bar}_over", f"{bar}_overlay", (bx + 3, by + 13), (110, 10), 6),
+                  fixed(f"{bar}_name", f"§l{text}", (bx, by + 2.5), 0.75, size=(116, 8), align="center", layer=7),
+                  label(f"{bar}_val", field(f"{bar}val"), (bx + 9 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7),
+                  label(f"{bar}_pct", field(f"{bar}pct"), (bx + 107 - 15, by + 6), 0.5, size=(30, 5), align="center", layer=7)]
     stats.append({"other": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
-                            "bindings": bound(f"({field('stab')} = 'o')", "#visible"), "controls": [
-        image("other_base", "stats_other_base", (0, 0), (134, 148), 3),
-        fixed("friend_l", "Friendship", (20, 20), 0.5, size=(60, 5)),
-        label("friend_v", field("friendship"), (90, 20), 0.5, size=(30, 5), align="right")]}})
+                            "bindings": bound(f"({field('stab')} = 'o')", "#visible"), "controls": other}})
     # MarksWidget: the chosen mark's icon at 12, 12 with its description beside it, the title (or the name) centred at 38,
     # then MarksScrollingWidget's rows of six 16 by 16 slots from 9, 45, 20 apart and 19 down; a slot is a button
     marks = [image("marks_base", "marks_base", (0, 0), (134, 148), 2),
@@ -5800,7 +5822,7 @@ def create_dialogue_ui():
 # three ingredient slots with what the player carries of each. Body: TM_LAYOUT's fields in order. The recipe icons and
 # the blank disc slot are the textures of four buttons after the others, since a texture path padded to a field's
 # width names no texture.
-TM_LAYOUT = [("mode", 1), ("search", 24), ("power", 6), ("acc", 6), ("eff", 6), ("disc", 3)] \
+TM_LAYOUT = [("mode", 1), ("search", 24), ("power", 6), ("acc", 8), ("eff", 8), ("disc", 3)] \
     + [(f"r{i}{k}", w) for i in range(3) for k, w in (("need", 4), ("have", 6))] + [("desc", 0)]
 TM_TYPE_SLOTS, TM_MOVE_ROWS = 19, 64
 

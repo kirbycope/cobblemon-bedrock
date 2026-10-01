@@ -21,7 +21,7 @@ import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
-import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS } from "./items.js";
+import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 
 const battles = new Map(); // player id -> battle
@@ -1880,7 +1880,7 @@ function snapshot(entity) {
 
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
-    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched"];
+    "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3173,6 +3173,10 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             return;
         }
         const name = POKEMON[target.typeId].name;
+        if (POKE_FOOD.includes(id) && fullnessOf(target) >= maxFullness(target.typeId)) { player.sendMessage("§7It won't have any effect."); return; }
+        // the foods' feedPokemon: five for the portion berries, one for the other berries and Berry Juice
+        const feeds = id === "cobblemon:berry_juice" || id.endsWith("_berry") ? (PORTION_BERRIES.has(id) ? 5 : 1) : 0;
+        const fed = () => { if (feeds) feedPokemon(target, feeds); };
         if (evItem) {
             // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
             const [stat, amount, back] = evItem;
@@ -3191,7 +3195,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             const lowered = addEvs(target, evBerry, -10);
             const before = friendshipOf(target), raised = Math.min(255, before + (before < 100 ? 10 : before < 200 ? 5 : 1)) - before;
             if (!lowered && !raised) { player.sendMessage("§7It won't have any effect."); return; }
-            setProp(target, "cobblemon:friendship", before + raised); consumeHand(player);
+            setProp(target, "cobblemon:friendship", before + raised); consumeHand(player); fed();
             player.sendMessage(`§a${name} ${raised ? "became more friendly" : "ate the berry"}${lowered ? `, and its ${STAT_NAMES[evBerry]} base points fell` : ""}.`);
             refreshHealth(target);
         } else if (changer) {
@@ -3205,7 +3209,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         } else if (medicine) {
             const message = applyMedicine(target, medicine);
             if (!message) { player.sendMessage("§7It won't have any effect."); return; }
-            consumeHand(player); player.sendMessage(`§a${message}`);
+            consumeHand(player); fed(); player.sendMessage(`§a${message}`);
         } else if (candy !== undefined) {
             if (applyCandy(player, target, candy)) consumeHand(player); else player.sendMessage("§7It won't have any effect.");
         } else {
@@ -3286,6 +3290,45 @@ function evolve(entity, evolution) {
     entity.triggerEvent(evolution.event);
 }
 
+// Fullness (Pokemon.currentFullness): its most is Grass Knot's power for the species' weight, a tenth, halved, plus
+// one; food raises it (feedPokemon, with the eating sound rising as it fills) and Poke food cannot be given once full
+// (PokemonSelectingItem.canUseOnPokemon); an owned Pokemon loses one each metabolism cycle (getMetabolismRate)
+const FULLNESS = "cobblemon:fullness", metabolism = new Map();   // entity id -> ticks into the cycle
+const PORTION_BERRIES = new Set(["figy", "wiki", "mago", "aguav", "iapapa"].map((b) => `cobblemon:${b}_berry`));
+function grassKnotPower(weight) {
+    return weight >= 0.1 && weight <= 21.8 ? 20 : weight >= 21.9 && weight <= 54.9 ? 40 : weight >= 55 && weight <= 110.1 ? 60
+        : weight >= 110.2 && weight <= 220.3 ? 80 : weight >= 220.4 && weight <= 440.8 ? 100 : weight >= 440.9 ? 120 : 0;
+}
+function maxFullness(typeId) { return Math.floor(Math.floor(grassKnotPower(POKEMON[typeId]?.weight ?? 0) / 10) / 2) + 1; }
+function fullnessOf(entity) { return Math.min(prop(entity, FULLNESS) ?? 0, maxFullness(entity.typeId)); }
+function metabolismRate(typeId) {
+    const stats = POKEMON[typeId]?.stats ?? {}, bst = Object.values(stats).reduce((a, b) => a + b, 0) || 1;
+    let seconds = Math.trunc((20 - ((stats.spe ?? 0) / bst) * 20 * 4) * 60);
+    if (seconds <= 0) seconds = 60;
+    return seconds * 20;
+}
+function feedPokemon(entity, count) {
+    const now = fullnessOf(entity), most = maxFullness(entity.typeId);
+    try {
+        if (now >= most) entity.dimension.playSound("cobblemon.item.berry.eat.full", entity.location);
+        else entity.dimension.playSound("cobblemon.item.berry.eat", entity.location, { pitch: 1 + (now / most) * 0.5 });
+    } catch (e) { }
+    if (now >= most) return;
+    setProp(entity, FULLNESS, Math.min(most, now + count));
+    if (now + count === 1) metabolism.set(entity.id, 0);   // the first berry starts the cycle over
+}
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let owned = [];
+        try { owned = world.getDimension(dim).getEntities({ families: ["owned"] }); } catch (e) { continue; }
+        for (const e of owned) {
+            if (!POKEMON[e.typeId] || !(prop(e, FULLNESS) > 0)) continue;
+            const ticks = (metabolism.get(e.id) ?? 0) + 20;
+            if (ticks >= metabolismRate(e.typeId)) { setProp(e, FULLNESS, prop(e, FULLNESS) - 1); metabolism.set(e.id, 0); }
+            else metabolism.set(e.id, ticks);
+        }
+    }
+}, 20);
 function friendshipOf(entity) { return prop(entity, "cobblemon:friendship") ?? POKEMON[entity.typeId]?.friendship ?? 50; }
 
 // the entity's health follows its battle HP, so a change to its HP stat keeps the same share of health
@@ -3348,6 +3391,14 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         nature: mine ? natureName(effectiveNature(source)) : "-", ability: abilityName(f.ability), desc: ABILITY_DESC[f.ability] ?? "",
         friendship: num(friendshipOf(source)),
     });
+    // the Other page's bars (BarSummarySpeciesFeatureRenderer): the value, the fill's colour and width, the share
+    const bar = (key, value, max, colour) => {
+        const ratio = Math.min(1, value / max), width = Math.ceil(ratio * 110);
+        v[`${key}val`] = num(value); v[`${key}bar`] = `o${colour(ratio)}${B36(width)}`; v[`${key}pct`] = num(`${Math.floor(ratio * 100)}%%`);
+    };
+    const friendship = friendshipOf(source);
+    bar("fr", friendship, 255, () => (friendship >= 160 ? "b" : "a"));
+    bar("fu", fullnessOf(source), maxFullness(source.typeId), (r) => (r <= 0.33 ? "c" : r <= 0.66 ? "d" : "e"));
     const group = info.expGroup, exp = Math.max(prop(source, EXP) ?? 0, expFor(group, f.level));
     const span = Math.max(1, expFor(group, f.level + 1) - expFor(group, f.level));
     v.exp = num(exp); v.tonext = num(f.level >= 100 ? 0 : expFor(group, f.level + 1) - exp);
