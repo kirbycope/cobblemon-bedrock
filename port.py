@@ -5084,7 +5084,7 @@ def summary_offsets():
 HEX_STEPS = 12   # the polygon's vertices go out in 12 steps of the radius, the least 5 of its 48 as drawStatPolygon keeps it
 
 
-RIDE_LABELS = (9.5, 114)   # the Ride page's label area: from the top label's top, and its height to under the lowest value
+RIDE_LABELS = (9.5, 126)   # the chart's label area: from the top label's top, and its height to under the lowest value
 RIDE_ICONS = [("air", "bird"), ("air", "hover"), ("air", "jet"), ("air", "rocket"), ("land", "horse"), ("land", "cart"),
               ("liquid", "boat"), ("liquid", "dolphin"), ("liquid", "submarine")]
 
@@ -5367,11 +5367,32 @@ def create_summary_ui():
     # the nature's arrows beside the stat it raises and lowers (renderModifiedStatIcon), in the vertices' order
     for i, (mx, my) in enumerate(((65, 6), (120, 38), (120, 89), (65, 120), (10, 89), (10, 38))):
         vertex.append(picture(f"hm{i}", field(f"hm{i}"), (mx, my), (4, 3), 6, "stat_"))
-    # a copy for each polygon page: a "not" in this binding never hid it on the Other page
+    # on the IV and EV pages the labels are the hover button's faces (below), as the Ride page's are; plain, each page's
+    # own copy of them, and hovered, each IV or EV out of its most and as a share of it (StatWidget's labelsHovered)
+    hex_plain, hex_hovered = {}, []
+    hex_vertices = ((67, 10.5), (122, 42.5), (122, 93.5), (67, 124.5), (12, 93.5), (12, 42.5))
+    for page in "ve":
+        hex_plain[page] = []
+        for i, (vx, vy) in enumerate(hex_vertices):
+            y = vy - RIDE_LABELS[0]
+            hex_plain[page] += [label(f"{page}hl{i}", field(f"ln{i}"), (vx - 20, y), 0.5, size=(40, 5), align="center", layer=6),
+                                label(f"{page}hv{i}", field(f"lv{i}"), (vx - 20, y + 5.5), 0.5, size=(40, 5), align="center", layer=6)]
+    for i, (vx, vy) in enumerate(hex_vertices):
+        y = vy - RIDE_LABELS[0]
+        for key, (a, b), dy, suffix in ((f"xh{i}", (1 + 21 * i, 15 + 21 * i), 0, ""), (f"xp{i}", (15 + 21 * i, 22 + 21 * i), 5.5, "%%")):
+            part = f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+            hex_hovered.append({key: {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.5, "size": [40, 5], "offset": [vx - 20, y + dy],
+                                      "anchor_from": "top_left", "anchor_to": "top_left", "text_alignment": "center", "layer": 6, "color": [1, 1, 1],
+                                      "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                                   {"binding_type": "view", "source_property_name": f"(({part} - ' ') + '{suffix}')", "target_property_name": "#value"},
+                                                   {"binding_type": "view", "source_property_name": "(('%.1s' * #form_button_text) = 'x')", "target_property_name": "#visible"}]}})
+    # a copy for each polygon page: a "not" in this binding never hid it on the Other page; the IV and EV pages keep
+    # only the nature's arrows here
     for page in "sve":
         stats.append({f"vertices_{page}": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
                                            "bindings": bound(f"({field('stab')} = '{page}')", "#visible"),
-                                           "controls": [{f"{next(iter(c))}_{page}": next(iter(c.values()))} for c in vertex]}})
+                                           "controls": [{f"{next(iter(c))}_{page}": next(iter(c.values()))} for c in vertex
+                                                        if page == "s" or next(iter(c)).startswith("hm")]}})
     # the Ride page: the pentagon chart (186 by 176 at half scale, at 20.5, 22), the ride stat polygon tinted by the riding
     # style, the behaviour's icon at 59, 62.5, each stat's name in its flavour's colour at pentagonVerticesOffset and
     # its value under it; a click on the middle switches between the species' styles
@@ -5400,13 +5421,14 @@ def create_summary_ui():
             part = f"('%.{b}s' * #form_button_text)" if a == 0 else f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
             return f"(({part} - ' ') + '{suffix}')" if suffix else f"({part} - ' ')"
         # each field starts "§r", since a slice starting with a digit or a sign is read as a number
-        for key, (a, b), dy, suffix in ((f"rh{i}", (17 * i, 17 * i + 10), 0, ""), (f"rb{i}", (17 * i + 10, 17 * i + 17), 5.5, "%%")):
+        for key, (a, b), dy, suffix in ((f"rh{i}", (1 + 17 * i, 11 + 17 * i), 0, ""), (f"rb{i}", (11 + 17 * i, 18 + 17 * i), 5.5, "%%")):
             ride_hovered.append({key: {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.5, "size": [40, 5], "offset": [vx - 20, y + dy],
                                        "anchor_from": "top_left", "anchor_to": "top_left", "text_alignment": "center", "layer": 6, "color": [1, 1, 1],
                                        "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                                     {"binding_type": "view", "source_property_name": own(a, b, suffix), "target_property_name": "#value"},
-                                                    # off the Ride page the text is empty, and the "%" must not show alone
-                                                    {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}]}})
+                                                    # the text starts "R" on the Ride page (and the "%" must not show alone off it); a
+                                                    # letter no field holds, since taking the slice before a field off takes every copy
+                                                    {"binding_type": "view", "source_property_name": "(('%.1s' * #form_button_text) = 'R')", "target_property_name": "#visible"}]}})
     stats.append({"ride": {"type": "panel", "size": [134, 148], "anchor_from": "top_left", "anchor_to": "top_left",
                            "bindings": bound(f"({field('stab')} = 'r')", "#visible"), "controls": ride}})
     # the page tabs: Stat, IVs, EVs and Other from 31, 24 apart, or with Ride before Other from 23, 22 apart for a
@@ -5497,7 +5519,8 @@ def create_summary_ui():
     stat_tab_buttons += [button(73 + SWAP_SLOTS, (77 + 12, 12 + 12), (16, 16))]
     stat_tab_buttons += [button(74 + SWAP_SLOTS + i, (77 + 23 + 22 * i - 11, 12 + 140), (22, 9)) for i in range(5)]
     stat_tab_buttons += [button(79 + SWAP_SLOTS, (77 + 59, 12 + 62.5), (16, 16))]
-    # the Ride page's labels as one hover area over the chart, under the style button, shown on the Ride page only
+    # the Ride, IV and EV pages' labels as one hover area over the chart, under the style button (two buttons there would
+    # take each other's hovers, since a button is live whatever its faces show)
     hover_area = button(80 + SWAP_SLOTS, (77, 12 + RIDE_LABELS[0]), (134, RIDE_LABELS[1]))
     body = hover_area[f"button_{80 + SWAP_SLOTS}"]
     body["layer"] = 4
@@ -5505,10 +5528,12 @@ def create_summary_ui():
     # the Stats tab's Ride page only; a hover face's labels get no form-wide bindings, so the hovered ones read the
     # button's text, which the script leaves empty off the Ride page
     # (two panels, one condition each: an "and" in a binding reads as its last term)
+    def page_labels(name, page, labels):
+        return {name: {"type": "panel", "size": ["100%", "100%"], "bindings": bound(f"({field('stab')} = '{page}')", "#visible"), "controls": labels}}
     plain = {"type": "panel", "size": ["100%", "100%"], "controls": [{"stats_tab": {"type": "panel", "size": ["100%", "100%"],
-             "bindings": bound(f"({field('tab')} = 's')", "#visible"), "controls": [{"labels": {"type": "panel", "size": ["100%", "100%"],
-             "bindings": bound(f"({field('stab')} = 'r')", "#visible"), "controls": ride_plain}}]}}]}
-    hovered = {"type": "panel", "size": ["100%", "100%"], "controls": ride_hovered}
+             "bindings": bound(f"({field('tab')} = 's')", "#visible"),
+             "controls": [page_labels("labels", "r", ride_plain), page_labels("iv_labels", "v", hex_plain["v"]), page_labels("ev_labels", "e", hex_plain["e"])]}}]}
+    hovered = {"type": "panel", "size": ["100%", "100%"], "controls": ride_hovered + hex_hovered}
     body["controls"] = [{"default": plain}, {"hover": hovered}, {"pressed": hovered}]
     stat_tab_buttons.append(hover_area)
     # the Marks tab's slots and the Moves tab's tiles, arrows and swap buttons are live on their own tab only, since

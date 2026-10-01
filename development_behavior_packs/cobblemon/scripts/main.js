@@ -4417,7 +4417,13 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button("mark chosen", `${SUMMARY_UI}/none`);
     for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
     form.button("ride style", `${SUMMARY_UI}/none`);
-    form.button(tab === "s" && stab === "r" ? rideHover : "", `${SUMMARY_UI}/none`);
+    // the chart's hover text: "R" and the Ride page's readout, or "x" and the IV or EV page's (each out of its most, then
+    // as a share of it), or nothing on the other pages
+    const hexHover = () => HEX_ORDER.map((k) => {
+        const val = (stab === "v" ? ivs[k] : evs[k]) ?? 0, most = stab === "v" ? 31 : 252;
+        return padBytes(num(`${val}/${most}`), 14) + padBytes(num(Math.floor((val / most) * 100)), 7);
+    }).join("");
+    form.button(tab !== "s" ? "" : stab === "r" ? "R" + rideHover : (stab === "v" || stab === "e") && mine ? "x" + hexHover() : "", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
