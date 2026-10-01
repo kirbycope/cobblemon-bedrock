@@ -1910,6 +1910,26 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const d = { x: target.location.x - player.location.x, y: 0, z: target.location.z - player.location.z }, len = Math.hypot(d.x, d.z) || 1;
         const hit = { x: target.location.x - (d.x / len) * 0.5, y: target.location.y + 0.4, z: target.location.z - (d.z / len) * 0.5 };
         startCapture(player, projectile, target, hit, { x: d.x / len, y: 0, z: d.z / len });
+    } else if (event.id === "cobblemon:pc_take_test") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:pc_take_test <species id> <ball id>" logs the
+        // marks of that species caught in that ball in the player's PC and removes them, for clearing test catches
+        const [species, ball] = event.message.trim().split(/\s+/);
+        if (source.typeId !== "minecraft:player" || !species || !ball) return;
+        let taken = 0;
+        const counts = {};
+        for (let n = 0; n < PC_BOXES; n++) {
+            const contents = box(source, n);
+            let changed = false;
+            contents.forEach((rec, i) => {
+                if (rec?.t !== species || rec.k?.["cobblemon:caught_ball"] !== ball) return;
+                let marks = [];
+                try { marks = JSON.parse(rec.k?.[MARK_LIST] ?? "[]"); } catch (e) { }
+                const key = marks.join(",") || "none"; counts[key] = (counts[key] ?? 0) + 1;
+                contents[i] = null; changed = true; taken++;
+            });
+            if (changed) saveBox(source, n, contents);
+        }
+        console.warn(`pc_take_test ${species} ${ball}: ${taken} taken, marks ${JSON.stringify(counts)}`);
     } else if (event.id === "cobblemon:particle") {
         // for testing: "/scriptevent cobblemon:particle <id> x y z" spawns a particle, its variable.broth white
         const [id, x, y, z] = event.message.split(" ");
