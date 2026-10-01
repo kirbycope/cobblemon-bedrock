@@ -199,24 +199,10 @@
                 "minecraft:behavior.owner_hurt_target": {
                     "priority": 2
                 },
-                "minecraft:behavior.melee_attack": {
+                "minecraft:behavior.melee_box_attack": {
                     "priority": 3,
+                    "speed_multiplier": 1.2,
                     "track_target": true
-                },
-                "minecraft:behavior.nearest_attackable_target": {
-                    "priority": 4,
-                    "must_see": true,
-                    "reselect_targets": true,
-                    "entity_types": [
-                        {
-                            "filters": {
-                                "test": "is_family",
-                                "subject": "other",
-                                "value": "monster"
-                            },
-                            "max_dist": 12
-                        }
-                    ]
                 }
             },
             "cobblemon:pastured": {
@@ -320,6 +306,29 @@
             "cobblemon:variant_3": {
                 "minecraft:variant": {
                     "value": 3
+                }
+            },
+            "cobblemon:pasture_conflict": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 2,
+                    "must_see": true,
+                    "within_radius": 16,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "monster"
+                            },
+                            "max_dist": 16
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 3,
+                    "speed_multiplier": 1.2,
+                    "track_target": true
                 }
             }
         },
@@ -702,6 +711,20 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:variant_3"
+                    ]
+                }
+            },
+            "cobblemon:conflict_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:conflict_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
                     ]
                 }
             }

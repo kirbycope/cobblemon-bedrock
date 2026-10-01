@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -17,6 +17,7 @@ import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
+import { DEFENDERS } from "./defenders.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
@@ -1996,6 +1997,18 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // for testing: "/execute as <pokemon> run scriptevent cobblemon:set_status <psn|tox|par|brn|frz|slp> [seconds]"
         const [code, seconds] = event.message.trim().split(/\s+/);
         if (POKEMON[source.typeId]) setProp(source, STATUS, STATUS_CURED[code] ? JSON.stringify({ s: code, left: Number(seconds) || 200 }) : undefined);
+    } else if (event.id === "cobblemon:hp") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:hp <entity type>" logs the health of those within 16 blocks
+        try {
+            for (const e of source.dimension.getEntities({ type: event.message.trim(), location: source.location, maxDistance: 16 }))
+                console.warn(`hp ${e.typeId} ${e.getComponent(EntityComponentTypes.Health)?.currentValue}/${e.getComponent(EntityComponentTypes.Health)?.effectiveMax} target ${e.target?.typeId ?? "-"}`);
+        } catch (err) { console.warn(`hp: ${err}`); }
+    } else if (event.id === "cobblemon:pasture_test") {
+        // for testing: "/execute as <pokemon> run scriptevent cobblemon:pasture_test x y z" marks it pastured at that block with defend on
+        const [x, y, z] = event.message.trim().split(/\s+/).map(Number);
+        if (!POKEMON[source.typeId]) return;
+        setProp(source, PASTURE_AT, keyOf(source.dimension, { x, y, z })); setProp(source, CONFLICT, true);
+        try { source.triggerEvent("cobblemon:pasture"); source.triggerEvent("cobblemon:conflict_on"); } catch (e) { }
     } else if (event.id === "cobblemon:particle") {
         // for testing: "/scriptevent cobblemon:particle <id> x y z" spawns a particle, its variable.broth white
         const [id, x, y, z] = event.message.split(" ");
@@ -2744,6 +2757,38 @@ function setPastureLamp(block, on) {
 // The pasture, laid out by ui/server_form.json as Cobblemon's PC with the pasture panel in place of the party: choose a
 // Pokemon in a box, then a row of the pasture list, to send it out; choose one of your own rows to bring it back; Recall
 // All brings back all of yours. The list shows four rows at a time; the count above it turns the page.
+const CONFLICT = "cobblemon:pasture_conflict", DEFENDERS_SET = new Set(DEFENDERS);
+// AttackHostileMobsTask for a pastured Pokemon with the defend toggle on: it takes the nearest hostile mob it can reach
+// within 16 blocks, keeping to the pasture's roaming range (the tether), goes to it and strikes it once a second for its
+// attack damage (its minecraft:attack, Attack / 10). The entity's own targeting proved unreliable, so the script drives it.
+const lastStrike = new Map();
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let owned = [];
+        try { owned = world.getDimension(dim).getEntities({ families: ["owned"] }); } catch (e) { continue; }
+        for (const e of owned) {
+            if (!prop(e, CONFLICT) || !prop(e, PASTURE_AT) || prop(e, FAINTED) || !DEFENDERS_SET.has(e.typeId)) continue;
+            const [, pos] = String(prop(e, PASTURE_AT)).split("|"), home = (pos ?? "").split(",").map(Number);
+            let foes = [];
+            try { foes = e.dimension.getEntities({ families: ["monster"], location: e.location, maxDistance: 16 }); } catch (err) { continue; }
+            const near = (a) => (home.length === 3 ? Math.hypot(a.location.x - home[0], a.location.z - home[2]) <= 32 : true);
+            const foe = foes.filter(near).sort((a, b) => dist(a, e) - dist(b, e))[0];
+            if (!foe) continue;
+            const d = dist(foe, e);
+            if (d > 1.8) {
+                // a step toward it, turned to face it
+                const k = Math.min(0.45, d - 1.5) / d;
+                try { e.tryTeleport({ x: e.location.x + (foe.location.x - e.location.x) * k, y: e.location.y, z: e.location.z + (foe.location.z - e.location.z) * k },
+                                    { facingLocation: foe.location, checkForBlocks: true, keepVelocity: true }); } catch (err) { }
+            } else if (system.currentTick - (lastStrike.get(e.id) ?? -99) >= 20) {
+                lastStrike.set(e.id, system.currentTick);
+                const damage = Math.max(1, Math.round((POKEMON[e.typeId]?.stats?.atk ?? 40) / 10));
+                try { foe.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: e }); } catch (err) { }
+            }
+        }
+    }
+}, 4);
+function dist(a, b) { return Math.hypot(a.location.x - b.location.x, a.location.y - b.location.y, a.location.z - b.location.z); }
 function openPasture(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a pasture while in battle!"); return; }
     if (!state) { tidyPastured(player); state = { box: 0, sel: null, page: 0 }; }
@@ -2786,9 +2831,23 @@ function openPasture(block, player, state) {
     form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("exit", `${PC_UI}/summary/exit`);
     for (let n = 0; n < 4; n++) form.button("row", `${PC_UI}/pc/row_${v[`r${n}slot`]}`);
     form.button("recall", `${PC_UI}/pc/recall_all`).button("page", `${PC_UI}/pc/page`);
+    // the defend toggle (PastureSlotIconConflictButton) on the player's own rows of species that defend
+    for (let n = 0; n < 4; n++) {
+        const e = shown[n], can = e && prop(e, OWNER) === player.id && DEFENDERS_SET.has(e.typeId);
+        form.button("defend", `${PC_UI}/pc/def_${can ? (prop(e, CONFLICT) ? "y" : "n") : "x"}`);
+    }
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 32) return;
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPasture(block, player, state), delay);
+        if (pick >= 39 && pick <= 42) {
+            const e = shown[pick - 39];
+            if (e?.isValid && prop(e, OWNER) === player.id && DEFENDERS_SET.has(e.typeId)) {
+                const on = !prop(e, CONFLICT);
+                setProp(e, CONFLICT, on || undefined);
+                try { e.triggerEvent(on ? "cobblemon:conflict_on" : "cobblemon:conflict_off"); player.playSound("cobblemon.pc.click"); } catch (err) { }
+            }
+            again(); return;
+        }
         if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
         if (pick === 38) { state.page = (state.page + 1) % pages; again(); return; }
         if (pick === 37) {
