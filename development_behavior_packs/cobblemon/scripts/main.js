@@ -2098,6 +2098,21 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:speed_probe") {
+        // testing: "/execute as <entity> run scriptevent cobblemon:speed_probe [value]" logs its mean and top speed in blocks a tick
+        // over ten seconds, and what it moved in (water or not)
+        const e = source; let last = e.location, n = 0, sum = 0, top = 0, wet = 0;
+        const value = Number(event.message);   // a value given sets its movement and underwater movement first
+        if (value > 0) for (const key of ["minecraft:movement", "minecraft:underwater_movement"]) try { e.getComponent(key)?.setCurrentValue(value); } catch (err) { }
+        const id = system.runInterval(() => {
+            if (!e.isValid || ++n > 40) {
+                system.clearRun(id);
+                console.warn(`[speed] ${e.isValid ? e.typeId : "gone"} at ${value || "-"} mean ${(sum / Math.max(1, n - 1)).toFixed(4)} top ${top.toFixed(4)} b/t wet ${wet}/${n - 1}`);
+                return;
+            }
+            const now = e.location, d = Math.hypot(now.x - last.x, now.y - last.y, now.z - last.z) / 5;
+            last = now; sum += d; top = Math.max(top, d); if (e.isInWater) wet++;
+        }, 5);
     } else if (event.id === "cobblemon:ride_stamina") {
         // testing: "/execute as <player> run scriptevent cobblemon:ride_stamina <0 to 1>" sets the stamina of the ride
         const mount = source.getComponent?.("minecraft:riding")?.entityRidingOn, st = mount && rideStates.get(mount.id);

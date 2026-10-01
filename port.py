@@ -1132,6 +1132,9 @@ def health_at(base_hp, level):
     return (2 * base_hp + 31) * level // 100 + level + 10
 
 
+SWIM_SCALE = 0.7 * 0.33 * 2.5   # Cobblemon's wandering swim speed in blocks a tick for each point of swimSpeed
+
+
 def movement_components(species, kind):
     """The vanilla component set for each way of moving: fish, bee, parrot and wolf are the references."""
     moving = species.get("behaviour", {}).get("moving", {})
@@ -1143,6 +1146,11 @@ def movement_components(species, kind):
         numbers = re.findall(r"\d*\.\d+|\d+", str(speed))
         return float(numbers[-1]) if numbers else fallback
     walk_speed, swim_speed = plain(walk_speed, 0.25), plain(swim_speed, 0.1)
+    # PokemonMoveControl swims a Pokemon at its movement attribute (0.7) times the walk target's speed (0.33 for
+    # ChooseWaterWanderTargetTask) times its swimSpeed times 2.5, in blocks a tick; a Bedrock swimmer wandering with
+    # random_swim moves at about 4.3 times the square of its underwater movement value (measured: 0.1 gives 0.05 blocks
+    # a tick, 0.2 gives 0.18, 0.3 gives 0.39), so the value is the square root of that speed over 4.3
+    swim_speed = round(math.sqrt(swim_speed * SWIM_SCALE / 4.3), 4)
     avoids_water = moving.get("swim", {}).get("avoidsWater", False)
     breathes_water = moving.get("swim", {}).get("canBreatheUnderwater", False)
     if kind == "fish":
