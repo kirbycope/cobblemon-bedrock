@@ -38,12 +38,31 @@ def sync():
     print("world packs:", behavior, [manifest("resource")])
 
 
+def running():
+    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq bedrock_server.exe"], capture_output=True, text=True).stdout
+    return "bedrock_server.exe" in out
+
+
+def stop():
+    """`stop` through tools/bds_host.py, so the world is saved, waiting up to 30 seconds; taskkill only for a server
+    started some other way, or one that does not stop."""
+    if running():
+        with open(os.path.join(BDS, "bds.cmd"), "a", encoding="utf-8") as file: file.write("stop" + chr(10))
+        for _ in range(60):
+            time.sleep(0.5)
+            if not running(): print("server stopped and saved"); break
+        else:
+            print("server did not stop; killing it (unsaved changes are lost)")
+            subprocess.run(["taskkill", "/IM", "bedrock_server.exe", "/F"], capture_output=True)
+    if os.path.exists(os.path.join(BDS, "bds.cmd")): os.remove(os.path.join(BDS, "bds.cmd"))
+    time.sleep(2)
+
+
 def restart():
-    subprocess.run(["taskkill", "/IM", "bedrock_server.exe", "/F"], capture_output=True)
+    stop()
+    # through the host, in its own console, so the server outlives this script and the shell that ran it
+    subprocess.Popen([sys.executable, os.path.join(REPO, "tools", "bds_host.py")], cwd=BDS, creationflags=subprocess.CREATE_NEW_CONSOLE)
     time.sleep(3)
-    log = open(os.path.join(BDS, "bds.out.log"), "w")
-    # its own console, so the server outlives this script and the shell that ran it
-    subprocess.Popen([os.path.join(BDS, "bedrock_server.exe")], cwd=BDS, stdout=log, stderr=subprocess.STDOUT, creationflags=subprocess.CREATE_NEW_CONSOLE)
     for _ in range(60):
         time.sleep(2)
         with open(os.path.join(BDS, "bds.out.log"), encoding="utf-8", errors="replace") as file: text = file.read()

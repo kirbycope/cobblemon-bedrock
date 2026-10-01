@@ -1278,7 +1278,9 @@ def create_behavior_entities():
         components = {
             "minecraft:nameable": {},
             "minecraft:type_family": {"family": ["mob", "pokemon", "npc"] + types},
-            "minecraft:collision_box": {"width": round(hitbox["width"] * scale, 3), "height": round(hitbox["height"] * scale, 3)},
+            # Cobblemon's hitbox times baseScale, as PokemonEntity.getDimensions has it: Bedrock's minecraft:scale scales the
+            # collision box too, so the box is the unscaled hitbox
+            "minecraft:collision_box": {"width": hitbox["width"], "height": hitbox["height"]},
             "minecraft:scale": {"value": scale},
             "minecraft:health": {"value": health, "max": health},
             "minecraft:attack": {"damage": max(1, round(stats.get("attack", 40) / 10))},

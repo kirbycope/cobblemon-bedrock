@@ -2416,6 +2416,17 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
+    } else if (event.id === "cobblemon:hitbox") {
+        // for testing: "/execute as <entity> run scriptevent cobblemon:hitbox" logs the height and width its collision box
+        // really has, by casting rays at it (up through its middle from the side, and across it from the front)
+        const l = source.location, dim = source.dimension, hits = (origin, direction) => {
+            try { return dim.getEntitiesFromRay(origin, direction, { maxDistance: 8 }).some((h) => h.entity.id === source.id); } catch (e) { return false; }
+        };
+        let top = 0, half = 0;
+        for (let h = 0.01; h < 6; h += 0.01) { if (hits({ x: l.x - 4, y: l.y + h, z: l.z }, { x: 1, y: 0, z: 0 })) top = h; }
+        for (let w = 0; w < 4; w += 0.005) { if (hits({ x: l.x + w, y: l.y + top / 2, z: l.z - 4 }, { x: 0, y: 0, z: 1 })) half = w; }
+        let scale; try { scale = source.getComponent("minecraft:scale")?.value; } catch (e) { }
+        console.warn(`[cobblemon] hitbox ${source.typeId}: height ${top.toFixed(2)} width ${(half * 2).toFixed(2)} scale ${scale}`);
     } else if (event.id === "cobblemon:wheel") {
         // for testing: "/execute as <pokemon> run scriptevent cobblemon:wheel" opens its interact wheel for its owner,
         // as a sneaking right-click on it does, with whatever the owner holds
