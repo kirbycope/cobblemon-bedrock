@@ -3767,6 +3767,30 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
 // not registered is scanned while it stays in the sights, the middle ring's segments running down, until it registers.
 const SCAN_MARKER = "cbm:scan", SCAN_OPEN_TICKS = 5, SCAN_RATE = (1 / 0.0175) / 20;   // scan progress an update, 57 updates a second
 const scanners = new Map();   // player id -> the scanner's state
+// PokedexUsageContext's zoom: nine steps, each reaching two blocks further than the scanner's ten
+// (BLOCK_LENGTH_PER_ZOOM_STAGE) and narrowing the view along Cobblemon's log curve. Cobblemon runs the curve from 80 to
+// 10 degrees; Bedrock's camera will not go under 30, so here it runs from the default 70 to 30, every step still showing. Cobblemon zooms with the scroll wheel, which a Bedrock script cannot read while an
+// item is in use, so jump zooms in and sneak zooms out while the scanner is up.
+const ZOOM_MAX_STEP = 9, ZOOM_BASE_FOV = 70, ZOOM_TARGET_FOV = 30, BLOCK_LENGTH_PER_ZOOM_STAGE = 2, SCAN_RANGE = 10, BEDROCK_FOV = 70;
+function zoomModifier(level) {
+    const startLog = Math.log(ZOOM_BASE_FOV), stepSize = (startLog - Math.log(ZOOM_TARGET_FOV)) / ZOOM_MAX_STEP;
+    return Math.exp(startLog - level * stepSize) / ZOOM_BASE_FOV;
+}
+function setScanZoom(player, level) {
+    try {
+        if (level > 0) player.camera.setFov({ fov: BEDROCK_FOV * zoomModifier(level), easeOptions: { easeTime: 0.1 } });
+        else player.runCommand("camera @s fov_clear");
+    } catch (e) { }
+}
+world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
+    const st = scanners.get(player.id);
+    if (!st?.open || newButtonState !== ButtonState.Pressed) return;
+    const step = button === InputButton.Jump ? 1 : button === InputButton.Sneak ? -1 : 0;
+    if (!step || (st.zoom <= 0 && step < 0) || (st.zoom >= ZOOM_MAX_STEP && step > 0)) return;
+    st.zoom += step;
+    scanSound(player, "scan_zoom_increment");
+    setScanZoom(player, st.zoom);
+});
 function scanTitle(player, text) {
     try { player.onScreenDisplay.setTitle(SCAN_MARKER + text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
 }
@@ -3792,7 +3816,7 @@ function scanRecord(st) {
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
     scanners.set(player.id, { player, colour: itemStack.typeId.slice("cobblemon:pokedex_".length), start: system.currentTick, open: false,
-                              target: null, focus: 0, progress: 0, registered: 0, usage: 0, inner: 0, sides: ["l", "r", "l", "r"], caught: false, sent: "" });
+                              target: null, focus: 0, progress: 0, registered: 0, usage: 0, zoom: 0, inner: 0, sides: ["l", "r", "l", "r"], caught: false, sent: "" });
 });
 world.afterEvents.itemStopUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
@@ -3801,19 +3825,26 @@ world.afterEvents.itemStopUse.subscribe(({ source: player, itemStack }) => {
     if (!st) return;
     if (!st.open) { scanSound(player, "open"); openDex(player, st.colour); return; }
     scanSound(player, "scan_close");
+    if (st.zoom > 0) setScanZoom(player, 0);
     scanTitle(player, scanRecord({ open: false }));
 });
 system.runInterval(() => {
     for (const [id, st] of scanners) {
         const player = st.player;
         if (!player.isValid) { scanners.delete(id); continue; }
+        // the Pokedex left the hand without the use ending (a death, a dimension change): close it and its zoom
+        if (st.open && !holding(player, `cobblemon:pokedex_${st.colour}`)) {
+            scanners.delete(id); if (st.zoom > 0) setScanZoom(player, 0); scanTitle(player, scanRecord({ open: false })); continue;
+        }
         if (!st.open && system.currentTick - st.start >= SCAN_OPEN_TICKS) { st.open = true; scanSound(player, "scan_open"); }
         if (!st.open) continue;
-        // PokemonScanner.detectEntity: the nearest Pokemon in the sights within ten blocks, not behind a block
+        // PokemonScanner.detectEntity: the nearest Pokemon in the sights within ten blocks and two more a zoom step, not
+        // behind a block
         let target;
         try {
-            const hit = player.getEntitiesFromViewDirection({ maxDistance: 10 }).find((h) => POKEMON[h.entity.typeId]);
-            const wall = player.getBlockFromViewDirection({ maxDistance: 10 });
+            const range = SCAN_RANGE + st.zoom * BLOCK_LENGTH_PER_ZOOM_STAGE;
+            const hit = player.getEntitiesFromViewDirection({ maxDistance: range }).find((h) => POKEMON[h.entity.typeId]);
+            const wall = player.getBlockFromViewDirection({ maxDistance: range });
             const eye = player.getHeadLocation(), at = wall && { x: wall.block.location.x + wall.faceLocation.x, y: wall.block.location.y + wall.faceLocation.y, z: wall.block.location.z + wall.faceLocation.z };
             if (hit && !(at && Math.hypot(at.x - eye.x, at.y - eye.y, at.z - eye.z) < hit.distance)) target = hit.entity;
         } catch (e) { }
