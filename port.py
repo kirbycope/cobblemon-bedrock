@@ -167,8 +167,7 @@ def species_key(species):
 
 def add_pasture_conflict():
     """How an owned Pokemon fights mobs, as pokemon_owned.json's behaviours give it: a species whose combat behaviour
-    willDefendOwner defends its trainer while with them (defend_owner: it goes for what hurts its trainer or what its
-    trainer hurts), and out in a pasture with the defend toggle on (PastureSlotIconConflictButton, pasture_conflict_enabled)
+    willDefendOwner defends its trainer while with them (defend_owner, which scripts/main.js drives), and out in a pasture with the defend toggle on (PastureSlotIconConflictButton, pasture_conflict_enabled)
     attacks the hostile mobs it sees (attack_hostile_mobs), within the pasture's roaming range, in a cobblemon:pasture_conflict
     group turned on and off by cobblemon:conflict_on and cobblemon:conflict_off. Others never fight outside battle.
     Melee is melee_box_attack, the goal this Bedrock lands hits with. scripts/defenders.js lists the defenders."""
@@ -189,8 +188,6 @@ def add_pasture_conflict():
             owned.pop(key, None)
         groups.pop("cobblemon:pasture_conflict", None); events.pop("cobblemon:conflict_on", None); events.pop("cobblemon:conflict_off", None)
         if defends:
-            owned.update({"minecraft:behavior.owner_hurt_by_target": {"priority": 1}, "minecraft:behavior.owner_hurt_target": {"priority": 2},
-                          "minecraft:behavior.melee_box_attack": dict(melee)})
             groups["cobblemon:pasture_conflict"] = {
                 "minecraft:behavior.nearest_attackable_target": {"priority": 2, "must_see": True, "within_radius": 16, "reselect_targets": True,
                     "entity_types": [{"filters": {"test": "is_family", "subject": "other", "value": "monster"}, "max_dist": 16}]},

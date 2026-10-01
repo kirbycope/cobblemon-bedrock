@@ -2760,19 +2760,38 @@ function setPastureLamp(block, on) {
 const CONFLICT = "cobblemon:pasture_conflict", DEFENDERS_SET = new Set(DEFENDERS);
 // AttackHostileMobsTask for a pastured Pokemon with the defend toggle on: it takes the nearest hostile mob it can reach
 // within 16 blocks, keeping to the pasture's roaming range (the tether), goes to it and strikes it once a second for its
-// attack damage (its minecraft:attack, Attack / 10). The entity's own targeting proved unreliable, so the script drives it.
-const lastStrike = new Map();
+// attack damage (its minecraft:attack, Attack / 10). DefendOwnerTask for one with its trainer: it goes for the mob that
+// last hurt its trainer (DefendOwnerSensor; never a player), for ten seconds. The entity's own targeting proved
+// unreliable, so the script drives both.
+const lastStrike = new Map(), ownerAttacker = new Map();   // player id -> { id, until }
+world.afterEvents.entityHurt.subscribe(({ hurtEntity, damageSource }) => {
+    const by = damageSource?.damagingEntity;
+    if (hurtEntity?.typeId !== "minecraft:player" || !by?.isValid || by.typeId === "minecraft:player" || POKEMON[by.typeId]) return;
+    ownerAttacker.set(hurtEntity.id, { id: by.id, until: system.currentTick + 200 });
+});
 system.runInterval(() => {
     for (const dim of ["overworld", "nether", "the_end"]) {
         let owned = [];
         try { owned = world.getDimension(dim).getEntities({ families: ["owned"] }); } catch (e) { continue; }
         for (const e of owned) {
-            if (!prop(e, CONFLICT) || !prop(e, PASTURE_AT) || prop(e, FAINTED) || !DEFENDERS_SET.has(e.typeId)) continue;
-            const [, pos] = String(prop(e, PASTURE_AT)).split("|"), home = (pos ?? "").split(",").map(Number);
-            let foes = [];
-            try { foes = e.dimension.getEntities({ families: ["monster"], location: e.location, maxDistance: 16 }); } catch (err) { continue; }
-            const near = (a) => (home.length === 3 ? Math.hypot(a.location.x - home[0], a.location.z - home[2]) <= 32 : true);
-            const foe = foes.filter(near).sort((a, b) => dist(a, e) - dist(b, e))[0];
+            if (prop(e, FAINTED) || !DEFENDERS_SET.has(e.typeId)) continue;
+            let foe;
+            if (prop(e, PASTURE_AT)) {
+                if (!prop(e, CONFLICT)) continue;
+                const [, pos] = String(prop(e, PASTURE_AT)).split("|"), home = (pos ?? "").split(",").map(Number);
+                let foes = [];
+                try { foes = e.dimension.getEntities({ families: ["monster"], location: e.location, maxDistance: 16 }); } catch (err) { continue; }
+                const near = (a) => (home.length === 3 ? Math.hypot(a.location.x - home[0], a.location.z - home[2]) <= 32 : true);
+                foe = foes.filter(near).sort((a, b) => dist(a, e) - dist(b, e))[0];
+            } else {
+                // with its trainer, out of battle: the mob that last hurt them
+                let inBattle = false;
+                try { inBattle = !!e.getProperty("cobblemon:battle"); } catch (err) { }
+                const hit = ownerAttacker.get(prop(e, OWNER));
+                if (inBattle || !hit || hit.until < system.currentTick) continue;
+                const attacker = world.getEntity(hit.id);
+                if (attacker?.isValid && attacker.dimension.id === e.dimension.id && dist(attacker, e) <= 16) foe = attacker;
+            }
             if (!foe) continue;
             const d = dist(foe, e);
             if (d > 1.8) {
