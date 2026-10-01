@@ -6083,6 +6083,10 @@ ICON_COLOURS = ("white", "orange", "magenta", "light_blue", "yellow", "lime", "p
 WOODS = ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped", "pale_oak")
 
 
+VANILLA_ICON_KEYS = {"cod": "fish_raw", "cocoa_beans": "dye_powder_brown", "enchanted_golden_apple": "apple_golden", "glistering_melon_slice": "melon_speckled",
+                     "melon_block": "melon_side", "dead_bush": "deadbush", "salmon": "fish_salmon_raw", "tropical_fish": "fish_clownfish_raw", "pufferfish": "fish_pufferfish_raw"}
+
+
 def icon_stand_ins(name):
     """Texture files to show for a vanilla item whose own icon is a 3D render on Bedrock or named otherwise: a wooden
     or stone piece shows its material, a coloured one its dye's colour, raw food its raw texture, a spawn egg the egg."""
@@ -6143,8 +6147,21 @@ def item_icons():
             flipped = "_".join(reversed(name.split("_")))
             for kind, key in (("item_texture", name), ("item_texture", VANILLA_TEXTURE_NAMES.get(name, name)), ("file", name), ("file", flipped),
                               ("terrain_texture", name), ("terrain_texture", VANILLA_TEXTURE_NAMES.get(name, name)), ("file", f"{name}_top"),
-                              ("file", f"{flipped}_top"), ("file", f"{name}_side")) + tuple(("file", c) for c in icon_stand_ins(name)):
+                              ("file", f"{flipped}_top"), ("file", f"{name}_side"), ("terrain_texture", f"{name}_carried"),
+                              *((kind, VANILLA_ICON_KEYS[name]) for kind in ("item_texture", "terrain_texture", "file") if name in VANILLA_ICON_KEYS))                     + tuple(("file", c) for c in icon_stand_ins(name)):
                 if (kind, key) in vanilla: icons[item_id] = vanilla[(kind, key)]; break
+    # Cobblemon's items made as blocks (Big Root, Pep-Up Flower, Poke Snack): the item model's first layer
+    for path in glob.glob(f"{cobblemon}/models/item/*.json"):
+        item_id = f"cobblemon:{os.path.basename(path)[:-5]}"
+        if item_id in icons: continue
+        with open(path, encoding="utf-8") as file: model = json.load(file)
+        layer = (model.get("textures") or {}).get("layer0", "")
+        if not layer.startswith("cobblemon:item/"): continue
+        rel = layer.split(":", 1)[1][len("item/"):]
+        if not os.path.exists(f"{cobblemon}/textures/item/{rel}.png"): continue
+        os.makedirs(os.path.dirname(f"{texturesItemsBedrock}/{rel}"), exist_ok=True)
+        shutil.copyfile(f"{cobblemon}/textures/item/{rel}.png", f"{texturesItemsBedrock}/{rel}.png")
+        icons[item_id] = f"textures/items/{rel}"
     return {k: v[len("textures/"):] if v.startswith("textures/") else v for k, v in icons.items()}
 
 
@@ -6157,7 +6174,7 @@ def cooking_recipes():
     def bedrock(item_id):
         if item_id.startswith("minecraft:"):
             name = item_id.split(":", 1)[1]
-            return f"minecraft:{BLOCK_NAMES.get(name, name)}"
+            return f"minecraft:{ {'dead_bush': 'deadbush'}.get(name) or BLOCK_NAMES.get(name, name)}"
         return item_id
     def accepts(entry):
         out = []
