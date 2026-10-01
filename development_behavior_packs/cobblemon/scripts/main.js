@@ -2293,7 +2293,7 @@ function pvpTurn(battle) {
         if (!v.player.isValid || !v.ally.entity.isValid) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
     }
     battle.turn++;
-    battle.choices = [undefined, undefined];
+    battle.choices = [undefined, undefined]; battle.replacing = null;
     pvpAsk(battle); pvpAsk(battle.mirror);
 }
 // BattleGeneralActionSelection for one side; closing it minimises the screen until sneak brings it back
@@ -2328,10 +2328,7 @@ function pvpChoose(view, choice) {
     const battle = realBattle(view);
     battle.choices[view.side] = choice;
     if (choice.kind === "move" && held(view.ally)?.startsWith("choice_") && choice.move !== STRUGGLE) view.choiceLock = view.choiceLock ?? choice.move.id;
-    if (!battle.choices[1 - view.side]) {
-        try { view.player.onScreenDisplay.setActionBar(`§7Waiting for ${view.opponent.name}...`); } catch (e) { }
-        return;
-    }
+    if (!battle.choices[1 - view.side]) return;   // the waiting line shows until the other side chooses
     pvpResolve(battle);
 }
 // the turn: switches (and items, already used) first, then the moves by priority and speed, as turn() orders them
@@ -2377,11 +2374,22 @@ function pvpAfterTurn(battle) {
     const forced = views.filter((v) => down.includes(v) || (v.ejectAlly && pvpReady(v).length));
     battle.ejectAlly = false; battle.ejectFoe = false;
     if (!forced.length) { system.runTimeout(() => pvpTurn(battle), 30); return; }
-    for (const v of views) if (!forced.includes(v)) { try { v.player.onScreenDisplay.setActionBar(`§7Waiting for ${v.opponent.name}...`); } catch (e) { } }
-    Promise.all(forced.map((v) => chooseSwitch(v, true).then((entity) => { if (entity && pvpLive(battle)) switchTo(v, entity); }))).then(() => {
+    battle.replacing = new Set(forced.map((v) => v.side));
+    Promise.all(forced.map((v) => chooseSwitch(v, true).then((entity) => { if (entity && pvpLive(battle)) switchTo(v, entity); battle.replacing.delete(v.side); }))).then(() => {
         if (pvpLive(battle)) system.runTimeout(() => pvpTurn(battle), 20);
     }).catch(() => endBattle(battle));
 }
+// "Waiting for ..." over the hotbar while a side has chosen and the other has not, or while the other picks a
+// replacement; an action bar line fades after a few seconds, so it is sent again each second for as long as that lasts
+system.runInterval(() => {
+    for (const view of battles.values()) {
+        if (!view.pvp || !view.player.isValid) continue;
+        const battle = realBattle(view);
+        const chose = battle.choices?.[view.side] && !battle.choices[1 - view.side];
+        const replacing = battle.replacing?.has(1 - view.side) && !battle.replacing.has(view.side);
+        if (chose || replacing) { try { view.player.onScreenDisplay.setActionBar(`§7Waiting for ${view.opponent.name}...`); } catch (e) { } }
+    }
+}, 20);
 function pvpEnd(battle, loser, text) {
     battle = realBattle(battle);
     if (!pvpLive(battle)) return;
