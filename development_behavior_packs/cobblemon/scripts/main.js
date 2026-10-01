@@ -2062,10 +2062,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
                 console.warn(`hp ${e.typeId} ${e.getComponent(EntityComponentTypes.Health)?.currentValue}/${e.getComponent(EntityComponentTypes.Health)?.effectiveMax} target ${e.target?.typeId ?? "-"}`);
         } catch (err) { console.warn(`hp: ${err}`); }
     } else if (event.id === "cobblemon:pasture_test") {
-        // for testing: "/execute as <pokemon> run scriptevent cobblemon:pasture_test x y z" marks it pastured at that block with defend on
-        const [x, y, z] = event.message.trim().split(/\s+/).map(Number);
+        // for testing: "/execute as <pokemon> run scriptevent cobblemon:pasture_test x y z [owner id] [owner name]" marks it
+        // pastured at that block with defend on, and owned by that player when one is given
+        const [x, y, z, ownerId, ownerName] = event.message.trim().split(/\s+/);
         if (!POKEMON[source.typeId]) return;
-        setProp(source, PASTURE_AT, keyOf(source.dimension, { x, y, z })); setProp(source, CONFLICT, true);
+        if (ownerId) { setProp(source, OWNER, ownerId); setProp(source, OWNER_NAME, ownerName ?? ownerId); }
+        setProp(source, PASTURE_AT, keyOf(source.dimension, { x: Number(x), y: Number(y), z: Number(z) })); setProp(source, CONFLICT, true);
         try { source.triggerEvent("cobblemon:pasture"); source.triggerEvent("cobblemon:conflict_on"); } catch (e) { }
     } else if (event.id === "cobblemon:particle") {
         // for testing: "/scriptevent cobblemon:particle <id> x y z" spawns a particle, its variable.broth white
@@ -2787,7 +2789,7 @@ function release(player, n, slot, done) {
 // wandering within 32 blocks of the pasture; up to 16 per pasture (defaultPasturedPokemonLimit). Using the pasture
 // lists the player's PC Pokemon to send out and the ones it already has to bring back; a PC slot that is out shows
 // as pastured and cannot be withdrawn or released until it is back. Breaking the pasture brings them all back.
-const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture";
+const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture", OWNER_NAME = "cobblemon:owner_name";
 
 function pastureKey(block) {
     const bottom = block.permutation.getState("cobblemon:part") === "top" ? block.below() : block;
@@ -2930,7 +2932,9 @@ function openPasture(block, player, state) {
         if (!e) { form.button("", `${PC_UI}/pc/none`); continue; }
         const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
         const name = (nicknameOf(e) || info.name).normalize("NFD").replace(/[^ -~]/g, "");
-        form.button(iconOf(e.typeId, variantOf(e)) + ({ male: "m", female: "f" }[genderOf(e)] ?? "o") + (own ? "y" : "n") + padBytes(`Lv. ${prop(e, LEVEL) ?? info.level}`, 7) + name,
+        const owner = own ? name : `§o${world.getAllPlayers().find((p) => p.id === prop(e, OWNER))?.name ?? prop(e, OWNER_NAME) ?? ""}`.normalize("NFD").replace(/[^ -~§]/g, "");
+        form.button(iconOf(e.typeId, variantOf(e)) + ({ male: "m", female: "f" }[genderOf(e)] ?? "o") + (own ? "y" : "n") + padBytes(`Lv. ${prop(e, LEVEL) ?? info.level}`, 7)
+                    + padBytes(owner, 18) + name,
                     `${PC_UI}/pc/row_${own ? "o" : "n"}`);
     }
     // the defend toggle (PastureSlotIconConflictButton) on the player's own rows of species that defend
@@ -2977,6 +2981,7 @@ function openPasture(block, player, state) {
         try { entity = spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); again(); return; }
         system.run(() => {
             try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${sel.box}:${sel.slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
+            setProp(entity, OWNER_NAME, player.name);   // PokemonPastureBlockEntity's playerName, for the list while they are away
         });
         rec.p = key; saveBox(player, sel.box, pcBox);
         setPastureLamp(block, true);

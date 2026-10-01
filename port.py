@@ -5835,8 +5835,8 @@ def create_pc_ui():
     pasture_buttons += [button(33, (273, 161), (70, 17))]   # Recall All
     # the defend toggle on each of the player's own rows, 44 in and 3 down (layer 22, over the row's labels)
     # PasturePokemonScrollList (70 by 120, 6 in and 31 down): sixteen rows of 62 by 29, 32 apart, scrolling; each row's
-    # button text carries its Pokemon (portrait 5, gender 1, move icon 1, level 7, then the name), and the defend toggle
-    # sits 44 in and 3 down on it
+    # button text carries its Pokemon (portrait 5, gender 1, move icon 1, level 7, what the hovered row says 18, then the
+    # name), and the defend toggle sits 44 in and 3 down on it
     text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
     def part(a, b): return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
     def row_text(name, source, offset, size, align="left", shadow=True):
@@ -5850,11 +5850,15 @@ def create_pc_ui():
                  row_image("gender", f"('{T}/summary/g' + {part(5, 6)})", (56.5, 24), (2.5, 3.5)),
                  row_image("move", f"('{T}/pc/move_' + {part(6, 7)})", (2, 11), (7, 7)),
                  row_text("level", part(7, 14), (29, 17), (30, 5), "right"),
-                 row_text("name", "(#form_button_text - ('%.14s' * #form_button_text))", (11, 24), (45, 5), shadow=False)]
+                 row_text("name", "(#form_button_text - ('%.32s' * #form_button_text))", (11, 24), (45, 5), shadow=False)]
+    # hovered, another player's Pokemon shows its owner's name in italics in place of its own (PasturePokemonScrollList's
+    # ownerName); the script puts the Pokemon's own name in that field for the player's own
+    hover_parts = row_parts[:-1] + [row_text("name", part(14, 32), (11, 24), (45, 5), shadow=False)]
     def row_button(index, offset):
         b = button(index, offset, (62, 29))[f"button_{index}"]
         for state in b["controls"]:
-            next(iter(state.values()))["controls"] = row_parts
+            key = next(iter(state))
+            state[key]["controls"] = row_parts if key == "default" else hover_parts
         # a row with no Pokemon (empty text) is not drawn, so the list ends at the last one
         b["bindings"] = b["bindings"] + [text, {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}]
         return {f"button_{index}": b}
