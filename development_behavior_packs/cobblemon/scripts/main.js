@@ -18,6 +18,7 @@ import { TMS, TM_SPECIES } from "./tms.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
 import { DEFENDERS } from "./defenders.js";
+import { SHOULDER } from "./shoulder.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
@@ -1295,7 +1296,7 @@ function openWheel(player, target) {
             setProp(target, "cobblemon:staying", following ? true : undefined);
         } },
         west: { icon: "ride", tip: "Ride", on: rideable, act: () => { try { target.getComponent("minecraft:rideable").addRider(player); } catch (e) { } } },
-        northwest: { icon: "shoulder", tip: "Shoulder", on: false },
+        northwest: { icon: "shoulder", tip: "Shoulder", on: canShoulder(target, player), act: () => mountShoulder(target, player) },
     };
     // each button's texture is its place, its icon and whether it is offered (the layout adds "_hover")
     const form = new ActionFormData().title("cbm:interact").body("");
@@ -1323,6 +1324,60 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         system.run(() => { if (!battles.has(player.id) && target.isValid) startBattle(player, target, false); });
     }
 });
+
+// PokemonEntity.tryMountingShoulder: one of the player's own Pokemon whose form is shoulderMountable hops at them and,
+// half a second later, sits on the free shoulder, the left first, in its shoulder pose, with the item pickup sound.
+// The player's two shoulder seats are Bedrock's own, the parrots'. It comes off as a parrot does in Java
+// (Player.removeEntitiesOnShoulder): when the player falls more than half a block (so a jump drops it), is hurt,
+// goes into water, sleeps or flies.
+const SHOULDER_SET = new Set(SHOULDER), SHOULDER_PROP = "cobblemon:shoulder";
+const shoulderFall = new Map();   // player id -> the highest y since they left the ground
+function shoulderRiders(player) {
+    try { return player.getComponent("minecraft:rideable")?.getRiders().filter((e) => POKEMON[e.typeId]) ?? []; } catch (e) { return []; }
+}
+function canShoulder(target, player) {
+    return SHOULDER_SET.has(target.typeId) && prop(target, OWNER) === player.id && !battles.has(player.id) && shoulderRiders(player).length < 2;
+}
+function mountShoulder(target, player) {
+    const d = { x: player.location.x - target.location.x, z: player.location.z - target.location.z }, len = Math.hypot(d.x, d.z) || 1;
+    try { target.applyImpulse({ x: (d.x / len) * 0.8, y: 0.5, z: (d.z / len) * 0.8 }); } catch (e) { }
+    system.runTimeout(() => {
+        if (!target.isValid || !player.isValid || !canShoulder(target, player)) return;
+        const left = !shoulderRiders(player).some((e) => e.getProperty(SHOULDER_PROP) === 1);
+        // the parrot_tame family the seats take comes with the group, which applies on the next tick
+        try { target.triggerEvent("cobblemon:shoulder_on"); } catch (e) { return; }
+        system.runTimeout(() => {
+            if (!target.isValid || !player.isValid) return;
+            try {
+                target.teleport(player.location);
+                if (!player.getComponent("minecraft:rideable").addRider(target)) { target.triggerEvent("cobblemon:shoulder_off"); return; }
+                target.setProperty(SHOULDER_PROP, left ? 1 : 2);
+                player.dimension.playSound("random.pop", target.location, { volume: 0.7, pitch: 1.4 });
+            } catch (e) { console.warn(`[cobblemon] shoulder: ${e}`); }
+            shoulderFall.delete(player.id);
+        }, 1);
+    }, 10);
+}
+function dropShoulder(player) {
+    for (const e of shoulderRiders(player)) {
+        try { player.getComponent("minecraft:rideable").ejectRider(e); e.setProperty(SHOULDER_PROP, 0); e.triggerEvent("cobblemon:shoulder_off"); } catch (err) { }
+    }
+    shoulderFall.delete(player.id);
+}
+system.runInterval(() => {
+    for (const player of world.getAllPlayers()) {
+        const riders = shoulderRiders(player);
+        if (!riders.length) { shoulderFall.delete(player.id); continue; }
+        // facing the way the player faces, as PokemonOnShoulderRenderer draws it in the player's own frame
+        const yaw = player.getRotation().y;
+        for (const e of riders) try { e.setRotation({ x: 0, y: yaw }); } catch (err) { }
+        const y = player.location.y;
+        const top = player.isOnGround ? y : Math.max(shoulderFall.get(player.id) ?? y, y);
+        shoulderFall.set(player.id, top);
+        if (top - y > 0.5 || player.isInWater || player.isSleeping || player.isGliding || player.isFlying) dropShoulder(player);
+    }
+}, 1);
+world.afterEvents.entityHurt.subscribe(({ hurtEntity }) => { if (hurtEntity?.typeId === "minecraft:player") dropShoulder(hurtEntity); });
 
 // PokemonRenderer.renderNameTag's label: the Pokemon's name, or "???" while the nearest player has not registered its
 // species, then "Lv. N"; under a wild Pokemon that can be battled, "Press Use to battle." until that player's first win

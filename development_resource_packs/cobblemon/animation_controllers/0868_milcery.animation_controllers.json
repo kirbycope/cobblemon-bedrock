@@ -9,13 +9,56 @@
                         "ground_idle",
                         "pose_standing"
                     ],
-                    "transitions": [],
+                    "transitions": [
+                        {
+                            "shoulderleft": "v.pose == 1"
+                        },
+                        {
+                            "shoulderright": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderleft": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_shoulderleft"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "shoulderright": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderright": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_shoulderright"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 1"
+                        }
+                    ],
                     "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
                         {
                             "standing": "v.pose == 0"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 1"
+                        },
+                        {
+                            "shoulderright": "v.pose == 2"
                         }
                     ]
                 }

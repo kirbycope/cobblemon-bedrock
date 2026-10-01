@@ -295,7 +295,7 @@
                     "v.clip_roll = math.random(0, 1);"
                 ],
                 "pre_animation": [
-                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
                     "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && ((q.is_on_ground)))) ? 1 : (((v.pose_type == 0 || v.pose_type == 1) && ((q.has_rider && !q.is_on_ground))) ? 2 : (((v.pose_type == 1) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1) && ((q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
                 ],
                 "animate": [

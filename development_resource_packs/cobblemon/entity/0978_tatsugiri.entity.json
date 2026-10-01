@@ -28,8 +28,8 @@
                     "v.clip_roll = math.random(0, 1);"
                 ],
                 "pre_animation": [
-                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6)) ? 0 : (0);"
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6)) ? 0 : (((v.pose_type == 7)) ? 1 : (((v.pose_type == 8)) ? 2 : (0)));"
                 ],
                 "animate": [
                     "pose",
@@ -46,7 +46,9 @@
                 "pose2": "animation.tatsugiri.pose2",
                 "ground_idle": "animation.tatsugiri.ground_idle",
                 "blink": "animation.tatsugiri.blink",
-                "cry": "animation.tatsugiri.cry"
+                "cry": "animation.tatsugiri.cry",
+                "pose_shoulder_left": "animation.0978_tatsugiri.pose_shoulder_left",
+                "pose_shoulder_right": "animation.0978_tatsugiri.pose_shoulder_right"
             },
             "render_controllers": [
                 "controller.render.tatsugiri"

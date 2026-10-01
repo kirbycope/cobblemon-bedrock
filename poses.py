@@ -33,7 +33,7 @@ POSE_SETS = {
     "MOVING_POSES": {"WALK", "SWIM", "FLY"}, "STATIONARY_POSES": {"STAND", "FLOAT", "HOVER"}, "NO_GRAV_POSES": {"FLY", "HOVER", "SWIM"},
 }
 # the pose types an entity in the world can be in, as PokemonServerDelegate.updatePoseType picks them; the index is v.pose_type
-WORLD_TYPES = ["STAND", "WALK", "SLEEP", "HOVER", "FLY", "FLOAT", "SWIM"]
+WORLD_TYPES = ["STAND", "WALK", "SLEEP", "HOVER", "FLY", "FLOAT", "SWIM", "SHOULDER_LEFT", "SHOULDER_RIGHT"]
 DEG = 180 / math.pi
 
 # Molang the pack can evaluate for each state Cobblemon's conditions read
@@ -41,6 +41,7 @@ BATTLE = "q.property('cobblemon:battle')"
 SUBMERGED = "q.property('cobblemon:submerged')"
 IN_WATER = "q.is_in_water"
 HOLDING = "q.property('cobblemon:holding')"
+SHOULDER = "q.property('cobblemon:shoulder')"   # 1 on the left shoulder, 2 the right, set by the script
 SAND = "q.property('cobblemon:on_sand')"   # 1 sand, 2 red sand within two blocks below, set by the script
 # the queries the translated Molang may use; anything else Cobblemon asks is unknown to Bedrock and reads as false
 BEDROCK_QUERIES = {"q.property", "q.is_on_ground", "q.has_rider", "q.is_in_water", "q.is_in_water_or_rain", "q.time_of_day",
@@ -572,13 +573,14 @@ def static_parts(parts, bones):
 
 
 def pose_type_molang(flier):
-    """v.pose_type as PokemonServerDelegate.updatePoseType sets it: a passenger stands, then sleep, underwater
+    """v.pose_type as PokemonServerDelegate.updatePoseType sets it, after the shoulder poses PokemonOnShoulderRenderer
+    draws a Pokemon on a player's shoulder in: a passenger stands, then sleep, underwater
     swimming or floating, flying or hovering, walking, standing."""
     moving = "(q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5)"
     ground = "(v.moving ? 1 : 0)"
     air = f"((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : {ground})" if flier else ground
     return (f"v.moving = {moving}; "
-            f"v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : ({SUBMERGED} ? (v.moving ? 6 : 5) : {air}));")
+            f"v.pose_type = {SHOULDER} > 0 ? 6 + {SHOULDER} : (q.is_riding ? 0 : (q.is_sleeping ? 2 : ({SUBMERGED} ? (v.moving ? 6 : 5) : {air})));")
 
 
 def world_poses(found):

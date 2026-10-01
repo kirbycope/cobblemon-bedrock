@@ -12,6 +12,12 @@
                     "transitions": [
                         {
                             "walk": "v.pose == 1"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 2"
+                        },
+                        {
+                            "shoulderright": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
@@ -25,6 +31,48 @@
                     "transitions": [
                         {
                             "standing": "v.pose == 0"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 2"
+                        },
+                        {
+                            "shoulderright": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderleft": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_shoulderleft"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "shoulderright": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderright": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_shoulderright"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -36,6 +84,12 @@
                         },
                         {
                             "walk": "v.pose == 1"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 2"
+                        },
+                        {
+                            "shoulderright": "v.pose == 3"
                         }
                     ]
                 }

@@ -50,6 +50,15 @@
                     "default": 1.0,
                     "client_sync": true
                 },
+                "cobblemon:intrinsic": {
+                    "type": "float",
+                    "range": [
+                        0.5,
+                        1.5
+                    ],
+                    "default": 1.0,
+                    "client_sync": true
+                },
                 "cobblemon:red": {
                     "type": "float",
                     "range": [
@@ -59,13 +68,13 @@
                     "default": 0.0,
                     "client_sync": true
                 },
-                "cobblemon:intrinsic": {
-                    "type": "float",
+                "cobblemon:shoulder": {
+                    "type": "int",
                     "range": [
-                        0.5,
-                        1.5
+                        0,
+                        2
                     ],
-                    "default": 1.0,
+                    "default": 0,
                     "client_sync": true
                 }
             },
@@ -316,6 +325,18 @@
             "cobblemon:variant_1": {
                 "minecraft:variant": {
                     "value": 1
+                }
+            },
+            "cobblemon:shoulder": {
+                "minecraft:type_family": {
+                    "family": [
+                        "mob",
+                        "pokemon",
+                        "npc",
+                        "grass",
+                        "owned",
+                        "parrot_tame"
+                    ]
                 }
             },
             "cobblemon:pasture_conflict": {
@@ -647,6 +668,25 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:variant_1"
+                    ]
+                }
+            },
+            "cobblemon:shoulder_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:shoulder"
+                    ]
+                }
+            },
+            "cobblemon:shoulder_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:shoulder"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:owned"
                     ]
                 }
             },

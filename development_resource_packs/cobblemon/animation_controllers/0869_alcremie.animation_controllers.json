@@ -14,6 +14,12 @@
                         },
                         {
                             "walk": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -29,6 +35,12 @@
                         },
                         {
                             "walk": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -44,9 +56,57 @@
                         },
                         {
                             "standing": "v.pose == 1"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.25
+                },
+                "shoulder_left": {
+                    "animations": [
+                        "shoulder_left",
+                        "pose_shoulder_left"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulder_right": {
+                    "animations": [
+                        "shoulder_right",
+                        "pose_shoulder_right"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
                 "spawn": {
                     "transitions": [
@@ -58,6 +118,12 @@
                         },
                         {
                             "walk": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 4"
                         }
                     ]
                 }

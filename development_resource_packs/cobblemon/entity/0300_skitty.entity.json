@@ -295,8 +295,8 @@
                     "v.clip_roll = math.random(0, 1);"
                 ],
                 "pre_animation": [
-                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0)));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 7)) ? 4 : (((v.pose_type == 8)) ? 5 : (0))))));"
                 ],
                 "animate": [
                     "pose",
@@ -337,7 +337,9 @@
                 "WIP_quirk": "animation.skitty.WIP_quirk",
                 "pose_standing": "animation.0300_skitty.pose_standing",
                 "pose_battle_standing": "animation.0300_skitty.pose_battle_standing",
-                "pose_walking": "animation.0300_skitty.pose_walking"
+                "pose_walking": "animation.0300_skitty.pose_walking",
+                "pose_shoulder_left": "animation.0300_skitty.pose_shoulder_left",
+                "pose_shoulder_right": "animation.0300_skitty.pose_shoulder_right"
             },
             "render_controllers": [
                 "controller.render.skitty",

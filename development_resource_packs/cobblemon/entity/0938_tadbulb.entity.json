@@ -297,8 +297,8 @@
                     "v.clip_roll = math.random(0, 1);"
                 ],
                 "pre_animation": [
-                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1) && ((!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1) && ((!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 4 : (((v.pose_type == 2)) ? 5 : (((v.pose_type == 7)) ? 6 : (((v.pose_type == 8)) ? 7 : (0))))))));"
                 ],
                 "animate": [
                     "pose",
@@ -331,7 +331,9 @@
                 "pose_standing": "animation.0938_tadbulb.pose_standing",
                 "pose_walking": "animation.0938_tadbulb.pose_walking",
                 "pose_running": "animation.0938_tadbulb.pose_running",
-                "pose_fly": "animation.0938_tadbulb.pose_fly"
+                "pose_fly": "animation.0938_tadbulb.pose_fly",
+                "pose_shoulder_left": "animation.0938_tadbulb.pose_shoulder_left",
+                "pose_shoulder_right": "animation.0938_tadbulb.pose_shoulder_right"
             },
             "render_controllers": [
                 "controller.render.tadbulb",
