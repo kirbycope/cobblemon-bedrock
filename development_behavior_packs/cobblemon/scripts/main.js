@@ -8,7 +8,7 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
-import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS } from "./pot.js";
+import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
@@ -1135,8 +1135,18 @@ function openPot(block, player) {
         system.run(() => openPot(block, player));
     }).catch((err) => { console.warn(`campfire pot: ${err}`); potOpen.delete(player.id); });
 }
-// the broth shows while anything is in the pot (CampfirePotBlock.OCCUPIED)
-function showPotContents(block, data) { setState(block, "cobblemon:occupied", data.s.slice(1).some(Boolean)); }
+// the broth shows while anything is in the pot (CampfirePotBlock.OCCUPIED), in the colour of the seasonings' dominant
+// flavours (getColourMixFromSeasonings: the flavours summed in the order they are met, the first of the strongest
+// weighted most), or the base broth without any
+function showPotContents(block, data) {
+    setState(block, "cobblemon:occupied", data.s.slice(1).some(Boolean));
+    const sums = new Map();
+    for (const n of [10, 11, 12]) for (const [flavour, value] of Object.entries(SEASONINGS[data.s[n]?.[0]]?.flavours ?? {})) sums.set(flavour, (sums.get(flavour) ?? 0) + value);
+    const order = ["SPICY", "DRY", "SWEET", "BITTER", "SOUR"], top = Math.max(...sums.values());
+    const dominant = [...sums].filter(([f, v]) => v === top && order.includes(f)).map(([f]) => f);
+    const index = dominant.length ? BROTH_INDEX[`${dominant[0]}|${dominant.slice(1).sort((a, b) => order.indexOf(a) - order.indexOf(b)).join(",")}`] ?? 0 : 0;
+    try { block.setPermutation(block.permutation.withState("cobblemon:broth_hi", Math.floor(index / 16)).withState("cobblemon:broth_lo", index % 16)); } catch (e) { }
+}
 // CampfireBlockEntity.serverTick: with the lid closed and a recipe in the grid the pot cooks, two a tick to 200; then
 // the result goes to the result slot (if it is empty or the same item with room), each grid slot gives up one item
 // (a bucket or bottle left behind drops beside the pot), and the cook sound plays

@@ -3055,6 +3055,26 @@ def create_cooking_items():
 CAMPFIRE_POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"]
 
 
+FLAVOURS = ["SPICY", "DRY", "SWEET", "BITTER", "SOUR"]
+FLAVOUR_BROTH = {"SPICY": 0xFEB37D, "DRY": 0x8AE9FC, "SWEET": 0xFFBEED, "BITTER": 0x9EED8F, "SOUR": 0xFCF38A}
+
+
+def broth_mixes():
+    """Every broth colour the pot can show (FlavourColourHelper): the base broth, then each mix of dominant flavours,
+    the first one found at 0.7 and the rest sharing 0.3 (getColourMixFromColors), as (first, the rest, colour)."""
+    from itertools import combinations
+    out = [(None, (), 0xFDFACF)]
+    for first in FLAVOURS:
+        others = [f for f in FLAVOURS if f != first]
+        for k in range(len(others) + 1):
+            for rest in combinations(others, k):
+                cols = [FLAVOUR_BROTH[first]] + [FLAVOUR_BROTH[f] for f in rest]
+                weights = [1.0] if not rest else [0.7] + [0.3 / len(rest)] * len(rest)
+                mix = [int(sum(((c >> sh) & 255) * w for c, w in zip(cols, weights))) for sh in (16, 8, 0)]
+                out.append((first, rest, (mix[0] << 16) | (mix[1] << 8) | mix[2]))
+    return out
+
+
 def create_campfire_blocks():
     """Cobblemon's campfire with a pot on it (CampfireBlock, CampfireBlockEntityRenderer), one block a pot colour,
     cobblemon:campfire_<colour>: Cobblemon's campfire model (Minecraft's template_campfire with Cobblemon's fire) and
@@ -3072,6 +3092,17 @@ def create_campfire_blocks():
     for x in range(broth.width):
         for y in range(broth.height):
             r, g, b, a = px[x, y]; px[x, y] = (r * tint[0] // 255, g * tint[1] // 255, b * tint[2] // 255, a)
+    # the broth in each colour it can take, by its cobblemon:broth state (0 the base broth)
+    grey = Image.open(f"{cobblemon}/textures/block/campfire_pot/campfire_pot_broth.png").convert("RGBA")
+    mixes = broth_mixes(); broth_keys = []
+    os.makedirs(f"{texturesBlocksBedrock}/block/campfire_pot", exist_ok=True)
+    for n, (_, _, rgb) in enumerate(mixes):
+        img = grey.copy(); q = img.load(); c = ((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255)
+        for x in range(img.width):
+            for y in range(img.height):
+                r, g, b, a = q[x, y]; q[x, y] = (r * c[0] // 255, g * c[1] // 255, b * c[2] // 255, a)
+        img.save(f"{texturesBlocksBedrock}/block/campfire_pot/broth_{n}.png")
+        key = f"cobblemon_campfire_broth_{n}"; terrain_textures[key] = {"textures": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}"}; broth_keys.append(key)
     made = []
     for colour in CAMPFIRE_POT_COLOURS:
         permutations, geometries = [], {}
@@ -3088,13 +3119,20 @@ def create_campfire_blocks():
                 gid = f"geometry.cobblemon_campfire_{colour}_{'closed' if lid else 'open'}{'_broth' if occupied else ''}"
                 write_block_geometry(gid, cubes)
                 for d, ry in (("south", 0), ("west", 90), ("north", 180), ("east", 270)):
-                    permutations.append({"condition": f"q.block_state('cobblemon:lid') == {str(lid).lower()} && q.block_state('cobblemon:occupied') == {str(occupied).lower()} "
-                                                      f"&& q.block_state('minecraft:cardinal_direction') == '{d}'",
-                                         "components": {"minecraft:geometry": gid, "minecraft:material_instances": material_instances(instances),
-                                                        "minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}})
+                    for n in (range(len(mixes)) if occupied else [None]):
+                        materials = material_instances(instances)
+                        if n is not None:
+                            for inst in materials.values():
+                                if inst["texture"] == "cobblemon_block_campfire_pot_campfire_pot_broth": inst["texture"] = broth_keys[n]
+                        permutations.append({"condition": f"q.block_state('cobblemon:lid') == {str(lid).lower()} && q.block_state('cobblemon:occupied') == {str(occupied).lower()} "
+                                                          f"&& q.block_state('minecraft:cardinal_direction') == '{d}'" + (f" && q.block_state('cobblemon:broth_hi') == {n // 16} && q.block_state('cobblemon:broth_lo') == {n % 16}" if n is not None else ""),
+                                             "components": {"minecraft:geometry": gid, "minecraft:material_instances": materials,
+                                                            "minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}})
         block = {"format_version": "1.21.90", "minecraft:block": {
             "description": {"identifier": f"cobblemon:campfire_{colour}", "menu_category": {"category": "none"},
-                            "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True], "cobblemon:cooking": [False, True]},
+                            "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True], "cobblemon:cooking": [False, True],
+                                       # the broth's colour in two states, since a state holds at most 16 values
+                                       "cobblemon:broth_hi": {"values": {"min": 0, "max": (len(mixes) - 1) // 16}}, "cobblemon:broth_lo": {"values": {"min": 0, "max": 15}}},
                             "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
             "components": {**permutations[0]["components"], "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 7, 16]},
                            "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]}, "minecraft:light_emission": 15, "minecraft:light_dampening": 0,
@@ -3109,7 +3147,8 @@ def create_campfire_blocks():
     # the animated textures: Cobblemon's fire (2 ticks a frame) and broth (3), and Minecraft's lit logs
     flipbooks = [{"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_fire", "atlas_tile": "cobblemon_block_campfire_pot_campfire_fire", "ticks_per_frame": 2},
                  {"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_pot_broth", "atlas_tile": "cobblemon_block_campfire_pot_campfire_pot_broth", "ticks_per_frame": 3},
-                 {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2}]
+                 {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2}] \
+        + [{"flipbook_texture": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}", "atlas_tile": key, "ticks_per_frame": 3} for n, key in enumerate(broth_keys)]
     with open(f"{resourcePack}/textures/flipbook_textures.json", "w") as file: file.write(json.dumps(flipbooks, indent=2))
     with open(f"{textsBedrock}/en_US.lang", encoding="utf-8") as file: written = file.read()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
@@ -6251,6 +6290,7 @@ def create_pot_ui():
         file.write("export const SEASONINGS = " + json.dumps(seasonings, separators=(",", ":")) + ";\n")
         file.write("export const SEASONING_FILTERS = " + json.dumps(filters, separators=(",", ":")) + ";\n")
         with open(f"{cobblemonData}/mechanics/aprijuices.json", encoding="utf-8") as mech: file.write("export const APRIJUICES = " + json.dumps(json.load(mech)) + ";\n")
+        file.write("export const BROTH_INDEX = " + json.dumps({f"{first}|{','.join(rest)}": n for n, (first, rest, _) in enumerate(broth_mixes()) if first}) + ";\n")
         file.write("export const ITEM_ICONS = " + json.dumps(item_icons(), separators=(",", ":")) + ";\n")
 
     T = "textures/ui/cobblemon/pot"
