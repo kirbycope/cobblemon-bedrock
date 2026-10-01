@@ -165,6 +165,26 @@ def species_key(species):
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
+def add_intrinsic_scale():
+    """Pokemon.scaleModifier: a cobblemon:intrinsic entity property on every species, multiplied into the client
+    entity's scale, which the script rolls between pokemonIntrinsicSizeMin and Max (0.95 to 1.05) and keeps."""
+    added = 0
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        if not re.match(r"\d{4}_", os.path.basename(path)): continue
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); props = data["minecraft:entity"]["description"].setdefault("properties", {})
+        if "cobblemon:size" not in props or "cobblemon:intrinsic" in props: continue
+        props["cobblemon:intrinsic"] = {"type": "float", "range": [0.5, 1.5], "default": 1.0, "client_sync": True}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+        added += 1
+    for path in glob.glob(f"{resourcePack}/entity/*.entity.json"):
+        with open(path, encoding="utf-8") as file: text = file.read()
+        if "q.property('cobblemon:size')\"" not in text: continue
+        with open(path, "w", encoding="utf-8") as file: file.write(text.replace("q.property('cobblemon:size')\"", "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')\""))
+    print(f"Intrinsic scale: {added} species.")
+
+
 def add_pasture_conflict():
     """How an owned Pokemon fights mobs, as pokemon_owned.json's behaviours give it: a species whose combat behaviour
     willDefendOwner defends its trainer while with them (defend_owner, which scripts/main.js drives), and out in a pasture with the defend toggle on (PastureSlotIconConflictButton, pasture_conflict_enabled)
@@ -1040,7 +1060,7 @@ def create_client_entities():
                     },
                     "textures": variant_textures(pokemon),
                     "geometry": variant_geometries(pokemon),
-                    "scripts": {**scripts, "scale": "q.property('cobblemon:size')"},
+                    "scripts": {**scripts, "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"},
                     "animations": animations,
                     "render_controllers": render_controller_names(pokemon, pokemonName),
                     "spawn_egg": {"texture": f"{pokemon}_spawn_egg"}
@@ -1178,6 +1198,8 @@ def create_behavior_entities():
                                    "cobblemon:on_sand": {"type": "int", "range": [0, 2], "default": 0, "client_sync": True},
                                    # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
+                                   # Pokemon.scaleModifier, rolled between pokemonIntrinsicSizeMin and Max by the script
+                                   "cobblemon:intrinsic": {"type": "float", "range": [0.5, 1.5], "default": 1.0, "client_sync": True},
                                    "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True}},
                     "animations": {},
                     "scripts": {"animate": []}
@@ -7369,6 +7391,7 @@ def main():
     write_item_names(general_items)
     create_model_blocks()
     create_variant_index()
+    add_intrinsic_scale()
     add_pasture_conflict()
     create_campfire_blocks()
     create_cooking_items()

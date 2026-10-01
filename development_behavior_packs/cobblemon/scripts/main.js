@@ -1887,7 +1887,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // testing: "/execute as <entity> run scriptevent cobblemon:inspect" logs its variant and dynamic properties
         const props = {};
         try { for (const id of source.getDynamicPropertyIds()) props[id] = source.getDynamicProperty(id); } catch (e) { }
-        console.warn(`[cobblemon] ${source.typeId} variant ${variantOf(source)} ${JSON.stringify(props).slice(0, 600)}`);
+        let shown; try { shown = source.getProperty("cobblemon:intrinsic"); } catch (e) { }
+        console.warn(`[cobblemon] ${source.typeId} variant ${variantOf(source)} intrinsic ${shown} ${JSON.stringify(props).slice(0, 600)}`);
     } else if (event.id === "cobblemon:biome") {
         // testing: "/execute as <player> run scriptevent cobblemon:biome" logs the biome the wallpaper unlocks read there
         let id = "?";
@@ -2370,7 +2371,7 @@ function snapshot(entity) {
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
-    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status"];
+    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3342,7 +3343,7 @@ function scanRecord(st) {
     let sides = "xxxx", texts = Array(8).fill("");
     if (target && st.focus >= 9) {
         const info = POKEMON[target.typeId], owned = st.caught;
-        const lines = [`Lv.${prop(target, LEVEL) ?? info.level}`, info.name, "Size: M", `${info.types.map(cap).join("/")} Type`];
+        const lines = [`Lv.${prop(target, LEVEL) ?? info.level}`, info.name, `Size: ${sizeCategory(target)}`, `${info.types.map(cap).join("/")} Type`];
         sides = st.sides.map((s, k) => (k < 2 || owned ? s : "x")).join("");
         lines.forEach((line, k) => { if (sides[k] !== "x") texts[k * 2 + (sides[k] === "l" ? 0 : 1)] = line; });
     }
@@ -4404,6 +4405,22 @@ function timeline(ticks, fn) {
     }, 1);
 }
 
+// Pokemon.initializeScale and PokemonSizeCategory: each Pokemon rolls a scale between pokemonIntrinsicSizeMin and Max
+// (0.95 to 1.05) once and keeps it (through the PC and evolution, with its other kept properties); the model is drawn
+// at it, and its size category is the fifth of that range it falls in, XS to XL
+const SCALE = "cobblemon:scale", SIZE_MIN = 0.95, SIZE_MAX = 1.05, SIZE_CATEGORIES = ["XS", "S", "M", "L", "XL"];
+function scaleOf(e) {
+    let s = prop(e, SCALE);
+    if (typeof s !== "number") { s = SIZE_MIN + Math.random() * (SIZE_MAX - SIZE_MIN); setProp(e, SCALE, s); }
+    return s;
+}
+function showScale(e) { try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", scaleOf(e)); } catch (err) { } }
+function sizeCategory(e) {
+    const range = SIZE_MAX - SIZE_MIN, seg = range / SIZE_CATEGORIES.length;
+    return SIZE_CATEGORIES[Math.max(0, Math.min(SIZE_CATEGORIES.length - 1, Math.floor(Math.min(range, Math.max(0, scaleOf(e) - SIZE_MIN)) / seg)))];
+}
+world.afterEvents.entitySpawn.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) system.runTimeout(() => { if (entity.isValid) showScale(entity); }, 2); });
+world.afterEvents.entityLoad.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) showScale(entity); });
 function setSize(entity, size, red = 0) {
     try { entity.setProperty("cobblemon:size", Math.max(0, Math.min(1, size))); entity.setProperty("cobblemon:red", Math.max(0, Math.min(1, red))); } catch (e) { }
 }
