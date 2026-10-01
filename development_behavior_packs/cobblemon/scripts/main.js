@@ -1800,7 +1800,9 @@ function battleBody(battle) {
     const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
     // the log follows the fixed fields; a lone % would be read as a format there too
     const log = (battle.log ?? []).slice(-40).map((line) => line.replace(/%/g, "%%")).join("\n");
-    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + log;
+    // BattleOverlay's actorDisplayName: the player's and the trainer's names over the tiles when the foe is a trainer's
+    const actors = battle.trainer ? pad(ascii(battle.player.name), 16) + pad(ascii(typeof battle.trainer === "string" ? battle.trainer : "Trainer"), 16) : " ".repeat(32);
+    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + actors + log;
 }
 
 // BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
@@ -2270,7 +2272,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const loc = { x: source.location.x + (dx / len) * 1.5, y: source.location.y, z: source.location.z + (dz / len) * 1.5 };
         let foe;
         try { foe = source.dimension.spawnEntity(typeId, loc); } catch (e) { return; }
-        system.runTimeout(() => startBattle(player, foe, true), 5);
+        const name = source.nameTag && source.nameTag !== "NPC" ? source.nameTag.replace(/§./g, "") : "Trainer";
+        system.runTimeout(() => startBattle(player, foe, name), 5);   // the trainer's name for the battle tile
     }
 }, { namespaces: ["cobblemon"] });
 

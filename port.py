@@ -5042,7 +5042,8 @@ BATTLE_FIELDS = {"name": (1, 15), "level": (15, 21), "hp": (21, 24), "status": (
 BATTLE_SIDE = 33
 BATTLE_HPTEXT = 1 + 2 * BATTLE_SIDE   # the ally's, 12 characters, then the foe's, 9
 BATTLE_LOG_FLAG = BATTLE_HPTEXT + 13 + 9   # after the two health texts in bytes (each colour code is 3): "e" while the log is expanded, "c" while not
-BATTLE_LOG = BATTLE_LOG_FLAG + 1
+BATTLE_ACTORS = BATTLE_LOG_FLAG + 1   # the two actors' names, 16 each, in a trainer battle (BattleOverlay's actorDisplayName)
+BATTLE_LOG = BATTLE_ACTORS + 32
 # BattleSwitchPokemonSelection's tiles: each button's text carries its Pokemon as fixed-width fields
 SWITCH_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "status": (21, 24), "icon": (24, 29), "ball": (29, 32)}
 SWITCH_HPTEXT = 32   # the health as a number runs from here to the end   # the battle log's last lines run from here to the end
@@ -7219,6 +7220,14 @@ def create_battle_ui():
                         "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                                      "source_property_name": f"('{T}/summary/g' + {field(side, 'gender')})", "target_property_name": "#texture"}]}},
             text_label("level", field(side, "level"), [info_x + 66, 7]),
+            # BattleOverlay's actorDisplayName over the tile in a battle that is not against a wild Pokemon: the player's
+            # name at 9 over the left tile, the trainer's right-justified at the tile's width less 9 over the right one
+            {"actor": {"type": "label", "text": "#value", "size": [100, 5], "font_scale_factor": 0.5, "shadow": True, "layer": 4, "color": [1, 1, 1],
+                       "anchor_from": "top_right" if reversed_ else "top_left", "anchor_to": "top_right" if reversed_ else "top_left",
+                       "offset": [-9, -5] if reversed_ else [9, -5], "text_alignment": "right" if reversed_ else "left",
+                       "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                                    "source_property_name": f"((('%.{BATTLE_ACTORS + 16 * (side + 1)}s' * #form_text) - ('%.{BATTLE_ACTORS + 16 * side}s' * #form_text)) - '  ')",
+                                    "target_property_name": "#value"}]}},
             {"hp_text": {**text_label("hp_text", field(side, "hptext"), [info_x + (39.5 if not reversed_ else 44.5) - 50, 22], scale=0.5)["hp_text"], "text_alignment": "center"}},
         ]
         # the health bar: 97 pixels at full health, its colour depleting from green through yellow to red

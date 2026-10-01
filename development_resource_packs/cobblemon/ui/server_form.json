@@ -331,6 +331,41 @@
               }
             },
             {
+              "actor": {
+                "type": "label",
+                "text": "#value",
+                "size": [
+                  100,
+                  5
+                ],
+                "font_scale_factor": 0.5,
+                "shadow": true,
+                "layer": 4,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "offset": [
+                  9,
+                  -5
+                ],
+                "text_alignment": "left",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.106s' * #form_text) - ('%.90s' * #form_text)) - '  ')",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
               "hp_text": {
                 "type": "label",
                 "anchor_from": "top_left",
@@ -2637,6 +2672,41 @@
               }
             },
             {
+              "actor": {
+                "type": "label",
+                "text": "#value",
+                "size": [
+                  100,
+                  5
+                ],
+                "font_scale_factor": 0.5,
+                "shadow": true,
+                "layer": 4,
+                "color": [
+                  1,
+                  1,
+                  1
+                ],
+                "anchor_from": "top_right",
+                "anchor_to": "top_right",
+                "offset": [
+                  -9,
+                  -5
+                ],
+                "text_alignment": "right",
+                "bindings": [
+                  {
+                    "binding_name": "#form_text"
+                  },
+                  {
+                    "binding_type": "view",
+                    "source_property_name": "((('%.122s' * #form_text) - ('%.106s' * #form_text)) - '  ')",
+                    "target_property_name": "#value"
+                  }
+                ]
+              }
+            },
+            {
               "hp_text": {
                 "type": "label",
                 "anchor_from": "top_left",
@@ -4736,7 +4806,7 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "((('%.90s' * #form_text) - ('%.89s' * #form_text)) = 'c')",
+                    "source_property_name": "((('%.122s' * #form_text) - ('%.89s' * #form_text)) = 'c')",
                     "target_property_name": "#visible"
                   }
                 ],
@@ -5547,7 +5617,7 @@
                   },
                   {
                     "binding_type": "view",
-                    "source_property_name": "((('%.90s' * #form_text) - ('%.89s' * #form_text)) = 'e')",
+                    "source_property_name": "((('%.122s' * #form_text) - ('%.89s' * #form_text)) = 'e')",
                     "target_property_name": "#visible"
                   }
                 ],
@@ -12009,7 +12079,7 @@
             },
             {
               "binding_type": "view",
-              "source_property_name": "(#form_text - ('%.90s' * #form_text))",
+              "source_property_name": "(#form_text - ('%.122s' * #form_text))",
               "target_property_name": "#value"
             }
           ]
