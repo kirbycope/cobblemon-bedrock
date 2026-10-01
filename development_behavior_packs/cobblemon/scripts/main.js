@@ -23,7 +23,7 @@ import { DEX_VARIATIONS } from "./dex_variations.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
-import { SHINY_VARIANTS, VARIANT_FORMS } from "./variants.js";
+import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -2493,13 +2493,13 @@ world.beforeEvents.entityRemove.subscribe((event) => {
         owner = e.getDynamicProperty(OWNER);
         for (const id of e.getDynamicPropertyIds()) kept[id] = e.getDynamicProperty(id);
     } catch (err) { }
-    if (owner) evolving.push({ owner, kept, from: e.typeId, location: { ...e.location }, tick: system.currentTick });
+    if (owner) evolving.push({ owner, kept, from: e.typeId, variant: variantOf(e), location: { ...e.location }, tick: system.currentTick });
 });
 world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
     if (cause !== EntityInitializationCause.Transformed || !POKEMON[entity.typeId]) return;
     const i = evolving.findIndex((p) => system.currentTick - p.tick < 40 && Math.hypot(p.location.x - entity.location.x, p.location.z - entity.location.z) < 3);
     if (i < 0) return;
-    const { owner, kept, from } = evolving.splice(i, 1)[0];
+    const { owner, kept, from, variant } = evolving.splice(i, 1)[0];
     const player = world.getPlayers().find((p) => p.id === owner);
     system.run(() => {
         try {
@@ -2507,8 +2507,18 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
             if (player) entity.getComponent(EntityComponentTypes.Tameable)?.tame(player);
             else entity.triggerEvent("cobblemon:caught");   // an owner who is not a player here (the test trader) still owns it
             if (kept?.["cobblemon:staying"]) entity.triggerEvent("cobblemon:stay");
-            const look = cosmeticLook(entity, kept?.[COSMETIC]);
-            if (look !== null) entity.triggerEvent(`cobblemon:set_variant_${look}`);
+            // Pokemon.evolve keeps the gender, shininess and regional form: the variant of the new species with the same
+            // look (the form only where the new species has it), then the cosmetic item on it if it can still wear it
+            const [form, female, shiny] = VARIANT_LOOKS[from]?.[variant] ?? [null, 0, 0], looks = VARIANT_LOOKS[entity.typeId];
+            if (looks) {
+                const find = (f) => looks.findIndex(([lf, lg, ls]) => lf === f && lg === female && ls === shiny);
+                let n = form && !(COSMETICS[from] && Object.values(COSMETICS[from].items).includes(form)) ? find(form) : -1;
+                if (n < 0) n = find(null);
+                const wear = kept?.[COSMETIC] && COSMETICS[entity.typeId]?.items[kept[COSMETIC]];
+                const dressed = wear ? looks.findIndex(([lf, lg, ls]) => lf === wear && lg === female && ls === shiny) : -1;
+                if (dressed >= 0) n = dressed;
+                if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
+            }
             // level, experience, moves, IVs, EVs, nature, friendship and held item carry over; the ability keeps its slot
             for (const [key, value] of Object.entries(kept ?? {})) { try { entity.setDynamicProperty(key, value); } catch (e) { } }
             const before = POKEMON[from], after = POKEMON[entity.typeId], ability = kept?.["cobblemon:ability"];
@@ -4340,12 +4350,28 @@ function showHeld(entity) {
 function genderOf(entity) {
     let g = prop(entity, "cobblemon:gender");
     if (!g) {
-        const ratio = POKEMON[entity.typeId]?.maleRatio ?? 0.5;
-        g = ratio < 0 ? "genderless" : Math.random() < ratio ? "male" : "female";
+        // a species with female looks rolled its gender with its look at spawn (add_variants, by maleRatio), so the
+        // gender is the look's; others roll it here
+        const ratio = POKEMON[entity.typeId]?.maleRatio ?? 0.5, looks = VARIANT_LOOKS[entity.typeId];
+        const look = looks?.some((l) => l[1]) ? looks[variantOf(entity)] : undefined;
+        g = ratio < 0 ? "genderless" : look ? (look[1] ? "female" : "male") : Math.random() < ratio ? "male" : "female";
         setProp(entity, "cobblemon:gender", g);
     }
     return g;
 }
+// the look follows the gender, as Cobblemon's resolvers pick the female model and texture by the gender: a Pokemon
+// whose gender and look disagree (one from before genders took the look's) takes the look of its gender, keeping its
+// form and shininess
+function syncGenderLook(entity) {
+    const looks = VARIANT_LOOKS[entity?.typeId];
+    if (!looks?.some((l) => l[1]) || !entity.isValid) return;
+    const want = genderOf(entity) === "female" ? 1 : 0, [form, female, shiny] = looks[variantOf(entity)] ?? [];
+    if (female === undefined || female === want) return;
+    const n = looks.findIndex(([f, g, sh]) => f === form && g === want && sh === shiny);
+    if (n >= 0) try { entity.triggerEvent(`cobblemon:set_variant_${n}`); } catch (e) { }
+}
+world.afterEvents.entityLoad.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) system.runTimeout(() => syncGenderLook(entity), 2); });
+world.afterEvents.entitySpawn.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) system.runTimeout(() => syncGenderLook(entity), 5); });
 function inTimeRange(name) {
     const t = world.getTimeOfDay() % 24000;
     return (TIME_RANGES[name] ?? [[0, 23999]]).some(([a, b]) => t >= a && t <= b);
