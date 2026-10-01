@@ -6135,6 +6135,10 @@ def cooking_recipes():
         else:
             shapeless.append({**base, "ing": [accepts(i) for i in r.get("ingredients", [])]})
     seasonings = {}
+    # every berry is a seasoning too, with its flavours and colour (Seasonings.reload sideloads the berry data)
+    for path in sorted(glob.glob(f"{cobblemonData}/berries/*.json")):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        seasonings[f"cobblemon:{os.path.basename(path)[:-5]}"] = {"flavours": d.get("flavours", {}), "colour": d.get("colour")}
     for path in sorted(glob.glob(f"{cobblemonData}/seasonings/*.json")):
         with open(path, encoding="utf-8") as file: d = json.load(file)
         seasonings[bedrock(d["ingredient"])] = {k: v for k, v in d.items() if k != "ingredient"}
@@ -6184,6 +6188,7 @@ def create_pot_ui():
         file.write("export const POT_SHAPELESS = " + json.dumps(shapeless, separators=(",", ":")) + ";\n")
         file.write("export const SEASONINGS = " + json.dumps(seasonings, separators=(",", ":")) + ";\n")
         file.write("export const SEASONING_FILTERS = " + json.dumps(filters, separators=(",", ":")) + ";\n")
+        with open(f"{cobblemonData}/mechanics/aprijuices.json", encoding="utf-8") as mech: file.write("export const APRIJUICES = " + json.dumps(json.load(mech)) + ";\n")
         file.write("export const ITEM_ICONS = " + json.dumps(item_icons(), separators=(",", ":")) + ";\n")
 
     T = "textures/ui/cobblemon/pot"

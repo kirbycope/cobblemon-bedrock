@@ -8,7 +8,7 @@
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
-import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, ITEM_ICONS } from "./pot.js";
+import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
@@ -861,7 +861,7 @@ function playAt(block, sound) {
 }
 function dropPot(dimension, location, data, colour) {
     const at = { x: location.x + 0.5, y: location.y + 1, z: location.z + 0.5 };
-    for (const slot of data?.s ?? []) if (slot) try { dimension.spawnItem(new ItemStack(slot[0], slot[1]), at); } catch (e) { }
+    for (const slot of data?.s ?? []) if (slot) try { dimension.spawnItem(slotStack(slot), at); } catch (e) { }
     if (colour) try { dimension.spawnItem(new ItemStack(`cobblemon:campfire_pot_${colour}`, 1), at); } catch (e) { }
 }
 function removePot(block, player) {
@@ -917,14 +917,14 @@ const POT_INV = [...Array(27).keys()].map((i) => i + 9).concat([...Array(9).keys
 function potIcon(id) { return id ? `textures/${ITEM_ICONS[id] ?? "ui/cobblemon/pot/unknown"}` : `${UI}/pot/none`; }
 function maxStack(id) { try { return new ItemStack(id, 1).maxAmount; } catch (e) { return 64; } }
 // into the given inventory slots: onto stacks of the same item first, then empty ones (moveItemStackTo)
-function moveInto(slots, get, set, id, count) {
-    const most = maxStack(id);
+function moveInto(slots, get, set, id, count, meta) {
+    const most = maxStack(id), probe = [id, 0, meta];
     for (const pass of [true, false]) for (const n of slots) {
         if (!count) return 0;
         const here = get(n);
-        if (pass ? !(here && here[0] === id && here[1] < most) : here) continue;
+        if (pass ? !(sameSlot(here, probe) && here[1] < most) : here) continue;
         const take = Math.min(count, most - (here?.[1] ?? 0));
-        set(n, [id, (here?.[1] ?? 0) + take]); count -= take;
+        set(n, meta ? [id, (here?.[1] ?? 0) + take, meta] : [id, (here?.[1] ?? 0) + take]); count -= take;
     }
     return count;
 }
@@ -951,6 +951,58 @@ function potRecipe(grid) {
     }
     return null;
 }
+// Aprijuice (RideBoostsSeasoningProcessor, AprijuiceItem): cooked with flavour seasonings (the berries), each stat
+// takes the points its flavour's sum reaches (statPointFlavourThresholds) plus its apricorn's own, and the juice is
+// named Plain, Tasty or Delicious by its total (cookingQualityPointThresholds), its boosts in its lore as
+// AprijuiceTooltipGenerator shows them; those lines are read back when it is used on a Pokemon
+const RIDE_STATS = ["ACCELERATION", "SKILL", "SPEED", "STAMINA", "JUMP"];
+const RIDE_STAT_NAMES = { ACCELERATION: "Accel.", SKILL: "Skill", SPEED: "Speed", STAMINA: "Stamina", JUMP: "Jump" };
+const RIDE_FLAVOURS = { ACCELERATION: "SPICY", SKILL: "DRY", SPEED: "SWEET", STAMINA: "SOUR", JUMP: "BITTER" };
+const RIDE_COLOURS = { ACCELERATION: "§c", SKILL: "§b", SPEED: "§d", STAMINA: "§e", JUMP: "§a" };
+const aprijuiceColour = (id) => (id?.startsWith("cobblemon:aprijuice_") ? id.slice("cobblemon:aprijuice_".length).toUpperCase() : null);
+function aprijuiceBoosts(colour, seasonings) {
+    const flavours = {};
+    for (const id of seasonings) for (const [flavour, value] of Object.entries(SEASONINGS[id]?.flavours ?? {})) flavours[flavour] = (flavours[flavour] ?? 0) + value;
+    const boosts = {};
+    for (const stat of RIDE_STATS) {
+        const value = flavours[RIDE_FLAVOURS[stat]] ?? 0;
+        const points = Math.max(0, ...Object.entries(APRIJUICES.statPointFlavourThresholds).filter(([at]) => value >= Number(at)).map(([, p]) => p));
+        const total = points + (APRIJUICES.apricornStatEffects[colour]?.[stat] ?? 0);
+        if (total) boosts[stat] = total;
+    }
+    return boosts;
+}
+function aprijuiceQuality(boosts) {
+    const total = Object.values(boosts).reduce((a, b) => a + b, 0), order = ["LOW", "MEDIUM", "HIGH"];
+    return Object.entries(APRIJUICES.cookingQualityPointThresholds).filter(([at]) => total >= Number(at)).map(([, q]) => q).sort((a, b) => order.indexOf(b) - order.indexOf(a))[0] ?? "LOW";
+}
+// a slot's item as an ItemStack, with an Aprijuice's name and boosts
+function slotStack(s) {
+    const stack = new ItemStack(s[0], s[1]);
+    const boosts = s[2]?.boosts, colour = aprijuiceColour(s[0]);
+    if (boosts && colour) {
+        const has = Object.keys(boosts).length, quality = aprijuiceQuality(boosts);
+        const prefix = !has ? "Plain" : { HIGH: "Delicious", MEDIUM: "Tasty", LOW: "Plain" }[quality];
+        stack.nameTag = `§r${prefix} ${cap(colour.toLowerCase())} Aprijuice`;
+        if (has) stack.setLore([`§7Quality: ${cap(quality.toLowerCase())}`, "§7Riding Stat Boosts:",
+            ...RIDE_STATS.filter((k) => boosts[k]).map((k) => `${RIDE_COLOURS[k]}${RIDE_STAT_NAMES[k]}§7: ${boosts[k] < 0 ? `§c${boosts[k]}` : `§a+${boosts[k]}`}`)]);
+    }
+    return stack;
+}
+function stackSlot(item) {
+    if (!item) return null;
+    const out = [item.typeId, item.amount];
+    if (aprijuiceColour(item.typeId) && /Aprijuice/.test(item.nameTag ?? "")) {
+        const boosts = {};
+        for (const line of item.getLore()) {
+            const m = line.replace(/§./g, "").match(/^(Accel\.|Skill|Speed|Stamina|Jump): ([+-]\d+)$/);
+            if (m) boosts[Object.keys(RIDE_STAT_NAMES).find((k) => RIDE_STAT_NAMES[k] === m[1])] = Number(m[2]);
+        }
+        out.push({ boosts });
+    }
+    return out;
+}
+const sameSlot = (a, b) => a && b && a[0] === b[0] && JSON.stringify(a[2] ?? null) === JSON.stringify(b[2] ?? null);
 const REMAINDERS = { "minecraft:milk_bucket": "minecraft:bucket", "minecraft:water_bucket": "minecraft:bucket", "minecraft:honey_bottle": "minecraft:glass_bottle",
                      "minecraft:potion": "minecraft:glass_bottle", "minecraft:dragon_breath": "minecraft:glass_bottle" };
 function openPot(block, player) {
@@ -973,9 +1025,9 @@ function openPot(block, player) {
         if (r.canceled) { potOpen.delete(player.id); return; }
         if (!block.isValid || !potColour(block.typeId)) { potOpen.delete(player.id); return; }
         const pick = r.selection, d = potData(block);
-        const invGet = (n) => { const it = inv.getItem(POT_INV[n - 13]); return it ? [it.typeId, it.amount] : null; };
-        const invSet = (n, s) => inv.setItem(POT_INV[n - 13], s ? new ItemStack(s[0], s[1]) : undefined);
-        const toInventory = (s) => moveInto([...Array(36).keys()].map((i) => i + 13), invGet, invSet, s[0], s[1]);
+        const invGet = (n) => stackSlot(inv.getItem(POT_INV[n - 13]));
+        const invSet = (n, s) => inv.setItem(POT_INV[n - 13], s ? slotStack(s) : undefined);
+        const toInventory = (s) => moveInto([...Array(36).keys()].map((i) => i + 13), invGet, invSet, s[0], s[1], s[2]);
         const potSet = (n, s) => { d.s[n] = s; };
         if (pick === 49) {
             setState(block, "cobblemon:lid", !lid);
@@ -984,22 +1036,26 @@ function openPot(block, player) {
             const here = invGet(pick);
             if (st.picked === pick && here) {
                 // quickMoveStack: the grid, then for a seasoning the seasoning slots
-                let left = moveInto([1, 2, 3, 4, 5, 6, 7, 8, 9], (n) => d.s[n], potSet, here[0], here[1]);
-                if (left && SEASONINGS[here[0]]) left = moveInto([10, 11, 12], (n) => d.s[n], potSet, here[0], left);
-                invSet(pick, left ? [here[0], left] : null); st.picked = null;
+                let left = moveInto([1, 2, 3, 4, 5, 6, 7, 8, 9], (n) => d.s[n], potSet, here[0], here[1], here[2]);
+                if (left && SEASONINGS[here[0]]) left = moveInto([10, 11, 12], (n) => d.s[n], potSet, here[0], left, here[2]);
+                invSet(pick, left ? [here[0], left, here[2]] : null); st.picked = null;
             } else st.picked = here ? pick : null;
         } else if (pick < 13) {
             const held = st.picked !== null ? invGet(st.picked) : null;
             if (held && pick > 0 && (pick < 10 || SEASONINGS[held[0]])) {
                 const there = d.s[pick];
-                if (there && there[0] === held[0]) {
+                if (pick >= 10 && !there) {
+                    // a seasoning slot takes one (each counts once, as a stack), and the rest stays picked for the next slot
+                    d.s[pick] = [held[0], 1, ...held.slice(2)]; invSet(st.picked, held[1] > 1 ? [held[0], held[1] - 1, ...held.slice(2)] : null);
+                    if (held[1] > 1) { savePot(block, d); showPotContents(block, d); system.run(() => openPot(block, player)); return; }
+                } else if (sameSlot(there, held)) {
                     const room = maxStack(held[0]) - there[1], take = Math.min(room, held[1]);
-                    d.s[pick] = [there[0], there[1] + take]; invSet(st.picked, held[1] - take ? [held[0], held[1] - take] : null);
+                    d.s[pick] = [there[0], there[1] + take, ...there.slice(2)]; invSet(st.picked, held[1] - take ? [held[0], held[1] - take, ...held.slice(2)] : null);
                 } else { d.s[pick] = held; invSet(st.picked, there); }
                 st.picked = null;
             } else if (d.s[pick]) {
                 const left = toInventory(d.s[pick]);
-                d.s[pick] = left ? [d.s[pick][0], left] : null;
+                d.s[pick] = left ? [d.s[pick][0], left, ...d.s[pick].slice(2)] : null;
                 if (pick === 0) playAt(block, "cobblemon.block.campfire_pot.take_item");
             }
         }
@@ -1029,12 +1085,19 @@ system.runInterval(() => {
         let progress = potProgress.get(key) ?? 0;
         const before = progress > 0;
         const out = data.s[0];
-        if (!recipe || !lid || (out && (out[0] !== recipe.out || out[1] + recipe.n > maxStack(recipe.out)))) progress = 0;
+        // the seasonings the recipe takes (its seasoningTag) and what they make of the result
+        const filter = SEASONING_FILTERS[recipe?.tag] ?? [], seasoned = [10, 11, 12].filter((n) => data.s[n] && filter.includes(data.s[n][0]));
+        const meta = recipe?.proc.includes("ride_boosts") && aprijuiceColour(recipe.out)
+            ? { boosts: aprijuiceBoosts(aprijuiceColour(recipe.out), seasoned.map((n) => data.s[n][0])) } : undefined;
+        const made = meta ? [recipe.out, recipe.n, meta] : recipe && [recipe.out, recipe.n];
+        if (!recipe || !lid || (out && (!sameSlot(out, made) || out[1] + recipe.n > maxStack(recipe.out)))) progress = 0;
         else {
             progress += 2;
             if (progress >= 200) {
                 progress = 0;
-                data.s[0] = [recipe.out, (out?.[1] ?? 0) + recipe.n];
+                data.s[0] = [recipe.out, (out?.[1] ?? 0) + recipe.n, ...made.slice(2)];
+                // a seasoning with flavours is used up (RideBoostsSeasoningProcessor.consumesItem)
+                if (meta) for (const n of seasoned) if (Object.keys(SEASONINGS[data.s[n][0]]?.flavours ?? {}).length) data.s[n] = data.s[n][1] > 1 ? [data.s[n][0], data.s[n][1] - 1, ...data.s[n].slice(2)] : null;
                 for (let n = 1; n <= 9; n++) {
                     const s = data.s[n];
                     if (!s) continue;
@@ -2097,7 +2160,7 @@ function snapshot(entity) {
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
-    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite"];
+    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3376,6 +3439,21 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
     const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id];
     const stash = featureBarsFor(target.typeId).some((b) => b.species && b.items[id]);
+    if (aprijuiceColour(id) && RIDES[target.typeId] && prop(target, OWNER) === player.id && !player.isSneaking) {
+        const boosts = stackSlot(itemStack)?.[2]?.boosts ?? {};
+        if (Object.keys(boosts).length) {
+            event.cancel = true;
+            system.run(() => {
+                if (!target.isValid) return;
+                const now = rideBoostsOf(target), most = (k) => Math.max(0, ...RIDES[target.typeId].map(([, , r]) => (r[k.toLowerCase()] ? r[k.toLowerCase()][1] - r[k.toLowerCase()][0] : 0)));
+                if (!Object.entries(boosts).some(([k, v]) => (v < 0 ? (now[k] ?? 0) > 0 : (now[k] ?? 0) < most(k)))) { player.sendMessage("§7It won't have any effect."); return; }
+                for (const [k, v] of Object.entries(boosts)) now[k] = Math.max(0, Math.min(most(k), (now[k] ?? 0) + v));
+                setProp(target, RIDE_BOOSTS, JSON.stringify(now)); feedPokemon(target, 1); consumeHand(player);
+                player.sendMessage(`§a${nicknameOf(target) || POKEMON[target.typeId].name} drank the ${itemStack.nameTag?.replace(/§./g, "") ?? "Aprijuice"}.`);
+            });
+            return;
+        }
+    }
     if (!medicine && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
@@ -3555,7 +3633,8 @@ system.runInterval(() => {
 // items in its itemPoints add to (StashHandler, capped at the most), and the blocks travelled, counted for a Pokemon
 // whose evolution asks for them as PokemonEntity.updateBlocksTraveled does (the squared distance between block
 // positions, not while riding or falling)
-const STEPS = "cobblemon:blocks_traveled";
+const STEPS = "cobblemon:blocks_traveled", RIDE_BOOSTS = "cobblemon:ride_boosts";
+function rideBoostsOf(entity) { try { return JSON.parse(prop(entity, RIDE_BOOSTS) ?? "{}"); } catch (e) { return {}; } }
 const speciesKey = (typeId) => (POKEMON[typeId]?.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const needsSteps = (typeId) => (POKEMON[typeId]?.evolutions ?? []).some((evo) => evo.req.some((r) => r.t === "steps"));
 function featureBarsFor(typeId) {
@@ -3698,7 +3777,9 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         // the Ride page (StatWidget's RIDE): the chosen behaviour's stats, its range's low end with no ride boosts
         // (RidingBehaviourSettings.calculate), as shares of 100 on the pentagon in RidingStat's order
         const [style, icon, ranges] = rides[(summaryRideStyle.get(player.id) ?? 0) % rides.length];
-        const values = ["acceleration", "skill", "speed", "stamina", "jump"].map((k) => (ranges[k] ? Math.min(ranges[k][0], ranges[k][1]) : 0));
+        // the range's low end plus the ride boost, at most its high end (RidingBehaviourSettings.calculate)
+        const boosts = rideBoostsOf(source);
+        const values = ["acceleration", "skill", "speed", "stamina", "jump"].map((k) => (ranges[k] ? Math.min(ranges[k][0] + (boosts[k.toUpperCase()] ?? 0), ranges[k][1]) : 0));
         const steps = values.map((val) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round((val / 100) * 12)))));
         v.pent = steps.join("") + steps[0]; v.rsty = { air: "a", liquid: "w" }[style] ?? "l"; v.rico = `i${icon}`;
         values.forEach((val, i) => { v[`rv${i}`] = num(Math.floor(val)); });
