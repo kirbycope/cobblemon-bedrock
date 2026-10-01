@@ -6770,12 +6770,17 @@ def create_battle_ui():
                                              "source_property_name": f"((('%.{BATTLE_LOG}s' * #form_text) - ('%.{BATTLE_LOG_FLAG}s' * #form_text)) = '{flag}')", "target_property_name": "#visible"}],
                                 "controls": [
             {"frame": {"type": "image", "texture": f"{T}/battle/{'log_expanded' if flag == 'e' else 'log'}", "size": [169, height], "layer": 1}},
-            {"box": {"type": "panel", "size": [153, box_height], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "controls": [
-                {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [1, -1], "layer": 3,
-                           "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
-                           "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}},
+            # the lines in a scroll view that jumps to the newest on each update, as chat does; the wheel scrolls back
+            {"box": {"type": "panel", "size": [153, box_height], "offset": [5, 6], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3, "controls": [
+                {"scroll@common.scrolling_panel": {"size": ["100%", "100%"], "$show_background": False, "$scrolling_content": "server_form.cobblemon_battle_log_lines",
+                                                     "$scroll_size": [2, "100% - 2px"], "$scrolling_pane_size": ["100% - 3px", "100%"], "$scrolling_pane_offset": [0, 0],
+                                                     "$scroll_bar_right_padding_size": [0, 0], "$jump_to_bottom_on_update": True, "$always_handle_scrolling": True}}]}},
             {"toggles": {"type": "collection_panel", "collection_name": "form_buttons", "size": [169, height], "layer": 6, "controls": toggles}}]}}
     battle_log = {"log": {"type": "panel", "size": ["100%", "100%"], "controls": [log_panel("c", 55, 46, 46), log_panel("e", 101, 92, 92)]}}
+    log_lines = {"type": "panel", "size": [146, "100%c"], "controls": [
+        {"lines": {"type": "label", "size": [146, "default"], "anchor_from": "top_left", "anchor_to": "top_left", "offset": [1, 0], "layer": 3,
+                   "shadow": True, "font_scale_factor": 0.8, "text": "#value", "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
+                   "source_property_name": f"(#form_text - ('%.{BATTLE_LOG}s' * #form_text))", "target_property_name": "#value"}]}}]}
     # BattleSwitchPokemonSelection: the underlay across the screen, "Party", and six 94 by 29 tiles two by three
     # from the middle (4 apart across, 2 down), each with its level, name, portrait, ball, health bar and number and
     # status; the Back button at the bottom left when the switch is not forced
@@ -6840,6 +6845,7 @@ def create_battle_ui():
                                           grid("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
                                           grid("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
         "cobblemon_menu_item": menu_item,
+        "cobblemon_battle_log_lines": log_lines,
         "cobblemon_move_item": move_item,
     }
     ui.update(create_summary_ui())

@@ -4765,35 +4765,34 @@
                       ],
                       "anchor_from": "top_left",
                       "anchor_to": "top_left",
-                      "clips_children": true,
+                      "layer": 3,
                       "controls": [
                         {
-                          "lines": {
-                            "type": "label",
+                          "scroll@common.scrolling_panel": {
                             "size": [
-                              146,
-                              "default"
+                              "100%",
+                              "100%"
                             ],
-                            "anchor_from": "bottom_left",
-                            "anchor_to": "bottom_left",
-                            "offset": [
-                              1,
-                              -1
+                            "$show_background": false,
+                            "$scrolling_content": "server_form.cobblemon_battle_log_lines",
+                            "$scroll_size": [
+                              2,
+                              "100% - 2px"
                             ],
-                            "layer": 3,
-                            "shadow": true,
-                            "font_scale_factor": 0.8,
-                            "text": "#value",
-                            "bindings": [
-                              {
-                                "binding_name": "#form_text"
-                              },
-                              {
-                                "binding_type": "view",
-                                "source_property_name": "(#form_text - ('%.90s' * #form_text))",
-                                "target_property_name": "#value"
-                              }
-                            ]
+                            "$scrolling_pane_size": [
+                              "100% - 3px",
+                              "100%"
+                            ],
+                            "$scrolling_pane_offset": [
+                              0,
+                              0
+                            ],
+                            "$scroll_bar_right_padding_size": [
+                              0,
+                              0
+                            ],
+                            "$jump_to_bottom_on_update": true,
+                            "$always_handle_scrolling": true
                           }
                         }
                       ]
@@ -5577,35 +5576,34 @@
                       ],
                       "anchor_from": "top_left",
                       "anchor_to": "top_left",
-                      "clips_children": true,
+                      "layer": 3,
                       "controls": [
                         {
-                          "lines": {
-                            "type": "label",
+                          "scroll@common.scrolling_panel": {
                             "size": [
-                              146,
-                              "default"
+                              "100%",
+                              "100%"
                             ],
-                            "anchor_from": "bottom_left",
-                            "anchor_to": "bottom_left",
-                            "offset": [
-                              1,
-                              -1
+                            "$show_background": false,
+                            "$scrolling_content": "server_form.cobblemon_battle_log_lines",
+                            "$scroll_size": [
+                              2,
+                              "100% - 2px"
                             ],
-                            "layer": 3,
-                            "shadow": true,
-                            "font_scale_factor": 0.8,
-                            "text": "#value",
-                            "bindings": [
-                              {
-                                "binding_name": "#form_text"
-                              },
-                              {
-                                "binding_type": "view",
-                                "source_property_name": "(#form_text - ('%.90s' * #form_text))",
-                                "target_property_name": "#value"
-                              }
-                            ]
+                            "$scrolling_pane_size": [
+                              "100% - 3px",
+                              "100%"
+                            ],
+                            "$scrolling_pane_offset": [
+                              0,
+                              0
+                            ],
+                            "$scroll_bar_right_padding_size": [
+                              0,
+                              0
+                            ],
+                            "$jump_to_bottom_on_update": true,
+                            "$always_handle_scrolling": true
                           }
                         }
                       ]
@@ -11977,6 +11975,44 @@
           ],
           "anchor_from": "top_left",
           "anchor_to": "top_left"
+        }
+      }
+    ]
+  },
+  "cobblemon_battle_log_lines": {
+    "type": "panel",
+    "size": [
+      146,
+      "100%c"
+    ],
+    "controls": [
+      {
+        "lines": {
+          "type": "label",
+          "size": [
+            146,
+            "default"
+          ],
+          "anchor_from": "top_left",
+          "anchor_to": "top_left",
+          "offset": [
+            1,
+            0
+          ],
+          "layer": 3,
+          "shadow": true,
+          "font_scale_factor": 0.8,
+          "text": "#value",
+          "bindings": [
+            {
+              "binding_name": "#form_text"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(#form_text - ('%.90s' * #form_text))",
+              "target_property_name": "#value"
+            }
+          ]
         }
       }
     ]

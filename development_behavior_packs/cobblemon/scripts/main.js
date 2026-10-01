@@ -184,11 +184,11 @@ function speedOf(f, battle) {
     return spe;
 }
 
-// every battle message goes to chat and to the battle screen's log (BattleMessagePane), which shows the last few
+// every battle message goes to chat and to the battle screen's log (BattleMessagePane), which keeps the last 40 to scroll back through
 function say(battle, text) {
     battle.player.sendMessage(text);
     (battle.log ??= []).push(text);
-    if (battle.log.length > 8) battle.log.shift();
+    if (battle.log.length > 40) battle.log.shift();
 }
 
 function syncHealth(f) {
@@ -1578,7 +1578,7 @@ function battleBody(battle) {
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
     const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
     // the log follows the fixed fields; a lone % would be read as a format there too
-    const log = (battle.log ?? []).slice(battle.logExpanded ? -13 : -6).map((line) => line.replace(/%/g, "%%")).join("\n");
+    const log = (battle.log ?? []).slice(-40).map((line) => line.replace(/%/g, "%%")).join("\n");
     return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + log;
 }
 
