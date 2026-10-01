@@ -1465,7 +1465,7 @@ function openWheel(player, target) {
     const form = new ActionFormData().title("cbm:interact").body("");
     for (const o of WHEEL_ORDER) {
         const opt = options[o];
-        form.button(opt?.tip ?? "", `textures/ui/cobblemon/interact/${o}_${!opt ? "none" : opt.on ? opt.icon : `${opt.icon}_off`}`);
+        form.button(opt?.on ? opt.tip : "", `textures/ui/cobblemon/interact/${o}_${!opt ? "none" : opt.on ? opt.icon : `${opt.icon}_off`}`);   // the tooltip, offered options only
     }
     form.show(player).then((r) => {
         if (r.canceled) return;

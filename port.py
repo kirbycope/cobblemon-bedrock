@@ -7103,11 +7103,8 @@ def create_interact_ui():
     controls = [{"base": {"type": "image", "texture": f"{T}/interact/base", "size": [170, 170], "layer": 1}}]
     buttons = []
     for index, (name, (x, y), (w, h)) in enumerate(WHEEL):
-        # the hovered option's name, in the middle of the wheel
-        tip = {"type": "label", "text": "#form_button_text", "size": [120, 10], "layer": 9, "text_alignment": "center", "shadow": True,
-               "anchor_from": "center", "anchor_to": "center", "offset": [85 - (x + w / 2), 85 - (y + h / 2)],
-               "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}]}
-        hover = face("_hover"); hover["controls"] = [{"tip": tip}]
+        # the hovered option's name in Java's tooltip beside it (InteractWheelButton, an offered option only)
+        hover = face("_hover"); hover["controls"] = [java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (w / 2 + 6, h / 2 - 12))]
         buttons.append({f"button_{index}": {"type": "button", "size": [w, h], "offset": [x, y], "anchor_from": "top_left", "anchor_to": "top_left",
                                             "collection_index": index, "layer": 5, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
                                             "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
