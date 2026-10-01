@@ -1132,6 +1132,81 @@ world.afterEvents.itemCompleteUse.subscribe(({ itemStack, source }) => {
 const sameSlot = (a, b) => a && b && a[0] === b[0] && JSON.stringify(a[2] ?? null) === JSON.stringify(b[2] ?? null);
 const REMAINDERS = { "minecraft:milk_bucket": "minecraft:bucket", "minecraft:water_bucket": "minecraft:bucket", "minecraft:honey_bottle": "minecraft:glass_bottle",
                      "minecraft:potion": "minecraft:glass_bottle", "minecraft:dragon_breath": "minecraft:glass_bottle" };
+// RecipeBookComponent beside the pot (CookingPotScreen's recipe book button): the campfire pot's tabs (the compass
+// shows every category, foods, misc, medicines and complex dishes in that order, then each category alone), its
+// recipes grouped as ClientRecipeBook groups them (a recipe group is one button, on the many-recipe slot), 20 a page,
+// craftable from the inventory and the grid or not, the filter showing only craftable ones, and the search matching
+// result names. A craftable recipe clicked is placed (ServerPlaceRecipe: the grid back to the inventory, then one of
+// each ingredient from the inventory into place), otherwise it shows as a ghost; a group opens OverlayRecipeComponent
+// to pick from, craftable ones first. Whether the book is open and filtering is kept per player, as the recipe book
+// settings are. Every recipe shows, as if the book had them all.
+const RB_ALL = [...POT_SHAPED, ...POT_SHAPELESS].sort((a, b) => (a.id < b.id ? -1 : 1));
+const RB_TABS = [["foods", "misc", "medicines", "complex_dishes"], ["foods"], ["medicines"], ["complex_dishes"], ["misc"]];
+const RB_TAB_ICONS = ["minecraft:compass", "cobblemon:leek_and_potato_stew", "cobblemon:potion", "cobblemon:aprijuice_red", "cobblemon:protein"];
+const RB_FIRST = 51, RB_SETTINGS = "cobblemon:pot_book";
+function rbCollections(tab) {
+    const out = [];
+    for (const cat of RB_TABS[tab]) {
+        const groups = new Map();
+        for (const r of RB_ALL.filter((r) => r.cat === cat)) {
+            const key = r.grp || r.id;
+            if (!groups.has(key)) { groups.set(key, []); out.push(groups.get(key)); }
+            groups.get(key).push(r);
+        }
+    }
+    return out;
+}
+// PlaceRecipe.placeRecipe: where each ingredient goes in the 3 by 3 grid, a shaped recipe (its pattern shrunk to its
+// items) from the top left, centred in a direction it is narrower than half the grid, a shapeless one in reading order
+function rbPlace(r) {
+    let ings, w = 3, h = 3;
+    if (r.rows) {
+        let rows = r.rows.filter((row) => row.trim());
+        const left = Math.min(...rows.map((row) => row.search(/\S/))), right = Math.max(...rows.map((row) => row.trimEnd().length));
+        rows = rows.map((row) => row.padEnd(right).slice(left, right));
+        w = right - left; h = rows.length;
+        ings = rows.flatMap((row) => [...row].map((ch) => (ch === " " ? null : r.key[ch])));
+    } else ings = r.ing;
+    const out = Array(9).fill(null);
+    let it = 0, k = 0;
+    for (let l = 0; l < 3; ++l) {
+        if (h < 1.5 && Math.floor(1.5 - h / 2) > l) { k += 3; ++l; }
+        for (let n = 0; n < 3; ++n) {
+            if (it >= ings.length) return out;
+            const centred = w < 1.5, mid = Math.floor(1.5 - w / 2);
+            const end = centred ? mid + w : w, inside = centred ? mid <= n && n < mid + w : n < w;
+            if (inside) { const ing = ings[it++]; if (ing?.length) out[k] = ing; }
+            else if (end === n) { k += 3 - n; break; }
+            ++k;
+        }
+    }
+    return out;
+}
+// StackedContents: whether the inventory and the grid together hold one of each ingredient
+function rbCraftable(r, counts) {
+    const have = new Map(counts);
+    for (const ing of rbPlace(r).filter(Boolean).sort((a, b) => a.length - b.length)) {
+        const id = ing.find((i) => (have.get(i) ?? 0) > 0);
+        if (!id) return false;
+        have.set(id, have.get(id) - 1);
+    }
+    return true;
+}
+function rbSettings(player) { try { return JSON.parse(player.getDynamicProperty(RB_SETTINGS) ?? "{}"); } catch (e) { return {}; } }
+function rbView(player, st, data, inv) {
+    const counts = new Map();
+    const add = (id, n) => { if (id) counts.set(id, (counts.get(id) ?? 0) + n); };
+    for (const slot of POT_INV) { const it = inv?.getItem(slot); add(it?.typeId, it?.amount ?? 0); }
+    for (let n = 1; n < 10; n++) add(data.s[n]?.[0], data.s[n]?.[1] ?? 0);
+    const set = rbSettings(player), query = (st.search ?? "").toLowerCase();
+    const craftable = (r) => rbCraftable(r, counts);
+    const shown = rbCollections(st.tab ?? 0)
+        .filter((c) => !query || c.some((r) => itemName(r.out).toLowerCase().includes(query)))
+        .map((c) => (set.filter ? c.filter(craftable) : c)).filter((c) => c.length);
+    const pages = Math.max(1, Math.ceil(shown.length / 20)), page = Math.min(st.page ?? 0, pages - 1);
+    return { set, craftable, shown, pages, page };
+}
+
 function openPot(block, player) {
     if (!potColour(block.typeId)) return;
     const state = potOpen.get(player.id) ?? { picked: null };
@@ -1140,13 +1215,42 @@ function openPot(block, player) {
     const lid = !!block.permutation.getState("cobblemon:lid"), colour = potColour(block.typeId);
     const recipe = potRecipe(data.s.slice(1, 10));
     const progress = potProgress.get(potKey(block)) ?? 0, step = Math.ceil((progress / 200) * 22);
+    const book = rbView(player, state, data, inv), open = !!book.set.open;
+    state.page = book.page;
+    const ovl = state.overlay;
     const v = { prog: `${progress > 0 ? "an" : "cp"}${String(progress > 0 ? Math.min(21, Math.floor((progress / 200) * 22)) : step).padStart(2, "0")}`,
-                sel: state.picked === null ? "s--" : `s${String(state.picked).padStart(2, "0")}`, title: "Campfire Pot" };
+                sel: state.picked === null ? "s--" : `s${String(state.picked).padStart(2, "0")}`, title: "Campfire Pot",
+                book: open ? "y" : "n", page: book.pages > 1 ? `§r${book.page + 1}/${book.pages}` : "",
+                search: state.search ? state.search : "§7§oSearch...",
+                ovl: ovl ? `o${Math.min(4, ovl.length)}x${Math.ceil(ovl.length / 4)}` : "none" };
     const form = new ActionFormData().title("cbm:pot").body(POT_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join(""));
     for (let n = 0; n < 13; n++) { const s = data.s[n]; form.button(s && s[1] > 1 ? String(s[1]) : "", potIcon(s?.[0])); }
     for (const slot of POT_INV) { const it = inv?.getItem(slot); form.button(it && it.amount > 1 ? String(it.amount) : "", potIcon(it?.typeId)); }
     form.button("cook", `${UI}/pot/cook_${colour}_${lid ? "closed" : "open"}`);
     form.button("", recipe && !data.s[0] ? potIcon(recipe.out) : `${UI}/pot/none`);   // the result's preview
+    // the recipe book: its button, the filter, page arrows, search box, tabs and recipe buttons, then the ghost slots
+    const P = `${UI}/pot/rb_`, none = `${UI}/pot/none`;
+    form.button("book", `${P}button`);
+    form.button("filter", `${P}filter_${book.set.filter ? "enabled" : "disabled"}`);
+    form.button("back", book.page > 0 ? `${P}page_backward` : none);
+    form.button("forward", book.page < book.pages - 1 ? `${P}page_forward` : none);
+    form.button("search", none);
+    RB_TAB_ICONS.forEach((icon, l) => form.button((state.tab ?? 0) === l ? "s" : "n", potIcon(icon)));
+    const onPage = book.shown.slice(book.page * 20, book.page * 20 + 20);
+    for (let l = 0; l < 20; l++) {
+        const c = onPage[l];
+        if (!c) { form.button("", none); continue; }
+        const any = c.some(book.craftable), first = c.find(book.craftable) ?? c[0];
+        form.button(`${c.length > 1 ? "many_" : ""}${any ? "craftable" : "uncraftable"}`, potIcon(first.out));
+    }
+    const ghost = open && state.ghost ? RB_ALL.find((r) => r.id === state.ghost) : null, ghostAt = ghost ? rbPlace(ghost) : [];
+    form.button("", ghost && !data.s[0] ? potIcon(ghost.out) : none);
+    for (let k = 0; k < 9; k++) form.button("", ghostAt[k] && !data.s[k + 1] ? potIcon(ghostAt[k][0]) : none);
+    if (open) {
+        // OverlayRecipeComponent: the group's recipes, each with its ingredients small in their places
+        for (let n = 0; n < 16; n++) form.button(ovl?.[n] ? (book.craftable(ovl[n]) ? "_overlay" : "_overlay_disabled") : "", none);
+        for (let n = 0; n < 16; n++) { const at = ovl?.[n] ? rbPlace(ovl[n]) : []; for (let k = 0; k < 9; k++) form.button("", at[k] ? potIcon(at[k][0]) : none); }
+    }
     form.show(player).then((r) => {
         const st = potOpen.get(player.id);
         if (r.canceled) { potOpen.delete(player.id); return; }
@@ -1156,6 +1260,58 @@ function openPot(block, player) {
         const invSet = (n, s) => inv.setItem(POT_INV[n - 13], s ? slotStack(s) : undefined);
         const toInventory = (s) => moveInto([...Array(36).keys()].map((i) => i + 13), invGet, invSet, s[0], s[1], s[2]);
         const potSet = (n, s) => { d.s[n] = s; };
+        // a click anywhere while the overlay is up only closes it, unless it picks one of its recipes
+        const overlay = st.overlay; st.overlay = null;
+        const settings = rbSettings(player), saveSettings = () => player.setDynamicProperty(RB_SETTINGS, JSON.stringify(settings));
+        const act = (recipe) => {
+            // ServerPlaceRecipe.recipeClicked: the grid back to the inventory, then one of each ingredient into its place
+            // when the two together hold them, or else the ghost of the recipe over the empty grid
+            const can = rbView(player, st, d, inv).craftable(recipe);
+            for (let n = 1; n < 10; n++) {
+                if (!d.s[n]) continue;
+                const left = toInventory(d.s[n]);
+                if (left) { d.s[n] = [d.s[n][0], left, ...d.s[n].slice(2)]; return; }
+                d.s[n] = null;
+            }
+            if (!can) { st.ghost = recipe.id; return; }
+            rbPlace(recipe).forEach((ing, k) => {
+                if (!ing) return;
+                for (let n = 13; n <= 48; n++) {
+                    const here = invGet(n);
+                    if (!here || !ing.includes(here[0])) continue;
+                    d.s[k + 1] = [here[0], 1, ...here.slice(2)];
+                    invSet(n, here[1] > 1 ? [here[0], here[1] - 1, ...here.slice(2)] : null);
+                    return;
+                }
+            });
+            st.ghost = null;
+        };
+        if (pick >= RB_FIRST) {
+            const b = pick - RB_FIRST, view = rbView(player, st, d, inv);
+            if (b === 0) { settings.open = !settings.open; if (!settings.open) st.ghost = null; saveSettings(); }
+            else if (b === 1) { settings.filter = !settings.filter; st.page = 0; saveSettings(); }
+            else if (b === 2) st.page = Math.max(0, view.page - 1);
+            else if (b === 3) st.page = Math.min(view.pages - 1, view.page + 1);
+            else if (b === 4) {
+                new ModalFormData().title("Search").textField("Search", "Search...", { defaultValue: st.search ?? "" }).show(player).then((res) => {
+                    if (!res.canceled) { st.search = String(res.formValues?.[0] ?? "").normalize("NFD").replace(/[^ -~]/g, "").slice(0, 20).trim(); st.page = 0; }
+                    system.run(() => openPot(block, player));
+                }).catch(() => potOpen.delete(player.id));
+                return;
+            }
+            else if (b >= 5 && b < 10) { st.tab = b - 5; st.page = 0; }
+            else if (b >= 10 && b < 30 && !overlay) {
+                const c = view.shown[view.page * 20 + b - 10];
+                if (c?.length === 1) act(c[0]);
+                else if (c) st.overlay = [...c.filter(view.craftable), ...c.filter((x) => !view.craftable(x))];
+            }
+            else if (b >= 40 && b < 56 && overlay?.[b - 40]) act(overlay[b - 40]);
+            savePot(block, d); showPotContents(block, d);
+            system.run(() => openPot(block, player));
+            return;
+        }
+        // a grid or result click puts the ghost away (RecipeBookComponent.slotClicked)
+        if (pick < 13) st.ghost = null;
         if (pick === 49) {
             setState(block, "cobblemon:lid", !lid);
             playAt(block, lid ? "cobblemon.block.campfire_pot.open" : "cobblemon.block.campfire_pot.close");
