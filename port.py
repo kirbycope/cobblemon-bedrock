@@ -185,6 +185,21 @@ def add_intrinsic_scale():
     print(f"Intrinsic scale: {added} species.")
 
 
+def add_air_riding_tiers():
+    """Brings the fliers' riding groups already written up to air_riding_groups, for a run that does not regenerate them."""
+    n = 0
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        with open(path, encoding="utf-8") as file: text = file.read()
+        if '"cobblemon:ridden_air"' not in text: continue
+        data = json.loads(text); entity = data["minecraft:entity"]
+        entity["component_groups"].get("cobblemon:owned", {}).pop("minecraft:vertical_movement_action", None)
+        air_riding_groups(entity["component_groups"], entity["events"])
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+        n += 1
+    print(f"Air riding tiers: {n} fliers.")
+
+
 def add_shoulder_mount():
     """PokemonEntity.tryMountingShoulder: every Pokemon gets a cobblemon:shoulder property (0, or 1 and 2 for the left
     and right shoulder, which picks its shoulder pose), and each species whose form is shoulderMountable a
@@ -1136,7 +1151,8 @@ def movement_components(species, kind):
             "minecraft:underwater_movement": {"value": swim_speed},
             "minecraft:movement.sway": {"sway_amplitude": 0},
             "minecraft:navigation.generic": {"can_swim": True, "can_walk": False, "can_breach": True, "can_path_over_water": False, "can_sink": False, "is_amphibious": False},
-            "minecraft:breathable": {"breathes_air": False, "breathes_water": True, "suffocate_time": 0, "total_supply": 15},
+            # a Pokemon breathes air even when it lives in water (PokemonEntity is no WaterAnimal, so none dries out)
+            "minecraft:breathable": {"breathes_air": True, "breathes_water": True, "suffocate_time": 0, "total_supply": 15},
             "minecraft:physics": {"has_gravity": False},
             "minecraft:behavior.random_swim": {"priority": 3, "interval": 0, "xz_dist": 16, "y_dist": 4, "speed_multiplier": 1}
         }
@@ -1998,6 +2014,32 @@ def ride_behaviours(species):
     return set(((species or {}).get("riding") or {}).get("behaviours", {}))
 
 
+# the flight speeds scripts/main.js chooses between for a ridden flier, in blocks a tick, and Bedrock's flying_speed for
+# each: a free-camera flier at flying_speed 0.05 flew 0.275 blocks a tick, so a speed is its flying_speed times 5.5
+FLY_TIERS = [round(0.05 * (1.2 / 0.05) ** (n / 15), 4) for n in range(16)]
+
+
+def air_riding_groups(groups, events):
+    """The ridden flier's groups: flight (no gravity, the free camera's climb on jump, ridden_air) at one of FLY_TIERS'
+    speeds (cobblemon:fly_<n>, switched by cobblemon:fly_<n>), and tired, when its stamina is gone, which falls and
+    cannot climb (BirdBehaviour's depletion force) until it lands and has stamina again."""
+    groups["cobblemon:ridden_air"] = {"minecraft:physics": {"has_gravity": False}, "minecraft:vertical_movement_action": {"vertical_velocity": 0.5},
+                                      "minecraft:navigation.float": {"can_path_over_water": True},
+                                      "minecraft:body_rotation_always_follows_head": {}}
+    groups["cobblemon:ridden_tired"] = {"minecraft:physics": {}, "minecraft:flying_speed": {"value": 0.01},
+                                        "minecraft:body_rotation_always_follows_head": {}}
+    tiers = [f"cobblemon:fly_{n}" for n in range(len(FLY_TIERS))]
+    for n, speed in enumerate(FLY_TIERS):
+        groups[tiers[n]] = {"minecraft:flying_speed": {"value": round(speed / 5.5, 5)}}
+        events[tiers[n]] = {"remove": {"component_groups": [t for t in tiers if t != tiers[n]]}, "add": {"component_groups": [tiers[n]]}}
+    # riding starts at the slowest tier, and leaving takes every tier away
+    start = 0   # the slowest, which scripts/main.js speeds up from as the rider holds forward
+    events["cobblemon:ride_air_on"] = {"remove": {"component_groups": ["cobblemon:gravity", "cobblemon:ridden_tired"]}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
+    events["cobblemon:ride_air_off"] = {"remove": {"component_groups": ["cobblemon:ridden_air", "cobblemon:ridden_tired"] + tiers}, "add": {"component_groups": ["cobblemon:gravity"]}}
+    events["cobblemon:ride_tired"] = {"remove": {"component_groups": ["cobblemon:ridden_air"] + tiers}, "add": {"component_groups": ["cobblemon:ridden_tired"]}}
+    events["cobblemon:ride_rested"] = {"remove": {"component_groups": ["cobblemon:ridden_tired"]}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
+
+
 def add_riding(entity, species, pokemon):
     """An owned Pokemon Cobblemon lets you ride takes riders at its seat locators, the first seat steering."""
     kinds = ride_behaviours(species)
@@ -2017,11 +2059,13 @@ def add_riding(entity, species, pokemon):
     # behavior, read from entity format 1.26.30, with its gravity off while it carries a rider
     if "AIR" not in kinds:
         owned["minecraft:input_ground_controlled"] = {}
+        # a ridden mount without one of these leaves its rider off at a press of jump; a dash of nothing (the camel's
+        # dash_action) takes the press instead, and scripts/main.js makes HorseBehaviour's jump of it
+        owned["minecraft:dash_action"] = {"cooldown_time": 0.25, "horizontal_momentum": 0.0, "vertical_momentum": 0.0}
         return
     minecraft = entity["minecraft:entity"]
     entity["format_version"] = "1.26.30"
     owned["minecraft:free_camera_controlled"] = {"strafe_speed_modifier": 1.0, "backwards_movement_modifier": 0.5}
-    owned["minecraft:vertical_movement_action"] = {"vertical_velocity": 0.5}
     owned["minecraft:behavior.player_ride_tamed"] = {"priority": 1}
     # a flier lands or is left in the air by its rider without a fall hurting it, as the happy ghast is
     minecraft["components"].setdefault("minecraft:damage_sensor", {"triggers": []})["triggers"].insert(0, {"cause": "fall", "deals_damage": False})
@@ -2033,11 +2077,7 @@ def add_riding(entity, species, pokemon):
     for key in [k for k in minecraft["components"] if k.startswith("minecraft:movement.") or k.startswith("minecraft:navigation.")]:
         unridden[key] = minecraft["components"].pop(key)
     groups["cobblemon:gravity"] = unridden
-    groups["cobblemon:ridden_air"] = {"minecraft:physics": {"has_gravity": False}, "minecraft:flying_speed": {"value": 0.05},
-                                      "minecraft:navigation.float": {"can_path_over_water": True},
-                                      "minecraft:body_rotation_always_follows_head": {}}
-    events["cobblemon:ride_air_on"] = {"remove": {"component_groups": ["cobblemon:gravity"]}, "add": {"component_groups": ["cobblemon:ridden_air"]}}
-    events["cobblemon:ride_air_off"] = {"remove": {"component_groups": ["cobblemon:ridden_air"]}, "add": {"component_groups": ["cobblemon:gravity"]}}
+    air_riding_groups(groups, events)
     for event in ("minecraft:entity_spawned", "minecraft:entity_born", "minecraft:entity_transformed", "cobblemon:caught", "cobblemon:released"):
         events.setdefault(event, {}).setdefault("add", {}).setdefault("component_groups", []).append("cobblemon:gravity")
     owned["minecraft:rideable"]["on_rider_enter_event"] = "cobblemon:ride_air_on"
@@ -5207,7 +5247,12 @@ def create_summary_ui():
             kind = b.get("key", "").split("/")[-1]
             ranges = {stat.lower(): [int(x) for x in str(r).split("-")] for stat, r in (b.get("stats") or {}).items()}
             icon = RIDE_ICONS.index((style.lower(), kind)) if (style.lower(), kind) in RIDE_ICONS else 0
-            out.append([style.lower(), icon, ranges])
+            # and what the behaviour reads besides the stats: the species' walk speed (WalkBehaviour, 0.35 unless set),
+            # and whether it may jump and sprint (its own setting, else the behaviour's ride_settings default, true)
+            species = species_for(pokemon) or {}
+            walk = float(((species.get("behaviour") or {}).get("moving") or {}).get("walk", {}).get("walkSpeed", 0.35))
+            flag = lambda key: str(b.get(key, "true")).strip().lower() not in ("false", "0", "0.0")
+            out.append([style.lower(), icon, ranges, {"walk": walk, "jump": flag("canJump"), "sprint": flag("canSprint")}])
         if out: rides[entity_id(pokemon)] = out
     with open(f"{scriptsBedrock}/rides.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: each rideable species' riding behaviours (style, icon index, stat ranges), for the Summary's Ride page\n")
@@ -7527,6 +7572,46 @@ def create_scan_hud():
     return {"cobblemon_scan": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 
+RIDE_MARKER = "cbm:ride"
+
+
+def create_ride_hud():
+    """The ride bar (LocalPlayerMixin.modifyJumpRidingScale: a ride behaviour's setRideBar fills the vanilla jump bar,
+    the horse's with its stamina): the Java client's jump bar background and progress, 182 by 5, where the jump bar
+    sits over the hotbar, filled to the share main.js sends in a title, "cbm:ride", "p" and the share in fiftieths in two
+    digits, then "y" while it shows; drawn over the experience bar, which the jump bar takes the place of."""
+    out = f"{uiTextures}/ride"
+    os.makedirs(out, exist_ok=True)
+    for name in ("jump_bar_background", "jump_bar_progress"):
+        image = minecraft_texture(f"gui/sprites/hud/{name}", prefer="1.21")
+        if image is not None: image.save(f"{out}/{name}.png")
+    # the fill in fiftieths, each the progress cut to its width (Gui.renderJumpMeter's 182 times the share)
+    progress = Image.open(f"{out}/jump_bar_progress.png").convert("RGBA")
+    for n in range(51):
+        fill = Image.new("RGBA", (182, 5), (0, 0, 0, 0)); width = int(182 * n / 50)
+        if width: fill.paste(progress.crop((0, 0, width, 5)), (0, 0))
+        fill.save(f"{out}/p{n:02d}.png")
+    T = "textures/ui/cobblemon/ride"
+    def from_data(source, target):
+        return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
+                "source_property_name": source, "target_property_name": target}
+    start = len(RIDE_MARKER)
+    share = f"(('%.{start + 3}s' * #preserved_text) - ('%.{start}s' * #preserved_text))"
+    shown = from_data(f"((('%.{start + 4}s' * #preserved_text) - ('%.{start + 3}s' * #preserved_text)) = 'y')", "#visible")
+    # each part a sibling of data_control, which is how a view binding finds it
+    place = {"size": [182, 5], "anchor_from": "bottom_middle", "anchor_to": "bottom_middle", "offset": [0, -24]}
+    parts = [{"background": {"type": "image", "texture": f"{T}/jump_bar_background", "layer": 60, **place, "bindings": [shown]}},
+             {"progress": {"type": "image", "layer": 61, **place, "bindings": [shown, from_data(f"('{T}/' + {share})", "#texture")]}}]
+    controls = [
+        {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
+            {"binding_name": "#hud_title_text_string"},
+            {"binding_name": "#hud_title_text_string", "binding_name_override": "#preserved_text", "binding_condition": "visibility_changed"},
+            {"binding_type": "view", "source_property_name":
+                f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{RIDE_MARKER}') = #hud_title_text_string))",
+             "target_property_name": "#visible"}]}}] + parts
+    return {"cobblemon_ride": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
+
+
 def create_party_hud():
     party = f"{uiTextures}/party"
     os.makedirs(party, exist_ok=True)
@@ -7649,10 +7734,13 @@ def create_party_hud():
         "hud_title_text": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
             {"binding_name": "#hud_title_text_string", "binding_type": "global"},
             {"binding_type": "view", "source_property_name": f"(((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string) and "
-                                                             f"((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
+                                                             f"((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string) and "
+                                                             f"((#hud_title_text_string - '{RIDE_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
     }
     hud.update(create_scan_hud())
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_scan@hud.cobblemon_scan": {}}})
+    hud.update(create_ride_hud())
+    hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_ride@hud.cobblemon_ride": {}}})
     with open(f"{resourcePack}/ui/hud_screen.json", "w", encoding="utf-8") as file: file.write(json.dumps(hud, indent=2))
     print("  party HUD: Cobblemon's party slots down the left edge")
 

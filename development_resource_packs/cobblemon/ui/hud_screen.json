@@ -3254,6 +3254,13 @@
         "value": {
           "cobblemon_scan@hud.cobblemon_scan": {}
         }
+      },
+      {
+        "array_name": "controls",
+        "operation": "insert_back",
+        "value": {
+          "cobblemon_ride@hud.cobblemon_ride": {}
+        }
       }
     ]
   },
@@ -3269,7 +3276,7 @@
           },
           {
             "binding_type": "view",
-            "source_property_name": "(((#hud_title_text_string - 'cbm:party') = #hud_title_text_string) and ((#hud_title_text_string - 'cbm:scan') = #hud_title_text_string))",
+            "source_property_name": "(((#hud_title_text_string - 'cbm:party') = #hud_title_text_string) and ((#hud_title_text_string - 'cbm:scan') = #hud_title_text_string) and ((#hud_title_text_string - 'cbm:ride') = #hud_title_text_string))",
             "target_property_name": "#visible"
           }
         ]
@@ -4456,6 +4463,100 @@
               "resolve_sibling_scope": true,
               "source_property_name": "(not ((#preserved_text - 'cbm:scan') = #preserved_text))",
               "target_property_name": "#visible"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "cobblemon_ride": {
+    "type": "panel",
+    "size": [
+      "100%",
+      "100%"
+    ],
+    "controls": [
+      {
+        "data_control": {
+          "type": "panel",
+          "size": [
+            0,
+            0
+          ],
+          "property_bag": {
+            "#preserved_text": ""
+          },
+          "bindings": [
+            {
+              "binding_name": "#hud_title_text_string"
+            },
+            {
+              "binding_name": "#hud_title_text_string",
+              "binding_name_override": "#preserved_text",
+              "binding_condition": "visibility_changed"
+            },
+            {
+              "binding_type": "view",
+              "source_property_name": "(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - 'cbm:ride') = #hud_title_text_string))",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "background": {
+          "type": "image",
+          "texture": "textures/ui/cobblemon/ride/jump_bar_background",
+          "layer": 60,
+          "size": [
+            182,
+            5
+          ],
+          "anchor_from": "bottom_middle",
+          "anchor_to": "bottom_middle",
+          "offset": [
+            0,
+            -24
+          ],
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "((('%.12s' * #preserved_text) - ('%.11s' * #preserved_text)) = 'y')",
+              "target_property_name": "#visible"
+            }
+          ]
+        }
+      },
+      {
+        "progress": {
+          "type": "image",
+          "layer": 61,
+          "size": [
+            182,
+            5
+          ],
+          "anchor_from": "bottom_middle",
+          "anchor_to": "bottom_middle",
+          "offset": [
+            0,
+            -24
+          ],
+          "bindings": [
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "((('%.12s' * #preserved_text) - ('%.11s' * #preserved_text)) = 'y')",
+              "target_property_name": "#visible"
+            },
+            {
+              "binding_type": "view",
+              "source_control_name": "data_control",
+              "resolve_sibling_scope": true,
+              "source_property_name": "('textures/ui/cobblemon/ride/' + (('%.11s' * #preserved_text) - ('%.8s' * #preserved_text)))",
+              "target_property_name": "#texture"
             }
           ]
         }

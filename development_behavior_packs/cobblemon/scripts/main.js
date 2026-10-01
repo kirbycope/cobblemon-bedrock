@@ -2098,6 +2098,27 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:ride_stamina") {
+        // testing: "/execute as <player> run scriptevent cobblemon:ride_stamina <0 to 1>" sets the stamina of the ride
+        const mount = source.getComponent?.("minecraft:riding")?.entityRidingOn, st = mount && rideStates.get(mount.id);
+        if (st) st.stamina = Math.max(0, Math.min(1, Number(event.message) || 0));
+    } else if (event.id === "cobblemon:ride_probe") {
+        // testing: "/execute as <player> run scriptevent cobblemon:ride_probe <movement value>" sets the movement value of
+        // the Pokemon the player rides and logs its speed in blocks a tick, its height and the riding, for five seconds
+        const mount = source.getComponent?.("minecraft:riding")?.entityRidingOn;
+        if (!mount) return;
+        const value = Number(event.message);
+        const which = mount.isInWater ? "minecraft:underwater_movement" : "minecraft:movement";
+        try { if (value > 0) { mount.getComponent(which).setCurrentValue(value); probeHold.set(mount.id, value); } } catch (e) { console.warn(`probe: ${e}`); }
+        let last = mount.location, n = 0;
+        const id = system.runInterval(() => {
+            if (!mount.isValid || ++n > 20) { system.clearRun(id); probeHold.delete(mount.id); return; }
+            const now = mount.location, d = Math.hypot(now.x - last.x, now.z - last.z) / 5;
+            last = now;
+            let mv; try { mv = mount.getComponent(mount.isInWater ? "minecraft:underwater_movement" : "minecraft:movement").currentValue; } catch (e) { }
+            let riding; try { riding = source.getComponent("minecraft:riding")?.entityRidingOn?.id === mount.id; } catch (e) { }
+            console.warn(`[probe] movement ${mv} speed ${d.toFixed(4)} b/t y ${mount.location.y.toFixed(2)} riding ${riding} input ${JSON.stringify(source.inputInfo?.getMovementVector?.())} ground ${mount.isOnGround}`);
+        }, 5);
     } else if (event.id === "cobblemon:add_mark") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:add_mark <mark id> [active]" gives it that mark
         const [name, active] = event.message.trim().split(/\s+/), id = `cobblemon:${name.replace(/^cobblemon:/, "")}`;
@@ -4193,6 +4214,181 @@ system.runInterval(() => {
 // whose evolution asks for them as PokemonEntity.updateBlocksTraveled does (the squared distance between block
 // positions, not while riding or falling)
 const STEPS = "cobblemon:blocks_traveled", RIDE_BOOSTS = "cobblemon:ride_boosts";
+// Riding: the ride behaviours' stats and stamina (ride_settings/*.json). Each expression is get_ride_stats: the ride
+// stat (the range's low end plus the ride boost, at most the high end) placed between its values at 0 and 100; the
+// mount rides by the behaviour of where it is, its liquid one in water, its air one off the ground, else its land one.
+// On land (HorseBehaviour) it walks at its walk speed (WalkBehaviour's walkSpeed, times the 0.7 movement attribute and
+// HorseBehaviour's 0.42) and sprints, on a double tap of forward, at its Speed, reaching it in its Acceleration's time;
+// sprinting spends stamina, which lasts as long as its Stamina says and comes back eight times as fast while it walks,
+// and when it runs out the sprint stops until a third is back. Holding jump on the ground jumps, higher the longer it
+// is held (six ticks of it), as high as its Jump allows. In water a swimmer rides by its liquid behaviour: a boat
+// (BoatBehaviour) cruises at its Speed and sprints at that times its Jump's modifier, spending stamina, which comes
+// back over fifteen seconds a second after the sprint stops; a dolphin (DolphinBehaviour) speeds up to its Speed and,
+// boosted by a double tap of forward while it has a quarter of its stamina, to that times its Jump's modifier,
+// spending stamina that comes back twice as fast as it went; a submarine (SubmarineBehaviour) holds its breath, its
+// stamina going while its rider's head is under water and coming back over five seconds above. In the air (BirdBehaviour and the other fliers) forward flies up to its air Speed in its Acceleration's
+// time; flying spends stamina over its Stamina's seconds, half as fast hovering and a quarter gliding, and with none
+// left it falls (the depletion force) until it lands. Unridden it recovers a tenth a second (PlayerPartyStore). The
+// stamina fills the jump bar over the hotbar (setRideBar). Bedrock moves a ridden mount 2.203 blocks a tick for each
+// point of its movement value on land and about 4.4 for each of its underwater movement value in water, and flies it at
+// FLY_TIERS' speeds (port.py), so the speeds become movement values and flight tiers.
+const RIDE_K = 2.203, SWIM_K = 4.4, BEDROCK_JUMP = Math.sqrt(0.08 / 0.0588);   // Bedrock's gravity against HorseBehaviour's
+// each behaviour's expressions at stat 0 and stat 100: speeds in blocks a tick, acceleration and stamina in seconds
+const RIDE_SETTINGS = {
+    horse: { speed: [0.1, 1.2], acceleration: [12.0, 0.1], stamina: [4.0, 240.0], jump: [0.2, 1.6] },
+    bird: { speed: [4 / 20, 20 / 20], acceleration: [8.0, 2.0], stamina: [0.0, 80.0] },
+    hover: { speed: [1 / 20, 20 / 20], acceleration: [6.0, 1.0], stamina: [0.0, 60.0] },
+    jet: { speed: [4 / 20, 24 / 20], acceleration: [8.0, 2.0], stamina: [4.0, 120.0] },
+    rocket: { speed: [0.1, 0.5], acceleration: [3.0, 1.5], stamina: [1.0, 96.0] },
+    boat: { speed: [0.08, 0.75], acceleration: [8.0, 0.1], stamina: [2.0, 60.0], jump: [1.0, 2.0] },        // jump: the sprint's speed modifier
+    dolphin: { speed: [2 / 20, 24 / 20], acceleration: [8.0, 0.1], stamina: [2.0, 40.0], jump: [1.0, 2.0] }, // jump: the boost's
+    submarine: { speed: [2 / 20, 12 / 20], acceleration: [8.0, 1.2], stamina: [10.0, 360.0] },
+};
+const RIDE_KINDS = ["bird", "hover", "jet", "rocket", "horse", "horse", "boat", "dolphin", "submarine"];   // by RIDE_ICONS' index
+const FLY_TIERS = Array.from({ length: 16 }, (_, n) => 0.05 * Math.pow(1.2 / 0.05, n / 15));
+const RIDE_STAMINA = "cobblemon:ride_stamina", RIDE_STAMINA_AT = "cobblemon:ride_stamina_at";
+const rideStates = new Map();   // mount id -> the ride's state
+const probeHold = new Map();    // mount id -> a movement value the ride_probe test hook holds
+function rideStatValue(mount, style, stat) {
+    const ride = RIDES[mount.typeId]?.find(([s]) => s === style), range = ride?.[2]?.[stat];
+    if (!range) return 0;
+    return Math.min(range[0] + (rideBoostsOf(mount)[stat.toUpperCase()] ?? 0), range[1]);
+}
+function rideExpr(mount, style, kind, stat) {
+    const [atZero, atHundred] = RIDE_SETTINGS[kind][stat];
+    return Math.max(atZero + ((atHundred - atZero) / 100) * rideStatValue(mount, style, stat), 1e-6);
+}
+function rideBar(player, share, shown) {
+    try { player.onScreenDisplay.setTitle(`cbm:ridep${String(Math.round(share * 50)).padStart(2, "0")}${shown ? "y" : "n"}`, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
+}
+function endRide(st) {
+    try { st.mount.getComponent("minecraft:movement")?.resetToDefaultValue(); st.mount.getComponent("minecraft:underwater_movement")?.resetToDefaultValue(); } catch (e) { }
+    if (st.mount.isValid) { setProp(st.mount, RIDE_STAMINA, st.stamina); setProp(st.mount, RIDE_STAMINA_AT, Date.now()); if (st.tired) try { st.mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
+    if (st.player.isValid && st.bar !== null) rideBar(st.player, 0, false);
+    rideStates.delete(st.mount.id);
+}
+// the style the mount rides by where it is
+function rideStyle(ride, mount) {
+    const has = (style) => ride.some(([s]) => s === style);
+    if (has("liquid") && mount.isInWater) return "liquid";
+    if (has("air") && (!mount.isOnGround || !has("land"))) return "air";
+    return has("land") ? "land" : has("air") ? "air" : "liquid";
+}
+system.runInterval(() => {
+    const ridden = new Set();
+    for (const player of world.getAllPlayers()) {
+        let mount;
+        try { mount = player.getComponent("minecraft:riding")?.entityRidingOn; } catch (e) { }
+        const ride = mount?.isValid ? RIDES[mount.typeId] : undefined;
+        if (!ride) continue;
+        let driver; try { driver = mount.getComponent("minecraft:rideable")?.getRiders()[0]; } catch (e) { }
+        if (driver?.id !== player.id) continue;
+        ridden.add(mount.id);
+        const flier = ride.some(([s]) => s === "air");
+        if (probeHold.has(mount.id)) continue;
+        let st = rideStates.get(mount.id);
+        if (!st) {
+            // the stamina it left with, and a tenth a second back since
+            const stored = prop(mount, RIDE_STAMINA), at = prop(mount, RIDE_STAMINA_AT);
+            const rested = typeof at === "number" ? Math.max(0, (Date.now() - at) / 1000) * 0.1 : 1;
+            st = { mount, player, stamina: Math.min(1, (typeof stored === "number" ? stored : 1) + rested), speed: 0, sprinting: false, toggleable: true,
+                   forwardLast: false, timer: 0, jumpTicks: 0, bar: null, tier: -1, tired: false, rest: 0 };
+            rideStates.set(mount.id, st);
+        }
+        const style = rideStyle(ride, mount), entry = ride.find(([s]) => s === style), settings = entry[3] ?? {};
+        const kind = RIDE_KINDS[entry[1]] ?? "horse";
+        let input = { x: 0, y: 0 }, jumping = false;
+        try { input = player.inputInfo.getMovementVector(); jumping = player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed; } catch (e) { }
+        const forward = input.y > 0.1;
+        const drain = 1 / rideExpr(mount, style, kind, "stamina") / 20;
+        if (style === "air") {
+            // BirdBehaviour's tickStamina: flying drains, hovering half, gliding (no input, falling) a quarter
+            const moving = Math.abs(input.x) > 0.1 || Math.abs(input.y) > 0.1 || jumping;
+            const falling = (mount.getVelocity?.().y ?? 0) < -0.05;
+            st.stamina = Math.max(0, st.stamina - drain * (moving ? 1 : falling ? 0.25 : 0.5));
+            // the speed: up to its air Speed in its Acceleration's time while forward is held, flown at the nearest tier
+            const top = rideExpr(mount, style, kind, "speed");
+            const thrust = forward || jumping;   // climbing speeds up as flying forward does (vertical input, half the top speed in Cobblemon)
+            st.speed = thrust ? Math.min(top, st.speed + top / (rideExpr(mount, style, kind, "acceleration") * 20)) : Math.max(0, st.speed - top / 40);
+            if (st.stamina <= 0 && !st.tired) { st.tired = true; try { mount.triggerEvent("cobblemon:ride_tired"); } catch (e) { } }
+            if (!st.tired) {
+                const tier = FLY_TIERS.reduce((best, v, n) => (Math.abs(v - Math.max(st.speed, 0.05)) < Math.abs(FLY_TIERS[best] - Math.max(st.speed, 0.05)) ? n : best), 0);
+                if (tier !== st.tier) { st.tier = tier; try { mount.triggerEvent(`cobblemon:fly_${tier}`); } catch (e) { } }
+            }
+        } else if (style === "liquid" && kind !== "horse") {
+            // the double tap of forward stands in for the sprint key (Bedrock gives no sprint to a rider)
+            let doubleTapped = false;
+            if (!st.forwardLast && forward && st.timer === 0) st.timer = 7;
+            else if (!st.forwardLast && forward && st.timer !== 0) { doubleTapped = true; st.timer = 0; }
+            else if (st.timer > 0) st.timer--;
+            st.forwardLast = forward;
+            let top = rideExpr(mount, style, kind, "speed"), accel = top / (rideExpr(mount, style, kind, "acceleration") * 20);
+            if (kind === "boat") {
+                if (doubleTapped && !st.sprinting) st.sprinting = st.stamina > 0.33;
+                if (!forward) st.sprinting = false;
+                const mod = st.sprinting && st.stamina > 0 ? rideExpr(mount, style, kind, "jump") : 1;
+                if (st.sprinting && st.speed > 0.1) { st.stamina = Math.max(0, st.stamina - drain); st.rest = 0; if (st.stamina === 0) st.sprinting = false; }
+                else if (!st.sprinting && ++st.rest >= 20) st.stamina = Math.min(1, st.stamina + 1 / 15 / 20);
+                st.speed = forward ? Math.min(top * mod, st.speed + accel * mod) : st.speed - st.speed * 0.04;
+            } else if (kind === "dolphin") {
+                if (!forward) st.sprinting = false;
+                else if (doubleTapped && st.stamina >= 0.25) st.sprinting = !st.sprinting;
+                if (st.stamina <= 0) st.sprinting = false;
+                const mod = st.sprinting ? rideExpr(mount, style, kind, "jump") : 1;
+                st.stamina = st.sprinting ? Math.max(0, st.stamina - drain) : Math.min(1, st.stamina + drain * 2);
+                top *= mod; accel *= mod;
+                st.speed = forward ? Math.min(top, st.speed + accel) : Math.max(0, st.speed - accel);
+            } else {
+                // submarine: breath while the rider's head is under water
+                const under = (() => { try { return player.dimension.getBlock(player.getHeadLocation())?.typeId === "minecraft:water"; } catch (e) { return false; } })();
+                st.stamina = under ? Math.max(0, st.stamina - drain) : Math.min(1, st.stamina + 1 / (5 * 20));
+                st.speed = forward ? Math.min(top, st.speed + accel) : Math.max(0, st.speed - accel);
+            }
+            try {
+                const movement = mount.getComponent("minecraft:underwater_movement"), value = Math.max(st.speed, 0.005) / SWIM_K;
+                if (movement && Math.abs(movement.currentValue - value) > 0.0005) movement.setCurrentValue(value);
+            } catch (e) { }
+        } else {
+            // on the ground a tired flier is rested once it lands
+            if (st.tired && mount.isOnGround) { st.tired = false; st.tier = -1; try { mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
+            // handleSprinting: a second press of forward within seven ticks sprints, while there is stamina and forward is held
+            let doubleTapped = false;
+            if (!st.forwardLast && forward && !st.sprinting && st.timer === 0) st.timer = 7;
+            else if (!st.forwardLast && forward && st.timer !== 0) doubleTapped = true;
+            else if (!st.sprinting && st.timer > 0) st.timer--;
+            else st.timer = 0;
+            if (st.stamina <= 0 || !forward) { st.sprinting = false; if (st.stamina <= 0) st.toggleable = false; }
+            else if (!st.sprinting && !st.toggleable && st.stamina > 0.33) st.toggleable = true;
+            else if (doubleTapped && st.toggleable && settings.sprint !== false) st.sprinting = true;
+            st.forwardLast = forward;
+            // tickStamina: sprinting drains, otherwise it comes back eight times as fast
+            st.stamina = Math.max(0, Math.min(1, st.sprinting ? st.stamina - drain : st.stamina + drain * 8));
+            // the speed: up to the walk or the sprint speed in the acceleration's time, slowing 0.03 a tick past it
+            const walk = (settings.walk ?? 0.35) * 0.7 * 0.42;
+            const top = st.sprinting ? rideExpr(mount, style, kind, "speed") : walk;
+            const accel = top / (st.sprinting ? rideExpr(mount, style, kind, "acceleration") * 20 : 10);
+            if (forward && st.speed < top) st.speed = Math.min(top, st.speed + accel);
+            else if (st.speed > top || !forward) st.speed = Math.max(forward ? top : 0, st.speed - 0.03);
+            try {
+                const swimming = style === "liquid";
+                const movement = mount.getComponent(swimming ? "minecraft:underwater_movement" : "minecraft:movement");
+                const value = Math.max(st.speed, 0.01) / (swimming ? SWIM_K : RIDE_K);
+                if (movement && Math.abs(movement.currentValue - value) > 0.0005) movement.setCurrentValue(value);
+            } catch (e) { }
+            // the jump, on land: six ticks of force while jump is held from the ground, then three on the ground before the next
+            if (style === "land" && kind === "horse" && !flier && settings.jump !== false && jumping && st.jumpTicks >= 0 && st.jumpTicks < 6 && (st.jumpTicks > 0 || mount.isOnGround)) {
+                const force = rideExpr(mount, style, kind, "jump") * 0.75 * 1.5 / 6;
+                try { mount.applyImpulse({ x: 0, y: force * BEDROCK_JUMP, z: 0 }); } catch (e) { }
+                st.jumpTicks++;
+            } else if (st.jumpTicks > 0) st.jumpTicks = -3;
+            else if (st.jumpTicks < 0 && mount.isOnGround) st.jumpTicks++;
+        }
+        // the ride bar, sent when its fill moves a step
+        const step = Math.round(st.stamina * 50) / 50;
+        if (st.bar !== step) { st.bar = step; rideBar(player, step, true); }
+    }
+    for (const st of [...rideStates.values()]) if (!ridden.has(st.mount.id) || !st.mount.isValid) endRide(st);
+}, 1);
 function rideBoostsOf(entity) { try { return JSON.parse(prop(entity, RIDE_BOOSTS) ?? "{}"); } catch (e) { return {}; } }
 const speciesKey = (typeId) => (POKEMON[typeId]?.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const needsSteps = (typeId) => (POKEMON[typeId]?.evolutions ?? []).some((evo) => evo.req.some((r) => r.t === "steps"));

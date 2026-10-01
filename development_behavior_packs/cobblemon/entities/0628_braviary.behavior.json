@@ -238,9 +238,6 @@
                     "strafe_speed_modifier": 1.0,
                     "backwards_movement_modifier": 0.5
                 },
-                "minecraft:vertical_movement_action": {
-                    "vertical_velocity": 0.5
-                },
                 "minecraft:behavior.player_ride_tamed": {
                     "priority": 1
                 },
@@ -327,8 +324,8 @@
                 "minecraft:physics": {
                     "has_gravity": false
                 },
-                "minecraft:flying_speed": {
-                    "value": 0.05
+                "minecraft:vertical_movement_action": {
+                    "vertical_velocity": 0.5
                 },
                 "minecraft:navigation.float": {
                     "can_path_over_water": true
@@ -410,6 +407,93 @@
                     "priority": 3,
                     "speed_multiplier": 1.2,
                     "track_target": true
+                }
+            },
+            "cobblemon:ridden_tired": {
+                "minecraft:physics": {},
+                "minecraft:flying_speed": {
+                    "value": 0.01
+                },
+                "minecraft:body_rotation_always_follows_head": {}
+            },
+            "cobblemon:fly_0": {
+                "minecraft:flying_speed": {
+                    "value": 0.00909
+                }
+            },
+            "cobblemon:fly_1": {
+                "minecraft:flying_speed": {
+                    "value": 0.01124
+                }
+            },
+            "cobblemon:fly_2": {
+                "minecraft:flying_speed": {
+                    "value": 0.01389
+                }
+            },
+            "cobblemon:fly_3": {
+                "minecraft:flying_speed": {
+                    "value": 0.01716
+                }
+            },
+            "cobblemon:fly_4": {
+                "minecraft:flying_speed": {
+                    "value": 0.02122
+                }
+            },
+            "cobblemon:fly_5": {
+                "minecraft:flying_speed": {
+                    "value": 0.02622
+                }
+            },
+            "cobblemon:fly_6": {
+                "minecraft:flying_speed": {
+                    "value": 0.03242
+                }
+            },
+            "cobblemon:fly_7": {
+                "minecraft:flying_speed": {
+                    "value": 0.04005
+                }
+            },
+            "cobblemon:fly_8": {
+                "minecraft:flying_speed": {
+                    "value": 0.04951
+                }
+            },
+            "cobblemon:fly_9": {
+                "minecraft:flying_speed": {
+                    "value": 0.0612
+                }
+            },
+            "cobblemon:fly_10": {
+                "minecraft:flying_speed": {
+                    "value": 0.07564
+                }
+            },
+            "cobblemon:fly_11": {
+                "minecraft:flying_speed": {
+                    "value": 0.09349
+                }
+            },
+            "cobblemon:fly_12": {
+                "minecraft:flying_speed": {
+                    "value": 0.11555
+                }
+            },
+            "cobblemon:fly_13": {
+                "minecraft:flying_speed": {
+                    "value": 0.14282
+                }
+            },
+            "cobblemon:fly_14": {
+                "minecraft:flying_speed": {
+                    "value": 0.17653
+                }
+            },
+            "cobblemon:fly_15": {
+                "minecraft:flying_speed": {
+                    "value": 0.21818
                 }
             }
         },
@@ -664,19 +748,38 @@
             "cobblemon:ride_air_on": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:gravity"
+                        "cobblemon:gravity",
+                        "cobblemon:ridden_tired"
                     ]
                 },
                 "add": {
                     "component_groups": [
-                        "cobblemon:ridden_air"
+                        "cobblemon:ridden_air",
+                        "cobblemon:fly_0"
                     ]
                 }
             },
             "cobblemon:ride_air_off": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:ridden_air"
+                        "cobblemon:ridden_air",
+                        "cobblemon:ridden_tired",
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
                     ]
                 },
                 "add": {
@@ -791,6 +894,463 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:fly_0": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_0"
+                    ]
+                }
+            },
+            "cobblemon:fly_1": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_1"
+                    ]
+                }
+            },
+            "cobblemon:fly_2": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_2"
+                    ]
+                }
+            },
+            "cobblemon:fly_3": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_3"
+                    ]
+                }
+            },
+            "cobblemon:fly_4": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_4"
+                    ]
+                }
+            },
+            "cobblemon:fly_5": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_5"
+                    ]
+                }
+            },
+            "cobblemon:fly_6": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_6"
+                    ]
+                }
+            },
+            "cobblemon:fly_7": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_7"
+                    ]
+                }
+            },
+            "cobblemon:fly_8": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_8"
+                    ]
+                }
+            },
+            "cobblemon:fly_9": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_9"
+                    ]
+                }
+            },
+            "cobblemon:fly_10": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_10"
+                    ]
+                }
+            },
+            "cobblemon:fly_11": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_11"
+                    ]
+                }
+            },
+            "cobblemon:fly_12": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_12"
+                    ]
+                }
+            },
+            "cobblemon:fly_13": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_13"
+                    ]
+                }
+            },
+            "cobblemon:fly_14": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_14"
+                    ]
+                }
+            },
+            "cobblemon:fly_15": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fly_15"
+                    ]
+                }
+            },
+            "cobblemon:ride_tired": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:ridden_air",
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:ridden_tired"
+                    ]
+                }
+            },
+            "cobblemon:ride_rested": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:ridden_tired"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:ridden_air",
+                        "cobblemon:fly_0"
                     ]
                 }
             }
