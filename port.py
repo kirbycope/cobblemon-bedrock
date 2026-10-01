@@ -5060,7 +5060,7 @@ def depletable_red_green(ratio):
 # slot a button that opens that Pokemon's summary. main.js fills the body field by field in this order, each field
 # padded to its width in bytes (JSON UI's '%.Ns' counts bytes), and numbers carry a leading colour code so they are
 # never read as numbers. The last field, the held item's icon, runs to the end.
-SUMMARY_LAYOUT = [("tab", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("status", 3),
+SUMMARY_LAYOUT = [("tab", 1), ("size", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("status", 3),
                   ("dex", 7), ("species", 16), ("types", 20), ("ot", 16), ("nature", 18), ("ability", 20), ("exp", 12), ("tonext", 12), ("expbar", 3),
                   ("friendship", 6)] \
     + [(f"m{n}{k}", w) for n in range(4) for k, w in (("name", 16), ("type", 3), ("pp", 9), ("sel", 1))] \
@@ -5187,6 +5187,7 @@ def create_summary_ui():
     stat_wedges(f"{S}/pent", sides=5)
     shutil.copyfile(f"{src}/summary_stats_chart_pentagon.png", f"{S}/stats_chart_pentagon.png")
     shutil.copyfile(f"{src}/summary_stats_chart_pentagon_highlight.png", f"{S}/stats_chart_pentagon_highlight.png")
+    for code, size in zip("abcdef", ("xs", "s", "m", "l", "xl", "alpha")): shutil.copyfile(f"{src}/icon_size_{size}.png", f"{S}/size_{code}.png")
     tip = Image.new("RGBA", (9, 9), (0, 0, 0, 0)); d = ImageDraw.Draw(tip)
     d.rectangle((1, 0, 7, 8), fill=(16, 0, 16, 240)); d.rectangle((0, 1, 8, 7), fill=(16, 0, 16, 240))
     for y in range(1, 8):
@@ -5340,7 +5341,9 @@ def create_summary_ui():
              fixed("exp_l", "Exp. Points", (72.5, 125), 0.5), label("exp", field("exp"), (72.5, 125), 0.5, size=(54.5, 5), align="right"),
              fixed("next_l", "To Next Lv.", (72.5, 137), 0.5), label("next", field("tonext"), (72.5, 137), 0.5, size=(54.5, 5), align="right"),
              picture("expbar", field("expbar"), (72, 131), (55, 1)),
-             fixed("friend_l", "Friendship", (8, 125), 0.5), label("friend", field("friendship"), (8, 137), 0.5)]
+             fixed("friend_l", "Friendship", (8, 125), 0.5), label("friend", field("friendship"), (8, 137), 0.5),
+             # InfoWidget's size icon beside the Pokedex number (107.5, 6.5, at half scale): the size category, or alpha
+             picture("size_icon", field("size"), (107.5, 6.5), (18.5, 8), 5, "size_")]
     # Moves: MoveSlotWidget tiles of 108 by 22, 13 in and 25 apart, the type icon at 2, the name at 28, the PP at 93
     moves = []
     for n in range(4):
@@ -5593,6 +5596,26 @@ def create_summary_ui():
         page = "m" if 11 <= index <= 14 or 16 <= index <= 23 or 34 <= index <= 37 else "k" if 43 + SWAP_SLOTS <= index <= 73 + SWAP_SLOTS else None
         if page: body["bindings"] = body["bindings"] + [{"binding_name": "#form_text"},
             {"binding_type": "view", "source_property_name": f"({field('tab')} = '{page}')", "target_property_name": "#visible"}]
+    def tooltip(offset):
+        tip_text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        return {"tooltip": {"type": "image", "texture": f"{T}/tooltip", "nineslice_size": 3, "size": ["100%c + 8px", "100%c + 8px"], "offset": list(offset),
+                            "anchor_from": "top_left", "anchor_to": "top_left", "layer": 30,
+                            "bindings": [tip_text, {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}],
+                            "controls": [{"text": {"type": "label", "text": "#form_button_text", "size": ["default", "default"], "shadow": True, "color": [1, 1, 1],
+                                                   "layer": 1, "bindings": [tip_text]}}]}}
+    size_area = button(82 + SWAP_SLOTS, (77 + 107.5, 12 + 6.5), (18.5, 8))
+    size_body = size_area[f"button_{82 + SWAP_SLOTS}"]
+    size_body["controls"] = [{"default": {"type": "panel", "size": ["100%", "100%"]}},
+                             {"hover": {"type": "panel", "size": ["100%", "100%"], "controls": [tooltip((22, -12))]}},
+                             {"pressed": {"type": "panel", "size": ["100%", "100%"], "controls": [tooltip((22, -12))]}}]
+    stat_tab_buttons.append(size_area)
+    for b in buttons + stat_tab_buttons:
+        name, body = next(iter(b.items()))
+        index = body["collection_index"]
+        if index == 9 or 43 + SWAP_SLOTS <= index < 73 + SWAP_SLOTS:
+            for state in body["controls"]:
+                key = next(iter(state))
+                if key != "default": state[key] = {**state[key], "controls": state[key].get("controls", []) + [tooltip((20, -12))]}
     for b in stat_tab_buttons:
         name, body = next(iter(b.items()))
         index = body["collection_index"]

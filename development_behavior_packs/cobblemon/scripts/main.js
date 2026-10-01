@@ -4377,6 +4377,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     }
     const held = heldItem(source), icon = held ? HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1] : undefined;
     v.item = icon ?? `${SUMMARY_UI}/blank`;
+    // InfoWidget's size icon (the port has no alphas)
+    v.size = "abcde"[["XS", "S", "M", "L", "XL"].indexOf(sizeCategory(source))] ?? "c";
     v.portrait = iconOf(source.typeId, variantOf(source));
     v.evolve = evolutions.length ? "Evolve" : "";
     const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
@@ -4384,7 +4386,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const form = new ActionFormData().title("cbm:summary").body(body);
     for (const [key, name] of [["i", "info"], ["m", "moves"], ["s", "stats"]]) form.button(name, `${SUMMARY_UI}/tab_${name}${tab === key ? "_on" : ""}`);
     for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
-    form.button("item", `${SUMMARY_UI}/item`);
+    form.button(held ? itemName(held) : "", `${SUMMARY_UI}/item`);   // its text is the hovered tooltip
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
     form.button("evolve", `${SUMMARY_UI}/${evolutions.length ? "evolve" : "none"}`);
@@ -4415,7 +4417,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     // StatWidget's page tabs, after the switch list's rows
     for (let i = 0; i < 4; i++) form.button("stat page", `${SUMMARY_UI}/none`);
     form.button("marks", `${SUMMARY_UI}/tab_marks${tab === "k" ? "_on" : ""}`);
-    for (let i = 0; i < 30; i++) form.button("mark", `${SUMMARY_UI}/none`);   // the slot's face is drawn under it
+    // the slot's face is drawn under it; the text is the hovered tooltip, the mark's name
+    for (let i = 0; i < 30; i++) form.button(tab === "k" && markIds[i] ? MARKS[markIds[i]][1] : "", `${SUMMARY_UI}/none`);
     form.button("mark chosen", `${SUMMARY_UI}/none`);
     for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
     // the Ride page's centre and icon: "P", the polygon, the style, whether it can switch, the icon, the tooltip
@@ -4430,6 +4433,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const labelsText = tab !== "s" ? "" : stab === "r" ? "R" + rideHover : (stab === "v" || stab === "e") && mine ? "x" + hexHover() : "";
     form.button(labelsText, `${SUMMARY_UI}/none`);
     form.button(rideCentre, `${SUMMARY_UI}/none`);
+    form.button(tab === "i" ? `Size: ${sizeCategory(source)}` : "", `${SUMMARY_UI}/none`);   // the size icon's tooltip
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -4444,7 +4448,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         if (pick === 73 + SWAP_ROWS) { if (mine) setProp(source, ACTIVE_MARK, undefined); showSummary(source, tab, player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
-        if (pick === 80 + SWAP_ROWS) { showSummary(source, tab, player, selected, side); return; }
+        if (pick === 80 + SWAP_ROWS || pick === 82 + SWAP_ROWS) { showSummary(source, tab, player, selected, side); return; }
         if (pick === 79 + SWAP_ROWS || pick === 81 + SWAP_ROWS) {
             if (stab === "r" && rides?.length > 1) { summaryRideStyle.set(player.id, ((summaryRideStyle.get(player.id) ?? 0) + 1) % rides.length); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
             showSummary(source, tab, player, selected, side); return;
