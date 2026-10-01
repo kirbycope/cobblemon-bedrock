@@ -7042,7 +7042,7 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
                 "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52)}
-PARTY_RECORD = 52   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+PARTY_RECORD = 52
 
 
 def scan_code(n):
@@ -7234,9 +7234,14 @@ def create_party_hud():
                               "bindings": [from_data(f"('{T}/portrait_' + {field(slot, 'state')})", "#texture")]}},
                 {"model": {"type": "image", "size": [19, 19], "offset": [23, 3], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
                            "keep_ratio": True, "bindings": [from_data(f"('textures/ui/cobblemon/icons/' + {field(slot, 'icon')})", "#texture")]}},
-                {"level": {"type": "label", "size": [20, 6], "offset": [1, 14.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
-                           "font_scale_factor": 0.5, "text_alignment": "left", "shadow": True, "text": "#value",
-                           "bindings": [from_data(field(slot, "level"), "#value")]}},
+                # "Lv." over the number, each centred on 6.5 (PartyOverlay's drawScaledText at 13.5 and 18); the field carries
+                # the number after a "§r" (a field of digits alone reads as a number, which a label does not print) and
+                # padded with spaces, which come off so it centres
+                {"lv": {"type": "label", "size": [13, 5], "offset": [0, 13.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                        "font_scale_factor": 0.5, "text_alignment": "center", "shadow": True, "text": "Lv."}},
+                {"level": {"type": "label", "size": [13, 5], "offset": [0, 18], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                           "font_scale_factor": 0.5, "text_alignment": "center", "shadow": True, "text": "#value",
+                           "bindings": [from_data(f"({field(slot, 'level')} - ' ')", "#value")]}},
                 {"name": {"type": "label", "size": [60, 5], "offset": [2.5, 24.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
                           "font_scale_factor": 0.5, "shadow": False, "text": "#value", "bindings": [from_data(field(slot, "name"), "#value")]}},
                 picture("gender", slot, "gender", [2.5, 3.5], [40, 25], 3),

@@ -1731,7 +1731,7 @@ function partyRecord(e) {
     const name = (tag || info.name).normalize("NFD").replace(/[^ -~]/g, "");
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
-    return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
+    return pad(name, 12) + padBytes(`§r${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
         + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non");
 }
