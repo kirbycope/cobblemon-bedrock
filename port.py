@@ -6619,8 +6619,11 @@ def create_battle_ui():
         small.crop((n * 18, 0, n * 18 + 18, 18)).save(f"{uiTextures}/types/{type_name}.png")
     for name in ("battle_info_base", "battle_info_base_flipped", "battle_info_underlay"):
         shutil.copyfile(f"{guiMain}/battle/{name}.png", f"{uiTextures}/battle/{name[len('battle_'):]}.png")
+    # BattleOverlay draws 37 of the strip's 74: its left end on the right-hand (reversed) tile, its right end on the left one
     for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
-        shutil.copyfile(f"{guiMain}/battle/battle_status_{status}.png", f"{uiTextures}/battle/status_{status}.png")
+        strip = Image.open(f"{guiMain}/battle/battle_status_{status}.png").convert("RGBA")
+        strip.crop((0, 0, 37, 7)).save(f"{uiTextures}/battle/status_{status}_r.png")
+        strip.crop((74 - 37, 0, 74, 7)).save(f"{uiTextures}/battle/status_{status}.png")
     Image.new("RGBA", (4, 4), (255, 255, 255, 255)).save(f"{uiTextures}/white.png")
     shutil.copyfile(f"{guiMain}/battle/battle_log.png", f"{uiTextures}/battle/log.png")
     shutil.copyfile(f"{guiMain}/battle/battle_owned_indicator.png", f"{uiTextures}/battle/owned_y.png")
@@ -6696,11 +6699,14 @@ def create_battle_ui():
                                                 "anchor_from": "top_left", "anchor_to": "top_left", "color": [r * 0.8, g * 0.8, 0.27],
                                                 "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                                                              "source_property_name": f"({field(side, 'hp')} = 'h{step:02d}')", "target_property_name": "#visible"}]}})
+        # the status (BattleOverlay): the strip at 65 or 38, 28 in, and its name in bold over it at 86 or 41, 27
+        names = {"brn": "BRN", "par": "PAR", "psn": "PSN", "tox": "PSN", "slp": "SLP", "frz": "FRZ", "fnt": "FNT"}
         for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
-            controls.append({f"status_{status}": {"type": "image", "texture": f"{T}/battle/status_{status}", "size": [74, 7], "layer": 3,
-                                                  "anchor_from": "top_left", "anchor_to": "top_left", "offset": [info_x - 2, 30],
-                                                  "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
-                                                               "source_property_name": f"({field(side, 'status')} = '{status}')", "target_property_name": "#visible"}]}})
+            shown = [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": f"({field(side, 'status')} = '{status}')", "target_property_name": "#visible"}]
+            controls.append({f"status_{status}": {"type": "image", "texture": f"{T}/battle/status_{status}{'_r' if reversed_ else ''}", "size": [37, 7], "layer": 3,
+                                                  "anchor_from": "top_left", "anchor_to": "top_left", "offset": [65 if reversed_ else 38, 28], "bindings": shown}})
+            controls.append({f"status_name_{status}": {"type": "label", "text": f"\u00a7l{names[status]}", "anchor_from": "top_left", "anchor_to": "top_left",
+                                                       "offset": [86 if reversed_ else 41, 27], "size": [40, 9], "layer": 4, "shadow": True, "bindings": shown}})
         return {f"info_{side}": {"type": "panel", "size": [140, 40], "anchor_from": "top_right" if reversed_ else "top_left",
                                  "anchor_to": "top_right" if reversed_ else "top_left", "offset": [-12 if reversed_ else 12, 10], "controls": controls}}
 
@@ -6848,8 +6854,8 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
                "reg": (172, 173), "unknown": (173, 174)}
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
-                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49)}
-PARTY_RECORD = 49   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
+                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52)}
+PARTY_RECORD = 52   # a title drops line breaks, so the level is one line, "Lv.16", where Cobblemon stacks "Lv." over the number
 
 
 def scan_code(n):
@@ -6963,6 +6969,9 @@ def create_party_hud():
     for state, name in (("n", "party_slot"), ("x", "party_slot_fainted")):
         shutil.copyfile(f"{guiMain}/party/{name}.png", f"{party}/slot_{state}.png")
     for state in ("n", "x"): shutil.copyfile(f"{guiMain}/party/party_slot_portrait_background.png", f"{party}/portrait_{state}.png")
+    # PartyOverlay's status badge (status_<showdown name>, 4 by 14), "non" for none
+    for code in ("brn", "frz", "par", "psn", "slp", "tox"): shutil.copyfile(f"{guiMain}/party/status_{code}.png", f"{party}/{code}.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/non.png")
     # an empty slot's record (state "e", ball "bxx") draws nothing: a view binding cannot hide these parts
     for name in ("slot_e", "portrait_e", "bxx"): Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/{name}.png")
     # named by the record's gender field, which the texture binding appends to the folder
@@ -7048,6 +7057,7 @@ def create_party_hud():
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
                 picture("ball", slot, "ball", [9, 11], [43.5, 22], 3),
                 picture("held", slot, "held", [8, 8], [12, 14], 4),
+                picture("status", slot, "status", [4, 14], [51, 8], 3),
                 # PartyOverlay's pop-ups beside the slot at half size: the new move or evolution 56.5 in and 4 down (under
                 # the gained experience), and the evolution at 78 when both show; the experience gained 57 in, 17 down
                 {"note_a": {"type": "image", "size": [18.5, 10], "offset": [56.5, 4], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",

@@ -151,7 +151,7 @@ function fighter(entity) {
         rolled = list[Math.floor(Math.random() * list.length)];
         setProp(entity, "cobblemon:ability", rolled);
     }
-    const f = { entity, info, level, stats, hp, moves, ability: rolled, status: null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
+    const f = { entity, info, level, stats, hp, moves, ability: rolled, status: statusOf(entity) ?? null, sleep: 0, stages: { atk: 0, def: 0, spa: 0, spd: 0, spe: 0, accuracy: 0, evasion: 0 } };
     f.held = prop(entity, "cobblemon:held") ?? null;
     return f;
 }
@@ -536,11 +536,16 @@ system.runInterval(() => {
 
 function endBattle(battle, text) {
     battles.delete(battle.player.id);
+    if (battle.ally?.entity) keepStatus(battle.ally.entity, battle.ally.hp > 0 ? battle.ally.status : null);
+    for (const [id, k] of Object.entries(battle.kept ?? {})) {
+        if (id === battle.ally?.entity?.id) continue;
+        try { keepStatus(world.getEntity(id), k.status); } catch (e) { }
+    }
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
     // PokemonBattle.end: a wild Pokemon still out heals fully, whether it won, fled or was left
     const foe = battle.foe?.entity;
-    if (!battle.trainer && foe?.isValid && POKEMON[foe.typeId] && !prop(foe, OWNER)) healFully(foe);
+    if (!battle.trainer && foe?.isValid && POKEMON[foe.typeId] && !prop(foe, OWNER)) { healFully(foe); setProp(foe, STATUS, undefined); }
     if (text) say(battle, text);
 }
 
@@ -553,6 +558,53 @@ function enter(battle, f, other) {
         else boost(battle, other, { atk: -1 }, f);
     }
 }
+
+// Persistent statuses (PersistentStatus, PlayerPartyStore.onSecondPassed): a status a Pokemon leaves battle with stays,
+// for its statusPeriod (180 to 300 seconds), counted while it is out with its trainer; poison has a 1 in 15 chance a
+// second to take 5% of its health, badly poisoned 10% (Poison Heal heals instead), and running out tells the trainer
+// it was cured. A wild Pokemon heals fully after battle, status and all.
+const STATUS = "cobblemon:status";
+const STATUS_CURED = { psn: "was cured of its poisoning", tox: "was cured of its poisoning", par: "was cured of its paralysis", brn: "was cured of its burn",
+                       frz: "thawed out", slp: "woke up" };
+function statusOf(e) {
+    try { const st = JSON.parse(prop(e, STATUS) ?? "null"); return st && st.left > 0 ? st.s : undefined; } catch (err) { return undefined; }
+}
+function keepStatus(e, status) {
+    if (!e?.isValid || !POKEMON[e.typeId]) return;
+    if (!status || prop(e, FAINTED) || prop(e, OWNER) === undefined) { setProp(e, STATUS, undefined); return; }
+    let left;
+    try { left = JSON.parse(prop(e, STATUS) ?? "null")?.s === status ? JSON.parse(prop(e, STATUS)).left : undefined; } catch (err) { }
+    setProp(e, STATUS, JSON.stringify({ s: status, left: left ?? 180 + Math.floor(Math.random() * 121) }));
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        if (battles.has(player.id)) continue;
+        let mine = [];
+        try { mine = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id); } catch (e) { continue; }
+        for (const e of mine) {
+            const raw = prop(e, STATUS);
+            if (!raw) continue;
+            let st; try { st = JSON.parse(raw); } catch (err) { setProp(e, STATUS, undefined); continue; }
+            const name = nicknameOf(e) || POKEMON[e.typeId].name;
+            if (prop(e, FAINTED)) { setProp(e, STATUS, undefined); continue; }
+            if (--st.left <= 0) { setProp(e, STATUS, undefined); player.sendMessage(`${name} ${STATUS_CURED[st.s] ?? "recovered"}!`); continue; }
+            if ((st.s === "psn" || st.s === "tox") && Math.random() < 1 / 15) {
+                try {
+                    const h = e.getComponent(EntityComponentTypes.Health), amount = Math.max(1, Math.round(h.effectiveMax * (st.s === "tox" ? 0.1 : 0.05)));
+                    if (fighter(e)?.ability === "poisonheal") {
+                        h.setCurrentValue(Math.min(h.effectiveMax, h.currentValue + amount));
+                        if (h.currentValue >= h.effectiveMax) { setProp(e, STATUS, undefined); continue; }
+                    } else if (h.currentValue - amount <= 0) {
+                        // as currentHealth reaching 0 does: it faints
+                        setProp(e, FAINTED, true); setProp(e, STATUS, undefined); h.setCurrentValue(1);
+                        player.sendMessage(`§c${name} fainted!`); continue;
+                    } else h.setCurrentValue(h.currentValue - amount);
+                } catch (err) { }
+            }
+            setProp(e, STATUS, JSON.stringify(st));
+        }
+    }
+}, 20);
 
 // Ownership: the tameable component is not readable once a Pokemon is tamed, so the owner is
 // remembered on the entity when the claiming interaction succeeds.
@@ -1613,7 +1665,7 @@ function partyRecord(e) {
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + pad(`Lv.${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
-        + partyNotes(e) + heldCode(e);
+        + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non");
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -1624,7 +1676,7 @@ system.runInterval(() => {
                 .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
                 .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
         } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz";
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non";
         const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
@@ -1930,6 +1982,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             if (changed) saveBox(source, n, contents);
         }
         console.warn(`pc_take_test ${species} ${ball}: ${taken} taken, marks ${JSON.stringify(counts)}`);
+    } else if (event.id === "cobblemon:set_status") {
+        // for testing: "/execute as <pokemon> run scriptevent cobblemon:set_status <psn|tox|par|brn|frz|slp> [seconds]"
+        const [code, seconds] = event.message.trim().split(/\s+/);
+        if (POKEMON[source.typeId]) setProp(source, STATUS, STATUS_CURED[code] ? JSON.stringify({ s: code, left: Number(seconds) || 200 }) : undefined);
     } else if (event.id === "cobblemon:particle") {
         // for testing: "/scriptevent cobblemon:particle <id> x y z" spawns a particle, its variable.broth white
         const [id, x, y, z] = event.message.split(" ");
@@ -2289,7 +2345,7 @@ function snapshot(entity) {
 // what a Pokemon keeps through the PC and the pasture besides its level, moves and name
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
-    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts"];
+    "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -3540,6 +3596,10 @@ function applyMedicine(entity, effect) {
         return `${name} was revived!`;
     }
     if (fainted) return undefined;
+    // a cure outside battle takes the status it kept (Full Restore cures and heals)
+    const st = statusOf(entity), cures = effect.cure && st && (effect.cure === true || effect.cure.includes(st));
+    if (cures) setProp(entity, STATUS, undefined);
+    if (cures && !(effect.heal && health && health.currentValue < health.effectiveMax)) return `${name} ${STATUS_CURED[st]}.`;
     if (effect.heal) {
         if (!health || health.currentValue >= health.effectiveMax) return effect.cure ? `${name} is already healthy.` : undefined;
         // world health is a share of battle HP; scale the amount by the Pokemon's battle HP at its level
@@ -3849,7 +3909,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     Object.assign(v, {
         level: num(f.level), name: tagged || info.name, gender: { male: "m", female: "f" }[genderOf(source)] ?? "o",
         ball: `b${String(Math.max(0, Object.keys(BALLS).indexOf(prop(source, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"))).padStart(2, "0")}`,
-        type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), status: prop(source, FAINTED) ? "fnt" : "non",
+        type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), status: prop(source, FAINTED) ? "fnt" : statusOf(source) ?? "non",
         dex: num(String(info.dex ?? DEX_INDEX.get(source.typeId) + 1 ?? 0).padStart(4, "0")), species: info.name,
         types: info.types.map(cap).join(" / "),
         ot: mine ? player.name : (world.getPlayers().find((p) => p.id === prop(source, OWNER))?.name ?? "-"),
