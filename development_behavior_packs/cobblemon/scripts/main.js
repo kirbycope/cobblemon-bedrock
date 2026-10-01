@@ -19,6 +19,7 @@ import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
 import { DEFENDERS } from "./defenders.js";
 import { SHOULDER } from "./shoulder.js";
+import { DEX_VARIATIONS } from "./dex_variations.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
@@ -3527,7 +3528,10 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.button("search", `${PC_UI}/pokedex/filter`).button(`Search by ${DEX_SEARCH[state.by][1]}`, `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);   // its text is the tooltip
     for (const [letter, name] of [["z", "size"], ["d", "drops"], ["m", "moves"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
     const arrows = chosen !== null && (state.forms ?? 1) > 1;
+    const varying = chosen !== null && s[chosen] !== "0" ? DEX_VARIATIONS[DEX_INFO[NATIONAL[chosen]]?.n ?? chosen + 1] ?? [] : [];
     form.button("form left", `${PC_UI}/pokedex/${arrows ? "forms_arrow_left" : "none"}`).button("form right", `${PC_UI}/pokedex/${arrows ? "forms_arrow_right" : "none"}`);
+    // PokemonInfoWidget's variation buttons (the port's variants carry their looks, so each steps them as the form arrows do)
+    for (let k = 0; k < 5; k++) form.button(varying[k]?.[1] ?? "", `${PC_UI}/pokedex/${varying[k] ? `var_${varying[k][0]}` : "none"}`);
     form.show(player).then((r) => {
         if (r.canceled) return;
         const pick = r.selection, again = () => openDex(player, colour, state);
@@ -3537,7 +3541,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         else if (pick === 28) state.page = (state.page + 1) % pages;
         else if (pick <= 31) state.tab = "ias"[pick - 29];
         else if (pick >= 36 && pick <= 38) state.tab = "zdm"[pick - 36];
-        else if (pick === 39 || pick === 40) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
+        else if (pick === 39 || pick === 40 || (pick >= 41 && pick <= 45)) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
         else if (pick === 35) { state.by = (state.by + 1) % DEX_SEARCH.length; state.page = 0; }   // the button's tooltip names the new one

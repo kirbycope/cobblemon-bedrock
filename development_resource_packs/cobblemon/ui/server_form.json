@@ -111190,6 +111190,1361 @@
                   }
                 ]
               }
+            },
+            {
+              "button_41": {
+                "type": "button",
+                "size": [
+                  10,
+                  10
+                ],
+                "offset": [
+                  306,
+                  55
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 41,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_42": {
+                "type": "button",
+                "size": [
+                  10,
+                  10
+                ],
+                "offset": [
+                  294,
+                  55
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 42,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_43": {
+                "type": "button",
+                "size": [
+                  10,
+                  10
+                ],
+                "offset": [
+                  282,
+                  55
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 43,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_44": {
+                "type": "button",
+                "size": [
+                  10,
+                  10
+                ],
+                "offset": [
+                  270,
+                  55
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 44,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_45": {
+                "type": "button",
+                "size": [
+                  10,
+                  10
+                ],
+                "offset": [
+                  258,
+                  55
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 45,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "tooltip": {
+                            "type": "image",
+                            "texture": "textures/ui/cobblemon/pokedex/tooltip_background",
+                            "size": [
+                              "100%c + 6px",
+                              11
+                            ],
+                            "offset": [
+                              0,
+                              10
+                            ],
+                            "anchor_from": "top_middle",
+                            "anchor_to": "top_middle",
+                            "layer": 40,
+                            "keep_ratio": false,
+                            "controls": [
+                              {
+                                "left": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_left",
+                                  "anchor_to": "top_right",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "right": {
+                                  "type": "image",
+                                  "texture": "textures/ui/cobblemon/pokedex/tooltip_edge",
+                                  "size": [
+                                    1,
+                                    11
+                                  ],
+                                  "anchor_from": "top_right",
+                                  "anchor_to": "top_left",
+                                  "layer": 1
+                                }
+                              },
+                              {
+                                "text": {
+                                  "type": "label",
+                                  "text": "#value",
+                                  "size": [
+                                    "default",
+                                    10
+                                  ],
+                                  "offset": [
+                                    0,
+                                    1
+                                  ],
+                                  "shadow": true,
+                                  "color": [
+                                    1,
+                                    1,
+                                    1
+                                  ],
+                                  "layer": 2,
+                                  "bindings": [
+                                    {
+                                      "binding_name": "#form_button_text",
+                                      "binding_type": "collection",
+                                      "binding_collection_name": "form_buttons"
+                                    },
+                                    {
+                                      "binding_type": "view",
+                                      "source_property_name": "('\u00a7l' + #form_button_text)",
+                                      "target_property_name": "#value"
+                                    }
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
