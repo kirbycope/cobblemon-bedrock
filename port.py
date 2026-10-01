@@ -7207,12 +7207,14 @@ def create_battle_ui():
                        "offset": [140 - 28 - 5 + 1 if reversed_ else 6, 9], "keep_ratio": True,
                        "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                                     "source_property_name": f"('textures/ui/cobblemon/icons/' + {field(side, 'icon')})", "target_property_name": "#texture"}]}},
-            # the name moves 7 right when the species is caught, to make room for BattleOverlay's caught indicator
-            {"name": {**text_label("name", field(side, "name"), [info_x, 7])["name"], "bindings": text_label("name", field(side, "name"), [info_x, 7])["name"]["bindings"]
-                      + [{"binding_type": "view", "source_property_name": f"({field(side, 'owned')} = 'n')", "target_property_name": "#visible"}]}},
-            {"name_owned": {**text_label("name_owned", field(side, "name"), [info_x + 7, 7])["name_owned"],
-                            "bindings": text_label("name_owned", field(side, "name"), [info_x + 7, 7])["name_owned"]["bindings"]
-                            + [{"binding_type": "view", "source_property_name": f"({field(side, 'owned')} = 'y')", "target_property_name": "#visible"}]}},
+            # the name moves 7 right when the species is caught, to make room for BattleOverlay's caught indicator; it is
+            # drawn smaller than the level (Cobblemon's narrow DEFAULT_LARGE font fits "Charmander" before the gender at
+            # 63, which Bedrock's wider font does not) and stops short of the gender
+            # (a clipping strip, since the field's padding would otherwise end it in "...")
+            *[{key: {"type": "panel", "size": [width, 10], "offset": [x0, 8], "anchor_from": "top_left", "anchor_to": "top_left", "clips_children": True, "layer": 4,
+                     "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": f"({field(side, 'owned')} = '{owned}')", "target_property_name": "#visible"}],
+                     "controls": [{"text": {**text_label("text", field(side, "name"), [0, 0], scale=0.8)["text"], "size": [140, 10]}}]}}
+              for key, owned, x0, width in (("name", "n", info_x, 62), ("name_owned", "y", info_x + 7, 55))],
             {"owned": {"type": "image", "size": [5, 5], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [7, 9],   # x + 7, y + 9 on either tile, at half size
                        "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
                                     "source_property_name": f"('{T}/battle/owned_' + {field(side, 'owned')})", "target_property_name": "#texture"}]}},
