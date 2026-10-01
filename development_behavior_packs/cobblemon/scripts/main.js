@@ -702,13 +702,36 @@ function takeFrom(player, ids, count) {
     }
 }
 const recipeIds = (entry) => (entry[0].startsWith("#") ? TM_TAGS[entry[0]] ?? [] : [entry[0]]);
-function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", tm: null }) {
+// the party down the machine's left, as the party HUD finds it, and whether each can learn a move (canLearnTMMove)
+function tmParty(player) {
+    try {
+        return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
+            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
+            .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
+    } catch (e) { return []; }
+}
+function tmStatus(e, move) {
+    if (!move) return "n";
+    let known = [];
+    try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? fighter(e).moves.map((mv) => mv.id); } catch (err) { }
+    if (accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e)).has(move)) return "l";
+    return (TM_SPECIES[e.typeId] ?? []).includes(TM_BY_MOVE.get(move)) ? "c" : "x";
+}
+function heldTm(player) {
+    try {
+        const item = player.getComponent(EntityComponentTypes.Inventory).container.getItem(player.selectedSlotIndex);
+        return TM_INDEX.has(item?.typeId) ? item.typeId : null;
+    } catch (e) { return null; }
+}
+function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", tm: null, pokemon: null }) {
     const learned = learnedTms(player), v = { mode: state.mode, search: state.search ? `§f${state.search}` : "§7Search", disc: "dxx" };
     const icons = [`${UI}/tm/none`, `${UI}/tm/none`, `${UI}/tm/none`];
     let blank = `${UI}/tm/none`;
     const typeName = tmTypes()[state.type];
     let list = TMS.map((tm, n) => n).filter((n) => MOVES[TMS[n][0]] && (typeName === "all" || TMS[n][1] === typeName));
     if (state.search) list = list.filter((n) => MOVES[TMS[n][0]].name.toLowerCase().includes(state.search.toLowerCase()));
+    const party = tmParty(player), picked = party.find((e) => e.id === state.pokemon);
+    if (picked) list = list.filter((n) => (TM_SPECIES[picked.typeId] ?? []).includes(n));   // the TMs that Pokemon can learn
     list.sort((a, b) => (learned.has(TMS[b][0]) - learned.has(TMS[a][0])) || MOVES[TMS[a][0]].name.localeCompare(MOVES[TMS[b][0]].name));
     list = list.slice(0, TM_ROWS.moves);
     const chosen = state.tm !== null ? TMS[state.tm] : null, mv = chosen && MOVES[chosen[0]];
@@ -741,18 +764,35 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
     form.button("search", `${UI}/tm/none`);
     for (const icon of icons) form.button("", icon);
     form.button("", blank);
+    const held = heldTm(player), move = held ? TMS[TM_INDEX.get(held)][0] : state.mode === "s" && chosen ? chosen[0] : null;
+    const LABELS = { n: "", c: "Can Learn", x: "Cannot Learn", l: "Learned" };
+    const statuses = party.map((e) => tmStatus(e, move));
+    for (let n = 0; n < 6; n++) {
+        const e = party[n];
+        if (!e) { form.button("i----bxxo", `${UI}/tm/none`); continue; }   // blank portrait, ball and gender
+        const info = POKEMON[e.typeId], ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
+        const name = (nicknameOf(e) || info.name).normalize("NFD").replace(/[^ -~]/g, "");
+        form.button(iconOf(e.typeId, variantOf(e)) + `b${String(ball).padStart(2, "0")}` + ({ male: "m", female: "f" }[genderOf(e)] ?? "o")
+            + padBytes(`Lv.${prop(e, LEVEL) ?? info.level}`, 6) + padBytes(LABELS[statuses[n]], 12) + name, `${UI}/tm/ps_${statuses[n]}`);
+    }
     try { setState(block, "cobblemon:open", true); } catch (e) { }
     form.show(player).then((r) => {
         const again = () => system.runTimeout(() => openTmMachine(block, player, state), 1);
         if (r.canceled) { try { setState(block, "cobblemon:open", false); player.playSound("cobblemon.block.tm_machine.close"); } catch (e) { } return; }
         const pick = r.selection, back = TM_ROWS.types + TM_ROWS.moves;
         try { player.playSound("cobblemon.gui.click"); } catch (e) { }
-        if (pick < TM_ROWS.types && state.mode === "t") { state.type = pick; state.mode = "m"; }
+        if (pick < TM_ROWS.types && state.mode === "t") { state.type = pick; state.mode = "m"; state.pokemon = null; }
         else if (pick < back && state.mode === "m") {
             const k = list[pick - TM_ROWS.types];
             if (k !== undefined && learned.has(TMS[k][0])) { state.tm = k; state.mode = "s"; }
         }
-        else if (pick === back) state.mode = state.mode === "s" ? "m" : "t";
+        else if (pick === back) { state.mode = state.mode === "s" ? "m" : "t"; if (state.mode === "t") state.pokemon = null; }
+        else if (pick >= back + 7 && party[pick - back - 7]) {
+            // with a TM in hand, teach it to one that can learn it; otherwise list the TMs that Pokemon can learn
+            const e = party[pick - back - 7];
+            if (held && statuses[pick - back - 7] === "c") teachTm(player, e, held);
+            else if (!held && state.mode !== "s") { state.pokemon = e.id; state.type = 0; state.mode = "m"; }
+        }
         else if (pick === back + 1 && state.mode === "s" && chosen && !busy) {
             const missing = !countIn(player, ["cobblemon:blank_tm"]) || chosen[3].some((entry) => countIn(player, recipeIds(entry)) < entry[1]);
             if (missing) player.sendMessage("§cYou need a Blank TM and the recipe's items.");
@@ -768,7 +808,7 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
             return;
         }
         again();
-    }).catch(() => { try { setState(block, "cobblemon:open", false); } catch (e) { } });
+    }).catch((err) => { console.warn(`TM Machine: ${err}`); try { setState(block, "cobblemon:open", false); } catch (e) { } });
 }
 // BURN_TOTAL_TIME at two a tick, then the craft and the disc's reset: 114 ticks, with the start, burn and craft sounds
 function burnTm(block, player, move) {

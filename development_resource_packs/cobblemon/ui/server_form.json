@@ -91675,6 +91675,3990 @@
                   }
                 ]
               }
+            },
+            {
+              "button_90": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  9
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 90,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_91": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  43
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 91,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_92": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  77
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 92,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_93": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  111
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 93,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_94": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  145
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 94,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "button_95": {
+                "type": "button",
+                "size": [
+                  57,
+                  31
+                ],
+                "offset": [
+                  -60,
+                  179
+                ],
+                "anchor_from": "top_left",
+                "anchor_to": "top_left",
+                "collection_index": 95,
+                "layer": 8,
+                "default_control": "default",
+                "hover_control": "hover",
+                "pressed_control": "pressed",
+                "button_mappings": [
+                  {
+                    "from_button_id": "button.menu_select",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "pressed"
+                  },
+                  {
+                    "from_button_id": "button.menu_ok",
+                    "to_button_id": "button.form_button_click",
+                    "mapping_type": "focused"
+                  }
+                ],
+                "bindings": [
+                  {
+                    "binding_type": "collection_details",
+                    "binding_collection_name": "form_buttons"
+                  }
+                ],
+                "controls": [
+                  {
+                    "default": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "hover": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "pressed": {
+                      "type": "image",
+                      "size": [
+                        "100%",
+                        "100%"
+                      ],
+                      "layer": 2,
+                      "keep_ratio": false,
+                      "bindings": [
+                        {
+                          "binding_name": "#form_button_texture",
+                          "binding_type": "collection",
+                          "binding_collection_name": "form_buttons"
+                        },
+                        {
+                          "binding_type": "view",
+                          "source_property_name": "(#form_button_texture + '_hover')",
+                          "target_property_name": "#texture"
+                        }
+                      ],
+                      "controls": [
+                        {
+                          "portrait": {
+                            "type": "image",
+                            "size": [
+                              29,
+                              29
+                            ],
+                            "offset": [
+                              1,
+                              0
+                            ],
+                            "layer": 3,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "ball": {
+                            "type": "image",
+                            "size": [
+                              9,
+                              11
+                            ],
+                            "offset": [
+                              -2,
+                              -3
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.8s' * #form_button_text) - ('%.5s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "gender": {
+                            "type": "image",
+                            "size": [
+                              3,
+                              4
+                            ],
+                            "offset": [
+                              51,
+                              19
+                            ],
+                            "layer": 5,
+                            "keep_ratio": false,
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "('textures/ui/cobblemon/party/' + (('%.9s' * #form_button_text) - ('%.8s' * #form_button_text)))",
+                                "target_property_name": "#texture"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "level": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              30,
+                              5
+                            ],
+                            "offset": [
+                              24,
+                              13
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.15s' * #form_button_text) - ('%.9s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "label": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              57,
+                              5
+                            ],
+                            "offset": [
+                              0,
+                              26
+                            ],
+                            "layer": 4,
+                            "text_alignment": "center",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(('%.27s' * #form_button_text) - ('%.15s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "name": {
+                            "type": "label",
+                            "text": "#value",
+                            "shadow": true,
+                            "font_scale_factor": 0.5,
+                            "size": [
+                              46,
+                              5
+                            ],
+                            "offset": [
+                              4,
+                              19
+                            ],
+                            "layer": 4,
+                            "text_alignment": "right",
+                            "anchor_from": "top_left",
+                            "anchor_to": "top_left",
+                            "bindings": [
+                              {
+                                "binding_name": "#form_button_text",
+                                "binding_type": "collection",
+                                "binding_collection_name": "form_buttons"
+                              },
+                              {
+                                "binding_type": "view",
+                                "source_property_name": "(#form_button_text - ('%.27s' * #form_button_text))",
+                                "target_property_name": "#value"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
           ]
         }

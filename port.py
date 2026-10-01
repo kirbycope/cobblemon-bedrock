@@ -5882,6 +5882,9 @@ def create_tm_ui():
         primary, secondary = ((c >> 16 & 255, c >> 8 & 255, c & 255) for c in disc_colours[type_name])
         disc = tint(disc_base, primary); disc.alpha_composite(tint(disc_shine, secondary)); disc.alpha_composite(border); disc.save(f"{M}/d{n:02d}.png")
     for name in ("none", "none_hover", "dxx"): blank.save(f"{M}/{name}.png")
+    # TMPartySlotWidget's faces: none chosen, can learn, cannot learn, learned; the lower frame is the hovered one
+    for code, name in (("n", "party_slot"), ("c", "party_slot_learnable"), ("x", "party_slot_disabled"), ("l", "party_slot_learned")):
+        normal, hover = frames(name, 31); normal.save(f"{M}/ps_{code}.png"); hover.save(f"{M}/ps_{code}_hover.png")
 
     T = "textures/ui/cobblemon/tm"
     offsets, at = {}, 0
@@ -5970,6 +5973,22 @@ def create_tm_ui():
                                     {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}}
     for i in range(3): buttons += [shown(base_index + 3 + i, f"ricon{i}", (129 + 18 * i, 90)), shown(base_index + 3 + i, f"hicon{i}", (129 + 18 * i, 116))]
     buttons.append(shown(base_index + 6, "blank", (105, 116)))
+    # the party down the left (TMPartySlotWidget, 60 to the left, 34 apart): the button's text is the portrait code (5),
+    # the ball (3), the gender (1), the level (6), the label (12) and the name
+    def slot_part(name, source, offset, size, align, scale=0.5):
+        return {name: {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": scale, "size": list(size), "offset": list(offset), "layer": 4,
+                       "text_alignment": align, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
+    def slot_image(name, source, offset, size, layer=3):
+        return {name: {"type": "image", "size": list(size), "offset": list(offset), "layer": layer, "keep_ratio": False, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#texture"}]}}
+    slot_controls = [slot_image("portrait", "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))", (1, 0), (29, 29)),
+                     slot_image("ball", f"('textures/ui/cobblemon/party/' + {part(5, 8)})", (-2, -3), (9, 11), 5),
+                     slot_image("gender", f"('textures/ui/cobblemon/party/' + {part(8, 9)})", (51, 19), (3, 4), 5),
+                     slot_part("level", part(9, 15), (24, 13), (30, 5), "right"),
+                     slot_part("label", part(15, 27), (0, 26), (57, 5), "center"),
+                     slot_part("name", "(#form_button_text - ('%.27s' * #form_button_text))", (4, 19), (46, 5), "right")]
+    buttons += [button(base_index + 7 + n, (-60, 9 + 34 * n), (57, 31), slot_controls) for n in range(6)]
     tm = {"type": "panel", "size": [191, 140], "anchor_from": "center", "anchor_to": "center",
           "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "(not ((#title_text - 'cbm:tm') = #title_text))", "target_property_name": "#visible"}],
           "controls": controls + [scroll_list("types", "cobblemon_tm_types", (4, 24), (114, 86), "t"), scroll_list("moves", "cobblemon_tm_moves", (4, 27), (116, 83), "m"),
