@@ -5904,7 +5904,8 @@ def starter_categories():
             if not pokemon: continue
             props = dict(w.split("=", 1) for w in words[1:] if "=" in w)
             entries.append({"id": entity_id(pokemon), "level": int(props.get("level", 10)), "ball": f"cobblemon:{props.get('pokeball', 'poke_ball')}"})
-        if entries: out.append({"name": lang.get(key, key.rsplit(".", 1)[-1].title()), "pokemon": entries})
+        # randomStarter adds CategoryList's Random slot after the category's own
+        if entries: out.append({"name": lang.get(key, key.rsplit(".", 1)[-1].title()), "pokemon": entries, "random": "randomStarter = true" in block})
     return out
 
 
@@ -5912,6 +5913,8 @@ def create_starter_ui():
     St = f"{uiTextures}/starter"
     os.makedirs(St, exist_ok=True)
     src = f"{guiMain}/starterselection"
+    # the Random slot's icon, CategoryList's unknownResource (the Pokedex's unknown platform), as a portrait code
+    shutil.copyfile(f"{guiMain}/pokedex/platform_unknown.png", f"{uiTextures}/icons/iunkn.png")
     for name in ("base", "background", "platform_base", "selection_container", "selection_container_edge", "selection_container_footer",
                  "selection_container_header", "type_spacer_single"):
         shutil.copyfile(f"{src}/{name}.png", f"{St}/{name}.png")

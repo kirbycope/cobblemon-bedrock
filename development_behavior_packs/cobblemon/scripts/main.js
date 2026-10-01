@@ -4712,21 +4712,24 @@ const STARTER_CHOSEN = "cobblemon:starter_chosen";
 function openStarter(player, state = { page: 0, cat: 0, pick: 0 }) {
     if (player.getDynamicProperty(STARTER_CHOSEN)) { player.sendMessage("§7You already selected a starter!"); return; }
     const pages = Math.ceil(STARTERS.length / 3);
-    const chosen = STARTERS[state.cat].pokemon[state.pick], info = POKEMON[chosen.id];
-    const v = {
-        name: info.name, dex: num(`No. ${String(DEX_INFO[chosen.id]?.n ?? 0).padStart(4, "0")}`), portrait: iconOf(chosen.id),
-        type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), platform: `p${typeCode(info.types[0]).slice(1)}`, desc: DEX_INFO[chosen.id]?.d ?? "",
-    };
+    // a category's slots are its starters and, with randomStarter, the Random slot after them
+    const slots = (cat) => (cat ? [...cat.pokemon, ...(cat.random ? [{ random: true }] : [])] : []);
+    const chosen = slots(STARTERS[state.cat])[state.pick], info = POKEMON[chosen.id];
+    const v = chosen.random
+        ? { name: "Random", dex: "", portrait: "iunkn", type1: "t--", type2: "t--", platform: "p--",
+            desc: "A random starter Pokémon chosen from the selection pool. It's impossible to know what it will be unless it is chosen." }
+        : { name: info.name, dex: num(`No. ${String(DEX_INFO[chosen.id]?.n ?? 0).padStart(4, "0")}`), portrait: iconOf(chosen.id),
+            type1: typeCode(info.types[0]), type2: typeCode(info.types[1]), platform: `p${typeCode(info.types[0]).slice(1)}`, desc: DEX_INFO[chosen.id]?.d ?? "" };
     const shown = STARTERS.slice(state.page * 3, state.page * 3 + 3);
     for (let k = 0; k < 3; k++) {
         const cat = shown[k];
         v[`c${k}name`] = cat?.name ?? "";
-        for (let n = 0; n < 3; n++) v[`c${k}p${n}icon`] = iconOf(cat?.pokemon[n]?.id);
+        for (let n = 0; n < 3; n++) { const here = slots(cat)[n]; v[`c${k}p${n}icon`] = here?.random ? "iunkn" : iconOf(here?.id); }
     }
     const body = STARTER_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
     const form = new ActionFormData().title("cbm:starter").body(body);
     for (let k = 0; k < 3; k++) for (let n = 0; n < 3; n++) {
-        const here = shown[k]?.pokemon[n], on = state.page * 3 + k === state.cat && n === state.pick;
+        const here = slots(shown[k])[n], on = state.page * 3 + k === state.cat && n === state.pick;
         form.button("starter", `${PC_UI}/starter/${here ? (on ? "slot_on" : "slot") : "none"}`);
     }
     form.button("choose", `${PC_UI}/starter/choose`).button("exit", `${PC_UI}/summary/exit`);
@@ -4736,11 +4739,14 @@ function openStarter(player, state = { page: 0, cat: 0, pick: 0 }) {
         const pick = r.selection;
         if (pick < 9) {
             const k = Math.floor(pick / 3), n = pick % 3;
-            if (shown[k]?.pokemon[n]) { state.cat = state.page * 3 + k; state.pick = n; try { const cry = POKEMON[shown[k].pokemon[n].id]?.cry; if (cry) player.playSound(cry); } catch (e) { } }
+            const here = slots(shown[k])[n];
+            if (here) { state.cat = state.page * 3 + k; state.pick = n; try { const cry = POKEMON[here.id]?.cry; if (cry) player.playSound(cry); else player.playSound("cobblemon.gui.click"); } catch (e) { } }
             openStarter(player, state); return;
         }
         if (pick === 11 || pick === 12) { state.page = (state.page + (pick === 12 ? 1 : pages - 1)) % pages; openStarter(player, state); return; }
-        giveStarter(player, chosen);
+        // the Random slot: any starter of any category (CobbledStarterHandler.chooseStarter)
+        const pool = STARTERS.flatMap((c) => c.pokemon);
+        giveStarter(player, chosen.random ? pool[Math.floor(Math.random() * pool.length)] : chosen);
     }).catch(() => { });
 }
 
