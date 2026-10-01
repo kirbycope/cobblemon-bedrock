@@ -21,6 +21,7 @@ import { DEFENDERS } from "./defenders.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
+import { SHINY_VARIANTS, VARIANT_FORMS } from "./variants.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -2469,8 +2470,10 @@ function sortBox(player, n, mode, reverse) {
     saveBox(player, n, contents.map((rec) => (rec?.p ? rec : loose.shift() ?? null)));
 }
 
-// PC Search: the filter's words must all hold ("!" before one turns it round): holding, fainted, legendary, mythical,
-// ultrabeast, lvl=N, or else a part of the species or the nickname. A Pokemon that fails is not drawn and not chosen.
+// PC Search (Search.of): the filter's words must all hold ("!" before one turns it round): holding, fainted, legendary,
+// mythical, ultrabeast, or else a part of the species or the nickname, or a property as PokemonProperties reads one:
+// shiny, male, female, genderless, a form (alolan, galarian...), level/lvl=N, nature=, ability=, pokeball/ball=, type=,
+// friendship=N, gender=. A Pokemon that fails is not drawn and not chosen.
 function pcPasses(rec, filter) {
     if (!rec || !filter) return true;
     const info = POKEMON[rec.t] ?? {};
@@ -2483,9 +2486,31 @@ function pcPasses(rec, filter) {
         else if (w === "mythical") ok = !!info.mythical;
         else if (w === "ultrabeast" || w === "ultra_beast") ok = !!info.ultraBeast;
         else if (/^(lvl|level)=\d+$/.test(w)) ok = rec.lv === Number(w.split("=")[1]);
-        else ok = !w || (info.name ?? "").toLowerCase().includes(w) || (rec.n ?? "").toLowerCase().includes(w);
+        else ok = !w || (info.name ?? "").toLowerCase().includes(w) || (rec.n ?? "").toLowerCase().includes(w) || propertyMatches(rec, info, w);
         return inverted ? !ok : ok;
     });
+}
+// one PokemonProperties word against a stored Pokemon
+function propertyMatches(rec, info, w) {
+    const k = rec.k ?? {}, plain = (s) => String(s ?? "").toLowerCase().replace(/^cobblemon:/, "").replace(/[^a-z0-9]/g, "");
+    const [key, value] = w.includes("=") ? w.split("=") : [w, undefined];
+    if (value === undefined) {
+        if (key === "shiny") return (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0);
+        if (["male", "female", "genderless"].includes(key)) return (k["cobblemon:gender"] ?? "genderless") === key;
+        const form = VARIANT_FORMS[rec.t]?.[rec.v ?? 0];
+        return !!form && plain(form).startsWith(plain(key));
+    }
+    const v = plain(value);
+    switch (key) {
+        case "shiny": return (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0) === (v === "true" || v === "yes");
+        case "gender": return plain(k["cobblemon:gender"] ?? "genderless") === v;
+        case "nature": return plain(k["cobblemon:nature"]) === v;
+        case "ability": return plain(k["cobblemon:ability"]) === v;
+        case "ball": case "pokeball": return plain(k["cobblemon:caught_ball"] ?? "poke_ball").replace(/ball$/, "") === v.replace(/ball$/, "");
+        case "type": return (info.types ?? []).includes(v);
+        case "friendship": return Number(k["cobblemon:friendship"] ?? info.friendship ?? 50) === Number(v);
+        default: return false;
+    }
 }
 const PC_NAMES = "cobblemon:pc_names";
 
