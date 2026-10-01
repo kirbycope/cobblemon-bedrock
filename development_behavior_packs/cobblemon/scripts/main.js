@@ -911,6 +911,14 @@ const potKey = (block) => `cobblemon:pot|${block.dimension.id}|${block.location.
 function potData(block) {
     try { return JSON.parse(world.getDynamicProperty(potKey(block)) ?? "null") ?? { s: Array(13).fill(null), p: 0 }; } catch (e) { return { s: Array(13).fill(null), p: 0 }; }
 }
+// every campfire pot the world has, empty or not, for the hoppers (the "cobblemon:pots" index holds only those with something in)
+const POT_SITES = "cobblemon:pot_sites";
+function potSite(block, on) {
+    const sites = new Set(JSON.parse(world.getDynamicProperty(POT_SITES) ?? "[]")), key = potKey(block);
+    if (on === sites.has(key)) return;
+    if (on) sites.add(key); else sites.delete(key);
+    world.setDynamicProperty(POT_SITES, JSON.stringify([...sites]));
+}
 function savePot(block, data) {
     const key = potKey(block);
     world.setDynamicProperty(key, data ? JSON.stringify(data) : undefined);
@@ -949,7 +957,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
         system.run(() => {
             const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
             block.setPermutation(BlockPermutation.resolve(`cobblemon:campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
-            savePot(block, null);
+            savePot(block, null); potSite(block, true);
             consumeHand(player);
             playAt(block, "cobblemon.block.campfire_pot.set");
         });
@@ -967,7 +975,7 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     const colour = potColour(brokenBlockPermutation.type.id);
     if (!colour) return;
     dropPot(block.dimension, block.location, potData(block), colour);
-    savePot(block, null);
+    savePot(block, null); potSite(block, false);
 });
 // CookingPotScreen: a slot clicked in the inventory is picked up (framed), and an empty grid or seasoning slot clicked
 // then takes one of it (the same item there takes the stack, a different one swaps back); the picked slot clicked again moves its stack in as a shift-click
@@ -1215,6 +1223,7 @@ function rbView(player, st, data, inv) {
 
 function openPot(block, player) {
     if (!potColour(block.typeId)) return;
+    potSite(block, true);
     const state = potOpen.get(player.id) ?? { picked: null };
     state.block = block; potOpen.set(player.id, state);
     const data = potData(block), inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
@@ -1386,6 +1395,61 @@ function showPotContents(block, data) {
 // CampfireBlockEntity.serverTick: with the lid closed and a recipe in the grid the pot cooks, two a tick to 200; then
 // the result goes to the result slot (if it is empty or the same item with room), each grid slot gives up one item
 // (a bucket or bottle left behind drops beside the pot), and the cook sound plays
+// Hoppers and the campfire pot (CampfireBlockEntity as a WorldlyContainer, HopperBlockEntity): a hopper pointing into
+// the pot from above puts a seasoning in the seasoning slots and anything else in the grid, one from the sides puts
+// everything in the grid, each slot in turn taking it where it is empty or holds the same item with room; a hopper
+// under the pot takes from the result slot only. One item moves each eight ticks (the hopper's cooldown), from the
+// hopper's first slot whose item fits, and a powered (locked) hopper moves nothing. Bedrock's hoppers cannot see the
+// pot, which is a scripted block, so the script moves the items.
+const HOPPER_INTO = [["above", 0, [10, 11, 12]], ["north", 3], ["south", 2], ["west", 5], ["east", 4]];   // where the hopper is, the facing_direction that points at the pot
+function hopperAt(block) {
+    if (block?.typeId !== "minecraft:hopper") return null;
+    try { if (block.permutation.getState("toggle_bit")) return null; } catch (e) { }
+    return block.getComponent("minecraft:inventory")?.container ?? null;
+}
+function potFits(here, item) { return !here || (sameSlot(here, item) && here[1] < maxStack(item[0])); }
+system.runInterval(() => {
+    let sites = JSON.parse(world.getDynamicProperty(POT_SITES) ?? "[]");
+    // the pots that were filled before the site index existed
+    for (const key of JSON.parse(world.getDynamicProperty("cobblemon:pots") ?? "[]")) if (!sites.includes(key)) sites.push(key);
+    for (const key of sites) {
+        const [, dimId, pos] = key.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (!block) continue;   // not loaded
+        if (!potColour(block.typeId)) { potSite(block, false); continue; }
+        let data = null, changed = false;
+        for (const [side, facing, seasoningSlots] of HOPPER_INTO) {
+            let from; try { from = block[side](); } catch (e) { continue; }
+            const container = hopperAt(from);
+            if (!container) continue;
+            try { if (from.permutation.getState("facing_direction") !== facing) continue; } catch (e) { continue; }
+            data ??= potData(block);
+            for (let i = 0; i < container.size; i++) {
+                const item = stackSlot(container.getItem(i));
+                if (!item) continue;
+                const slots = seasoningSlots && SEASONINGS[item[0]] ? seasoningSlots : [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                const n = slots.find((k) => potFits(data.s[k], item));
+                if (n === undefined) continue;
+                data.s[n] = [item[0], (data.s[n]?.[1] ?? 0) + 1, ...item.slice(2)];
+                container.setItem(i, item[1] > 1 ? slotStack([item[0], item[1] - 1, ...item.slice(2)]) : undefined);
+                changed = true;
+                break;
+            }
+        }
+        // the result into a hopper below
+        const below = hopperAt(block.below());
+        if (below) {
+            data ??= potData(block);
+            const out = data.s[0];
+            if (out && !below.addItem(slotStack([out[0], 1, ...out.slice(2)]))) {
+                data.s[0] = out[1] > 1 ? [out[0], out[1] - 1, ...out.slice(2)] : null;
+                changed = true;
+            }
+        }
+        if (changed) { savePot(block, data); showPotContents(block, data); }
+    }
+}, 8);
 const potProgress = new Map();   // pot key -> progress
 system.runInterval(() => {
     for (const [id, st] of potOpen) {
@@ -2306,6 +2370,16 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
+    } else if (event.id === "cobblemon:container") {
+        // for testing: "/execute as <entity> at @s run scriptevent cobblemon:container dx dy dz" logs the items in the
+        // container that far from the block it stands in, and a campfire pot's slots
+        const [dx, dy, dz] = event.message.trim().split(/\s+/).map(Number), l = source.location;
+        try {
+            const block = source.dimension.getBlock({ x: Math.floor(l.x) + dx, y: Math.floor(l.y) + dy, z: Math.floor(l.z) + dz });
+            const container = block?.getComponent("minecraft:inventory")?.container, items = [];
+            if (container) for (let i = 0; i < container.size; i++) { const it = container.getItem(i); if (it) items.push(`${i}:${it.typeId}x${it.amount}`); }
+            console.warn(`[cobblemon] ${block?.typeId} at ${block?.location.x} ${block?.location.y} ${block?.location.z}: ${items.join(" ") || "-"}${potColour(block?.typeId) ? ` pot ${JSON.stringify(potData(block).s)}` : ""}`);
+        } catch (err) { console.warn(`container: ${err}`); }
     } else if (event.id === "cobblemon:trade_test") {
         // for testing: "/execute as <player> run scriptevent cobblemon:trade_test [species ...]" puts a scripted trader two
         // blocks in front of the player, owning a Shelmet, a Graveler and a Kadabra (or the species given), staying beside it
