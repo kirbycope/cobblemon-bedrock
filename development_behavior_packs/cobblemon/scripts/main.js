@@ -6,8 +6,10 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData } from "@minecraft/server-ui";
+import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, ITEM_ICONS } from "./pot.js";
+import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
@@ -835,6 +837,218 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     if (!isFirstEvent) return;
     system.run(() => { syncTms(player); try { player.playSound("cobblemon.block.tm_machine.open"); } catch (e) { } openTmMachine(block, player); });
 });
+
+// The campfire pot (CampfirePotItem, CampfireBlock): a pot used on a lit campfire sits on it, making Cobblemon's
+// campfire with that pot (cobblemon:campfire_<colour>), and on an unlit one does nothing unless sneaking places it as
+// a block; using the campfire opens the pot, sneaking with an empty hand takes the pot back, and breaking it drops the
+// pot and what is in it. What a pot holds is kept by the world, by place: the result slot, the nine of the grid, the
+// three seasonings, and the cooking progress.
+const POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"];
+const potColour = (id) => (id?.startsWith("cobblemon:campfire_") ? POT_COLOURS.find((c) => id === `cobblemon:campfire_${c}`) : undefined);
+const potKey = (block) => `cobblemon:pot|${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+function potData(block) {
+    try { return JSON.parse(world.getDynamicProperty(potKey(block)) ?? "null") ?? { s: Array(13).fill(null), p: 0 }; } catch (e) { return { s: Array(13).fill(null), p: 0 }; }
+}
+function savePot(block, data) {
+    const key = potKey(block);
+    world.setDynamicProperty(key, data ? JSON.stringify(data) : undefined);
+    const index = new Set(JSON.parse(world.getDynamicProperty("cobblemon:pots") ?? "[]"));
+    if (data && data.s.some(Boolean)) index.add(key); else if (!data || !data.s.some(Boolean)) index.delete(key);
+    world.setDynamicProperty("cobblemon:pots", JSON.stringify([...index]));
+}
+function playAt(block, sound) {
+    try { block.dimension.playSound(sound, { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 }); } catch (e) { }
+}
+function dropPot(dimension, location, data, colour) {
+    const at = { x: location.x + 0.5, y: location.y + 1, z: location.z + 0.5 };
+    for (const slot of data?.s ?? []) if (slot) try { dimension.spawnItem(new ItemStack(slot[0], slot[1]), at); } catch (e) { }
+    if (colour) try { dimension.spawnItem(new ItemStack(`cobblemon:campfire_pot_${colour}`, 1), at); } catch (e) { }
+}
+function removePot(block, player) {
+    const colour = potColour(block.typeId), facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
+    const data = potData(block);
+    dropPot(block.dimension, block.location, data);
+    savePot(block, null);
+    block.setPermutation(BlockPermutation.resolve("minecraft:campfire", { "minecraft:cardinal_direction": facing }));
+    if (player.getGameMode?.() !== "Creative") giveOrDrop(player, `cobblemon:campfire_pot_${colour}`);
+    playAt(block, "cobblemon.block.campfire_pot.retrieve");
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { block, player, itemStack, isFirstEvent } = event;
+    const id = block?.typeId, held = itemStack?.typeId;
+    if (id === "minecraft:campfire" && held?.startsWith("cobblemon:campfire_pot_")) {
+        const colour = held.slice("cobblemon:campfire_pot_".length);
+        if (!POT_COLOURS.includes(colour)) return;
+        let lit = false;
+        try { lit = !block.permutation.getState("extinguished"); } catch (e) { }
+        if (!lit) { if (!player.isSneaking) event.cancel = true; return; }   // an unlit campfire takes no pot
+        event.cancel = true;
+        if (!isFirstEvent) return;
+        system.run(() => {
+            const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
+            block.setPermutation(BlockPermutation.resolve(`cobblemon:campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
+            savePot(block, null);
+            consumeHand(player);
+            playAt(block, "cobblemon.block.campfire_pot.set");
+        });
+        return;
+    }
+    if (!potColour(id)) return;
+    event.cancel = true;
+    if (!isFirstEvent) return;
+    system.run(() => {
+        if (player.isSneaking) { if (!held) removePot(block, player); return; }
+        openPot(block, player);
+    });
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    const colour = potColour(brokenBlockPermutation.type.id);
+    if (!colour) return;
+    dropPot(block.dimension, block.location, potData(block), colour);
+    savePot(block, null);
+});
+// CookingPotScreen: a slot clicked in the inventory is picked up (framed), and a grid or seasoning slot clicked then
+// takes it (a different stack there swaps back); the picked slot clicked again moves its stack in as a shift-click
+// does (CookingPotMenu.quickMoveStack: the grid, and for a seasoning the seasoning slots after it), and a pot slot
+// clicked with nothing picked goes back to the inventory. The Cook button opens and closes the lid. The screen is shown
+// again after every click.
+const potOpen = new Map();   // player id -> { block, picked }
+const POT_INV = [...Array(27).keys()].map((i) => i + 9).concat([...Array(9).keys()]);   // the form's slots 13 to 48: inventory rows, then hotbar
+function potIcon(id) { return id ? `textures/${ITEM_ICONS[id] ?? "ui/cobblemon/pot/unknown"}` : `${UI}/pot/none`; }
+function maxStack(id) { try { return new ItemStack(id, 1).maxAmount; } catch (e) { return 64; } }
+// into the given inventory slots: onto stacks of the same item first, then empty ones (moveItemStackTo)
+function moveInto(slots, get, set, id, count) {
+    const most = maxStack(id);
+    for (const pass of [true, false]) for (const n of slots) {
+        if (!count) return 0;
+        const here = get(n);
+        if (pass ? !(here && here[0] === id && here[1] < most) : here) continue;
+        const take = Math.min(count, most - (here?.[1] ?? 0));
+        set(n, [id, (here?.[1] ?? 0) + take]); count -= take;
+    }
+    return count;
+}
+function potRecipe(grid) {
+    const cell = (x, y) => grid[y * 3 + x];
+    for (const r of POT_SHAPED) {
+        const h = r.rows.length, w = Math.max(...r.rows.map((row) => row.length));
+        for (let oy = 0; oy <= 3 - h; oy++) for (let ox = 0; ox <= 3 - w; ox++) for (const mirror of [false, true]) {
+            let ok = true;
+            for (let y = 0; y < 3 && ok; y++) for (let x = 0; x < 3 && ok; x++) {
+                const px = x - ox, py = y - oy, id = cell(x, y)?.[0];
+                const ch = px >= 0 && px < w && py >= 0 && py < h ? (r.rows[py][mirror ? w - 1 - px : px] ?? " ") : " ";
+                ok = ch === " " ? !id : !!id && (r.key[ch] ?? []).includes(id);
+            }
+            if (ok) return r;
+        }
+    }
+    const items = grid.filter(Boolean).map((s) => s[0]);
+    for (const r of POT_SHAPELESS) {
+        if (items.length !== r.ing.length) continue;
+        const used = Array(items.length).fill(false);
+        const fit = (k) => k === r.ing.length || items.some((id, i) => !used[i] && r.ing[k].includes(id) && ((used[i] = true), fit(k + 1) || ((used[i] = false), false)));
+        if (fit(0)) return r;
+    }
+    return null;
+}
+const REMAINDERS = { "minecraft:milk_bucket": "minecraft:bucket", "minecraft:water_bucket": "minecraft:bucket", "minecraft:honey_bottle": "minecraft:glass_bottle",
+                     "minecraft:potion": "minecraft:glass_bottle", "minecraft:dragon_breath": "minecraft:glass_bottle" };
+function openPot(block, player) {
+    if (!potColour(block.typeId)) return;
+    const state = potOpen.get(player.id) ?? { picked: null };
+    state.block = block; potOpen.set(player.id, state);
+    const data = potData(block), inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    const lid = !!block.permutation.getState("cobblemon:lid"), colour = potColour(block.typeId);
+    const recipe = potRecipe(data.s.slice(1, 10));
+    const progress = potProgress.get(potKey(block)) ?? 0, step = Math.ceil((progress / 200) * 22);
+    const v = { prog: `${progress > 0 ? "an" : "cp"}${String(progress > 0 ? Math.min(21, Math.floor((progress / 200) * 22)) : step).padStart(2, "0")}`,
+                sel: state.picked === null ? "s--" : `s${String(state.picked).padStart(2, "0")}`, title: "Campfire Pot" };
+    const form = new ActionFormData().title("cbm:pot").body(POT_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join(""));
+    for (let n = 0; n < 13; n++) { const s = data.s[n]; form.button(s && s[1] > 1 ? String(s[1]) : "", potIcon(s?.[0])); }
+    for (const slot of POT_INV) { const it = inv?.getItem(slot); form.button(it && it.amount > 1 ? String(it.amount) : "", potIcon(it?.typeId)); }
+    form.button("cook", `${UI}/pot/cook_${colour}_${lid ? "closed" : "open"}`);
+    form.button("", recipe && !data.s[0] ? potIcon(recipe.out) : `${UI}/pot/none`);   // the result's preview
+    form.show(player).then((r) => {
+        const st = potOpen.get(player.id);
+        if (r.canceled) { potOpen.delete(player.id); return; }
+        if (!block.isValid || !potColour(block.typeId)) { potOpen.delete(player.id); return; }
+        const pick = r.selection, d = potData(block);
+        const invGet = (n) => { const it = inv.getItem(POT_INV[n - 13]); return it ? [it.typeId, it.amount] : null; };
+        const invSet = (n, s) => inv.setItem(POT_INV[n - 13], s ? new ItemStack(s[0], s[1]) : undefined);
+        const toInventory = (s) => moveInto([...Array(36).keys()].map((i) => i + 13), invGet, invSet, s[0], s[1]);
+        const potSet = (n, s) => { d.s[n] = s; };
+        if (pick === 49) {
+            setState(block, "cobblemon:lid", !lid);
+            playAt(block, lid ? "cobblemon.block.campfire_pot.open" : "cobblemon.block.campfire_pot.close");
+        } else if (pick >= 13 && pick <= 48) {
+            const here = invGet(pick);
+            if (st.picked === pick && here) {
+                // quickMoveStack: the grid, then for a seasoning the seasoning slots
+                let left = moveInto([1, 2, 3, 4, 5, 6, 7, 8, 9], (n) => d.s[n], potSet, here[0], here[1]);
+                if (left && SEASONINGS[here[0]]) left = moveInto([10, 11, 12], (n) => d.s[n], potSet, here[0], left);
+                invSet(pick, left ? [here[0], left] : null); st.picked = null;
+            } else st.picked = here ? pick : null;
+        } else if (pick < 13) {
+            const held = st.picked !== null ? invGet(st.picked) : null;
+            if (held && pick > 0 && (pick < 10 || SEASONINGS[held[0]])) {
+                const there = d.s[pick];
+                if (there && there[0] === held[0]) {
+                    const room = maxStack(held[0]) - there[1], take = Math.min(room, held[1]);
+                    d.s[pick] = [there[0], there[1] + take]; invSet(st.picked, held[1] - take ? [held[0], held[1] - take] : null);
+                } else { d.s[pick] = held; invSet(st.picked, there); }
+                st.picked = null;
+            } else if (d.s[pick]) {
+                const left = toInventory(d.s[pick]);
+                d.s[pick] = left ? [d.s[pick][0], left] : null;
+                if (pick === 0) playAt(block, "cobblemon.block.campfire_pot.take_item");
+            }
+        }
+        savePot(block, d); showPotContents(block, d);
+        system.run(() => openPot(block, player));
+    }).catch((err) => { console.warn(`campfire pot: ${err}`); potOpen.delete(player.id); });
+}
+// the broth shows while anything is in the pot (CampfirePotBlock.OCCUPIED)
+function showPotContents(block, data) { setState(block, "cobblemon:occupied", data.s.slice(1).some(Boolean)); }
+// CampfireBlockEntity.serverTick: with the lid closed and a recipe in the grid the pot cooks, two a tick to 200; then
+// the result goes to the result slot (if it is empty or the same item with room), each grid slot gives up one item
+// (a bucket or bottle left behind drops beside the pot), and the cook sound plays
+const potProgress = new Map();   // pot key -> progress
+system.runInterval(() => {
+    for (const [id, st] of potOpen) {
+        const player = world.getPlayers().find((p) => p.id === id);
+        if (!player) { potOpen.delete(id); continue; }
+    }
+    const index = JSON.parse(world.getDynamicProperty("cobblemon:pots") ?? "[]");
+    for (const key of index) {
+        const [, dimId, pos] = key.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (!block) continue;   // not loaded
+        if (!potColour(block.typeId)) { savePot(block, null); continue; }
+        const data = potData(block), recipe = potRecipe(data.s.slice(1, 10)), lid = !!block.permutation.getState("cobblemon:lid");
+        let progress = potProgress.get(key) ?? 0;
+        const before = progress > 0;
+        const out = data.s[0];
+        if (!recipe || !lid || (out && (out[0] !== recipe.out || out[1] + recipe.n > maxStack(recipe.out)))) progress = 0;
+        else {
+            progress += 2;
+            if (progress >= 200) {
+                progress = 0;
+                data.s[0] = [recipe.out, (out?.[1] ?? 0) + recipe.n];
+                for (let n = 1; n <= 9; n++) {
+                    const s = data.s[n];
+                    if (!s) continue;
+                    if (REMAINDERS[s[0]]) try { block.dimension.spawnItem(new ItemStack(REMAINDERS[s[0]], 1), { x: x + 0.5, y: y + 1, z: z + 0.5 }); } catch (e) { }
+                    data.s[n] = s[1] > 1 ? [s[0], s[1] - 1] : null;
+                }
+                savePot(block, data); showPotContents(block, data);
+                playAt(block, "cobblemon.block.campfire_pot.cook");
+            }
+        }
+        potProgress.set(key, progress);
+        if (before !== progress > 0) setState(block, "cobblemon:cooking", progress > 0);
+    }
+}, 1);
 
 // The interact wheel (PokemonEntity.showInteractionWheel, InteractWheelGUI) on sneak and right-click on one of your own
 // Pokemon, whatever is in hand; a plain right-click on a wild Pokemon with an empty hand challenges it, as Cobblemon's

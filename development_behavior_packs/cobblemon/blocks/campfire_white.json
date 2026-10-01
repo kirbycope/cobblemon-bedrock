@@ -1,0 +1,875 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:campfire_white",
+      "menu_category": {
+        "category": "none"
+      },
+      "states": {
+        "cobblemon:lid": [
+          false,
+          true
+        ],
+        "cobblemon:occupied": [
+          false,
+          true
+        ],
+        "cobblemon:cooking": [
+          false,
+          true
+        ]
+      },
+      "traits": {
+        "minecraft:placement_direction": {
+          "enabled_states": [
+            "minecraft:cardinal_direction"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_campfire_white_closed",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_vanilla_block_campfire_log",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "t1": {
+          "texture": "cobblemon_vanilla_block_campfire_log_lit",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "t2": {
+          "texture": "cobblemon_block_campfire_pot_campfire_fire",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "t3": {
+          "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_vanilla_block_campfire_log",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:transformation": {
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          7,
+          16
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          14,
+          16
+        ]
+      },
+      "minecraft:light_emission": 15,
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 2
+      },
+      "minecraft:loot": "loot_tables/blocks/campfire.json",
+      "minecraft:map_color": "#816131"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'south'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'west'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'north'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'east'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'south'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'west'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'north'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == true && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'east'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_closed_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'south'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'west'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'north'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == false && q.block_state('minecraft:cardinal_direction') == 'east'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'south'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'west'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'north'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:lid') == false && q.block_state('cobblemon:occupied') == true && q.block_state('minecraft:cardinal_direction') == 'east'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_campfire_white_open_broth",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_vanilla_block_campfire_log_lit",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t2": {
+              "texture": "cobblemon_block_campfire_pot_campfire_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t3": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_white",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t4": {
+              "texture": "cobblemon_block_campfire_pot_campfire_pot_broth",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_vanilla_block_campfire_log",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

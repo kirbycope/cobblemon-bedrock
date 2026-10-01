@@ -1216,7 +1216,7 @@ def create_sounds():
     # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
     # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "pokemon.gimmighoul.", "pc.", "gui.")): continue
+        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "block.campfire_pot.", "pokemon.gimmighoul.", "pc.", "gui.")): continue
         folder = key.split(".")[-2] if key.startswith(("item.", "block.")) else key.split(".")[0]
         sounds = []
         for sound in definition.get("sounds", []):
@@ -2993,6 +2993,85 @@ def corners_inside(origin, size, rotation, pivot):
                 x, y, z = p[0] + pivot[0], p[1] + pivot[1], p[2] + pivot[2]
                 if not (low - 8 <= x <= high - 8 and low <= y <= high and low - 8 <= z <= high - 8): return False
     return True
+
+
+def minecraft_model(name):
+    """A model from the Java client's own assets (block/template_campfire), read from the newest Minecraft jar the
+    launcher has under .minecraft/versions; None when there is none."""
+    import zipfile
+    jars = sorted(glob.glob(os.path.join(os.environ.get("APPDATA", ""), ".minecraft", "versions", "*", "*.jar")), key=os.path.getmtime)
+    for jar in reversed(jars):
+        try:
+            with zipfile.ZipFile(jar) as z: return json.loads(z.read(f"assets/minecraft/models/{name}.json"))
+        except (KeyError, zipfile.BadZipFile, OSError): continue
+    return None
+
+
+CAMPFIRE_POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"]
+
+
+def create_campfire_blocks():
+    """Cobblemon's campfire with a pot on it (CampfireBlock, CampfireBlockEntityRenderer), one block a pot colour,
+    cobblemon:campfire_<colour>: Cobblemon's campfire model (Minecraft's template_campfire with Cobblemon's fire) and
+    the pot model 7 pixels up, closed or open (cobblemon:lid) and empty or with its broth (cobblemon:occupied), turned
+    by cardinal direction as the campfire's blockstate turns. The fire, the lit logs and the broth are flipbooks."""
+    print("Creating campfire pots...")
+    template = minecraft_model("block/template_campfire")
+    if not template: print("  no Minecraft jar to read template_campfire from"); return []
+    with open(f"{resourcePack}/textures/terrain_texture.json", encoding="utf-8") as file: terrain = json.load(file)
+    textures = {"log": "minecraft:block/campfire_log", "lit_log": "minecraft:block/campfire_log_lit", "fire": "cobblemon:block/campfire_pot/campfire_fire"}
+    campfire = {"textures": textures, "elements": template["elements"]}
+    # the broth, Cobblemon's greyscale texture in BASE_BROTH_COLOR (the renderer tints it)
+    broth = Image.open(f"{cobblemon}/textures/block/campfire_pot/campfire_pot_broth.png").convert("RGBA")
+    tint = (0xFD, 0xFA, 0xCF); px = broth.load()
+    for x in range(broth.width):
+        for y in range(broth.height):
+            r, g, b, a = px[x, y]; px[x, y] = (r * tint[0] // 255, g * tint[1] // 255, b * tint[2] // 255, a)
+    made = []
+    for colour in CAMPFIRE_POT_COLOURS:
+        permutations, geometries = [], {}
+        for lid in (True, False):
+            for occupied in (False, True):
+                ref = "cobblemon:block/campfire_pot" + ("" if lid else "_open") + ("_broth" if occupied else "")
+                pot = java_model(ref) or {}
+                elements = [dict(e, **{"from": [e["from"][0], e["from"][1] + 7, e["from"][2]], "to": [e["to"][0], e["to"][1] + 7, e["to"][2]]},
+                                 **({"rotation": dict(e["rotation"], origin=[e["rotation"]["origin"][0], e["rotation"]["origin"][1] + 7, e["rotation"]["origin"][2]])} if e.get("rotation") else {}))
+                            for e in pot.get("elements", [])]
+                model = {"textures": {**textures, **pot.get("textures", {}), "pot": f"cobblemon:block/campfire_pot/campfire_pot_{colour}"},
+                         "elements": campfire["elements"] + elements}
+                cubes, instances = java_model_cubes(model)
+                gid = f"geometry.cobblemon_campfire_{colour}_{'closed' if lid else 'open'}{'_broth' if occupied else ''}"
+                write_block_geometry(gid, cubes)
+                for d, ry in (("south", 0), ("west", 90), ("north", 180), ("east", 270)):
+                    permutations.append({"condition": f"q.block_state('cobblemon:lid') == {str(lid).lower()} && q.block_state('cobblemon:occupied') == {str(occupied).lower()} "
+                                                      f"&& q.block_state('minecraft:cardinal_direction') == '{d}'",
+                                         "components": {"minecraft:geometry": gid, "minecraft:material_instances": material_instances(instances),
+                                                        "minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}})
+        block = {"format_version": "1.21.90", "minecraft:block": {
+            "description": {"identifier": f"cobblemon:campfire_{colour}", "menu_category": {"category": "none"},
+                            "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True], "cobblemon:cooking": [False, True]},
+                            "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
+            "components": {**permutations[0]["components"], "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 7, 16]},
+                           "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]}, "minecraft:light_emission": 15, "minecraft:light_dampening": 0,
+                           "minecraft:destructible_by_mining": {"seconds_to_destroy": 2}, "minecraft:loot": block_loot("campfire"),
+                           "minecraft:map_color": "#816131"},
+            "permutations": permutations}}
+        with open(f"{blocksBedrock}/campfire_{colour}.json", "w") as file: file.write(json.dumps(block, indent=2))
+        made.append(f"campfire_{colour}")
+    broth.save(f"{texturesBlocksBedrock}/block/campfire_pot/campfire_pot_broth.png")   # over the copy java_texture made
+    terrain["texture_data"].update(terrain_textures)
+    with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file: file.write(json.dumps(terrain, indent=2))
+    # the animated textures: Cobblemon's fire (2 ticks a frame) and broth (3), and Minecraft's lit logs
+    flipbooks = [{"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_fire", "atlas_tile": "cobblemon_block_campfire_pot_campfire_fire", "ticks_per_frame": 2},
+                 {"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_pot_broth", "atlas_tile": "cobblemon_block_campfire_pot_campfire_pot_broth", "ticks_per_frame": 3},
+                 {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2}]
+    with open(f"{resourcePack}/textures/flipbook_textures.json", "w") as file: file.write(json.dumps(flipbooks, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", encoding="utf-8") as file: written = file.read()
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for colour in CAMPFIRE_POT_COLOURS:
+            if f"tile.cobblemon:campfire_{colour}.name=" not in written: file.write(f"tile.cobblemon:campfire_{colour}.name={lang.get('block.cobblemon.campfire', 'Campfire')}" + chr(10))
+    print(f"Create campfire pots complete: {len(made)} blocks.")
+    return made
 
 
 def write_block_geometry(identifier, cubes):
@@ -5951,6 +6030,227 @@ def tm_recipe_icons():
     return {key: path_of(tags[key][0] if key.startswith("#") and tags.get(key) else key) for key in items}, tags
 
 
+POT_COMMON_TAGS = {"c:drinks/milk": ["minecraft:milk_bucket"], "c:foods/bread": ["minecraft:bread"], "c:mushrooms": ["minecraft:brown_mushroom", "minecraft:red_mushroom"],
+                   "c:foods/raw_meat": ["minecraft:beef", "minecraft:porkchop", "minecraft:chicken", "minecraft:mutton", "minecraft:rabbit"]}
+
+
+ICON_COLOURS = ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")
+WOODS = ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "bamboo", "crimson", "warped", "pale_oak")
+
+
+def icon_stand_ins(name):
+    """Texture files to show for a vanilla item whose own icon is a 3D render on Bedrock or named otherwise: a wooden
+    or stone piece shows its material, a coloured one its dye's colour, raw food its raw texture, a spawn egg the egg."""
+    out = [f"{name}_raw", f"{name}_normal", {"glass_bottle": "potion_bottle_empty", "potion": "potion_bottle_drinkable"}.get(name, "")]
+    if name.endswith("_spawn_egg"): out.append("spawn_egg")
+    if name.endswith("_dye"): out += [f"dye_powder_{name[:-4]}", f"dye_powder_{name[:-4]}_new"]
+    if name == "bone_meal": out.append("dye_powder_white")
+    for colour in ICON_COLOURS:
+        if name.startswith(colour + "_"):
+            rest = name[len(colour) + 1:]
+            if rest in ("wool", "carpet"): out.append(f"wool_colored_{colour}")
+            if rest.startswith("concrete"): out.append(f"concrete_{colour}")
+            if rest.startswith("stained_glass"): out.append(f"glass_{colour}")
+            if rest.startswith("terracotta"): out.append(f"hardened_clay_stained_{colour}")
+    for suffix in ("_slab", "_stairs", "_wall", "_fence_gate", "_fence", "_button", "_pressure_plate", "_door", "_trapdoor", "_sign", "_hanging_sign"):
+        if name.endswith(suffix):
+            base = name[:-len(suffix)]
+            if base in WOODS: out.append(f"planks_{base}")
+            out += [base, f"{base}_block", "_".join(reversed(base.split("_"))), f"stone_{base}", base.rstrip("s")]
+    return out
+
+
+def item_icons():
+    """Every item's icon path under textures/ for the screens that show the player's inventory: the pack's items from
+    their minecraft:icon, and Minecraft's own items (bedrock-samples' item list) by item_texture or terrain_texture."""
+    with open(f"{resourcePack}/textures/item_texture.json", encoding="utf-8") as file: pack = json.load(file)["texture_data"]
+    def first(entry):
+        tex = (entry or {}).get("textures")
+        tex = tex[0] if isinstance(tex, list) else tex
+        return tex.get("path") if isinstance(tex, dict) else tex
+    icons = {}
+    for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: item = json.load(file)["minecraft:item"]
+        icon = item["components"].get("minecraft:icon")
+        key = icon if isinstance(icon, str) else (icon or {}).get("texture") or (icon or {}).get("textures", {}).get("default")
+        if first(pack.get(key)): icons[item["description"]["identifier"]] = first(pack[key])
+    vanilla = {}
+    for name in ("item_texture", "terrain_texture"):
+        path = os.path.join(pwd, "java", "bedrock-samples", f"{name}.json")
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: data = json.loads(re.sub(r"//.*", "", file.read()))["texture_data"]
+        for key, entry in data.items():
+            if first(entry): vanilla.setdefault((name, key), first(entry))
+            tex = (entry or {}).get("textures")
+            for t in tex if isinstance(tex, list) else [tex]:
+                t = t.get("path") if isinstance(t, dict) else t
+                if isinstance(t, str): vanilla.setdefault(("file", t.rsplit("/", 1)[-1]), t)
+    items_path = os.path.join(pwd, "java", "bedrock-samples", "mojang-items.json")
+    if not os.path.exists(items_path):
+        try: urllib.request.urlretrieve("https://raw.githubusercontent.com/Mojang/bedrock-samples/main/metadata/vanilladata_modules/mojang-items.json", items_path)
+        except Exception as error: print(f"  no mojang-items.json: {error}")
+    if os.path.exists(items_path):
+        with open(items_path, encoding="utf-8") as file: ids = [i["name"] for i in json.load(file)["data_items"]]
+        for item_id in ids:
+            name = item_id.split(":", 1)[1]
+            # the key named like the item, then a texture file named like it, or with its words the other way round
+            # (wheat_seeds is seeds_wheat, milk_bucket bucket_milk, oak_log log_oak)
+            flipped = "_".join(reversed(name.split("_")))
+            for kind, key in (("item_texture", name), ("item_texture", VANILLA_TEXTURE_NAMES.get(name, name)), ("file", name), ("file", flipped),
+                              ("terrain_texture", name), ("terrain_texture", VANILLA_TEXTURE_NAMES.get(name, name)), ("file", f"{name}_top"),
+                              ("file", f"{flipped}_top"), ("file", f"{name}_side")) + tuple(("file", c) for c in icon_stand_ins(name)):
+                if (kind, key) in vanilla: icons[item_id] = vanilla[(kind, key)]; break
+    return {k: v[len("textures/"):] if v.startswith("textures/") else v for k, v in icons.items()}
+
+
+def cooking_recipes():
+    """Cobblemon's campfire pot recipes (recipe/campfire_pot): shaped ones as their pattern rows and keys, shapeless as
+    their ingredients, each ingredient the items it accepts (tags resolved), the result and count, and the seasoning
+    tag and processors, shaped first as CampfireBlockEntity looks them up; and the seasonings (data/seasonings)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import BLOCK_NAMES
+    def bedrock(item_id):
+        if item_id.startswith("minecraft:"):
+            name = item_id.split(":", 1)[1]
+            return f"minecraft:{BLOCK_NAMES.get(name, name)}"
+        return item_id
+    def accepts(entry):
+        out = []
+        for e in entry if isinstance(entry, list) else [entry]:
+            if "item" in e: out.append(bedrock(e["item"]))
+            elif "tag" in e:
+                tag = e["tag"]
+                if tag in POT_COMMON_TAGS: out += POT_COMMON_TAGS[tag]
+                elif tag in COMMON_TAGS: out.append(COMMON_TAGS[tag])
+                elif tag.startswith("cobblemon:"): out += sorted(bedrock(i if ":" in i else f"minecraft:{i}") for i in item_tag(tag.split(":", 1)[1]))
+        return sorted(set(out))
+    shaped, shapeless = [], []
+    for path in sorted(glob.glob(f"{cobblemonData}/recipe/campfire_pot/*.json")):
+        with open(path, encoding="utf-8") as file: r = json.load(file)
+        result = r.get("result", {})
+        base = {"id": os.path.basename(path)[:-5], "out": bedrock(result.get("id") or result.get("item", "")), "n": result.get("count", 1),
+                "tag": r.get("seasoningTag", "cobblemon:empty"), "proc": r.get("seasoningProcessors", [])}
+        if r.get("type") == "cobblemon:cooking_pot":
+            shaped.append({**base, "rows": r["pattern"], "key": {k: accepts(v) for k, v in r["key"].items()}})
+        else:
+            shapeless.append({**base, "ing": [accepts(i) for i in r.get("ingredients", [])]})
+    seasonings = {}
+    for path in sorted(glob.glob(f"{cobblemonData}/seasonings/*.json")):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        seasonings[bedrock(d["ingredient"])] = {k: v for k, v in d.items() if k != "ingredient"}
+    filters = {}
+    for path in glob.glob(f"{cobblemonData}/tags/item/recipe_filters/*.json"):
+        name = os.path.basename(path)[:-5]
+        filters[f"cobblemon:recipe_filters/{name}"] = sorted(bedrock(i if ":" in i else f"minecraft:{i}") for i in item_tag(f"recipe_filters/{name}"))
+    return shaped, shapeless, seasonings, filters
+
+
+def create_pot_ui():
+    """CookingPotScreen as a form (cbm:pot): Cobblemon's 176 by 166 campfire pot GUI with its title, the result slot
+    at 128, 55, the 3 by 3 grid from 33, 18, the three seasoning slots from 110, 18, the player's inventory from 8, 84
+    and hotbar at 8, 142, each slot a button showing the item's icon and count; the cook progress arrow (22 by 12 at
+    96, 39, in its 23 widths), the result's 50 percent preview, the selected slot's frame, and CookButton (20 by 20 at
+    97, 56) with the pot's closed or open icon."""
+    P = f"{uiTextures}/pot"
+    fresh(P)
+    src = f"{guiMain}/campfirepot"
+    blank = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+    for name in ("none", "none_hover"): blank.save(f"{P}/{name}.png")
+    shutil.copyfile(f"{src}/campfire_pot.png", f"{P}/base_full.png")
+    Image.open(f"{src}/campfire_pot.png").convert("RGBA").crop((0, 0, 176, 166)).save(f"{P}/base.png"); os.remove(f"{P}/base_full.png")
+    progress = Image.open(f"{src}/cook_progress.png").convert("RGBA")
+    for w in range(23):
+        out = Image.new("RGBA", (22, 12), (0, 0, 0, 0))
+        if w: out.paste(progress.crop((0, 0, w, 12)), (0, 0))
+        out.save(f"{P}/cp{w:02d}.png")
+        blank.save(f"{P}/an{w:02d}.png")   # while cooking the arrow is the animated one below
+    progress.save(f"{P}/cook_progress.png")
+    Image.new("RGBA", (16, 16), (255, 255, 255, 128)).save(f"{P}/slot_hover.png")
+    # an item whose icon the pack cannot name: a question mark on the slot
+    unknown = Image.new("RGBA", (16, 16), (0, 0, 0, 0)); ImageDraw.Draw(unknown).text((5, 2), "?", fill=(255, 255, 255, 255)); unknown.save(f"{P}/unknown.png")
+    frame = Image.new("RGBA", (18, 18), (0, 0, 0, 0)); d = ImageDraw.Draw(frame); d.rectangle((0, 0, 17, 17), outline=(255, 255, 255, 255))
+    frame.save(f"{P}/selected.png")
+    button = Image.open(f"{src}/button.png").convert("RGBA")
+    for colour in CAMPFIRE_POT_COLOURS:
+        for state, suffix in (("closed", ""), ("open", "_open")):
+            icon = Image.open(f"{cobblemon}/textures/item/campfire_pots/campfire_pot_{colour}{suffix}.png").convert("RGBA").resize((16, 16))
+            for hover, top in (("", 0), ("_hover", 20)):
+                face = button.crop((0, top, 20, top + 20)); face.alpha_composite(icon, (2, 2)); face.save(f"{P}/cook_{colour}_{state}{hover}.png")
+    # the data: recipes, seasonings, the seasoning filters, every item's icon
+    shaped, shapeless, seasonings, filters = cooking_recipes()
+    with open(f"{scriptsBedrock}/pot.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: Cobblemon's campfire pot recipes (shaped, shapeless), seasonings and seasoning filters, and every item's icon\n")
+        file.write("export const POT_SHAPED = " + json.dumps(shaped, separators=(",", ":")) + ";\n")
+        file.write("export const POT_SHAPELESS = " + json.dumps(shapeless, separators=(",", ":")) + ";\n")
+        file.write("export const SEASONINGS = " + json.dumps(seasonings, separators=(",", ":")) + ";\n")
+        file.write("export const SEASONING_FILTERS = " + json.dumps(filters, separators=(",", ":")) + ";\n")
+        file.write("export const ITEM_ICONS = " + json.dumps(item_icons(), separators=(",", ":")) + ";\n")
+
+    T = "textures/ui/cobblemon/pot"
+    layout = [("prog", 4), ("sel", 3), ("title", 0)]
+    offsets, at = {}, 0
+    for name, width in layout: offsets[name] = (at, at + width); at += width
+    def field(name):
+        a, b = offsets[name]
+        if b == a: return f"(#form_text - ('%.{a}s' * #form_text))"
+        return f"('%.{b}s' * #form_text)" if a == 0 else f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
+    def bound(source, target):
+        return [{"binding_name": "#form_text"}, {"binding_type": "view", "source_property_name": source, "target_property_name": target}]
+    slots = [(128, 55)] + [(33 + j * 18, 18 + i * 18) for i in range(3) for j in range(3)] + [(110 + i * 18, 18) for i in range(3)] \
+        + [(8 + j * 18, 84 + i * 18) for i in range(3) for j in range(9)] + [(8 + i * 18, 142) for i in range(9)]
+    controls = [{"base": {"type": "image", "texture": f"{T}/base", "size": [176, 166], "layer": 1}},
+                {"title": {"type": "label", "text": "#value", "color": [64 / 255, 64 / 255, 64 / 255], "shadow": False, "size": [176, 10], "offset": [0, 6],
+                           "anchor_from": "top_left", "anchor_to": "top_left", "text_alignment": "center", "layer": 3, "bindings": bound(field("title"), "#value")}},
+                {"progress": {"type": "image", "size": [22, 12], "offset": [96, 39], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                              "bindings": bound(f"('{T}/' + {field('prog')})", "#texture")}}]
+    # while the pot cooks the arrow fills by itself for the rest of the cook (100 ticks from empty), from where it
+    # stood when the screen opened ("an" and its step), since a form is not shown again while it is open
+    for k in range(22):
+        controls.append({f"cooking_{k}": {"type": "image", "texture": f"{T}/cook_progress", "size": [22, 12], "offset": [96, 39], "anchor_from": "top_left",
+                                          "anchor_to": "top_left", "layer": 3, "clip_direction": "left", "clip_ratio": 1 - k / 22, "clip_pixelperfect": True,
+                                          "anims": [f"@server_form.cobblemon_pot_fill_{k}"],
+                                          "bindings": bound(f"({field('prog')} = 'an{k:02d}')", "#visible")}})
+    for n, (x, y) in enumerate(slots):
+        code = f"s{n:02d}"
+        controls.append({f"sel_{n}": {"type": "image", "texture": f"{T}/selected", "size": [18, 18], "offset": [x - 1, y - 1], "anchor_from": "top_left",
+                                      "anchor_to": "top_left", "layer": 5, "bindings": bound(f"({field('sel')} = '{code}')", "#visible")}})
+    text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    texture = {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def slot_face(hover):
+        face = {"type": "panel", "size": ["100%", "100%"], "controls": [
+            {"icon": {"type": "image", "size": [16, 16], "layer": 2, "keep_ratio": False,
+                      "bindings": [texture, {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}},
+            {"count": {"type": "label", "text": "#value", "shadow": True, "size": [18, 9], "offset": [1, 0.5], "anchor_from": "bottom_right", "anchor_to": "bottom_right",
+                       "text_alignment": "right", "layer": 4, "bindings": [text, {"binding_type": "view", "source_property_name": "#form_button_text", "target_property_name": "#value"}]}}]}
+        if hover: face["controls"].append({"hover": {"type": "image", "texture": f"{T}/slot_hover", "size": [16, 16], "layer": 3}})
+        return face
+    def button(index, offset, size, faces):
+        return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
+                                    "collection_index": index, "layer": 4, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "controls": [{"default": faces(False)}, {"hover": faces(True)}, {"pressed": faces(True)}]}}
+    def cook_face(hover):
+        return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
+                "bindings": [texture, {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{'_hover' if hover else ''}')", "target_property_name": "#texture"}]}
+    buttons = [button(n, (x, y), (16, 16), slot_face) for n, (x, y) in enumerate(slots)]
+    buttons.append(button(len(slots), (97, 56), (20, 20), cook_face))
+    # the result's preview while the slot is empty (renderFakeItem at half alpha), from the texture of the button after
+    buttons.append({"preview": {"type": "image", "size": [16, 16], "offset": [128, 55], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                                "alpha": 0.5, "keep_ratio": False, "collection_index": len(slots) + 1,
+                                "bindings": [texture, {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}})
+    pot = {"type": "panel", "size": [176, 166], "anchor_from": "center", "anchor_to": "center",
+           "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": "(not ((#title_text - 'cbm:pot') = #title_text))", "target_property_name": "#visible"}],
+           "controls": controls + [{"buttons": {"type": "collection_panel", "size": [176, 166], "collection_name": "form_buttons", "controls": buttons}}]}
+    with open(f"{scriptsBedrock}/pot_layout.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the campfire pot form's body fields and widths\n")
+        file.write("export const POT_LAYOUT = " + json.dumps(layout) + ";\n")
+    fills = {f"cobblemon_pot_fill_{k}": {"anim_type": "clip", "easing": "linear", "duration": round((22 - k) / 22 * 5, 3), "from": 1 - k / 22, "to": 0}
+             for k in range(22)}
+    return {"cobblemon_pot": pot, **fills}
+
+
 def create_tm_ui():
     M = f"{uiTextures}/tm"
     fresh(M)
@@ -6397,7 +6697,7 @@ def create_battle_ui():
                                                                                        {"pokedex@server_form.cobblemon_pokedex": {}}, {"starter@server_form.cobblemon_starter": {}},
                                                                                        {"interact@server_form.cobblemon_interact": {}},
                                                                                        {"dialogue@server_form.cobblemon_dialogue": {}},
-                                                                                       {"tm@server_form.cobblemon_tm": {}}]},
+                                                                                       {"tm@server_form.cobblemon_tm": {}}, {"pot@server_form.cobblemon_pot": {}}]},
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
@@ -6414,6 +6714,7 @@ def create_battle_ui():
     ui.update(create_interact_ui())
     ui.update(create_dialogue_ui())
     ui.update(create_tm_ui())
+    ui.update(create_pot_ui())
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
@@ -6818,6 +7119,7 @@ def main():
     create_held_display()
     write_item_names(general_items)
     create_model_blocks()
+    create_campfire_blocks()
     create_recipes()
     create_structures()
     create_battle_data()
