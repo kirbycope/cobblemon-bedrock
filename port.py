@@ -5955,6 +5955,25 @@ def create_pc_ui():
                   button(42 + len(PC_WALLPAPERS) + 7, (126, 10), (92, 12))]      # the box name, which renames the box
     # PokemonSortMode's five sort buttons, 12 apart from (92, 31), while the options show
     buttons += [button(42 + len(PC_WALLPAPERS) + n, (92 + 12 * n, 31), (10, 10)) for n in range(5)]
+    # Java's tooltips, read from the buttons' text: the sort buttons' ("Sort by name"), and two hover areas after the
+    # rest, the filter's icon (FilterWidget's, 9 before the bar and 3 down, 8 square) with its format, and the held item
+    # (3, 98) with its name
+    tip_first = 42 + len(PC_WALLPAPERS) + 8
+    def blank_hover(index, offset, size):
+        b = button(index, offset, size)
+        tip = java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (size[0] + 4, -12))
+        b[f"button_{index}"]["controls"] = [{"default": {"type": "panel", "size": ["100%", "100%"]}},
+                                            {"hover": {"type": "panel", "size": ["100%", "100%"], "controls": [tip]}},
+                                            {"pressed": {"type": "panel", "size": ["100%", "100%"], "controls": [tip]}}]
+        return b
+    buttons += [blank_hover(tip_first, (126 - 9, 183 + 3), (8, 8)), blank_hover(tip_first + 1, (3, 98), (16, 16))]
+    for b in buttons:
+        body = next(iter(b.values()))
+        if 42 + len(PC_WALLPAPERS) <= body["collection_index"] < 42 + len(PC_WALLPAPERS) + 5:
+            for state in body["controls"]:
+                key = next(iter(state))
+                if key != "default":
+                    state[key] = {**state[key], "controls": state[key].get("controls", []) + [java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (12, -12))]}
     # WallpapersScrollingWidget in the party's place (274, 29, 68 by 146): a slot of 56 by 50 every 54, 4 in, scrolling
     count = len(PC_WALLPAPERS)
     wall_buttons = [button(42 + n, (4, 4 + 54 * n), (56, 50)) for n in range(count)]

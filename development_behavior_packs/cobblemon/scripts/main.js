@@ -2630,6 +2630,7 @@ function pcInfo(v, rec, entity) {
     moves.slice(0, 4).forEach((id, n) => { v[`move${n}`] = MOVES[id]?.name ?? ""; });
     const held = kept(HELD);
     v.item = (held && HELD_ICONS[(HELD_INDEX[held] ?? 0) - 1]) || `${PC_UI}/summary/blank`;
+    v.itemName = held ? itemName(held) : "";   // the held item's tooltip
 }
 
 // PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
@@ -2777,9 +2778,13 @@ function openPc(block, player, state) {
         form.button("wall", `${PC_UI}/pc/${w ? `wps_${shown}${w[1] && unseen.includes(w[1]) ? "_new" : ""}` : "none"}`);
     }
     // the sort buttons show their reverse face after a sort by them, as a shift-click would sort
-    for (const mode of PC_SORTS) form.button(mode, `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
+    // each sort button's text is its tooltip (lang ui.sort.*)
+    const SORT_TIPS = { name: "Sort by name", level: "Sort by level", type: "Sort by type", pokedex_number: "Sort by Pok\u00e9dex number", gender: "Sort by gender" };
+    for (const mode of PC_SORTS) form.button(state.opts ? SORT_TIPS[mode] : "", `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
     form.button("info page", `${PC_UI}/pc/info_arrow`);
     form.button("filter", `${PC_UI}/pc/bar`).button("box name", `${PC_UI}/pc/bar`);
+    // the hover areas: the filter's icon (its format, lang ui.pc.filter.tooltip) and the held item (its name)
+    form.button("Format: pikachu shiny held_item lvl=1...", `${PC_UI}/pc/none`).button(v.itemName ?? "", `${PC_UI}/pc/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
@@ -2790,6 +2795,7 @@ function openPc(block, player, state) {
             if (state.opts) { state.wmode = !state.wmode; if (state.wmode) player.setDynamicProperty(WALLS_UNSEEN, "[]"); }
             again(); return;
         }
+        if (pick >= 45 + PC_WALLPAPERS.length + PC_SORTS.length) { again(); return; }   // the tooltips' hover areas
         if (pick === 43 + PC_WALLPAPERS.length + PC_SORTS.length || pick === 44 + PC_WALLPAPERS.length + PC_SORTS.length) {
             // TextWidget's 19 characters: the filter, or the box's name (an empty one gives the box its number back)
             const naming = pick === 44 + PC_WALLPAPERS.length + PC_SORTS.length;
