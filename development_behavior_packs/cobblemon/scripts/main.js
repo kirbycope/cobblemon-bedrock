@@ -20,6 +20,7 @@ import { RIDES } from "./rides.js";
 import { DEFENDERS } from "./defenders.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
+import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -2530,7 +2531,9 @@ function openPc(block, player, state) {
     form.button("wallpaper", `${PC_UI}/pc/${state.opts ? `set_wallpaper${state.wmode ? "_on" : ""}` : "none"}`);
     for (let n = 0; n < PC_WALLPAPERS.length; n++) {
         const w = available[n];
-        form.button("wall", `${PC_UI}/pc/${w ? `wps_${w[0]}${w[1] && unseen.includes(w[1]) ? "_new" : ""}` : "none"}`);
+        // the box's own wallpaper in its alternate shows the alternate's thumbnail
+        const shown = w && walls[state.box] === PC_ALT_WALLS[w[0]] ? PC_ALT_WALLS[w[0]] : w?.[0];
+        form.button("wall", `${PC_UI}/pc/${w ? `wps_${shown}${w[1] && unseen.includes(w[1]) ? "_new" : ""}` : "none"}`);
     }
     // the sort buttons show their reverse face after a sort by them, as a shift-click would sort
     for (const mode of PC_SORTS) form.button(mode, `${PC_UI}/pc/${state.opts ? `sort_${mode}${state.sorted === mode ? "_reverse" : ""}` : "none"}`);
@@ -2579,7 +2582,9 @@ function openPc(block, player, state) {
         }
         if (pick >= 42) {
             const w = available[pick - 42];
-            if (w) { walls[state.box] = w[0]; player.setDynamicProperty(WALLS, JSON.stringify(walls)); try { player.playSound("cobblemon.pc.click"); } catch (e) { } }
+            // the wallpaper the box already has, chosen again, turns to its alternate and back (Cobblemon's shift-click)
+            const alt = PC_ALT_WALLS[w?.[0]], now = walls[state.box] ?? "w05";
+            if (w) { walls[state.box] = alt && now === w[0] ? alt : w[0]; player.setDynamicProperty(WALLS, JSON.stringify(walls)); try { player.playSound("cobblemon.pc.click"); } catch (e) { } }
             again(); return;
         }
         const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
