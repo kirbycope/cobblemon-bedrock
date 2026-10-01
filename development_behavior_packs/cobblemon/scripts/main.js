@@ -794,7 +794,7 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
     if (picked) list = list.filter((n) => (TM_SPECIES[picked.typeId] ?? []).includes(n));   // the TMs that Pokemon can learn
     list.sort((a, b) => (learned.has(TMS[b][0]) - learned.has(TMS[a][0])) || MOVES[TMS[a][0]].name.localeCompare(MOVES[TMS[b][0]].name));
     list = list.slice(0, TM_ROWS.moves);
-    const chosen = state.tm !== null ? TMS[state.tm] : null, mv = chosen && MOVES[chosen[0]];
+    const chosen = state.tm !== null ? TMS[state.tm] : null, mv = chosen && MOVES[chosen[0]], recipeNames = [];
     if (mv) {
         v.power = num(mv.power > 0 ? mv.power : "-");
         v.acc = num(mv.accuracy === true || !mv.accuracy ? "-" : `${mv.accuracy}%%`);
@@ -804,6 +804,7 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
         chosen[3].slice(0, 3).forEach((entry, i) => {
             const have = countIn(player, recipeIds(entry));
             icons[i] = `textures/${TM_ICONS[entry[0]] ?? "ui/cobblemon/tm/none"}`;
+            recipeNames[i] = itemName(recipeIds(entry)[0] ?? entry[0]);
             v[`r${i}need`] = num(entry[1]);
             v[`r${i}have`] = (have >= entry[1] ? "§a" : "§c") + have;
         });
@@ -835,11 +836,14 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
         form.button(iconOf(e.typeId, variantOf(e)) + `b${String(ball).padStart(2, "0")}` + ({ male: "m", female: "f" }[genderOf(e)] ?? "o")
             + padBytes(`Lv.${prop(e, LEVEL) ?? info.level}`, 6) + padBytes(LABELS[statuses[n]], 12) + name, `${UI}/tm/ps_${statuses[n]}`);
     }
+    // the recipe items' hover areas, each one's text its name (the tooltip)
+    for (let i = 0; i < 3; i++) form.button(recipeNames[i] ?? "", `${UI}/tm/none`);
     try { setState(block, "cobblemon:open", true); } catch (e) { }
     form.show(player).then((r) => {
         const again = () => system.runTimeout(() => openTmMachine(block, player, state), 1);
         if (r.canceled) { try { setState(block, "cobblemon:open", false); player.playSound("cobblemon.block.tm_machine.close"); } catch (e) { } return; }
         const pick = r.selection, back = TM_ROWS.types + TM_ROWS.moves;
+        if (pick >= back + 13) { again(); return; }   // a recipe item's hover area
         try { player.playSound("cobblemon.gui.click"); } catch (e) { }
         if (pick < TM_ROWS.types && state.mode === "t") { state.type = pick; state.mode = "m"; state.pokemon = null; }
         else if (pick < back && state.mode === "m") {

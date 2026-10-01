@@ -7002,6 +7002,17 @@ def create_tm_ui():
                        "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                     {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}}
     for i in range(3): buttons += [shown(base_index + 3 + i, f"ricon{i}", (129 + 18 * i, 90)), shown(base_index + 3 + i, f"hicon{i}", (129 + 18 * i, 116))]
+    # the recipe's items show their names on hover, as TMMachineScreen's renderTooltip does: a hover area over each,
+    # after the party (base_index + 13 on), its text the item's name
+    def name_hover(index, offset):
+        b = button(index, offset, (16, 16))
+        tip = java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (12, -12))
+        b[f"button_{index}"]["controls"] = [{"default": {"type": "panel", "size": ["100%", "100%"]}},
+                                            {"hover": {"type": "panel", "size": ["100%", "100%"], "controls": [tip]}},
+                                            {"pressed": {"type": "panel", "size": ["100%", "100%"], "controls": [tip]}}]
+        b[f"button_{index}"]["layer"] = 7
+        return b
+    buttons += [name_hover(base_index + 13 + i, (129 + 18 * i, 90)) for i in range(3)]
     buttons.append(shown(base_index + 6, "blank", (105, 116)))
     # the party down the left (TMPartySlotWidget, 60 to the left, 34 apart): the button's text is the portrait code (5),
     # the ball (3), the gender (1), the level (6), the label (12) and the name
