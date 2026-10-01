@@ -1816,7 +1816,8 @@ function switchTo(battle, entity) {
     const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
     if (old.isValid) {
         freeze(old, false);
-        sayEach(battle, `§7${battle.ally.info.name}, come back!`, `§7${battle.player.name} withdrew ${battle.ally.info.name}!`);
+        // a fainted one is not called back, only replaced
+        if (leaving.hp > 0) sayEach(battle, `§7${battle.ally.info.name}, come back!`, `§7${battle.player.name} withdrew ${battle.ally.info.name}!`);
         recallEffect(battle.player, old, () => {
             try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
             setSize(old, 1);
