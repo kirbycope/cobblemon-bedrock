@@ -14,6 +14,7 @@ import { NPC_SCENES } from "./npc_dialogue.js";
 import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
 import { FEATURE_BARS } from "./features.js";
+import { RIDES } from "./rides.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
@@ -3408,6 +3409,7 @@ function summaryParty(player) {
 // empty slot offers the same moves without Forget
 const summarySwap = new Map(), SWAP_ROWS = 20;
 // StatWidget's pages (Stat, IVs, EVs, Other), by player; the polygon's vertices in drawStatPolygon's order
+const summaryRideStyle = new Map();   // player id -> the riding behaviour the Ride page shows
 const summaryStatTab = new Map(), HEX_ORDER = ["hp", "atk", "def", "spe", "spd", "spa"], HEX_LABELS = ["HP", "Atk", "Def", "Speed", "Sp.Def", "Sp.Atk"];   // player id -> the move slot being swapped
 function relearnable(entity, f) {
     const known = f.moves.map((m) => m.id), out = [];
@@ -3474,8 +3476,19 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const shownName = tagged || info.name;
     v.ktitle = active?.[2] ? active[2].replace("{}", shownName) : shownName;
     // the polygon: each vertex's share of 400 (a stat), 31 (an IV) or 252 (an EV), in 12 steps as letters
-    const stab = summaryStatTab.get(player.id) ?? "s";
-    v.stab = stab;
+    const rides = RIDES[source.typeId];
+    let stab = summaryStatTab.get(player.id) ?? "s";
+    if (stab === "r" && !rides) stab = "s";
+    v.stab = stab; v.rtabs = rides ? "r" : "n";
+    if (rides) {
+        // the Ride page (StatWidget's RIDE): the chosen behaviour's stats, its range's low end with no ride boosts
+        // (RidingBehaviourSettings.calculate), as shares of 100 on the pentagon in RidingStat's order
+        const [style, icon, ranges] = rides[(summaryRideStyle.get(player.id) ?? 0) % rides.length];
+        const values = ["acceleration", "skill", "speed", "stamina", "jump"].map((k) => (ranges[k] ? Math.min(ranges[k][0], ranges[k][1]) : 0));
+        const steps = values.map((val) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round((val / 100) * 12)))));
+        v.pent = steps.join("") + steps[0]; v.rsty = { air: "a", liquid: "w" }[style] ?? "l"; v.rico = `i${icon}`;
+        values.forEach((val, i) => { v[`rv${i}`] = num(Math.floor(val)); });
+    }
     const share = (k) => (stab === "v" ? (ivs[k] ?? 0) / 31 : stab === "e" ? (evs[k] ?? 0) / 252 : (k === "hp" ? f.stats.hp : f.stats[k]) / 400);
     const steps = HEX_ORDER.map((k) => String.fromCharCode(97 + Math.max(0, Math.min(12, Math.round(share(k) * 12)))));
     v.hex = steps.join("") + steps[0];
@@ -3560,6 +3573,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button("marks", `${SUMMARY_UI}/tab_marks${tab === "k" ? "_on" : ""}`);
     for (let i = 0; i < 30; i++) form.button("mark", `${SUMMARY_UI}/none`);   // the slot's face is drawn under it
     form.button("mark chosen", `${SUMMARY_UI}/none`);
+    for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
+    form.button("ride style", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -3574,8 +3589,12 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         if (pick === 73 + SWAP_ROWS) { if (mine) setProp(source, ACTIVE_MARK, undefined); showSummary(source, tab, player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
-        if (pick >= 38 + SWAP_ROWS && pick < 42 + SWAP_ROWS) {
-            summaryStatTab.set(player.id, "sveo"[pick - 38 - SWAP_ROWS]);
+        if (pick === 79 + SWAP_ROWS) {
+            if (stab === "r" && rides?.length > 1) { summaryRideStyle.set(player.id, ((summaryRideStyle.get(player.id) ?? 0) + 1) % rides.length); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
+            showSummary(source, tab, player, selected, side); return;
+        }
+        if ((pick >= 38 + SWAP_ROWS && pick < 42 + SWAP_ROWS) || (pick >= 74 + SWAP_ROWS && pick < 79 + SWAP_ROWS)) {
+            summaryStatTab.set(player.id, pick >= 74 + SWAP_ROWS ? "svero"[pick - 74 - SWAP_ROWS] : "sveo"[pick - 38 - SWAP_ROWS]);
             try { player.playSound("cobblemon.gui.click"); } catch (e) { }
             showSummary(source, tab, player, selected, side); return;
         }
