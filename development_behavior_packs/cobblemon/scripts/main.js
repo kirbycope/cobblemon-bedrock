@@ -262,7 +262,7 @@ function inflict(battle, target, status, announceFailure, source) {
 }
 
 // whether a Pokemon can act this turn, given its status
-function canAct(battle, f) {
+function canAct(battle, f, move) {
     if (f.flinched) {
         f.flinched = false;
         say(battle, `§7${f.info.name} flinched and couldn't move!`);
@@ -270,7 +270,7 @@ function canAct(battle, f) {
         return false;
     }
     if (f.status === "slp") {
-        if (f.sleep > 0) { f.sleep -= f.ability === "earlybird" ? 2 : 1; if (f.sleep >= 0) { say(battle, `§7${f.info.name} is fast asleep.`); return false; } }
+        if (f.sleep > 0) { f.sleep -= f.ability === "earlybird" ? 2 : 1; if (f.sleep >= 0) { say(battle, `§7${f.info.name} is fast asleep.`); return !!move?.sleepUsable; } }
         f.status = null; f.sleep = 0; say(battle, `§7${f.info.name} woke up!`);
     }
     if (f.status === "frz") {
@@ -281,16 +281,52 @@ function canAct(battle, f) {
     return true;
 }
 
+// Healing moves as Showdown has them: a heal share of the user's maximum HP (Recover, Soft-Boiled, Slack Off, Roost,
+// Life Dew), Moonlight, Synthesis and Morning Sun by the weather (2/3 in sun, 1/4 in other weather, else 1/2), Shore Up
+// 2/3 in a sandstorm, and Rest: full HP, its status cured, and two turns asleep. Each fails when HP is already full.
+// True when the move was one of these.
+const WEATHER_HEALS = new Set(["moonlight", "synthesis", "morningsun"]);
+const NO_SLEEP_TALK = new Set(["assist", "beakblast", "belch", "bide", "celebrate", "chatter", "copycat", "dynamaxcannon", "focuspunch",
+    "mefirst", "metronome", "mimic", "mirrormove", "naturepower", "shelltrap", "sketch", "sleeptalk", "uproar"]);
+function healMove(battle, f, move) {
+    const w = weatherOf(battle);
+    let share = move.heal ? move.heal[0] / move.heal[1] : null;
+    if (WEATHER_HEALS.has(move.id)) share = w === "sun" ? 2 / 3 : w ? 1 / 4 : 1 / 2;
+    if (move.id === "shoreup") share = w === "sand" ? 2 / 3 : 1 / 2;
+    if (move.id === "rest") {
+        if (f.status === "slp" || ["insomnia", "vitalspirit", "comatose", "purifyingsalt"].includes(f.ability)) { say(battle, "§7But it failed."); return true; }
+        if (f.hp >= f.stats.hp) { say(battle, `§7${f.info.name}'s HP is full!`); return true; }
+        f.status = "slp"; f.sleep = 2; f.hp = f.stats.hp; syncHealth(f);
+        say(battle, `§7${f.info.name} fell asleep!`); say(battle, `§a${f.info.name} restored its HP.`);
+        return true;
+    }
+    if (share === null) return false;
+    if (f.hp >= f.stats.hp) { say(battle, `§7${f.info.name}'s HP is full!`); return true; }
+    const before = f.hp;
+    f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.round(f.stats.hp * share))); syncHealth(f);
+    say(battle, `§a${f.info.name} restored its HP. §7(+${f.hp - before})`);
+    return true;
+}
+
 // indirect damage (status, recoil, items): Magic Guard ignores it
 function hurt(battle, f, amount, text) {
     if (f.ability === "magicguard" || f.hp <= 0) return;
     f.hp = Math.max(0, f.hp - Math.max(1, Math.floor(amount))); say(battle, `§7${text}`); syncHealth(f);
 }
 
-function useMove(battle, attacker, defender, move) {
+function useMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
-    if (!canAct(battle, attacker)) return;
-    if (move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
+    if (!called && !canAct(battle, attacker, move)) return;
+    if (!called && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
+    // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
+    if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
+    if (move.id === "sleeptalk") {
+        const callable = attacker.moves.filter((m) => m.id && !NO_SLEEP_TALK.has(m.id) && !MOVES[m.id]?.sleepUsable);
+        say(battle, `§e${name} used ${move.name}!`);
+        if (!callable.length) { say(battle, "§7But it failed."); return; }
+        useMove(battle, attacker, defender, callable[Math.floor(Math.random() * callable.length)], true);
+        return;
+    }
     const self = move.target === "self" || move.target === "adjacentAllyOrSelf" || move.target === "allies";
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
         let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
@@ -312,7 +348,7 @@ function useMove(battle, attacker, defender, move) {
         if (!setWeather(battle, move.weather, attacker)) say(battle, "§7But it failed!");
         return;
     }
-    if (self) { say(battle, `§e${name} used ${move.name}!`); boost(battle, attacker, move.boosts, attacker); return; }
+    if (self) { say(battle, `§e${name} used ${move.name}!`); if (!healMove(battle, attacker, move)) boost(battle, attacker, move.boosts, attacker); return; }
     if (move.flags?.includes("powder") && held(defender) === "safety_goggles") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by its Safety Goggles!`); return; }
     if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !battle.gravity) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Air Balloon)`); return;
@@ -1825,7 +1861,7 @@ function switchTo(battle, entity) {
         recallEffect(battle.player, old, () => {
             try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
             setSize(old, 1);
-        });
+        }, true);
     }
     sendOut(battle, entity, spot);
 }
@@ -2727,6 +2763,29 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (let w = 0; w < 4; w += 0.005) { if (hits({ x: l.x + w, y: l.y + top / 2, z: l.z - 4 }, { x: 0, y: 0, z: 1 })) half = w; }
         let scale; try { scale = source.getComponent("minecraft:scale")?.value; } catch (e) { }
         console.warn(`[cobblemon] hitbox ${source.typeId}: height ${top.toFixed(2)} width ${(half * 2).toFixed(2)} scale ${scale}`);
+    } else if (event.id === "cobblemon:set_props") {
+        // for testing and repairs: "/execute as <pokemon> run scriptevent cobblemon:set_props {json}" sets its dynamic
+        // properties from the object (a string or number each; objects are stored as JSON)
+        let values = {};
+        try { values = JSON.parse(event.message); } catch (err) { console.warn(`set_props: ${err}`); return; }
+        for (const [key, value] of Object.entries(values)) setProp(source, key, typeof value === "object" ? JSON.stringify(value) : value);
+        console.warn(`[cobblemon] set ${Object.keys(values).join(", ")} on ${source.typeId}`);
+    } else if (event.id === "cobblemon:sizes") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:sizes [fix]" logs the Pokemon within 48 blocks drawn
+        // at less than full size (a send-out or recall left unfinished draws them invisible), and with "fix" resets them
+        const found = [];
+        for (const e of source.dimension.getEntities({ families: ["pokemon"], location: source.location, maxDistance: 48 })) {
+            let size = 1; try { size = e.getProperty("cobblemon:size") ?? 1; } catch (err) { }
+            if (size >= 1) continue;
+            found.push(`${e.typeId}@${size.toFixed(2)}${prop(e, OWNER) ? " owned" : ""}`);
+            if (event.message.trim() === "fix") setSize(e, 1);
+        }
+        console.warn(`[cobblemon] shrunk: ${found.join(", ") || "none"}`);
+    } else if (event.id === "cobblemon:set_moves") {
+        // for testing: "/execute as <pokemon> run scriptevent cobblemon:set_moves recover rest sleeptalk tackle" sets its moves
+        const ids = event.message.trim().split(/\s+/).filter((id) => MOVES[id]).slice(0, 4);
+        if (POKEMON[source.typeId] && ids.length) setProp(source, MOVESET, JSON.stringify(ids));
+        console.warn(`[cobblemon] moves of ${source.typeId}: ${ids.join(" ")}`);
     } else if (event.id === "cobblemon:accept_challenge") {
         // for testing: "/execute as <player> run scriptevent cobblemon:accept_challenge" accepts the battle challenge
         // waiting for that player, as Accept on their Battle Request screen does
@@ -3545,6 +3604,29 @@ const CONFLICT = "cobblemon:pasture_conflict", DEFENDERS_SET = new Set(DEFENDERS
 // last hurt its trainer (DefendOwnerSensor; never a player), for ten seconds. The entity's own targeting proved
 // unreliable, so the script drives both.
 const lastStrike = new Map(), ownerAttacker = new Map();   // player id -> { id, until }
+// An owned Pokemon brought to 0 health in the world (a fall, a mob, lava) faints, as PokemonEntity.hurt sets
+// currentHealth to 0 and the Pokemon stays in its trainer's party; here the entity is the Pokemon, so the record taken
+// as it is hurt brings it back beside its trainer, fainted. A /kill still removes it.
+const lastRecord = new Map();   // entity id -> its record as of its last hurt
+world.afterEvents.entityHurt.subscribe(({ hurtEntity }) => {
+    if (!POKEMON[hurtEntity?.typeId] || !prop(hurtEntity, OWNER)) return;
+    try { lastRecord.set(hurtEntity.id, { rec: snapshot(hurtEntity), owner: prop(hurtEntity, OWNER), at: { ...hurtEntity.location }, dim: hurtEntity.dimension }); } catch (e) { }
+});
+world.afterEvents.entityDie.subscribe(({ deadEntity, damageSource }) => {
+    const kept = lastRecord.get(deadEntity?.id);
+    lastRecord.delete(deadEntity?.id);
+    if (!kept || damageSource?.cause === "override" || damageSource?.cause === "selfDestruct") return;
+    const rec = { ...kept.rec, f: true, hp: 0, k: { ...(kept.rec.k ?? {}), [FAINTED]: true } };
+    const owner = world.getPlayers().find((p) => p.id === kept.owner);
+    const name = rec.n || POKEMON[rec.t]?.name || "Your Pokemon";
+    system.run(() => {
+        try {
+            if (owner) { spawnStored(owner, rec, owner.location); owner.sendMessage(`§c${name} fainted!`); }
+            // a trainer who is not here: it stays where it fell, theirs and staying, until they come back
+            else spawnForParticipant({ id: kept.owner, name: rec.k?.[OWNER_NAME] ?? kept.owner, bot: { dimension: kept.dim } }, rec, kept.at);
+        } catch (e) { console.warn(`[cobblemon] could not bring back a fainted ${rec.t}: ${e}`); }
+    });
+});
 world.afterEvents.entityHurt.subscribe(({ hurtEntity, damageSource }) => {
     const by = damageSource?.damagingEntity;
     if (hurtEntity?.typeId !== "minecraft:player" || !by?.isValid || by.typeId === "minecraft:player" || POKEMON[by.typeId]) return;
@@ -5432,7 +5514,14 @@ function sizeCategory(e) {
     return SIZE_CATEGORIES[Math.max(0, Math.min(SIZE_CATEGORIES.length - 1, Math.floor(Math.min(range, Math.max(0, scaleOf(e) - SIZE_MIN)) / seg)))];
 }
 world.afterEvents.entitySpawn.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) system.runTimeout(() => { if (entity.isValid) showScale(entity); }, 2); });
-world.afterEvents.entityLoad.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) showScale(entity); });
+world.afterEvents.entityLoad.subscribe(({ entity }) => {
+    if (!POKEMON[entity?.typeId]) return;
+    showScale(entity);
+    // a send-out, recall or capture cut short (a restart, an unloaded chunk) leaves it drawn at less than full size,
+    // which is invisible; one that loads like that is put back
+    let size = 1; try { size = entity.getProperty("cobblemon:size") ?? 1; } catch (e) { }
+    if (size < 1 && !capturing.has(entity.id) && !recalling.has(entity.id)) setSize(entity, 1);
+});
 function setSize(entity, size, red = 0) {
     try { entity.setProperty("cobblemon:size", Math.max(0, Math.min(1, size))); entity.setProperty("cobblemon:red", Math.max(0, Math.min(1, red))); } catch (e) { }
 }
@@ -5473,7 +5562,9 @@ function beamIn(pokemon, source, capture, onGone) {
     timeline(total, (t) => {
         const ratio = t < BEAM_EXTEND ? t / BEAM_EXTEND : t > BEAM_EXTEND + BEAM_SHRINK ? 1 - Math.min(1, (t - BEAM_EXTEND - BEAM_SHRINK) / BEAM_EXTEND) : 1;
         const shrink = Math.min(1, Math.max(0, (t - BEAM_EXTEND) / BEAM_SHRINK));
-        if (pokemon.isValid) setSize(pokemon, 1 - shrink, Math.min(0.6, shrink));
+        // once it is gone into the ball it is left alone: a Pokemon only withdrawn (a battle switch) has been put back
+        // at full size by onGone, and the beam's last ticks must not shrink it again
+        if (pokemon.isValid && t <= BEAM_EXTEND + BEAM_SHRINK) setSize(pokemon, 1 - shrink, Math.min(0.6, shrink));
         const ball = source(), body = pokemon.isValid ? bodyCentre(pokemon) : ball;
         if (beam.isValid) {
             if (capture) drawBeam(beam, ball, body, 0, ratio);
@@ -5530,11 +5621,12 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
     });
 }
 
-// Recall: the red beam runs from the Pokemon to the hand and takes it in; then() runs as it vanishes
+// Recall: the red beam runs from the Pokemon to the hand and takes it in; then() runs as it vanishes. A battle switch
+// (stays) keeps it in the party, since a replacement can be asked for on the same tick and may pick it again
 const recalling = new Set();   // Pokemon on their way back into a ball, already out of the party
-function recallEffect(player, entity, then) {
+function recallEffect(player, entity, then, stays = false) {
     if (!entity?.isValid || !player?.isValid) { then?.(); return; }
-    recalling.add(entity.id);
+    if (!stays) recalling.add(entity.id);
     try { entity.addEffect("slowness", 40, { amplifier: 255, showParticles: false }); } catch (e) { }
     beamIn(entity, () => handOf(player), false, () => { recalling.delete(entity.id); then?.(); });
 }

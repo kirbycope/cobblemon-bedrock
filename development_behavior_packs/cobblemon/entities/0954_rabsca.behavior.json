@@ -379,6 +379,36 @@
             "minecraft:damage_sensor": {
                 "triggers": [
                     {
+                        "cause": "suffocation",
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "self",
+                                "value": "owned"
+                            }
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "all_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "self",
+                                        "value": "owned"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "damager",
+                                        "value": "player"
+                                    }
+                                ]
+                            }
+                        },
+                        "deals_damage": false
+                    },
+                    {
                         "on_damage": {
                             "filters": {
                                 "test": "is_family",

@@ -200,6 +200,30 @@ def add_air_riding_tiers():
     print(f"Air riding tiers: {n} fliers.")
 
 
+def add_owned_protection():
+    """PokemonEntity.isInvulnerableTo: an owned Pokemon cannot be hurt by players or by suffocation (IN_WALL), which a
+    Pokemon put down beside its trainer or sent out of battle into a block would otherwise die of. Two damage_sensor
+    triggers, each only for the owned family, ahead of the species' own."""
+    owned = {"test": "is_family", "subject": "self", "value": "owned"}
+    triggers = [{"cause": "suffocation", "on_damage": {"filters": owned}, "deals_damage": False},
+                {"on_damage": {"filters": {"all_of": [owned, {"test": "is_family", "subject": "damager", "value": "player"}]}}, "deals_damage": False}]
+    count = 0
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        if not re.match(r"\d{4}_", os.path.basename(path)): continue
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); components = data["minecraft:entity"]["components"]
+        sensor = components.setdefault("minecraft:damage_sensor", {"triggers": []})
+        if isinstance(sensor.get("triggers"), dict): sensor["triggers"] = [sensor["triggers"]]
+        # the newer entity format (the fliers', 1.26.30) takes deals_damage as a word
+        word = str(data.get("format_version", "")).startswith("1.26")
+        mine = [{**t, "deals_damage": "no" if word else False} for t in triggers]
+        sensor["triggers"] = mine + [t for t in sensor["triggers"] if {**t, "deals_damage": False} not in triggers]
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+        count += 1
+    print(f"Owned protection: {count} species.")
+
+
 def add_shoulder_mount():
     """PokemonEntity.tryMountingShoulder: every Pokemon gets a cobblemon:shoulder property (0, or 1 and 2 for the left
     and right shoulder, which picks its shoulder pose), and each species whose form is shoulderMountable a
@@ -2744,6 +2768,11 @@ def showdown_moves():
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
+        # healing moves: the share of the user's maximum HP they restore (Recover, Soft-Boiled, Roost), and moves that
+        # work only while the user sleeps (Sleep Talk, Snore)
+        heal = re.search(r"^    heal: \[(\d+), (\d+)\]", body, re.M)
+        if heal: move["heal"] = [int(heal.group(1)), int(heal.group(2))]
+        if re.search(r"^    sleepUsable: true", body, re.M): move["sleepUsable"] = True
         weather = re.search(r'^    weather: "(\w+)"', body, re.M)
         if weather: move["weather"] = {"raindance": "rain", "sunnyday": "sun", "sandstorm": "sand", "hail": "snow", "snow": "snow"}[weather.group(1).lower()]
         crit = re.search(r"^    critRatio: (\d+)", body, re.M)
@@ -7849,7 +7878,7 @@ def create_battle_ui():
                    for i in range(2, 8)]
         return {f"log_{flag}": {"type": "panel", "size": [169, height], "anchor_from": "bottom_right", "anchor_to": "bottom_right", "offset": [-12, -30],
                                 "bindings": [{"binding_name": "#form_text"}, {"binding_type": "view",
-                                             "source_property_name": f"((('%.{BATTLE_LOG}s' * #form_text) - ('%.{BATTLE_LOG_FLAG}s' * #form_text)) = '{flag}')", "target_property_name": "#visible"}],
+                                             "source_property_name": f"((('%.{BATTLE_ACTORS}s' * #form_text) - ('%.{BATTLE_LOG_FLAG}s' * #form_text)) = '{flag}')", "target_property_name": "#visible"}],   # the flag alone, before the actors' names
                                 "controls": [
             {"frame": {"type": "image", "texture": f"{T}/battle/{'log_expanded' if flag == 'e' else 'log'}", "size": [169, height], "layer": 1}},
             # the lines in a scroll view that jumps to the newest on each update, as chat does; the wheel scrolls back
@@ -8445,6 +8474,7 @@ def main():
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()
+    add_owned_protection()
     add_pasture_conflict()
     create_campfire_blocks()
     create_cooking_items()
