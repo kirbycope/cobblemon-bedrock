@@ -3204,12 +3204,14 @@ function undiscoveredTm(n, ctx) {
 // SearchFilter: an entry matches when its species is registered and, by species, its name holds the search; by ability
 // or move, only once caught, one of its abilities or level-up moves does. Cobblemon's fourth kind, drops, is left out:
 // the port keeps no drop lists in the script's data
-const DEX_SEARCH = [["species", "Species Name"], ["abilities", "Ability"], ["moves", "Move Name"]];
+const DEX_SEARCH = [["species", "Species Name"], ["abilities", "Ability"], ["moves", "Move Name"], ["drops", "Drops"]];
 function dexMatches(n, known, search, by) {
     if (!search) return true;
     const info = POKEMON[NATIONAL[n]], q = search.trim().toLowerCase();
     if (!info || known === "0") return false;
     if (by === 0) return info.name.toLowerCase().includes(q);
+    // SearchByType.DROPS: any registered species whose drops' item names hold the search
+    if (by === 3) return (DEX_INFO[NATIONAL[n]]?.dr ?? []).some((d) => d.replace(/^[\d-]+x /, "").replace(/ [\d.]+%$/, "").toLowerCase().includes(q));
     if (known !== "2") return false;
     if (by === 1) return [...(info.abilities ?? []), ...(info.hidden ?? [])].some((a) => abilityName(a).toLowerCase().includes(q));
     return (info.learnset ?? []).some(([, id]) => (MOVES[id]?.name ?? "").toLowerCase().includes(q));
