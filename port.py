@@ -5738,13 +5738,6 @@ def create_pc_ui():
                         image("scroll_overlay", "pc/pasture_scroll_overlay", (273, 26), (70, 131), 5),
                         fixed("title", "Pasture", (267, 11.5), 1.0, size=(63, 10), align="center"),
                         label("count", field("count"), (273, 32), 1.0, size=(70, 10), align="center", layer=12)]
-    for n, (x, y) in enumerate(rows):
-        # above the row buttons, whose faces are the slot texture
-        pasture_controls += [picture(f"ricon{n}", "icons/", field(f"r{n}icon"), (x + 11, y), (22, 22), 20, True),
-                             label(f"rlevel{n}", field(f"r{n}level"), (x + 29, y + 17), 0.5, size=(30, 5), align="right", layer=21),
-                             label(f"rname{n}", field(f"r{n}name"), (x + 11, y + 24), 0.5, size=(45, 5), shadow=False, layer=21),
-                             picture(f"rgender{n}", "summary/g", field(f"r{n}gender"), (x + 56.5, y + 24), (2.5, 3.5), 21),
-                             picture(f"rmove{n}", "pc/move_", field(f"r{n}move"), (x + 2, y + 11), (7, 7), 21)]
     def face(state):
         return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
                 "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
@@ -5785,10 +5778,49 @@ def create_pc_ui():
     # the pasture's buttons: the box slots, the arrows, the exit, then the four rows, Recall All and the page turn on the count
     pasture_buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots[:30])]
     pasture_buttons += [button(30, (117, 9), (14, 14)), button(31, (220, 9), (14, 14)), button(32, (320, 186), (26, 13))]
-    pasture_buttons += [button(33 + n, (x, y), (62, 29)) for n, (x, y) in enumerate(rows)]
-    pasture_buttons += [button(37, (273, 161), (70, 17)), button(38, (283, 30), (50, 12))]
+    pasture_buttons += [button(33, (273, 161), (70, 17))]   # Recall All
     # the defend toggle on each of the player's own rows, 44 in and 3 down (layer 22, over the row's labels)
-    pasture_buttons += [{f"button_{39 + n}": {**button(39 + n, (x + 44, y + 3), (15, 11))[f"button_{39 + n}"], "layer": 22}} for n, (x, y) in enumerate(rows)]
+    # PasturePokemonScrollList (70 by 120, 6 in and 31 down): sixteen rows of 62 by 29, 32 apart, scrolling; each row's
+    # button text carries its Pokemon (portrait 5, gender 1, move icon 1, level 7, then the name), and the defend toggle
+    # sits 44 in and 3 down on it
+    text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def part(a, b): return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+    def row_text(name, source, offset, size, align="left", shadow=True):
+        return {name: {"type": "label", "text": "#value", "shadow": shadow, "font_scale_factor": 0.5, "size": list(size), "offset": list(offset), "layer": 4,
+                       "text_alignment": align, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
+    def row_image(name, source, offset, size):
+        return {name: {"type": "image", "size": list(size), "offset": list(offset), "layer": 4, "keep_ratio": False, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#texture"}]}}
+    row_parts = [row_image("icon", f"('{T}/icons/' + ('%.5s' * #form_button_text))", (11, 0), (22, 22)),
+                 row_image("gender", f"('{T}/summary/g' + {part(5, 6)})", (56.5, 24), (2.5, 3.5)),
+                 row_image("move", f"('{T}/pc/move_' + {part(6, 7)})", (2, 11), (7, 7)),
+                 row_text("level", part(7, 14), (29, 17), (30, 5), "right"),
+                 row_text("name", "(#form_button_text - ('%.14s' * #form_button_text))", (11, 24), (45, 5), shadow=False)]
+    def row_button(index, offset):
+        b = button(index, offset, (62, 29))[f"button_{index}"]
+        for state in b["controls"]:
+            next(iter(state.values()))["controls"] = row_parts
+        # a row with no Pokemon (empty text) is not drawn, so the list ends at the last one
+        b["bindings"] = b["bindings"] + [text, {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}]
+        return {f"button_{index}": b}
+    # each row a panel in a stack, shown only while its row has a Pokemon, so the list is as long as the pasture's; the
+    # defend toggles are a second stack laid over it the same way, since a control cannot take another index than its panel's
+    def stacked(index, child):
+        next(iter(child.values())).pop("collection_index", None)   # it takes its panel's
+        shown_row = [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                     {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}]
+        return {f"row_{index}": {"type": "panel", "size": [70, 32], "collection_index": index, "bindings": shown_row, "controls": [child]}}
+    def stack(controls):
+        return {"type": "stack_panel", "orientation": "vertical", "size": [70, "100%c"], "collection_name": "form_buttons", "layer": 1,
+                "anchor_from": "top_left", "anchor_to": "top_left", "controls": controls}
+    rows_stack = stack([stacked(34 + n, row_button(34 + n, (4, 3))) for n in range(16)])
+    defend_stack = stack([stacked(50 + n, {f"button_{50 + n}": {**button(50 + n, (4 + 44, 6), (15, 11))[f"button_{50 + n}"], "layer": 8}}) for n in range(16)])
+    pasture_list = {"type": "panel", "size": [70, "100%cm"], "controls": [{"rows": rows_stack}, {"defend": {**defend_stack, "layer": 5}}]}
+    pasture_controls.append({"list": {"type": "panel", "size": [70, 120], "offset": [273, 39], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 9, "controls": [
+        {"scroll@common.scrolling_panel": {"size": ["100%", "100%"], "$show_background": False, "$scrolling_content": "server_form.cobblemon_pasture_list",
+                                             "$scroll_size": [3, "100% - 4px"], "$scrolling_pane_size": ["100%", "100%"], "$scrolling_pane_offset": [0, 0],
+                                             "$scroll_bar_right_padding_size": [0, 0]}}]}})
     def screen(title, extra, buttons_here):
         return {"type": "panel", "size": [349, 205], "anchor_from": "center", "anchor_to": "center",
                 "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
@@ -5802,7 +5834,7 @@ def create_pc_ui():
     print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon portraits")
     with open(f"{scriptsBedrock}/pc_layout.js", "a", encoding="utf-8") as file:
         file.write("export const PC_WALLPAPERS = " + json.dumps([[c, u] for c, _, u in PC_WALLPAPERS]) + ";\n")
-    return {"cobblemon_pc": pc, "cobblemon_pasture": pasture, "cobblemon_pc_wallpapers": wall_content}
+    return {"cobblemon_pc": pc, "cobblemon_pasture": pasture, "cobblemon_pc_wallpapers": wall_content, "cobblemon_pasture_list": pasture_list}
 
 
 # The Pokedex, after PokedexGUI: the dex's own coloured base under the screen, the region with its arrows, seen and

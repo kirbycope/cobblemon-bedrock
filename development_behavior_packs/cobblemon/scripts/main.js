@@ -2853,8 +2853,6 @@ function openPasture(block, player, state) {
             if (changed) saveBox(player, n, c);
         }
     }
-    const pages = Math.max(1, Math.ceil(here.length / 4));
-    state.page %= pages;
     const contents = box(player, state.box), sel = state.sel;
     const v = { box: `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, count: num(`${here.length}/${PASTURE_LIMIT}`),
                 wall: jsonProp(player, WALLS, {})[state.box] ?? "w05", wmode: "n", opts: "n", page: "i" };
@@ -2863,33 +2861,32 @@ function openPasture(block, player, state) {
         v[`b${n}`] = iconOf(contents[n]?.t, contents[n]?.v); v[`s${n}`] = sel && sel.box === state.box && sel.slot === n ? "y" : "n";
         v[`q${n}`] = contents[n]?.p ? "y" : "n";
     }
-    const shown = here.slice(state.page * 4, state.page * 4 + 4);
-    for (let n = 0; n < 4; n++) {
-        const e = shown[n];
-        if (!e) { Object.assign(v, { [`r${n}icon`]: "i----", [`r${n}gender`]: "o", [`r${n}slot`]: "e", [`r${n}move`]: "n" }); continue; }
-        const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
-        Object.assign(v, {
-            [`r${n}icon`]: iconOf(e.typeId, variantOf(e)), [`r${n}level`]: `Lv. ${prop(e, LEVEL) ?? info.level}`,
-            [`r${n}name`]: nicknameOf(e) || info.name,
-            [`r${n}gender`]: { male: "m", female: "f" }[genderOf(e)] ?? "o", [`r${n}slot`]: own ? "o" : "n", [`r${n}move`]: own ? "y" : "n",
-        });
-    }
+    const shown = here.slice(0, PASTURE_LIMIT);
     const body = PC_LAYOUT.map(([k, width]) => (width ? padBytes(v[k] ?? "", width) : v[k] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pasture").body(body);
     for (let n = 0; n < 30; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
     form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("exit", `${PC_UI}/summary/exit`);
-    for (let n = 0; n < 4; n++) form.button("row", `${PC_UI}/pc/row_${v[`r${n}slot`]}`);
-    form.button("recall", `${PC_UI}/pc/recall_all`).button("page", `${PC_UI}/pc/page`);
+    form.button("recall", `${PC_UI}/pc/recall_all`);
+    // the list's rows, each carrying its Pokemon in its text (portrait, gender, move icon, level, name), and an empty
+    // row's text left empty so the list ends there
+    for (let n = 0; n < PASTURE_LIMIT; n++) {
+        const e = shown[n];
+        if (!e) { form.button("", `${PC_UI}/pc/none`); continue; }
+        const own = prop(e, OWNER) === player.id, info = POKEMON[e.typeId];
+        const name = (nicknameOf(e) || info.name).normalize("NFD").replace(/[^ -~]/g, "");
+        form.button(iconOf(e.typeId, variantOf(e)) + ({ male: "m", female: "f" }[genderOf(e)] ?? "o") + (own ? "y" : "n") + padBytes(`Lv. ${prop(e, LEVEL) ?? info.level}`, 7) + name,
+                    `${PC_UI}/pc/row_${own ? "o" : "n"}`);
+    }
     // the defend toggle (PastureSlotIconConflictButton) on the player's own rows of species that defend
-    for (let n = 0; n < 4; n++) {
+    for (let n = 0; n < PASTURE_LIMIT; n++) {
         const e = shown[n], can = e && prop(e, OWNER) === player.id && DEFENDERS_SET.has(e.typeId);
-        form.button("defend", `${PC_UI}/pc/def_${can ? (prop(e, CONFLICT) ? "y" : "n") : "x"}`);
+        form.button(e ? "defend" : "", `${PC_UI}/pc/def_${can ? (prop(e, CONFLICT) ? "y" : "n") : "x"}`);   // empty text: no row
     }
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 32) return;
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPasture(block, player, state), delay);
-        if (pick >= 39 && pick <= 42) {
-            const e = shown[pick - 39];
+        if (pick >= 50 && pick < 50 + PASTURE_LIMIT) {
+            const e = shown[pick - 50];
             if (e?.isValid && prop(e, OWNER) === player.id && DEFENDERS_SET.has(e.typeId)) {
                 const on = !prop(e, CONFLICT);
                 setProp(e, CONFLICT, on || undefined);
@@ -2898,8 +2895,7 @@ function openPasture(block, player, state) {
             again(); return;
         }
         if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
-        if (pick === 38) { state.page = (state.page + 1) % pages; again(); return; }
-        if (pick === 37) {
+        if (pick === 33) {
             for (const e of here) if (prop(e, OWNER) === player.id) recall(player, e, block);
             again(14); return;
         }
@@ -2909,7 +2905,7 @@ function openPasture(block, player, state) {
             if (rec?.p) player.sendMessage("§7That Pokemon is already out in a pasture.");
             again(); return;
         }
-        const row = shown[pick - 33];
+        const row = pick >= 34 && pick < 34 + PASTURE_LIMIT ? shown[pick - 34] : undefined;
         if (row) {
             if (prop(row, OWNER) === player.id) { recall(player, row, block); again(14); }
             else { player.sendMessage("§7That Pokemon isn't yours."); again(); }
