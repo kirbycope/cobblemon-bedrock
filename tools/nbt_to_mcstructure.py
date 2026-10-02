@@ -227,6 +227,26 @@ def brushable(block_name, loot_table):
         LootTable=Tag(STRING, loot_table), LootTableSeed=Tag(INT, 0), type=Tag(STRING, f"minecraft:{block_name}")))
 
 
+# the pack's gilded and Gimmighoul chests are custom blocks, which hold no block entity, so a loot table given one is
+# its number in CHEST_LOOT (filled by port.py), kept in two block states (a state holds at most 16 values) that
+# scripts/main.js reads when the chest is first opened
+CHEST_LOOT = []
+def chest_loot_states(table):
+    n = CHEST_LOOT.index(table) + 1 if table in CHEST_LOOT else 0
+    return {"cobblemon:loot_set": Tag(INT, n // 16), "cobblemon:loot": Tag(INT, n % 16)}
+
+
+# Java containers that can carry a loot table, and the block entity Bedrock gives each
+CONTAINER_ENTITIES = {"chest": "Chest", "trapped_chest": "Chest", "barrel": "Barrel"}
+
+
+def container(block_name, loot_table):
+    """Block entity data for a chest or barrel that fills from a loot table when first opened."""
+    return compound(block_entity_data=compound(
+        id=Tag(STRING, CONTAINER_ENTITIES[block_name]), isMovable=Tag(BYTE, 1), Items=Tag(LIST, [], COMPOUND),
+        LootTable=Tag(STRING, loot_table), LootTableSeed=Tag(INT, 0)))
+
+
 def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None):
     """Write one .mcstructure; returns the set of Bedrock names it uses. Unmapped Java names are counted into
     `unmapped` (a dict) when given; `processors` (from parse_processors) run over every block first, with a
@@ -271,11 +291,17 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
             # a jigsaw block leaves its final state behind, usually air
             java_name, props = block.get("nbt", {}).get("final_state", "minecraft:air").split("[")[0], {}
         java_name, props, loot = apply_processors(java_name, props, processors or [], rng)
+        loot = loot or (block.get("nbt") or {}).get("LootTable")   # a chest or barrel saved with its own table
         if air_as_void and java_name in ("minecraft:air", "minecraft:cave_air"): continue
         key = block_key(java_name, props)
         if key == -1: continue
+        if loot and key[0].startswith("cobblemon:") and key[0].endswith(("gilded_chest", "gimmighoul_chest")) and loot in CHEST_LOOT:
+            key = (key[0], json.dumps({k: (t.kind, t.value) for k, t in chest_loot_states(loot).items()}, sort_keys=True))
         index = (x * sy + y) * sz + z
         layer[index] = palette_index(key)
+        if loot and loot_path and key[0] in CONTAINER_ENTITIES:
+            position_data[str(index)] = container(key[0], loot_path(loot))
+            if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
         if loot and loot_path and key[0] in ("suspicious_sand", "suspicious_gravel"):
             position_data[str(index)] = brushable(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1

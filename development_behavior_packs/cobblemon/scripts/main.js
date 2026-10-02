@@ -29,6 +29,7 @@ import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
+import { CHEST_LOOT } from "./chest_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
@@ -2935,7 +2936,7 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const dx = player.location.x - source.location.x, dz = player.location.z - source.location.z, len = Math.hypot(dx, dz) || 1;
         const loc = { x: source.location.x + (dx / len) * 1.5, y: source.location.y, z: source.location.z + (dz / len) * 1.5 };
         let foe;
-        try { foe = source.dimension.spawnEntity(typeId, loc); } catch (e) { return; }
+        try { foe = source.dimension.spawnEntity(typeId, loc); foe.addTag("trainer_pokemon"); } catch (e) { return; }
         const name = source.nameTag && source.nameTag !== "NPC" ? source.nameTag.replace(/§./g, "") : "Trainer";
         system.runTimeout(() => startBattle(player, foe, name), 5);   // the trainer's name for the battle tile
     }
@@ -4770,8 +4771,19 @@ function chestFromBlock(block) {
     let facing = "north";
     try { facing = block.permutation.getState("minecraft:cardinal_direction") ?? "north"; } catch (e) { }
     const { x, y, z } = block.location, dim = block.dimension, id = `${block.typeId}_entity`;
+    // a structure's chest names its loot table by number in its loot states (CHEST_LOOT, port.py); the table fills it
+    // the first time it is opened, scattered over its slots as a vanilla chest's loot is
+    let table;
+    try { table = CHEST_LOOT[block.permutation.getState("cobblemon:loot_set") * 16 + block.permutation.getState("cobblemon:loot") - 1]; } catch (e) { }
     block.setType("minecraft:air");
     const chest = dim.spawnEntity(id, { x: x + 0.5, y, z: z + 0.5 });
+    if (table) {
+        try {
+            const manager = world.getLootTableManager(), loot = manager.generateLootFromTable(manager.getLootTable(table)) ?? [];
+            const inv = chest.getComponent(EntityComponentTypes.Inventory)?.container, free = Array.from({ length: inv?.size ?? 0 }, (_, i) => i);
+            for (const stack of loot) { if (!free.length) break; inv.setItem(free.splice(Math.floor(Math.random() * free.length), 1)[0], stack); }
+        } catch (e) { console.warn(`[cobblemon] chest loot ${table}: ${e}`); }
+    }
     try { chest.setRotation({ x: 0, y: CHEST_TURN[facing] ?? 0 }); } catch (e) { }
     // the chest screen takes its title from the entity's name
     try { chest.nameTag = itemName(id.replace(/_entity$/, "")); } catch (e) { }
@@ -6478,7 +6490,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity }) => {
     if (!hub()) return;
     system.runTimeout(() => {
         try {
-            if (!entity.isValid || !inHub(entity.dimension, entity.location) || entity.hasTag("hub_npc")) return;
+            if (!entity.isValid || !inHub(entity.dimension, entity.location) || entity.hasTag("hub_npc") || entity.hasTag("trainer_pokemon")) return;
             const id = entity.typeId;
             const wildPokemon = !!POKEMON[id] && prop(entity, OWNER) === undefined && !entity.hasComponent(EntityComponentTypes.IsTamed)
                 && ![...battles.values()].some((b) => b.foe?.entity?.id === entity.id);

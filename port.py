@@ -3346,10 +3346,21 @@ def create_structures():
     """Convert the start pieces and write a feature and feature rule per worldgen structure."""
     print("Creating structures...")
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
-    from nbt_to_mcstructure import convert, load_invalid, parse_processors, PACK_BLOCKS
+    from nbt_to_mcstructure import convert, load_invalid, parse_processors, PACK_BLOCKS, CHEST_LOOT
     PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
     # the folders start fresh in create_blocks, which writes the apricorn trees into them first
     invalid = load_invalid(); unmapped = {}; odds = structure_spacing()
+    # the structures' chest and barrel loot (loot_table/ruins, shipwreck_coves, villages) as Bedrock loot tables at the
+    # same paths, which a container's block entity names and fills from when first opened
+    items = defined_items(); structure_loot = {}
+    CHEST_LOOT[:] = gilded_chest_loot_tables()
+    structure_loot_path = lambda name: f"loot_tables/{name.split(':', 1)[-1]}.json"
+    for folder in ("ruins", "shipwreck_coves", "villages"):
+        for source in glob.glob(f"{cobblemonData}/loot_table/{folder}/**/*.json", recursive=True):
+            rel = os.path.relpath(source, f"{cobblemonData}/loot_table").replace(os.sep, "/")
+            with open(source, encoding="utf-8") as file: table = convert_loot_table(json.load(file), items)
+            os.makedirs(os.path.dirname(f"{behaviorPack}/loot_tables/{rel}"), exist_ok=True)
+            with open(f"{behaviorPack}/loot_tables/{rel}", "w") as file: file.write(json.dumps(table, indent=2))
     placed, skipped = 0, []
     for path in sorted(glob.glob(f"{worldgenMain}/structure/**/*.json", recursive=True)):
         with open(path, encoding="utf-8") as file: data = json.load(file)
@@ -3376,7 +3387,8 @@ def create_structures():
                 processor_path = f"{worldgenMain}/processor_list/{processors.split(':', 1)[-1]}.json"
                 processors = json.load(open(processor_path, encoding="utf-8")) if os.path.exists(processor_path) else {}
             if not os.path.exists(f"{structuresBedrock}/{piece}.mcstructure"):
-                convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parse_processors((processors or {}).get("processors", [])))
+                convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parse_processors((processors or {}).get("processors", [])),
+                        loot_path=structure_loot_path, loot_counts=structure_loot)
             pieces.append((piece, element.get("weight", 1)))
         if not pieces: skipped.append(name); continue
         in_water = any(w in name for w in ("fishing_boat", "shipwreck", "deep_sea", "iceberg"))
@@ -4058,13 +4070,12 @@ def create_fossil_display():
 
 
 def create_machine_recipes():
-    """Cobblemon's crafting recipes for the three machine blocks, its common tags as the Bedrock items. The tank's
-    Revive is not an item here, so the Revival Herb takes its place."""
+    """Cobblemon's crafting recipes for the machine blocks, the PC and the pasture, its common tags as the Bedrock items."""
     os.makedirs(f"{behaviorPack}/recipes", exist_ok=True)
     tags = {"c:ingots/iron": "minecraft:iron_ingot", "c:ingots/copper": "minecraft:copper_ingot", "c:dusts/redstone": "minecraft:redstone",
             "c:gems/amethyst": "minecraft:amethyst_shard", "c:crops/wheat": "minecraft:wheat"}
     bedrock_tags = {"minecraft:planks", "minecraft:logs", "minecraft:wool"}   # item tags Bedrock recipes take as they are
-    swaps = {"cobblemon:revive": "cobblemon:revival_herb"}
+    swaps = {}
     for name in ("fossil_analyzer", "restoration_tank", "monitor", "pc", "pasture"):
         with open(f"{cobblemonData}/recipe/{name}.json", encoding="utf-8") as file: recipe = json.load(file)
         key = {}
@@ -5485,6 +5496,47 @@ def block_loot_count(name, count, items):
 
 
 GILDED_COLOURS = ["", "black_", "blue_", "green_", "pink_", "white_", "yellow_"]
+
+
+def gilded_chest_loot_tables():
+    """Every loot table Cobblemon gives a gilded or Gimmighoul chest in a structure (its processors' append_loot and the
+    chests saved with a table), in a fixed order: a chest's number in this list is what its loot states hold."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import read_nbt
+    import gzip
+    tables = set()
+    for path in glob.glob(f"{worldgenMain}/processor_list/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        for processor in data.get("processors", []):
+            processor = processor.get("delegate", processor)
+            for rule in processor.get("rules", []):
+                name = rule.get("output_state", {}).get("Name", "")
+                loot = (rule.get("block_entity_modifier") or {}).get("loot_table")
+                if loot and name.startswith("cobblemon:") and name.endswith(("gilded_chest", "gimmighoul_chest")): tables.add(loot)
+    for path in glob.glob(f"{structuresMain}/**/*.nbt", recursive=True):
+        with open(path, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
+        palette = java.get("palette", [])
+        for block in java.get("blocks", []):
+            loot = (block.get("nbt") or {}).get("LootTable")
+            if loot and "gilded_chest" in palette[block["state"]]["Name"]: tables.add(loot)
+    return sorted(tables)
+
+
+def add_chest_loot_states():
+    """The gilded and Gimmighoul chest blocks take the two loot states (gilded_chest_loot_tables), and scripts/
+    chest_loot.js lists the tables by number for main.js."""
+    tables = gilded_chest_loot_tables()
+    for path in glob.glob(f"{blocksBedrock}/*.json"):
+        name = os.path.basename(path)[:-len(".json")]
+        if not name.endswith(("gilded_chest", "gimmighoul_chest")): continue
+        with open(path, encoding="utf-8") as file: block = json.load(file)
+        states = block["minecraft:block"]["description"].setdefault("states", {})
+        states["cobblemon:loot_set"] = list(range(2)); states["cobblemon:loot"] = list(range(16))
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=4))
+    with open(f"{scriptsBedrock}/chest_loot.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py (add_chest_loot_states): the loot tables a structure's gilded and Gimmighoul chests name, by number" + chr(10))
+        file.write("export const CHEST_LOOT = " + json.dumps([t.split(":", 1)[-1] for t in tables]) + ";" + chr(10))
+    print(f"Chest loot: {len(tables)} tables.")
 
 
 def create_gilded_chests():
@@ -8783,6 +8835,7 @@ def main():
     create_book_glyphs()
     add_bait_offhand()   # after every item is written
     create_recipes()
+    add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
