@@ -112,6 +112,7 @@ species_by_number = {}
 spawn_level_by_name = {}
 lang = {}
 cobblemon_sounds = {}
+spawn_range_by_name = {}
 
 
 feature_aspects = {}   # aspect -> {"feature": name, "random": bool, "default": aspect or None}
@@ -147,9 +148,13 @@ def load_cobblemon_data():
             if not name.endswith(".json"): continue
             with open(os.path.join(root, name), encoding="utf-8") as file: data = json.load(file)
             for spawn in data.get("spawns", []):
-                low = int(str(spawn.get("level", "5")).split("-")[0])
+                low, _, high = str(spawn.get("level", "5")).partition("-")
+                low, high = int(low), int(high or low)
                 pokemon = spawn.get("pokemon", "").split(" ")[0]
                 spawn_level_by_name[pokemon] = min(low, spawn_level_by_name.get(pokemon, 999))
+                # the widest level range any of the species' wild spawns gives, for PlayerLevelRangeInfluence in main.js
+                old = spawn_range_by_name.get(pokemon)
+                spawn_range_by_name[pokemon] = [min(low, old[0]), max(high, old[1])] if old else [low, high]
     with open(f"{cobblemon}/lang/en_us.json", encoding="utf-8") as file: lang = json.load(file)
     with open(f"{cobblemon}/sounds.json", encoding="utf-8") as file: cobblemon_sounds = json.load(file)
     print(f"Loaded {len(species_by_number)} species, {len(spawn_level_by_name)} spawn levels.")
@@ -1086,6 +1091,17 @@ def add_variants(entity, species, pokemon):
         if weight > 0: roll.append({"weight": weight, "add": {"component_groups": [names[n]]}})
     spawned = events.get("minecraft:entity_spawned", {})
     events["minecraft:entity_spawned"] = {"sequence": [spawned, {"randomize": roll}]} if spawned else {"randomize": roll}
+    # a form's own spawn entries (create_spawn_rules) fire cobblemon:spawn_form_<form> through their herd event, which
+    # rolls the gender and shininess again within that form
+    for form in forms:
+        looks = [n for n, v in enumerate(variations) if v["form"] == form]
+        form_roll = []
+        for n in looks:
+            v = variations[n]
+            weight = (female_share if v["female"] else 1.0 - female_share if any(variations[k]["female"] for k in looks) else 1.0) * (1 if v["shiny"] else SHINY_ODDS - 1)
+            if round(weight * 1000) > 0:
+                form_roll.append({"weight": round(weight * 1000), "remove": {"component_groups": [g for g in names if g != names[n]]}, "add": {"component_groups": [names[n]]}})
+        if form_roll: events[f"cobblemon:spawn_form_{form}"] = {"randomize": form_roll}
 
 
 def variant_battle_overrides(pokemon, species):
@@ -1476,21 +1492,42 @@ def create_behavior_entities():
 
 
 def create_loot_tables():
-    """What Cobblemon says a species drops; items Bedrock does not have (Cobblemon's own) are left out."""
+    """Each species' loot table is left empty: scripts/main.js drops what Cobblemon's DropTable gives (the species'
+    drops, written to data.js by species_drops), when a wild Pokemon dies or is beaten in battle, since a Bedrock loot
+    table cannot take the first entry whose chance passes, attempt by attempt, as getDrops does."""
     print("Creating loot tables...")
     fresh(lootTablesBedrock)
     for pokemon in pokemons:
-        species = species_for(pokemon)
-        pools = []
-        for entry in (species or {}).get("drops", {}).get("entries", []):
-            item = entry.get("item", "")
-            if not item.startswith("minecraft:"): continue
-            low, _, high = str(entry.get("quantityRange", "1")).partition("-")
-            pool = {"rolls": 1, "entries": [{"type": "item", "name": item, "weight": 1, "functions": [{"function": "set_count", "count": {"min": int(low), "max": int(high or low)}}]}]}
-            if "percentage" in entry: pool["conditions"] = [{"condition": "random_chance", "chance": entry["percentage"] / 100}]
-            pools.append(pool)
-        with open(f"{lootTablesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps({"pools": pools}, indent=4))
+        with open(f"{lootTablesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps({"pools": []}, indent=4))
     print("Create loot tables complete.")
+
+
+def pack_item_ids():
+    """The item identifiers the packs define (items and blocks), for keeping drops and loot to items that exist."""
+    ids = set()
+    for folder in (itemsBedrock, f"{behaviorPack}/blocks"):
+        for path in glob.glob(f"{folder}/**/*.json", recursive=True):
+            try:
+                with open(path, encoding="utf-8") as file: d = json.load(file)
+            except Exception: continue
+            body = d.get("minecraft:item") or d.get("minecraft:block") or {}
+            ident = body.get("description", {}).get("identifier")
+            if ident: ids.add(ident)
+    return ids
+
+
+def species_drops(species, items):
+    """DropTable for data.js: [amount low, amount high, [[item, percentage, quantity low, quantity high, quantity,
+    maxSelectableTimes], ...]], the entries Bedrock has an item for, in Cobblemon's order."""
+    drops = (species or {}).get("drops") or {}
+    entries = []
+    for e in drops.get("entries", []):
+        item = e.get("item", "")
+        if not item.startswith("minecraft:") and item not in items: continue
+        low, _, high = str(e.get("quantityRange", e.get("quantity", 1))).partition("-")
+        entries.append([item, e.get("percentage", 100.0), int(low), int(high or low), e.get("quantity", 1), e.get("maxSelectableTimes", 1)])
+    lo, _, hi = str(drops.get("amount", 1)).partition("-")
+    return [int(lo), int(hi or lo), entries] if entries else None
 
 
 def copy_cries():
@@ -1894,9 +1931,15 @@ def create_spawn_rules():
         if not species or not pool: continue
         kind = movement_kind(species)
         conditions = []
+        form_events = set(json.load(open(f"{entitiesBedrock}/{pokemon}.behavior.json", encoding="utf-8"))["minecraft:entity"].get("events", {}))             if os.path.exists(f"{entitiesBedrock}/{pokemon}.behavior.json") else set()
         for spawn in pool.get("spawns", []):
-            if spawn.get("pokemon", "").split(" ")[0] != species_key(species): continue   # forms and shinies spawn as the base species
+            words = spawn.get("pokemon", "").split(" ")
+            if words[0] != species_key(species): continue
+            # a form's entry ("rattata alolan", "region_bias=alola") spawns that form through its herd event; a shiny
+            # or another property spawns as the species, rolled as usual
+            form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
             rule = spawn_condition(spawn, species, kind)
+            if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
             if rule: conditions.append(rule)
             else: skipped += 1
         if not conditions: continue
@@ -3104,7 +3147,7 @@ def create_battle_data():
     print("Creating battle data...")
     os.makedirs(scriptsBedrock, exist_ok=True)
     moves = showdown_moves(); chart = showdown_typechart()
-    used = set(); table = {}
+    used = set(); table = {}; items = pack_item_ids()
     for pokemon in pokemons:
         species = species_for(pokemon)
         if not species: continue
@@ -3127,7 +3170,7 @@ def create_battle_data():
         abilities = [a for a in species.get("abilities", []) if not a.startswith("h:")]
         stats = species.get("baseStats", {})
         table[entity_id(pokemon)] = {
-            "name": display_name(species), "level": level, "catchRate": catch_rate(species),
+            "name": display_name(species), "level": level, "range": spawn_range_by_name.get(species_key(species), [level, level]), "drops": species_drops(species, items), "catchRate": catch_rate(species),
             "types": [t for t in (species.get("primaryType"), species.get("secondaryType")) if t],
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)},
             "moves": learned,

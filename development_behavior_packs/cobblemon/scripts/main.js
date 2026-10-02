@@ -2322,8 +2322,9 @@ function faint(battle, fainted) {
     if (fainted === battle.foe) {
         say(battle, `§a${battle.foe.info.name} fainted! ${battle.ally.info.name} wins!`);
         try { battle.player.setDynamicProperty(BATTLE_WINS, (battle.player.getDynamicProperty(BATTLE_WINS) ?? 0) + 1); } catch (e) { }
-        // FaintInstruction: the faint animation plays, then the wild Pokemon goes
+        // FaintInstruction: the faint animation plays, then the wild Pokemon goes, leaving its drops
         const gone = battle.foe.entity, clip = FX_ANIMS[gone?.typeId]?.faint;
+        if (!battle.trainer) wildDrops(gone, true);
         try { if (clip) gone.playAnimation(clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
         if (battle.trainer) say(battle, "§6You defeated the Trainer!");
@@ -4048,14 +4049,40 @@ function applyBait(pokemon, cast) {
     }
 }
 const SHINY_ODDS = 8192, MARK_BOOST = "cobblemon:mark_boost", DROPS_REROLL = "cobblemon:drops_reroll";
-// a fished Pokemon with the drops reroll drops its loot twice, if it dies wild (PokemonServerDelegate.doDeathDrops)
-world.afterEvents.entityDie.subscribe(({ deadEntity: e }) => {
+// PokemonServerDelegate.doDeathDrops: a wild Pokemon that dies, or is beaten in battle, drops its held item and its
+// species' drops, rolled twice with a bait's drops reroll. DropTable.getDrops: an amount is chosen from the table's
+// range; each attempt takes the first entry, in order, whose percentage passes (an attempt where none passes still
+// counts), an entry taken as often as its maxSelectableTimes; ItemDropEntry drops quantityRange of its item where the
+// Pokemon was (defaultDropItemMethod ON_ENTITY)
+function getDrops(table) {
+    const [lo, hi, entries] = table, amount = lo + Math.floor(Math.random() * (hi - lo + 1));
+    let possible = entries.filter((e) => e[4] <= amount), count = 0;
+    const out = [];
+    while (count < amount && possible.length) {
+        const drop = possible.find((e) => Math.random() * 100 < e[1]);
+        if (!drop) { count++; continue; }
+        out.push(drop); count += drop[4];
+        const taken = out.filter((e) => e === drop).length, left = amount - count;
+        possible = possible.filter((e) => !(e === drop && e[5] <= taken) && e[4] <= left);
+    }
+    return out;
+}
+function wildDrops(e, battle) {
     try {
-        if (!POKEMON[e.typeId] || !prop(e, DROPS_REROLL) || prop(e, OWNER) !== undefined) return;
-        const { x, y, z } = e.location;
-        e.dimension.runCommand(`loot spawn ${x} ${y} ${z} loot "entities/${e.typeId.split(":")[1].replace(/^p/, "")}"`);
+        if (!POKEMON[e.typeId] || prop(e, OWNER) !== undefined) return;
+        const table = POKEMON[e.typeId].drops, at = { ...e.location, y: e.location.y + 0.5 };
+        const held = prop(e, "cobblemon:held");
+        if (held) e.dimension.spawnItem(new ItemStack(held, 1), at);
+        if (!table) return;
+        for (let n = prop(e, DROPS_REROLL) ? 2 : 1; n > 0; n--) {
+            for (const [item, , qlo, qhi] of getDrops(table)) {
+                const count = qlo + Math.floor(Math.random() * (qhi - qlo + 1));
+                if (count > 0) try { e.dimension.spawnItem(new ItemStack(item, count), at); } catch (err) { }
+            }
+        }
     } catch (err) { }
-});
+}
+world.afterEvents.entityDie.subscribe(({ deadEntity: e }) => wildDrops(e, false));
 function luckLevel(item) {
     try { return item.getComponent("minecraft:enchantable")?.getEnchantment("luck_of_the_sea")?.level ?? 0; } catch (e) { return 0; }
 }
@@ -5093,13 +5120,31 @@ function readyEvolutions(entity, player) {
     const seen = new Set();
     return info.evolutions.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
+// Evolution.forceEvolve's effect: the Pokemon stops where it is, a second later its evolution animation starts
+// (evo_particles' twelve-second timeline from the body's middle: sparkles, build-up, the obscuring cloud and godrays,
+// then the implosion and burst, with evolution.full), and at 11.2 seconds it becomes its evolution, which cries
+const evolvingNow = new Set();
 function evolve(entity, evolution) {
-    if (!entity.isValid) return;
+    if (!entity.isValid || evolvingNow.has(entity.id)) return;
     // an evolution that needs a held item uses it up
     if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
     setProp(entity, EVO_NOTE, undefined);
-    try { entity.dimension.playSound("cobblemon.evolution.full", entity.location); } catch (e) { }
-    entity.triggerEvent(evolution.event);
+    evolvingNow.add(entity.id);
+    try { entity.addEffect("slowness", 240, { amplifier: 255, showParticles: false }); } catch (e) { }
+    system.runTimeout(() => {
+        if (!entity.isValid) { evolvingNow.delete(entity.id); return; }
+        try {
+            const feet = entity.location, head = entity.getHeadLocation();
+            entity.dimension.spawnParticle("cobblemon:evo_particles", { x: feet.x, y: (feet.y + head.y) / 2 - 1, z: feet.z });
+            entity.dimension.playSound("cobblemon.evolution.full", feet);
+        } catch (e) { }
+    }, 20);
+    system.runTimeout(() => {
+        evolvingNow.delete(entity.id);
+        if (!entity.isValid) return;
+        try { entity.removeEffect("slowness"); } catch (e) { }
+        entity.triggerEvent(evolution.event);
+    }, 224);
 }
 
 // Fullness (Pokemon.currentFullness): its most is Grass Knot's power for the species' weight, a tenth, halved, plus
@@ -5809,6 +5854,63 @@ function timeline(ticks, fn) {
 // Pokemon.initializeScale and PokemonSizeCategory: each Pokemon rolls a scale between pokemonIntrinsicSizeMin and Max
 // (0.95 to 1.05) once and keeps it (through the PC and evolution, with its other kept properties); the model is drawn
 // at it, and its size category is the fifth of that range it falls in, XS to XL
+// Wild shinies (PokemonClientDelegate.playWildShinySounds): a wild shiny within 24 blocks of a player
+// (shinyNoticeParticlesDistance) sparkles every 3.5 seconds, with its ambient chime, unless it is in battle, and the first
+// time that player comes near it, its ring and chime play for them
+const SHINY_NOTICE = 24, shinyNoticed = new Map();   // player id -> ids of the shinies they have had the ring for
+function isShiny(e) { return (SHINY_VARIANTS[e.typeId] ?? []).includes(variantOf(e)); }
+system.runInterval(() => {
+    const inBattle = new Set([...battles.values()].map((b) => b.foe?.entity?.id));
+    for (const player of world.getAllPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: SHINY_NOTICE }); } catch (e) { continue; }
+        const seen = shinyNoticed.get(player.id) ?? new Set(), still = new Set();
+        for (const e of near) {
+            if (prop(e, OWNER) !== undefined || !isShiny(e)) continue;
+            still.add(e.id);
+            const feet = e.location, head = e.getHeadLocation(), mid = { x: feet.x, y: (feet.y + head.y) / 2, z: feet.z };
+            try {
+                if (!inBattle.has(e.id)) { e.dimension.spawnParticle("cobblemon:shiny_sparkle_ambient_wild", mid); e.dimension.playSound("cobblemon.particle.wild_shiny_ambient_chime", mid); }
+                if (!seen.has(e.id)) { e.dimension.spawnParticle("cobblemon:wild_shiny_ring", mid); player.playSound("cobblemon.particle.wild_shiny_chime", { location: mid }); }
+            } catch (err) { }
+        }
+        shinyNoticed.set(player.id, still);   // leaving its range lets the ring play again on return
+    }
+}, 70);
+
+// Wild levels (PlayerLevelRangeInfluence): a wild Pokemon that spawns without a level from a script rolls one in its
+// species' spawn range (the widest its spawn entries give), narrowed to the nearest player's party: their highest level
+// plus or minus 5, at least 1 to 10 (minimumLevelRangeMax) and 1 to 10 with no party. With no overlap it takes the bottom
+// quarter of its range when that range is above the player's, otherwise the top quarter.
+const LEVEL_VARIATION = 5, MIN_RANGE_MAX = 10;
+function wildLevel(entity) {
+    const [lo, hi] = POKEMON[entity.typeId]?.range ?? [POKEMON[entity.typeId]?.level ?? 5, POKEMON[entity.typeId]?.level ?? 5];
+    let near, best = Infinity;
+    for (const p of entity.dimension.getPlayers({ location: entity.location, maxDistance: 128 })) {
+        const d = Math.hypot(p.location.x - entity.location.x, p.location.z - entity.location.z);
+        if (d < best) { best = d; near = p; }
+    }
+    const party = near ? summaryParty(near) : [];
+    let pLo = 1, pHi = MIN_RANGE_MAX;
+    if (party.length) {
+        const top = Math.max(...party.map((e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 5));
+        pLo = Math.max(top - LEVEL_VARIATION, 1); pHi = Math.min(100, Math.max(top + LEVEL_VARIATION, MIN_RANGE_MAX));
+    }
+    let a = Math.max(lo, pLo), b = Math.min(hi, pHi);
+    if (a > b) {
+        const width = hi - lo;
+        if (lo > pHi) { a = lo; b = Math.trunc(lo + width / 4); } else { a = Math.trunc(lo + (3 * width) / 4); b = hi; }
+    }
+    return Math.max(1, a + Math.floor(Math.random() * (b - a + 1)));
+}
+world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
+    if (!POKEMON[entity?.typeId] || cause === "Loaded") return;
+    // after the scripts that spawn a Pokemon (fishing, fossils, starters, the PC) have set its level
+    system.runTimeout(() => {
+        try { if (entity.isValid && prop(entity, LEVEL) === undefined && prop(entity, OWNER) === undefined) setProp(entity, LEVEL, wildLevel(entity)); } catch (e) { }
+    }, 4);
+});
+
 const SCALE = "cobblemon:scale", SIZE_MIN = 0.95, SIZE_MAX = 1.05, SIZE_CATEGORIES = ["XS", "S", "M", "L", "XL"];
 function scaleOf(e) {
     let s = prop(e, SCALE);

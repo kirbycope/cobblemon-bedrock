@@ -307,73 +307,6 @@
                 },
                 "minecraft:body_rotation_always_follows_head": {}
             },
-            "cobblemon:battling": {
-                "minecraft:behavior.nearest_attackable_target": {
-                    "priority": 1,
-                    "must_see": false,
-                    "reselect_targets": true,
-                    "entity_types": [
-                        {
-                            "filters": {
-                                "test": "is_family",
-                                "subject": "other",
-                                "value": "player"
-                            },
-                            "max_dist": 24
-                        }
-                    ]
-                },
-                "minecraft:behavior.melee_attack": {
-                    "priority": 2,
-                    "track_target": true
-                },
-                "minecraft:timer": {
-                    "time": 60,
-                    "looping": false,
-                    "time_down_event": {
-                        "event": "cobblemon:vanish",
-                        "target": "self"
-                    }
-                }
-            },
-            "cobblemon:in_battle": {
-                "minecraft:movement": {
-                    "value": 0.0
-                }
-            },
-            "cobblemon:variant_0": {
-                "minecraft:variant": {
-                    "value": 0
-                }
-            },
-            "cobblemon:variant_1": {
-                "minecraft:variant": {
-                    "value": 1
-                }
-            },
-            "cobblemon:pasture_conflict": {
-                "minecraft:behavior.nearest_attackable_target": {
-                    "priority": 2,
-                    "must_see": true,
-                    "within_radius": 16,
-                    "reselect_targets": true,
-                    "entity_types": [
-                        {
-                            "filters": {
-                                "test": "is_family",
-                                "subject": "other",
-                                "value": "monster"
-                            },
-                            "max_dist": 16
-                        }
-                    ]
-                },
-                "minecraft:behavior.melee_box_attack": {
-                    "priority": 3,
-                    "speed_multiplier": 1.2,
-                    "track_target": true
-                }
-            },
             "cobblemon:ridden_tired": {
                 "minecraft:physics": {},
                 "minecraft:flying_speed": {
@@ -459,6 +392,73 @@
             "cobblemon:fly_15": {
                 "minecraft:flying_speed": {
                     "value": 0.21818
+                }
+            },
+            "cobblemon:battling": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 1,
+                    "must_see": false,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 24
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 2,
+                    "track_target": true
+                },
+                "minecraft:timer": {
+                    "time": 60,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:vanish",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:in_battle": {
+                "minecraft:movement": {
+                    "value": 0.0
+                }
+            },
+            "cobblemon:variant_0": {
+                "minecraft:variant": {
+                    "value": 0
+                }
+            },
+            "cobblemon:variant_1": {
+                "minecraft:variant": {
+                    "value": 1
+                }
+            },
+            "cobblemon:pasture_conflict": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 2,
+                    "must_see": true,
+                    "within_radius": 16,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "monster"
+                            },
+                            "max_dist": 16
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 3,
+                    "speed_multiplier": 1.2,
+                    "track_target": true
                 }
             }
         },
@@ -750,126 +750,6 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:gone"
-                    ]
-                }
-            },
-            "cobblemon:ride_air_on": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:gravity",
-                        "cobblemon:ridden_tired"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:ridden_air",
-                        "cobblemon:fly_0"
-                    ]
-                }
-            },
-            "cobblemon:ride_air_off": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:ridden_air",
-                        "cobblemon:ridden_tired",
-                        "cobblemon:fly_0",
-                        "cobblemon:fly_1",
-                        "cobblemon:fly_2",
-                        "cobblemon:fly_3",
-                        "cobblemon:fly_4",
-                        "cobblemon:fly_5",
-                        "cobblemon:fly_6",
-                        "cobblemon:fly_7",
-                        "cobblemon:fly_8",
-                        "cobblemon:fly_9",
-                        "cobblemon:fly_10",
-                        "cobblemon:fly_11",
-                        "cobblemon:fly_12",
-                        "cobblemon:fly_13",
-                        "cobblemon:fly_14",
-                        "cobblemon:fly_15"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:gravity"
-                    ]
-                }
-            },
-            "cobblemon:battle": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:wild"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:battling"
-                    ]
-                }
-            },
-            "cobblemon:battle_start": {
-                "add": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
-            },
-            "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
-            },
-            "cobblemon:capture": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:wild",
-                        "cobblemon:in_battle"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:captured"
-                    ]
-                }
-            },
-            "cobblemon:set_variant_0": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:variant_1"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:variant_0"
-                    ]
-                }
-            },
-            "cobblemon:set_variant_1": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:variant_0"
-                    ]
-                },
-                "add": {
-                    "component_groups": [
-                        "cobblemon:variant_1"
-                    ]
-                }
-            },
-            "cobblemon:conflict_on": {
-                "add": {
-                    "component_groups": [
-                        "cobblemon:pasture_conflict"
-                    ]
-                }
-            },
-            "cobblemon:conflict_off": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:pasture_conflict"
                     ]
                 }
             },
@@ -1289,6 +1169,49 @@
                     ]
                 }
             },
+            "cobblemon:ride_air_on": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:gravity",
+                        "cobblemon:ridden_tired"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:ridden_air",
+                        "cobblemon:fly_0"
+                    ]
+                }
+            },
+            "cobblemon:ride_air_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:ridden_air",
+                        "cobblemon:ridden_tired",
+                        "cobblemon:fly_0",
+                        "cobblemon:fly_1",
+                        "cobblemon:fly_2",
+                        "cobblemon:fly_3",
+                        "cobblemon:fly_4",
+                        "cobblemon:fly_5",
+                        "cobblemon:fly_6",
+                        "cobblemon:fly_7",
+                        "cobblemon:fly_8",
+                        "cobblemon:fly_9",
+                        "cobblemon:fly_10",
+                        "cobblemon:fly_11",
+                        "cobblemon:fly_12",
+                        "cobblemon:fly_13",
+                        "cobblemon:fly_14",
+                        "cobblemon:fly_15"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gravity"
+                    ]
+                }
+            },
             "cobblemon:ride_tired": {
                 "remove": {
                     "component_groups": [
@@ -1327,6 +1250,83 @@
                     "component_groups": [
                         "cobblemon:ridden_air",
                         "cobblemon:fly_0"
+                    ]
+                }
+            },
+            "cobblemon:battle": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:battling"
+                    ]
+                }
+            },
+            "cobblemon:battle_start": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:in_battle"
+                    ]
+                }
+            },
+            "cobblemon:battle_end": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:in_battle"
+                    ]
+                }
+            },
+            "cobblemon:capture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:in_battle"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:captured"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_0": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_1"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_0"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_1": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_0"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_1"
+                    ]
+                }
+            },
+            "cobblemon:conflict_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:conflict_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
                     ]
                 }
             }
