@@ -16,6 +16,7 @@ The generated files come from Cobblemon's own data rather than from a template:
 """
 import collections
 import glob
+import importlib.util
 import json
 import math
 import os
@@ -1526,26 +1527,224 @@ def create_sounds():
             events.update({"hurt": f"cobblemon.{key}.cry", "death": f"cobblemon.{key}.cry"})
             events["ambient"] = f"cobblemon.{key}.ambient" if f"cobblemon.{key}.ambient" in definitions else f"cobblemon.{key}.cry"
         if events: entities[entity_id(pokemon)] = {"volume": 1.0, "pitch": 1.0, "events": events}
-    # Cobblemon's Poke Ball sounds (throw, hit, open, shut, bounce, shake, capture, break, recall, send out) and its
-    # evolution sounds (the party slot's notification jingle, the evolution itself, the UI)
+    # every other Cobblemon sound event (Poke Balls, evolution, the PC, GUIs, items and medicine, blocks and machines,
+    # fishing, battles: moves, impacts, statuses and music, riding, animations, particles, NPCs), each file at the path
+    # Cobblemon keeps it under; the folders are written afresh so a sound that moved leaves no stale copy
+    for folder in os.listdir(soundsBedrock) if os.path.isdir(soundsBedrock) else []:
+        if folder not in ("pokemon", "battle") and os.path.isdir(f"{soundsBedrock}/{folder}"): shutil.rmtree(f"{soundsBedrock}/{folder}")
+    categories = {"battle": "music", "gui": "ui", "pc": "ui", "block": "block"}
     for key, definition in cobblemon_sounds.items():
-        if not key.startswith(("poke_ball.", "evolution.", "item.pokedex.", "item.tm.", "item.berry.", "block.tm_machine.", "block.campfire_pot.", "pokemon.gimmighoul.", "pc.", "gui.")): continue
-        folder = key.split(".")[-2] if key.startswith(("item.", "block.")) else key.split(".")[0]
+        if key.startswith("pokemon.") and not key.startswith("pokemon.gimmighoul."): continue
         sounds = []
         for sound in definition.get("sounds", []):
-            name = sound["name"] if isinstance(sound, dict) else sound
-            source = f"{cobblemon}/sounds/{name.split(':', 1)[1]}.ogg"
+            entry = sound if isinstance(sound, dict) else {"name": sound}
+            path = entry["name"].split(":", 1)[1]
+            source = f"{cobblemon}/sounds/{path}.ogg"
             if not os.path.exists(source): continue
-            os.makedirs(f"{soundsBedrock}/{folder}", exist_ok=True)
-            shutil.copyfile(source, f"{soundsBedrock}/{folder}/{os.path.basename(source)}")
-            sounds.append({"name": f"sounds/{folder}/{os.path.basename(source)[:-4]}", "volume": sound.get("volume", 1.0) if isinstance(sound, dict) else 1.0})
-        if sounds: definitions[f"cobblemon.{key}"] = {"category": "neutral", "sounds": sounds}
+            os.makedirs(os.path.dirname(f"{soundsBedrock}/{path}"), exist_ok=True)
+            shutil.copyfile(source, f"{soundsBedrock}/{path}.ogg")
+            out = {"name": f"sounds/{path}", "volume": entry.get("volume", 1.0)}
+            if "pitch" in entry: out["pitch"] = entry["pitch"]
+            if entry.get("stream"): out["stream"] = True
+            sounds.append(out)
+        if not sounds: continue
+        definitions[f"cobblemon.{key}"] = {"category": categories.get(key.split(".")[0], "neutral"), "sounds": sounds}
+        # Java's attenuation_distance is how far the sound carries, Bedrock's max_distance
+        reach = max((x.get("attenuation_distance", 0) for x in definition.get("sounds", []) if isinstance(x, dict)), default=0)
+        if reach: definitions[f"cobblemon.{key}"]["max_distance"] = reach
+    # the battle music Cobblemon leaves empty (battle.pvw, pvn and pvp.default), from the tracks
+    # tools/fetch_battle_music.py downloads into sounds/battle (git-ignored); one plays at random for a battle
+    spec = importlib.util.spec_from_file_location("fetch_battle_music", f"{pwd}/tools/fetch_battle_music.py")
+    music = importlib.util.module_from_spec(spec); spec.loader.exec_module(music)
+    for kind, tracks in music.TRACKS.items():
+        sounds = [{"name": f"sounds/battle/{t}", "stream": True, "volume": 0.6} for t in tracks if os.path.exists(f"{soundsBedrock}/battle/{t}.ogg")]
+        if sounds: definitions[f"cobblemon.battle.{kind}.default"] = {"category": "music", "sounds": sounds}
     os.makedirs(soundsBedrock, exist_ok=True)
     with open(f"{soundsBedrock}/sound_definitions.json", "w") as file:
         file.write(json.dumps({"format_version": "1.14.0", "sound_definitions": definitions}, indent=4))
     with open(f"{resourcePack}/sounds.json", "w") as file:
         file.write(json.dumps({"entity_sounds": {"entities": entities}}, indent=4))
     print(f"Create sound definitions complete: {len(definitions)} sounds.")
+
+
+# Cobblemon's move effects (data/cobblemon/action_effects/moves, ActionEffects.getEffectWithBattleContext: the
+# <move>_<species> file, then <move>, then generic_move) as scripts/move_fx.js: each move's timeline flattened into
+# timed events (seconds from the move's start) the battle script plays, and when its "effects" hold is released, which
+# is when the battle goes on. Kinds: "a" an animation (the first of its names the species has), "s" a sound, "p" a
+# particle at a locator, aimed at the target when the keyframe gives targetLocators. Who: "u" the user (Cobblemon's
+# default entityCondition), "t" the target; m: only when the move did not miss; n: only for a damaging move. MoLang that names the move's own fields
+# becomes $name, $cat and $type, which the script fills. The species' battle clips go with it (FX_ANIMS: each Pokemon's
+# short animation names to their ids), and only particles the pack has are kept.
+def fx_who(cond):
+    if not cond: return "", False
+    who = "u" if re.search(r"is_user\s*==\s*true", cond) or re.search(r"q\.entity\.is_user\s*(&&|$)", cond) else "t" if re.search(r"is_user\s*==\s*false", cond) else ""
+    return who, bool(re.search(r"missed\([^)]*\)\s*==\s*false", cond))
+
+
+def fx_value(expr):
+    """A MoLang string expression ('cobblemon:impact_' + q.move.type) as the port's template (cobblemon:impact_$type)."""
+    out = ""
+    for part in str(expr).split("+"):
+        part = part.strip()
+        if part.startswith("'") and part.endswith("'"): out += part[1:-1]
+        elif part == "q.move.name": out += "$name"
+        elif part == "q.move.type": out += "$type"
+        elif part == "q.move.damage_category": out += "$cat"
+        else: return None
+    return out
+
+
+def fx_seconds(value):
+    """A delay or pause, a number or MoLang such as "q.do_effect_walks ? 3 : 1": the port's Pokemon do not walk to
+    their target, so a choice takes its last (else) value."""
+    try: return float(value or 0)
+    except (TypeError, ValueError):
+        numbers = re.findall(r"\d+(?:\.\d+)?", str(value))
+        return float(numbers[-1]) if numbers else 0.0
+
+
+def fx_flatten(keyframes, t, events, hold, flags):
+    """Walk a timeline from time t, appending events; returns the time it ends at and the hold's release time."""
+    for k in keyframes:
+        if not isinstance(k, dict): continue   # oldscratch.json carries a bare "save_position"
+        kind = k.get("type")
+        cond = k.get("condition", "")
+        f = dict(flags)
+        if "damage_category" in cond and "!=" in cond and "status" in cond: f["n"] = True
+        who, miss = fx_who(k.get("entityCondition", ""))
+        base = {"w": who or f.get("w") or "u"}   # a keyframe with no entityCondition is the user's (q.entity.is_user)
+        if miss or f.get("m"): base["m"] = 1
+        if f.get("n"): base["n"] = 1
+        if kind == "animation":
+            names = [fx_value(a) if ("q." in a) else a for a in k.get("animation", [])]
+            names = [n for n in names if n]
+            if names: events.append({"t": round(t, 2), "k": "a", "a": names, **base})
+            t += fx_seconds(k.get("delay"))
+        elif kind == "pause":
+            t += fx_seconds(k.get("pause"))
+        elif kind == "remove_holds" and "effects" in k.get("holds", []):
+            hold = t
+        elif kind == "entity_sound":
+            snd = fx_value(k.get("sound", ""))
+            if snd: events.append({"t": round(t, 2), "k": "s", "s": snd.replace("cobblemon:", "cobblemon."), **base})
+            t += fx_seconds(k.get("delay"))
+        elif kind == "entity_particles":
+            eff = fx_value(k["effect"]) if "'" in str(k.get("effect", "")) else k.get("effect")
+            if eff:
+                ev = {"t": round(t, 2), "k": "p", "p": eff, "l": (k.get("locators") or ["target"])[0], **base}
+                if k.get("targetLocators"): ev["aim"] = 1
+                events.append(ev)
+            t += fx_seconds(k.get("delay"))
+        elif kind == "entity_molang":
+            for expr in k.get("expressions", []):
+                for snd in re.findall(r"q\.sound\('([^']+)'\)", expr):
+                    events.append({"t": round(t, 2), "k": "s", "s": "cobblemon." + snd.replace("cobblemon:", ""), **base})
+                for eff, loc in re.findall(r"q\.particle\('([^']+)'\s*,\s*'([^']+)'\)", expr):
+                    events.append({"t": round(t, 2), "k": "p", "p": eff, "l": loc, **base})
+            t += fx_seconds(k.get("delay"))
+        elif kind in ("sequence", "fork"):
+            end, hold = fx_flatten(k.get("keyframes", []), t, events, hold, {**f, "w": base["w"]})
+            if kind == "sequence": t = end
+        elif kind == "parallel":
+            ends = []
+            for child in k.get("keyframes", []):
+                end, hold = fx_flatten([child], t, events, hold, f)
+                ends.append(end)
+            t = max(ends, default=t)
+    return t, hold
+
+
+def create_move_fx():
+    root = f"{cobblemonData}/action_effects/moves"
+    particles = set()
+    for folder, _, files in os.walk(f"{resourcePack}/particles"):
+        for name in files:
+            if name.endswith(".json"):
+                try: particles.add(json.load(open(f"{folder}/{name}", encoding="utf-8"))["particle_effect"]["description"]["identifier"])
+                except Exception: pass
+    effects, used = {}, set()
+    for folder, _, files in os.walk(root):
+        for name in files:
+            if not name.endswith(".json"): continue
+            timeline = json.load(open(f"{folder}/{name}", encoding="utf-8")).get("timeline", [])
+            events = []
+            end, hold = fx_flatten(timeline, 0.0, events, None, {})
+            # a particle the pack lacks is dropped, unless it is a template filled at run time (impact_$type)
+            events = [e for e in events if e["k"] != "p" or "$" in e["p"] or e["p"] in particles]
+            for e in events:
+                if e["k"] == "a": used.update(a for a in e["a"] if "$" not in a)
+            effects[name[:-5]] = {"h": round(hold if hold is not None else end, 2), "e": events}
+    used.update(("physical", "special", "status", "recoil", "battle_recoil", "faint"))
+    anims = {}
+    for name in os.listdir(entityBedrock):
+        try: desc = json.load(open(f"{entityBedrock}/{name}", encoding="utf-8"))["minecraft:client_entity"]["description"]
+        except Exception: continue
+        clips = {k: v for k, v in desc.get("animations", {}).items() if k in used}
+        if clips and desc.get("identifier", "").startswith("cobblemon:p"): anims[desc["identifier"]] = clips
+    impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
+    with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py (create_move_fx): Cobblemon's move effects, the species' battle clips and the impact particles\n")
+        file.write(f"export const MOVE_FX = {json.dumps(effects, separators=(',', ':'))};\n")
+        file.write(f"export const FX_ANIMS = {json.dumps(anims, separators=(',', ':'))};\n")
+        file.write(f"export const FX_PARTICLES = {json.dumps(impact)};\n")
+    print(f"Move effects: {len(effects)} timelines, {len(anims)} species with battle clips.")
+
+
+# Cobblemon's block sound types (CobblemonSounds.kt's SoundType values: tumblestone, gems, evolution stone blocks,
+# tatami, berry bushes, roots, mints, grains, coin sacks, gilded chests, display cases, campfire pots, paper item
+# blocks), read from the Kotlin source, and the blocks CobblemonBlocks.kt gives each (".sound(CobblemonSounds.X)")
+def cobblemon_block_sound_types():
+    """{sound type name: (volume, pitch, {break, step, place, hit, fall: sound event key})} and {block id: sound type}."""
+    src = f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common"
+    sounds_kt = open(f"{src}/CobblemonSounds.kt", encoding="utf-8").read()
+    blocks_kt = open(f"{src}/CobblemonBlocks.kt", encoding="utf-8").read()
+    events = {k: f"cobblemon.{v}" for k, v in re.findall(r'val (\w+)\s*=\s*(?:this\.)?create\("([^"]+)"\)', sounds_kt)}
+    # the vanilla events some of them use (SoundEvents.GRASS_STEP and the like) as Bedrock names them
+    materials = {"GRASS": "grass", "ROOTS": "roots", "WOOL": "cloth", "STONE": "stone", "WOOD": "wood", "GRAVEL": "gravel"}
+    def event(ref):
+        if ref in events: return events[ref]
+        m = re.fullmatch(r"SoundEvents\.([A-Z]+)_(STEP|HIT|FALL|BREAK|PLACE)", ref)
+        if m and m.group(1) in materials: return f"{ {'BREAK': 'dig', 'PLACE': 'dig'}.get(m.group(2), m.group(2).lower()) }.{materials[m.group(1)]}"
+        return None
+    types = {}
+    for name, volume, pitch, body in re.findall(r"val (\w+_SOUNDS)\s*=\s*SoundType\(([\d.]+)f,\s*([\d.]+)f,([^)]*)\)", sounds_kt):
+        parts = [event(x.strip()) for x in body.split(",") if x.strip()]
+        if len(parts) != 5 or None in parts: continue
+        types[name] = (float(volume), float(pitch), dict(zip(("break", "step", "place", "hit", "fall"), parts)))
+    uses = {}
+    calls = list(re.finditer(r'create\("([a-z0-9_]+)"', blocks_kt))
+    for n, call in enumerate(calls):
+        end = calls[n + 1].start() if n + 1 < len(calls) else len(blocks_kt)
+        m = re.search(r"\.sound\(CobblemonSounds\.(\w+_SOUNDS)\)", blocks_kt[call.end():end])
+        if m and m.group(1) in types: uses[call.group(1)] = m.group(1)
+    return types, uses
+
+
+def create_block_sounds():
+    """blocks.json gives each of those blocks its sound type, and sounds.json's block_sounds (break, place, hit) and
+    interactive_sounds (step, fall) play Cobblemon's events for it, at its SoundType's volume and pitch."""
+    types, uses = cobblemon_block_sound_types()
+    present = {f[:-5] for f in os.listdir(blocksBedrock) if f.endswith(".json")}
+    uses = {block: kind for block, kind in uses.items() if block in present}
+    # the berries are made in a loop under their berry's name (registerBerries, BERRY_BUSH_SOUNDS); here they are bushes
+    for block in present:
+        if (block.endswith("_berry_bush") or block == "galarica_nut_bush") and "BERRY_BUSH_SOUNDS" in types: uses[block] = "BERRY_BUSH_SOUNDS"
+    sounds_path = f"{resourcePack}/sounds.json"
+    sounds = json.load(open(sounds_path, encoding="utf-8")) if os.path.exists(sounds_path) else {}
+    block_sounds, interactive = {}, {}
+    for kind in sorted(set(uses.values())):
+        volume, pitch, ev = types[kind]
+        name = f"cobblemon_{kind[:-len('_SOUNDS')].lower()}"
+        block_sounds[name] = {"volume": volume, "pitch": pitch, "events": {e: ev[e] for e in ("break", "place", "hit")}}
+        interactive[name] = {"volume": volume * 0.15, "pitch": pitch, "events": {"step": ev["step"], "fall": ev["fall"]}}
+    sounds["block_sounds"] = block_sounds
+    sounds["interactive_sounds"] = {"block_sounds": interactive}
+    with open(sounds_path, "w", encoding="utf-8") as file: file.write(json.dumps(sounds, indent=4))
+    blocks = {"format_version": [1, 1, 0]}
+    for block, kind in sorted(uses.items()):
+        blocks[f"cobblemon:{block}"] = {"sound": f"cobblemon_{kind[:-len('_SOUNDS')].lower()}"}
+    with open(f"{resourcePack}/blocks.json", "w", encoding="utf-8") as file: file.write(json.dumps(blocks, indent=4))
+    print(f"Block sounds: {len(uses)} blocks, {len(block_sounds)} sound types.")
 
 
 # ---------------------------------------------------------------------------
@@ -8504,6 +8703,8 @@ def main():
     create_recipes()
     create_structures()
     create_battle_data()
+    create_block_sounds()   # after the blocks and sounds, whose ids it pairs
+    create_move_fx()   # after the client entities and particles, whose clips and ids it keeps
     ensure_script_module()
     bump_pack_versions()
 

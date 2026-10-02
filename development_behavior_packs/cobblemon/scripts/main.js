@@ -24,6 +24,7 @@ import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
+import { MOVE_FX, FX_ANIMS } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -193,8 +194,73 @@ function speedOf(f, battle) {
 
 // every battle message goes to chat and to the battle screen's log (BattleMessagePane), which keeps the last 40 to scroll back through
 function say(battle, text) { sayEach(battle, text, text); }
+// Move effects (MoveInstruction, ActionEffects): each move used plays its action effect, Cobblemon's timeline for the
+// move (move_fx.js, from data/cobblemon/action_effects) or generic_move: the user's attack animation, the sounds and the
+// particles, the target's impact. The battle goes on when the effect's "effects" hold is released, so a battle keeps a
+// clock (fxUntil, in ticks) that each move's effect runs on from where the last one left off; the battle's messages,
+// fainting and the next choice wait for it, as Cobblemon's do for the effects playing
+function fxClock(battle) { return battle.pvp ? realBattle(battle) : battle; }
+function fxWait(battle) { return Math.max(0, (fxClock(battle).fxUntil ?? 0) - system.currentTick); }
+function afterFx(battle, then) { const wait = fxWait(battle); if (wait > 0) system.runTimeout(then, wait); else then(); }
+// a locator on the model, as near as a script can place it: the feet (root), the body's middle (target, middle), the
+// head (top, eye, head), and a special move's source a little in front of the head
+function fxLocator(entity, name, toward) {
+    const feet = entity.location, head = entity.getHeadLocation();
+    if (name === "root") return { ...feet };
+    if (/top|eye|head|mouth/.test(name)) return head;
+    if (/special/.test(name) && toward) {
+        const dx = toward.x - head.x, dz = toward.z - head.z, len = Math.hypot(dx, dz) || 1;
+        return { x: head.x + (dx / len) * 0.4, y: (head.y + feet.y) / 2 + (head.y - feet.y) * 0.25, z: head.z + (dz / len) * 0.4 };
+    }
+    return { x: (feet.x + head.x) / 2, y: (feet.y + head.y) / 2, z: (feet.z + head.z) / 2 };
+}
+function fxFill(text, move) {
+    return text.replace("$name", move.id).replace("$type", move.type ?? "normal").replace("$cat", (move.category ?? "status").toLowerCase());
+}
+function fxEvent(e, user, target, move, outcome) {
+    if (e.m && outcome.missed) return;
+    if (e.n && move.category === "Status") return;
+    const f = e.w === "t" ? target : user, entity = f?.entity;
+    if (!entity?.isValid || f.clone && !entity.isValid) return;
+    try {
+        if (e.k === "a") {
+            const clips = FX_ANIMS[entity.typeId] ?? {}, name = e.a.map((a) => fxFill(a, move)).find((a) => clips[a]);
+            if (name) entity.playAnimation(clips[name], { blendOutTime: 0.2 });
+        } else if (e.k === "s") {
+            entity.dimension.playSound(fxFill(e.s, move), entity.location);
+        } else if (e.k === "p") {
+            const other = (e.w === "t" ? user : target)?.entity, toward = other?.isValid ? other.location : undefined;
+            const at = fxLocator(entity, e.l, toward);
+            const vars = new MolangVariableMap();
+            if (e.aim && other?.isValid) {
+                // ParticleStorm's target deltas: from the emitter to the target's locator, y negated as Cobblemon has it
+                const to = fxLocator(other, "target");
+                const dx = to.x - at.x, dy = to.y - at.y, dz = to.z - at.z;
+                vars.setFloat("variable.target_deltax", dx); vars.setFloat("variable.target_deltay", -dy); vars.setFloat("variable.target_deltaz", dz);
+                vars.setFloat("variable.target_distance", Math.hypot(dx, dy, dz));
+            }
+            entity.dimension.spawnParticle(fxFill(e.p, move), at, vars);
+        }
+    } catch (err) { }
+}
+function playMoveFx(battle, user, target, move, outcome) {
+    const clock = fxClock(battle), now = system.currentTick, start = Math.max(now, clock.fxUntil ?? 0);
+    const species = user.entity?.typeId?.replace(/^cobblemon:p\d+_/, "");
+    const fx = MOVE_FX[`${move.id}_${species}`] ?? MOVE_FX[move.id] ?? MOVE_FX.generic_move;
+    if (!fx) return;
+    const events = [...fx.e];
+    // DamageInstruction: a Pokemon hit flinches with its recoil animation as the hit lands, unless the effect animates it
+    if (move.category !== "Status" && !outcome.missed && !events.some((e) => e.k === "a" && e.w === "t")) events.push({ t: fx.h, k: "a", a: ["battle_recoil", "recoil"], w: "t" });
+    for (const e of events) system.runTimeout(() => fxEvent(e, user, target, move, outcome), start - now + Math.round(e.t * 20));
+    clock.fxUntil = start + Math.round(fx.h * 20) + 4;
+}
 // a line for each side of a battle between players (the other side's own form of it), each into that side's log
 function sayEach(battle, own, other) {
+    const wait = fxWait(battle);
+    if (wait > 0) { system.runTimeout(() => sayNow(battle, own, other), wait); return; }
+    sayNow(battle, own, other);
+}
+function sayNow(battle, own, other) {
     const push = (log, t) => { log.push(t); if (log.length > 40) log.shift(); };
     battle.player.sendMessage(own); push(battle.log ??= [], own);
     if (battle.pvp && battle.opponent?.isValid) { battle.opponent.sendMessage(other); push(battle.opponentLog, other); }
@@ -315,8 +381,15 @@ function hurt(battle, f, amount, text) {
 }
 
 function useMove(battle, attacker, defender, move, called = false) {
+    const outer = battle.curFx, outcome = { used: false, missed: false };
+    battle.curFx = outcome;
+    try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; }
+    if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
+}
+function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
     if (!called && !canAct(battle, attacker, move)) return;
+    if (battle.curFx) battle.curFx.used = true;
     if (!called && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
     // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
     if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
@@ -338,6 +411,7 @@ function useMove(battle, attacker, defender, move, called = false) {
         if (held(defender) === "bright_powder" || held(defender) === "lax_incense") chance *= 0.9;
         if (move.ohko) chance = attacker.level >= defender.level ? 30 + attacker.level - defender.level : 0;
         if (Math.random() * 100 >= chance) {
+            if (battle.curFx) battle.curFx.missed = true;
             say(battle, `§7${name} used ${move.name}... it missed!`);
             if (held(attacker) === "blunder_policy") { useUp(battle, attacker, `§7${name}'s Blunder Policy!`); boost(battle, attacker, { spe: 2 }); }
             return;
@@ -582,9 +656,17 @@ system.runInterval(() => {
     }
 }, 5);
 
+// BattleMusicPacket: the battle's music (battle.pvw against a wild Pokemon, pvn against a trainer, pvp against a player;
+// tools/fetch_battle_music.py fills them) for as long as the battle lasts, over the game's own music
+function battleMusic(player, kind) {
+    try { player.playMusic(`cobblemon.battle.${kind}.default`, { loop: true, fade: 1, volume: 0.6 }); } catch (e) { }
+}
+function endBattleMusic(player) { try { if (player?.isValid) player.stopMusic(); } catch (e) { } }
 function endBattle(battle, text) {
     if (battle.side === 1) battle = battle.mirror;   // a battle between players, ended from the second player's side
     battles.delete(battle.player.id);
+    endBattleMusic(battle.player);
+    if (battle.pvp) endBattleMusic(battle.opponent);
     if (battle.pvp) {
         battles.delete(battle.opponent.id);
         for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
@@ -1799,6 +1881,7 @@ function startBattle(player, foeEntity, trainer) {
     if (!foe) return;
     const battle = { player, foe, trainer, turn: 0, spot: { x: foeEntity.location.x - 2, y: foeEntity.location.y, z: foeEntity.location.z } };
     battles.set(player.id, battle);
+    battleMusic(player, trainer ? "pvn" : "pvw");
     freeze(foeEntity, true);
     say(battle, `§6A ${trainer ? "Trainer's " : "wild "}${foe.info.name} appeared! §7(Lv ${foe.level})`);
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
@@ -2141,6 +2224,10 @@ function endOfTurn(battle) {
         heldBerry(battle, f);
     }
     for (const f of [battle.ally, battle.foe]) f.flinched = false;
+    afterFx(battle, () => { if (battles.has(battle.player.id)) afterTurn(battle); });
+}
+// fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
+function afterTurn(battle) {
     if (battle.pvp) { pvpAfterTurn(battle); return; }
     if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
@@ -2202,6 +2289,7 @@ function gainExperience(battle, f, foe, amount) {
         gainFriendship(f.entity, fr <= 99 ? 3 : fr <= 199 ? 2 : 0);
         leveled.add(f.entity);
         say(battle, `§b${f.info.name} grew to level ${level}!`);
+        try { battle.player.playSound("cobblemon.gui.levelup"); } catch (e) { }
         for (const [at, id] of f.info.learnset ?? []) {
             if (at !== level || ids.includes(id) || !MOVES[id]) continue;
             note.move = true;
@@ -2229,7 +2317,10 @@ function faint(battle, fainted) {
     if (fainted === battle.foe) {
         say(battle, `§a${battle.foe.info.name} fainted! ${battle.ally.info.name} wins!`);
         try { battle.player.setDynamicProperty(BATTLE_WINS, (battle.player.getDynamicProperty(BATTLE_WINS) ?? 0) + 1); } catch (e) { }
-        try { battle.foe.entity.triggerEvent("cobblemon:vanish"); } catch (e) { }
+        // FaintInstruction: the faint animation plays, then the wild Pokemon goes
+        const gone = battle.foe.entity, clip = FX_ANIMS[gone?.typeId]?.faint;
+        try { if (clip) gone.playAnimation(clip); } catch (e) { }
+        system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
         if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         gainExperience(battle, battle.ally, battle.foe);
         // an Exp. Share holder elsewhere in the party gets Cobblemon's half share
@@ -2310,6 +2401,7 @@ function startPvp(p1, p2, level) {
                      spot: pvpSpot(p1.location, p2.location, 0.3), foeSpot: pvpSpot(p2.location, p1.location, 0.3) };
     const m = mirrorOf(battle);
     battles.set(p1.id, battle); battles.set(p2.id, m);
+    battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
     battle.ally = battleFighter(battle, a); battle.foe = battleFighter(battle, b);
     for (const [view, f, other] of [[battle, battle.ally, battle.foe], [m, battle.foe, battle.ally]]) {
         freeze(f.entity, true);
@@ -3003,7 +3095,7 @@ function useMachine(block, player) {
             } catch (e) { }
         });
         player.sendMessage(`§a${POKEMON[st.result]?.name ?? "The Pokemon"} was revived! It is yours.`);
-        try { player.playSound("random.levelup"); } catch (e) { }
+        try { player.dimension.playSound("cobblemon.block.fossil_machine.retrieve_pokemon", player.location); } catch (e) { }
         machines.set(m.key, { fossils: [], material: 0, left: -1, done: false, owner: null, result: null, protect: 0 });
         saveMachines(); show(m, machines.get(m.key));
         return;
@@ -3318,8 +3410,8 @@ const PC_NAMES = "cobblemon:pc_names";
 
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
-    if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; showCosmetic.delete(player.id); }
-    const done = () => { try { setPcScreen(block, false); } catch (e) { } };
+    if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; showCosmetic.delete(player.id); try { player.playSound("cobblemon.pc.on"); } catch (e) { } }
+    const done = () => { try { setPcScreen(block, false); player.playSound("cobblemon.pc.off"); } catch (e) { } };
     const party = summaryParty(player), contents = box(player, state.box);
     const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
     const names = jsonProp(player, PC_NAMES, {});
@@ -3536,7 +3628,7 @@ function release(player, n, slot, done) {
     if (rec.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); done(); return; }
     new MessageFormData().title("Release").body(`Release ${describe(rec)}? It will be gone for good.`).button1("Keep").button2("Release")
         .show(player).then((r) => {
-            if (r.selection === 1) { contents[slot] = null; saveBox(player, n, contents); player.sendMessage(`§7${describe(rec)} was released. Bye-bye!`); }
+            if (r.selection === 1) { contents[slot] = null; saveBox(player, n, contents); player.sendMessage(`§7${describe(rec)} was released. Bye-bye!`); try { player.playSound("cobblemon.pc.release"); } catch (e) { } }
             done();
         }).catch(done);
 }
@@ -3872,7 +3964,7 @@ function castRod(player, item) {
             bobber.applyImpulse({ x: d.x * 0.9, y: d.y * 0.9 + 0.2, z: d.z * 0.9 });
         } catch (e) { }
     });
-    try { player.playSound("random.bow", { pitch: 0.6 }); } catch (e) { }
+    try { player.dimension.playSound("cobblemon.fishing.rod_cast", player.location); } catch (e) { }
     fishing.set(player.id, { player, bobber, rod: item.typeId, lure: lureLevel(item), phase: "flying", wait: ri(100, 600), travel: 0, hook: 0, catch: null, age: 0 });
 }
 
@@ -3911,7 +4003,7 @@ function reel(cast) {
         });
         player.sendMessage(`§bYou fished up a wild ${POKEMON[spawn.entity]?.name ?? "Pokemon"}! §7(Lv ${level})`);
         register(player, spawn.entity, 1);
-        try { player.playSound("random.splash"); } catch (e) { }
+        try { player.dimension.playSound("cobblemon.fishing.splash_big", at); } catch (e) { }
         return;
     }
     // an item: the Poke Rod table
@@ -3932,7 +4024,7 @@ function reel(cast) {
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack || RODS[itemStack.typeId] === undefined) return;
     const cast = fishing.get(player.id);
-    if (cast) reel(cast); else castRod(player, itemStack);
+    if (cast) { try { player.dimension.playSound("cobblemon.fishing.rod_reel_in", player.location); } catch (e) { } reel(cast); } else castRod(player, itemStack);
 });
 
 system.runInterval(() => {
@@ -3944,7 +4036,7 @@ system.runInterval(() => {
         if (!player.isValid || !bobber.isValid || held !== cast.rod || cast.age > 20 * 300) { endCast(cast); continue; }
         const b = bobber.location, p = player.location;
         if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) > 32) { endCast(cast); continue; }
-        if (cast.phase === "flying") { if (bobber.isInWater) cast.phase = "waiting"; else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
+        if (cast.phase === "flying") { if (bobber.isInWater) { cast.phase = "waiting"; try { bobber.dimension.playSound("cobblemon.fishing.bobber_land", b); } catch (e) { } } else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
         if (cast.phase === "waiting") {
             cast.wait -= 1 + cast.lure;
             if (cast.wait <= 0) { cast.phase = "travel"; cast.travel = ri(20, 80); }
@@ -3958,7 +4050,8 @@ system.runInterval(() => {
                 cast.phase = "bite";
                 try {
                     bobber.teleport({ x: b.x, y: b.y - 0.25, z: b.z });
-                    bobber.dimension.playSound("random.splash", b, { volume: 0.6 });
+                    bobber.dimension.playSound("cobblemon.fishing.splash_small", b);
+                    player.playSound("cobblemon.fishing.notification");
                     bobber.dimension.spawnParticle("minecraft:water_splash_particle_manual", { x: b.x, y: b.y + 0.1, z: b.z });
                 } catch (e) { }
             }
@@ -4449,7 +4542,8 @@ function registerModelBlockComponents(registry) {
         onPlayerInteract({ block }) {
             const open = !block.permutation.getState("cobblemon:open");
             block.setPermutation(block.permutation.withState("cobblemon:open", open));
-            try { block.dimension.playSound(open ? "random.chestopen" : "random.chestclosed", block.location); } catch (e) { }
+            const kind = block.typeId === "cobblemon:tm_machine" ? "tm_machine" : "campfire_pot";
+            try { block.dimension.playSound(`cobblemon.block.${kind}.${open ? "open" : "close"}`, block.location); } catch (e) { }
         }
     });
 }
@@ -4478,7 +4572,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 });
 world.afterEvents.playerInteractWithEntity.subscribe(({ target }) => {
     if (!target.typeId.endsWith("gilded_chest_entity")) return;
-    try { if (!target.getProperty("cobblemon:open")) { target.setProperty("cobblemon:open", true); target.dimension.playSound("random.chestopen", target.location); } } catch (e) { }
+    try { if (!target.getProperty("cobblemon:open")) { target.setProperty("cobblemon:open", true); target.dimension.playSound("cobblemon.block.gilded_chest.open", target.location); } } catch (e) { }
 });
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -4487,7 +4581,7 @@ system.runInterval(() => {
         for (const c of chests) {
             if (!c.getProperty("cobblemon:open")) continue;
             const near = c.dimension.getPlayers({ location: c.location, maxDistance: 4 }).length > 0;
-            if (!near) { c.setProperty("cobblemon:open", false); try { c.dimension.playSound("random.chestclosed", c.location); } catch (e) { } }
+            if (!near) { c.setProperty("cobblemon:open", false); try { c.dimension.playSound("cobblemon.block.gilded_chest.close", c.location); } catch (e) { } }
         }
     }
 }, 10);
@@ -4525,7 +4619,7 @@ function registerApricornComponents(registry) {
             if (age !== 3 || (player && holding(player, "minecraft:bone_meal"))) return;
             pickApricorn(block, block.dimension);
             block.setPermutation(block.permutation.withState("cobblemon:age", 0));
-            try { block.dimension.playSound("block.sweet_berry_bush.pick", block.location); } catch (e) { }
+            try { block.dimension.playSound("cobblemon.block.apricorn.harvest", block.location); } catch (e) { }
         }
     });
     registry.registerCustomComponent("cobblemon:apricorn_sapling", {
@@ -4664,6 +4758,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             if (!medicine || !battle.minimised || battle.ally.entity?.id !== target.id) { player.sendMessage("§cYou cannot use items right now."); return; }
             if (battle.pvp && realBattle(battle).choices[battle.side]) { player.sendMessage("§cYou cannot use items right now."); return; }
             if (!useBagItem(battle, id)) return;
+            playItemUse(target, id);
             restore(battle);
             if (battle.pvp) pvpChoose(battle, { kind: "item" }); else foeTurn(battle);
             return;
@@ -4677,13 +4772,13 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
             const [stat, amount, back] = evItem;
             if (!addEvs(target, stat, amount)) { player.sendMessage("§7It won't have any effect."); return; }
-            consumeHand(player); if (back && player.getGameMode?.() !== "Creative") giveOrDrop(player, back);
+            consumeHand(player); playItemUse(target, id); if (back && player.getGameMode?.() !== "Creative") giveOrDrop(player, back);
             player.sendMessage(`§a${name}'s ${STAT_NAMES[stat]} base points rose.`);
             refreshHealth(target);
         } else if (mint) {
             // MintItem: the stats follow the mint's nature from now on; the Pokemon keeps its own
             if (effectiveNature(target) === mint) { player.sendMessage(`§7${name} already has the ${natureName(mint)} nature's effect.`); return; }
-            setProp(target, "cobblemon:mint", mint); consumeHand(player);
+            setProp(target, "cobblemon:mint", mint); consumeHand(player); playItemUse(target, id);
             player.sendMessage(`§a${name}'s stats may have changed due to the effects of the ${itemName(id)}!`);
             refreshHealth(target);
         } else if (evBerry) {
@@ -4705,9 +4800,9 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         } else if (medicine) {
             const message = applyMedicine(target, medicine);
             if (!message) { player.sendMessage("§7It won't have any effect."); return; }
-            consumeHand(player); fed(); player.sendMessage(`§a${message}`);
+            consumeHand(player); playItemUse(target, id); fed(); player.sendMessage(`§a${message}`);
         } else if (candy !== undefined) {
-            if (applyCandy(player, target, candy)) consumeHand(player); else player.sendMessage("§7It won't have any effect.");
+            if (applyCandy(player, target, candy)) { consumeHand(player); playItemUse(target, id); } else player.sendMessage("§7It won't have any effect.");
         } else {
             const old = heldItem(target);
             setProp(target, HELD, id); consumeHand(player);
@@ -4718,6 +4813,21 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 });
 
 function itemName(id) { return id.slice(id.indexOf(":") + 1).split("_").map(cap).join(" "); }
+// the sound an item makes used on a Pokemon, as each of Cobblemon's item classes plays it: PotionItem and
+// StatusCureItem spray, EtherItem and ElixirItem liquid, the herbs, powders, remedies and mints (EnergyRootItem,
+// HealPowderItem, RemedyItem, MintItem, RevivalHerbItem) herb, VitaminItem, PPUpItem and HyperTrainingItem pills,
+// CandyItem candy, FeatherItem feather, and ReviveItem and everything else Cobblemon's generic item use
+function itemUseSound(id) {
+    const n = id.slice(id.indexOf(":") + 1);
+    if (/potion$|full_restore|antidote|_heal$|awakening/.test(n)) return "cobblemon.item.medicine.spray.use";
+    if (/ether$|elixir$/.test(n)) return "cobblemon.item.medicine.liquid.use";
+    if (/energy_root|powder|remedy|_mint$|revival_herb/.test(n)) return "cobblemon.item.medicine.herb.use";
+    if (/^(hp_up|protein|iron|calcium|zinc|carbos|pp_up|pp_max)$|bottle_cap/.test(n)) return "cobblemon.item.medicine.pills.use";
+    if (/candy/.test(n)) return "cobblemon.item.medicine.candy.use";
+    if (/feather$/.test(n)) return "cobblemon.item.medicine.feather.use";
+    return "cobblemon.item.use";
+}
+function playItemUse(entity, id) { try { entity.dimension.playSound(itemUseSound(id), entity.location); } catch (e) { } }
 
 // The held item on the model, as HeldItemRenderer draws it: the client draws the icon HELD_INDEX names at the
 // model's item, item_face or item_hat locator, as Cobblemon's visibility tags say, and nothing for the hidden ones.
@@ -4801,6 +4911,7 @@ function evolve(entity, evolution) {
     // an evolution that needs a held item uses it up
     if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
     setProp(entity, EVO_NOTE, undefined);
+    try { entity.dimension.playSound("cobblemon.evolution.full", entity.location); } catch (e) { }
     entity.triggerEvent(evolution.event);
 }
 
@@ -5462,6 +5573,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             const { x, y, z } = block.location;
             block.dimension.spawnItem(new ItemStack(berry.item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
+            try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
@@ -5479,7 +5591,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             const center = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
             const healed = healAround(block.dimension, center, player);
             player.sendMessage(healed ? `§aYour Pokemon are fully healed! (${healed})` : "§7No Pokemon of yours nearby to heal.");
-            try { player.playSound("random.levelup", { location: center }); } catch (err) { }
+            try { block.dimension.playSound("cobblemon.block.healing_machine.active", center); } catch (err) { }
         }
     });
 });
@@ -5622,7 +5734,8 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
         } else if (t === FLIGHT) {
             try { ball.remove(); } catch (e) { }
             ballBurst(dim, ballId, to);
-            try { dim.playSound("cobblemon.poke_ball.send_out", to); } catch (e) { }
+            const shiny = (SHINY_VARIANTS[entity.typeId] ?? []).includes(variantOf(entity));
+            try { dim.playSound(shiny ? "cobblemon.poke_ball.shiny_send_out" : "cobblemon.poke_ball.send_out", to); } catch (e) { }
             try { const cry = POKEMON[entity.typeId]?.cry; if (cry) dim.playSound(cry, to); } catch (e) { }
         } else setSize(entity, (t - FLIGHT) / BEAM_SHRINK);
         if (t >= FLIGHT + BEAM_SHRINK) { setSize(entity, 1); return false; }
@@ -5931,6 +6044,11 @@ system.runInterval(() => {
         f.last = { ...at };
     }
 }, 1);
+// a ball thrown from the hand makes Cobblemon's throw sound (EmptyPokeBallItem.throwPokeBall)
+world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
+    if (!itemStack || !BALLS[itemStack.typeId] || source.typeId !== "minecraft:player") return;
+    try { source.dimension.playSound("cobblemon.poke_ball.throw", source.location); } catch (e) { }
+});
 world.afterEvents.projectileHitEntity.subscribe((event) => {
     const { projectile, source, dimension, location, hitVector } = event;
     const ballId = BALL_FROM_PROJECTILE.get(projectile?.typeId);
