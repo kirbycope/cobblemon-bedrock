@@ -289,6 +289,9 @@ function boost(battle, target, boosts, source) {
     const guard = source && source !== target ? STAT_GUARD[target.ability] : undefined;
     let lowered = false;
     for (const [stat, amount] of Object.entries(boosts ?? {})) {
+        if (amount < 0 && source && source !== target && battle.mist?.ally > 0 && target === battle.ally) {
+            say(battle, `§7${target.info.name} is protected by the mist!`); continue;
+        }
         if (amount < 0 && source && source !== target && held(target) === "clear_amulet") {
             say(battle, `§7${target.info.name}'s Clear Amulet prevents its stats from being lowered!`); continue;
         }
@@ -454,7 +457,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (defAb === "wonderguard" && eff <= 1) { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s Wonder Guard protects it!`); return; }
         const physical = move.category === "Physical";
         const noCrit = defAb === "shellarmor" || defAb === "battlearmor";
-        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0);
+        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0);
         for (const [item, [who, n]] of Object.entries(CRIT_ITEMS)) if (holds(attacker, item, who)) critStage += n;
         const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
         // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
@@ -2230,6 +2233,7 @@ function endOfTurn(battle) {
         heldBerry(battle, f);
     }
     for (const f of [battle.ally, battle.foe]) f.flinched = false;
+    if (battle.mist?.ally > 0 && --battle.mist.ally === 0) say(battle, `§7The mist around ${battle.ally.info.name}'s team faded.`);
     afterFx(battle, () => { if (battles.has(battle.player.id)) afterTurn(battle); });
 }
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
@@ -4971,7 +4975,8 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             return;
         }
     }
-    if (!medicine && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash) return;
+    const battleItem = BATTLE_ITEMS[id];
+    if (!medicine && !battleItem && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
     // StashHandler.interactMob comes first: the item goes into the stash rather than being held
@@ -4981,7 +4986,16 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         // in battle, medicine on the Pokemon fighting is the turn's action (PokemonSelectingItem.applyToBattlePokemon)
         const battle = battles.get(player.id);
         if (battle) {
-            if (!medicine || !battle.minimised || battle.ally.entity?.id !== target.id) { player.sendMessage("§cYou cannot use items right now."); return; }
+            // ReviveItem in battle: a Revive on one of the player's fainted Pokemon on the bench brings it back, as the turn
+            const benchRevive = medicine?.revive && battle.minimised && battle.ally.entity?.id !== target.id && !!prop(target, FAINTED) && !battle.pvp;
+            if (benchRevive) {
+                const message = applyMedicine(target, medicine);
+                if (!message) { player.sendMessage("§7It won't have any effect."); return; }
+                consumeHand(player); playItemUse(target, id); say(battle, `§a${message}`);
+                restore(battle); foeTurn(battle);
+                return;
+            }
+            if (!(medicine || battleItem) || !battle.minimised || battle.ally.entity?.id !== target.id) { player.sendMessage("§cYou cannot use items right now."); return; }
             if (battle.pvp && realBattle(battle).choices[battle.side]) { player.sendMessage("§cYou cannot use items right now."); return; }
             if (!useBagItem(battle, id)) return;
             playItemUse(target, id);
@@ -5772,9 +5786,20 @@ function takeHeld(source) {
 }
 
 // medicine used in battle on the Pokemon fighting, from the hand
+// the battle items (bag_items x_stat, dire_hit, guard_spec; XStatItem, DireHitItem, GuardSpecItem): an X item raises
+// its stat two stages and adds a point of friendship, Dire Hit gives Focus Energy (two critical hit stages), Guard Spec
+// gives Mist (no stat drops from the foe for five turns); each is used on the Pokemon fighting, as the turn's action
+const BATTLE_ITEMS = { "cobblemon:x_attack": { boost: "atk" }, "cobblemon:x_defence": { boost: "def" }, "cobblemon:x_special_attack": { boost: "spa" },
+    "cobblemon:x_special_defence": { boost: "spd" }, "cobblemon:x_speed": { boost: "spe" }, "cobblemon:x_accuracy": { boost: "accuracy" },
+    "cobblemon:dire_hit": { focus: true }, "cobblemon:guard_spec": { mist: true } };
 function useBagItem(battle, id) {
-    const f = battle.ally, effect = MEDICINE[id];
+    const f = battle.ally, effect = MEDICINE[id] ?? {}, item = BATTLE_ITEMS[id];
     let used = false;
+    if (item?.boost && f.hp > 0 && f.stages[item.boost] < 6) {
+        boost(battle, f, { [item.boost]: 2 }, f); gainFriendship(f.entity, 1); used = true;
+    }
+    if (item?.focus && !f.focusEnergy) { f.focusEnergy = true; say(battle, `§a${f.info.name} is getting pumped!`); used = true; }
+    if (item?.mist && !(battle.mist?.ally > 0)) { (battle.mist ??= {}).ally = 5; say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
     if (effect.heal && f.hp < f.stats.hp) {
         const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "quarter" ? Math.floor(f.stats.hp / 4) : effect.heal;
         const before = f.hp; f.hp = Math.min(f.stats.hp, f.hp + amount); syncHealth(f);
