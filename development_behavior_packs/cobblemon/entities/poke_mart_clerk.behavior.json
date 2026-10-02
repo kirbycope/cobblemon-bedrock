@@ -8,27 +8,85 @@
             "is_experimental": false
         },
         "components": {
-            "minecraft:type_family": { "family": ["npc", "poke_mart_clerk"] },
-            "minecraft:economy_trade_table": {
-                "display_name": "Poke Mart",
-                "table": "trading/poke_mart.json",
-                "new_screen": true,
-                "persist_trades": true,
-                "use_legacy_price_formula": true
+            "minecraft:type_family": {
+                "family": [
+                    "npc",
+                    "poke_mart_clerk"
+                ]
             },
-            "minecraft:behavior.trade_with_player": { "priority": 1 },
-            "minecraft:behavior.look_at_player": { "priority": 2, "look_distance": 8, "probability": 1.0 },
-            "minecraft:behavior.look_at_trading_player": { "priority": 1 },
-            "minecraft:variant": { "value": 0 },
-            "minecraft:mark_variant": { "value": 0 },
-            "minecraft:nameable": { "always_show": true, "allow_name_tag_renaming": false },
+            "minecraft:behavior.look_at_player": {
+                "priority": 2,
+                "look_distance": 8,
+                "probability": 1.0
+            },
+            "minecraft:variant": {
+                "value": 0
+            },
+            "minecraft:mark_variant": {
+                "value": 0
+            },
+            "minecraft:nameable": {
+                "always_show": true,
+                "allow_name_tag_renaming": false
+            },
             "minecraft:persistent": {},
             "minecraft:physics": {},
-            "minecraft:pushable": { "is_pushable": false, "is_pushable_by_piston": false },
-            "minecraft:collision_box": { "width": 0.6, "height": 1.9 },
-            "minecraft:health": { "value": 20, "max": 20 },
-            "minecraft:movement": { "value": 0.0 },
-            "minecraft:damage_sensor": { "triggers": [{ "cause": "all", "deals_damage": false }] }
+            "minecraft:pushable": {
+                "is_pushable": false,
+                "is_pushable_by_piston": false
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 1.9
+            },
+            "minecraft:health": {
+                "value": 20,
+                "max": 20
+            },
+            "minecraft:movement": {
+                "value": 0.0
+            },
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "cause": "all",
+                        "deals_damage": false
+                    }
+                ]
+            },
+            "minecraft:npc": {
+                "npc_data": {
+                    "skin_list": [
+                        {
+                            "variant": 0
+                        }
+                    ],
+                    "portrait_offsets": {
+                        "scale": [
+                            1.75,
+                            1.75,
+                            1.75
+                        ],
+                        "translate": [
+                            -7,
+                            50,
+                            0
+                        ]
+                    },
+                    "picker_offsets": {
+                        "scale": [
+                            1.7,
+                            1.7,
+                            1.7
+                        ],
+                        "translate": [
+                            0,
+                            20,
+                            0
+                        ]
+                    }
+                }
+            }
         }
     }
 }

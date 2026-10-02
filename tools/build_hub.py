@@ -24,7 +24,7 @@ fills (/fill takes at most 32768 blocks), lays stone under a grass floor, and bu
     ranch     H. Ranch: pastures in fenced paddocks, grain bales, feed tables
     camp      I. Camp circle: 7 coloured campfires with pots, tatami seats, gilded chests, saccharine grove
     lights    lights set flush into every outdoor walkway that is not lit yet (6 block grid)
-    npcs      Nurse (Professor Sacchi), two gym trainers, the Poke Mart clerk (cobblemon:poke_mart_clerk, trading/poke_mart.json)
+    npcs      Nurse (Professor Sacchi), two gym trainers, the Poke Mart clerk (cobblemon:poke_mart_clerk, its shop in scripts/main.js)
     spawn     setworldspawn at the centre, spawnradius 0, and the hub's area for scripts/main.js
 
 --zone builds one of these alone (still inside the ticking area); every zone is still planned, so the light
@@ -802,6 +802,8 @@ def main():
     parser.add_argument("--x", type=int, required=True); parser.add_argument("--y", type=int, required=True); parser.add_argument("--z", type=int, required=True)
     parser.add_argument("--dry-run", action="store_true", help="print the commands instead of sending them")
     parser.add_argument("--zone", choices=ZONES, help="build only this zone")
+    parser.add_argument("--write-functions", action="store_true", help="write each zone as functions/hub/<zone>.mcfunction in the behavior pack")
+    parser.add_argument("--run-functions", action="store_true", help="build by running the written functions, one zone a call")
     args = parser.parse_args()
 
     h = Hub(args.x, args.y, args.z, args.zone)
@@ -811,6 +813,31 @@ def main():
     commands = [area] + [c for _, c in h.commands] + ["tickingarea remove hub"]
 
     refused = []
+    zones_in_order = list(dict.fromkeys(z for z, _ in h.commands))
+    if args.write_functions:
+        # the bridge passes a command or so a second, so a build of thousands takes over an hour; a function runs all of a
+        # zone's commands in one tick. They hold this hub's coordinates, so they are written per build, not committed
+        folder = os.path.join(os.path.dirname(HERE), "development_behavior_packs", "cobblemon", "functions", "hub")
+        os.makedirs(folder, exist_ok=True)
+        for old in os.listdir(folder): os.remove(os.path.join(folder, old))
+        for zone in zones_in_order:
+            with open(os.path.join(folder, f"{zone}.mcfunction"), "w", encoding="utf-8", newline="\n") as file:
+                # functions parse by the pack's min_engine_version (1.16), whose block states are written "key":value
+                file.write("\n".join(c.replace('"=', '":') for z, c in h.commands if z == zone) + "\n")
+        print(f"wrote {len(zones_in_order)} functions to {folder}: {' '.join(zones_in_order)}; deploy, then --run-functions")
+        return
+    if args.run_functions:
+        sys.path.insert(0, HERE)
+        from bridge import Bridge
+        bridge = Bridge()
+        print(area, "->", bridge.command(area))
+        corners = [h.abs(x, 0, z) for x in (-HALF, HALF - 1) for z in (-HALF, HALF - 1)]
+        if not wait_loaded(bridge, corners): sys.exit("the hub's chunks did not load; nothing built (the ticking area 'hub' is still there)")
+        for zone in zones_in_order:
+            print(f"function hub/{zone} ->", bridge.command(f"function hub/{zone}").strip().splitlines()[0], flush=True)
+            time.sleep(1)
+        print("tickingarea remove hub ->", bridge.command("tickingarea remove hub"))
+        return
     if args.dry_run:
         for c in commands: print(c)
     else:

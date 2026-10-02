@@ -2633,6 +2633,8 @@ function nearestPlayer(entity) {
 
 system.afterEvents.scriptEventReceive.subscribe((event) => {
     const source = event.sourceEntity;
+    // the hub's area is set from a function or the server console, which have no entity
+    if (event.id === "cobblemon:hub") { setHub(event.message); return; }
     if (!source) return;
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
@@ -2841,14 +2843,6 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (let dx = -8; dx <= 8; dx++) for (let dy = -4; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) {
             try { joinFence(source.dimension.getBlock({ x: Math.floor(x) + dx, y: Math.floor(y) + dy, z: Math.floor(z) + dz })); } catch (e) { }
         }
-    } else if (event.id === "cobblemon:hub") {
-        // tools/build_hub.py: "/scriptevent cobblemon:hub <x> <y> <z>" makes the 96 by 96 area around x, z the hub, from
-        // y - 10 to y + 40 in the overworld; "/scriptevent cobblemon:hub off" stops treating it as one
-        const parts = event.message.trim().split(/\s+/).map(Number);
-        if (event.message.trim() === "off") world.setDynamicProperty(HUB, undefined);
-        else if (parts.length === 3 && parts.every(Number.isFinite)) world.setDynamicProperty(HUB, JSON.stringify({ x: parts[0], y: parts[1], z: parts[2] }));
-        hubArea = undefined;
-        console.warn(`[cobblemon] hub: ${world.getDynamicProperty(HUB) ?? "none"}`);
     } else if (event.id === "cobblemon:readme") {
         // for testing: "/execute as <player> run scriptevent cobblemon:readme" gives the README and Getting Started books
         // again, as a first join does
@@ -6175,6 +6169,15 @@ world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState 
 // built over, and back in survival when they leave; operators and players in other modes are left as they are.
 const HUB = "cobblemon:hub", HUB_HALF = 48, HUB_ADVENTURE = "cobblemon:hub_adventure";
 let hubArea;
+// tools/build_hub.py: "/scriptevent cobblemon:hub <x> <y> <z>" makes the 96 by 96 area around x, z the hub, from y - 10 to
+// y + 40 in the overworld; "/scriptevent cobblemon:hub off" stops treating it as one
+function setHub(message) {
+    const parts = message.trim().split(/\s+/).map(Number);
+    if (message.trim() === "off") world.setDynamicProperty(HUB, undefined);
+    else if (parts.length === 3 && parts.every(Number.isFinite)) world.setDynamicProperty(HUB, JSON.stringify({ x: parts[0], y: parts[1], z: parts[2] }));
+    hubArea = undefined;
+    console.warn(`[cobblemon] hub: ${world.getDynamicProperty(HUB) ?? "none"}`);
+}
 function hub() {
     if (hubArea === undefined) { try { hubArea = JSON.parse(world.getDynamicProperty(HUB) ?? "null"); } catch (e) { hubArea = null; } }
     return hubArea;
@@ -6208,6 +6211,50 @@ system.runInterval(() => {
         } catch (e) { }
     }
 }, 10);
+
+// The Poke Mart (the hub's clerk, cobblemon:poke_mart_clerk): its screen lists what it sells for emeralds, and buying
+// takes the emeralds from the inventory and hands the items over. Bedrock's trade screen does not open for an entity of
+// a pack's own, so the shop is a form
+const POKE_MART = [["cobblemon:poke_ball", 2, 1], ["cobblemon:great_ball", 1, 1], ["cobblemon:ultra_ball", 1, 2], ["cobblemon:potion", 1, 1],
+    ["cobblemon:super_potion", 1, 2], ["cobblemon:hyper_potion", 1, 4], ["cobblemon:max_potion", 1, 8], ["cobblemon:revive", 1, 6],
+    ["cobblemon:antidote", 1, 1], ["cobblemon:paralyze_heal", 1, 1], ["cobblemon:awakening", 1, 1], ["cobblemon:burn_heal", 1, 1],
+    ["cobblemon:ice_heal", 1, 1], ["cobblemon:full_heal", 1, 1], ["cobblemon:poke_rod", 1, 5]];
+function emeraldsOf(player) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    let n = 0;
+    for (let i = 0; i < (inv?.size ?? 0); i++) { const it = inv.getItem(i); if (it?.typeId === "minecraft:emerald") n += it.amount; }
+    return n;
+}
+function takeEmeralds(player, count) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    for (let i = 0; i < inv.size && count > 0; i++) {
+        const it = inv.getItem(i);
+        if (it?.typeId !== "minecraft:emerald") continue;
+        const take = Math.min(count, it.amount); count -= take;
+        if (take === it.amount) inv.setItem(i, undefined); else { it.amount -= take; inv.setItem(i, it); }
+    }
+}
+function openMart(player) {
+    const have = emeraldsOf(player);
+    const form = new ActionFormData().title("Poke Mart").body(`§7Welcome! You have §a${have} emerald${have === 1 ? "" : "s"}§7.`);
+    for (const [id, n, price] of POKE_MART) form.button(`${itemName(id)}${n > 1 ? ` x${n}` : ""}\n${have >= price ? "§2" : "§c"}${price} emerald${price === 1 ? "" : "s"}`, potIcon(id));
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === undefined) return;
+        const [id, n, price] = POKE_MART[r.selection];
+        if (emeraldsOf(player) < price) { player.sendMessage("§cYou don't have enough emeralds."); return openMart(player); }
+        takeEmeralds(player, price);
+        giveOrDrop(player, id);
+        for (let i = 1; i < n; i++) giveOrDrop(player, id);
+        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        player.sendMessage(`§aYou bought ${n > 1 ? `${n} ` : "a "}${itemName(id)}${n > 1 ? "s" : ""}.`);
+        openMart(player);
+    }).catch(() => { });
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    if (event.target?.typeId !== "cobblemon:poke_mart_clerk") return;
+    event.cancel = true;
+    system.run(() => openMart(event.player));
+});
 
 // The books signed by Kirbycope: README (loot_tables/readme_book.json), every control, in the first hotbar slot, and
 // Getting Started (getting_started_book.json), a first-steps guide, in the second, each given once, on the first join
