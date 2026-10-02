@@ -4807,7 +4807,24 @@ def create_recipes():
             continue
         with open(f"{behaviorPack}/recipes/{name}.json", "w") as file: file.write(json.dumps({"format_version": "1.20.10", **body}, indent=2))
         made += 1
-    print(f"Create recipes complete: {made} Cobblemon recipes, {skipped} left out for items the pack does not have.")
+    # Cobblemon's brewing stand recipes (recipe/brewing_stand: Medicinal Brew, the potions, Full Restore, Ethers and
+    # Elixirs, the vitamins, PP Up and Max, status heals, the Ability Capsule, Throat Spray). Bedrock's brewing stand takes
+    # only potions in its bottle slots, so each becomes a shapeless crafting recipe of its bottle and its ingredient;
+    # a water bottle is minecraft:potion with data 0
+    brewed = 0
+    for path in sorted(glob.glob(f"{cobblemonData}/recipe/brewing_stand/*.json")):
+        name = os.path.basename(path)[:-len(".json")]
+        with open(path, encoding="utf-8") as file: recipe = json.load(file)
+        result_id = (recipe.get("result") or {}).get("id")
+        bottle = recipe.get("bottle", {})
+        bottle = {"item": "minecraft:potion", "data": 0} if bottle.get("item") == "minecraft:potion" else ingredient(bottle)
+        source = ingredient(recipe.get("input", {}))
+        if not result_id or result_id not in items or not bottle or not source: skipped += 1; missing[f"brewing {name}"] += 1; continue
+        body = {"minecraft:recipe_shapeless": {"description": {"identifier": f"cobblemon:{name}"}, "tags": ["crafting_table"], "ingredients": [bottle, source],
+                                               "result": {"item": result_id}, "unlock": [source] if "item" in source else [{"context": "AlwaysUnlocked"}]}}
+        with open(f"{behaviorPack}/recipes/{name}.json", "w") as file: file.write(json.dumps({"format_version": "1.20.10", **body}, indent=2))
+        brewed += 1
+    print(f"Create recipes complete: {made} Cobblemon recipes, {brewed} brewing recipes as crafting, {skipped} left out for items the pack does not have.")
     print("  missing: " + ", ".join(f"{k} ({n})" for k, n in missing.most_common(40)))
 
 
