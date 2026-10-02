@@ -2841,6 +2841,14 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (let dx = -8; dx <= 8; dx++) for (let dy = -4; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) {
             try { joinFence(source.dimension.getBlock({ x: Math.floor(x) + dx, y: Math.floor(y) + dy, z: Math.floor(z) + dz })); } catch (e) { }
         }
+    } else if (event.id === "cobblemon:hub") {
+        // tools/build_hub.py: "/scriptevent cobblemon:hub <x> <y> <z>" makes the 96 by 96 area around x, z the hub, from
+        // y - 10 to y + 40 in the overworld; "/scriptevent cobblemon:hub off" stops treating it as one
+        const parts = event.message.trim().split(/\s+/).map(Number);
+        if (event.message.trim() === "off") world.setDynamicProperty(HUB, undefined);
+        else if (parts.length === 3 && parts.every(Number.isFinite)) world.setDynamicProperty(HUB, JSON.stringify({ x: parts[0], y: parts[1], z: parts[2] }));
+        hubArea = undefined;
+        console.warn(`[cobblemon] hub: ${world.getDynamicProperty(HUB) ?? "none"}`);
     } else if (event.id === "cobblemon:readme") {
         // for testing: "/execute as <player> run scriptevent cobblemon:readme" gives the README and Getting Started books
         // again, as a first join does
@@ -6161,6 +6169,46 @@ world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState 
     lastSneak.set(player.id, system.currentTick);
     if (system.currentTick - last <= 10 && !summaryParty(player).length) { lastSneak.delete(player.id); openStarter(player); }
 });
+// The spawn hub (tools/build_hub.py). Inside its area no wild Pokemon, wild trainer or hostile mob stays: one that
+// spawns there is removed a few ticks later, once a script that made it has had the chance to make it someone's (a
+// send-out, a revival, a capture). Survival players there are put in adventure mode, so the town cannot be broken or
+// built over, and back in survival when they leave; operators and players in other modes are left as they are.
+const HUB = "cobblemon:hub", HUB_HALF = 48, HUB_ADVENTURE = "cobblemon:hub_adventure";
+let hubArea;
+function hub() {
+    if (hubArea === undefined) { try { hubArea = JSON.parse(world.getDynamicProperty(HUB) ?? "null"); } catch (e) { hubArea = null; } }
+    return hubArea;
+}
+function inHub(dimension, at) {
+    const h = hub();
+    return !!h && dimension.id === "minecraft:overworld" && Math.abs(at.x - h.x - 0.5) <= HUB_HALF && Math.abs(at.z - h.z - 0.5) <= HUB_HALF
+        && at.y >= h.y - 10 && at.y <= h.y + 40;
+}
+world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+    if (!hub()) return;
+    system.runTimeout(() => {
+        try {
+            if (!entity.isValid || !inHub(entity.dimension, entity.location) || entity.hasTag("hub_npc")) return;
+            const id = entity.typeId;
+            const wildPokemon = !!POKEMON[id] && prop(entity, OWNER) === undefined && !entity.hasComponent(EntityComponentTypes.IsTamed)
+                && ![...battles.values()].some((b) => b.foe?.entity?.id === entity.id);
+            // a trainer summoned by name (the hub's own, tagged hub_npc a moment later) stays
+            const hostile = entity.matches({ families: ["monster"] }) || (id === "cobblemon:npc_trainer" && !entity.nameTag);
+            if (wildPokemon || hostile) entity.remove();
+        } catch (e) { }
+    }, 5);
+});
+system.runInterval(() => {
+    if (!hub()) return;
+    for (const player of world.getAllPlayers()) {
+        try {
+            const inside = inHub(player.dimension, player.location), mode = player.getGameMode(), tagged = player.hasTag(HUB_ADVENTURE);
+            if (inside && mode === "Survival" && !tagged && player.playerPermissionLevel < 2) { player.addTag(HUB_ADVENTURE); player.setGameMode("Adventure"); }
+            else if (!inside && tagged) { player.removeTag(HUB_ADVENTURE); if (mode === "Adventure") player.setGameMode("Survival"); }
+        } catch (e) { }
+    }
+}, 10);
+
 // The books signed by Kirbycope: README (loot_tables/readme_book.json), every control, in the first hotbar slot, and
 // Getting Started (getting_started_book.json), a first-steps guide, in the second, each given once, on the first join
 // after it exists; whatever was in its slot moves to a free one past the books, or drops at their feet when there is none
