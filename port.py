@@ -1021,6 +1021,26 @@ def create_book_glyphs():
     sheet.save(f"{resourcePack}/font/glyph_E7.png")
 
 
+# The ride controls hint's keys (RideControlsOverlay's textures/gui/riding): a glyph sheet the font reads for U+E800 to
+# U+E8FF, sixteen by sixteen cells of 16 pixels, each key's unpressed frame (the top half of its two) centred in its cell
+RIDE_GLYPHS = ["key_up", "key_down", "key_left", "key_right", "key_jump", "key_sneak", "mouse", "mouse_arrow_up", "mouse_arrow_down",
+               "mouse_arrow_left", "mouse_arrow_right"]
+
+
+def create_ride_glyphs():
+    """font/glyph_E8.png: RIDE_GLYPHS in order from U+E800, one frame of each scaled to fit 16 pixels, the cell size the font
+    draws one line of text high, and centred."""
+    os.makedirs(f"{resourcePack}/font", exist_ok=True)
+    sheet = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    for n, name in enumerate(RIDE_GLYPHS):
+        icon = Image.open(f"{guiMain}/riding/{name}.png").convert("RGBA")
+        icon = icon.crop((0, 0, icon.width, icon.height // 2)) if name != "mouse" else icon   # one frame of the two
+        k = min(16 / icon.width, 16 / icon.height)
+        icon = icon.resize((max(1, round(icon.width * k)), max(1, round(icon.height * k))), Image.BOX)
+        sheet.alpha_composite(icon, ((n % 16) * 16 + (16 - icon.width) // 2, (n // 16) * 16 + (16 - icon.height) // 2))
+    sheet.save(f"{resourcePack}/font/glyph_E8.png")
+
+
 def create_cosmetics():
     """scripts/cosmetics.js: Cobblemon's cosmetic items (data/cosmetic_items, CosmeticItemAssignment) for each species
     that can wear them: the items (a tag's items each) and the aspects each gives, and each variant's form, gender and
@@ -8833,6 +8853,7 @@ def main():
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
     create_book_glyphs()
+    create_ride_glyphs()
     add_bait_offhand()   # after every item is written
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states

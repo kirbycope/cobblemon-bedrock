@@ -5268,6 +5268,28 @@ function rideExpr(mount, style, kind, stat) {
 function rideBar(player, share, shown) {
     try { player.onScreenDisplay.setTitle(`cbm:ridep${String(Math.round(share * 50)).padStart(2, "0")}${shown ? "y" : "n"}`, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
 }
+// RideControlsOverlay: the controls of the ride, shown over the hotbar for a while after mounting and again whenever the
+// riding style changes (a flier landing, a swimmer leaving the water), with Cobblemon's key art as glyphs (U+E800 on,
+// port.py create_ride_glyphs) for the controls the port gives each behaviour. Cobblemon shows it for
+// displayControlSeconds, 0 by default; the port shows it for RIDE_HINT_TICKS
+const RIDE_HINT_TICKS = 160;
+const [K_UP, K_DOWN, K_LEFT, K_RIGHT, K_JUMP, K_SNEAK, K_MOUSE] = Array.from({ length: 7 }, (_, n) => String.fromCharCode(0xE800 + n));
+function rideHintText(style, kind, settings) {
+    const steer = `${K_MOUSE} §7steer`, off = `${K_SNEAK} §7get off`;
+    if (style === "air") return `${K_MOUSE} §7steer   ${K_UP} §7fly   ${K_JUMP} §7climb   ${K_MOUSE} §7look down to dive   ${off}`;
+    if (kind === "boat") return `${K_UP} §7go   ${K_UP}${K_UP} §7sprint   ${K_LEFT}${K_RIGHT} §7turn   ${off}`;
+    if (kind === "dolphin") return `${steer}   ${K_UP} §7swim   ${K_UP}${K_UP} §7boost   ${K_JUMP} §7up   ${off}`;
+    if (kind === "submarine") return `${steer}   ${K_UP} §7swim   ${K_JUMP} §7up   ${off}`;
+    const sprint = settings.sprint === false ? "" : `   ${K_UP}${K_UP} §7sprint`, jump = settings.jump === false ? "" : `   ${K_JUMP} §7hold to jump`;
+    return `${steer}   ${K_UP} §7walk${sprint}${jump}   ${off}`;
+}
+function rideHint(player, st, style, kind, settings) {
+    const key = `${style}|${kind}`, now = system.currentTick;
+    if (st.hintKey !== key) { st.hintKey = key; st.hintUntil = now + RIDE_HINT_TICKS; }
+    if (now < st.hintUntil && (st.hintUntil - now) % 40 === 0) {
+        try { player.onScreenDisplay.setActionBar(rideHintText(style, kind, settings)); } catch (e) { }
+    }
+}
 function endRide(st) {
     try { st.mount.getComponent("minecraft:movement")?.resetToDefaultValue(); st.mount.getComponent("minecraft:underwater_movement")?.resetToDefaultValue(); } catch (e) { }
     if (st.mount.isValid) { setProp(st.mount, RIDE_STAMINA, st.stamina); setProp(st.mount, RIDE_STAMINA_AT, Date.now()); if (st.tired) try { st.mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
@@ -5304,6 +5326,7 @@ system.runInterval(() => {
         }
         const style = rideStyle(ride, mount), entry = ride.find(([s]) => s === style), settings = entry[3] ?? {};
         const kind = RIDE_KINDS[entry[1]] ?? "horse";
+        rideHint(player, st, style, kind, settings);
         let input = { x: 0, y: 0 }, jumping = false;
         try { input = player.inputInfo.getMovementVector(); jumping = player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed; } catch (e) { }
         const forward = input.y > 0.1;
