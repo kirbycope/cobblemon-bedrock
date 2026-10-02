@@ -1,0 +1,324 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.flamigo.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "air_fly",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "float": {
+                    "animations": [
+                        "surfacewater_idle",
+                        "pose_float"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "swim": {
+                    "animations": [
+                        "surfacewater_swim",
+                        "pose_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "float": "v.pose == 5"
+                        },
+                        {
+                            "swim": "v.pose == 6"
+                        },
+                        {
+                            "sleep": "v.pose == 7"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.flamigo.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
+                    ]
+                },
+                "play": {
+                    "animations": [
+                        "quirk_0"
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 1));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.flamigo.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

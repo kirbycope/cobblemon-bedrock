@@ -2,31 +2,59 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0426_drifblim",
+            "identifier": "cobblemon:p0426_drifblim",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0426_drifblim/drifblim"
+                "default": "textures/entity/0426_drifblim/drifblim",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0426_drifblim/drifblim",
+                "v1": "textures/entity/0426_drifblim/drifblim_shiny"
             },
             "geometry": {
-                "default": "geometry.drifblim"
+                "g_drifblim": "geometry.drifblim"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && ((!q.has_rider))) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && ((!q.has_rider))) ? 1 : (((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 3 || v.pose_type == 4 || v.pose_type == 5 || v.pose_type == 6) && ((q.has_rider && 1))) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.drifblim.pose",
+                "blink_quirk": "controller.animation.drifblim.blink",
+                "look_at_target": "animation.0426_drifblim.look",
                 "ground_idle": "animation.drifblim.ground_idle",
-                "blink": "animation.drifblim.blink"
+                "ground_walk": "animation.drifblim.ground_walk",
+                "air_idle": "animation.drifblim.air_idle",
+                "air_fly": "animation.drifblim.air_fly",
+                "ride_air_fly": "animation.drifblim.ride_air_fly",
+                "sleep": "animation.drifblim.sleep",
+                "faint": "animation.drifblim.faint",
+                "blink": "animation.drifblim.blink",
+                "cry": "animation.drifblim.cry",
+                "pose_hover": "animation.0426_drifblim.pose_hover",
+                "pose_fly": "animation.0426_drifblim.pose_fly"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.drifblim"
             ],
             "spawn_egg": {
                 "texture": "0426_drifblim_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.drifblim.cry": "cobblemon.drifblim.cry"
             }
         }
     }

@@ -2,39 +2,194 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.greninja.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "sleep",
+                        "pose_sleep"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walk": {
                     "animations": [
-                        "sleep"
+                        "ground_walk",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "swim_idle": {
+                    "animations": [
+                        "water_idle",
+                        "pose_swim_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "swim": {
+                    "animations": [
+                        "water_swim",
+                        "pose_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_idle": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battle_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "swim_idle": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        },
+                        {
+                            "battle_idle": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.greninja.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

@@ -2,39 +2,147 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.combee.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "sleep": {
                     "animations": [
-                        "ground_idle"
+                        "air_sleep"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 3"
+                        },
+                        {
+                            "shoulderright": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "hover": {
                     "animations": [
-                        "ground_idle",
-                        "ground_walk"
+                        "air_idle"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 3"
+                        },
+                        {
+                            "shoulderright": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "fly": {
                     "animations": [
-                        "sleep"
+                        "air_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 3"
+                        },
+                        {
+                            "shoulderright": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderleft": {
+                    "animations": [
+                        "air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "shoulderright": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulderright": {
+                    "animations": [
+                        "air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 2"
+                        },
+                        {
+                            "shoulderleft": "v.pose == 3"
+                        },
+                        {
+                            "shoulderright": "v.pose == 4"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.combee.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

@@ -2,30 +2,48 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0740_crabominable",
+            "identifier": "cobblemon:p0740_crabominable",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0740_crabominable/crabominable"
+                "default": "textures/entity/0740_crabominable/crabominable",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0740_crabominable/crabominable",
+                "v1": "textures/entity/0740_crabominable/crabominable_shiny"
             },
             "geometry": {
-                "default": "geometry.crabominable"
+                "g_crabominable": "geometry.crabominable"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.crabominable.pose",
+                "blink_quirk": "controller.animation.crabominable.blink",
+                "look_at_target": "animation.0740_crabominable.look",
                 "ground_idle": "animation.crabominable.ground_idle",
                 "ground_walk": "animation.crabominable.ground_walk",
                 "blink": "animation.crabominable.blink",
-                "cry": "animation.crabominable.cry"
+                "cry": "animation.crabominable.cry",
+                "pose_standing": "animation.0740_crabominable.pose_standing",
+                "pose_walk": "animation.0740_crabominable.pose_walk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.crabominable"
             ],
             "spawn_egg": {
                 "texture": "0740_crabominable_spawn_egg"

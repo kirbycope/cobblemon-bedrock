@@ -2,39 +2,230 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.rhyhorn.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "battle_standing": {
                     "animations": [
-                        "ground_idle"
+                        "battle_idle",
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "jump": {
+                    "animations": [
+                        "ride_jump",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_jump"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        {
+                            "ride_ground_walk": "q.has_rider"
+                        },
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walking": {
+                    "animations": [
+                        "ground_walk",
+                        {
+                            "ride_ground_walk": "q.has_rider"
+                        },
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "ground_run",
+                        {
+                            "ride_ground_run": "q.has_rider"
+                        },
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
                     "animations": [
                         "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "jump": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        },
+                        {
+                            "running": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.rhyhorn.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "play": {
                     "animations": [
-                        "faint"
+                        "quirk_0"
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 1));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.rhyhorn.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

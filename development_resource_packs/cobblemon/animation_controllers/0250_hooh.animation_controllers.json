@@ -1,0 +1,134 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.hooh.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "ho_oh__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ho_oh__ground_idle",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "ho_oh__air_idle",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "ho_oh__air_fly",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "ho_oh__sleep",
+                        "pose_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

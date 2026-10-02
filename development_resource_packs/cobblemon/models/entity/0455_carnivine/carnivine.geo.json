@@ -67,6 +67,15 @@
 					]
 				},
 				{
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [5.5, 33, -9],
+					"rotation": [-90, 0, 0],
+					"locators": {
+						"eye2": [5.5, 33, -9]
+					}
+				},
+				{
 					"name": "eyelid_left",
 					"parent": "eye_left",
 					"pivot": [-3, 17.9001, 0.50436],
@@ -81,6 +90,15 @@
 					"cubes": [
 						{"origin": [-8, 32.01, -11.5], "size": [5, 1, 5], "inflate": 0.01, "uv": [5, 54]}
 					]
+				},
+				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-5.5, 33, -9],
+					"rotation": [-90, 0, 0],
+					"locators": {
+						"eye1": [-5.5, 33, -9]
+					}
 				},
 				{
 					"name": "eyelid_right",
@@ -139,8 +157,13 @@
 					]
 				},
 				{
-					"name": "tentacle_front",
+					"name": "tentacles",
 					"parent": "body",
+					"pivot": [0, 17, 0]
+				},
+				{
+					"name": "tentacle_front",
+					"parent": "tentacles",
 					"pivot": [0, 18, -1],
 					"rotation": [-25, 0, 0],
 					"cubes": [
@@ -173,7 +196,7 @@
 				},
 				{
 					"name": "tentacle_front_left",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [1.25, 18, -0.5],
 					"rotation": [-25, -60, 0],
 					"cubes": [
@@ -206,7 +229,7 @@
 				},
 				{
 					"name": "tentacle_back_left",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [1.25, 18, 0.5],
 					"rotation": [25, 60, 0],
 					"cubes": [
@@ -239,7 +262,7 @@
 				},
 				{
 					"name": "tentacle",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [0, 18, 0],
 					"cubes": [
 						{"origin": [-1, 13, -1], "size": [2, 6, 2], "uv": [112, 32]}
@@ -271,7 +294,7 @@
 				},
 				{
 					"name": "tentacle_front_right",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [-1.25, 18, -0.5],
 					"rotation": [-25, 60, 0],
 					"cubes": [
@@ -304,7 +327,7 @@
 				},
 				{
 					"name": "tentacle_back_right",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [-1.25, 18, 0.5],
 					"rotation": [25, -60, 0],
 					"cubes": [
@@ -337,7 +360,7 @@
 				},
 				{
 					"name": "tentacle_back",
-					"parent": "body",
+					"parent": "tentacles",
 					"pivot": [0, 18, 1],
 					"rotation": [25, 0, 0],
 					"cubes": [

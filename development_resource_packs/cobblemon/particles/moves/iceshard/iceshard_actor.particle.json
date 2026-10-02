@@ -1,0 +1,129 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:iceshard_actor",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/ice/iceshard"
+			}
+		},
+		"curves": {
+			"variable.fun": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0.35,
+					0.8,
+					0.98,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1
+				]
+			}
+		},
+		"events": {
+			"launch": {
+				"particle_effect": {
+					"effect": "cobblemon:iceshard_actorlaunch",
+					"type": "particle"
+				}
+			},
+			"mist": {
+				"particle_effect": {
+					"effect": "cobblemon:iceshard_actormist",
+					"type": "emitter"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_initialization": {
+				"creation_expression": ""
+			},
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 20,
+				"max_particles": 6
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.7
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": "mist"
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					0,
+					0,
+					"-1*0.6"
+				],
+				"direction": [
+					"math.sin(v.emitter_age*2000)*40",
+					"math.sin(v.emitter_age*1300)*40",
+					"math.cos(v.emitter_age*2000)*40"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 1
+			},
+			"minecraft:particle_lifetime_events": {
+				"timeline": {
+					"0.97": "launch"
+				}
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_4*3)*90",
+				"rotation_rate": "(math.random(8,10)*12)*((math.round(v.particle_random_1)*2)-1)"
+			},
+			"minecraft:particle_initial_speed": "math.random(2.75,4.25)*0.8",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					"(v.particle_random_1-0.5)*1",
+					"(v.particle_random_2-0.5)*1",
+					"(v.particle_random_3-0.5)*1"
+				],
+				"linear_drag_coefficient": 2.5
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.2*v.fun",
+					"0.2*v.fun"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 42,
+					"texture_height": 14,
+					"uv": [
+						"math.round(v.particle_random_4*2)*14",
+						0
+					],
+					"uv_size": [
+						14,
+						14
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 0.5,
+				"coefficient_of_restitution": 1,
+				"collision_radius": 0.1
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FF80B5FF",
+						"0.1": "#FFFFFFFF",
+						"1.0": "#FFFFFFFF"
+					}
+				}
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

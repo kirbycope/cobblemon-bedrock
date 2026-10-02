@@ -1,0 +1,57 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0305_lairon.pose_standing": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0305_lairon.pose_walk": {
+   "loop": true,
+   "bones": {
+    "leg_front_left": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 40.1070) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "leg_front_right": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 40.1070 + 180) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "leg_back_left3": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 40.1070 + 180) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "leg_back_right3": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 40.1070) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  }
+ }
+}

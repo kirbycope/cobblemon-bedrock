@@ -1,0 +1,99 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:present_target",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/vanilla/generic"
+			}
+		},
+		"events": {
+			"dots": {
+				"particle_effect": {
+					"effect": "cobblemon:present_targetdots",
+					"type": "emitter"
+				}
+			},
+			"confet": {
+				"particle_effect": {
+					"effect": "cobblemon:present_targetconfetti",
+					"type": "emitter"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 320,
+				"max_particles": 1000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.05
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": [
+					"dots",
+					"confet"
+				]
+			},
+			"minecraft:emitter_shape_sphere": {
+				"radius": 0.3,
+				"surface_only": true,
+				"direction": "outwards"
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(0.6,1.8)"
+			},
+			"minecraft:particle_initial_speed": "((v.particle_random_4*0.75)+0.25)*5.5",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					"v.particle_random_2*2.5 + 0.5",
+					0
+				],
+				"linear_drag_coefficient": 2.5
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.25+(v.particle_random_1*0.15)",
+					"0.25+(v.particle_random_1*0.15)"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 64,
+					"texture_height": 8,
+					"flipbook": {
+						"base_UV": [
+							56,
+							0
+						],
+						"size_UV": [
+							8,
+							8
+						],
+						"step_UV": [
+							-8,
+							0
+						],
+						"max_frame": 8,
+						"stretch_to_lifetime": true
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"coefficient_of_restitution": 0.8,
+				"collision_radius": 0.1
+			},
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_random_1",
+					"gradient": {
+						"0.0": "#ffffffff",
+						"1.0": "#FFB1B1B1"
+					}
+				}
+			}
+		}
+	}
+}

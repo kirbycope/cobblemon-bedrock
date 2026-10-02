@@ -2,36 +2,71 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0711_gourgeist",
+            "identifier": "cobblemon:p0711_gourgeist",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0711_gourgeist/gourgeist"
+                "default": "textures/entity/0711_gourgeist/gourgeist",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0711_gourgeist/gourgeist",
+                "color_0_0": "textures/entity/0711_gourgeist/gourgeist_emissive",
+                "v1": "textures/entity/0711_gourgeist/gourgeist_shiny",
+                "color_1_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive",
+                "v2": "textures/entity/0711_gourgeist/gourgeist",
+                "color_2_0": "textures/entity/0711_gourgeist/gourgeist_emissive",
+                "v3": "textures/entity/0711_gourgeist/gourgeist_shiny",
+                "color_3_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive",
+                "v4": "textures/entity/0711_gourgeist/gourgeist",
+                "color_4_0": "textures/entity/0711_gourgeist/gourgeist_emissive",
+                "v5": "textures/entity/0711_gourgeist/gourgeist_shiny",
+                "color_5_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive",
+                "v6": "textures/entity/0711_gourgeist/gourgeist",
+                "color_6_0": "textures/entity/0711_gourgeist/gourgeist_emissive",
+                "v7": "textures/entity/0711_gourgeist/gourgeist_shiny",
+                "color_7_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.gourgeist"
+                "g_gourgeist": "geometry.gourgeist"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4)) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.gourgeist.pose",
+                "blink_quirk": "controller.animation.gourgeist.blink",
+                "look_at_target": "animation.0711_gourgeist.look",
                 "ground_idle": "animation.gourgeist.ground_idle",
                 "ground_walk": "animation.gourgeist.ground_walk",
                 "air_idle": "animation.gourgeist.air_idle",
                 "air_fly": "animation.gourgeist.air_fly",
                 "sleep": "animation.gourgeist.sleep",
                 "blink": "animation.gourgeist.blink",
-                "cry": "animation.gourgeist.cry"
+                "cry": "animation.gourgeist.cry",
+                "pose_standing": "animation.0711_gourgeist.pose_standing"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gourgeist",
+                "controller.render.gourgeist_color"
             ],
             "spawn_egg": {
                 "texture": "0711_gourgeist_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gourgeist.cry": "cobblemon.gourgeist.cry"
             }
         }
     }

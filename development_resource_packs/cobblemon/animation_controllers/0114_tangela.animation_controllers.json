@@ -2,39 +2,35 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.tangela.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
+                    "transitions": [
+                        {
+                            "walk": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
                     "animations": [
-                        "ground_idle"
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 0"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
-                    "animations": [
-                        "ground_idle",
-                        "ground_walk"
-                    ],
+                "spawn": {
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
                         }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ]
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
                     ]
                 }
             }

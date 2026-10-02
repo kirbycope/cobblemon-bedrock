@@ -2,23 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0313_volbeat",
+            "identifier": "cobblemon:p0313_volbeat",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0313_volbeat/volbeat"
+                "default": "textures/entity/0313_volbeat/volbeat",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0313_volbeat/volbeat",
+                "emissive_0_0": "textures/entity/0313_volbeat/volbeat_emissive",
+                "v1": "textures/entity/0313_volbeat/volbeat_shiny",
+                "emissive_1_0": "textures/entity/0313_volbeat/volbeat_emissive"
             },
             "geometry": {
-                "default": "geometry.volbeat"
+                "g_volbeat": "geometry.volbeat"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 1)) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 7 : (0))))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.volbeat.pose",
+                "blink_quirk": "controller.animation.volbeat.blink",
+                "quirk": "controller.animation.volbeat.quirk",
+                "quirk_0": "animation.volbeat.flicker_quirk",
+                "look_at_target": "animation.0313_volbeat.look",
                 "ground_idle": "animation.volbeat.ground_idle",
                 "ground_walk": "animation.volbeat.ground_walk",
                 "ground_run": "animation.volbeat.ground_run",
@@ -28,11 +49,20 @@
                 "sleep": "animation.volbeat.sleep",
                 "blink": "animation.volbeat.blink",
                 "cry": "animation.volbeat.cry",
+                "flicker_quirk": "animation.volbeat.flicker_quirk",
                 "move": "animation.volbeat.move",
-                "move_run": "animation.volbeat.move_run"
+                "move_run": "animation.volbeat.move_run",
+                "pose_water_surface": "animation.0313_volbeat.pose_water_surface",
+                "pose_water_surface_fly": "animation.0313_volbeat.pose_water_surface_fly",
+                "pose_hover": "animation.0313_volbeat.pose_hover",
+                "pose_fly": "animation.0313_volbeat.pose_fly",
+                "pose_standing": "animation.0313_volbeat.pose_standing",
+                "pose_walking": "animation.0313_volbeat.pose_walking",
+                "pose_battle_idle": "animation.0313_volbeat.pose_battle_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.volbeat",
+                "controller.render.volbeat_emissive"
             ],
             "spawn_egg": {
                 "texture": "0313_volbeat_spawn_egg"

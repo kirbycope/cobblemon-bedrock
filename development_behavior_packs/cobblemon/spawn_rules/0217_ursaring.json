@@ -1,0 +1,91 @@
+{
+    "format_version": "1.8.0",
+    "minecraft:spawn_rules": {
+        "description": {
+            "identifier": "cobblemon:p0217_ursaring",
+            "population_control": "animal"
+        },
+        "conditions": [
+            {
+                "minecraft:weight": {
+                    "default": 24
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "extreme_hills"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "flower_forest"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "cherry_grove"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "grove"
+                                }
+                            ]
+                        },
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mountains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "extreme_hills"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "taiga"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:height_filter": {
+                    "min": 48,
+                    "max": 320
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 3
+                }
+            }
+        ]
+    }
+}

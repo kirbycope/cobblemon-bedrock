@@ -1,0 +1,90 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:shiny_ghostly_smoke_center",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/smoke/smoke"
+			}
+		},
+		"curves": {
+			"variable.shrink": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0.4,
+					1,
+					0.49,
+					0.16,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_local_space": {
+				"position": true
+			},
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 2,
+				"max_particles": 10
+			},
+			"minecraft:emitter_lifetime_expression": {
+				"activation_expression": 1
+			},
+			"minecraft:emitter_shape_point": {
+				"attachment_options": {
+					"rotation": true,
+					"scale": true,
+					"position": true
+				}
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.8
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.random(0,360)"
+			},
+			"minecraft:particle_initial_speed": -0.1,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"variable.shrink",
+					"variable.shrink"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 16,
+					"texture_height": 96,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							16,
+							16
+						],
+						"step_UV": [
+							0,
+							16
+						],
+						"frames_per_second": 7,
+						"max_frame": 6
+					}
+				}
+			},
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FF529BFF",
+						"1.0": "#FF3082FF"
+					}
+				}
+			}
+		}
+	}
+}

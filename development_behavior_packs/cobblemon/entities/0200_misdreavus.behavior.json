@@ -2,31 +2,371 @@
     "format_version": "1.16.0",
     "minecraft:entity": {
         "description": {
-            "identifier": "cobblemon:0200_misdreavus",
+            "identifier": "cobblemon:p0200_misdreavus",
             "is_spawnable": true,
             "is_summonable": true,
-            "is_experimental": false
+            "is_experimental": false,
+            "spawn_category": "creature",
+            "properties": {
+                "cobblemon:battle": {
+                    "type": "bool",
+                    "default": false,
+                    "client_sync": true
+                },
+                "cobblemon:submerged": {
+                    "type": "bool",
+                    "default": false,
+                    "client_sync": true
+                },
+                "cobblemon:holding": {
+                    "type": "bool",
+                    "default": false,
+                    "client_sync": true
+                },
+                "cobblemon:held_index": {
+                    "type": "int",
+                    "range": [
+                        0,
+                        1023
+                    ],
+                    "default": 0,
+                    "client_sync": true
+                },
+                "cobblemon:on_sand": {
+                    "type": "int",
+                    "range": [
+                        0,
+                        2
+                    ],
+                    "default": 0,
+                    "client_sync": true
+                },
+                "cobblemon:size": {
+                    "type": "float",
+                    "range": [
+                        0.0,
+                        1.0
+                    ],
+                    "default": 1.0,
+                    "client_sync": true
+                },
+                "cobblemon:intrinsic": {
+                    "type": "float",
+                    "range": [
+                        0.5,
+                        1.5
+                    ],
+                    "default": 1.0,
+                    "client_sync": true
+                },
+                "cobblemon:red": {
+                    "type": "float",
+                    "range": [
+                        0.0,
+                        1.0
+                    ],
+                    "default": 0.0,
+                    "client_sync": true
+                },
+                "cobblemon:shoulder": {
+                    "type": "int",
+                    "range": [
+                        0,
+                        2
+                    ],
+                    "default": 0,
+                    "client_sync": true
+                }
+            },
+            "animations": {},
+            "scripts": {
+                "animate": []
+            }
         },
         "component_groups": {
-            "minecraft:baby": {
-                "minecraft:is_baby": {},
-                "minecraft:scale": {
-                    "value": 1.0
-                },
-                "minecraft:ageable": {
-                    "duration": 1200,
-                    "feed_items": [
-                        "rotten_flesh"
+            "cobblemon:wild": {
+                "minecraft:despawn": {
+                    "despawn_from_distance": {}
+                }
+            },
+            "cobblemon:released": {
+                "minecraft:tameable": {
+                    "probability": 1.0,
+                    "tame_items": [
+                        "cobblemon:poke_ball",
+                        "cobblemon:ancient_azure_ball",
+                        "cobblemon:ancient_citrine_ball",
+                        "cobblemon:ancient_feather_ball",
+                        "cobblemon:ancient_gigaton_ball",
+                        "cobblemon:ancient_great_ball",
+                        "cobblemon:ancient_heavy_ball",
+                        "cobblemon:ancient_ivory_ball",
+                        "cobblemon:ancient_jet_ball",
+                        "cobblemon:ancient_leaden_ball",
+                        "cobblemon:ancient_origin_ball",
+                        "cobblemon:ancient_poke_ball",
+                        "cobblemon:ancient_roseate_ball",
+                        "cobblemon:ancient_slate_ball",
+                        "cobblemon:ancient_ultra_ball",
+                        "cobblemon:ancient_verdant_ball",
+                        "cobblemon:ancient_wing_ball",
+                        "cobblemon:azure_ball",
+                        "cobblemon:beast_ball",
+                        "cobblemon:cherish_ball",
+                        "cobblemon:citrine_ball",
+                        "cobblemon:dive_ball",
+                        "cobblemon:dream_ball",
+                        "cobblemon:dusk_ball",
+                        "cobblemon:fast_ball",
+                        "cobblemon:friend_ball",
+                        "cobblemon:great_ball",
+                        "cobblemon:heal_ball",
+                        "cobblemon:heavy_ball",
+                        "cobblemon:level_ball",
+                        "cobblemon:love_ball",
+                        "cobblemon:lure_ball",
+                        "cobblemon:luxury_ball",
+                        "cobblemon:master_ball",
+                        "cobblemon:moon_ball",
+                        "cobblemon:nest_ball",
+                        "cobblemon:net_ball",
+                        "cobblemon:park_ball",
+                        "cobblemon:premier_ball",
+                        "cobblemon:quick_ball",
+                        "cobblemon:repeat_ball",
+                        "cobblemon:roseate_ball",
+                        "cobblemon:safari_ball",
+                        "cobblemon:slate_ball",
+                        "cobblemon:sport_ball",
+                        "cobblemon:strange_ball",
+                        "cobblemon:timer_ball",
+                        "cobblemon:ultra_ball",
+                        "cobblemon:verdant_ball"
                     ],
-                    "grow_up": {
-                        "event": "minecraft:ageable_grow_up",
+                    "tame_event": {
+                        "event": "cobblemon:caught",
+                        "target": "self"
+                    }
+                },
+                "minecraft:persistent": {}
+            },
+            "cobblemon:owned": {
+                "minecraft:is_tamed": {},
+                "minecraft:type_family": {
+                    "family": [
+                        "mob",
+                        "pokemon",
+                        "npc",
+                        "ghost",
+                        "owned"
+                    ]
+                },
+                "minecraft:persistent": {},
+                "minecraft:leashable": {},
+                "minecraft:interact": {
+                    "interactions": [
+                        {
+                            "on_interact": {
+                                "filters": {
+                                    "all_of": [
+                                        {
+                                            "test": "has_equipment",
+                                            "subject": "other",
+                                            "domain": "hand",
+                                            "value": "cobblemon:dusk_stone"
+                                        }
+                                    ]
+                                },
+                                "event": "cobblemon:evolve_to_0429_mismagius",
+                                "target": "self"
+                            },
+                            "use_item": true,
+                            "swing": true,
+                            "interact_text": "action.interact.evolve"
+                        }
+                    ]
+                }
+            },
+            "cobblemon:pastured": {
+                "minecraft:home": {
+                    "restriction_radius": 32,
+                    "restriction_type": "random_movement"
+                },
+                "minecraft:behavior.random_stroll": {
+                    "priority": 6,
+                    "speed_multiplier": 0.8
+                }
+            },
+            "cobblemon:following": {
+                "minecraft:behavior.follow_owner": {
+                    "priority": 5,
+                    "speed_multiplier": 1.2,
+                    "start_distance": 5,
+                    "stop_distance": 2,
+                    "can_teleport": true
+                }
+            },
+            "cobblemon:captured": {
+                "minecraft:spawn_entity": {
+                    "entities": [
+                        {
+                            "spawn_item": "cobblemon:poke_ball_0200_misdreavus",
+                            "min_wait_time": 0,
+                            "max_wait_time": 0,
+                            "num_to_spawn": 1,
+                            "single_use": true
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": 1.0,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:vanish",
                         "target": "self"
                     }
                 }
             },
-            "grow_up": {
+            "cobblemon:gone": {
+                "minecraft:instant_despawn": {}
+            },
+            "cobblemon:evolve_0429_mismagius": {
                 "minecraft:transformation": {
-                    "into": "cobblemon:0429_mismagius"
+                    "into": "cobblemon:p0429_mismagius",
+                    "keep_level": true
+                }
+            },
+            "cobblemon:battling": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 1,
+                    "must_see": false,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 24
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_attack": {
+                    "priority": 2,
+                    "track_target": true
+                },
+                "minecraft:timer": {
+                    "time": 60,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:vanish",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:in_battle": {
+                "minecraft:movement": {
+                    "value": 0.0
+                }
+            },
+            "cobblemon:variant_0": {
+                "minecraft:variant": {
+                    "value": 0
+                }
+            },
+            "cobblemon:variant_1": {
+                "minecraft:variant": {
+                    "value": 1
+                }
+            },
+            "cobblemon:pasture_conflict": {
+                "minecraft:behavior.nearest_attackable_target": {
+                    "priority": 2,
+                    "must_see": true,
+                    "within_radius": 16,
+                    "reselect_targets": true,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "monster"
+                            },
+                            "max_dist": 16
+                        }
+                    ]
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 3,
+                    "speed_multiplier": 1.2,
+                    "track_target": true
+                }
+            },
+            "cobblemon:retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 4,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0429_mismagius",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_duskull"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_gastly"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_misdreavus"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_shuppet"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_mismagius"
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -34,20 +374,77 @@
             "minecraft:nameable": {},
             "minecraft:type_family": {
                 "family": [
-                    "mob"
+                    "mob",
+                    "pokemon",
+                    "npc",
+                    "ghost",
+                    "species_misdreavus"
                 ]
             },
-            "minecraft:breathable": {
-                "total_supply": 15,
-                "suffocate_time": 0
-            },
             "minecraft:collision_box": {
-                "width": 0.6,
-                "height": 0.8
+                "width": 1.1,
+                "height": 1.2
+            },
+            "minecraft:scale": {
+                "value": 0.8
             },
             "minecraft:health": {
-                "value": 8,
-                "max": 8
+                "value": 57,
+                "max": 57
+            },
+            "minecraft:attack": {
+                "damage": 6
+            },
+            "minecraft:loot": {
+                "table": "loot_tables/entities/0200_misdreavus.json"
+            },
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:conditional_bandwidth_optimization": {},
+            "minecraft:behavior.look_at_player": {
+                "priority": 6,
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
+            },
+            "minecraft:movement": {
+                "value": 0.25
+            },
+            "minecraft:movement.hover": {},
+            "minecraft:navigation.hover": {
+                "can_path_over_water": true,
+                "can_sink": false,
+                "can_path_from_air": true,
+                "avoid_water": true,
+                "avoid_damage_blocks": true
+            },
+            "minecraft:can_fly": {},
+            "minecraft:jump.static": {},
+            "minecraft:breathable": {
+                "total_supply": 15,
+                "suffocate_time": 0,
+                "breathes_air": true,
+                "breathes_water": false
+            },
+            "minecraft:physics": {},
+            "minecraft:behavior.random_hover": {
+                "priority": 8,
+                "xz_dist": 8,
+                "y_dist": 8,
+                "y_offset": -1,
+                "interval": 1,
+                "hover_height": [
+                    1,
+                    4
+                ]
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -63,112 +460,307 @@
                     }
                 ]
             },
-            "minecraft:movement": {
-                "value": 0.3
+            "minecraft:tameable": {
+                "probability": 0.176,
+                "tame_items": [],
+                "tame_event": {
+                    "event": "cobblemon:caught",
+                    "target": "self"
+                }
             },
-            "minecraft:navigation.walk": {
-                "can_path_over_water": true,
-                "avoid_damage_blocks": true
-            },
-            "minecraft:movement.basic": {},
-            "minecraft:jump.static": {},
-            "minecraft:can_climb": {},
-            "minecraft:attack": {
-                "damage": 3
-            },
-            "minecraft:healable": {
-                "items": [
+            "minecraft:damage_sensor": {
+                "triggers": [
                     {
-                        "item": "rotten_flesh",
-                        "heal_amount": 10
+                        "cause": "suffocation",
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "self",
+                                "value": "owned"
+                            }
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "all_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "self",
+                                        "value": "owned"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "damager",
+                                        "value": "player"
+                                    }
+                                ]
+                            }
+                        },
+                        "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "damager",
+                                "value": "poke_ball"
+                            }
+                        },
+                        "deals_damage": false
                     }
                 ]
-            },
-            "minecraft:despawn": {
-                "despawn_from_distance": {}
-            },
-            "minecraft:behavior.float": {
-                "priority": 0
-            },
-            "minecraft:behavior.mount_pathing": {
-                "priority": 1,
-                "speed_multiplier": 1.25,
-                "target_dist": 0,
-                "track_target": true
-            },
-            "minecraft:behavior.stay_while_sitting": {
-                "priority": 3
-            },
-            "minecraft:behavior.leap_at_target": {
-                "priority": 4,
-                "target_dist": 0.4
-            },
-            "minecraft:behavior.melee_attack": {
-                "priority": 5
-            },
-            "minecraft:behavior.random_stroll": {
-                "priority": 8,
-                "speed_multiplier": 1
-            },
-            "minecraft:behavior.look_at_player": {
-                "priority": 6,
-                "target_distance": 6,
-                "probability": 0.02
-            },
-            "minecraft:behavior.beg": {
-                "priority": 9,
-                "look_distance": 8,
-                "look_time": [
-                    2,
-                    4
-                ],
-                "items": [
-                    "rotten_flesh"
-                ]
-            },
-            "minecraft:behavior.hurt_by_target": {
-                "priority": 3
-            },
-            "minecraft:physics": {},
-            "minecraft:pushable": {
-                "is_pushable": true,
-                "is_pushable_by_piston": true
-            },
-            "minecraft:conditional_bandwidth_optimization": {}
+            }
         },
         "events": {
-            "minecraft:entity_spawned": {
-                "add": {
-                    "component_groups": [
-                        "minecraft:baby"
-                    ]
-                }
-            },
-            "minecraft:entity_born": {
-                "remove": {},
-                "add": {
-                    "component_groups": [
-                        "minecraft:baby"
-                    ]
-                }
-            },
-            "minecraft:ageable_grow_up": {
+            "cobblemon:pasture": {
                 "remove": {
                     "component_groups": [
-                        "minecraft:baby"
+                        "cobblemon:following"
                     ]
                 },
                 "add": {
                     "component_groups": [
-                        "grow_up"
+                        "cobblemon:pastured"
+                    ]
+                }
+            },
+            "minecraft:entity_spawned": {
+                "sequence": [
+                    {
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:wild",
+                                "cobblemon:retaliates"
+                            ]
+                        }
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 8191000,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_0"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1000,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_1"
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "minecraft:entity_born": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
-                "remove": {},
                 "add": {
                     "component_groups": [
-                        "minecraft:baby"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
+                    ]
+                }
+            },
+            "cobblemon:released": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:released"
+                    ]
+                }
+            },
+            "cobblemon:caught": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:released",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:owned",
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:stay": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:vanish": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gone"
+                    ]
+                }
+            },
+            "cobblemon:evolve_to_0429_mismagius": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:evolve_0429_mismagius"
+                    ]
+                }
+            },
+            "cobblemon:battle": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:battling"
+                    ]
+                }
+            },
+            "cobblemon:battle_start": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:in_battle"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:retaliates"
+                    ]
+                }
+            },
+            "cobblemon:battle_end": {
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "has_component",
+                                    "subject": "self",
+                                    "value": "minecraft:despawn"
+                                },
+                                {
+                                    "test": "is_family",
+                                    "subject": "self",
+                                    "operator": "!=",
+                                    "value": "owned"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:retaliates"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:capture": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:in_battle",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:captured"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_0": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_1"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_0"
+                    ]
+                }
+            },
+            "cobblemon:set_variant_1": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:variant_0"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:variant_1"
+                    ]
+                }
+            },
+            "cobblemon:conflict_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:conflict_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:pasture_conflict"
                     ]
                 }
             }

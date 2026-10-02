@@ -2,23 +2,46 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0415_combee",
+            "identifier": "cobblemon:p0415_combee",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0415_combee/combee"
+                "default": "textures/entity/0415_combee/combee",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0415_combee/combee",
+                "v1": "textures/entity/0415_combee/combee_shiny",
+                "v2": "textures/entity/0415_combee/combee",
+                "v3": "textures/entity/0415_combee/combee_shiny",
+                "v4": "textures/entity/0415_combee/combee__nectar",
+                "v5": "textures/entity/0415_combee/combee_shiny__nectar",
+                "v6": "textures/entity/0415_combee/combee__nectar",
+                "v7": "textures/entity/0415_combee/combee_shiny__nectar"
             },
             "geometry": {
-                "default": "geometry.combee"
+                "g_combee_male": "geometry.combee_male",
+                "g_combee_female": "geometry.combee_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 7)) ? 3 : (((v.pose_type == 8)) ? 4 : (0)))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
-                "pose": "animation.combee.pose",
+                "pose": "controller.animation.combee.pose",
+                "blink_quirk": "controller.animation.combee.blink",
+                "pose_animation": "animation.combee.pose",
                 "air_idle": "animation.combee.air_idle",
                 "air_fly": "animation.combee.air_fly",
                 "air_sleep": "animation.combee.air_sleep",
@@ -30,7 +53,7 @@
                 "cry": "animation.combee.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.combee"
             ],
             "spawn_egg": {
                 "texture": "0415_combee_spawn_egg"

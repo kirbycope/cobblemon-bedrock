@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0315_roselia",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0315_roselia/roselia",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0315_roselia/roselia",
+                "v1": "textures/entity/0315_roselia/roselia_shiny",
+                "v2": "textures/entity/0315_roselia/roselia",
+                "v3": "textures/entity/0315_roselia/roselia_shiny"
+            },
+            "geometry": {
+                "g_roselia_male": "geometry.roselia_male",
+                "g_roselia_female": "geometry.roselia_female"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.roselia.pose",
+                "blink_quirk": "controller.animation.roselia.blink",
+                "quirk": "controller.animation.roselia.quirk",
+                "quirk_0": "animation.roselia.quirk_idle",
+                "look_at_target": "animation.0315_roselia.look",
+                "ground_idle": "animation.roselia.ground_idle",
+                "battle_idle": "animation.roselia.battle_idle",
+                "ground_walk": "animation.roselia.ground_walk",
+                "sleep": "animation.roselia.sleep",
+                "cry": "animation.roselia.cry",
+                "blink": "animation.roselia.blink",
+                "quirk_idle": "animation.roselia.quirk_idle",
+                "pose_standing": "animation.0315_roselia.pose_standing",
+                "pose_walk": "animation.0315_roselia.pose_walk",
+                "pose_battle_idle": "animation.0315_roselia.pose_battle_idle"
+            },
+            "render_controllers": [
+                "controller.render.roselia"
+            ],
+            "spawn_egg": {
+                "texture": "0315_roselia_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.roselia.cry": "cobblemon.roselia.cry"
+            }
+        }
+    }
+}

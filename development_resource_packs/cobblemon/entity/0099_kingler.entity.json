@@ -2,31 +2,61 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0099_kingler",
+            "identifier": "cobblemon:p0099_kingler",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0099_kingler/kingler"
+                "default": "textures/entity/0099_kingler/kingler",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0099_kingler/kingler",
+                "v1": "textures/entity/0099_kingler/kingler_shiny"
             },
             "geometry": {
-                "default": "geometry.kingler"
+                "g_kingler": "geometry.kingler"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1)) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.kingler.pose",
+                "blink_quirk": "controller.animation.kingler.blink",
+                "quirk": "controller.animation.kingler.quirk",
+                "quirk_0": "animation.kingler.quirk_bubble",
                 "ground_idle": "animation.kingler.ground_idle",
-                "ground_walk": "animation.kingler.ground_walk"
+                "ground_walk": "animation.kingler.ground_walk",
+                "battle_idle": "animation.kingler.battle_idle",
+                "angry": "animation.kingler.angry",
+                "recoil": "animation.kingler.recoil",
+                "sad": "animation.kingler.sad",
+                "happy": "animation.kingler.happy",
+                "shock": "animation.kingler.shock",
+                "blink": "animation.kingler.blink",
+                "cry": "animation.kingler.cry",
+                "quirk_bubble": "animation.kingler.quirk_bubble"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.kingler"
             ],
             "spawn_egg": {
                 "texture": "0099_kingler_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.kingler.cry": "cobblemon.kingler.cry"
             }
         }
     }

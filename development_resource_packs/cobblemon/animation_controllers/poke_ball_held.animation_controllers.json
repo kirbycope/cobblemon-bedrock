@@ -1,0 +1,30 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.poke_ball.held": {
+      "initial_state": "first_person",
+      "states": {
+        "first_person": {
+          "animations": [
+            "first"
+          ],
+          "transitions": [
+            {
+              "third_person": "!c.is_first_person"
+            }
+          ]
+        },
+        "third_person": {
+          "animations": [
+            "third"
+          ],
+          "transitions": [
+            {
+              "first_person": "c.is_first_person"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

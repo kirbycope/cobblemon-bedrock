@@ -1,0 +1,44 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.woobat.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "air_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "walk": "v.pose == 1"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "air_fly",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,54 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0758_salazzle",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0758_salazzle/salazzle",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0758_salazzle/salazzle",
+                "v1": "textures/entity/0758_salazzle/salazzle_shiny"
+            },
+            "geometry": {
+                "g_salazzle": "geometry.salazzle"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 2 : (0)));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.salazzle.pose",
+                "blink_quirk": "controller.animation.salazzle.blink",
+                "look_at_target": "animation.0758_salazzle.look",
+                "ground_idle": "animation.salazzle.ground_idle",
+                "ground_walk": "animation.salazzle.ground_walk",
+                "battle_idle": "animation.salazzle.battle_idle",
+                "blink": "animation.salazzle.blink",
+                "pose_standing": "animation.0758_salazzle.pose_standing",
+                "pose_walk": "animation.0758_salazzle.pose_walk",
+                "pose_battleidle": "animation.0758_salazzle.pose_battleidle"
+            },
+            "render_controllers": [
+                "controller.render.salazzle"
+            ],
+            "spawn_egg": {
+                "texture": "0758_salazzle_spawn_egg"
+            }
+        }
+    }
+}

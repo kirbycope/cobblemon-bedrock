@@ -2,31 +2,49 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0366_clamperl",
+            "identifier": "cobblemon:p0366_clamperl",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0366_clamperl/clamperl"
+                "default": "textures/entity/0366_clamperl/clamperl",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0366_clamperl/clamperl",
+                "v1": "textures/entity/0366_clamperl/clamperl_shiny"
             },
             "geometry": {
-                "default": "geometry.clamperl"
+                "g_clamperl": "geometry.clamperl"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 5)) ? 2 : (((v.pose_type == 6)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose"
-                ]
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.clamperl.pose",
+                "look_at_target": "animation.0366_clamperl.look",
                 "ground_idle": "animation.clamperl.ground_idle",
                 "portrait": "animation.clamperl.portrait",
                 "water_idle": "animation.clamperl.water_idle",
                 "water_swim": "animation.clamperl.water_swim",
-                "ground_walk": "animation.clamperl.ground_walk"
+                "ground_walk": "animation.clamperl.ground_walk",
+                "pose_standing": "animation.0366_clamperl.pose_standing",
+                "pose_walk": "animation.0366_clamperl.pose_walk",
+                "pose_floating": "animation.0366_clamperl.pose_floating",
+                "pose_swimming": "animation.0366_clamperl.pose_swimming"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.clamperl"
             ],
             "spawn_egg": {
                 "texture": "0366_clamperl_spawn_egg"

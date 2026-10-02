@@ -2,23 +2,37 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0660_diggersby",
+            "identifier": "cobblemon:p0660_diggersby",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0660_diggersby/diggersby"
+                "default": "textures/entity/0660_diggersby/diggersby",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0660_diggersby/diggersby",
+                "v1": "textures/entity/0660_diggersby/diggersby_shiny"
             },
             "geometry": {
-                "default": "geometry.diggersby"
+                "g_diggersby": "geometry.diggersby"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
                     "pose"
-                ]
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.diggersby.pose",
+                "look_at_target": "animation.0660_diggersby.look",
                 "ground_walk": "animation.diggersby.ground_walk",
                 "ground_idle": "animation.diggersby.ground_idle",
                 "battle_idle": "animation.diggersby.battle_idle",
@@ -27,13 +41,19 @@
                 "walkspeedtest": "animation.diggersby.walkspeedtest",
                 "quirk_sleep": "animation.diggersby.quirk_sleep",
                 "test": "animation.diggersby.test",
-                "portrait": "animation.diggersby.portrait"
+                "portrait": "animation.diggersby.portrait",
+                "pose_battle_idle": "animation.0660_diggersby.pose_battle_idle",
+                "pose_standing": "animation.0660_diggersby.pose_standing",
+                "pose_walking": "animation.0660_diggersby.pose_walking"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.diggersby"
             ],
             "spawn_egg": {
                 "texture": "0660_diggersby_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.diggersby.cry": "cobblemon.diggersby.cry"
             }
         }
     }

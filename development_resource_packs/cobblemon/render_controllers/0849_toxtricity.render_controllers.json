@@ -1,0 +1,79 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.toxtricity": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1",
+                        "Texture.v2",
+                        "Texture.v3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_toxtricity_amped",
+                        "Geometry.g_toxtricity_amped",
+                        "Geometry.g_toxtricity_lowkey",
+                        "Geometry.g_toxtricity_lowkey"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.toxtricity_mane": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.mane": [
+                        "Texture.mane_0_0",
+                        "Texture.mane_0_1",
+                        "Texture.mane_1_0",
+                        "Texture.mane_1_1",
+                        "Texture.mane_2_0",
+                        "Texture.mane_2_1",
+                        "Texture.mane_3_0",
+                        "Texture.mane_3_1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_toxtricity_amped",
+                        "Geometry.g_toxtricity_amped",
+                        "Geometry.g_toxtricity_lowkey",
+                        "Geometry.g_toxtricity_lowkey"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.mane[query.variant * 2 + math.mod(math.floor(q.life_time * 10), 2)]"
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

@@ -2,30 +2,88 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0464_rhyperior",
+            "identifier": "cobblemon:p0464_rhyperior",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0464_rhyperior/rhyperior"
+                "default": "textures/entity/0464_rhyperior/rhyperior",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0464_rhyperior/rhyperior",
+                "v1": "textures/entity/0464_rhyperior/rhyperior_shiny",
+                "v2": "textures/entity/0464_rhyperior/rhyperior",
+                "v3": "textures/entity/0464_rhyperior/rhyperior_shiny"
             },
             "geometry": {
-                "default": "geometry.rhyperior"
+                "g_rhyperior_male": "geometry.rhyperior_male",
+                "g_rhyperior_female": "geometry.rhyperior_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6) && ((q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 3 : (((v.pose_type == 1 || v.pose_type == 5 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.rhyperior.pose",
-                "ground_idle": "animation.rhyperior.ground_idle"
+                "blink_quirk": "controller.animation.rhyperior.blink",
+                "look_at_target": "animation.0464_rhyperior.look",
+                "ground_idle": "animation.rhyperior.ground_idle",
+                "ground_walk": "animation.rhyperior.ground_walk",
+                "ride_ground_walk": "animation.rhyperior.ride_ground_walk",
+                "ground_run": "animation.rhyperior.ground_run",
+                "ride_ground_run": "animation.rhyperior.ride_ground_run",
+                "ride_jump": "animation.rhyperior.ride_jump",
+                "battle_idle": "animation.rhyperior.battle_idle",
+                "physical": "animation.rhyperior.physical",
+                "special": "animation.rhyperior.special",
+                "status": "animation.rhyperior.status",
+                "battle_cry": "animation.rhyperior.battle_cry",
+                "sleep": "animation.rhyperior.sleep",
+                "blink": "animation.rhyperior.blink",
+                "cry": "animation.rhyperior.cry",
+                "recoil": "animation.rhyperior.recoil",
+                "battle_quirkWIP": "animation.rhyperior.battle_quirkWIP",
+                "expressions": "animation.rhyperior.expressions",
+                "dance": "animation.rhyperior.dance",
+                "size": "animation.rhyperior.size",
+                "waawaawaawaa": "animation.rhyperior.waawaawaawaa",
+                "thing": "animation.rhyperior.thing",
+                "horntest": "animation.rhyperior.horntest",
+                "pizza": "animation.rhyperior.pizza",
+                "f": "animation.rhyperior.f",
+                "walkspeedtest": "animation.rhyperior.walkspeedtest",
+                "runspeedtest": "animation.rhyperior.runspeedtest",
+                "ground_run_slow": "animation.rhyperior.ground_run_slow",
+                "runspeedtest_slow": "animation.rhyperior.runspeedtest_slow",
+                "physicalgood": "animation.rhyperior.physicalgood",
+                "test": "animation.rhyperior.test",
+                "new": "animation.rhyperior.new",
+                "hecanspeak": "animation.rhyperior.hecanspeak",
+                "pose_battle_standing": "animation.0464_rhyperior.pose_battle_standing",
+                "pose_jump": "animation.0464_rhyperior.pose_jump",
+                "pose_running": "animation.0464_rhyperior.pose_running",
+                "pose_standing": "animation.0464_rhyperior.pose_standing",
+                "pose_walking": "animation.0464_rhyperior.pose_walking"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.rhyperior"
             ],
             "spawn_egg": {
                 "texture": "0464_rhyperior_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.rhyperior.cry": "cobblemon.rhyperior.cry"
             }
         }
     }

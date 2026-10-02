@@ -1,0 +1,97 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:apricorn_slab",
+      "menu_category": {
+        "category": "construction",
+        "group": "minecraft:itemGroup.name.slab"
+      },
+      "traits": {
+        "minecraft:placement_position": {
+          "enabled_states": [
+            "minecraft:vertical_half"
+          ]
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_slab_bottom",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "cobblemon_block_wood_apricorn_planks"
+        },
+        "side": {
+          "texture": "cobblemon_block_wood_apricorn_planks"
+        },
+        "top": {
+          "texture": "cobblemon_block_wood_apricorn_planks"
+        },
+        "bottom": {
+          "texture": "cobblemon_block_wood_apricorn_planks"
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          8,
+          16
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          -8
+        ],
+        "size": [
+          16,
+          8,
+          16
+        ]
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.5
+      },
+      "minecraft:loot": "loot_tables/blocks/apricorn_slab.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:vertical_half') == 'top'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_slab_top",
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              8,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              8,
+              -8
+            ],
+            "size": [
+              16,
+              8,
+              16
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

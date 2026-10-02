@@ -2,39 +2,159 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.revavroom.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "run": {
+                    "animations": [
+                        "ground_run",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
                     "animations": [
                         "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "in_air": {
+                    "animations": [
+                        "ride_jump",
+                        {
+                            "ride_ground": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "in_air": "v.pose == 4"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.revavroom.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

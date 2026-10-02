@@ -1,0 +1,53 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0917_tarountula",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0917_tarountula/tarountula",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0917_tarountula/tarountula",
+                "v1": "textures/entity/0917_tarountula/tarountula_shiny"
+            },
+            "geometry": {
+                "g_tarountula": "geometry.tarountula"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 2)) ? 2 : (0)));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.tarountula.pose",
+                "blink_quirk": "controller.animation.tarountula.blink",
+                "look_at_target": "animation.0917_tarountula.look",
+                "ground_idle": "animation.tarountula.ground_idle",
+                "sleep": "animation.tarountula.sleep",
+                "test": "animation.tarountula.test",
+                "expressions": "animation.tarountula.expressions",
+                "blink": "animation.tarountula.blink",
+                "pose_standing": "animation.0917_tarountula.pose_standing"
+            },
+            "render_controllers": [
+                "controller.render.tarountula"
+            ],
+            "spawn_egg": {
+                "texture": "0917_tarountula_spawn_egg"
+            }
+        }
+    }
+}

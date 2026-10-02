@@ -1,0 +1,72 @@
+{
+  "format_version": "1.21.50",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "cobblemon:gilded_chest_entity",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "is_experimental": false,
+      "properties": {
+        "cobblemon:open": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        }
+      }
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "inanimate",
+          "gilded_chest"
+        ]
+      },
+      "minecraft:inventory": {
+        "container_type": "container",
+        "inventory_size": 27
+      },
+      "minecraft:collision_box": {
+        "width": 0.9,
+        "height": 0.9
+      },
+      "minecraft:health": {
+        "value": 1,
+        "max": 1
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "player"
+              }
+            },
+            "deals_damage": "yes"
+          },
+          {
+            "cause": "all",
+            "deals_damage": "no"
+          }
+        ]
+      },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/gilded_chest_entity.json"
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": false
+      },
+      "minecraft:physics": {},
+      "minecraft:persistent": {},
+      "minecraft:nameable": {},
+      "minecraft:movement": {
+        "value": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+    "format_version": "1.16.0",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "cobblemon:npc_sacchi",
+            "is_spawnable": true,
+            "is_summonable": true,
+            "is_experimental": false,
+            "spawn_category": "creature",
+            "animations": {
+                "dialogue": "controller.animation.npc_sacchi.dialogue"
+            },
+            "scripts": {
+                "animate": [
+                    "dialogue"
+                ]
+            }
+        },
+        "components": {
+            "minecraft:type_family": {
+                "family": [
+                    "npc",
+                    "mob",
+                    "cobblemon_npc"
+                ]
+            },
+            "minecraft:nameable": {
+                "always_show": true,
+                "default_trigger": {
+                    "event": "minecraft:entity_spawned"
+                }
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 1.8
+            },
+            "minecraft:health": {
+                "value": 20,
+                "max": 20
+            },
+            "minecraft:persistent": {},
+            "minecraft:physics": {},
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:movement": {
+                "value": 0.2
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true,
+                "avoid_damage_blocks": true
+            },
+            "minecraft:jump.static": {},
+            "minecraft:breathable": {
+                "total_supply": 15,
+                "suffocate_time": 0
+            },
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "cause": "all",
+                        "deals_damage": false
+                    }
+                ]
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 1,
+                "look_distance": 8,
+                "probability": 0.5
+            },
+            "minecraft:behavior.random_stroll": {
+                "priority": 6,
+                "speed_multiplier": 0.8
+            },
+            "minecraft:npc": {
+                "npc_data": {
+                    "skin_list": [
+                        {
+                            "variant": 0
+                        }
+                    ],
+                    "portrait_offsets": {
+                        "scale": [
+                            1.75,
+                            1.75,
+                            1.75
+                        ],
+                        "translate": [
+                            -7,
+                            50,
+                            0
+                        ]
+                    },
+                    "picker_offsets": {
+                        "scale": [
+                            1.7,
+                            1.7,
+                            1.7
+                        ],
+                        "translate": [
+                            0,
+                            20,
+                            0
+                        ]
+                    }
+                }
+            }
+        },
+        "events": {}
+    }
+}

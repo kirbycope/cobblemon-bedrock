@@ -2,23 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0475_gallade",
+            "identifier": "cobblemon:p0475_gallade",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0475_gallade/gallade"
+                "default": "textures/entity/0475_gallade/gallade",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0475_gallade/gallade",
+                "v1": "textures/entity/0475_gallade/gallade_shiny"
             },
             "geometry": {
-                "default": "geometry.gallade"
+                "g_gallade": "geometry.gallade"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.gallade.pose",
+                "blink_quirk": "controller.animation.gallade.blink",
+                "look_at_target": "animation.0475_gallade.look",
                 "ground_idle": "animation.gallade.ground_idle",
                 "ground_walk": "animation.gallade.ground_walk",
                 "ground_run": "animation.gallade.ground_run",
@@ -29,13 +45,19 @@
                 "blink": "animation.gallade.blink",
                 "cry": "animation.gallade.cry",
                 "battle_cry": "animation.gallade.battle_cry",
-                "battle_quirk": "animation.gallade.battle_quirk"
+                "battle_quirk": "animation.gallade.battle_quirk",
+                "pose_standing": "animation.0475_gallade.pose_standing",
+                "pose_walking": "animation.0475_gallade.pose_walking",
+                "pose_battle_idle": "animation.0475_gallade.pose_battle_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gallade"
             ],
             "spawn_egg": {
                 "texture": "0475_gallade_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gallade.cry": "cobblemon.gallade.cry"
             }
         }
     }

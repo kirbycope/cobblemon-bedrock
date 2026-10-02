@@ -1,0 +1,73 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.charcadet": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_charcadet",
+                        "Geometry.g_charcadet"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.charcadet_flame": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.flame": [
+                        "Texture.flame_0_0",
+                        "Texture.flame_0_1",
+                        "Texture.flame_0_2",
+                        "Texture.flame_0_3",
+                        "Texture.flame_1_0",
+                        "Texture.flame_1_1",
+                        "Texture.flame_1_2",
+                        "Texture.flame_1_3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_charcadet",
+                        "Geometry.g_charcadet"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.flame[query.variant * 4 + math.mod(math.floor(q.life_time * 8), 4)]"
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

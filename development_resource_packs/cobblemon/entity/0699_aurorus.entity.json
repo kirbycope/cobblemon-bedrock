@@ -1,0 +1,64 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0699_aurorus",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0699_aurorus/aurorus",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0699_aurorus/aurorus",
+                "v1": "textures/entity/0699_aurorus/aurorus_shiny"
+            },
+            "geometry": {
+                "g_aurorus": "geometry.aurorus"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.aurorus.pose",
+                "blink_quirk": "controller.animation.aurorus.blink",
+                "look_at_target": "animation.0699_aurorus.look",
+                "ground_idle": "animation.aurorus.ground_idle",
+                "battle_idle": "animation.aurorus.battle_idle",
+                "ground_walk": "animation.aurorus.ground_walk",
+                "sleep": "animation.aurorus.sleep",
+                "blink": "animation.aurorus.blink",
+                "cry": "animation.aurorus.cry",
+                "scale": "animation.aurorus.scale",
+                "base": "animation.aurorus.base",
+                "walk_speed_test": "animation.aurorus.walk_speed_test",
+                "Hey_checkout_the_next_anim": "animation.aurorus.Hey_checkout_the_next_anim",
+                "Refer_to_previous_animation": "animation.aurorus.Refer_to_previous_animation",
+                "pose_standing": "animation.0699_aurorus.pose_standing",
+                "pose_battle_idle": "animation.0699_aurorus.pose_battle_idle",
+                "pose_walk": "animation.0699_aurorus.pose_walk"
+            },
+            "render_controllers": [
+                "controller.render.aurorus"
+            ],
+            "spawn_egg": {
+                "texture": "0699_aurorus_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.aurorus.cry": "cobblemon.aurorus.cry"
+            }
+        }
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "format_version": "1.8.0",
+    "minecraft:spawn_rules": {
+        "description": {
+            "identifier": "cobblemon:p0499_pignite",
+            "population_control": "animal"
+        },
+        "conditions": [
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "plains"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "meadow"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 4
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "crimson_forest"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 4
+                }
+            }
+        ]
+    }
+}

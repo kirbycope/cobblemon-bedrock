@@ -1,0 +1,67 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.lumineon": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_lumineon",
+                        "Geometry.g_lumineon"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.lumineon_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_lumineon",
+                        "Geometry.g_lumineon"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 1]"
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

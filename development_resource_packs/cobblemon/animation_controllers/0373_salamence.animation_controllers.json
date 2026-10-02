@@ -1,0 +1,319 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.salamence.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        {
+                            "ride_air_fly": "q.has_rider && 1"
+                        },
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "fly": {
+                    "animations": [
+                        "air_fly",
+                        {
+                            "ride_air_fly": "q.has_rider && 1"
+                        },
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "glide": {
+                    "animations": [
+                        "air_glide",
+                        "ride_dive",
+                        {
+                            "ride_air_glide": "q.has_rider && 1"
+                        },
+                        "pose_glide"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "ride_jump": {
+                    "animations": [
+                        "ride_jump",
+                        {
+                            "ride_ground_run": "q.has_rider && 1"
+                        },
+                        "pose_ride_jump"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk",
+                        {
+                            "ride_ground_run": "q.has_rider && 1"
+                        },
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "running": {
+                    "animations": [
+                        "ground_run",
+                        {
+                            "ride_ground_run": "q.has_rider && 1"
+                        },
+                        "pose_running"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        },
+                        {
+                            "glide": "v.pose == 4"
+                        },
+                        {
+                            "ride_jump": "v.pose == 5"
+                        },
+                        {
+                            "walking": "v.pose == 6"
+                        },
+                        {
+                            "running": "v.pose == 7"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.salamence.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

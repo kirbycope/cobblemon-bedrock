@@ -2,39 +2,162 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.mudsdale.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "in_air": {
                     "animations": [
-                        "ground_idle"
+                        "ride_jump",
+                        "ride_ground_run",
+                        "blink",
+                        "pose_in_air"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "moving": {
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        "blink",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.25
                 },
-                "sleeping": {
+                "run": {
+                    "animations": [
+                        "ground_run",
+                        "blink",
+                        {
+                            "ride_ground_run": "q.has_rider && 1 && q.is_on_ground"
+                        },
+                        "pose_run"
+                    ],
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        "blink",
+                        {
+                            "ride_ground_walk": "q.has_rider && 1 && q.is_on_ground"
+                        },
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.25
+                },
+                "sleep": {
                     "animations": [
                         "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "in_air": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "run": "v.pose == 2"
+                        },
+                        {
+                            "walk": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.mudsdale.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

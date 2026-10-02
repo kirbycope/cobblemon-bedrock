@@ -2,23 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0846_arrokuda",
+            "identifier": "cobblemon:p0846_arrokuda",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0846_arrokuda/arrokuda"
+                "default": "textures/entity/0846_arrokuda/arrokuda",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0846_arrokuda/arrokuda",
+                "v1": "textures/entity/0846_arrokuda/arrokuda_shiny"
             },
             "geometry": {
-                "default": "geometry.arrokuda"
+                "g_arrokuda": "geometry.arrokuda"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.is_in_water)) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1)) ? 3 : (((v.pose_type == 5)) ? 4 : (((v.pose_type == 6)) ? 5 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.arrokuda.pose",
+                "blink_quirk": "controller.animation.arrokuda.blink",
+                "quirk": "controller.animation.arrokuda.quirk",
+                "quirk_0": "animation.arrokuda.ground_quirk",
+                "look_at_target": "animation.0846_arrokuda.look",
                 "water_idle": "animation.arrokuda.water_idle",
                 "water_battle_idle": "animation.arrokuda.water_battle_idle",
                 "water_swim": "animation.arrokuda.water_swim",
@@ -33,7 +52,7 @@
                 "blink": "animation.arrokuda.blink"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.arrokuda"
             ],
             "spawn_egg": {
                 "texture": "0846_arrokuda_spawn_egg"

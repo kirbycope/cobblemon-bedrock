@@ -1,0 +1,54 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0960_wiglett",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0960_wiglett/wiglett",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0960_wiglett/wiglett",
+                "v1": "textures/entity/0960_wiglett/wiglett_shiny"
+            },
+            "geometry": {
+                "g_wiglett": "geometry.wiglett"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && (!q.property('cobblemon:battle'))) ? 1 : (0));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.wiglett.pose",
+                "blink_quirk": "controller.animation.wiglett.blink",
+                "look_at_target": "animation.0960_wiglett.look",
+                "ground_idle": "animation.wiglett.ground_idle",
+                "battle_idle": "animation.wiglett.battle_idle",
+                "blink": "animation.wiglett.blink",
+                "angry": "animation.wiglett.angry",
+                "sad": "animation.wiglett.sad",
+                "happy": "animation.wiglett.happy",
+                "recoil": "animation.wiglett.recoil"
+            },
+            "render_controllers": [
+                "controller.render.wiglett"
+            ],
+            "spawn_egg": {
+                "texture": "0960_wiglett_spawn_egg"
+            }
+        }
+    }
+}

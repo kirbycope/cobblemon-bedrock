@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0780_drampa",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0780_drampa/drampa",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0780_drampa/drampa",
+                "v1": "textures/entity/0780_drampa/drampa_shiny"
+            },
+            "geometry": {
+                "g_drampa": "geometry.drampa"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 3)) ? 4 : (((v.pose_type == 4)) ? 5 : (0))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.drampa.pose",
+                "quirk": "controller.animation.drampa.quirk",
+                "quirk_0": "animation.drampa.yawn_quirk",
+                "look_at_target": "animation.0780_drampa.look",
+                "ground_idle": "animation.drampa.ground_idle",
+                "ground_walk": "animation.drampa.ground_walk",
+                "air_idle": "animation.drampa.air_idle",
+                "air_fly": "animation.drampa.air_fly",
+                "sleep": "animation.drampa.sleep",
+                "yawn_quirk": "animation.drampa.yawn_quirk",
+                "ride_ground_walk": "animation.drampa.ride_ground_walk",
+                "ride_air_fly": "animation.drampa.ride_air_fly",
+                "recoil": "animation.drampa.recoil",
+                "cry": "animation.drampa.cry",
+                "pose_battle_standing": "animation.0780_drampa.pose_battle_standing",
+                "pose_standing": "animation.0780_drampa.pose_standing",
+                "pose_walking": "animation.0780_drampa.pose_walking",
+                "pose_hovering": "animation.0780_drampa.pose_hovering",
+                "pose_flying": "animation.0780_drampa.pose_flying"
+            },
+            "render_controllers": [
+                "controller.render.drampa"
+            ],
+            "spawn_egg": {
+                "texture": "0780_drampa_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.drampa.cry": "cobblemon.drampa.cry"
+            }
+        }
+    }
+}

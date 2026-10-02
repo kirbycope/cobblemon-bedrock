@@ -1,0 +1,71 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:apricorn_trees_normal_rule",
+      "places_feature": "cobblemon:apricorn_trees"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "any_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "extreme_hills"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "meadow"
+              }
+            ]
+          },
+          {
+            "any_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "plains"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "meadow"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "savanna"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 80
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

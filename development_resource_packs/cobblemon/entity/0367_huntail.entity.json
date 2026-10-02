@@ -2,31 +2,53 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0367_huntail",
+            "identifier": "cobblemon:p0367_huntail",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0367_huntail/huntail"
+                "default": "textures/entity/0367_huntail/huntail",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0367_huntail/huntail",
+                "emissive_0_0": "textures/entity/0367_huntail/huntail_emissive",
+                "v1": "textures/entity/0367_huntail/huntail_shiny",
+                "emissive_1_0": "textures/entity/0367_huntail/huntail_shiny_emissive"
             },
             "geometry": {
-                "default": "geometry.huntail"
+                "g_huntail": "geometry.huntail"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1)) ? 0 : (((v.pose_type == 5)) ? 1 : (((v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.huntail.pose",
+                "blink_quirk": "controller.animation.huntail.blink",
+                "look_at_target": "animation.0367_huntail.look",
                 "sleep": "animation.huntail.sleep",
                 "ground_idle": "animation.huntail.ground_idle",
                 "water_idle": "animation.huntail.water_idle",
                 "water_swim": "animation.huntail.water_swim",
-                "blink": "animation.huntail.blink"
+                "blink": "animation.huntail.blink",
+                "pose_standing": "animation.0367_huntail.pose_standing",
+                "pose_floating": "animation.0367_huntail.pose_floating",
+                "pose_swimming": "animation.0367_huntail.pose_swimming"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.huntail",
+                "controller.render.huntail_emissive"
             ],
             "spawn_egg": {
                 "texture": "0367_huntail_spawn_egg"

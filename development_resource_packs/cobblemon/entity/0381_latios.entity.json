@@ -1,0 +1,59 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0381_latios",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0381_latios/latios",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0381_latios/latios",
+                "v1": "textures/entity/0381_latios/latios_shiny"
+            },
+            "geometry": {
+                "g_latios": "geometry.latios"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (0);"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.latios.pose",
+                "blink_quirk": "controller.animation.latios.blink",
+                "look_at_target": "animation.0381_latios.look",
+                "ground_idle": "animation.latios.ground_idle",
+                "blink": "animation.latios.blink",
+                "arms_tucked": "animation.latios.arms_tucked",
+                "shock": "animation.latios.shock",
+                "angry": "animation.latios.angry",
+                "sad": "animation.latios.sad",
+                "unamused": "animation.latios.unamused",
+                "happy": "animation.latios.happy",
+                "hurt": "animation.latios.hurt",
+                "worried": "animation.latios.worried",
+                "render": "animation.latios.render",
+                "pose_standing": "animation.0381_latios.pose_standing"
+            },
+            "render_controllers": [
+                "controller.render.latios"
+            ],
+            "spawn_egg": {
+                "texture": "0381_latios_spawn_egg"
+            }
+        }
+    }
+}

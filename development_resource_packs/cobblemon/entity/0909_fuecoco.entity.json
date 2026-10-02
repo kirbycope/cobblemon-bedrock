@@ -2,36 +2,61 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0909_fuecoco",
+            "identifier": "cobblemon:p0909_fuecoco",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0909_fuecoco/fuecoco"
+                "default": "textures/entity/0909_fuecoco/fuecoco",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0909_fuecoco/fuecoco",
+                "emissive_0_0": "textures/entity/0909_fuecoco/fuecoco_emissive",
+                "v1": "textures/entity/0909_fuecoco/fuecoco_shiny",
+                "emissive_1_0": "textures/entity/0909_fuecoco/fuecoco_emissive"
             },
             "geometry": {
-                "default": "geometry.fuecoco"
+                "g_fuecoco": "geometry.fuecoco"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.fuecoco.pose",
+                "blink_quirk": "controller.animation.fuecoco.blink",
+                "look_at_target": "animation.0909_fuecoco.look",
                 "ground_idle": "animation.fuecoco.ground_idle",
                 "battle_idle": "animation.fuecoco.battle_idle",
                 "ground_walk": "animation.fuecoco.ground_walk",
                 "blink": "animation.fuecoco.blink",
                 "cry": "animation.fuecoco.cry",
                 "sleep": "animation.fuecoco.sleep",
-                "move": "animation.fuecoco.move"
+                "move": "animation.fuecoco.move",
+                "pose_standing": "animation.0909_fuecoco.pose_standing",
+                "pose_walking": "animation.0909_fuecoco.pose_walking",
+                "pose_battle_idle": "animation.0909_fuecoco.pose_battle_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.fuecoco",
+                "controller.render.fuecoco_emissive"
             ],
             "spawn_egg": {
                 "texture": "0909_fuecoco_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.fuecoco.cry": "cobblemon.fuecoco.cry"
             }
         }
     }

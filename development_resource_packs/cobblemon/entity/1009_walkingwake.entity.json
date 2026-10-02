@@ -2,32 +2,55 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:1009_walkingwake",
+            "identifier": "cobblemon:p1009_walkingwake",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/1009_walkingwake/walkingwake"
+                "default": "textures/entity/1009_walkingwake/walkingwake",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/1009_walkingwake/walkingwake",
+                "emissive_0_0": "textures/entity/1009_walkingwake/walkingwake_emissive",
+                "v1": "textures/entity/1009_walkingwake/walkingwake_shiny",
+                "emissive_1_0": "textures/entity/1009_walkingwake/walkingwake_emissive"
             },
             "geometry": {
-                "default": "geometry.walkingwake"
+                "g_walkingwake": "geometry.walkingwake"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.is_in_water)) ? 1 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water)) ? 2 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (!q.is_in_water)) ? 3 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water)) ? 4 : (0)))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.walkingwake.pose",
+                "blink_quirk": "controller.animation.walkingwake.blink",
+                "look_at_target": "animation.1009_walkingwake.look",
                 "ground_idle": "animation.walkingwake.ground_idle",
                 "ground_walk": "animation.walkingwake.ground_walk",
                 "faint": "animation.walkingwake.faint",
                 "sleep": "animation.walkingwake.sleep",
                 "cry": "animation.walkingwake.cry",
-                "blink": "animation.walkingwake.blink"
+                "blink": "animation.walkingwake.blink",
+                "pose_standing": "animation.1009_walkingwake.pose_standing",
+                "pose_waterstanding": "animation.1009_walkingwake.pose_waterstanding",
+                "pose_walk": "animation.1009_walkingwake.pose_walk",
+                "pose_waterwalk": "animation.1009_walkingwake.pose_waterwalk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.walkingwake",
+                "controller.render.walkingwake_emissive"
             ],
             "spawn_egg": {
                 "texture": "1009_walkingwake_spawn_egg"

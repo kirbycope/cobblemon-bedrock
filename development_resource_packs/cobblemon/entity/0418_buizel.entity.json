@@ -2,31 +2,69 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0418_buizel",
+            "identifier": "cobblemon:p0418_buizel",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0418_buizel/buizel"
+                "default": "textures/entity/0418_buizel/buizel",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0418_buizel/buizel",
+                "v1": "textures/entity/0418_buizel/buizel_shiny",
+                "v2": "textures/entity/0418_buizel/buizel",
+                "v3": "textures/entity/0418_buizel/buizel_shiny"
             },
             "geometry": {
-                "default": "geometry.buizel"
+                "g_buizel_male": "geometry.buizel_male",
+                "g_buizel_female": "geometry.buizel_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.property('cobblemon:submerged'))) ? 1 : (((v.pose_type == 2) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 2 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.is_in_water)) ? 3 : (((v.pose_type == 1 || v.pose_type == 4) && (!q.is_in_water)) ? 4 : (((v.pose_type == 5)) ? 5 : (((v.pose_type == 6)) ? 6 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged'))) ? 8 : (0)))))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.buizel.pose",
+                "blink_quirk": "controller.animation.buizel.blink",
+                "look_at_target": "animation.0418_buizel.look",
                 "ground_idle": "animation.buizel.ground_idle",
-                "blink": "animation.buizel.blink"
+                "ground_walk": "animation.buizel.ground_walk",
+                "sleep": "animation.buizel.sleep",
+                "blink": "animation.buizel.blink",
+                "water_swim": "animation.buizel.water_swim",
+                "water_idle": "animation.buizel.water_idle",
+                "water_sleep": "animation.buizel.water_sleep",
+                "surfacewater_idle": "animation.buizel.surfacewater_idle",
+                "surfacewater_swim": "animation.buizel.surfacewater_swim",
+                "surfacewater_sleep": "animation.buizel.surfacewater_sleep",
+                "surfacewater_sleep2": "animation.buizel.surfacewater_sleep2",
+                "cry": "animation.buizel.cry",
+                "pose_standing": "animation.0418_buizel.pose_standing",
+                "pose_walking": "animation.0418_buizel.pose_walking",
+                "pose_float": "animation.0418_buizel.pose_float",
+                "pose_swim": "animation.0418_buizel.pose_swim",
+                "pose_surface_water_idle": "animation.0418_buizel.pose_surface_water_idle",
+                "pose_surface_water_swim": "animation.0418_buizel.pose_surface_water_swim"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.buizel"
             ],
             "spawn_egg": {
                 "texture": "0418_buizel_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.buizel.cry": "cobblemon.buizel.cry"
             }
         }
     }

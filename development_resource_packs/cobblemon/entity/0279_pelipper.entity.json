@@ -2,23 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0279_pelipper",
+            "identifier": "cobblemon:p0279_pelipper",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0279_pelipper/pelipper"
+                "default": "textures/entity/0279_pelipper/pelipper",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0279_pelipper/pelipper",
+                "v1": "textures/entity/0279_pelipper/pelipper_shiny"
             },
             "geometry": {
-                "default": "geometry.pelipper"
+                "g_pelipper": "geometry.pelipper"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 2) && (!q.is_in_water)) ? 0 : (((v.pose_type == 2) && (q.is_in_water)) ? 1 : (((v.pose_type == 0 || v.pose_type == 5 || v.pose_type == 7 || v.pose_type == 8) && (!q.is_in_water)) ? 2 : (((v.pose_type == 3) && (!q.is_in_water)) ? 3 : (((v.pose_type == 4) && (!q.is_in_water)) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.is_in_water)) ? 5 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.is_in_water)) ? 6 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && (q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.pelipper.pose",
+                "blink_quirk": "controller.animation.pelipper.blink",
+                "look_at_target": "animation.0279_pelipper.look",
                 "ground_idle": "animation.pelipper.ground_idle",
                 "ground_walk": "animation.pelipper.ground_walk",
                 "air_idle": "animation.pelipper.air_idle",
@@ -31,7 +47,7 @@
                 "sleep": "animation.pelipper.sleep"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.pelipper"
             ],
             "spawn_egg": {
                 "texture": "0279_pelipper_spawn_egg"

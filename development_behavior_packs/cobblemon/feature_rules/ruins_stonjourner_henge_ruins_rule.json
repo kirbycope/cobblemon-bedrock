@@ -1,0 +1,48 @@
+{
+    "format_version": "1.13.0",
+    "minecraft:feature_rules": {
+        "description": {
+            "identifier": "cobblemon:ruins_stonjourner_henge_ruins_rule",
+            "places_feature": "cobblemon:ruins_stonjourner_henge_ruins"
+        },
+        "conditions": {
+            "placement_pass": "surface_pass",
+            "minecraft:biome_filter": {
+                "any_of": [
+                    {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "plains"
+                    },
+                    {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "meadow"
+                    }
+                ]
+            }
+        },
+        "distribution": {
+            "iterations": 1,
+            "scatter_chance": {
+                "numerator": 1,
+                "denominator": 13500
+            },
+            "x": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            },
+            "y": "query.heightmap(variable.worldx, variable.worldz)",
+            "z": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            }
+        }
+    }
+}

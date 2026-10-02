@@ -2,39 +2,94 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.yanmega.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hovering": "v.pose == 2"
+                        },
+                        {
+                            "flying": "v.pose == 3"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walk": {
                     "animations": [
-                        "sleep"
-                    ]
+                        "air_idle",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "hovering": "v.pose == 2"
+                        },
+                        {
+                            "flying": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
                 },
-                "fainting": {
+                "hovering": {
                     "animations": [
-                        "faint"
+                        "air_idle",
+                        "pose_hovering"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "flying": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "flying": {
+                    "animations": [
+                        "air_idle",
+                        "pose_flying"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hovering": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        },
+                        {
+                            "hovering": "v.pose == 2"
+                        },
+                        {
+                            "flying": "v.pose == 3"
+                        }
                     ]
                 }
             }

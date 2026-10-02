@@ -2,39 +2,288 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.wingull.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "non_water_sleep": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "water_surface_sleep": {
+                    "animations": [
+                        "surfacewater_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "hover": {
                     "animations": [
-                        "ground_idle",
+                        "pelipper__air_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "pelipper__air_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "surface_idle": {
                     "animations": [
-                        "sleep"
+                        "surfacewater_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_swim": {
+                    "animations": [
+                        "surfacewater_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "non_water_sleep": "v.pose == 0"
+                        },
+                        {
+                            "water_surface_sleep": "v.pose == 1"
+                        },
+                        {
+                            "standing": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "walking": "v.pose == 5"
+                        },
+                        {
+                            "surface_idle": "v.pose == 6"
+                        },
+                        {
+                            "surface_swim": "v.pose == 7"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.wingull.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

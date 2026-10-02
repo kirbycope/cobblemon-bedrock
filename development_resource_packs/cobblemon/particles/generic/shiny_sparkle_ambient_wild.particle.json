@@ -1,0 +1,78 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:shiny_sparkle_ambient_wild",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/sparkle/shinesparkle_rainbow"
+			}
+		},
+		"curves": {
+			"variable.size": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime / 1.5",
+				"nodes": [
+					0.2,
+					0.69,
+					0.26,
+					0.78,
+					0.26,
+					0.8,
+					0
+				]
+			}
+		},
+		"events": {},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": "math.clamp(1*1.05, 3.5,100)",
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 2
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": "event_ambient"
+			},
+			"minecraft:emitter_shape_sphere": {
+				"offset": [
+					0,
+					0.05,
+					0
+				],
+				"radius": "((math.random(1*1.1, 1*1.2)/math.clamp(1*1.05,0.5,5))*1.05)",
+				"surface_only": true,
+				"direction": [
+					0,
+					1,
+					0
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.3
+			},
+			"minecraft:particle_initial_speed": 0.1,
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"math.clamp(1 * 0.1, 0.15,0.3)",
+					"math.clamp(1 * 0.1, 0.15,0.3)"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 64,
+					"texture_height": 40,
+					"uv": [
+						"math.clamp(math.floor((v.particle_age*2.8)*7)*8,0,56)",
+						"math.floor(math.clamp((v.particle_random_3 * (v.particle_age*3))*5,0,5))*8"
+					],
+					"uv_size": [
+						8,
+						8
+					]
+				}
+			}
+		}
+	}
+}

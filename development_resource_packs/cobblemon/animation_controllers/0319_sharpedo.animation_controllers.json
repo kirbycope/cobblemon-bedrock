@@ -2,39 +2,247 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.sharpedo.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "jump": {
+                    "animations": [
+                        "water_swim",
+                        {
+                            "ride_water_swim": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.15
+                },
+                "standing": {
                     "animations": [
                         "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "walking": {
                     "animations": [
-                        "ground_idle",
                         "ground_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "surface_floating": {
                     "animations": [
-                        "sleep"
+                        "surfacewater_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_swimming": {
+                    "animations": [
+                        "surfacewater_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "floating": {
+                    "animations": [
+                        "water_idle",
+                        {
+                            "ride_water_swim": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "swimming": {
+                    "animations": [
+                        "water_swim",
+                        {
+                            "ride_water_swim": "q.has_rider"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "jump": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_floating": "v.pose == 3"
+                        },
+                        {
+                            "surface_swimming": "v.pose == 4"
+                        },
+                        {
+                            "floating": "v.pose == 5"
+                        },
+                        {
+                            "swimming": "v.pose == 6"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.sharpedo.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "play": {
                     "animations": [
-                        "faint"
+                        "quirk_0"
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 1));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
+                        }
                     ]
                 }
             }

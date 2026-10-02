@@ -1,0 +1,83 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0450_hippowdon",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0450_hippowdon/hippowdon_male",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0450_hippowdon/hippowdon_male",
+                "v1": "textures/entity/0450_hippowdon/hippowdon_male_shiny",
+                "v2": "textures/entity/0450_hippowdon/hippowdon_female",
+                "v3": "textures/entity/0450_hippowdon/hippowdon_female_shiny"
+            },
+            "geometry": {
+                "g_hippowdon": "geometry.hippowdon"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2) && ((q.property('cobblemon:on_sand') != 1))) ? 0 : (((v.pose_type == 2) && ((q.property('cobblemon:on_sand') == 2))) ? 1 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.property('cobblemon:on_sand') == 0))) ? 2 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && ((q.property('cobblemon:on_sand') == 0))) ? 3 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.property('cobblemon:on_sand') == 1))) ? 4 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.property('cobblemon:on_sand') == 2))) ? 5 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && ((q.property('cobblemon:on_sand') == 1))) ? 6 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6) && ((q.property('cobblemon:on_sand') == 2))) ? 7 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle') && (q.property('cobblemon:on_sand') == 0))) ? 8 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && ((q.property('cobblemon:on_sand') == 1) && q.property('cobblemon:battle'))) ? 9 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && ((q.property('cobblemon:on_sand') == 2) && q.property('cobblemon:battle'))) ? 10 : (0)))))))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.hippowdon.pose",
+                "blink_quirk": "controller.animation.hippowdon.blink",
+                "quirk": "controller.animation.hippowdon.quirk",
+                "quirk_0": "animation.hippowdon.quirk_idle",
+                "look_at_target": "animation.0450_hippowdon.look",
+                "ground_idle": "animation.hippowdon.ground_idle",
+                "ground_walk": "animation.hippowdon.ground_walk",
+                "battle_idle": "animation.hippowdon.battle_idle",
+                "sand_idle": "animation.hippowdon.sand_idle",
+                "sand_battle_idle": "animation.hippowdon.sand_battle_idle",
+                "sand_swim": "animation.hippowdon.sand_swim",
+                "sand_sleep": "animation.hippowdon.sand_sleep",
+                "sleep": "animation.hippowdon.sleep",
+                "blink": "animation.hippowdon.blink",
+                "cry": "animation.hippowdon.cry",
+                "battle_cry": "animation.hippowdon.battle_cry",
+                "sand_cry": "animation.hippowdon.sand_cry",
+                "sand_battle_cry": "animation.hippowdon.sand_battle_cry",
+                "quirk_idle": "animation.hippowdon.quirk_idle",
+                "quirk_sleep": "animation.hippowdon.quirk_sleep",
+                "pose_animation": "animation.hippowdon.pose",
+                "walkspeedtest": "animation.hippowdon.walkspeedtest",
+                "pose_sleep": "animation.0450_hippowdon.pose_sleep",
+                "pose_sleepsand": "animation.0450_hippowdon.pose_sleepsand",
+                "pose_standing": "animation.0450_hippowdon.pose_standing",
+                "pose_walk": "animation.0450_hippowdon.pose_walk",
+                "pose_standingsand": "animation.0450_hippowdon.pose_standingsand",
+                "pose_standingredsand": "animation.0450_hippowdon.pose_standingredsand",
+                "pose_walksand": "animation.0450_hippowdon.pose_walksand",
+                "pose_walkredsand": "animation.0450_hippowdon.pose_walkredsand",
+                "pose_battleidle": "animation.0450_hippowdon.pose_battleidle",
+                "pose_battleidlesand": "animation.0450_hippowdon.pose_battleidlesand",
+                "pose_battleidleredsand": "animation.0450_hippowdon.pose_battleidleredsand"
+            },
+            "render_controllers": [
+                "controller.render.hippowdon"
+            ],
+            "spawn_egg": {
+                "texture": "0450_hippowdon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.hippowdon.cry": "cobblemon.hippowdon.cry"
+            }
+        }
+    }
+}

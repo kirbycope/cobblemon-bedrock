@@ -1,0 +1,183 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.duosion.ground_idle": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": {
+						"0.0": {
+							"post": [
+								"math.sin(q.anim_time*100*1)*2",
+								0,
+								0
+							],
+							"lerp_mode": "linear"
+						}
+					},
+					"position": {
+						"0.0": {
+							"post": [
+								0,
+								"3+math.sin(q.anim_time*90*1)*1",
+								"math.sin(q.anim_time*15*2)*1"
+							],
+							"lerp_mode": "linear"
+						}
+					}
+				},
+				"head": {
+					"rotation": [
+						-2.5,
+						0,
+						0
+					]
+				},
+				"torso": {
+					"rotation": [
+						5,
+						0,
+						0
+					]
+				},
+				"arms": {
+					"rotation": [
+						-2.5,
+						0,
+						0
+					]
+				},
+				"torso2": {
+					"rotation": [
+						12.5,
+						0,
+						0
+					]
+				}
+			}
+		},
+		"animation.duosion.blink": {
+			"animation_length": 0.1667,
+			"bones": {
+				"eyelid_left": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							-0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								-0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				},
+				"eyelid_right": {
+					"position": {
+						"0.0": [
+							0,
+							0,
+							-0.1
+						],
+						"0.1667": {
+							"pre": [
+								0,
+								0,
+								-0.1
+							],
+							"post": [
+								0,
+								0,
+								0
+							]
+						}
+					}
+				}
+			}
+		},
+		"animation.duosion.angry": {
+			"loop": true,
+			"bones": {
+				"eye_expression_left": {
+					"position": [
+						-0.6,
+						0.15,
+						-0.1
+					]
+				},
+				"eye_expression_right": {
+					"position": [
+						0.6,
+						0.15,
+						-0.1
+					]
+				}
+			}
+		},
+		"animation.duosion.sad": {
+			"loop": true,
+			"bones": {
+				"eye_expression_left": {
+					"position": [
+						0.6,
+						0.3,
+						-0.1
+					]
+				},
+				"eye_expression_right": {
+					"position": [
+						-0.6,
+						0.3,
+						-0.1
+					]
+				}
+			}
+		},
+		"animation.duosion.happy": {
+			"loop": true,
+			"bones": {
+				"eyelid_happy_left": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"eyelid_happy_right": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				}
+			}
+		},
+		"animation.duosion.hurt": {
+			"loop": true,
+			"bones": {
+				"eyelid_recoil_left": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				},
+				"eyelid_recoil_right": {
+					"position": [
+						0,
+						0,
+						-0.1
+					]
+				}
+			}
+		}
+	}
+}

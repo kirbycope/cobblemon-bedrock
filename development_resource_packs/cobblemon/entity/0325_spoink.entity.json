@@ -1,0 +1,58 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0325_spoink",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0325_spoink/spoink__pearl",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0325_spoink/spoink__pearl",
+                "v1": "textures/entity/0325_spoink/spoink_shiny__pearl",
+                "v2": "textures/entity/0325_spoink/spoink",
+                "pearl_2_0": "textures/entity/0325_spoink/spoink_ender_pearl",
+                "v3": "textures/entity/0325_spoink/spoink_shiny",
+                "pearl_3_0": "textures/entity/0325_spoink/spoink_ender_pearl"
+            },
+            "geometry": {
+                "g_spoink": "geometry.spoink"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1)) ? 0 : (0);"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.spoink.pose",
+                "blink_quirk": "controller.animation.spoink.blink",
+                "ground_idle": "animation.spoink.ground_idle",
+                "blink": "animation.spoink.blink",
+                "shock": "animation.spoink.shock",
+                "angry": "animation.spoink.angry",
+                "sad": "animation.spoink.sad",
+                "happy": "animation.spoink.happy",
+                "hurt": "animation.spoink.hurt"
+            },
+            "render_controllers": [
+                "controller.render.spoink",
+                "controller.render.spoink_pearl"
+            ],
+            "spawn_egg": {
+                "texture": "0325_spoink_spawn_egg"
+            }
+        }
+    }
+}

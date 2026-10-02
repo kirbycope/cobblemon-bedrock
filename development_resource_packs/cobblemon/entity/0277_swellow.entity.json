@@ -2,36 +2,61 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0277_swellow",
+            "identifier": "cobblemon:p0277_swellow",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0277_swellow/swellow"
+                "default": "textures/entity/0277_swellow/swellow",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0277_swellow/swellow",
+                "v1": "textures/entity/0277_swellow/swellow_shiny"
             },
             "geometry": {
-                "default": "geometry.swellow"
+                "g_swellow": "geometry.swellow"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0)) ? 1 : (((v.pose_type == 3 || v.pose_type == 5)) ? 2 : (((v.pose_type == 4 || v.pose_type == 6)) ? 3 : (((v.pose_type == 1)) ? 4 : (0)))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.swellow.pose",
-                "blink": "animation.swellow.blink",
-                "cry": "animation.swellow.cry",
+                "blink_quirk": "controller.animation.swellow.blink",
+                "look_at_target": "animation.0277_swellow.look",
                 "ground_idle": "animation.swellow.ground_idle",
+                "ground_idle2": "animation.swellow.ground_idle2",
                 "ground_walk": "animation.swellow.ground_walk",
                 "air_idle": "animation.swellow.air_idle",
                 "air_fly": "animation.swellow.air_fly",
-                "sleep": "animation.swellow.sleep"
+                "sleep": "animation.swellow.sleep",
+                "blink": "animation.swellow.blink",
+                "cry": "animation.swellow.cry",
+                "wangs": "animation.swellow.wangs",
+                "pose_standing": "animation.0277_swellow.pose_standing",
+                "pose_hover": "animation.0277_swellow.pose_hover",
+                "pose_fly": "animation.0277_swellow.pose_fly",
+                "pose_walk": "animation.0277_swellow.pose_walk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.swellow"
             ],
             "spawn_egg": {
                 "texture": "0277_swellow_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.swellow.cry": "cobblemon.swellow.cry"
             }
         }
     }

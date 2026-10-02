@@ -1,0 +1,94 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:sludge_actor",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/goo/sludgesplash"
+			}
+		},
+		"curves": {
+			"variable.sludgearc": {
+				"type": "linear",
+				"input": "v.emitter_age",
+				"horizontal_range": "v.emitter_lifetime",
+				"nodes": [
+					0.06,
+					0.49,
+					0.76,
+					0.91,
+					0.96,
+					0.92,
+					0.82,
+					0.48,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 60,
+				"max_particles": 200
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.6
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					"-v.target_deltax*(v.emitter_age/v.emitter_lifetime)",
+					"v.target_deltay*(v.emitter_age / v.emitter_lifetime)+(v.sludgearc*0.75)",
+					"-v.target_deltaz*(v.emitter_age/v.emitter_lifetime)"
+				],
+				"direction": [
+					"math.random(-0.45,0.45)",
+					"(v.sludgearc/math.clamp(v.target_deltaz*0.5,1,4))+math.random(-0.45,0.45)-(v.target_deltay/v.target_deltaz)",
+					"math.random(-2.05,-0.55)"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.5
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_4*3)*90"
+			},
+			"minecraft:particle_initial_speed": "math.random(2.75,3.25)*(v.target_deltaz*0.2)",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-3,
+					0
+				],
+				"linear_drag_coefficient": 1.5
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.225,
+					0.225
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 56,
+					"flipbook": {
+						"base_UV": [
+							0,
+							8
+						],
+						"size_UV": [
+							8,
+							8
+						],
+						"step_UV": [
+							0,
+							8
+						],
+						"frames_per_second": 12,
+						"max_frame": 6
+					}
+				}
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

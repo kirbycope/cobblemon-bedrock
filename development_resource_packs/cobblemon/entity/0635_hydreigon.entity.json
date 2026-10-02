@@ -1,0 +1,91 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0635_hydreigon",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0635_hydreigon/hydreigon",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0635_hydreigon/hydreigon",
+                "v1": "textures/entity/0635_hydreigon/hydreigon_shiny"
+            },
+            "geometry": {
+                "g_hydreigon": "geometry.hydreigon"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.has_rider))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 1 : (((v.pose_type == 1) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 3) && (!q.property('cobblemon:battle') && (q.has_rider))) ? 3 : (((v.pose_type == 3) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 4 : (((v.pose_type == 0 || v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 4) && ((!0))) ? 6 : (((v.pose_type == 4 || v.pose_type == 6) && ((0))) ? 7 : (((v.pose_type == 2) && (!q.property('cobblemon:battle'))) ? 8 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 9 : (0))))))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.hydreigon.pose",
+                "blink_quirk": "controller.animation.hydreigon.blink",
+                "quirk": "controller.animation.hydreigon.quirk",
+                "quirk_0": "animation.hydreigon.idle_quirk1",
+                "quirk_1": "animation.hydreigon.idle_quirk2",
+                "look_at_target": "animation.0635_hydreigon.look",
+                "ground_idle": "animation.hydreigon.ground_idle",
+                "ground_walk": "animation.hydreigon.ground_walk",
+                "air_idle": "animation.hydreigon.air_idle",
+                "air_fly": "animation.hydreigon.air_fly",
+                "air_glide": "animation.hydreigon.air_glide",
+                "battle_idle": "animation.hydreigon.battle_idle",
+                "battlebite_quirk_left1": "animation.hydreigon.battlebite_quirk_left1",
+                "battlebite_quirk_right1": "animation.hydreigon.battlebite_quirk_right1",
+                "battlebite_quirk_left2": "animation.hydreigon.battlebite_quirk_left2",
+                "battlebite_quirk_right2": "animation.hydreigon.battlebite_quirk_right2",
+                "idle_quirk1": "animation.hydreigon.idle_quirk1",
+                "idle_quirk2": "animation.hydreigon.idle_quirk2",
+                "cry": "animation.hydreigon.cry",
+                "sleep": "animation.hydreigon.sleep",
+                "sleep_wild": "animation.hydreigon.sleep_wild",
+                "ride_air_fly": "animation.hydreigon.ride_air_fly",
+                "ride_air_glide": "animation.hydreigon.ride_air_glide",
+                "ride_dive": "animation.hydreigon.ride_dive",
+                "blink": "animation.hydreigon.blink",
+                "potrait_pose": "animation.hydreigon.potrait_pose",
+                "shock": "animation.hydreigon.shock",
+                "angry": "animation.hydreigon.angry",
+                "sad": "animation.hydreigon.sad",
+                "unamused": "animation.hydreigon.unamused",
+                "happy": "animation.hydreigon.happy",
+                "blush": "animation.hydreigon.blush",
+                "hurt": "animation.hydreigon.hurt",
+                "worried": "animation.hydreigon.worried",
+                "idle": "animation.hydreigon.idle",
+                "pose_mount_standing": "animation.0635_hydreigon.pose_mount_standing",
+                "pose_standing": "animation.0635_hydreigon.pose_standing",
+                "pose_walking": "animation.0635_hydreigon.pose_walking",
+                "pose_mount_hover": "animation.0635_hydreigon.pose_mount_hover",
+                "pose_hover": "animation.0635_hydreigon.pose_hover",
+                "pose_battle_flying": "animation.0635_hydreigon.pose_battle_flying",
+                "pose_fly": "animation.0635_hydreigon.pose_fly",
+                "pose_glide": "animation.0635_hydreigon.pose_glide"
+            },
+            "render_controllers": [
+                "controller.render.hydreigon"
+            ],
+            "spawn_egg": {
+                "texture": "0635_hydreigon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.hydreigon.cry": "cobblemon.hydreigon.cry"
+            }
+        }
+    }
+}

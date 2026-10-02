@@ -1,0 +1,93 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:megadrain_actorhealtimer",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/sparkle/sparkle"
+			}
+		},
+		"events": {
+			"healEffect": {
+				"particle_effect": {
+					"effect": "cobblemon:megadrain_actorheal",
+					"type": "emitter"
+				}
+			},
+			"healEffectBig": {
+				"particle_effect": {
+					"effect": "cobblemon:megadrain_actorhealbig",
+					"type": "emitter"
+				}
+			},
+			"healEffectAccent": {
+				"particle_effect": {
+					"effect": "cobblemon:megadrain_actoraccent",
+					"type": "emitter"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 1
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_lifetime_events": {
+				"timeline": {
+					"0.90": "healEffect",
+					"0.91": "soundEffect",
+					"0.92": "healEffectAccent",
+					"0.94": "healEffectAccent",
+					"0.96": "healEffectBig"
+				}
+			},
+			"minecraft:emitter_shape_point": {},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "0.95+(v.particle_random_4*0.1)"
+			},
+			"minecraft:particle_initial_speed": 0.01,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.001,
+					0.001
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 16,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							7,
+							7
+						],
+						"step_UV": [
+							0,
+							8
+						],
+						"frames_per_second": 2,
+						"max_frame": 2
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#0097EAFF",
+						"0.23": "#FFEFF9FF",
+						"0.75": "#BF87DBFF",
+						"1.0": "#002C8FFF"
+					}
+				}
+			}
+		}
+	}
+}

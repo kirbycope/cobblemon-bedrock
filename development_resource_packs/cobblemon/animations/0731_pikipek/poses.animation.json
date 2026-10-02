@@ -1,0 +1,151 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0731_pikipek.pose_standing": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "wing_open_right": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    },
+    "wing_open_left": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "animation.0731_pikipek.pose_walking": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "right_leg": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 57.2958 + 180) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "left_leg": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 57.2958) * q.modified_move_speed * 57.2958",
+      "0",
+      "0"
+     ]
+    },
+    "wing_open_right": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    },
+    "wing_open_left": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "animation.0731_pikipek.pose_hover": {
+   "loop": true,
+   "bones": {
+    "wing_open_left": {
+     "rotation": [
+      "0",
+      "0",
+      "(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
+     ]
+    },
+    "wing_open_right": {
+     "rotation": [
+      "0",
+      "0",
+      "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
+     ]
+    },
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "wing_closed_right": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    },
+    "wing_closed_left": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "animation.0731_pikipek.pose_fly": {
+   "loop": true,
+   "bones": {
+    "wing_open_left": {
+     "rotation": [
+      "0",
+      "0",
+      "(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
+     ]
+    },
+    "wing_open_right": {
+     "rotation": [
+      "0",
+      "0",
+      "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
+     ]
+    },
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "wing_closed_right": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    },
+    "wing_closed_left": {
+     "scale": [
+      0,
+      0,
+      0
+     ]
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,123 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"animation.0397_staravia.pose_standing": {
+			"loop": true,
+			"bones": {
+				"torso": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -9, 18)",
+						"1 * math.clamp(q.target_y_rotation, -45, 45)",
+						"0"
+					]
+				},
+				"head": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -10, 9)",
+						"1 * math.clamp(q.target_y_rotation, 0, 0)",
+						"0"
+					]
+				}
+			}
+		},
+		"animation.0397_staravia.pose_walking": {
+			"loop": true,
+			"bones": {
+				"torso": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -9, 18)",
+						"1 * math.clamp(q.target_y_rotation, 0, 0)",
+						"0"
+					]
+				},
+				"head": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -10, 9)",
+						"1 * math.clamp(q.target_y_rotation, 0, 0)",
+						"0"
+					]
+				},
+				"leg_right": {
+					"rotation": [
+						"math.cos(q.modified_distance_moved * 34.3775 + 180) * q.modified_move_speed * 57.2958",
+						"0",
+						"0"
+					]
+				},
+				"leg_left": {
+					"rotation": [
+						"math.cos(q.modified_distance_moved * 34.3775) * q.modified_move_speed * 57.2958",
+						"0",
+						"0"
+					]
+				}
+			}
+		},
+		"animation.0397_staravia.pose_hover": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": [
+						0,
+						"0",
+						"0"
+					]
+				},
+				"torso": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -9, 18)",
+						"1 * math.clamp(q.target_y_rotation, 0, 0)",
+						"0"
+					]
+				},
+				"head": {
+					"rotation": [
+						"1 * math.clamp(q.target_x_rotation, -10, 9)",
+						"1 * math.clamp(q.target_y_rotation, 0, 0)",
+						"0"
+					]
+				},
+				"wing_open_left": {
+					"rotation": [
+						"0",
+						"0",
+						"(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 0.00000) * 57.2958"
+					]
+				},
+				"wing_open_right": {
+					"rotation": [
+						"0",
+						"0",
+						"-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 0.00000) * 57.2958"
+					]
+				}
+			}
+		},
+		"animation.0397_staravia.pose_fly": {
+			"loop": true,
+			"bones": {
+				"body": {
+					"rotation": [
+						0,
+						"0",
+						"0"
+					]
+				},
+				"wing_open_left": {
+					"rotation": [
+						"0",
+						"0",
+						"(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 0.00000) * 57.2958"
+					]
+				},
+				"wing_open_right": {
+					"rotation": [
+						"0",
+						"0",
+						"-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 0.00000) * 57.2958"
+					]
+				}
+			}
+		}
+	}
+}

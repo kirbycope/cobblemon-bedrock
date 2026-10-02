@@ -1,0 +1,80 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:thunderbolt_target",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/electricity/electricity_yellow"
+			}
+		},
+		"events": {
+			"spark": {
+				"particle_effect": {
+					"effect": "cobblemon:thunderbolt_targetsparks",
+					"type": "particle"
+				}
+			},
+			"impact": {
+				"particle_effect": {
+					"effect": "cobblemon:thunderbolt_targetimpact",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 12,
+				"max_particles": 10
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.6
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					"math.sin(v.emitter_age*2178)*0.5",
+					"math.cos(v.emitter_age*2178)*0.5",
+					-0.1
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.27
+			},
+			"minecraft:particle_lifetime_events": {
+				"creation_event": [
+					"spark",
+					"impact"
+				]
+			},
+			"minecraft:particle_initial_speed": 0.02,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.45,
+					0.45
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 16,
+					"texture_height": 96,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							16,
+							17
+						],
+						"step_UV": [
+							0,
+							16
+						],
+						"frames_per_second": 24,
+						"max_frame": 6
+					}
+				}
+			}
+		}
+	}
+}

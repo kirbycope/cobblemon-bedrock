@@ -1,0 +1,65 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0954_rabsca",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0954_rabsca/rabsca",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0954_rabsca/rabsca",
+                "glow_0_0": "textures/entity/0954_rabsca/rabsca_emissive",
+                "translucent_0_0": "textures/entity/0954_rabsca/rabsca_transparency",
+                "v1": "textures/entity/0954_rabsca/rabsca_shiny",
+                "glow_1_0": "textures/entity/0954_rabsca/rabsca_emissive",
+                "translucent_1_0": "textures/entity/0954_rabsca/rabsca_transparency"
+            },
+            "geometry": {
+                "g_rabsca": "geometry.rabsca"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
+                "animate": [
+                    "pose"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.rabsca.pose",
+                "look_at_target": "animation.0954_rabsca.look",
+                "ball_overlay": "animation.rabsca.ball_overlay",
+                "ground_idle": "animation.rabsca.ground_idle",
+                "ground_walk": "animation.rabsca.ground_walk",
+                "ground_run": "animation.rabsca.ground_run",
+                "cry": "animation.rabsca.cry",
+                "battle_idle": "animation.rabsca.battle_idle",
+                "battle_cry": "animation.rabsca.battle_cry",
+                "status": "animation.rabsca.status",
+                "special": "animation.rabsca.special",
+                "physical": "animation.rabsca.physical",
+                "open_eyes": "animation.rabsca.open_eyes"
+            },
+            "render_controllers": [
+                "controller.render.rabsca",
+                "controller.render.rabsca_glow",
+                "controller.render.rabsca_translucent"
+            ],
+            "spawn_egg": {
+                "texture": "0954_rabsca_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.rabsca.cry": "cobblemon.rabsca.cry"
+            }
+        }
+    }
+}

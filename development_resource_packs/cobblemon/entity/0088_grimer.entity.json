@@ -2,31 +2,76 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0088_grimer",
+            "identifier": "cobblemon:p0088_grimer",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0088_grimer/grimer"
+                "default": "textures/entity/0088_grimer/grimer",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0088_grimer/grimer",
+                "v1": "textures/entity/0088_grimer/grimer_shiny",
+                "v2": "textures/entity/0088_grimer/grimer_alola",
+                "v3": "textures/entity/0088_grimer/grimer_alola_shiny"
             },
             "geometry": {
-                "default": "geometry.grimer"
+                "g_grimer": "geometry.grimer",
+                "g_grimer_alola": "geometry.grimer_alola"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 2) && (!q.is_in_water)) ? 3 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 4 : (((v.pose_type == 0) && (q.property('cobblemon:battle') && q.is_in_water)) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 6 : (((v.pose_type == 2) && (q.is_in_water)) ? 7 : (0))))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.grimer.pose",
+                "blink_quirk": "controller.animation.grimer.blink",
+                "look_at_target": "animation.0088_grimer.look",
                 "ground_idle": "animation.grimer.ground_idle",
-                "blink": "animation.grimer.blink"
+                "battle_idle": "animation.grimer.battle_idle",
+                "ground_walk": "animation.grimer.ground_walk",
+                "ground_run": "animation.grimer.ground_run",
+                "sleep": "animation.grimer.sleep",
+                "water_surface_idle": "animation.grimer.water_surface_idle",
+                "water_surface_battle_idle": "animation.grimer.water_surface_battle_idle",
+                "water_surface_swim": "animation.grimer.water_surface_swim",
+                "water_surface_sleep": "animation.grimer.water_surface_sleep",
+                "cry": "animation.grimer.cry",
+                "blink": "animation.grimer.blink",
+                "right_arm_chew": "animation.grimer.right_arm_chew",
+                "left_arm_chew": "animation.grimer.left_arm_chew",
+                "recoil": "animation.grimer.recoil",
+                "swim_test": "animation.grimer.swim_test",
+                "run_test": "animation.grimer.run_test",
+                "walk_test": "animation.grimer.walk_test",
+                "water_placement": "animation.grimer.water_placement",
+                "pose_battle_standing": "animation.0088_grimer.pose_battle_standing",
+                "pose_standing": "animation.0088_grimer.pose_standing",
+                "pose_walking": "animation.0088_grimer.pose_walking",
+                "pose_surface_idle": "animation.0088_grimer.pose_surface_idle",
+                "pose_surface_battle_idle": "animation.0088_grimer.pose_surface_battle_idle",
+                "pose_surface_swimming": "animation.0088_grimer.pose_surface_swimming",
+                "pose_surface_sleep": "animation.0088_grimer.pose_surface_sleep"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.grimer"
             ],
             "spawn_egg": {
                 "texture": "0088_grimer_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.grimer.cry": "cobblemon.grimer.cry"
             }
         }
     }

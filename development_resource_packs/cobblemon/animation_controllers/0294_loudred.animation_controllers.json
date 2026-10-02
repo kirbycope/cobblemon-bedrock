@@ -2,39 +2,40 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.loudred.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
+                "standing": {
                     "animations": [
-                        "ground_idle"
+                        "idle",
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "walk": "v.pose == 1"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "moving": {
+                "walk": {
                     "animations": [
-                        "ground_idle",
-                        "ground_walk"
+                        "idle",
+                        "pose_walk"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "standing": "v.pose == 0"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ]
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 1"
+                        }
                     ]
                 }
             }

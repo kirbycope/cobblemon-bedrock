@@ -2,32 +2,77 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0727_incineroar",
+            "identifier": "cobblemon:p0727_incineroar",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0727_incineroar/incineroar"
+                "default": "textures/entity/0727_incineroar/incineroar",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0727_incineroar/incineroar",
+                "emissive_0_0": "textures/entity/0727_incineroar/incineroar_emissive",
+                "v1": "textures/entity/0727_incineroar/incineroar_shiny",
+                "emissive_1_0": "textures/entity/0727_incineroar/incineroar_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.incineroar"
+                "g_incineroar": "geometry.incineroar"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.incineroar.pose",
+                "blink_quirk": "controller.animation.incineroar.blink",
+                "quirk": "controller.animation.incineroar.quirk",
+                "quirk_0": "animation.incineroar.look_quirk",
+                "quirk_1": "animation.incineroar.belt_quirk",
+                "quirk_2": "animation.incineroar.laugh_quirk",
+                "quirk_3": "animation.incineroar.lefteartwitch_quirk",
+                "quirk_4": "animation.incineroar.righteartwitch_quirk",
+                "look_at_target": "animation.0727_incineroar.look",
                 "ground_idle": "animation.incineroar.ground_idle",
+                "ground_walk": "animation.incineroar.ground_walk",
+                "battle_idle": "animation.incineroar.battle_idle",
+                "sleep": "animation.incineroar.sleep",
+                "cry": "animation.incineroar.cry",
+                "battle_cry": "animation.incineroar.battle_cry",
                 "blink": "animation.incineroar.blink",
-                "cry": "animation.incineroar.cry"
+                "recoil": "animation.incineroar.recoil",
+                "look_quirk": "animation.incineroar.look_quirk",
+                "belt_quirk": "animation.incineroar.belt_quirk",
+                "laugh_quirk": "animation.incineroar.laugh_quirk",
+                "lefteartwitch_quirk": "animation.incineroar.lefteartwitch_quirk",
+                "righteartwitch_quirk": "animation.incineroar.righteartwitch_quirk",
+                "walkspeedtest": "animation.incineroar.walkspeedtest",
+                "base": "animation.incineroar.base",
+                "pose_animation": "animation.incineroar.pose",
+                "pose_battle_standing": "animation.0727_incineroar.pose_battle_standing",
+                "pose_standing": "animation.0727_incineroar.pose_standing",
+                "pose_walking": "animation.0727_incineroar.pose_walking"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.incineroar",
+                "controller.render.incineroar_emissive"
             ],
             "spawn_egg": {
                 "texture": "0727_incineroar_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.incineroar.cry": "cobblemon.incineroar.cry"
             }
         }
     }

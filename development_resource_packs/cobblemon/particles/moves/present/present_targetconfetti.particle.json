@@ -1,0 +1,94 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:present_targetconfetti",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/vanilla/generic"
+			}
+		},
+		"curves": {
+			"variable.smokesize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0.37,
+					0.85,
+					1,
+					1,
+					1,
+					0.88,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 80
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_sphere": {
+				"radius": 0.1,
+				"surface_only": true,
+				"direction": [
+					"math.random(-0.45,0.45)",
+					"math.random(-0.2,0.6)",
+					"math.random(-0.45,0.45)"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(22,46)/32"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_4*3)*90"
+			},
+			"minecraft:particle_initial_speed": "math.random(0.75,2.75)*4.5",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-3,
+					0
+				],
+				"linear_drag_coefficient": 2.8
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.04*v.smokesize)-(v.particle_random_3*0.02)",
+					"(0.04*v.smokesize)-(v.particle_random_3*0.02)"
+				],
+				"facing_camera_mode": "lookat_direction",
+				"uv": {
+					"texture_width": 64,
+					"texture_height": 8,
+					"uv": [
+						4,
+						4
+					],
+					"uv_size": [
+						1,
+						1
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"coefficient_of_restitution": 0.25,
+				"collision_radius": 0.01
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_random_4",
+					"gradient": {
+						"0.0": "#FFE7FF4F",
+						"0.49": "#FF3CFF4E",
+						"0.5": "#FF23EFFF",
+						"1.0": "#FF239BFF"
+					}
+				}
+			}
+		}
+	}
+}

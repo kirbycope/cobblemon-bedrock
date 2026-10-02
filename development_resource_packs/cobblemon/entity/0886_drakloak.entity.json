@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0886_drakloak",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0886_drakloak/drakloak",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0886_drakloak/drakloak",
+                "v1": "textures/entity/0886_drakloak/drakloak_shiny"
+            },
+            "geometry": {
+                "g_drakloak": "geometry.drakloak"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.drakloak.pose",
+                "blink_quirk": "controller.animation.drakloak.blink",
+                "look_at_target": "animation.0886_drakloak.look",
+                "blink": "animation.drakloak.blink",
+                "blink2": "animation.drakloak.blink2",
+                "ground_idle": "animation.drakloak.ground_idle",
+                "ground_walk": "animation.drakloak.ground_walk",
+                "ground_run": "animation.drakloak.ground_run",
+                "battle_idle": "animation.drakloak.battle_idle",
+                "sleep": "animation.drakloak.sleep",
+                "cry": "animation.drakloak.cry",
+                "sad": "animation.drakloak.sad",
+                "angry": "animation.drakloak.angry",
+                "unamused": "animation.drakloak.unamused",
+                "happy": "animation.drakloak.happy",
+                "shock": "animation.drakloak.shock",
+                "pose_battle_standing": "animation.0886_drakloak.pose_battle_standing",
+                "pose_standing": "animation.0886_drakloak.pose_standing",
+                "pose_walking": "animation.0886_drakloak.pose_walking"
+            },
+            "render_controllers": [
+                "controller.render.drakloak"
+            ],
+            "spawn_egg": {
+                "texture": "0886_drakloak_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.drakloak.cry": "cobblemon.drakloak.cry"
+            }
+        }
+    }
+}

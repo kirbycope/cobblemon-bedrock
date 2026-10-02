@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0829_gossifleur",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0829_gossifleur/gossifleur",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0829_gossifleur/gossifleur",
+                "v1": "textures/entity/0829_gossifleur/gossifleur_shiny"
+            },
+            "geometry": {
+                "g_gossifleur": "geometry.gossifleur"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.gossifleur.pose",
+                "blink_quirk": "controller.animation.gossifleur.blink",
+                "quirk": "controller.animation.gossifleur.quirk",
+                "quirk_0": "animation.gossifleur.quirk_twirl",
+                "look_at_target": "animation.0829_gossifleur.look",
+                "ground_idle": "animation.gossifleur.ground_idle",
+                "ground_walk": "animation.gossifleur.ground_walk",
+                "battle_idle": "animation.gossifleur.battle_idle",
+                "battle_sleep": "animation.gossifleur.battle_sleep",
+                "recoil": "animation.gossifleur.recoil",
+                "quirk_twirl": "animation.gossifleur.quirk_twirl",
+                "cry": "animation.gossifleur.cry",
+                "blink": "animation.gossifleur.blink",
+                "walk_test": "animation.gossifleur.walk_test",
+                "portrait_idle": "animation.gossifleur.portrait_idle",
+                "pose_battle_standing": "animation.0829_gossifleur.pose_battle_standing",
+                "pose_standing": "animation.0829_gossifleur.pose_standing",
+                "pose_walking": "animation.0829_gossifleur.pose_walking"
+            },
+            "render_controllers": [
+                "controller.render.gossifleur"
+            ],
+            "spawn_egg": {
+                "texture": "0829_gossifleur_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gossifleur.cry": "cobblemon.gossifleur.cry"
+            }
+        }
+    }
+}

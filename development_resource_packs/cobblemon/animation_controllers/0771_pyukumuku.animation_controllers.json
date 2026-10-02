@@ -2,39 +2,17 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.pyukumuku.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
+                "standing": {
+                    "transitions": [],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
                     "transitions": [
                         {
-                            "moving": "q.modified_move_speed > 0.1"
+                            "standing": "v.pose == 0"
                         }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
-                    "animations": [
-                        "ground_idle",
-                        "ground_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "idle": "q.modified_move_speed < 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "sleeping": {
-                    "animations": [
-                        "sleep"
-                    ]
-                },
-                "fainting": {
-                    "animations": [
-                        "faint"
                     ]
                 }
             }

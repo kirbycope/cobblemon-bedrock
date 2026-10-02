@@ -1,0 +1,94 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.crawdaunt.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "standing": {
+                    "animations": [
+                        "ground_idle_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "seafloor_standing": "v.pose == 2"
+                        },
+                        {
+                            "seafloor_swimming": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "seafloor_standing": "v.pose == 2"
+                        },
+                        {
+                            "seafloor_swimming": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "seafloor_standing": {
+                    "animations": [
+                        "ground_idle_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "seafloor_swimming": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "seafloor_swimming": {
+                    "animations": [
+                        "ground_walk_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "seafloor_standing": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "seafloor_standing": "v.pose == 2"
+                        },
+                        {
+                            "seafloor_swimming": "v.pose == 3"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

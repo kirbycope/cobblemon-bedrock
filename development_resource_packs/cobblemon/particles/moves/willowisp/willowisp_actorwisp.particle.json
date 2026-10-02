@@ -1,0 +1,167 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:willowisp_actorwisp",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/fire/wisp"
+			}
+		},
+		"curves": {
+			"variable.grow": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.64,
+					0.88,
+					0.96,
+					0.99,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					1
+				]
+			},
+			"variable.swirl1": {
+				"type": "catmull_rom",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0.64,
+					-0.66,
+					0.36,
+					-0.24,
+					0.11,
+					-0.09,
+					-0.02,
+					-0.01,
+					0
+				]
+			},
+			"variable.swirl2": {
+				"type": "catmull_rom",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					-0.65,
+					0.66,
+					-0.33,
+					0.23,
+					-0.11,
+					0.09,
+					0.02,
+					0.01,
+					0
+				]
+			}
+		},
+		"events": {
+			"cinder": {
+				"particle_effect": {
+					"effect": "cobblemon:willowisp_actorcinder",
+					"type": "particle"
+				}
+			},
+			"burst": {
+				"particle_effect": {
+					"effect": "cobblemon:willowisp_actorburst",
+					"type": "particle"
+				}
+			},
+			"shoot": {
+				"particle_effect": {
+					"effect": "cobblemon:willowisp_actorproj",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 1
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.1
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					0,
+					1,
+					0
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 1.1
+			},
+			"minecraft:particle_lifetime_events": {
+				"expiration_event": "shoot",
+				"timeline": {
+					"0.10": "cinder",
+					"0.20": "cinder",
+					"0.30": "cinder",
+					"0.40": "cinder",
+					"0.50": "cinder",
+					"0.60": "cinder",
+					"0.70": "cinder",
+					"0.80": "cinder",
+					"0.90": "cinder",
+					"1.00": "cinder",
+					"1.05": "burst"
+				}
+			},
+			"minecraft:particle_initial_speed": 1,
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					"(v.particle_random_1-0.5)*2",
+					"(v.particle_random_2-0.5)*2",
+					"(v.particle_random_3-0.5)*1"
+				],
+				"linear_drag_coefficient": 2.2
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.24*v.grow)+(v.swirl1*0.1)",
+					"(0.346*v.grow)+(v.swirl2*0.1)"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 99,
+					"texture_height": 13,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							9,
+							13
+						],
+						"step_UV": [
+							9,
+							0
+						],
+						"frames_per_second": 12,
+						"max_frame": 11,
+						"loop": true
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"coefficient_of_restitution": 1,
+				"collision_radius": 0.3
+			}
+		}
+	}
+}

@@ -1,0 +1,138 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:evo_particles",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/invisible"
+			}
+		},
+		"events": {
+			"event_sparkle": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_sparkle",
+					"type": "emitter_bound"
+				}
+			},
+			"event_buildup": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_buildup",
+					"type": "emitter_bound"
+				}
+			},
+			"event_flyingsparkles": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_flyingsparkles",
+					"type": "emitter_bound"
+				}
+			},
+			"event_bigsparkle": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_bigsparkle",
+					"type": "emitter_bound"
+				}
+			},
+			"event_sparklefetti": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_sparklefetti",
+					"type": "emitter_bound"
+				}
+			},
+			"event_sparkleburst": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_sparkleburst",
+					"type": "emitter_bound"
+				}
+			},
+			"event_godrays": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_godrays",
+					"type": "emitter_bound"
+				}
+			},
+			"event_implode": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_implode",
+					"type": "emitter_bound"
+				}
+			},
+			"event_obscuring": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_obscuring",
+					"type": "emitter_bound"
+				}
+			},
+			"event_color_godrays": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_godrays_small",
+					"type": "emitter_bound"
+				}
+			},
+			"event_smokeburst": {
+				"particle_effect": {
+					"effect": "cobblemon:evo_smokeburst",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_local_space": {
+				"position": true,
+				"rotation": true
+			},
+			"minecraft:emitter_rate_instant": {
+				"num_particles": 1
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 12
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": "event_sparkle",
+				"timeline": {
+					"2.00": "event_buildup",
+					"5.00": "event_obscuring",
+					"5.01": "event_color_godrays",
+					"5.10": "event_godrays",
+					"6.00": "event_flyingsparkles",
+					"7.00": "event_bigsparkle",
+					"9.58": "event_implode",
+					"10.00": "event_smokeburst",
+					"10.01": "event_sparkleburst",
+					"10.02": "event_sparklefetti"
+				}
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					0,
+					1,
+					0
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"expiration_expression": 1
+			},
+			"minecraft:particle_initial_speed": 0,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.2,
+					0.2
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 32,
+					"uv": [
+						0,
+						0
+					],
+					"uv_size": [
+						1,
+						1
+					]
+				}
+			}
+		}
+	}
+}

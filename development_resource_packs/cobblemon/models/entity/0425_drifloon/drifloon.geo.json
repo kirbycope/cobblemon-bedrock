@@ -18,23 +18,41 @@
 				{
 					"name": "body",
 					"parent": "drifloon",
-					"pivot": [0, 15, 0],
+					"pivot": [0, 15, 0]
+				},
+				{
+					"name": "body_rotation",
+					"parent": "body",
+					"pivot": [0, 15, 0]
+				},
+				{
+					"name": "head_scale",
+					"parent": "body_rotation",
+					"pivot": [0, 14.5, 0],
 					"cubes": [
 						{"origin": [-5, 14.5, -5], "size": [10, 9, 10], "uv": [0, 0]}
 					]
 				},
 				{
 					"name": "eyes",
-					"parent": "body",
+					"parent": "head_scale",
 					"pivot": [0, 19, -5.01]
 				},
 				{
 					"name": "eye_left",
 					"parent": "eyes",
-					"pivot": [3.5, 19, -5],
+					"pivot": [3.5, 19, -5.01],
 					"cubes": [
-						{"origin": [3, 18, -4.81], "size": [1, 2, 0], "inflate": 0.2, "uv": [2, 0], "mirror": true}
+						{"origin": [2.75, 18, -4.86], "size": [1, 2, 0], "inflate": 0.2, "uv": [0, 0]}
 					]
+				},
+				{
+					"name": "locator_eye_left",
+					"parent": "eye_left",
+					"pivot": [3.25, 19, -5.05],
+					"locators": {
+						"eye2": [3.25, 19, -5.05]
+					}
 				},
 				{
 					"name": "eyelid_left",
@@ -47,10 +65,18 @@
 				{
 					"name": "eye_right",
 					"parent": "eyes",
-					"pivot": [-3.5, 19, -5],
+					"pivot": [-3.5, 19, -5.01],
 					"cubes": [
-						{"origin": [-4, 18, -4.81], "size": [1, 2, 0], "inflate": 0.2, "uv": [2, 0], "mirror": true}
+						{"origin": [-3.75, 18, -4.835], "size": [1, 2, 0], "inflate": 0.2, "uv": [2, 0], "mirror": true}
 					]
+				},
+				{
+					"name": "locator_eye_right",
+					"parent": "eye_right",
+					"pivot": [-3.25, 19, -5.05],
+					"locators": {
+						"eye1": [-3.25, 19, -5.05]
+					}
 				},
 				{
 					"name": "eyelid_right",
@@ -62,7 +88,7 @@
 				},
 				{
 					"name": "mouth",
-					"parent": "body",
+					"parent": "head_scale",
 					"pivot": [0, 18.5, -5],
 					"cubes": [
 						{"origin": [-2, 16.5, -5.01], "size": [4, 4, 0], "pivot": [0, 18.5, -5], "rotation": [0, 0, 45], "uv": [30, 6]}
@@ -78,7 +104,7 @@
 				},
 				{
 					"name": "cloud",
-					"parent": "body",
+					"parent": "head_scale",
 					"pivot": [0, 23.5, 0],
 					"rotation": [0.00001, -30, -0.00003],
 					"cubes": [
@@ -104,7 +130,7 @@
 				},
 				{
 					"name": "arms",
-					"parent": "body",
+					"parent": "body_rotation",
 					"pivot": [0, 14.5, 0]
 				},
 				{
@@ -205,7 +231,7 @@
 				},
 				{
 					"name": "flaps",
-					"parent": "body",
+					"parent": "body_rotation",
 					"pivot": [0, 14.5, 0]
 				},
 				{

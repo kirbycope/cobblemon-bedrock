@@ -1,0 +1,381 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.capture_ball_ancient": {
+      "initial_state": "fly",
+      "states": {
+        "fly": {
+          "animations": [
+            "throw"
+          ],
+          "transitions": [
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "hover": {
+          "animations": [
+            "shut_idle"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "open": {
+          "animations": [
+            "open"
+          ],
+          "transitions": [
+            {
+              "opened": "q.all_animations_finished"
+            },
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "opened": {
+          "animations": [
+            "open_idle"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "shut": {
+          "animations": [
+            "shut"
+          ],
+          "transitions": [
+            {
+              "closed": "q.all_animations_finished"
+            },
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "closed": {
+          "animations": [
+            "shut_idle"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "shake": {
+          "animations": [
+            "bounce"
+          ],
+          "transitions": [
+            {
+              "bob_odd": "math.mod(q.property('cobblemon:shake'), 2) == 1"
+            },
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "bob_odd": {
+          "on_entry": [
+            "v.bob = math.random_integer(1, 6);"
+          ],
+          "animations": [
+            {
+              "bob1": "v.bob == 1",
+              "bob2": "v.bob == 2",
+              "bob3": "v.bob == 3",
+              "bob4": "v.bob == 4",
+              "bob5": "v.bob == 5",
+              "bob6": "v.bob == 6"
+            }
+          ],
+          "transitions": [
+            {
+              "bob_even": "!(math.mod(q.property('cobblemon:shake'), 2) == 1)"
+            },
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "bob_even": {
+          "on_entry": [
+            "v.bob = math.random_integer(1, 6);"
+          ],
+          "animations": [
+            {
+              "bob1": "v.bob == 1",
+              "bob2": "v.bob == 2",
+              "bob3": "v.bob == 3",
+              "bob4": "v.bob == 4",
+              "bob5": "v.bob == 5",
+              "bob6": "v.bob == 6"
+            }
+          ],
+          "transitions": [
+            {
+              "bob_odd": "math.mod(q.property('cobblemon:shake'), 2) == 1"
+            },
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "critical": {
+          "animations": [
+            "critical"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "capture": {
+          "animations": [
+            "capture"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "break": "q.property('cobblemon:state') == 7"
+            }
+          ]
+        },
+        "break": {
+          "animations": [
+            "break"
+          ],
+          "transitions": [
+            {
+              "fly": "q.property('cobblemon:state') == 0"
+            },
+            {
+              "hover": "q.property('cobblemon:state') == 1"
+            },
+            {
+              "open": "q.property('cobblemon:state') == 2"
+            },
+            {
+              "shut": "q.property('cobblemon:state') == 3"
+            },
+            {
+              "shake": "q.property('cobblemon:state') == 4"
+            },
+            {
+              "critical": "q.property('cobblemon:state') == 5"
+            },
+            {
+              "capture": "q.property('cobblemon:state') == 6"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

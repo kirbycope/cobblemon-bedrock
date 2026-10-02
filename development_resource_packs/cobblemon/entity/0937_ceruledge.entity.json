@@ -2,37 +2,90 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0937_ceruledge",
+            "identifier": "cobblemon:p0937_ceruledge",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0937_ceruledge/ceruledge"
+                "default": "textures/entity/0937_ceruledge/ceruledge_1",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0937_ceruledge/ceruledge_1",
+                "flame_0_0": "textures/entity/0937_ceruledge/ceruledge_emissive_1",
+                "flame_0_1": "textures/entity/0937_ceruledge/ceruledge_emissive_2",
+                "flame_0_2": "textures/entity/0937_ceruledge/ceruledge_emissive_3",
+                "flame_0_3": "textures/entity/0937_ceruledge/ceruledge_emissive_4",
+                "flame_0_4": "textures/entity/0937_ceruledge/ceruledge_emissive_5",
+                "flame_0_5": "textures/entity/0937_ceruledge/ceruledge_emissive_6",
+                "flame_0_6": "textures/entity/0937_ceruledge/ceruledge_emissive_7",
+                "flame_0_7": "textures/entity/0937_ceruledge/ceruledge_emissive_8",
+                "v1": "textures/entity/0937_ceruledge/ceruledge_1",
+                "flame_1_0": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_1",
+                "flame_1_1": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_2",
+                "flame_1_2": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_3",
+                "flame_1_3": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_4",
+                "flame_1_4": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_5",
+                "flame_1_5": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_6",
+                "flame_1_6": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_7",
+                "flame_1_7": "textures/entity/0937_ceruledge/ceruledge_shiny_emissive_8"
             },
             "geometry": {
-                "default": "geometry.ceruledge"
+                "g_ceruledge": "geometry.ceruledge"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.ceruledge.pose",
+                "blink_quirk": "controller.animation.ceruledge.blink",
+                "look_at_target": "animation.0937_ceruledge.look",
                 "ground_idle": "animation.ceruledge.ground_idle",
                 "ground_walk": "animation.ceruledge.ground_walk",
                 "battle_idle": "animation.ceruledge.battle_idle",
-                "sleep": "animation.ceruledge.sleep",
+                "battle_intro": "animation.ceruledge.battle_intro",
+                "physical": "animation.ceruledge.physical",
+                "special": "animation.ceruledge.special",
+                "battle_cry": "animation.ceruledge.battle_cry",
+                "status": "animation.ceruledge.status",
                 "faint": "animation.ceruledge.faint",
-                "faint2": "animation.ceruledge.faint2",
+                "sleep": "animation.ceruledge.sleep",
                 "blink": "animation.ceruledge.blink",
-                "cry": "animation.ceruledge.cry"
+                "recoil": "animation.ceruledge.recoil",
+                "cry": "animation.ceruledge.cry",
+                "eye_flame_overlay": "animation.ceruledge.eye_flame_overlay",
+                "shock": "animation.ceruledge.shock",
+                "angry": "animation.ceruledge.angry",
+                "sad": "animation.ceruledge.sad",
+                "unamused": "animation.ceruledge.unamused",
+                "happy": "animation.ceruledge.happy",
+                "hurt": "animation.ceruledge.hurt",
+                "passive_swords": "animation.ceruledge.passive_swords",
+                "speedtest_walk": "animation.ceruledge.speedtest_walk",
+                "pose_battle_standing": "animation.0937_ceruledge.pose_battle_standing",
+                "pose_standing": "animation.0937_ceruledge.pose_standing",
+                "pose_walking": "animation.0937_ceruledge.pose_walking"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.ceruledge",
+                "controller.render.ceruledge_flame"
             ],
             "spawn_egg": {
                 "texture": "0937_ceruledge_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.ceruledge.cry": "cobblemon.ceruledge.cry"
             }
         }
     }

@@ -1,0 +1,175 @@
+{
+    "format_version": "1.10.0",
+    "animation_controllers": {
+        "controller.animation.gimmighoul.pose": {
+            "initial_state": "spawn",
+            "states": {
+                "battle_standing": {
+                    "animations": [
+                        "gimmighoul_roaming__battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "gimmighoul_roaming__ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "gimmighoul_roaming__ground_walk",
+                        "pose_walking"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "gimmighoul_roaming__sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulder_left": {
+                    "animations": [
+                        "gimmighoul_roaming__shoulder_left",
+                        "pose_shoulder_left"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulder_right": {
+                    "animations": [
+                        "gimmighoul_roaming__shoulder_right",
+                        "pose_shoulder_right"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

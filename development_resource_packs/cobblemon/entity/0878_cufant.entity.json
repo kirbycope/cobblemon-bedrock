@@ -1,0 +1,64 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0878_cufant",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0878_cufant/cufant",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0878_cufant/cufant",
+                "v1": "textures/entity/0878_cufant/cufant_shiny"
+            },
+            "geometry": {
+                "g_cufant": "geometry.cufant"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.cufant.pose",
+                "blink_quirk": "controller.animation.cufant.blink",
+                "ground_idle": "animation.cufant.ground_idle",
+                "battle_idle": "animation.cufant.battle_idle",
+                "ground_walk": "animation.cufant.ground_walk",
+                "ground_run": "animation.cufant.ground_run",
+                "sleep": "animation.cufant.sleep",
+                "blink": "animation.cufant.blink",
+                "cry": "animation.cufant.cry",
+                "faint": "animation.cufant.faint",
+                "physical": "animation.cufant.physical",
+                "special": "animation.cufant.special",
+                "status": "animation.cufant.status",
+                "battle_cry": "animation.cufant.battle_cry",
+                "recoil": "animation.cufant.recoil",
+                "walkspeedtest": "animation.cufant.walkspeedtest",
+                "runspeedtest": "animation.cufant.runspeedtest"
+            },
+            "render_controllers": [
+                "controller.render.cufant"
+            ],
+            "spawn_egg": {
+                "texture": "0878_cufant_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.cufant.cry": "cobblemon.cufant.cry"
+            }
+        }
+    }
+}

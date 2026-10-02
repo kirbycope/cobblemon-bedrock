@@ -2,34 +2,55 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0942_maschiff",
+            "identifier": "cobblemon:p0942_maschiff",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0942_maschiff/maschiff"
+                "default": "textures/entity/0942_maschiff/maschiff",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0942_maschiff/maschiff",
+                "v1": "textures/entity/0942_maschiff/maschiff_shiny"
             },
             "geometry": {
-                "default": "geometry.maschiff"
+                "g_maschiff": "geometry.maschiff"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.maschiff.pose",
+                "blink_quirk": "controller.animation.maschiff.blink",
+                "look_at_target": "animation.0942_maschiff.look",
                 "ground_idle": "animation.maschiff.ground_idle",
                 "blink": "animation.maschiff.blink",
                 "teeth": "animation.maschiff.teeth",
                 "render_pose": "animation.maschiff.render_pose",
-                "cry": "animation.maschiff.cry"
+                "cry": "animation.maschiff.cry",
+                "pose_standing": "animation.0942_maschiff.pose_standing",
+                "pose_walk": "animation.0942_maschiff.pose_walk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.maschiff"
             ],
             "spawn_egg": {
                 "texture": "0942_maschiff_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.maschiff.cry": "cobblemon.maschiff.cry"
             }
         }
     }

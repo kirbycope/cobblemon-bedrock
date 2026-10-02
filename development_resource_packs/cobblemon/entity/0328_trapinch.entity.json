@@ -1,0 +1,55 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0328_trapinch",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0328_trapinch/trapinch",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0328_trapinch/trapinch",
+                "v1": "textures/entity/0328_trapinch/trapinch_shiny"
+            },
+            "geometry": {
+                "g_trapinch": "geometry.trapinch"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.trapinch.pose",
+                "blink_quirk": "controller.animation.trapinch.blink",
+                "look_at_target": "animation.0328_trapinch.look",
+                "ground_idle": "animation.trapinch.ground_idle",
+                "blink": "animation.trapinch.blink",
+                "cry": "animation.trapinch.cry",
+                "pose_standing": "animation.0328_trapinch.pose_standing",
+                "pose_walk": "animation.0328_trapinch.pose_walk"
+            },
+            "render_controllers": [
+                "controller.render.trapinch"
+            ],
+            "spawn_egg": {
+                "texture": "0328_trapinch_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.trapinch.cry": "cobblemon.trapinch.cry"
+            }
+        }
+    }
+}

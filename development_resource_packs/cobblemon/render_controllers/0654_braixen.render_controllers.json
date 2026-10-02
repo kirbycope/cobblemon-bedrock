@@ -1,0 +1,75 @@
+{
+    "format_version": "1.10.0",
+    "render_controllers": {
+        "controller.render.braixen": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "arrays": {
+                "textures": {
+                    "Array.skin": [
+                        "Texture.v0",
+                        "Texture.v1",
+                        "Texture.v2",
+                        "Texture.v3"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen"
+                    ]
+                }
+            },
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Array.skin[query.variant]"
+            ]
+        },
+        "controller.render.braixen_emissive": {
+            "materials": [
+                {
+                    "*": "Material.translucent"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.emissive": [
+                        "Texture.emissive_0_0",
+                        "Texture.emissive_1_0",
+                        "Texture.emissive_2_0",
+                        "Texture.emissive_3_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen",
+                        "Geometry.g_braixen"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.emissive[query.variant * 1]"
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": 0.1,
+                "b": 0.1,
+                "a": "q.property('cobblemon:red')"
+            },
+            "geometry": "Array.geo[query.variant]"
+        }
+    }
+}

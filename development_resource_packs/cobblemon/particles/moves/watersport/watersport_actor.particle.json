@@ -1,0 +1,99 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:watersport_actor",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/water/splash"
+			}
+		},
+		"curves": {
+			"variable.watersize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					1,
+					1,
+					1,
+					1,
+					1,
+					1,
+					0.5,
+					0
+				]
+			}
+		},
+		"events": {},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 500,
+				"max_particles": 160
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.5
+			},
+			"minecraft:emitter_lifetime_events": {
+				"creation_event": "event_sound"
+			},
+			"minecraft:emitter_shape_point": {
+				"offset": [
+					0,
+					0,
+					0.1
+				],
+				"direction": [
+					"math.random(-10,10)*1",
+					"math.random(1.5,20)*1.75",
+					"math.random(-10,10)*1"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.8
+			},
+			"minecraft:particle_initial_speed": "math.random(4.3,11.2)*1.75",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-15,
+					0
+				],
+				"linear_drag_coefficient": 2
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.1*v.watersize",
+					"0.06*v.watersize"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 12,
+					"texture_height": 2,
+					"uv": [
+						"math.round(v.particle_random_1*3.5)*3",
+						0
+					],
+					"uv_size": [
+						3,
+						2
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 10,
+				"coefficient_of_restitution": 2,
+				"collision_radius": 0.01
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": [
+					1,
+					1,
+					1,
+					0.74118
+				]
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

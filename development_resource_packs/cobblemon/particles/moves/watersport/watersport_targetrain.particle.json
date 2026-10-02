@@ -1,0 +1,113 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:watersport_targetrain",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/water/splash"
+			}
+		},
+		"curves": {
+			"variable.watersize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0,
+					0,
+					0.5,
+					1,
+					1,
+					1,
+					1,
+					1,
+					0
+				]
+			}
+		},
+		"events": {
+			"pittering": {
+				"particle_effect": {
+					"effect": "cobblemon:watersport_target",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 150,
+				"max_particles": 3000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1.75
+			},
+			"minecraft:emitter_shape_disc": {
+				"offset": [
+					"(v.particle_random_3-0.5)*1",
+					5,
+					"(v.particle_random_4-0.5)*1"
+				],
+				"radius": 2.5,
+				"direction": [
+					"math.random(-0.1,0.1)*2",
+					"math.random(-1,2)",
+					"math.random(-0.1,0.1)*2"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(0.5,0.7)*1.4"
+			},
+			"minecraft:particle_lifetime_events": {
+				"expiration_event": "pittering"
+			},
+			"minecraft:particle_initial_speed": 2,
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-35,
+					0
+				],
+				"linear_drag_coefficient": 2
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.025,
+					"0.12*v.watersize"
+				],
+				"facing_camera_mode": "lookat_y",
+				"uv": {
+					"texture_width": 12,
+					"texture_height": 2,
+					"uv": [
+						10,
+						1
+					],
+					"uv_size": [
+						1,
+						1
+					]
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 1.1,
+				"coefficient_of_restitution": 0.1,
+				"collision_radius": 0.01,
+				"expire_on_contact": true
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age / v.particle_lifetime",
+					"gradient": {
+						"0.0": "#00FFFFFF",
+						"0.31": "#00FFFFFF",
+						"0.5": "#BFFFFFFF",
+						"1.0": "#BFFFFFFF"
+					}
+				}
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

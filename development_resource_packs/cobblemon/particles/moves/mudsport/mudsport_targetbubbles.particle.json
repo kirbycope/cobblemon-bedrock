@@ -1,0 +1,112 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:mudsport_targetbubbles",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/mud/mudsplash"
+			}
+		},
+		"curves": {
+			"variable.mudsize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					0,
+					0,
+					0,
+					1,
+					1,
+					1,
+					1,
+					1,
+					0
+				]
+			}
+		},
+		"events": {
+			"puddling": {
+				"particle_effect": {
+					"effect": "cobblemon:mudsport_target",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 100,
+				"max_particles": 3000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1.75
+			},
+			"minecraft:emitter_shape_disc": {
+				"offset": [
+					"(v.particle_random_3-0.5)*1",
+					6,
+					"(v.particle_random_4-0.5)*1"
+				],
+				"radius": 2.5,
+				"direction": [
+					"math.random(-0.1,0.1)*6",
+					0,
+					"math.random(-0.1,0.1)*6"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(0.5,0.7)*1.7"
+			},
+			"minecraft:particle_lifetime_events": {
+				"expiration_event": "puddling"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.random_integer(0,3)*90"
+			},
+			"minecraft:particle_initial_speed": 1,
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					-30,
+					0
+				],
+				"linear_drag_coefficient": 2
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.15+(v.particle_random_1*0.15))*v.mudsize",
+					"(0.15+(v.particle_random_1*0.15))*v.mudsize"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 56,
+					"flipbook": {
+						"base_UV": [
+							0,
+							"math.random_integer(0,1)*8"
+						],
+						"size_UV": [
+							8,
+							8
+						],
+						"step_UV": [
+							0,
+							0
+						],
+						"max_frame": 1
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 1.1,
+				"coefficient_of_restitution": 0.1,
+				"collision_radius": 0.01,
+				"expire_on_contact": true
+			},
+			"minecraft:particle_appearance_lighting": {}
+		}
+	}
+}

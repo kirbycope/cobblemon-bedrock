@@ -1,0 +1,64 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0458_mantyke",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0458_mantyke/mantyke",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0458_mantyke/mantyke",
+                "v1": "textures/entity/0458_mantyke/mantyke_shiny"
+            },
+            "geometry": {
+                "g_mantyke": "geometry.mantyke"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 5)) ? 2 : (((v.pose_type == 6)) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.mantyke.pose",
+                "blink_quirk": "controller.animation.mantyke.blink",
+                "ground_idle": "animation.mantyke.ground_idle",
+                "ground_walk": "animation.mantyke.ground_walk",
+                "water_idle": "animation.mantyke.water_idle",
+                "water_swim": "animation.mantyke.water_swim",
+                "sleep": "animation.mantyke.sleep",
+                "cry": "animation.mantyke.cry",
+                "blink": "animation.mantyke.blink",
+                "happy": "animation.mantyke.happy",
+                "sad": "animation.mantyke.sad",
+                "angry": "animation.mantyke.angry",
+                "bored": "animation.mantyke.bored",
+                "surprised": "animation.mantyke.surprised",
+                "unsure": "animation.mantyke.unsure",
+                "recoil": "animation.mantyke.recoil",
+                "walkspeedtest": "animation.mantyke.walkspeedtest"
+            },
+            "render_controllers": [
+                "controller.render.mantyke"
+            ],
+            "spawn_egg": {
+                "texture": "0458_mantyke_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.mantyke.cry": "cobblemon.mantyke.cry"
+            }
+        }
+    }
+}

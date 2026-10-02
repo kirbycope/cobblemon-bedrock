@@ -2,23 +2,39 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0657_frogadier",
+            "identifier": "cobblemon:p0657_frogadier",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0657_frogadier/frogadier"
+                "default": "textures/entity/0657_frogadier/frogadier",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0657_frogadier/frogadier",
+                "v1": "textures/entity/0657_frogadier/frogadier_shiny"
             },
             "geometry": {
-                "default": "geometry.frogadier"
+                "g_frogadier": "geometry.frogadier"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 3 : (((v.pose_type == 4 || v.pose_type == 6) && (!q.property('cobblemon:battle'))) ? 4 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.frogadier.pose",
+                "blink_quirk": "controller.animation.frogadier.blink",
+                "look_at_target": "animation.0657_frogadier.look",
                 "ground_idle": "animation.frogadier.ground_idle",
                 "ground_walk": "animation.frogadier.ground_walk",
                 "water_idle": "animation.frogadier.water_idle",
@@ -27,13 +43,21 @@
                 "blink": "animation.frogadier.blink",
                 "faint": "animation.frogadier.faint",
                 "sleep": "animation.frogadier.sleep",
-                "cry": "animation.frogadier.cry"
+                "cry": "animation.frogadier.cry",
+                "pose_standing": "animation.0657_frogadier.pose_standing",
+                "pose_walk": "animation.0657_frogadier.pose_walk",
+                "pose_swim_idle": "animation.0657_frogadier.pose_swim_idle",
+                "pose_swim": "animation.0657_frogadier.pose_swim",
+                "pose_battle_idle": "animation.0657_frogadier.pose_battle_idle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.frogadier"
             ],
             "spawn_egg": {
                 "texture": "0657_frogadier_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.frogadier.cry": "cobblemon.frogadier.cry"
             }
         }
     }

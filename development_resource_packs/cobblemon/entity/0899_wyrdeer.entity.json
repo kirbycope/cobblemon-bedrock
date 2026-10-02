@@ -2,34 +2,66 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0899_wyrdeer",
+            "identifier": "cobblemon:p0899_wyrdeer",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0899_wyrdeer/wyrdeer"
+                "default": "textures/entity/0899_wyrdeer/wyrdeer",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0899_wyrdeer/wyrdeer",
+                "v1": "textures/entity/0899_wyrdeer/wyrdeer_shiny"
             },
             "geometry": {
-                "default": "geometry.wyrdeer"
+                "g_wyrdeer": "geometry.wyrdeer"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 1 : (((v.pose_type == 0 || v.pose_type == 1) && (!q.property('cobblemon:battle') && (!q.is_on_ground && q.has_rider))) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 0 || v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.wyrdeer.pose",
+                "blink_quirk": "controller.animation.wyrdeer.blink",
+                "quirk": "controller.animation.wyrdeer.quirk",
+                "quirk_0": "animation.wyrdeer.quirk_idle",
+                "look_at_target": "animation.0899_wyrdeer.look",
                 "ground_idle": "animation.wyrdeer.ground_idle",
+                "battle_idle": "animation.wyrdeer.battle_idle",
                 "ground_walk": "animation.wyrdeer.ground_walk",
                 "sleep": "animation.wyrdeer.sleep",
+                "blink": "animation.wyrdeer.blink",
                 "cry": "animation.wyrdeer.cry",
-                "blink": "animation.wyrdeer.blink"
+                "quirk_idle": "animation.wyrdeer.quirk_idle",
+                "ground_run": "animation.wyrdeer.ground_run",
+                "ride_jump": "animation.wyrdeer.ride_jump",
+                "ride_ground_run": "animation.wyrdeer.ride_ground_run",
+                "pose_battle_standing": "animation.0899_wyrdeer.pose_battle_standing",
+                "pose_standing": "animation.0899_wyrdeer.pose_standing",
+                "pose_in_air": "animation.0899_wyrdeer.pose_in_air",
+                "pose_walk": "animation.0899_wyrdeer.pose_walk",
+                "pose_run": "animation.0899_wyrdeer.pose_run"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.wyrdeer"
             ],
             "spawn_egg": {
                 "texture": "0899_wyrdeer_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.wyrdeer.cry": "cobblemon.wyrdeer.cry"
             }
         }
     }

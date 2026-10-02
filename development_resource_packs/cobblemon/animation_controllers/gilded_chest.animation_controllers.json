@@ -1,0 +1,53 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.gilded_chest.lid": {
+      "initial_state": "closed",
+      "states": {
+        "closed": {
+          "transitions": [
+            {
+              "opening": "q.property('cobblemon:open')"
+            }
+          ]
+        },
+        "opening": {
+          "animations": [
+            "opening"
+          ],
+          "transitions": [
+            {
+              "open": "q.all_animations_finished"
+            },
+            {
+              "closing": "!q.property('cobblemon:open')"
+            }
+          ]
+        },
+        "open": {
+          "animations": [
+            "open"
+          ],
+          "transitions": [
+            {
+              "closing": "!q.property('cobblemon:open')"
+            }
+          ]
+        },
+        "closing": {
+          "animations": [
+            "closing"
+          ],
+          "transitions": [
+            {
+              "closed": "q.all_animations_finished"
+            },
+            {
+              "opening": "q.property('cobblemon:open')"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

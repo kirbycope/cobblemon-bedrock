@@ -1,0 +1,66 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0967_cyclizar",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0967_cyclizar/cyclizar",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0967_cyclizar/cyclizar",
+                "v1": "textures/entity/0967_cyclizar/cyclizar_shiny"
+            },
+            "geometry": {
+                "g_cyclizar": "geometry.cyclizar"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (!q.is_on_ground && q.has_rider && 1))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (!q.has_rider))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && ((!q.has_rider))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.has_rider && q.is_on_ground))) ? 3 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.has_rider && !(q.has_rider && q.ground_speed > 7) && q.is_on_ground && 1))) ? 4 : (((v.pose_type == 1) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7) && q.has_rider && 1))) ? 5 : (0))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.cyclizar.pose",
+                "blink_quirk": "controller.animation.cyclizar.blink",
+                "look_at_target": "animation.0967_cyclizar.look",
+                "ground_idle": "animation.cyclizar.ground_idle",
+                "ground_walk": "animation.cyclizar.ground_walk",
+                "ground_run": "animation.cyclizar.ground_run",
+                "mount_idle": "animation.cyclizar.mount_idle",
+                "mount_walk": "animation.cyclizar.mount_walk",
+                "ride_mount_walk": "animation.cyclizar.ride_mount_walk",
+                "ride_ground_run": "animation.cyclizar.ride_ground_run",
+                "ride_jump": "animation.cyclizar.ride_jump",
+                "blink": "animation.cyclizar.blink",
+                "cry": "animation.cyclizar.cry",
+                "pose_ride_jump": "animation.0967_cyclizar.pose_ride_jump",
+                "pose_standing": "animation.0967_cyclizar.pose_standing",
+                "pose_walking": "animation.0967_cyclizar.pose_walking",
+                "pose_mount_idle": "animation.0967_cyclizar.pose_mount_idle",
+                "pose_mount_walk": "animation.0967_cyclizar.pose_mount_walk",
+                "pose_mount_run": "animation.0967_cyclizar.pose_mount_run"
+            },
+            "render_controllers": [
+                "controller.render.cyclizar"
+            ],
+            "spawn_egg": {
+                "texture": "0967_cyclizar_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.cyclizar.cry": "cobblemon.cyclizar.cry"
+            }
+        }
+    }
+}

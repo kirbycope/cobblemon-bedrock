@@ -1,0 +1,199 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:dracometeor_accent",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/impact/impact_rock"
+			}
+		},
+		"curves": {
+			"variable.fade": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					1,
+					1,
+					0.5,
+					0
+				]
+			}
+		},
+		"events": {
+			"trail": {
+				"particle_effect": {
+					"effect": "cobblemon:dracometeor_accenttrail",
+					"type": "particle"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 10,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 3
+			},
+			"minecraft:emitter_shape_disc": {
+				"offset": [
+					0,
+					10,
+					6
+				],
+				"radius": 3,
+				"plane_normal": [
+					0,
+					2,
+					1
+				],
+				"direction": [
+					"((v.particle_random_2*2)-1)/4",
+					-1,
+					"-(1.5+(((v.particle_random_4*2)-1)/2))"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "1*((v.particle_random_2/2)+0.5)"
+			},
+			"minecraft:particle_lifetime_events": {
+				"timeline": {
+					"0.00": "trail",
+					"0.02": "trail",
+					"0.04": "trail",
+					"0.06": "trail",
+					"0.08": "trail",
+					"0.10": "trail",
+					"0.12": "trail",
+					"0.14": "trail",
+					"0.16": "trail",
+					"0.18": "trail",
+					"0.20": "trail",
+					"0.22": "trail",
+					"0.24": "trail",
+					"0.26": "trail",
+					"0.28": "trail",
+					"0.30": "trail",
+					"0.32": "trail",
+					"0.34": "trail",
+					"0.36": "trail",
+					"0.38": "trail",
+					"0.40": "trail",
+					"0.42": "trail",
+					"0.44": "trail",
+					"0.46": "trail",
+					"0.48": "trail",
+					"0.50": "trail",
+					"0.52": "trail",
+					"0.54": "trail",
+					"0.56": "trail",
+					"0.58": "trail",
+					"0.60": "trail",
+					"0.62": "trail",
+					"0.64": "trail",
+					"0.66": "trail",
+					"0.68": "trail",
+					"0.70": "trail",
+					"0.72": "trail",
+					"0.74": "trail",
+					"0.76": "trail",
+					"0.78": "trail",
+					"0.80": "trail",
+					"0.82": "trail",
+					"0.84": "trail",
+					"0.86": "trail",
+					"0.88": "trail",
+					"0.90": "trail",
+					"0.92": "trail",
+					"0.94": "trail",
+					"0.96": "trail",
+					"0.98": "trail",
+					"1.00": "trail",
+					"1.02": "trail",
+					"1.04": "trail",
+					"1.06": "trail",
+					"1.08": "trail",
+					"1.10": "trail",
+					"1.12": "trail",
+					"1.14": "trail",
+					"1.16": "trail",
+					"1.18": "trail",
+					"1.20": "trail",
+					"1.22": "trail",
+					"1.24": "trail",
+					"1.26": "trail",
+					"1.28": "trail",
+					"1.30": "trail",
+					"1.32": "trail",
+					"1.34": "trail",
+					"1.36": "trail",
+					"1.38": "trail",
+					"1.40": "trail",
+					"1.42": "trail",
+					"1.44": "trail",
+					"1.46": "trail",
+					"1.48": "trail",
+					"1.50": "trail",
+					"1.52": "trail",
+					"1.54": "trail",
+					"1.56": "trail",
+					"1.58": "trail",
+					"1.60": "trail",
+					"1.62": "trail",
+					"1.64": "trail",
+					"1.66": "trail",
+					"1.68": "trail",
+					"1.70": "trail",
+					"1.72": "trail",
+					"1.74": "trail",
+					"1.76": "trail",
+					"1.78": "trail",
+					"1.80": "trail",
+					"1.82": "trail",
+					"1.84": "trail",
+					"1.86": "trail",
+					"1.88": "trail",
+					"1.90": "trail",
+					"1.92": "trail",
+					"1.94": "trail",
+					"1.96": "trail",
+					"1.98": "trail",
+					"2.00": "trail"
+				}
+			},
+			"minecraft:particle_initial_speed": 12,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.25*((v.particle_random_2/2)+0.5)*v.fade",
+					"0.25*((v.particle_random_2/2)+0.5)*v.fade"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 56,
+					"uv": [
+						0,
+						"math.round(v.particle_random_4*6)*8"
+					],
+					"uv_size": [
+						8,
+						8
+					]
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_random_3",
+					"gradient": {
+						"0.0": "#ffffffff",
+						"1.0": "#FFEAA0B8"
+					}
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,104 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:drainpunch_targetburst",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/orb/xsfadeorblite"
+			}
+		},
+		"curves": {
+			"variable.scale": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					1,
+					0.97,
+					0.94,
+					0.89,
+					0.83,
+					0.68,
+					0.52,
+					0.26,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 300,
+				"max_particles": 10000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.05
+			},
+			"minecraft:emitter_shape_point": {
+				"direction": [
+					"(v.particle_random_1-0.5)*6",
+					"(v.particle_random_2-0.5)*6",
+					"(v.particle_random_3-0.5)*4"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "math.random(0.5,0.8)"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "math.round(v.particle_random_2*3)*90"
+			},
+			"minecraft:particle_initial_speed": "(3+(v.particle_random_4*5))*3.5",
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					"(v.particle_random_1-0.5)*12",
+					"(v.particle_random_2-0.5)*12",
+					"(v.particle_random_3-0.5)*12"
+				],
+				"linear_drag_coefficient": 8
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.1-(v.particle_random_4*0.06))*variable.scale",
+					"(0.1-(v.particle_random_4*0.06))*variable.scale"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 45,
+					"texture_height": 5,
+					"flipbook": {
+						"base_UV": [
+							10,
+							0
+						],
+						"size_UV": [
+							5,
+							5
+						],
+						"step_UV": [
+							5,
+							0
+						],
+						"frames_per_second": 16,
+						"max_frame": 7
+					}
+				}
+			},
+			"minecraft:particle_motion_collision": {
+				"collision_drag": 1,
+				"collision_radius": 0.01,
+				"expire_on_contact": true
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age/v.particle_lifetime",
+					"gradient": {
+						"0.0": "#FFFF7A00",
+						"0.2": "#FFFFF390",
+						"1.0": "#FFFF7A00"
+					}
+				}
+			}
+		}
+	}
+}

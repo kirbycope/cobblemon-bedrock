@@ -1,0 +1,55 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0556_maractus.pose_standing": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0556_maractus.pose_battle_standing": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0556_maractus.pose_walk": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "arm_right": {
+     "rotation": [
+      "0",
+      "math.cos(q.modified_distance_moved * 42.9718) * q.modified_move_speed * 57.2958 + math.sin((q.life_time * 20) * 3.8388) * 2.8648",
+      "(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+     ]
+    },
+    "arm_left": {
+     "rotation": [
+      "0",
+      "math.cos(q.modified_distance_moved * 42.9718) * q.modified_move_speed * 57.2958 - math.sin((q.life_time * 20) * 3.8388) * 2.8648",
+      "-(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+     ]
+    }
+   }
+  }
+ }
+}

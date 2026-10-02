@@ -1,0 +1,101 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:psybeam_charge",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/generic/orb/xsfadeorblite"
+			}
+		},
+		"curves": {
+			"variable.shrinksize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					0,
+					1,
+					0.5,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 90,
+				"max_particles": 100
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.5
+			},
+			"minecraft:emitter_shape_sphere": {
+				"offset": [
+					0,
+					0,
+					-0.2
+				],
+				"radius": 0.8,
+				"surface_only": true,
+				"direction": "inwards"
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.275
+			},
+			"minecraft:particle_initial_speed": 1.5,
+			"minecraft:particle_motion_dynamic": {
+				"linear_drag_coefficient": -4.5
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"0.15*v.shrinksize",
+					"0.15*v.shrinksize"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 45,
+					"texture_height": 5,
+					"flipbook": {
+						"base_UV": [
+							"-5+math.random_integer(1,4)*5",
+							0
+						],
+						"size_UV": [
+							5,
+							5
+						],
+						"step_UV": [
+							5,
+							0
+						],
+						"frames_per_second": 10,
+						"max_frame": 5,
+						"loop": true
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.particle_age*2+(v.emitter_age*0.5)",
+					"gradient": {
+						"0.0": "#FFFF6DD0",
+						"0.1": "#FFFF6588",
+						"0.15": "#FFFF8271",
+						"0.2": "#FFFFC48D",
+						"0.3": "#FFA1BBFF",
+						"0.35": "#FF8E5CFF",
+						"0.43": "#FFC960FF",
+						"0.5": "#FFFF6DD0",
+						"0.6": "#FFFF6588",
+						"0.65": "#FFFF8271",
+						"0.7": "#FFFFC48D",
+						"0.8": "#FFA1BBFF",
+						"0.85": "#FF8E5CFF",
+						"0.93": "#FFC960FF",
+						"1.0": "#FFFF6DD0"
+					}
+				}
+			}
+		}
+	}
+}

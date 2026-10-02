@@ -2,28 +2,52 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0404_luxio",
+            "identifier": "cobblemon:p0404_luxio",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0404_luxio/luxio"
+                "default": "textures/entity/0404_luxio/luxio",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0404_luxio/luxio",
+                "emissive_0_0": "textures/entity/0404_luxio/luxio_emissive",
+                "v1": "textures/entity/0404_luxio/luxio_shiny",
+                "emissive_1_0": "textures/entity/0404_luxio/luxio_emissive_shiny",
+                "v2": "textures/entity/0404_luxio/luxio",
+                "emissive_2_0": "textures/entity/0404_luxio/luxio_emissive",
+                "v3": "textures/entity/0404_luxio/luxio_shiny",
+                "emissive_3_0": "textures/entity/0404_luxio/luxio_emissive_shiny"
             },
             "geometry": {
-                "default": "geometry.luxio"
+                "g_luxio_male": "geometry.luxio_male",
+                "g_luxio_female": "geometry.luxio_female"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                ],
                 "animate": [
                     "pose"
-                ]
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.luxio.pose",
+                "look_at_target": "animation.0404_luxio.look",
                 "idle": "animation.luxio.idle",
-                "sleep": "animation.luxio.sleep"
+                "sleep": "animation.luxio.sleep",
+                "pose_standing": "animation.0404_luxio.pose_standing",
+                "pose_walk": "animation.0404_luxio.pose_walk"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.luxio",
+                "controller.render.luxio_emissive"
             ],
             "spawn_egg": {
                 "texture": "0404_luxio_spawn_egg"

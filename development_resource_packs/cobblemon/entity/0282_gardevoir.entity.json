@@ -2,32 +2,58 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0282_gardevoir",
+            "identifier": "cobblemon:p0282_gardevoir",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0282_gardevoir/gardevoir"
+                "default": "textures/entity/0282_gardevoir/gardevoir",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0282_gardevoir/gardevoir",
+                "v1": "textures/entity/0282_gardevoir/gardevoir_shiny"
             },
             "geometry": {
-                "default": "geometry.gardevoir"
+                "g_gardevoir": "geometry.gardevoir"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 3 : (0))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.gardevoir.pose",
+                "blink_quirk": "controller.animation.gardevoir.blink",
+                "look_at_target": "animation.0282_gardevoir.look",
                 "ground_idle": "animation.gardevoir.ground_idle",
+                "ground_walk": "animation.gardevoir.ground_walk",
+                "battle_idle": "animation.gardevoir.battle_idle",
                 "blink": "animation.gardevoir.blink",
-                "cry": "animation.gardevoir.cry"
+                "sleep": "animation.gardevoir.sleep",
+                "cry": "animation.gardevoir.cry",
+                "pose_sleep": "animation.0282_gardevoir.pose_sleep",
+                "pose_standing": "animation.0282_gardevoir.pose_standing",
+                "pose_walk": "animation.0282_gardevoir.pose_walk",
+                "pose_battleidle": "animation.0282_gardevoir.pose_battleidle"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.gardevoir"
             ],
             "spawn_egg": {
                 "texture": "0282_gardevoir_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gardevoir.cry": "cobblemon.gardevoir.cry"
             }
         }
     }

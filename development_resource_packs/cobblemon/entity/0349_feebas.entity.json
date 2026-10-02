@@ -1,0 +1,65 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0349_feebas",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0349_feebas/feebas",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0349_feebas/feebas",
+                "v1": "textures/entity/0349_feebas/feebas_shiny"
+            },
+            "geometry": {
+                "g_feebas": "geometry.feebas"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 5)) ? 2 : (((v.pose_type == 6)) ? 3 : (((v.pose_type == 2)) ? 4 : (0)))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.feebas.pose",
+                "blink_quirk": "controller.animation.feebas.blink",
+                "quirk": "controller.animation.feebas.quirk",
+                "quirk_0": "animation.feebas.landquirk",
+                "ground_idle": "animation.feebas.ground_idle",
+                "ground_walk": "animation.feebas.ground_walk",
+                "water_idle": "animation.feebas.water_idle",
+                "water_swim": "animation.feebas.water_swim",
+                "landquirk": "animation.feebas.landquirk",
+                "sleep": "animation.feebas.sleep",
+                "blink": "animation.feebas.blink",
+                "cry": "animation.feebas.cry",
+                "shock": "animation.feebas.shock",
+                "angry": "animation.feebas.angry",
+                "sad": "animation.feebas.sad",
+                "happy": "animation.feebas.happy",
+                "recoil": "animation.feebas.recoil"
+            },
+            "render_controllers": [
+                "controller.render.feebas"
+            ],
+            "spawn_egg": {
+                "texture": "0349_feebas_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.feebas.cry": "cobblemon.feebas.cry"
+            }
+        }
+    }
+}

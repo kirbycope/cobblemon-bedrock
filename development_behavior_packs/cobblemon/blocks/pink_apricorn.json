@@ -1,0 +1,192 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:pink_apricorn",
+      "menu_category": {
+        "category": "nature",
+        "is_hidden_in_commands": false
+      },
+      "states": {
+        "cobblemon:age": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cobblemon:facing": [
+          "south",
+          "west",
+          "north",
+          "east"
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_pink_apricorn_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_block_crops_apricorn_stage_0",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_block_crops_apricorn_stage_0",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": false,
+      "minecraft:selection_box": {
+        "origin": [
+          -4,
+          2,
+          2
+        ],
+        "size": [
+          8,
+          10,
+          6
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.2
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/empty.json",
+      "cobblemon:apricorn": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:age') == 0",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_pink_apricorn_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_crops_apricorn_stage_0",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_crops_apricorn_stage_0",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 1",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_pink_apricorn_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_crops_apricorn_stage_1",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_crops_apricorn_stage_1",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_pink_apricorn_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_crops_apricorn_stage_2",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_crops_apricorn_stage_2",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 3",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_pink_apricorn_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_crops_pink_apricorn",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_crops_pink_apricorn",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:facing') == 'south'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:facing') == 'west'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:facing') == 'north'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:facing') == 'east'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

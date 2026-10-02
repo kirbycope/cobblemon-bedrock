@@ -2,23 +2,42 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0291_ninjask",
+            "identifier": "cobblemon:p0291_ninjask",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0291_ninjask/ninjask"
+                "default": "textures/entity/0291_ninjask/ninjask",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0291_ninjask/ninjask",
+                "v1": "textures/entity/0291_ninjask/ninjask_shiny"
             },
             "geometry": {
-                "default": "geometry.ninjask"
+                "g_ninjask": "geometry.ninjask"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 3)) ? 3 : (((v.pose_type == 4)) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.ninjask.pose",
+                "blink_quirk": "controller.animation.ninjask.blink",
+                "quirk": "controller.animation.ninjask.quirk",
+                "quirk_0": "animation.ninjask.run_quirk",
+                "look_at_target": "animation.0291_ninjask.look",
                 "ground_idle": "animation.ninjask.ground_idle",
                 "ground_walk": "animation.ninjask.ground_walk",
                 "ground_run": "animation.ninjask.ground_run",
@@ -28,13 +47,27 @@
                 "faint": "animation.ninjask.faint",
                 "blink": "animation.ninjask.blink",
                 "cry": "animation.ninjask.cry",
-                "run_quirk": "animation.ninjask.run_quirk"
+                "battle_idle": "animation.ninjask.battle_idle",
+                "special": "animation.ninjask.special",
+                "status": "animation.ninjask.status",
+                "physical": "animation.ninjask.physical",
+                "battle_cry": "animation.ninjask.battle_cry",
+                "recoil": "animation.ninjask.recoil",
+                "run_quirk": "animation.ninjask.run_quirk",
+                "pose_battle_standing": "animation.0291_ninjask.pose_battle_standing",
+                "pose_standing": "animation.0291_ninjask.pose_standing",
+                "pose_walking": "animation.0291_ninjask.pose_walking",
+                "pose_hover": "animation.0291_ninjask.pose_hover",
+                "pose_fly": "animation.0291_ninjask.pose_fly"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.ninjask"
             ],
             "spawn_egg": {
                 "texture": "0291_ninjask_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.ninjask.cry": "cobblemon.ninjask.cry"
             }
         }
     }

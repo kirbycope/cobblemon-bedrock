@@ -1,0 +1,92 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:icebeam_actorsparkle",
+			"basic_render_parameters": {
+				"material": "particles_blend",
+				"texture": "textures/particles/generic/sparkle/glowingsparkle_cyan"
+			}
+		},
+		"curves": {
+			"variable.ssize": {
+				"type": "linear",
+				"input": "v.particle_age",
+				"horizontal_range": "v.particle_lifetime",
+				"nodes": [
+					1,
+					0.32,
+					0.1,
+					0
+				]
+			}
+		},
+		"components": {
+			"minecraft:emitter_initialization": {
+				"creation_expression": "v.target_deltaz=5;"
+			},
+			"minecraft:emitter_rate_steady": {
+				"spawn_rate": 30,
+				"max_particles": 2000
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 0.7
+			},
+			"minecraft:emitter_shape_sphere": {
+				"offset": [
+					"-(v.target_deltax/2)+math.sin(v.emitter_age*1400)*(v.target_deltax/2)",
+					"(v.target_deltay/2)-math.sin(v.emitter_age*1400)*(v.target_deltay/2)",
+					"-0.2-(v.target_deltaz/2)+math.sin(v.emitter_age*1400)*(v.target_deltaz/2)"
+				],
+				"radius": 0.35,
+				"surface_only": true,
+				"direction": [
+					"-v.target_deltax",
+					"v.target_deltay",
+					"-v.target_deltaz"
+				]
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": 0.6
+			},
+			"minecraft:particle_initial_speed": 0.4,
+			"minecraft:particle_motion_dynamic": {},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					"(0.05+(v.particle_random_3*0.05))*v.ssize",
+					"(0.05+(v.particle_random_3*0.05))*v.ssize"
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 8,
+					"texture_height": 32,
+					"flipbook": {
+						"base_UV": [
+							0,
+							0
+						],
+						"size_UV": [
+							7,
+							7
+						],
+						"step_UV": [
+							0,
+							7
+						],
+						"frames_per_second": 12,
+						"max_frame": 4,
+						"loop": true
+					}
+				}
+			},
+			"minecraft:particle_appearance_tinting": {
+				"color": [
+					0.9098,
+					0.96078,
+					1,
+					0.87843
+				]
+			}
+		}
+	}
+}

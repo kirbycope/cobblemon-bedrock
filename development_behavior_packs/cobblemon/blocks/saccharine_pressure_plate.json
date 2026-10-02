@@ -1,0 +1,87 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:saccharine_pressure_plate",
+      "menu_category": {
+        "category": "items",
+        "group": "minecraft:itemGroup.name.pressurePlate"
+      },
+      "states": {
+        "cobblemon:powered": [
+          false,
+          true
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": {
+        "identifier": "geometry.cobblemon_pressure_plate",
+        "bone_visibility": {
+          "up": "!q.block_state('cobblemon:powered')",
+          "down": "q.block_state('cobblemon:powered')"
+        }
+      },
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "cobblemon_block_wood_saccharine_planks"
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          1,
+          14
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          1,
+          14
+        ]
+      },
+      "minecraft:light_dampening": 0,
+      "cobblemon:pressure_plate": {},
+      "minecraft:tick": {
+        "interval_range": [
+          10,
+          10
+        ],
+        "looping": true
+      },
+      "minecraft:redstone_producer": {
+        "power": 0
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.5
+      },
+      "minecraft:loot": "loot_tables/blocks/saccharine_pressure_plate.json",
+      "minecraft:flammable": {
+        "catch_chance_modifier": 5,
+        "destroy_chance_modifier": 20
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:powered')",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15,
+            "strongly_powered_face": "down"
+          }
+        }
+      }
+    ]
+  }
+}

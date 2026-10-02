@@ -2,23 +2,43 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0906_sprigatito",
+            "identifier": "cobblemon:p0906_sprigatito",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0906_sprigatito/sprigatito"
+                "default": "textures/entity/0906_sprigatito/sprigatito",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0906_sprigatito/sprigatito",
+                "v1": "textures/entity/0906_sprigatito/sprigatito_shiny"
             },
             "geometry": {
-                "default": "geometry.sprigatito"
+                "g_sprigatito": "geometry.sprigatito"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 7)) ? 4 : (((v.pose_type == 8)) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.sprigatito.pose",
+                "blink_quirk": "controller.animation.sprigatito.blink",
+                "quirk": "controller.animation.sprigatito.quirk",
+                "quirk_0": "animation.sprigatito.quirk_ear_twitch_left",
+                "quirk_1": "animation.sprigatito.quirk_ear_twitch_right",
+                "look_at_target": "animation.0906_sprigatito.look",
                 "blink": "animation.sprigatito.blink",
                 "ground_walk": "animation.sprigatito.ground_walk",
                 "ground_run": "animation.sprigatito.ground_run",
@@ -29,17 +49,27 @@
                 "battle_idle2": "animation.sprigatito.battle_idle2",
                 "sleep": "animation.sprigatito.sleep",
                 "sleep2": "animation.sprigatito.sleep2",
-                "quirk_ear-twitch-left": "animation.sprigatito.quirk_ear-twitch-left",
-                "quirk_ear-twitch-right": "animation.sprigatito.quirk_ear-twitch-right",
-                "faint(wip)": "animation.sprigatito.faint(wip)",
+                "quirk_ear_twitch_left": "animation.sprigatito.quirk_ear_twitch_left",
+                "quirk_ear_twitch_right": "animation.sprigatito.quirk_ear_twitch_right",
+                "faint_wip": "animation.sprigatito.faint_wip",
                 "walk_test": "animation.sprigatito.walk_test",
-                "run_test": "animation.sprigatito.run_test"
+                "run_test": "animation.sprigatito.run_test",
+                "shoulder_right": "animation.sprigatito.shoulder_right",
+                "shoulder_left": "animation.sprigatito.shoulder_left",
+                "pose_battle_standing": "animation.0906_sprigatito.pose_battle_standing",
+                "pose_standing": "animation.0906_sprigatito.pose_standing",
+                "pose_walking": "animation.0906_sprigatito.pose_walking",
+                "pose_shoulder_left": "animation.0906_sprigatito.pose_shoulder_left",
+                "pose_shoulder_right": "animation.0906_sprigatito.pose_shoulder_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sprigatito"
             ],
             "spawn_egg": {
                 "texture": "0906_sprigatito_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.sprigatito.cry": "cobblemon.sprigatito.cry"
             }
         }
     }

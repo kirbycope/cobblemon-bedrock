@@ -2,27 +2,56 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0318_carvanha",
+            "identifier": "cobblemon:p0318_carvanha",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0318_carvanha/carvanha"
+                "default": "textures/entity/0318_carvanha/carvanha",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0318_carvanha/carvanha",
+                "v1": "textures/entity/0318_carvanha/carvanha_shiny"
             },
             "geometry": {
-                "default": "geometry.carvanha"
+                "g_carvanha": "geometry.carvanha"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 5) && (q.property('cobblemon:battle') && q.is_in_water)) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water)) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 3 : (((v.pose_type == 2) && (!q.is_in_water)) ? 4 : (((v.pose_type == 2) && (q.is_in_water)) ? 5 : (0))))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.carvanha.pose",
-                "water_idle": "animation.carvanha.water_idle"
+                "blink_quirk": "controller.animation.carvanha.blink",
+                "quirk": "controller.animation.carvanha.quirk",
+                "quirk_0": "animation.carvanha.quirk_bite",
+                "look_at_target": "animation.0318_carvanha.look",
+                "water_idle": "animation.carvanha.water_idle",
+                "water_battle_idle": "animation.carvanha.water_battle_idle",
+                "water_sleep": "animation.carvanha.water_sleep",
+                "water_swim": "animation.carvanha.water_swim",
+                "quirk_bite": "animation.carvanha.quirk_bite",
+                "swim_test": "animation.carvanha.swim_test",
+                "ground_idle": "animation.carvanha.ground_idle",
+                "ground_sleep": "animation.carvanha.ground_sleep",
+                "blink": "animation.carvanha.blink",
+                "pose2": "animation.carvanha.pose2",
+                "pose_animation": "animation.carvanha.pose"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.carvanha"
             ],
             "spawn_egg": {
                 "texture": "0318_carvanha_spawn_egg"

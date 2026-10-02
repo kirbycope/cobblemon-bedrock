@@ -2,33 +2,61 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0653_fennekin",
+            "identifier": "cobblemon:p0653_fennekin",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0653_fennekin/fennekin"
+                "default": "textures/entity/0653_fennekin/fennekin",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0653_fennekin/fennekin",
+                "v1": "textures/entity/0653_fennekin/fennekin_shiny"
             },
             "geometry": {
-                "default": "geometry.fennekin"
+                "g_fennekin": "geometry.fennekin"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.fennekin.pose",
+                "blink_quirk": "controller.animation.fennekin.blink",
+                "look_at_target": "animation.0653_fennekin.look",
                 "ground_idle": "animation.fennekin.ground_idle",
                 "ground_walk": "animation.fennekin.ground_walk",
                 "blink": "animation.fennekin.blink",
-                "cry": "animation.fennekin.cry"
+                "cry": "animation.fennekin.cry",
+                "surprise_hair": "animation.fennekin.surprise_hair",
+                "shock": "animation.fennekin.shock",
+                "angry": "animation.fennekin.angry",
+                "sad": "animation.fennekin.sad",
+                "happy": "animation.fennekin.happy",
+                "blush": "animation.fennekin.blush",
+                "recoil": "animation.fennekin.recoil",
+                "pose_standing": "animation.0653_fennekin.pose_standing",
+                "pose_walking": "animation.0653_fennekin.pose_walking"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.fennekin"
             ],
             "spawn_egg": {
                 "texture": "0653_fennekin_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.fennekin.cry": "cobblemon.fennekin.cry"
             }
         }
     }

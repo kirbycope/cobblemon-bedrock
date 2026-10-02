@@ -2,29 +2,44 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0755_morelull",
+            "identifier": "cobblemon:p0755_morelull",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0755_morelull/morelull"
+                "default": "textures/entity/0755_morelull/morelull",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0755_morelull/morelull",
+                "v1": "textures/entity/0755_morelull/morelull_shiny"
             },
             "geometry": {
-                "default": "geometry.morelull"
+                "g_morelull": "geometry.morelull"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 7)) ? 1 : (((v.pose_type == 8)) ? 2 : (0)));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.morelull.pose",
+                "blink_quirk": "controller.animation.morelull.blink",
                 "ground_idle": "animation.morelull.ground_idle",
                 "blink": "animation.morelull.blink",
                 "cry": "animation.morelull.cry"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.morelull"
             ],
             "spawn_egg": {
                 "texture": "0755_morelull_spawn_egg"

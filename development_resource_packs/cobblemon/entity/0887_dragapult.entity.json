@@ -1,0 +1,82 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0887_dragapult",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0887_dragapult/dragapult",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0887_dragapult/dragapult",
+                "v1": "textures/entity/0887_dragapult/dragapult_shiny"
+            },
+            "geometry": {
+                "g_dragapult": "geometry.dragapult"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : ((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 5 || v.pose_type == 6) && (!q.is_in_water && (q.has_rider))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 2 : (((v.pose_type == 1) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 1) && ((q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.ground_speed / 20) > 0.75))) ? 6 : (((v.pose_type == 4) && (!q.property('cobblemon:battle') && ((q.ground_speed / 20) < 0.75))) ? 7 : (((v.pose_type == 5) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 8 : (((v.pose_type == 6) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 9 : (((v.pose_type == 2)) ? 10 : (0)))))))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.dragapult.pose",
+                "blink_quirk": "controller.animation.dragapult.blink",
+                "look_at_target": "animation.0887_dragapult.look",
+                "ground_idle": "animation.dragapult.ground_idle",
+                "ground_walk": "animation.dragapult.ground_walk",
+                "ride_ground_walk": "animation.dragapult.ride_ground_walk",
+                "ground_run": "animation.dragapult.ground_run",
+                "ride_ground_run": "animation.dragapult.ride_ground_run",
+                "air_fly": "animation.dragapult.air_fly",
+                "ride_air_fly": "animation.dragapult.ride_air_fly",
+                "air_glide": "animation.dragapult.air_glide",
+                "ride_air_glide": "animation.dragapult.ride_air_glide",
+                "battle_idle": "animation.dragapult.battle_idle",
+                "physical": "animation.dragapult.physical",
+                "special": "animation.dragapult.special",
+                "cry": "animation.dragapult.cry",
+                "sleep": "animation.dragapult.sleep",
+                "recoil": "animation.dragapult.recoil",
+                "blink": "animation.dragapult.blink",
+                "blink2": "animation.dragapult.blink2",
+                "blink3": "animation.dragapult.blink3",
+                "pose_animation": "animation.dragapult.pose",
+                "new2": "animation.dragapult.new2",
+                "physical_old": "animation.dragapult.physical_old",
+                "special_old": "animation.dragapult.special_old",
+                "pose_battle_standing": "animation.0887_dragapult.pose_battle_standing",
+                "pose_water_jump": "animation.0887_dragapult.pose_water_jump",
+                "pose_standing": "animation.0887_dragapult.pose_standing",
+                "pose_walking": "animation.0887_dragapult.pose_walking",
+                "pose_running": "animation.0887_dragapult.pose_running",
+                "pose_hover": "animation.0887_dragapult.pose_hover",
+                "pose_fly_fast": "animation.0887_dragapult.pose_fly_fast",
+                "pose_fly": "animation.0887_dragapult.pose_fly",
+                "pose_float": "animation.0887_dragapult.pose_float",
+                "pose_swim": "animation.0887_dragapult.pose_swim"
+            },
+            "render_controllers": [
+                "controller.render.dragapult"
+            ],
+            "spawn_egg": {
+                "texture": "0887_dragapult_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.dragapult.cry": "cobblemon.dragapult.cry"
+            }
+        }
+    }
+}

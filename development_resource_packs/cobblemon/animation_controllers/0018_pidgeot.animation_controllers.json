@@ -2,39 +2,665 @@
     "format_version": "1.10.0",
     "animation_controllers": {
         "controller.animation.pidgeot.pose": {
-            "initial_state": "idle",
+            "initial_state": "spawn",
             "states": {
-                "idle": {
-                    "animations": [
-                        "ground_idle"
-                    ],
-                    "transitions": [
-                        {
-                            "moving": "q.modified_move_speed > 0.1"
-                        }
-                    ],
-                    "blend_transition": 0.2
-                },
-                "moving": {
+                "standing": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk"
+                        "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "idle": "q.modified_move_speed < 0.1"
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
                         }
                     ],
-                    "blend_transition": 0.2
+                    "blend_transition": 0.5
                 },
-                "sleeping": {
+                "battle_standing": {
                     "animations": [
-                        "sleep"
+                        "battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walk": {
+                    "animations": [
+                        "ground_walk",
+                        "pose_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "air_fly",
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "sleep",
+                        "pose_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "air_sleep": {
+                    "animations": [
+                        "air_sleep",
+                        "pose_air_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_sleep": {
+                    "animations": [
+                        "battle_sleep",
+                        "pose_battle_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_idle": {
+                    "animations": [
+                        "mount_ground_idle",
+                        "pose_mount_idle"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_walk": {
+                    "animations": [
+                        "ride_ground_walk",
+                        "mount_ground_walk",
+                        "pose_mount_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_hovering": {
+                    "animations": [
+                        "ride_air_idle",
+                        "mount_air_idle",
+                        "pose_mount_hovering"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_fly": {
+                    "animations": [
+                        "ride_air_fly",
+                        "mount_air_fly",
+                        "pose_mount_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "glide": {
+                    "animations": [
+                        "air_glide",
+                        {
+                            "ride_air_glide": "q.has_rider"
+                        },
+                        {
+                            "ride_dive": "q.has_rider"
+                        },
+                        "pose_glide"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "spawn": {
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 4"
+                        },
+                        {
+                            "sleep": "v.pose == 5"
+                        },
+                        {
+                            "air_sleep": "v.pose == 6"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 7"
+                        },
+                        {
+                            "mount_idle": "v.pose == 8"
+                        },
+                        {
+                            "mount_walk": "v.pose == 9"
+                        },
+                        {
+                            "mount_hovering": "v.pose == 10"
+                        },
+                        {
+                            "mount_fly": "v.pose == 11"
+                        },
+                        {
+                            "glide": "v.pose == 12"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.pidgeot.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
                     ]
                 },
-                "fainting": {
+                "blink": {
                     "animations": [
-                        "faint"
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
+                        }
                     ]
                 }
             }

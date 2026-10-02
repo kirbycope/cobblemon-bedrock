@@ -2,33 +2,67 @@
     "format_version": "1.10.0",
     "minecraft:client_entity": {
         "description": {
-            "identifier": "cobblemon:0816_sobble",
+            "identifier": "cobblemon:p0816_sobble",
             "materials": {
-                "default": "entity_alphatest"
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
             },
             "textures": {
-                "default": "textures/entity/0816_sobble/sobble"
+                "default": "textures/entity/0816_sobble/sobble",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0816_sobble/sobble",
+                "v1": "textures/entity/0816_sobble/sobble_shiny"
             },
             "geometry": {
-                "default": "geometry.sobble"
+                "g_sobble": "geometry.sobble"
             },
             "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 2)) ? 2 : (((v.pose_type == 7)) ? 3 : (((v.pose_type == 8)) ? 4 : (0)))));"
+                ],
                 "animate": [
-                    "pose"
-                ]
+                    "pose",
+                    "blink_quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.sobble.pose",
+                "blink_quirk": "controller.animation.sobble.blink",
+                "look_at_target": "animation.0816_sobble.look",
                 "ground_idle": "animation.sobble.ground_idle",
+                "sleep": "animation.sobble.sleep",
                 "ground_walk": "animation.sobble.ground_walk",
                 "blink": "animation.sobble.blink",
-                "cry": "animation.sobble.cry"
+                "cry": "animation.sobble.cry",
+                "shock": "animation.sobble.shock",
+                "angry": "animation.sobble.angry",
+                "sad": "animation.sobble.sad",
+                "happy": "animation.sobble.happy",
+                "hurt": "animation.sobble.hurt",
+                "crying": "animation.sobble.crying",
+                "smile": "animation.sobble.smile",
+                "shoulder_left": "animation.sobble.shoulder_left",
+                "shoulder_right": "animation.sobble.shoulder_right",
+                "SCALE": "animation.sobble.SCALE",
+                "pose_standing": "animation.0816_sobble.pose_standing",
+                "pose_walking": "animation.0816_sobble.pose_walking",
+                "pose_shoulder_left": "animation.0816_sobble.pose_shoulder_left",
+                "pose_shoulder_right": "animation.0816_sobble.pose_shoulder_right"
             },
             "render_controllers": [
-                "controller.render.agent"
+                "controller.render.sobble"
             ],
             "spawn_egg": {
                 "texture": "0816_sobble_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.sobble.cry": "cobblemon.sobble.cry"
             }
         }
     }
