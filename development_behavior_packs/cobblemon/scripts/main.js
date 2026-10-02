@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot } from "@minecraft/server";
 import { ActionFormData, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -29,7 +29,7 @@ import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
-import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE } from "./fishing.js";
+import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS } from "./fishing.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
@@ -1200,13 +1200,15 @@ function seasonResult(recipe, ids) {
         } else meta.food = [h0, s0];
     }
     if (recipe.proc.includes("ingredient")) meta.ing = ids.filter((id) => SEASONINGS[id]);
+    // BaitSeasoningProcessor: a Poke Bait carries the bait effects of its seasonings
+    if (recipe.proc.includes("spawn_bait")) { const bait = ids.filter((id) => BAITS[id]?.length); if (bait.length) meta.bait = bait; }
     return Object.keys(meta).length ? meta : undefined;
 }
 function consumesSeasoning(recipe, id) {
     const s = SEASONINGS[id];
     if (!s) return false;
     return recipe.proc.some((p) => (p === "ride_boosts" ? Object.keys(s.flavours ?? {}).length : p === "mob_effects" ? !!s.mobEffects : p === "food" ? !!s.food
-        : p === "spawn_bait" ? !!s.baitEffects?.length : p === "ingredient" || p === "food_colour"));
+        : p === "spawn_bait" ? !!s.baitEffects?.length || !!BAITS[id]?.length : p === "ingredient" || p === "food_colour"));
 }
 // a slot's item as an ItemStack, with an Aprijuice's name and boosts
 function slotStack(s) {
@@ -1228,6 +1230,7 @@ function slotStack(s) {
         }
         if (meta.food) lore.push("§7Nutrition:", `§a+${meta.food[0]} Hunger, +${meta.food[1]} Saturation`);
         if (meta.ing?.length) lore.push(`§8Seasonings: ${meta.ing.map((id) => itemName(id)).join(", ")}`);
+        if (meta.bait?.length) lore.push(`§8Bait: ${meta.bait.map((id) => itemName(id)).join(", ")}`);
         if (meta.ing?.includes("minecraft:sweet_berries") && s[0] === "cobblemon:ponigiri") stack.nameTag = "§rJelly Donut";
         if (lore.length) stack.setLore(lore);
     }
@@ -1257,6 +1260,8 @@ function stackSlot(item) {
         if (food) meta.food = [Number(food[1]), Number(food[2])];
         const ing = line.match(/^Seasonings: (.+)$/);
         if (ing) meta.ing = ing[1].split(", ").map((name) => Object.keys(SEASONINGS).find((id) => itemName(id) === name)).filter(Boolean);
+        const bait = line.match(/^Bait: (.+)$/);
+        if (bait) meta.bait = bait[1].split(", ").map((name) => Object.keys(BAITS).find((id) => itemName(id) === name)).filter(Boolean);
     }
     if (Object.keys(meta).length) out.push(meta);
     return out;
@@ -3904,6 +3909,157 @@ function filterPasses(filter, tags) {
     return true;
 }
 
+// Fishing bait (PokerodItem, SpawnBaitEffects, SpawnBaitUtils, SpawnBaitInfluence, FishingSpawnCause). A Poke Rod carries
+// one stack of bait, kept on the rod item (its id, count and, for a seasoned Poke Bait, its seasonings) and shown in its
+// lore. Sneaking and using the rod opens the bait screen, which stands in for Cobblemon's bundle click on the rod in the
+// inventory: a bait stack chosen goes on whole (the same bait tops the rod up to a stack, another is swapped for it) and
+// Take Off gives it back. Using the rod with bait in the off hand, while the rod already carries a different bait, drops
+// the rod's bait and puts one of the off hand's on, as PokerodItem.use does. One bait is used each time a Pokemon is
+// reeled in. Its effects, Cobblemon's spawn_bait_effects (BAITS, the seasoned Poke Bait's being its seasonings'):
+// bite_time shortens the wait, rarity_bucket evens the rarity buckets (with Luck of the Sea, BucketNormalizingInfluence),
+// ev, typing and egg_group weight the spawns (a species without that EV yield cannot come; a matching type or egg group
+// is weighted by the value), and on the Pokemon caught, each at its chance with alike effects merged (chances summed to
+// at most 1, values summed): nature, iv, shiny_reroll, mark_chance, drops_reroll, gender_chance, level_raise, ha_chance,
+// friendship and size. alpha_chance does nothing, the port having no alphas.
+const ROD_BAIT = "cobblemon:bait";
+function rodBait(item) {
+    try { const b = JSON.parse(item?.getDynamicProperty(ROD_BAIT) ?? "null"); return b?.id && b.n > 0 ? b : null; } catch (e) { return null; }
+}
+function setRodBait(item, bait) {
+    item.setDynamicProperty(ROD_BAIT, bait && bait.n > 0 ? JSON.stringify(bait) : undefined);
+    item.setLore(bait && bait.n > 0 ? [`§7Bait: §f${baitName(bait)} §7x${bait.n}`] : []);
+}
+function baitName(bait) { return itemName(bait.id) + (bait.s?.length ? ` (${bait.s.map(itemName).join(", ")})` : ""); }
+// a bait stack in the inventory as the rod keeps it: its id and, for a seasoned Poke Bait, the seasonings in its lore
+function baitOfStack(stack) { return { id: stack.typeId, n: stack.amount, s: stackSlot(stack)?.[2]?.bait ?? [] }; }
+function isBait(stack) { return !!stack && BAITS[stack.typeId] !== undefined; }
+function baitEffects(bait) {
+    return bait ? [...(BAITS[bait.id] ?? []), ...(bait.s ?? []).flatMap((id) => BAITS[id] ?? [])].map(([t, sub, chance, value]) => ({ t, sub, chance, value })) : [];
+}
+// SpawnBaitUtils.mergeEffects: alike effects (type and subcategory) together, chance summed to at most 1, values summed
+function mergedBaitEffects(effects) {
+    const groups = new Map();
+    for (const e of effects) { const k = `${e.t}|${e.sub}`; const g = groups.get(k); if (g) { g.chance += e.chance; g.value += e.value; } else groups.set(k, { ...e }); }
+    return [...groups.values()].map((g) => ({ ...g, chance: Math.min(1, g.chance), value: Math.ceil(g.value) }));
+}
+function sameBait(a, b) { return a && b && a.id === b.id && JSON.stringify(a.s ?? []) === JSON.stringify(b.s ?? []); }
+function heldRod(player) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;
+    return { inv, slot, item: inv?.getItem(slot) };
+}
+function openBaitScreen(player) {
+    const { inv, slot, item } = heldRod(player);
+    if (!item || RODS[item.typeId] === undefined) return;
+    const on = rodBait(item), stacks = [];
+    for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (i !== slot && isBait(it)) stacks.push(i); }
+    const form = new ActionFormData().title("Poke Rod Bait").body(on ? `§7On the rod: §f${baitName(on)} §7x${on.n}` : "§7No bait on the rod.");
+    for (const i of stacks) { const it = inv.getItem(i), b = baitOfStack(it); form.button(`${baitName(b)} x${b.n}`, potIcon(it.typeId)); }
+    if (on) form.button("Take Off Bait", potIcon(on.id));
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === undefined) return;
+        const rod = inv.getItem(slot);
+        if (!rod || RODS[rod.typeId] === undefined) return;
+        const current = rodBait(rod);
+        if (r.selection === stacks.length) {   // take the bait back
+            setRodBait(rod, null); inv.setItem(slot, rod);
+            const back = new ItemStack(current.id, current.n);
+            if (current.s?.length) back.setLore([`§8Bait: ${current.s.map(itemName).join(", ")}`]);
+            const left = inv.addItem(back); if (left) player.dimension.spawnItem(left, player.location);
+            try { player.playSound("cobblemon.fishing.bait_detach"); } catch (e) { }
+            return;
+        }
+        const from = stacks[r.selection], stack = inv.getItem(from);
+        if (!isBait(stack)) return;
+        const chosen = baitOfStack(stack);
+        if (sameBait(current, chosen)) {
+            // the same bait tops the rod up to a full stack (maxStackSize), the rest staying where it was
+            const add = Math.min(stack.maxAmount - current.n, chosen.n);
+            setRodBait(rod, { ...current, n: current.n + add });
+            if (add >= stack.amount) inv.setItem(from, undefined); else { stack.amount -= add; inv.setItem(from, stack); }
+        } else {
+            setRodBait(rod, chosen);
+            inv.setItem(from, undefined);
+            if (current) {   // another bait comes off in its place
+                const back = new ItemStack(current.id, current.n);
+                if (current.s?.length) back.setLore([`§8Bait: ${current.s.map(itemName).join(", ")}`]);
+                inv.setItem(from, back);
+            }
+        }
+        inv.setItem(slot, rod);
+        try { player.playSound("cobblemon.fishing.bait_attach"); } catch (e) { }
+    }).catch(() => { });
+}
+// PokerodItem.use: bait in the off hand replaces a different bait on the rod, which drops at the player's feet
+function offhandBait(player) {
+    const { inv, slot, item } = heldRod(player);
+    let equip, off;
+    try { equip = player.getComponent("minecraft:equippable"); off = equip?.getEquipment(EquipmentSlot.Offhand); } catch (e) { return; }
+    if (!item || !isBait(off)) return;
+    const current = rodBait(item), single = { ...baitOfStack(off), n: 1 };
+    try { player.playSound("cobblemon.fishing.bait_attach"); } catch (e) { }
+    if (!current || current.id === off.typeId) return;
+    const dropped = new ItemStack(current.id, current.n);
+    if (current.s?.length) dropped.setLore([`§8Bait: ${current.s.map(itemName).join(", ")}`]);
+    player.dimension.spawnItem(dropped, player.location);
+    setRodBait(item, single); inv.setItem(slot, item);
+    if (off.amount > 1) { off.amount--; equip.setEquipment(EquipmentSlot.Offhand, off); } else equip.setEquipment(EquipmentSlot.Offhand, undefined);
+}
+// PokerodItem.consumeBait: one bait used when a Pokemon is reeled in
+function consumeRodBait(player) {
+    const { inv, slot, item } = heldRod(player), bait = rodBait(item);
+    if (!bait) return;
+    setRodBait(item, bait.n > 1 ? { ...bait, n: bait.n - 1 } : null); inv.setItem(slot, item);
+}
+// PokeRodFishingBobberEntity.alterBiteTimeAttempt: a random bite_time effect, at its chance, takes its share off the wait
+function baitWait(cast, wait) {
+    const bites = cast.effects.filter((e) => e.t === "bite_time");
+    if (!bites.length) return wait;
+    const e = bites[Math.floor(Math.random() * bites.length)];
+    if (Math.random() > e.chance) return wait;
+    return Math.max(1, Math.floor(wait - wait * e.value));
+}
+// FishingSpawnCause's effects on the Pokemon reeled in
+function applyBait(pokemon, cast) {
+    const info = POKEMON[pokemon.typeId];
+    for (const e of mergedBaitEffects(cast.effects)) {
+        if (Math.random() > e.chance) continue;
+        try {
+            if (e.t === "nature") {
+                const possible = Object.keys(NATURES).filter((n) => NATURES[n][0] === e.sub && NATURES[n][0] !== NATURES[n][1]);
+                if (possible.length && !possible.includes(natureOf(pokemon))) setProp(pokemon, "cobblemon:nature", possible[Math.floor(Math.random() * possible.length)]);
+            } else if (e.t === "iv") {
+                const ivs = ivsOf(pokemon); ivs[e.sub] = Math.min(31, (ivs[e.sub] ?? 0) + e.value); setProp(pokemon, "cobblemon:ivs", JSON.stringify(ivs));
+            } else if (e.t === "shiny_reroll") {
+                const looks = VARIANT_LOOKS[pokemon.typeId], [form, female, shiny] = looks?.[variantOf(pokemon)] ?? [null, 0, 0];
+                if (!shiny && Math.floor(Math.random() * (SHINY_ODDS + 1)) <= e.value) {
+                    const n = (looks ?? []).findIndex(([f, g, sh]) => f === form && g === female && sh);
+                    if (n >= 0) pokemon.triggerEvent(`cobblemon:set_variant_${n}`);
+                }
+            } else if (e.t === "mark_chance") setProp(pokemon, MARK_BOOST, 1 + e.value / 100);
+            else if (e.t === "drops_reroll") setProp(pokemon, DROPS_REROLL, true);
+            else if (e.t === "gender_chance") {
+                const ratio = info?.maleRatio ?? 0.5;
+                if (ratio > 0 && ratio < 1 && (e.sub === "male" || e.sub === "female")) { setProp(pokemon, "cobblemon:gender", e.sub); syncGenderLook(pokemon); }
+            } else if (e.t === "level_raise") setProp(pokemon, LEVEL, Math.min(100, (prop(pokemon, LEVEL) ?? 1) + e.value));
+            else if (e.t === "ha_chance") { const hidden = info?.hidden ?? []; if (hidden.length) setProp(pokemon, "cobblemon:ability", hidden[Math.floor(Math.random() * hidden.length)]); }
+            else if (e.t === "friendship") setProp(pokemon, "cobblemon:friendship", Math.min(255, friendshipOf(pokemon) + e.value));
+            else if (e.t === "size") { setProp(pokemon, SCALE, scaleOf(pokemon) + e.value / 1000); showScale(pokemon); }
+        } catch (err) { }
+    }
+}
+const SHINY_ODDS = 8192, MARK_BOOST = "cobblemon:mark_boost", DROPS_REROLL = "cobblemon:drops_reroll";
+// a fished Pokemon with the drops reroll drops its loot twice, if it dies wild (PokemonServerDelegate.doDeathDrops)
+world.afterEvents.entityDie.subscribe(({ deadEntity: e }) => {
+    try {
+        if (!POKEMON[e.typeId] || !prop(e, DROPS_REROLL) || prop(e, OWNER) !== undefined) return;
+        const { x, y, z } = e.location;
+        e.dimension.runCommand(`loot spawn ${x} ${y} ${z} loot "entities/${e.typeId.split(":")[1].replace(/^p/, "")}"`);
+    } catch (err) { }
+});
+function luckLevel(item) {
+    try { return item.getComponent("minecraft:enchantable")?.getEnchantment("luck_of_the_sea")?.level ?? 0; } catch (e) { return 0; }
+}
+
 function lureLevel(item) {
     try { return item.getComponent("minecraft:enchantable")?.getEnchantment("lure")?.level ?? 0; } catch (e) { return 0; }
 }
@@ -3917,7 +4073,7 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     if (spawn.maxLureLevel !== undefined && cast.lure > spawn.maxLureLevel) return false;
     if (spawn.minY !== undefined && at.y < spawn.minY) return false;
     if (spawn.maxY !== undefined && at.y > spawn.maxY) return false;
-    if (spawn.bait) return false;   // bait is not ported
+    if (spawn.bait && cast.bait?.id !== spawn.bait && cast.bait?.id !== `cobblemon:${spawn.bait}`) return false;
     if (spawn.rodType && ![].concat(spawn.rodType).some((r) => cast.rod === r || cast.rod === `cobblemon:${r}`)) return false;
     if (spawn.isRaining !== undefined) {
         let raining = false;
@@ -3944,15 +4100,35 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     return true;
 }
 
+// SpawnBaitInfluence.affectWeight: a bait's EV effect leaves out a species without that EV yield, and its typing and egg
+// group effects weight a species that matches by their value
+function baitWeight(cast, spawn) {
+    let weight = spawn.weight;
+    const info = POKEMON[spawn.entity];
+    const ev = cast.effects.find((e) => e.t === "ev");
+    if (ev && !((info?.evYield ?? {})[ev.sub] > 0)) return 0;
+    const typing = cast.effects.find((e) => e.t === "typing");
+    if (typing && info?.types?.includes(typing.sub)) weight *= typing.value;
+    const groups = FISH_EGG_GROUPS[spawn.entity] ?? [];
+    const egg = cast.effects.find((e) => e.t === "egg_group" && groups.includes(e.sub));
+    if (egg) weight *= egg.value;
+    return weight;
+}
+
 // the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight
 function planSpawn(cast, bobber) {
     let tags = [];
     try { tags = BIOME_TAGS[bobber.dimension.getBiome(bobber.location).id] ?? []; } catch (e) { }
     const allowed = FISHING_SPAWNS.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
     if (!allowed.length) return undefined;
-    const present = Object.entries(BUCKETS).filter(([b]) => allowed.some((sp) => sp.bucket === b));
+    // BucketNormalizingInfluence: the bait's rarity_bucket values and Luck of the Sea even the buckets out, each weight to
+    // the power 1 / (1.29 + 0.2 (tier - 1))
+    const tier = cast.effects.filter((e) => e.t === "rarity_bucket").reduce((t, e) => t + e.value, 0) + cast.luck;
+    const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
+    const present = Object.entries(BUCKETS).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
-    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]);
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp)]).filter(([, w]) => w > 0);
+    if (!inBucket.length) return undefined;
     return { spawn: pick(inBucket)[0], bucketWeight: BUCKETS[bucket] };
 }
 
@@ -3967,7 +4143,10 @@ function castRod(player, item) {
         } catch (e) { }
     });
     try { player.dimension.playSound("cobblemon.fishing.rod_cast", player.location); } catch (e) { }
-    fishing.set(player.id, { player, bobber, rod: item.typeId, lure: lureLevel(item), phase: "flying", wait: ri(100, 600), travel: 0, hook: 0, catch: null, age: 0 });
+    const bait = rodBait(item), cast = { player, bobber, rod: item.typeId, lure: lureLevel(item), luck: luckLevel(item), bait, effects: baitEffects(bait),
+                                         phase: "flying", wait: 0, travel: 0, hook: 0, catch: null, age: 0 };
+    cast.wait = baitWait(cast, ri(100, 600));
+    fishing.set(player.id, cast);
 }
 
 function endCast(cast) {
@@ -3997,6 +4176,7 @@ function reel(cast) {
         system.run(() => {
             try {
                 setProp(pokemon, LEVEL, level); setProp(pokemon, "cobblemon:fished", true);
+                applyBait(pokemon, cast);
                 if ((POKEMON[spawn.entity]?.weight ?? 0) < 900) {   // lighter than 90 kg: pulled to the player
                     const p = player.location, dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz) || 1;
                     pokemon.applyImpulse({ x: (dx / len) * Math.min(1.6, len * 0.12), y: 0.55, z: (dz / len) * Math.min(1.6, len * 0.12) });
@@ -4004,6 +4184,7 @@ function reel(cast) {
             } catch (e) { }
         });
         player.sendMessage(`§bYou fished up a wild ${POKEMON[spawn.entity]?.name ?? "Pokemon"}! §7(Lv ${level})`);
+        consumeRodBait(player);
         register(player, spawn.entity, 1);
         try { player.dimension.playSound("cobblemon.fishing.splash_big", at); } catch (e) { }
         return;
@@ -4026,6 +4207,8 @@ function reel(cast) {
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack || RODS[itemStack.typeId] === undefined) return;
     const cast = fishing.get(player.id);
+    if (!cast && player.isSneaking) { system.run(() => openBaitScreen(player)); return; }
+    if (!cast) offhandBait(player);
     if (cast) { try { player.dimension.playSound("cobblemon.fishing.rod_reel_in", player.location); } catch (e) { } reel(cast); } else castRod(player, itemStack);
 });
 
@@ -4044,7 +4227,9 @@ system.runInterval(() => {
             if (cast.wait <= 0) { cast.phase = "travel"; cast.travel = ri(20, 80); }
         } else if (cast.phase === "travel") {
             if (--cast.travel <= 0) {
-                cast.catch = Math.random() * 100 < 85 ? planSpawn(cast, bobber) : null;
+                const chances = cast.effects.filter((e) => e.t === "pokemon_chance");
+                const chance = chances.length ? chances[Math.floor(Math.random() * chances.length)].chance * 100 : 85;
+                cast.catch = Math.random() * 100 < chance ? planSpawn(cast, bobber) : null;
                 if (cast.catch) {
                     const w = cast.catch.bucketWeight;
                     cast.hook = ri(Math.max(15, Math.min(20, Math.floor(15 + 0.05 * w))), Math.max(20, Math.min(40, Math.floor(20 + 0.2 * w))));
@@ -4058,7 +4243,7 @@ system.runInterval(() => {
                 } catch (e) { }
             }
         } else if (cast.phase === "bite") {
-            if (--cast.hook <= 0) { cast.phase = "waiting"; cast.wait = ri(100, 600); cast.catch = null; }
+            if (--cast.hook <= 0) { cast.phase = "waiting"; cast.wait = baitWait(cast, ri(100, 600)); cast.catch = null; }
         }
         if (cast.phase === "bite" && cast.hook % 5 === 0) {
             try { bobber.dimension.spawnParticle("minecraft:water_splash_particle_manual", { x: b.x, y: b.y + 0.1, z: b.z }); } catch (e) { }
@@ -5916,7 +6101,7 @@ function applyPotentialMarks(pokemon) {
     const groups = new Map();
     for (const id of potentials) { const [, , , , , group, chance] = MARKS[id]; const key = group ?? String(chance); (groups.get(key) ?? groups.set(key, { chance, ids: [] }).get(key)).ids.push(id); }
     for (const g of [...groups.values()].sort((a, b) => a.chance - b.chance)) {
-        if (Math.random() * 100 < Math.min(1, Math.max(0, g.chance)) * 100) {
+        if (Math.random() * 100 / (prop(pokemon, MARK_BOOST) ?? 1) < Math.min(1, Math.max(0, g.chance)) * 100) {
             const id = g.ids[Math.floor(Math.random() * g.ids.length)];
             setProp(pokemon, MARK_LIST, JSON.stringify([...owned, id]));
             return id;

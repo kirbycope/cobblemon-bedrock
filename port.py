@@ -4231,6 +4231,31 @@ def fishing_spawns():
     return spawns
 
 
+def spawn_baits():
+    """SpawnBaitEffects: each bait item's effects (data/spawn_bait_effects), as [type, subcategory, chance, value] without
+    their namespaces, a tag's items each."""
+    baits = {}
+    for path in glob.glob(f"{cobblemonData}/spawn_bait_effects/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        effects = [[e["type"].split(":")[-1], (e.get("subcategory") or "").split(":")[-1], e.get("chance", 0.0), e.get("value", 0.0)] for e in d.get("effects", [])]
+        for item in (item_tag_values(d["item"]) if d["item"].startswith("#") else [d["item"]]): baits[item] = effects
+    return baits
+
+
+def add_bait_offhand():
+    """PokerodItem.use takes bait from the off hand; Bedrock lets an item into the off hand only with allow_off_hand, so
+    the pack's own bait items (berries, Poke Bait) get it. Vanilla baits (apples, sweet and glow berries) cannot."""
+    baits, done = spawn_baits(), 0
+    for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: item = json.load(file)
+        body = item.get("minecraft:item", {})
+        if body.get("description", {}).get("identifier") not in baits: continue
+        body.setdefault("components", {})["minecraft:allow_off_hand"] = {"value": True}
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=4))
+        done += 1
+    print(f"Bait in the off hand: {done} items.")
+
+
 def create_fishing():
     print("Creating fishing...")
     itemTexturePath = f"{resourcePack}/textures/item_texture.json"
@@ -4308,11 +4333,7 @@ def create_fishing():
     # SpawnBaitEffects: each bait item's effects (data/spawn_bait_effects), as [type, subcategory, chance, value]
     # without their namespaces, a tag's items each; and the egg groups of the species a rod can catch, for the
     # egg group baits (SpawnBaitInfluence.affectWeight)
-    baits = {}
-    for path in glob.glob(f"{cobblemonData}/spawn_bait_effects/**/*.json", recursive=True):
-        with open(path, encoding="utf-8") as file: d = json.load(file)
-        effects = [[e["type"].split(":")[-1], (e.get("subcategory") or "").split(":")[-1], e.get("chance", 0.0), e.get("value", 0.0)] for e in d.get("effects", [])]
-        for item in (item_tag_values(d["item"]) if d["item"].startswith("#") else [d["item"]]): baits[item] = effects
+    baits = spawn_baits()
     egg_groups = {}
     for spawn in spawns:
         species = species_for(spawn["entity"].split(":p", 1)[1]) or {}
@@ -8700,6 +8721,7 @@ def main():
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
     create_book_glyphs()
+    add_bait_offhand()   # after every item is written
     create_recipes()
     create_structures()
     create_battle_data()
