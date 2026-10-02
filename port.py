@@ -301,6 +301,226 @@ def add_pasture_conflict():
     print(f"Owned combat: {len(defenders)} species defend.")
 
 
+# Cobblemon's walk targets carry a speed modifier that multiplies the Pokemon's own speed, and its idle wander walks at
+# 0.35 of it (WanderTaskConfig's walk_speed); the port's random_stroll walks at 1 of the movement value, so every
+# Cobblemon speed modifier below is that modifier over 0.35
+WANDER_SPEED = 0.35
+# SensorType.VILLAGER_HOSTILES, which cobblemon:flee_nearest_hostile reads: each hostile and how near it counts, by the
+# Bedrock family that names it (zombie covers the husk, the drowned and the zombie villager, all at 8 in Java)
+VILLAGER_HOSTILES = {"zombie": 8, "evocation_illager": 12, "pillager": 15, "ravager": 12, "vex": 8, "vindicator": 10, "zoglin": 10}
+# the damage a Pokemon panics at: SwitchToPanicWhenHurtTaskConfig without panic_on_passive_damage needs HURT_BY_ENTITY,
+# damage some entity dealt
+ENTITY_DAMAGE = ["entity_attack", "entity_explosion", "projectile", "ram_attack", "sonic_boom", "mace_smash", "fireworks"]
+# the Java item tags the species' desiredItems and the fox configurer name, as Bedrock items
+PICKUP_TAGS = {"#minecraft:chicken_food": ["minecraft:wheat_seeds", "minecraft:melon_seeds", "minecraft:pumpkin_seeds", "minecraft:beetroot_seeds",
+                                           "minecraft:torchflower_seeds", "minecraft:pitcher_pod"],
+               "#minecraft:fox_food": ["minecraft:sweet_berries", "minecraft:glow_berries"]}
+# q.item.is_food(), as the vanilla fox's own shareables list Bedrock's foods
+BEDROCK_FOODS = ["minecraft:apple", "minecraft:appleEnchanted", "minecraft:baked_potato", "minecraft:beef", "minecraft:beetroot", "minecraft:beetroot_soup",
+                 "minecraft:bread", "minecraft:carrot", "minecraft:chicken", "minecraft:chorus_fruit", "minecraft:clownfish", "minecraft:cooked_beef",
+                 "minecraft:cooked_chicken", "minecraft:cooked_fish", "minecraft:cooked_porkchop", "minecraft:cooked_rabbit", "minecraft:cooked_salmon",
+                 "minecraft:cookie", "minecraft:dried_kelp", "minecraft:fish", "minecraft:golden_apple", "minecraft:golden_carrot", "minecraft:melon",
+                 "minecraft:mushroom_stew", "minecraft:muttonCooked", "minecraft:muttonRaw", "minecraft:poisonous_potato", "minecraft:porkchop",
+                 "minecraft:potato", "minecraft:pufferfish", "minecraft:pumpkin_pie", "minecraft:rabbit", "minecraft:rabbit_stew", "minecraft:rotten_flesh",
+                 "minecraft:salmon", "minecraft:spider_eye", "minecraft:suspicious_stew"]
+WILD_AI_GROUPS = ["cobblemon:panics", "cobblemon:fleeing", "cobblemon:retaliates", "cobblemon:herd_follower", "cobblemon:picks_up_items"]
+
+
+def combat_flags(species):
+    """CombatBehaviour's defaults (willFlee true, willDefendSelf false, fightsMelee true) under the species' own values,
+    and which of pokemon_non_party.json's behaviours they apply: panics for willFlee without willDefendSelf, retaliates
+    for willDefendSelf (or an alpha, which the port has none of)."""
+    combat = (species.get("behaviour") or {}).get("combat") or {}
+    flee, defend = combat.get("willFlee", True), combat.get("willDefendSelf", False)
+    return flee and not defend, defend and combat.get("fightsMelee", True)
+
+
+def panic_groups():
+    """cobblemon:panics (behaviours/panics.json). Hurt by an entity (switch_to_panic_when_hurt) the Pokemon runs from it
+    (behavior.panic at walk_away_from_avoid_target's 0.7), and flee_attacker keeps it avoiding that attacker for
+    avoidDurationTicks, 600: the damage sensor adds cobblemon:fleeing for 30 seconds, in which hurt_by_target makes the
+    attacker its target and avoid_mob_type walks it 9 blocks (flee_desired_distance) from that target and from the
+    villager hostiles (flee_nearest_hostile, 0.5), until cobblemon:calm, as the panic activity's activity_change does
+    once the avoid_target memory lapses."""
+    flee = round(0.7 / WANDER_SPEED, 2)
+    hostile = round(0.5 / WANDER_SPEED, 2)
+    avoid = [{"filters": {"test": "is_target", "subject": "other", "value": True}, "max_dist": 9, "max_flee": 9,
+              "walk_speed_multiplier": flee, "sprint_speed_multiplier": flee}]
+    avoid += [{"filters": {"test": "is_family", "subject": "other", "value": family}, "max_dist": near, "max_flee": 9,
+               "walk_speed_multiplier": hostile, "sprint_speed_multiplier": hostile} for family, near in VILLAGER_HOSTILES.items()]
+    return {
+        "cobblemon:panics": {"minecraft:behavior.panic": {"priority": 1, "speed_multiplier": flee, "damage_sources": ENTITY_DAMAGE}},
+        "cobblemon:fleeing": {
+            "minecraft:behavior.hurt_by_target": {"priority": 2},
+            "minecraft:behavior.avoid_mob_type": {"priority": 2, "max_dist": 15, "max_flee": 9, "entity_types": avoid},
+            "minecraft:timer": {"time": 30, "looping": False, "time_down_event": {"event": "cobblemon:calm", "target": "self"}}
+        }
+    }
+
+
+def retaliate_group():
+    """cobblemon:retaliates (behaviours/retaliates.json with fights_melee.json): get_angry_at_attacker makes whoever hurt
+    it the target (hurt_by_target), move_to_attack_target walks at attacking_movement_speed 0.5 and melee_attack hits
+    within melee_range 0.75 every melee_cooldown 20 ticks (melee_box_attack, the goal this Bedrock lands hits with)."""
+    return {"cobblemon:retaliates": {
+        "minecraft:behavior.hurt_by_target": {"priority": 1},
+        "minecraft:behavior.melee_box_attack": {"priority": 2, "speed_multiplier": round(0.5 / WANDER_SPEED, 2), "horizontal_reach": 0.75,
+                                                "cooldown_time": 1.0, "track_target": True}}}
+
+
+def herd_leaders(species, keys):
+    """HerdBehaviour.toleratedLeaders as (tier, species key) for the leaders the port has: a leader named with an aspect
+    (alpha, mega, a regional form, a gender) is left out, since the entity cannot tell it; one that only excludes an
+    aspect ("ampharos mega=false") is the plain species."""
+    leaders = []
+    for leader in ((species.get("behaviour") or {}).get("herd") or {}).get("toleratedLeaders", []):
+        name, *aspects = str(leader.get("pokemon", "")).split()
+        if any(not a.endswith("=false") for a in aspects): continue
+        key = re.sub(r"[^a-z0-9]", "", name.split(":")[-1].lower())
+        if key in keys: leaders.append((leader.get("tier", 0), key))
+    return leaders
+
+
+def herd_group(leaders, keys):
+    """cobblemon:pokemon_herds: follow_herd_leader walks a follower towards its leader at 0.4 when it is further than the
+    herd's followDistance (4 to 8), and the leader is whichever tolerated Pokemon the nearest_living_entities sensor
+    (16 blocks) finds that is not in a party. follow_mob does the walking; a follower never leads (the leader filter
+    skips anything with follow_mob, so two followers never stall on each other), and preferred_actor_type picks the
+    highest tier."""
+    best = max(leaders)[1]
+    leader = {"all_of": [{"any_of": [{"test": "is_family", "subject": "other", "value": f"species_{key}"} for _, key in sorted(set(leaders))]},
+                         {"test": "has_component", "subject": "other", "operator": "!=", "value": "minecraft:behavior.follow_mob"},
+                         {"test": "is_family", "subject": "other", "operator": "!=", "value": "owned"}]}
+    return {"cobblemon:herd_follower": {"minecraft:behavior.follow_mob": {
+        "priority": 7, "search_range": 16, "stop_distance": 4, "speed_multiplier": round(0.4 / WANDER_SPEED, 2),
+        "preferred_actor_type": keys[best], "filters": leader}}}
+
+
+def pickup_group(species):
+    """pokemon_picks_up_items (pokemon_non_party.json, for a species with itemInteract.desiredItems, and the fox
+    configurer's fox food, food and any item for a pokemon_fox species): move_to_item walks at 0.6 to a wanted item
+    within 7 blocks and pickup_item takes it within 1; eat_held_item eats it after 60 ticks. Bedrock's shareables rank 0
+    first, so each pickupPriority becomes its distance from the highest; a negative one (the item to drop) is left out.
+    The fox also harvests sweet berry bushes and glow berries 10 blocks round at 0.6, after 40 ticks (raid_garden)."""
+    desired = list(((species.get("behaviour") or {}).get("itemInteract") or {}).get("desiredItems", []))
+    fox = any("cobblemon:pokemon_fox" in json.dumps(c) for c in species.get("ai", []))
+    if fox:
+        desired += [{"item": "#minecraft:fox_food", "pickupPriority": 5}, {"item": "q.item.is_food()", "pickupPriority": 4}]
+    desired = [d for d in desired if d.get("pickupPriority", 0) >= 0]
+    if not desired and not fox: return None
+    top = max(d.get("pickupPriority", 0) for d in desired)
+    items = []
+    for d in desired:
+        names = BEDROCK_FOODS if d["item"] == "q.item.is_food()" else PICKUP_TAGS.get(d["item"], [d["item"]])
+        items += [{"item": n, "max_amount": 1, "priority": top - d.get("pickupPriority", 0)} for n in names if n not in [i["item"] for i in items]]
+    group = {
+        "minecraft:shareables": {"items": items, **({"all_items": True, "all_items_max_amount": 1} if fox else {}), "singular_pickup": True},
+        "minecraft:behavior.pickup_items": {"priority": 5, "max_dist": 7, "search_height": 7, "goal_radius": 1.0,
+                                            "speed_multiplier": round(0.6 / WANDER_SPEED, 2), "can_pickup_any_item": fox},
+        "minecraft:behavior.eat_carried_item": {"priority": 5, "delay_before_eating": 3}}
+    if fox:
+        group["minecraft:behavior.raid_garden"] = {"priority": 5, "blocks": ["minecraft:sweet_berry_bush", "minecraft:cave_vines_body_with_berries",
+                                                   "minecraft:cave_vines_head_with_berries"], "search_range": 10, "search_height": 1, "goal_radius": 0.8,
+                                                   "initial_eat_delay": 2, "max_to_eat": 0, "speed_multiplier": round(0.6 / WANDER_SPEED, 2)}
+    return {"cobblemon:picks_up_items": group}
+
+
+def mirror_wild(node, groups):
+    """Every event that adds cobblemon:wild adds the entity's wild behaviour groups too (not the follower, which is
+    rolled, nor fleeing, which being hurt adds), and every one that removes it removes all of them."""
+    if isinstance(node, list):
+        for n in node: mirror_wild(n, groups)
+        return
+    if not isinstance(node, dict): return
+    for verb in ("add", "remove"):
+        names = node.get(verb, {}).get("component_groups", [])
+        if "cobblemon:wild" not in names: continue
+        mine = [g for g in WILD_AI_GROUPS if g in groups and (verb == "remove" or g not in ("cobblemon:herd_follower", "cobblemon:fleeing"))]
+        node[verb]["component_groups"] = [n for n in names if n not in WILD_AI_GROUPS] + mine
+    for key in ("sequence", "randomize"):
+        if key in node: mirror_wild(node[key], groups)
+    for name, value in node.items():   # the events by name, at the top
+        if name not in ("add", "remove", "filters") and isinstance(value, dict): mirror_wild(value, groups)
+
+
+def add_wild_behaviours():
+    """The wild Pokemon's brain, as behaviours/pokemon/auto/pokemon_non_party.json and pokemon_core.json apply
+    Cobblemon's behaviour files to a Pokemon not in a party: panics, retaliates, herds, picks up items, looks around.
+    Each is a component group that comes and goes with cobblemon:wild, so an owned Pokemon never has one, and a battle
+    (cobblemon:battle_start, the freeze) takes retaliation away until cobblemon:battle_end, since melee needs no
+    movement. Replaces the panic and retaliation create_behavior_entities put in the base components (from willFlee's
+    wrong default, and for owned Pokemon too)."""
+    files = {}
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        name = os.path.basename(path)[:-len(".behavior.json")]
+        if re.match(r"\d{4}_", name) and species_for(name): files[name] = path
+    keys = {species_key(species_for(name)): entity_id(name) for name in files}
+    counts = collections.Counter()
+    for name, path in files.items():
+        species = species_for(name)
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); entity = data["minecraft:entity"]
+        word = str(data.get("format_version", "")) >= "1.21.90"
+        components, groups, events = entity["components"], entity.setdefault("component_groups", {}), entity.setdefault("events", {})
+        for key in ("minecraft:behavior.panic", "minecraft:behavior.hurt_by_target", "minecraft:behavior.melee_attack"): components.pop(key, None)
+        for group in WILD_AI_GROUPS: groups.pop(group, None)
+        for event in ("cobblemon:flee", "cobblemon:calm"): events.pop(event, None)
+        sensor = components.setdefault("minecraft:damage_sensor", {"triggers": []})
+        if isinstance(sensor.get("triggers"), dict): sensor["triggers"] = [sensor["triggers"]]
+        sensor["triggers"] = [t for t in sensor["triggers"] if t.get("on_damage", {}).get("event") != "cobblemon:flee"]
+        # the species family, which a herd's followers find their leader by
+        family = components.setdefault("minecraft:type_family", {"family": ["mob", "pokemon"]})["family"]
+        family[:] = [f for f in family if not f.startswith("species_")] + [f"species_{species_key(species)}"]
+        panics, retaliates = combat_flags(species)
+        if panics:
+            groups.update(panic_groups())
+            # hurt by an entity while wild (the panics group is there): flee it
+            sensor["triggers"].append({"on_damage": {"filters": {"all_of": [
+                {"test": "has_component", "subject": "self", "value": "minecraft:behavior.panic"},
+                {"any_of": [{"test": "is_family", "subject": "damager", "value": "player"}, {"test": "is_family", "subject": "damager", "value": "mob"}]}]},
+                "event": "cobblemon:flee", "target": "self"}, "deals_damage": "yes" if word else True})
+            events["cobblemon:flee"] = {"add": {"component_groups": ["cobblemon:fleeing"]}}
+            events["cobblemon:calm"] = {"remove": {"component_groups": ["cobblemon:fleeing"]}}
+            counts["panics"] += 1
+        if retaliates:
+            groups.update(retaliate_group())
+            counts["retaliates"] += 1
+        leaders = herd_leaders(species, keys)
+        if leaders:
+            groups.update(herd_group(leaders, keys))
+            counts["herds"] += 1
+        pickup = pickup_group(species)
+        if pickup:
+            groups.update(pickup)
+            counts["picks up items"] += 1
+        mirror_wild(events, list(groups))
+        if leaders:
+            # a spawned Pokemon of a herding species leads or follows, even odds; a leader never moves to follow
+            spawned = events.setdefault("minecraft:entity_spawned", {})
+            if "sequence" not in spawned: events["minecraft:entity_spawned"] = spawned = {"sequence": [spawned] if spawned else []}
+            spawned["sequence"] = [s for s in spawned["sequence"] if "cobblemon:herd_follower" not in json.dumps(s)]
+            spawned["sequence"].append({"randomize": [{"weight": 1, "add": {"component_groups": ["cobblemon:herd_follower"]}},
+                                                      {"weight": 1, "remove": {"component_groups": ["cobblemon:herd_follower"]}}]})
+        # the battle freeze stops movement but not a melee swing, so a battle takes retaliation away, and its end gives
+        # it back to a Pokemon still wild (despawn is the wild group's)
+        events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]}, **({"remove": {"component_groups": ["cobblemon:retaliates"]}} if retaliates else {})}
+        events["cobblemon:battle_end"] = {"sequence": [{"remove": {"component_groups": ["cobblemon:in_battle"]}}] + ([{
+            "filters": {"all_of": [{"test": "has_component", "subject": "self", "value": "minecraft:despawn"},
+                                   {"test": "is_family", "subject": "self", "operator": "!=", "value": "owned"}]},
+            "add": {"component_groups": ["cobblemon:retaliates"]}}] if retaliates else [])}
+        # looks_around (pokemon_core.json, for moving.canLook, true unless said): look_at_entities at see_distance 15,
+        # held by look_at_target for 80 to 160 ticks, every time nothing else is being looked at
+        if ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True):
+            components["minecraft:behavior.look_at_player"] = {"priority": 6, "look_distance": 15, "probability": 1.0,
+                                                               "look_time": {"min": 4, "max": 8} if word else [4, 8]}
+            counts["looks around"] += 1
+        else:
+            components.pop("minecraft:behavior.look_at_player", None)
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    print("Wild behaviours: " + ", ".join(f"{n} {k}" for k, n in counts.items()) + f" of {len(files)} species.")
+
+
 def entity_id(pokemon):
     """A Pokemon's entity identifier, 'cobblemon:p0006_charizard'. The pack folders keep the Pokedex number first,
     but Bedrock's newer entity formats (1.21.90 on, which the air controls need) refuse an identifier whose name
@@ -1039,6 +1259,18 @@ def create_ride_glyphs():
         icon = icon.resize((max(1, round(icon.width * k)), max(1, round(icon.height * k))), Image.BOX)
         sheet.alpha_composite(icon, ((n % 16) * 16 + (16 - icon.width) // 2, (n // 16) * 16 + (16 - icon.height) // 2))
     sheet.save(f"{resourcePack}/font/glyph_E8.png")
+
+
+# The spawn hub's Poke Mart clerk (tools/build_hub.py; its shop is scripts/main.js's openMart): a villager to look at,
+# the NPC component so a player can interact with it, standing still and taking no damage. Written here so the entity
+# folders, which this script writes afresh, keep it
+POKE_MART_CLERK = json.loads(r'''{"format_version": "1.21.0", "minecraft:entity": {"description": {"identifier": "cobblemon:poke_mart_clerk", "is_spawnable": false, "is_summonable": true, "is_experimental": false}, "components": {"minecraft:type_family": {"family": ["npc", "poke_mart_clerk"]}, "minecraft:behavior.look_at_player": {"priority": 2, "look_distance": 8, "probability": 1.0}, "minecraft:variant": {"value": 0}, "minecraft:mark_variant": {"value": 0}, "minecraft:nameable": {"always_show": true, "allow_name_tag_renaming": false}, "minecraft:persistent": {}, "minecraft:physics": {}, "minecraft:pushable": {"is_pushable": false, "is_pushable_by_piston": false}, "minecraft:collision_box": {"width": 0.6, "height": 1.9}, "minecraft:health": {"value": 20, "max": 20}, "minecraft:movement": {"value": 0.0}, "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": false}]}, "minecraft:npc": {"npc_data": {"skin_list": [{"variant": 0}], "portrait_offsets": {"scale": [1.75, 1.75, 1.75], "translate": [-7, 50, 0]}, "picker_offsets": {"scale": [1.7, 1.7, 1.7], "translate": [0, 20, 0]}}}}}}''')
+POKE_MART_CLERK_CLIENT = json.loads(r'''{"format_version": "1.8.0", "minecraft:client_entity": {"description": {"identifier": "cobblemon:poke_mart_clerk", "materials": {"default": "villager_v2", "masked": "villager_v2_masked"}, "textures": {"base": "textures/entity/villager2/villager", "base2": "textures/entity/villager2/villager", "base3": "textures/entity/villager2/villager", "base4": "textures/entity/villager2/villager", "base5": "textures/entity/villager2/villager", "base6": "textures/entity/villager2/villager", "desert": "textures/entity/villager2/biomes/biome_desert", "jungle": "textures/entity/villager2/biomes/biome_jungle", "plains": "textures/entity/villager2/biomes/biome_plains", "savanna": "textures/entity/villager2/biomes/biome_savanna", "snow": "textures/entity/villager2/biomes/biome_snow", "swamp": "textures/entity/villager2/biomes/biome_swamp", "taiga": "textures/entity/villager2/biomes/biome_taiga", "armorer": "textures/entity/villager2/professions/armorer", "butcher": "textures/entity/villager2/professions/butcher", "cartographer": "textures/entity/villager2/professions/cartographer", "cleric": "textures/entity/villager2/professions/cleric", "farmer": "textures/entity/villager2/professions/farmer", "fisherman": "textures/entity/villager2/professions/fisherman", "fletcher": "textures/entity/villager2/professions/fletcher", "leatherworker": "textures/entity/villager2/professions/leatherworker", "librarian": "textures/entity/villager2/professions/librarian", "shepherd": "textures/entity/villager2/professions/shepherd", "tool_smith": "textures/entity/villager2/professions/toolsmith", "weapon_smith": "textures/entity/villager2/professions/weaponsmith", "stonemason": "textures/entity/villager2/professions/stonemason", "nitwit": "textures/entity/villager2/professions/nitwit", "unskilled": "textures/entity/villager2/professions/unskilled", "level_stone": "textures/entity/villager2/levels/level_stone", "level_iron": "textures/entity/villager2/levels/level_iron", "level_gold": "textures/entity/villager2/levels/level_gold", "level_emerald": "textures/entity/villager2/levels/level_emerald", "level_diamond": "textures/entity/villager2/levels/level_diamond", "baby_base": "textures/entity/villager2/villager_baby", "baby_base2": "textures/entity/villager2/villager_baby", "baby_base3": "textures/entity/villager2/villager_baby", "baby_base4": "textures/entity/villager2/villager_baby", "baby_base5": "textures/entity/villager2/villager_baby", "baby_base6": "textures/entity/villager2/villager_baby", "baby_desert": "textures/entity/villager2/biomes/biome_desert_baby", "baby_jungle": "textures/entity/villager2/biomes/biome_jungle_baby", "baby_plains": "textures/entity/villager2/biomes/biome_plains_baby", "baby_savanna": "textures/entity/villager2/biomes/biome_savanna_baby", "baby_snow": "textures/entity/villager2/biomes/biome_snow_baby", "baby_swamp": "textures/entity/villager2/biomes/biome_swamp_baby", "baby_taiga": "textures/entity/villager2/biomes/biome_taiga_baby"}, "geometry": {"default": "geometry.villager_v2", "baby": "geometry.villager.baby"}, "scripts": {"scale": "query.is_baby ? 2.0 : 0.9375", "pre_animation": ["variable.num_professions = 15;", "variable.num_tiers = 3;", "variable.profession_index = (query.variant < variable.num_professions ? query.variant : 0);", "variable.level_index = query.trade_tier;"]}, "animations": {"general": "animation.villager.general", "look_at_target": "animation.common.look_at_target", "move": "animation.villager.move", "baby_transform": "animation.villager.baby_transform", "get_in_bed": "animation.villager.get_in_bed", "get_in_bed_baby": "animation.villager.get_in_bed_baby"}, "animation_controllers": [{"general": "controller.animation.villager_v2.general"}, {"move": "controller.animation.villager_v2.move"}], "render_controllers": ["controller.render.villager_v3_base", "controller.render.villager_v3_masked", "controller.render.villager_v3_level"]}}}''')
+
+
+def create_poke_mart_clerk():
+    with open(f"{entitiesBedrock}/poke_mart_clerk.behavior.json", "w", encoding="utf-8") as file: file.write(json.dumps(POKE_MART_CLERK, indent=4))
+    with open(f"{entityBedrock}/poke_mart_clerk.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(POKE_MART_CLERK_CLIENT, indent=4))
 
 
 def create_cosmetics():
@@ -8829,6 +9061,7 @@ def main():
     create_render_controllers()
     create_client_entities()
     create_behavior_entities()
+    create_poke_mart_clerk()   # after the entity folders are written afresh
     create_ambient_particles()
     create_loot_tables()
     create_spawn_rules()
@@ -8849,6 +9082,7 @@ def main():
     add_shoulder_mount()
     add_owned_protection()
     add_pasture_conflict()
+    add_wild_behaviours()
     create_campfire_blocks()
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)

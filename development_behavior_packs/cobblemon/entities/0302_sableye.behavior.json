@@ -287,6 +287,47 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:picks_up_items": {
+                "minecraft:shareables": {
+                    "items": [
+                        {
+                            "item": "minecraft:amethyst_shard",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:diamond",
+                            "max_amount": 1,
+                            "priority": 0
+                        }
+                    ],
+                    "singular_pickup": true
+                },
+                "minecraft:behavior.pickup_items": {
+                    "priority": 5,
+                    "max_dist": 7,
+                    "search_height": 7,
+                    "goal_radius": 1.0,
+                    "speed_multiplier": 1.71,
+                    "can_pickup_any_item": false
+                },
+                "minecraft:behavior.eat_carried_item": {
+                    "priority": 5,
+                    "delay_before_eating": 3
+                }
             }
         },
         "components": {
@@ -297,7 +338,8 @@
                     "pokemon",
                     "npc",
                     "dark",
-                    "ghost"
+                    "ghost",
+                    "species_sableye"
                 ]
             },
             "minecraft:collision_box": {
@@ -324,8 +366,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.25
@@ -353,12 +399,6 @@
             },
             "minecraft:behavior.float": {
                 "priority": 0
-            },
-            "minecraft:behavior.hurt_by_target": {
-                "priority": 2
-            },
-            "minecraft:behavior.melee_attack": {
-                "priority": 3
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -445,7 +485,9 @@
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:wild"
+                                "cobblemon:wild",
+                                "cobblemon:retaliates",
+                                "cobblemon:picks_up_items"
                             ]
                         }
                     },
@@ -474,21 +516,27 @@
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 }
             },
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -501,7 +549,9 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -535,7 +585,9 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -549,20 +601,53 @@
                     "component_groups": [
                         "cobblemon:in_battle"
                     ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:retaliates"
+                    ]
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "has_component",
+                                    "subject": "self",
+                                    "value": "minecraft:despawn"
+                                },
+                                {
+                                    "test": "is_family",
+                                    "subject": "self",
+                                    "operator": "!=",
+                                    "value": "owned"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:retaliates"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:retaliates",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {

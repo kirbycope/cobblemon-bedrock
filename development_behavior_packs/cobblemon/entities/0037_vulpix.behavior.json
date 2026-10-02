@@ -359,6 +359,398 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:panics": {
+                "minecraft:behavior.panic": {
+                    "priority": 1,
+                    "speed_multiplier": 2.0,
+                    "damage_sources": [
+                        "entity_attack",
+                        "entity_explosion",
+                        "projectile",
+                        "ram_attack",
+                        "sonic_boom",
+                        "mace_smash",
+                        "fireworks"
+                    ]
+                }
+            },
+            "cobblemon:fleeing": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 2
+                },
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 2,
+                    "max_dist": 15,
+                    "max_flee": 9,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_target",
+                                "subject": "other",
+                                "value": true
+                            },
+                            "max_dist": 9,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 2.0,
+                            "sprint_speed_multiplier": 2.0
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "zombie"
+                            },
+                            "max_dist": 8,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "evocation_illager"
+                            },
+                            "max_dist": 12,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "pillager"
+                            },
+                            "max_dist": 15,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "ravager"
+                            },
+                            "max_dist": 12,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "vex"
+                            },
+                            "max_dist": 8,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "vindicator"
+                            },
+                            "max_dist": 10,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "zoglin"
+                            },
+                            "max_dist": 10,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": 30,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:calm",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 4,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0038_ninetales",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_ninetales"
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
+            },
+            "cobblemon:picks_up_items": {
+                "minecraft:shareables": {
+                    "items": [
+                        {
+                            "item": "minecraft:potion",
+                            "max_amount": 1,
+                            "priority": 4
+                        },
+                        {
+                            "item": "minecraft:sweet_berries",
+                            "max_amount": 1,
+                            "priority": 0
+                        },
+                        {
+                            "item": "minecraft:glow_berries",
+                            "max_amount": 1,
+                            "priority": 0
+                        },
+                        {
+                            "item": "minecraft:apple",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:appleEnchanted",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:baked_potato",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:beef",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:beetroot",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:beetroot_soup",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:bread",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:carrot",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:chicken",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:chorus_fruit",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:clownfish",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_beef",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_chicken",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_fish",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_porkchop",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_rabbit",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cooked_salmon",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:cookie",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:dried_kelp",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:fish",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:golden_apple",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:golden_carrot",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:melon",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:mushroom_stew",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:muttonCooked",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:muttonRaw",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:poisonous_potato",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:porkchop",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:potato",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:pufferfish",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:pumpkin_pie",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:rabbit",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:rabbit_stew",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:rotten_flesh",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:salmon",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:spider_eye",
+                            "max_amount": 1,
+                            "priority": 1
+                        },
+                        {
+                            "item": "minecraft:suspicious_stew",
+                            "max_amount": 1,
+                            "priority": 1
+                        }
+                    ],
+                    "all_items": true,
+                    "all_items_max_amount": 1,
+                    "singular_pickup": true
+                },
+                "minecraft:behavior.pickup_items": {
+                    "priority": 5,
+                    "max_dist": 7,
+                    "search_height": 7,
+                    "goal_radius": 1.0,
+                    "speed_multiplier": 1.71,
+                    "can_pickup_any_item": true
+                },
+                "minecraft:behavior.eat_carried_item": {
+                    "priority": 5,
+                    "delay_before_eating": 3
+                },
+                "minecraft:behavior.raid_garden": {
+                    "priority": 5,
+                    "blocks": [
+                        "minecraft:sweet_berry_bush",
+                        "minecraft:cave_vines_body_with_berries",
+                        "minecraft:cave_vines_head_with_berries"
+                    ],
+                    "search_range": 10,
+                    "search_height": 1,
+                    "goal_radius": 0.8,
+                    "initial_eat_delay": 2,
+                    "max_to_eat": 0,
+                    "speed_multiplier": 1.71
+                }
             }
         },
         "components": {
@@ -368,7 +760,8 @@
                     "mob",
                     "pokemon",
                     "npc",
-                    "fire"
+                    "fire",
+                    "species_vulpix"
                 ]
             },
             "minecraft:collision_box": {
@@ -395,8 +788,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.2
@@ -507,6 +904,36 @@
                             }
                         },
                         "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "all_of": [
+                                    {
+                                        "test": "has_component",
+                                        "subject": "self",
+                                        "value": "minecraft:behavior.panic"
+                                    },
+                                    {
+                                        "any_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "damager",
+                                                "value": "player"
+                                            },
+                                            {
+                                                "test": "is_family",
+                                                "subject": "damager",
+                                                "value": "mob"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "event": "cobblemon:flee",
+                            "target": "self"
+                        },
+                        "deals_damage": true
                     }
                 ]
             }
@@ -543,7 +970,9 @@
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:wild"
+                                "cobblemon:wild",
+                                "cobblemon:panics",
+                                "cobblemon:picks_up_items"
                             ]
                         }
                     },
@@ -566,27 +995,55 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:picks_up_items"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:picks_up_items"
                     ]
                 }
             },
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -599,7 +1056,11 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -640,7 +1101,11 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -657,17 +1122,25 @@
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
+                        "cobblemon:picks_up_items"
                     ]
                 },
                 "add": {
@@ -777,6 +1250,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:flee": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fleeing"
+                    ]
+                }
+            },
+            "cobblemon:calm": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fleeing"
                     ]
                 }
             }

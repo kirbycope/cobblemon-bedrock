@@ -352,6 +352,183 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:panics": {
+                "minecraft:behavior.panic": {
+                    "priority": 1,
+                    "speed_multiplier": 2.0,
+                    "damage_sources": [
+                        "entity_attack",
+                        "entity_explosion",
+                        "projectile",
+                        "ram_attack",
+                        "sonic_boom",
+                        "mace_smash",
+                        "fireworks"
+                    ]
+                }
+            },
+            "cobblemon:fleeing": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 2
+                },
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 2,
+                    "max_dist": 15,
+                    "max_flee": 9,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_target",
+                                "subject": "other",
+                                "value": true
+                            },
+                            "max_dist": 9,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 2.0,
+                            "sprint_speed_multiplier": 2.0
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "zombie"
+                            },
+                            "max_dist": 8,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "evocation_illager"
+                            },
+                            "max_dist": 12,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "pillager"
+                            },
+                            "max_dist": 15,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "ravager"
+                            },
+                            "max_dist": 12,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "vex"
+                            },
+                            "max_dist": 8,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "vindicator"
+                            },
+                            "max_dist": 10,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        },
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "zoglin"
+                            },
+                            "max_dist": 10,
+                            "max_flee": 9,
+                            "walk_speed_multiplier": 1.43,
+                            "sprint_speed_multiplier": 1.43
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": 30,
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:calm",
+                        "target": "self"
+                    }
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 4,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0521_unfezant",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_pidgeotto"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_staravia"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_tranquill"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_pidgeot"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_unfezant"
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
             }
         },
         "components": {
@@ -362,7 +539,8 @@
                     "pokemon",
                     "npc",
                     "normal",
-                    "flying"
+                    "flying",
+                    "species_tranquill"
                 ]
             },
             "minecraft:collision_box": {
@@ -389,8 +567,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.17
@@ -506,6 +688,36 @@
                             }
                         },
                         "deals_damage": false
+                    },
+                    {
+                        "on_damage": {
+                            "filters": {
+                                "all_of": [
+                                    {
+                                        "test": "has_component",
+                                        "subject": "self",
+                                        "value": "minecraft:behavior.panic"
+                                    },
+                                    {
+                                        "any_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "damager",
+                                                "value": "player"
+                                            },
+                                            {
+                                                "test": "is_family",
+                                                "subject": "damager",
+                                                "value": "mob"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "event": "cobblemon:flee",
+                            "target": "self"
+                        },
+                        "deals_damage": true
                     }
                 ]
             }
@@ -542,7 +754,8 @@
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:wild"
+                                "cobblemon:wild",
+                                "cobblemon:panics"
                             ]
                         }
                     },
@@ -565,27 +778,52 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics"
                     ]
                 }
             },
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -598,7 +836,10 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -639,7 +880,10 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -656,17 +900,24 @@
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:panics",
+                        "cobblemon:fleeing",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -710,6 +961,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:flee": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:fleeing"
+                    ]
+                }
+            },
+            "cobblemon:calm": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:fleeing"
                     ]
                 }
             }

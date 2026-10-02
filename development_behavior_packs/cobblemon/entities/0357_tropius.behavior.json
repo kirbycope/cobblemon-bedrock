@@ -469,6 +469,57 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 4,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0699_aurorus",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_tropius"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_aurorus"
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
             }
         },
         "components": {
@@ -479,7 +530,8 @@
                     "pokemon",
                     "npc",
                     "grass",
-                    "flying"
+                    "flying",
+                    "species_tropius"
                 ]
             },
             "minecraft:collision_box": {
@@ -502,8 +554,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": {
+                    "min": 4,
+                    "max": 8
+                }
             },
             "minecraft:movement": {
                 "value": 0.147
@@ -527,12 +583,6 @@
             },
             "minecraft:behavior.float": {
                 "priority": 0
-            },
-            "minecraft:behavior.hurt_by_target": {
-                "priority": 2
-            },
-            "minecraft:behavior.melee_attack": {
-                "priority": 3
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -658,7 +708,8 @@
                         "add": {
                             "component_groups": [
                                 "cobblemon:wild",
-                                "cobblemon:gravity"
+                                "cobblemon:gravity",
+                                "cobblemon:retaliates"
                             ]
                         }
                     },
@@ -681,6 +732,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -688,7 +759,8 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:gravity"
+                        "cobblemon:gravity",
+                        "cobblemon:retaliates"
                     ]
                 }
             },
@@ -696,14 +768,17 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:gravity"
+                        "cobblemon:gravity",
+                        "cobblemon:retaliates"
                     ]
                 }
             },
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -717,7 +792,9 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -1252,7 +1329,9 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -1266,20 +1345,53 @@
                     "component_groups": [
                         "cobblemon:in_battle"
                     ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:retaliates"
+                    ]
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "has_component",
+                                    "subject": "self",
+                                    "value": "minecraft:despawn"
+                                },
+                                {
+                                    "test": "is_family",
+                                    "subject": "self",
+                                    "operator": "!=",
+                                    "value": "owned"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:retaliates"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:retaliates",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {

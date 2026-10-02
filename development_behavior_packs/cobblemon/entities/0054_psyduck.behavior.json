@@ -326,6 +326,40 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 4,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0054_psyduck",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "species_psyduck"
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
             }
         },
         "components": {
@@ -335,7 +369,8 @@
                     "mob",
                     "pokemon",
                     "npc",
-                    "water"
+                    "water",
+                    "species_psyduck"
                 ]
             },
             "minecraft:collision_box": {
@@ -362,8 +397,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.25
@@ -532,6 +571,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -552,7 +611,8 @@
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -565,7 +625,8 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -606,7 +667,8 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {
@@ -623,17 +685,22 @@
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:herd_follower"
                     ]
                 },
                 "add": {

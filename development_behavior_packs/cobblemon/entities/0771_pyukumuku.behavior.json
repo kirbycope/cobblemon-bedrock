@@ -259,7 +259,8 @@
                     "mob",
                     "pokemon",
                     "npc",
-                    "water"
+                    "water",
+                    "species_pyukumuku"
                 ]
             },
             "minecraft:collision_box": {
@@ -284,11 +285,6 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
-                "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
-            },
             "minecraft:movement": {
                 "value": 0.1159
             },
@@ -500,11 +496,15 @@
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {

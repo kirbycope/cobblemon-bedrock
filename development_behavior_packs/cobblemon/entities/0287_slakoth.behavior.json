@@ -312,7 +312,8 @@
                     "mob",
                     "pokemon",
                     "npc",
-                    "normal"
+                    "normal",
+                    "species_slakoth"
                 ]
             },
             "minecraft:collision_box": {
@@ -339,8 +340,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.2
@@ -613,11 +618,15 @@
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {

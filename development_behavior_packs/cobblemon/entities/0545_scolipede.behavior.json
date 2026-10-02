@@ -348,6 +348,18 @@
                     "speed_multiplier": 1.2,
                     "track_target": true
                 }
+            },
+            "cobblemon:retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
             }
         },
         "components": {
@@ -358,7 +370,8 @@
                     "pokemon",
                     "npc",
                     "bug",
-                    "poison"
+                    "poison",
+                    "species_scolipede"
                 ]
             },
             "minecraft:collision_box": {
@@ -385,8 +398,12 @@
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {
                 "priority": 6,
-                "look_distance": 6,
-                "probability": 0.02
+                "look_distance": 15,
+                "probability": 1.0,
+                "look_time": [
+                    4,
+                    8
+                ]
             },
             "minecraft:movement": {
                 "value": 0.2
@@ -414,12 +431,6 @@
             },
             "minecraft:behavior.float": {
                 "priority": 0
-            },
-            "minecraft:behavior.hurt_by_target": {
-                "priority": 2
-            },
-            "minecraft:behavior.melee_attack": {
-                "priority": 3
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -538,7 +549,8 @@
                     {
                         "add": {
                             "component_groups": [
-                                "cobblemon:wild"
+                                "cobblemon:wild",
+                                "cobblemon:retaliates"
                             ]
                         }
                     },
@@ -567,21 +579,24 @@
             "minecraft:entity_born": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
                     ]
                 }
             },
             "minecraft:entity_transformed": {
                 "add": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
                     ]
                 }
             },
             "cobblemon:released": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
                     ]
                 },
                 "add": {
@@ -594,7 +609,8 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:retaliates"
                     ]
                 },
                 "add": {
@@ -628,7 +644,8 @@
             "cobblemon:battle": {
                 "remove": {
                     "component_groups": [
-                        "cobblemon:wild"
+                        "cobblemon:wild",
+                        "cobblemon:retaliates"
                     ]
                 },
                 "add": {
@@ -642,20 +659,52 @@
                     "component_groups": [
                         "cobblemon:in_battle"
                     ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:retaliates"
+                    ]
                 }
             },
             "cobblemon:battle_end": {
-                "remove": {
-                    "component_groups": [
-                        "cobblemon:in_battle"
-                    ]
-                }
+                "sequence": [
+                    {
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "has_component",
+                                    "subject": "self",
+                                    "value": "minecraft:despawn"
+                                },
+                                {
+                                    "test": "is_family",
+                                    "subject": "self",
+                                    "operator": "!=",
+                                    "value": "owned"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:retaliates"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:capture": {
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:in_battle"
+                        "cobblemon:in_battle",
+                        "cobblemon:retaliates"
                     ]
                 },
                 "add": {
