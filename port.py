@@ -1261,6 +1261,28 @@ def create_ride_glyphs():
     sheet.save(f"{resourcePack}/font/glyph_E8.png")
 
 
+def create_party_item():
+    """cobblemon:party, the party's key binds as an item (PartySendBinding, the up and down party keys): using it sends the
+    selected Pokemon out where the player looks, or calls it back when it is out, or battles the wild Pokemon looked at;
+    sneaking and using it selects the next slot. Its icon is the party overlay's Poke Ball, shut, on a square."""
+    ball = Image.open(f"{guiMain}/ball/poke_ball.png").convert("RGBA")
+    ball = ball.crop((0, 0, ball.width, ball.height // 2))
+    side = max(ball.width, ball.height)
+    icon = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    icon.alpha_composite(ball, ((side - ball.width) // 2, (side - ball.height) // 2))
+    icon.save(f"{texturesItemsBedrock}/party.png")
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    itemTextureData["texture_data"]["party"] = {"textures": ["textures/items/party"]}
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    item = {"format_version": "1.21.90", "minecraft:item": {
+        "description": {"identifier": "cobblemon:party", "menu_category": {"category": "equipment"}},
+        "components": {"minecraft:icon": "party", "minecraft:display_name": {"value": "item.cobblemon:party.name"}, "minecraft:max_stack_size": 1,
+                       "minecraft:use_modifiers": {"use_duration": 0.05, "movement_modifier": 1.0}, "minecraft:use_animation": "none"}}}
+    with open(f"{itemsBedrock}/party.json", "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("item.cobblemon:party.name=Party" + chr(10))
+
+
 # The spawn hub's Poke Mart clerk (tools/build_hub.py; its shop is scripts/main.js's openMart): a villager to look at,
 # the NPC component so a player can interact with it, standing still and taking no damage. Written here so the entity
 # folders, which this script writes afresh, keep it
@@ -8599,8 +8621,8 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
                "reg": (172, 173), "unknown": (173, 174)}
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
-                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52)}
-PARTY_RECORD = 52
+                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52), "sel": (52, 53), "slot": (53, 55), "ballx": (55, 59), "active": (59, 60), "lv": (60, 63)}
+PARTY_RECORD = 63   # "slot" (state and selection) and "ballx" (the ball and whether it is open) repeat fields whole, as a binding joins only two strings
 
 
 def scan_code(n):
@@ -8790,14 +8812,20 @@ def create_ride_hud():
 def create_party_hud():
     party = f"{uiTextures}/party"
     os.makedirs(party, exist_ok=True)
+    # the slot by its state and whether it is the selected one ("a", party_slot_active, or "i")
     for state, name in (("n", "party_slot"), ("x", "party_slot_fainted")):
-        shutil.copyfile(f"{guiMain}/party/{name}.png", f"{party}/slot_{state}.png")
+        shutil.copyfile(f"{guiMain}/party/{name}.png", f"{party}/slot_{state}i.png")
+        shutil.copyfile(f"{guiMain}/party/{name}_active.png", f"{party}/slot_{state}a.png")
+    # PokemonState.getIcon, 24 by 17 at half scale: sent out ("r"), ridden ("m"), on the left or right shoulder ("l", "g")
+    for code, name in (("r", "released"), ("m", "mounted"), ("l", "shoulder_left"), ("g", "shoulder_right")):
+        shutil.copyfile(f"{guiMain}/party/party_icon_{name}.png", f"{party}/si_{code}.png")
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/si_n.png")
     for state in ("n", "x"): shutil.copyfile(f"{guiMain}/party/party_slot_portrait_background.png", f"{party}/portrait_{state}.png")
     # PartyOverlay's status badge (status_<showdown name>, 4 by 14), "non" for none
     for code in ("brn", "frz", "par", "psn", "slp", "tox"): shutil.copyfile(f"{guiMain}/party/status_{code}.png", f"{party}/{code}.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/non.png")
     # an empty slot's record (state "e", ball "bxx") draws nothing: a view binding cannot hide these parts
-    for name in ("slot_e", "portrait_e", "bxx"): Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/{name}.png")
+    for name in ("slot_ea", "slot_ei", "portrait_e", "bxxc", "bxxo"): Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/{name}.png")
     # named by the record's gender field, which the texture binding appends to the folder
     shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
     shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
@@ -8832,7 +8860,9 @@ def create_party_hud():
         icon = f"{guiMain}/ball/{info['name']}.png"
         if not os.path.exists(icon): icon = f"{guiMain}/ball/poke_ball.png"
         image = Image.open(icon).convert("RGBA")
-        image.crop((0, 0, image.width, image.height // 2)).save(f"{party}/b{n:02d}.png")
+        # the ball's two halves: shut while the Pokemon is in it, open while it is out (the state icon's vOffset)
+        image.crop((0, 0, image.width, image.height // 2)).save(f"{party}/b{n:02d}c.png")
+        image.crop((0, image.height // 2, image.width, image.height)).save(f"{party}/b{n:02d}o.png")
 
     T = "textures/ui/cobblemon/party"
     def field(slot, name):
@@ -8843,18 +8873,25 @@ def create_party_hud():
         return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
                 "source_property_name": source, "target_property_name": target}
     def picture(name, slot, kind, size, offset, layer=2):
+        texture = f"('{T}/' + {field(slot, kind)})"
         return {name: {"type": "image", "size": size, "offset": offset, "layer": layer, "anchor_from": "top_left", "anchor_to": "top_left",
-                       "keep_ratio": False, "bindings": [from_data(f"('{T}/' + {field(slot, kind)})", "#texture")]}}
+                       "keep_ratio": False, "bindings": [from_data(texture, "#texture")]}}
     def shown(slot, control):
         name, body = next(iter(control.items()))
         state = field(slot, "state")
         body = dict(body); body["bindings"] = body.get("bindings", []) + [from_data(f"(({state} = 'n') or ({state} = 'x'))", "#visible")]
         return {name: body}
-    def guard(control):
-        # a part draws only while the kept title is a party record, never another HUD layer's
+    def guard(control, slot=None, selected=None, extra=None):
+        # a part draws only while the kept title is a party record, never another HUD layer's; one drawn twice, as
+        # PartyOverlay's selectedOffsetX moves everything but the slot 6 to the right, draws the copy that matches
         name, body = next(iter(control.items()))
-        body = dict(body); body["bindings"] = body.get("bindings", []) + [
-            from_data(f"(not ((#preserved_text - '{PARTY_MARKER}') = #preserved_text))", "#visible")]
+        condition = f"(not ((#preserved_text - '{PARTY_MARKER}') = #preserved_text))"
+        if extra: condition = f"({condition} and {extra})"
+        if selected is not None: condition = f"({condition} and ({field(slot, 'sel')} = '{'a' if selected else 'i'}'))"
+        body = dict(body); body["bindings"] = body.get("bindings", []) + [from_data(condition, "#visible")]
+        if selected:
+            name = f"{name}_a"
+            body["offset"] = [body.get("offset", [0, 0])[0] + 6, body.get("offset", [0, 0])[1]]
         return {name: body}
     def slot_panel(slot):
         return {f"slot_{slot}": {"type": "panel", "size": [62, 30], "controls": [
@@ -8865,12 +8902,14 @@ def create_party_hud():
                     f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string))",
                  "target_property_name": "#visible"}]}},
             # every part is a sibling of data_control, which is how a view binding finds it, and shows only for a filled slot
-            {"lv": {"type": "label", "size": [13, 5], "offset": [0, 13.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
-                    "font_scale_factor": 0.5, "text_alignment": "center", "shadow": True, "text": "Lv.",
-                    # shown on a party record's filled slots only, so it is not guarded like the rest
-                    "bindings": [from_data(f"((not ((#preserved_text - '{PARTY_MARKER}') = #preserved_text)) and (not (('%.1s' * {field(slot, 'level')}) = ' ')))", "#visible")]}},
-            *[guard(c) for c in (
-                {"slot": {"type": "image", "size": [62, 30], "layer": 1, "bindings": [from_data(f"('{T}/slot_' + {field(slot, 'state')})", "#texture")]}},
+            # the slot itself stays put; it is the active one when selected
+            guard({"slot": {"type": "image", "size": [62, 30], "layer": 1, "bindings": [from_data(f"('{T}/slot_' + {field(slot, 'slot')})", "#texture")]}}),
+            # shown on a party record's filled slots only
+            # "Lv." comes in the record, blank for an empty slot, since a label's visibility does not follow a binding here
+            *[guard({"lv": {"type": "label", "size": [13, 5], "offset": [0, 13.5], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 3,
+                            "font_scale_factor": 0.5, "text_alignment": "center", "shadow": True, "text": "#value",
+                            "bindings": [from_data(field(slot, "lv"), "#value")]}}, slot, selected) for selected in (False, True)],
+            *[guard(c, slot, selected) for selected in (False, True) for c in (
                 {"portrait": {"type": "image", "size": [21, 21], "offset": [22, 2], "layer": 2, "anchor_from": "top_left", "anchor_to": "top_left",
                               "bindings": [from_data(f"('{T}/portrait_' + {field(slot, 'state')})", "#texture")]}},
                 {"model": {"type": "image", "size": [19, 19], "offset": [23, 3], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
@@ -8886,7 +8925,10 @@ def create_party_hud():
                 picture("gender", slot, "gender", [2.5, 3.5], [40, 25], 3),
                 picture("hp", slot, "hp", [2, 18], [46, 5]),
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
-                picture("ball", slot, "ball", [9, 11], [43.5, 22], 3),
+                picture("ball", slot, "ballx", [9, 11], [43.5, 22], 3),
+                # the state icon over the portrait: sent out, ridden or on a shoulder
+                {"active": {"type": "image", "size": [12, 8.5], "offset": [8, 3], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                            "keep_ratio": False, "bindings": [from_data(f"('{T}/si_' + {field(slot, 'active')})", "#texture")]}},
                 picture("held", slot, "held", [8, 8], [12, 14], 4),
                 picture("status", slot, "status", [4, 14], [51, 8], 3),
                 # PartyOverlay's pop-ups beside the slot at half size: the new move or evolution 56.5 in and 4 down (under
@@ -9088,6 +9130,7 @@ def main():
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
     create_book_glyphs()
     create_ride_glyphs()
+    create_party_item()
     add_bait_offhand()   # after every item is written
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states

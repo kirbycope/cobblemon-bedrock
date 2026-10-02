@@ -678,12 +678,18 @@ function endBattle(battle, text) {
     const sides = battle.pvp ? [battle.ally, battle.foe] : [battle.ally];
     for (const f of sides) if (f?.entity && !f.clone) keepStatus(f.entity, f.hp > 0 ? f.status : null);
     for (const [id, k] of Object.entries(battle.kept ?? {})) {
-        if (battle.adjustLevel > 0 || sides.some((f) => id === f?.entity?.id)) continue;
-        try { keepStatus(world.getEntity(id), k.status); } catch (e) { }
+        if (battle.adjustLevel > 0 || sides.some((f) => f?.entity && id === memberKey(f.entity))) continue;
+        try { keepStatus(memberByKey(id, [battle.player, battle.opponent]), k.status); } catch (e) { }
     }
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     if (battle.pvp && battle.opponent.isValid) system.runTimeout(() => offerLevelEvolutions(battle.opponent), 40);
     for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
+    // a trainer's Pokemon that fainted goes back into its ball; the rest stay out
+    for (const [owner, f] of battle.pvp ? [[battle.player, battle.ally], [battle.opponent, battle.foe]] : [[battle.player, battle.ally]]) {
+        if (!f?.entity?.isValid || f.clone || !(f.hp <= 0 || prop(f.entity, FAINTED))) continue;
+        const slot = slotOf(owner, f.entity);
+        if (slot) recallMember(owner, slot);
+    }
     // PokemonBattle.end: a wild Pokemon still out heals fully, whether it won, fled or was left
     const foe = battle.foe?.entity;
     if (!battle.trainer && foe?.isValid && POKEMON[foe.typeId] && !prop(foe, OWNER)) { healFully(foe); setProp(foe, STATUS, undefined); }
@@ -720,9 +726,7 @@ function keepStatus(e, status) {
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
         if (battles.has(player.id)) continue;
-        let mine = [];
-        try { mine = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id); } catch (e) { continue; }
-        for (const e of mine) {
+        for (const e of summaryParty(player)) {
             const raw = prop(e, STATUS);
             if (!raw) continue;
             let st; try { st = JSON.parse(raw); } catch (err) { setProp(e, STATUS, undefined); continue; }
@@ -837,8 +841,8 @@ function syncTms(player) {
     const moves = new Set();
     for (const id of TMS.filter((tm) => tm[2] === "default" || tm[2] === "advancement").map((tm) => tm[0])) moves.add(id);
     let mine = [];
-    try { mine = player.dimension.getEntities({ families: ["owned"] }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id); } catch (e) { }
-    for (const e of mine) {
+    try { mine = player.dimension.getEntities({ families: ["owned"] }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, PID)); } catch (e) { }
+    for (const e of [...summaryParty(player), ...mine]) {
         let known = [];
         try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? []; } catch (err) { }
         for (const m of accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
@@ -900,13 +904,7 @@ function takeFrom(player, ids, count) {
 }
 const recipeIds = (entry) => (entry[0].startsWith("#") ? TM_TAGS[entry[0]] ?? [] : [entry[0]]);
 // the party down the machine's left, as the party HUD finds it, and whether each can learn a move (canLearnTMMove)
-function tmParty(player) {
-    try {
-        return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
-            .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
-    } catch (e) { return []; }
-}
+function tmParty(player) { return summaryParty(player); }
 function tmStatus(e, move) {
     if (!move) return "n";
     let known = [];
@@ -1737,7 +1735,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target, itemStack } = event;
     if (!POKEMON[target?.typeId]) return;
     const id = itemStack?.typeId, sneaking = player.isSneaking, mine = prop(target, OWNER) === player.id;
-    if (mine && sneaking && !id?.startsWith("cobblemon:pokedex_")) {
+    if (mine && sneaking && !id?.startsWith("cobblemon:pokedex_") && id !== PARTY_ITEM) {
         event.cancel = true;
         system.run(() => openWheel(player, target));
         return;
@@ -1847,31 +1845,20 @@ world.afterEvents.playerInteractWithEntity.subscribe((event) => {
     }, 2);
 });
 
-// The player's party: up to six of their Pokemon within 64 blocks that have not fainted, nearest first.
-// A Pokemon claimed before owners were recorded counts for whoever battles with it.
-function findParty(player, near) {
-    const found = [];
-    for (const e of player.dimension.getEntities({ families: ["owned"], location: near, maxDistance: 64 })) {
-        if (!POKEMON[e.typeId] || prop(e, FAINTED) || prop(e, "cobblemon:pasture")) continue;
-        const owner = prop(e, OWNER);
-        if (owner && owner !== player.id) continue;
-        const dx = e.location.x - player.location.x, dz = e.location.z - player.location.z;
-        found.push({ e, mine: owner === player.id, dist: dx * dx + dz * dz });
-    }
-    found.sort((a, b) => (b.mine - a.mine) || (a.dist - b.dist));
-    return found.slice(0, 6).map((f) => f.e);
-}
+// the party members that can fight, in slot order, in their balls or out
+function findParty(player) { return summaryParty(player).filter((e) => !prop(e, FAINTED)); }
 
 function sendOut(battle, entity, spot) {
     const f = battleFighter(battle, entity);
     if (!f) return undefined;
     // a Pokemon coming back in keeps the PP and status it left with
-    const kept = battle.kept?.[entity.id];
+    const kept = battle.kept?.[memberKey(entity)];
     if (kept) {
         f.moves = kept.moves; f.status = kept.status; f.sleep = kept.sleep;
-        // and the health it left with: a Pokemon on the bench stands in the world, where a mob can reach it
         if (typeof kept.hp === "number") f.hp = Math.min(f.stats.hp, Math.max(0, kept.hp));
     }
+    // one in its ball comes out of it here
+    if (entity.isProxy) { entity = materialize(battle.player, entity, spot); if (!entity) return undefined; f.entity = entity; }
     freeze(entity, true);
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
     sendOutEffect(battle.player, entity);
@@ -1884,8 +1871,10 @@ function sendOut(battle, entity, spot) {
 
 function startBattle(player, foeEntity, trainer) {
     if (battles.has(player.id)) return;
-    const party = findParty(player, foeEntity.location);
+    const party = findParty(player);
     if (!party.length) { player.sendMessage("§cYou have no Pokemon that can fight. Claim one with a Poke Ball, or heal yours."); return; }
+    // the selected Pokemon leads, as the send-out key throws it (BattleBuilder.pve's leading Pokemon), else the first able
+    const chosen = selectedMember(player), lead = chosen && !prop(chosen, FAINTED) ? chosen : party[0];
     const foe = fighter(foeEntity);
     if (!foe) return;
     const battle = { player, foe, trainer, turn: 0, spot: { x: foeEntity.location.x - 2, y: foeEntity.location.y, z: foeEntity.location.z } };
@@ -1894,7 +1883,7 @@ function startBattle(player, foeEntity, trainer) {
     freeze(foeEntity, true);
     say(battle, `§6A ${trainer ? "Trainer's " : "wild "}${foe.info.name} appeared! §7(Lv ${foe.level})`);
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
-    if (!sendOut(battle, party[0], { x: battle.spot.x, y: party[0].location.y, z: battle.spot.z })) { endBattle(battle); return; }
+    if (!sendOut(battle, lead, { x: battle.spot.x, y: lead.isProxy ? foeEntity.location.y : lead.location.y, z: battle.spot.z })) { endBattle(battle); return; }
     enter(battle, foe, battle.ally);
     system.runTimeout(() => turn(battle), 20);
 }
@@ -1903,7 +1892,7 @@ function startBattle(player, foeEntity, trainer) {
 // battle and the fainted show greyed and cannot be picked; the one leaving steps aside and stops fighting
 function switchTile(battle, e) {
     const f = e.id === battle.ally.entity.id ? battle.ally : battleFighter(battle, e);
-    const fainted = (!f.clone && !!prop(e, FAINTED)) || f.hp <= 0 || !!battle.down?.has(e.id);
+    const fainted = (!f.clone && !!prop(e, FAINTED)) || f.hp <= 0 || !!battle.down?.has(memberKey(e));
     const step = fainted ? 0 : Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50));
     const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
     const ball = Math.max(0, BALL_INDEX.indexOf(prop(e, "cobblemon:caught_ball") ?? "cobblemon:poke_ball"));
@@ -1913,14 +1902,10 @@ function switchTile(battle, e) {
 }
 function chooseSwitch(battle, forced) {
     const player = battle.player, ally = battle.ally.entity;
-    const ready = battle.pvp ? pvpReady(battle) : findParty(player, battle.foe.entity.location).filter((e) => e.id !== ally.id);
+    const ready = battle.pvp ? pvpReady(battle) : findParty(player).filter((e) => e.id !== ally.id);
     if (!ready.length) return Promise.resolve(undefined);
-    let fainted = [];
-    try {
-        fainted = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && prop(e, FAINTED) && !prop(e, "cobblemon:pasture"));
-    } catch (e) { }
-    if (battle.pvp) fainted = summaryParty(player).filter((e) => e.id !== ally.id && !ready.includes(e));
+    const readyKeys = new Set(ready.map(memberKey));
+    const fainted = summaryParty(player).filter((e) => e.id !== ally.id && !readyKeys.has(memberKey(e)));
     const tiles = [...(ally.isValid && !forced ? [ally] : []), ...ready, ...fainted].slice(0, 6);
     const form = new ActionFormData().title("cbm:battle_switch").body(battleBody(battle));
     for (let i = 0; i < 6; i++) {
@@ -1944,16 +1929,15 @@ function switchTo(battle, entity) {
     const leaving = battle.ally;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
-    battle.kept[old.id] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
+    battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
     const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
     if (old.isValid) {
         freeze(old, false);
-        // a fainted one is not called back, only replaced
         if (leaving.hp > 0) sayEach(battle, `§7${battle.ally.info.name}, come back!`, `§7${battle.player.name} withdrew ${battle.ally.info.name}!`);
-        recallEffect(battle.player, old, () => {
-            try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { }
-            setSize(old, 1);
-        }, true);
+        // the one leaving goes back into its ball, fainted or not (SwitchActionResponse recalls it)
+        const slot = slotOf(battle.player, old);
+        if (slot) recallMember(battle.player, slot);
+        else recallEffect(battle.player, old, () => { try { old.teleport({ x: spot.x - 2, y: spot.y, z: spot.z + 2 }); } catch (e) { } setSize(old, 1); }, true);
     }
     sendOut(battle, entity, spot);
 }
@@ -2005,7 +1989,7 @@ function turn(battle) {
     battle.turn++;
     const usable = ally.moves.filter((m) => m.left > 0);
     const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
-    const canSwitch = findParty(battle.player, foe.entity.location).some((e) => e.id !== ally.entity.id);
+    const canSwitch = findParty(battle.player).some((e) => e.id !== ally.entity.id);
     if (canSwitch) options.push({ kind: "switch" });
     options.push({ kind: "run" });
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
@@ -2130,7 +2114,7 @@ function pickAction(battle, options) {
     });
 }
 
-// The party HUD (ui/hud_screen.json): the player's own Pokemon nearby, fainted ones included, sent as one fixed-width
+// The party HUD (ui/hud_screen.json): the player's party, fainted ones included, sent as one fixed-width
 // record per slot in a title starting "cbm:party" whenever it changes, and every five seconds for a HUD that rejoined
 const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS);
 const partySent = new Map();
@@ -2151,7 +2135,14 @@ function heldCode(e) {
     const n = HELD_INDEX[prop(e, HELD)] ?? 0;
     return n ? `h${String.fromCharCode(97 + Math.floor(n / 26))}${String.fromCharCode(97 + (n % 26))}` : "hzz";
 }
-function partyRecord(e) {
+// PokemonState.getIcon: "r" sent out, "m" ridden, "l" and "g" on the left and right shoulder, "n" in its ball
+function activeCode(e, player) {
+    if (e.isProxy) return "n";
+    try { if (e.getComponent("minecraft:rideable")?.getRiders().some((r) => r.typeId === "minecraft:player")) return "m"; } catch (err) { }
+    if (shoulderRiders(player).some((r) => r.id === e.id)) { try { return e.getProperty(SHOULDER_PROP) === 2 ? "g" : "l"; } catch (err) { return "l"; } }
+    return "r";
+}
+function partyRecord(e, selected, player) {
     const info = POKEMON[e.typeId];
     const level = prop(e, LEVEL) ?? info.level, group = info.expGroup;
     const exp = Math.max(prop(e, EXP) ?? 0, expFor(group, level));
@@ -2166,19 +2157,15 @@ function partyRecord(e) {
     const gender = { male: "m", female: "f" }[genderOf(e)] ?? "o";
     return pad(name, 12) + padBytes(`§r${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
-        + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non");
+        + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non") + (selected ? "a" : "i") + (fainted ? "x" : "n") + (selected ? "a" : "i")
+        + "b" + String(ball).padStart(2, "0") + (e.isProxy ? "c" : "o") + activeCode(e, player) + "Lv.";
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
-        let mine = [];
-        try {
-            // Cobblemon hides the party overlay while its battle overlay is up
-            if (!battles.has(player.id)) mine = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-                .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
-                .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
-        } catch (e) { continue; }
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non";
-        const text = PARTY_MARKER + mine.map(partyRecord).join("") + empty.repeat(6 - mine.length);
+        // Cobblemon hides the party overlay while its battle overlay is up
+        const mine = battles.has(player.id) ? [] : summaryParty(player), sel = selIndex(player);
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   ";
+        const text = PARTY_MARKER + mine.map((e, n) => partyRecord(e, n === sel, player)).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
         partySent.set(player.id, { text, tick: system.currentTick });
@@ -2335,7 +2322,7 @@ function faint(battle, fainted) {
         if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         gainExperience(battle, battle.ally, battle.foe);
         // an Exp. Share holder elsewhere in the party gets Cobblemon's half share
-        for (const e of findParty(battle.player, battle.ally.entity.location)) {
+        for (const e of findParty(battle.player)) {
             if (e.id === battle.ally.entity.id || prop(e, "cobblemon:held") !== "cobblemon:exp_share") continue;
             const sharer = fighter(e);
             if (sharer) gainExperience(battle, sharer, null, Math.max(1, Math.floor(((battle.foe.info.baseExp || 50) * battle.foe.level * (battle.trainer ? 1.5 : 1)) / 7 * 0.5)));
@@ -2384,7 +2371,7 @@ const realBattle = (view) => (view.side === 1 ? view.mirror : view);
 function battleFighter(battle, entity) {
     const f = fighter(entity);
     if (!f || !(battle?.adjustLevel > 0)) return f;
-    const kept = battle.kept?.[entity.id];
+    const kept = battle.kept?.[memberKey(entity)];
     f.level = battle.adjustLevel; f.stats = statsOf(entity, f.info, f.level); f.clone = true;
     f.hp = kept?.hp ?? f.stats.hp; f.status = kept ? kept.status : null;
     return f;
@@ -2392,7 +2379,7 @@ function battleFighter(battle, entity) {
 // the Pokemon a side can still send in
 function pvpReady(view) {
     const party = view.adjustLevel > 0 ? summaryParty(view.player) : summaryParty(view.player).filter((e) => !prop(e, FAINTED));
-    return party.filter((e) => e.id !== view.ally?.entity?.id && !view.down.has(e.id));
+    return party.filter((e) => memberKey(e) !== memberKey(view.ally?.entity) && !view.down.has(memberKey(e)));
 }
 function pvpLead(player, level) {
     return (level > 0 ? summaryParty(player) : summaryParty(player).filter((e) => !prop(e, FAINTED)))[0];
@@ -2414,6 +2401,11 @@ function startPvp(p1, p2, level) {
     battles.set(p1.id, battle); battles.set(p2.id, m);
     battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
     battle.ally = battleFighter(battle, a); battle.foe = battleFighter(battle, b);
+    // a lead in its ball comes out of it where it will stand
+    for (const [view, f] of [[battle, battle.ally], [m, battle.foe]]) {
+        if (f.entity.isProxy) f.entity = materialize(view.player, f.entity, view.spot);
+        if (!f.entity) { endBattle(battle, "§cThe battle could not start here."); return; }
+    }
     for (const [view, f, other] of [[battle, battle.ally, battle.foe], [m, battle.foe, battle.ally]]) {
         freeze(f.entity, true);
         try { f.entity.teleport({ ...view.spot, y: f.entity.location.y }, { facingLocation: other.entity.location }); } catch (e) { }
@@ -2500,7 +2492,7 @@ function pvpAfterTurn(battle) {
     for (const v of down) {
         const f = v.ally;
         say(battle, `§c${f.info.name} fainted!`);
-        battle.down.add(f.entity.id);
+        battle.down.add(memberKey(f.entity));
         if (!f.clone) setProp(f.entity, FAINTED, true);
         freeze(f.entity, false);
         try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
@@ -2621,8 +2613,14 @@ world.afterEvents.playerLeave.subscribe(({ playerId }) => {
 // Heal a player's Pokemon: full health, and fit to battle again
 function healAround(dimension, location, player) {
     let healed = 0;
+    for (const e of summaryParty(player)) {
+        try { e.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (err) { }
+        setProp(e, FAINTED, undefined);
+        if (!e.isProxy) { try { e.dimension.spawnParticle("minecraft:heart_particle", { x: e.location.x, y: e.location.y + 1, z: e.location.z }); } catch (err) { } }
+        healed++;
+    }
     for (const e of dimension.getEntities({ families: ["owned"], location, maxDistance: 12 })) {
-        if (!POKEMON[e.typeId]) continue;
+        if (!POKEMON[e.typeId] || prop(e, PID)) continue;
         const owner = prop(e, OWNER);
         if (owner && owner !== player.id) continue;
         try { e.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (err) { }
@@ -2809,6 +2807,12 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             if (changed) saveBox(source, n, contents);
         }
         console.warn(`pc_take_test ${species} ${ball}: ${taken} taken, marks ${JSON.stringify(counts)}`);
+    } else if (event.id === "cobblemon:party") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:party" logs the party, slot by slot
+        if (source.typeId !== "minecraft:player") return;
+        const lines = partyOf(source.id).map((s, n) => `${n === selIndex(source) ? ">" : " "}${n} ${s.rec.t} Lv${s.rec.lv} hp${Math.round((s.rec.hp ?? 1) * 100)}%${s.rec.f ? " fainted" : ""} ${s.out ? `out ${s.out}${memberEntity(s) ? "" : " (missing)"}` : "ball"}`);
+        console.log(`[cobblemon] party of ${source.name}:\n${lines.join("\n") || "(empty)"}`);
+        source.sendMessage(lines.join("\n") || "(empty)");
     } else if (event.id === "cobblemon:set_status") {
         // for testing: "/execute as <pokemon> run scriptevent cobblemon:set_status <psn|tox|par|brn|frz|slp> [seconds]"
         const [code, seconds] = event.message.trim().split(/\s+/);
@@ -2992,6 +2996,9 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
                 if (next) entity.setDynamicProperty("cobblemon:ability", next);
             }
             entity.setDynamicProperty(OWNER, owner);
+            // a party member's slot follows it to its new entity at once, before the party's sync takes it for gone
+            const slot = kept?.[PID] && partyOf(owner).find((s) => s.pid === kept[PID]);
+            if (slot) { slot.out = entity.id; slot.rec = partySnapshot(entity); saveParty(owner); }
             if (player) register(player, entity.typeId, 2, variantOf(entity));
             player?.sendMessage(`§a${kept?.[NICK] || POKEMON[from]?.name} evolved into ${POKEMON[entity.typeId].name}!`);
         } catch (e) { }
@@ -3447,7 +3454,7 @@ function openPc(block, player, state) {
         }
         pcInfo(v, rec, null);
     }
-    else if (sel?.kind === "party" && party[sel.slot]?.isValid) pcInfo(v, null, party[sel.slot]);
+    else if (sel?.kind === "party" && party[sel.slot]) pcInfo(v, null, party[sel.slot]);
     else pcInfo(v, null, null);
     itemSlot(v, v.held, v.cosmetic, player, `${PC_UI}/summary/blank`);
     for (let n = 0; n < 30; n++) {
@@ -3537,14 +3544,16 @@ function openPc(block, player, state) {
         if (!sel) { state.sel = occupied ? target : null; again(); return; }
         if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; again(); return; }
         state.sel = null;
-        pcMove(player, sel, target, party);
-        again(12);   // the party changes as Pokemon beam in and out
+        pcMove(player, sel, target);
+        again(2);
     }).catch(done);
 }
 
-// moves the selected Pokemon to a slot: within the PC it swaps, between the PC and the party it deposits and withdraws
-function pcMove(player, from, to, party) {
-    const here = (pos) => (pos.kind === "box" ? box(player, pos.box)[pos.slot] : party[pos.slot]);
+// moves the selected Pokemon to a slot: within the PC or the party it swaps, between the two it deposits and withdraws,
+// in its ball (one out comes back to it first)
+function pcMove(player, from, to) {
+    const slots = partyOf(player.id);
+    const here = (pos) => (pos.kind === "box" ? box(player, pos.box)[pos.slot] : slots[pos.slot]);
     const a = here(from), b = here(to);
     if ((from.kind === "box" && a?.p) || (to.kind === "box" && b?.p)) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); return; }
     if (from.kind === "box" && to.kind === "box") {
@@ -3553,31 +3562,34 @@ function pcMove(player, from, to, party) {
         saveBox(player, from.box, src); if (dst !== src) saveBox(player, to.box, dst);
         return;
     }
-    if (from.kind === "party" && to.kind === "party") return;
-    const [boxPos, partyPos] = from.kind === "box" ? [from, to] : [to, from];
-    const contents = box(player, boxPos.box), rec = contents[boxPos.slot], entity = party[partyPos.slot];
-    if (!entity && party.length >= PARTY_SIZE) { player.sendMessage(`§cYou already have ${PARTY_SIZE} Pokemon with you.`); return; }
-    contents[boxPos.slot] = entity?.isValid ? snapshot(entity) : null;
-    saveBox(player, boxPos.box, contents);
-    if (entity?.isValid) recallEffect(player, entity, () => { try { entity.remove(); } catch (e) { } });
-    if (rec) {
-        const d = player.getViewDirection(), at = { x: player.location.x + d.x * 2, y: player.location.y, z: player.location.z + d.z * 2 };
-        try { spawnStored(player, rec, at); } catch (e) { contents[boxPos.slot] = rec; saveBox(player, boxPos.box, contents); }
+    if (from.kind === "party" && to.kind === "party") {
+        const i = from.slot, j = Math.min(to.slot, slots.length - 1);
+        [slots[i], slots[j]] = [slots[j], slots[i]]; saveParty(player.id);
+        return;
     }
+    const [boxPos, partyPos] = from.kind === "box" ? [from, to] : [to, from];
+    const contents = box(player, boxPos.box), rec = contents[boxPos.slot], slot = slots[partyPos.slot];
+    if (slot?.out) recallMember(player, slot);
+    contents[boxPos.slot] = slot ? slot.rec : null;
+    saveBox(player, boxPos.box, contents);
+    if (slot && rec) { slot.rec = rec; slot.pid = newPid(); slot.out = null; saveParty(player.id); }
+    else if (slot) removeMember(player, slot);
+    else if (rec) slots.push({ pid: newPid(), rec, out: null }), saveParty(player.id);
 }
 
 function pcRelease(player, state, party, then) {
     const sel = state.sel;
     if (!sel) { then(); return; }
-    const rec = sel.kind === "box" ? box(player, sel.box)[sel.slot] : null, entity = sel.kind === "party" ? party[sel.slot] : null;
-    if (!rec && !entity?.isValid) { state.sel = null; then(); return; }
+    const rec = sel.kind === "box" ? box(player, sel.box)[sel.slot] : null, slot = sel.kind === "party" ? partyOf(player.id)[sel.slot] : null;
+    if (!rec && !slot) { state.sel = null; then(); return; }
     if (rec?.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); then(); return; }
-    const label = rec ? describe(rec) : describe(snapshot(entity));
+    if (slot && partyOf(player.id).length === 1) { player.sendMessage("§cYou cannot release your last Pokemon."); then(); return; }
+    const label = describe(rec ?? slot.rec);
     new MessageFormData().title("Release").body(`Release ${label}? It will be gone for good.`).button1("Keep").button2("Release")
         .show(player).then((r) => {
             if (r.selection === 1) {
                 if (rec) { const contents = box(player, sel.box); contents[sel.slot] = null; saveBox(player, sel.box, contents); }
-                else { try { entity.remove(); } catch (e) { } }
+                else removeMember(player, slot);
                 player.sendMessage(`§7${label} was released. Bye-bye!`);
                 state.sel = null;
             }
@@ -3624,7 +3636,7 @@ function pickStored(player, action, then, done) {
 }
 
 function withdraw(player, n, slot, done) {
-    if (mine(player, 64).length >= PARTY_SIZE) { player.sendMessage(`§cYou already have ${PARTY_SIZE} Pokemon with you.`); done(); return; }
+    if (partyOf(player.id).length >= PARTY_SIZE) { player.sendMessage(`§cYou already have ${PARTY_SIZE} Pokemon with you.`); done(); return; }
     const contents = box(player, n), rec = contents[slot];
     if (!rec) { done(); return; }
     if (rec.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); done(); return; }
@@ -3719,7 +3731,7 @@ const lastStrike = new Map(), ownerAttacker = new Map();   // player id -> { id,
 const lastRecord = new Map();   // entity id -> its record as of its last hurt
 world.afterEvents.entityHurt.subscribe(({ hurtEntity }) => {
     if (!POKEMON[hurtEntity?.typeId] || !prop(hurtEntity, OWNER)) return;
-    try { lastRecord.set(hurtEntity.id, { rec: snapshot(hurtEntity), owner: prop(hurtEntity, OWNER), at: { ...hurtEntity.location }, dim: hurtEntity.dimension }); } catch (e) { }
+    try { lastRecord.set(hurtEntity.id, { rec: prop(hurtEntity, PID) ? partySnapshot(hurtEntity) : snapshot(hurtEntity), pid: prop(hurtEntity, PID), owner: prop(hurtEntity, OWNER), at: { ...hurtEntity.location }, dim: hurtEntity.dimension }); } catch (e) { }
 });
 world.afterEvents.entityDie.subscribe(({ deadEntity, damageSource }) => {
     const kept = lastRecord.get(deadEntity?.id);
@@ -3728,6 +3740,13 @@ world.afterEvents.entityDie.subscribe(({ deadEntity, damageSource }) => {
     const rec = { ...kept.rec, f: true, hp: 0, k: { ...(kept.rec.k ?? {}), [FAINTED]: true } };
     const owner = world.getPlayers().find((p) => p.id === kept.owner);
     const name = rec.n || POKEMON[rec.t]?.name || "Your Pokemon";
+    const slot = kept.pid && partyOf(kept.owner).find((s) => s.pid === kept.pid);
+    if (slot) {
+        delete rec.k[FAINTED];
+        slot.rec = rec; slot.out = null; saveParty(kept.owner);
+        owner?.sendMessage(`§c${name} fainted!`);
+        return;
+    }
     system.run(() => {
         try {
             if (owner) { spawnStored(owner, rec, owner.location); owner.sendMessage(`§c${name} fainted!`); }
@@ -4372,6 +4391,7 @@ function dexMatches(n, known, search, by) {
 // also catches up a register made before a way of getting a Pokemon registered it
 function registerKept(player) {
     for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
+    for (const slot of partyOf(player.id)) { if (dexStatus(player, slot.rec.t) < 2) register(player, slot.rec.t, 2); noteVariant(player, slot.rec.t, slot.rec.v ?? 0); }
     try {
         for (const e of player.dimension.getEntities({ families: ["owned"] }))
             if (POKEMON[e.typeId] && prop(e, OWNER) === player.id) { if (dexStatus(player, e.typeId) < 2) register(player, e.typeId, 2); noteVariant(player, e.typeId, variantOf(e)); }
@@ -4386,6 +4406,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     if (state.filter === 4) {
         const note = (t, lv) => ctx.levels.set(t, Math.max(ctx.levels.get(t) ?? 0, lv ?? 0));
         for (let b = 0; b < PC_BOXES; b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
+        for (const slot of partyOf(player.id)) note(slot.rec.t, slot.rec.lv);
         try { for (const e of player.dimension.getEntities({ families: ["owned"] })) if (prop(e, OWNER) === player.id) note(e.typeId, prop(e, LEVEL)); } catch (e) { }
     }
     const entries = region.entries.filter((n) => DEX_FILTERS[state.filter][1](s[n], n, ctx) && dexMatches(n, s[n], state.search, state.by));
@@ -5474,13 +5495,325 @@ function padBytes(value, width) {
 }
 const num = (n) => `\u00a7r${n}`;   // a colour code first, so the layout never reads the field as a number
 const typeCode = (type) => { const i = TYPE_ORDER.indexOf(type); return i < 0 ? "t--" : `t${String(i).padStart(2, "0")}`; };
-function summaryParty(player) {
-    try {
-        return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 64 })
-            .filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, "cobblemon:pasture") && !recalling.has(e.id))
-            .sort((a, b) => a.id.localeCompare(b.id)).slice(0, 6);
-    } catch (e) { return []; }
+// The party (PlayerPartyStore): six slots per player, kept on the world as one dynamic property each, in order with no
+// gaps. A slot holds its Pokemon's record (the PC's, with every property the Pokemon carries) while it is in its ball,
+// and the entity's id while it is out in the world, where the entity is the Pokemon and its record follows it. Every
+// part of the port that works on the party takes a member as an entity: one in its ball is a stand-in (ballProxy) whose
+// properties, health and form read and write its record, so the Summary, the healing, the TMs and the battles work on
+// it the same. The party item is Cobblemon's send-out key (PartySendBinding) and its slot keys (the up and down party
+// keys): using it sends the selected Pokemon out where the player looks, calls it back when it is out, or, looking at a
+// wild Pokemon within 12 blocks, battles it with the selected one; sneaking and using it selects the next slot. A
+// Pokemon out further than 64 blocks from its trainer, or in another dimension, comes back to its ball, as one does
+// when its trainer leaves; one that dies out in the world goes back fainted (PokemonEntity.hurt keeps it in the party).
+const PARTY_ITEM = "cobblemon:party", PID = "cobblemon:pid", PARTY_SEL = "cobblemon:party_sel", PARTY_GIVEN = "cobblemon:party_given", PARTY_RANGE = 64;
+const partyCache = new Map(), partyDirty = new Set();   // player id -> slots { pid, rec, out }
+function partyOf(playerId) {
+    let slots = partyCache.get(playerId);
+    if (!slots) {
+        try { slots = JSON.parse(world.getDynamicProperty(`cobblemon:party_${playerId}`) ?? "[]"); } catch (e) { slots = []; }
+        if (!Array.isArray(slots)) slots = [];
+        partyCache.set(playerId, slots);
+    }
+    return slots;
 }
+function saveParty(playerId) { partyDirty.add(playerId); }
+system.runInterval(() => {
+    for (const id of partyDirty) { try { world.setDynamicProperty(`cobblemon:party_${id}`, JSON.stringify(partyCache.get(id) ?? [])); } catch (e) { console.warn(`[cobblemon] party save: ${e}`); } }
+    partyDirty.clear();
+}, 1);
+const newPid = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 36 ** 6).toString(36).padStart(6, "0")}`;
+// what a battle or a trade keys a party member by: its slot's id, which an entity sent out carries, else the entity's own
+function memberKey(e) { return e ? prop(e, PID) ?? e.id : undefined; }
+function memberEntity(slot) {
+    if (!slot?.out) return undefined;
+    try { const e = world.getEntity(slot.out); if (e?.isValid && prop(e, PID) === slot.pid) return e; } catch (err) { }
+    return undefined;
+}
+function slotOf(player, e) { const key = memberKey(e); return player ? partyOf(player.id).find((s) => s.pid === key) : undefined; }
+function selIndex(player) {
+    const n = partyOf(player.id).length;
+    return n ? Math.min(Math.max(0, Number(player.getDynamicProperty(PARTY_SEL) ?? 0) || 0), n - 1) : 0;
+}
+// a record as the party keeps it: the PC's, and every other property the Pokemon carries
+function partySnapshot(e) {
+    const rec = snapshot(e), skip = new Set([OWNER, PID, LEVEL, EXP, MOVESET, NICK, FAINTED, PASTURE_AT, PASTURE_SLOT]);
+    try { for (const id of e.getDynamicPropertyIds()) if (!skip.has(id)) { const v = e.getDynamicProperty(id); if (v !== undefined) rec.k[id] = v; } } catch (err) { }
+    return rec;
+}
+// the variant an evolution keeps (Pokemon.evolve): the new species' look with the same gender, shininess and regional
+// form (the form only where the new species has it), then the cosmetic item on it if it can still wear it; -1 for none
+function evolvedVariant(from, variant, to, cosmetic) {
+    const [form, female, shiny] = VARIANT_LOOKS[from]?.[variant] ?? [null, 0, 0], looks = VARIANT_LOOKS[to];
+    if (!looks) return -1;
+    const find = (f) => looks.findIndex(([lf, lg, ls]) => lf === f && lg === female && ls === shiny);
+    let n = form && !(COSMETICS[from] && Object.values(COSMETICS[from].items).includes(form)) ? find(form) : -1;
+    if (n < 0) n = find(null);
+    const wear = cosmetic && COSMETICS[to]?.items[cosmetic];
+    const dressed = wear ? looks.findIndex(([lf, lg, ls]) => lf === wear && lg === female && ls === shiny) : -1;
+    return dressed >= 0 ? dressed : n;
+}
+// the ability an evolution gives: the one in the same slot, hidden or not
+function evolvedAbility(from, to, ability) {
+    const before = POKEMON[from], after = POKEMON[to];
+    if (!before || !after || !ability) return undefined;
+    const hidden = (before.hidden ?? []).indexOf(ability), slot = (before.abilities ?? []).indexOf(ability);
+    return hidden >= 0 ? (after.hidden ?? [])[hidden] ?? (after.hidden ?? [])[0] : (after.abilities ?? [])[Math.max(0, slot)] ?? (after.abilities ?? [])[0];
+}
+// a party member in its ball, as an entity
+const REC_FIELDS = { [LEVEL]: "lv", [EXP]: "xp", [MOVESET]: "mv", [NICK]: "n" };
+function ballProxy(player, slot) {
+    const playerId = player.id, none = () => undefined;
+    const health = {
+        get currentValue() { return Math.max(0, (slot.rec.hp ?? 1) * 100); }, effectiveMax: 100, defaultValue: 100,
+        setCurrentValue(v) { slot.rec.hp = Math.min(1, Math.max(0, v / 100)); saveParty(playerId); return true; },
+        resetToMaxValue() { slot.rec.hp = 1; saveParty(playerId); },
+    };
+    return {
+        isProxy: true, slot, nameTag: "",
+        get id() { return slot.pid; }, get typeId() { return slot.rec.t; },
+        get isValid() { return partyOf(playerId).includes(slot); },
+        get location() { try { return { ...player.location }; } catch (e) { return { x: 0, y: 0, z: 0 }; } },
+        get dimension() { return player.dimension; },
+        getHeadLocation() { try { return player.getHeadLocation(); } catch (e) { return this.location; } },
+        getDynamicProperty(key) {
+            if (key === PID) return slot.pid;
+            if (key === OWNER) return playerId;
+            if (key === FAINTED) return slot.rec.f ? true : undefined;
+            if (REC_FIELDS[key]) { const v = slot.rec[REC_FIELDS[key]]; return v === null || v === "" ? undefined : v; }
+            return slot.rec.k?.[key];
+        },
+        setDynamicProperty(key, value) {
+            if (key === PID || key === OWNER) return;
+            if (key === FAINTED) slot.rec.f = !!value;
+            else if (REC_FIELDS[key]) slot.rec[REC_FIELDS[key]] = value ?? null;
+            else { slot.rec.k ??= {}; if (value === undefined) delete slot.rec.k[key]; else slot.rec.k[key] = value; }
+            saveParty(playerId);
+        },
+        getDynamicPropertyIds() {
+            const ids = [LEVEL, EXP, ...Object.keys(slot.rec.k ?? {})];
+            if (slot.rec.mv) ids.push(MOVESET);
+            if (slot.rec.n) ids.push(NICK);
+            if (slot.rec.f) ids.push(FAINTED);
+            return ids;
+        },
+        getComponent(type) {
+            if (/variant$/.test(type)) return { value: slot.rec.v ?? 0 };
+            if (/health$/.test(type)) return health;
+            return undefined;
+        },
+        hasComponent(type) { return /variant$|health$|is_tamed$/.test(type); },
+        // an evolution while it is in its ball becomes its evolution there, as the transformation would make it
+        triggerEvent(event) {
+            const v = /^cobblemon:set_variant_(\d+)$/.exec(event);
+            if (v) { slot.rec.v = Number(v[1]); saveParty(playerId); return; }
+            const m = /^cobblemon:evolve(?:_to)?_(\d{4}_\w+)$/.exec(event), to = m && `cobblemon:p${m[1]}`;
+            if (!to || !POKEMON[to]) return;
+            const from = slot.rec.t, n = evolvedVariant(from, slot.rec.v ?? 0, to, slot.rec.k?.[COSMETIC]);
+            const ability = evolvedAbility(from, to, slot.rec.k?.["cobblemon:ability"]);
+            slot.rec.t = to; slot.rec.v = Math.max(0, n);
+            if (ability) (slot.rec.k ??= {})["cobblemon:ability"] = ability;
+            saveParty(playerId);
+            try { register(player, to, 2, slot.rec.v); player.sendMessage(`§a${slot.rec.n || POKEMON[from]?.name} evolved into ${POKEMON[to].name}!`); } catch (e) { }
+        },
+        getProperty: none, setProperty: none, teleport: none, addEffect: none, removeEffect: none, playAnimation: none, applyImpulse: none,
+        addTag: none, removeTag: none, hasTag: () => false, getTags: () => [], remove: none, runCommand: none,
+    };
+}
+function partyMember(player, slot) { return memberEntity(slot) ?? ballProxy(player, slot); }
+function summaryParty(player) {
+    try { return partyOf(player.id).map((slot) => partyMember(player, slot)); } catch (e) { return []; }
+}
+function selectedMember(player) { const slot = partyOf(player.id)[selIndex(player)]; return slot ? partyMember(player, slot) : undefined; }
+// the member a key names, in any of these players' parties
+function memberByKey(key, players) {
+    for (const player of players) {
+        if (!player?.isValid) continue;
+        const slot = partyOf(player.id).find((s) => s.pid === key);
+        if (slot) return partyMember(player, slot);
+    }
+    try { return world.getEntity(key); } catch (e) { return undefined; }
+}
+// a record into the party in its ball, or the PC with six there already: { slot } or { box }, null with both full
+function addRecord(player, rec) {
+    const slots = partyOf(player.id);
+    if (slots.length < PARTY_SIZE) { const slot = { pid: newPid(), rec, out: null }; slots.push(slot); saveParty(player.id); return { slot }; }
+    for (let n = 0; n < PC_BOXES; n++) {
+        const contents = box(player, n), i = contents.indexOf(null);
+        if (i < 0) continue;
+        contents[i] = rec; saveBox(player, n, contents);
+        return { box: n };
+    }
+    return null;
+}
+function removeEntityQuietly(e) { notEvolving.add(e.id); try { e.remove(); } catch (err) { notEvolving.delete(e.id); } }
+function removeMember(player, slot) {
+    const slots = partyOf(player.id), i = slots.indexOf(slot);
+    if (i < 0) return;
+    const e = memberEntity(slot);
+    slots.splice(i, 1); saveParty(player.id);
+    if (e) removeEntityQuietly(e);
+    if (i < selIndex(player) || selIndex(player) >= slots.length) player.setDynamicProperty(PARTY_SEL, Math.max(0, Math.min(slots.length - 1, selIndex(player) - 1)));
+}
+// sends a member out at a place, its properties on it at once (a battle reads them the same tick)
+function sendOutMember(player, slot, at, effect = true) {
+    const rec = slot.rec;
+    let entity;
+    try { entity = player.dimension.spawnEntity(rec.t, at); } catch (e) { return undefined; }
+    const props = { ...(rec.k ?? {}), [OWNER]: player.id, [LEVEL]: rec.lv, [EXP]: rec.xp, [PID]: slot.pid };
+    if (rec.mv) props[MOVESET] = rec.mv;
+    if (rec.n) props[NICK] = rec.n;
+    if (rec.f) props[FAINTED] = true;
+    delete props["cobblemon:staying"];   // a Pokemon sent out follows its trainer
+    for (const [key, value] of Object.entries(props)) setProp(entity, key, value);
+    slot.out = entity.id; saveParty(player.id);
+    const health = () => { try { const h = entity.getComponent(EntityComponentTypes.Health); if (h) h.setCurrentValue(Math.max(1, Math.round(h.effectiveMax * (rec.hp ?? 1)))); } catch (e) { } };
+    health();
+    system.run(() => {
+        if (!entity.isValid) return;
+        try { entity.triggerEvent(`cobblemon:set_variant_${rec.v ?? 0}`); } catch (e) { }
+        try { entity.triggerEvent("cobblemon:caught"); entity.getComponent(EntityComponentTypes.Tameable)?.tame(player); } catch (e) { }
+        health();
+        if (effect) sendOutEffect(player, entity);
+    });
+    return entity;
+}
+// a member in its ball as an entity in the world, where a battle needs one
+function materialize(player, e, at) { return e?.isProxy ? sendOutMember(player, e.slot, at, false) : e; }
+// calls a member back into its ball: its record from the entity as it is, then the recall beam
+function recallMember(player, slot, effect = true) {
+    const e = memberEntity(slot);
+    slot.out = null;
+    if (e) slot.rec = partySnapshot(e);
+    saveParty(player.id);
+    if (!e) return;
+    try { const ride = e.getComponent("minecraft:rideable"); for (const r of ride?.getRiders() ?? []) ride.ejectRider(r); } catch (err) { }
+    try { if (shoulderRiders(player).some((r) => r.id === e.id)) { player.getComponent("minecraft:rideable").ejectRider(e); e.setProperty(SHOULDER_PROP, 0); } } catch (err) { }
+    if (effect && player?.isValid) recallEffect(player, e, () => removeEntityQuietly(e)); else removeEntityQuietly(e);
+}
+// where a Pokemon sent out lands: the block looked at within 8 blocks, else 2 blocks ahead
+function sendOutSpot(player) {
+    try {
+        const hit = player.getBlockFromViewDirection({ maxDistance: 8 });
+        if (hit?.block) {
+            const b = hit.block.location, face = { Up: [0, 1, 0], Down: [0, -1, 0], North: [0, 0, -1], South: [0, 0, 1], East: [1, 0, 0], West: [-1, 0, 0] }[hit.face] ?? [0, 1, 0];
+            return { x: b.x + face[0] + 0.5, y: b.y + face[1], z: b.z + face[2] + 0.5 };
+        }
+    } catch (e) { }
+    const d = player.getViewDirection(), len = Math.hypot(d.x, d.z) || 1;
+    return { x: player.location.x + (d.x / len) * 2, y: player.location.y, z: player.location.z + (d.z / len) * 2 };
+}
+function memberName(e) { return nicknameOf(e) || POKEMON[e.typeId]?.name || "Your Pokemon"; }
+// the party item: send out or recall, battle what is looked at, or the next slot when sneaking
+const partyUsed = new Map();   // player id -> the tick it was last used: the use and the entity interaction both fire, and a held button repeats
+function usePartyItem(player, target) {
+    if (system.currentTick - (partyUsed.get(player.id) ?? -100) < 8) return;
+    partyUsed.set(player.id, system.currentTick);
+    const slots = partyOf(player.id);
+    if (!slots.length) { player.onScreenDisplay.setActionBar("§7You have no Pokemon with you."); return; }
+    if (player.isSneaking) {
+        const next = (selIndex(player) + 1) % slots.length;
+        player.setDynamicProperty(PARTY_SEL, next);
+        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        player.onScreenDisplay.setActionBar(`§f${memberName(partyMember(player, slots[next]))}`);
+        return;
+    }
+    if (battles.has(player.id)) return;
+    if (!target) { try { target = player.getEntitiesFromViewDirection({ maxDistance: 12 })[0]?.entity; } catch (e) { } }
+    if (target && POKEMON[target.typeId] && !prop(target, OWNER) && !capturing.has(target.id) && !target.hasComponent(EntityComponentTypes.IsTamed)) {
+        startBattle(player, target, false);
+        return;
+    }
+    // looking at one of theirs out: that one is selected and comes back
+    const own = target && slots.find((s) => s.pid === prop(target, PID) && s.out === target.id);
+    if (own) { player.setDynamicProperty(PARTY_SEL, slots.indexOf(own)); recallMember(player, own); return; }
+    const slot = slots[selIndex(player)], e = partyMember(player, slot);
+    if (!e.isProxy) { recallMember(player, slot); return; }
+    if (slot.rec.f) { player.onScreenDisplay.setActionBar(`§c${memberName(e)} has fainted and cannot be sent out.`); return; }
+    sendOutMember(player, slot, sendOutSpot(player));
+}
+world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
+    if (itemStack?.typeId !== PARTY_ITEM || source?.typeId !== "minecraft:player") return;
+    usePartyItem(source);
+});
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    if (event.itemStack?.typeId !== PARTY_ITEM || event.target?.typeId === "minecraft:player") return;   // a player's wheel opens as ever
+    event.cancel = true;
+    const { player, target } = event;
+    system.run(() => { if (player.isValid) usePartyItem(player, target?.isValid ? target : undefined); });
+});
+// the party item, given once
+world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
+    if (!initialSpawn) return;
+    system.runTimeout(() => {
+        if (!player.isValid || player.getDynamicProperty(PARTY_GIVEN)) return;
+        const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+        if (!inv) return;
+        try {
+            const item = new ItemStack(PARTY_ITEM, 1);
+            item.setLore(["§7Use: send out or call back", "§7the selected Pokemon", "§7Use on a wild Pokemon: battle", "§7Sneak and use: next Pokemon"]);
+            if (!inv.getItem(2)) inv.setItem(2, item); else inv.addItem(item);
+            player.setDynamicProperty(PARTY_GIVEN, true);
+        } catch (e) { console.warn(`[cobblemon] party item: ${e}`); }
+    }, 50);
+});
+// the party follows its trainer: the records of those out keep up with them, and one too far or in another dimension
+// comes back to its ball; one gone from the world (unloaded with its chunk) is taken to be in its ball
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        const slots = partyOf(player.id);
+        for (const slot of slots) {
+            if (!slot.out) continue;
+            const e = memberEntity(slot);
+            if (!e) { slot.out = null; saveParty(player.id); continue; }
+            if (recalling.has(e.id)) continue;
+            const far = e.dimension.id !== player.dimension.id || Math.hypot(e.location.x - player.location.x, e.location.y - player.location.y, e.location.z - player.location.z) > PARTY_RANGE;
+            if (far && !battles.has(player.id)) { recallMember(player, slot, false); continue; }
+            const rec = partySnapshot(e);
+            if (JSON.stringify(rec) !== JSON.stringify(slot.rec)) { slot.rec = rec; saveParty(player.id); }
+        }
+    }
+}, 20);
+// an owned Pokemon in the world that the party does not hold: a new one (a starter, a revived fossil, one claimed
+// before the party kept records) joins it, or the PC with six there; a copy of a member that is not the one out (left
+// behind when it went back while its chunk was unloaded) is removed; the member's own after an evolution (the
+// transformation's new entity, carrying its id) takes its place
+function tidyOwned(e) {
+    if (!e?.isValid || !POKEMON[e.typeId] || recalling.has(e.id) || prop(e, PASTURE_AT)) return;
+    const owner = prop(e, OWNER), player = owner && world.getPlayers().find((p) => p.id === owner);
+    if (!player) return;
+    const slots = partyOf(owner), pid = prop(e, PID);
+    if (pid) {
+        const slot = slots.find((s) => s.pid === pid);
+        if (slot?.out === e.id) return;
+        const current = memberEntity(slot);
+        if (!slot || !slot.out || (current && current.id !== e.id)) { removeEntityQuietly(e); return; }
+        slot.out = e.id; slot.rec = partySnapshot(e); saveParty(owner);
+        return;
+    }
+    const placed = addRecord(player, partySnapshot(e));
+    if (!placed) return;   // the party and the PC full: it stays out, theirs
+    if (placed.slot) { setProp(e, PID, placed.slot.pid); placed.slot.out = e.id; saveParty(owner); return; }
+    player.sendMessage(`§a${memberName(e)} was sent to Box ${placed.box + 1}.`);
+    recallEffect(player, e, () => removeEntityQuietly(e));
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let owned = [];
+        try { owned = player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: 96 }); } catch (e) { continue; }
+        for (const e of owned) if (prop(e, OWNER) === player.id) tidyOwned(e);
+    }
+}, 40);
+world.afterEvents.entityLoad.subscribe(({ entity }) => { system.run(() => tidyOwned(entity)); });
+// a trainer who leaves takes their Pokemon with them, in their balls
+world.afterEvents.playerLeave.subscribe(({ playerId }) => {
+    const slots = partyOf(playerId);
+    for (const slot of slots) {
+        const e = memberEntity(slot);
+        if (e) { slot.rec = partySnapshot(e); removeEntityQuietly(e); }
+        slot.out = null;
+    }
+    saveParty(playerId);
+});
 
 // MoveSwapScreen: the moves a Pokemon can relearn (Pokemon.relearnableMoves, its level-up moves to its level that it does
 // not know), and Forget when it knows more than one, for the move whose swap button was pressed; an add button on an
@@ -6229,7 +6562,7 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
     }, BALLS[ballId]?.ancient ? 36 : 20);
 }
 
-// A caught Pokemon becomes the player's, as Cobblemon's party.add does, and joins the party beside them; with six
+// A caught Pokemon becomes the player's, as Cobblemon's party.add does, and joins the party in its ball; with six
 // already there it goes to the first free PC slot. The ball's capture effects apply (CaptureEffects): the Friend Ball
 // starts it at 150 friendship, the Heal Ball restores it fully.
 // Marks (Pokemon.applyPotentialMarks): a caught Pokemon rolls one mark from its potential ones, the rarest chance group
@@ -6281,18 +6614,11 @@ function keepCaught(player, pokemon, ballId) {
     applyPotentialMarks(pokemon);
     if (ballId === "cobblemon:friend_ball") setProp(pokemon, "cobblemon:friendship", 150);
     if (ballId === "cobblemon:heal_ball") healFully(pokemon);
-    setSize(pokemon, 1, 0);
     freeze(pokemon, false);
-    const party = summaryParty(player).filter((e) => e.id !== pokemon.id);
-    if (party.length < PARTY_SIZE) return;
-    for (let n = 0; n < PC_BOXES; n++) {
-        const contents = box(player, n), slot = contents.indexOf(null);
-        if (slot < 0) continue;
-        contents[slot] = snapshot(pokemon); saveBox(player, n, contents);
-        player.sendMessage(`§a${POKEMON[pokemon.typeId]?.name} was sent to Box ${n + 1}.`);
-        try { pokemon.remove(); } catch (e) { }
-        return;
-    }
+    const placed = addRecord(player, partySnapshot(pokemon));
+    if (!placed) { setSize(pokemon, 1, 0); player.sendMessage("§cYour party and PC are full."); return; }   // it stays out, theirs
+    if (placed.box !== undefined) player.sendMessage(`§a${POKEMON[pokemon.typeId]?.name} was sent to Box ${placed.box + 1}.`);
+    removeEntityQuietly(pokemon);
 }
 
 function healFully(entity) {
@@ -6743,7 +7069,7 @@ function botOffer(trade, side) {
     }, 20);
 }
 function updateTradeOffer(trade, side, entity) {
-    trade.offer[side] = entity?.id ?? null;
+    trade.offer[side] = entity ? memberKey(entity) : null;
     // a new offer takes back both acceptances (ActiveTrade.updateOffer, setOfferedPokemon)
     trade.accepted = [false, false];
     showTrades(trade);
@@ -6779,13 +7105,19 @@ function startTradeProcess(trade) {
 function entityById(dimension, id) {
     try { return world.getEntity(id); } catch (e) { return undefined; }
 }
+// a side's offer: a member of the player's party, or the test trader's Pokemon
+function tradeOffer(trade, side) {
+    const key = trade.offer[side];
+    return key ? memberByKey(key, [trade.parts[side].player]) : undefined;
+}
 // TradeManager.performTrade, as records: each leaves its trainer and comes out beside the other
 function performTrade(trade) {
-    const [a, b] = trade.parts, ea = entityById(a.entity.dimension, trade.offer[0]), eb = entityById(b.entity.dimension, trade.offer[1]);
+    const [a, b] = trade.parts, ea = tradeOffer(trade, 0), eb = tradeOffer(trade, 1);
     if (!ea?.isValid || !eb?.isValid || prop(ea, OWNER) !== a.id || prop(eb, OWNER) !== b.id) { cancelTrade(trade); return; }
-    const ra = snapshot(ea), rb = snapshot(eb);
+    const ra = partySnapshot(ea), rb = partySnapshot(eb);
     for (const [rec, from, to] of [[ra, a, b], [rb, b, a]]) {
         const k = rec.k;
+        delete k[OWNER_NAME]; delete k["cobblemon:staying"];
         if (!k[OT]) k[OT] = from.name;
         let cache = {}; try { cache = JSON.parse(k[FRIENDSHIP_BY] ?? "{}"); } catch (e) { }
         cache[from.id] = k["cobblemon:friendship"] ?? POKEMON[rec.t]?.friendship ?? 50;
@@ -6793,9 +7125,18 @@ function performTrade(trade) {
         k[FRIENDSHIP_BY] = JSON.stringify(cache);
     }
     const placeA = eb.location, placeB = ea.location;
-    // each comes out where the other was, so neither removal may pass for the other's trade evolution
-    for (const gone of [ea, eb]) { notEvolving.add(gone.id); try { gone.remove(); } catch (e) { notEvolving.delete(gone.id); } }
-    const na = spawnForParticipant(b, ra, placeA), nb = spawnForParticipant(a, rb, placeB);
+    // each leaves its trainer's party (or the test trader), so neither removal may pass for the other's trade evolution
+    for (const [part, gone] of [[a, ea], [b, eb]]) {
+        const slot = part.player && slotOf(part.player, gone);
+        if (slot) removeMember(part.player, slot); else if (!gone.isProxy) removeEntityQuietly(gone);
+    }
+    const give = (part, rec, at) => {
+        if (!part.player) return spawnForParticipant(part, rec, at);
+        const placed = addRecord(part.player, rec);
+        if (placed?.box !== undefined) part.player.sendMessage(`§a${rec.n || POKEMON[rec.t]?.name} was sent to Box ${placed.box + 1}.`);
+        return placed?.slot ? ballProxy(part.player, placed.slot) : undefined;
+    };
+    const na = give(b, ra, placeA), nb = give(a, rb, placeB);
     // TradeEvolution.attemptEvolution, once the new ones are set up
     system.runTimeout(() => { tradeEvolution(na, rb.t); tradeEvolution(nb, ra.t); }, 10);
 }
@@ -6865,7 +7206,7 @@ function tradePad(value, width) {
 function showTradeForm(trade, side, version) {
     const me = trade.parts[side], them = trade.parts[1 - side], player = me.player;
     const mine = tradeParty(me), theirs = tradeParty(them);
-    const myOffer = entityById(null, trade.offer[side]), theirOffer = entityById(null, trade.offer[1 - side]);
+    const myOffer = tradeOffer(trade, side), theirOffer = tradeOffer(trade, 1 - side);
     const v = { state: `${trade.accepted[side] ? "y" : "n"}${trade.accepted[1 - side] ? "y" : "n"}${trade.processing ? "y" : "n"}`, me: me.name, them: them.name };
     tradeOfferFields(myOffer, "m", v); tradeOfferFields(theirOffer, "o", v);
     const body = TRADE_LAYOUT.map(([key, width]) => (width ? tradePad(v[key] ?? "", width) : v[key] ?? "")).join("");
@@ -6873,8 +7214,8 @@ function showTradeForm(trade, side, version) {
     const locked = trade.accepted[side] || trade.processing;
     const slot = (e, offered, own) => !e ? "i----non" : iconOf(e.typeId, variantOf(e)) + (offered ? "y" : "n") + ({ male: "m", female: "f" }[genderOf(e)] ?? "o")
         + (own && !locked ? "y" : "n") + `Lv. ${prop(e, LEVEL) ?? POKEMON[e.typeId].level}`;
-    for (let n = 0; n < 6; n++) form.button(slot(mine[n], mine[n]?.id === trade.offer[side], true), `${UI}/trade/none`);
-    for (let n = 0; n < 6; n++) form.button(slot(theirs[n], theirs[n]?.id === trade.offer[1 - side], false), `${UI}/trade/none`);
+    for (let n = 0; n < 6; n++) form.button(slot(mine[n], !!mine[n] && memberKey(mine[n]) === trade.offer[side], true), `${UI}/trade/none`);
+    for (let n = 0; n < 6; n++) form.button(slot(theirs[n], !!theirs[n] && memberKey(theirs[n]) === trade.offer[1 - side], false), `${UI}/trade/none`);
     // TradeButton: disabled until both have offered, ready, then the dots while waiting on the other side
     const enabled = !!(myOffer && theirOffer) && !trade.processing, active = trade.accepted[side] && !trade.accepted[1 - side];
     form.button(active ? "..." : "Trade", `${UI}/trade/btn_${!enabled ? "d" : active ? "a" : "r"}`);
@@ -6889,7 +7230,7 @@ function showTradeForm(trade, side, version) {
         const pick = r.selection;
         if (pick < 6 && mine[pick] && !locked) {
             try { player.playSound("cobblemon.gui.click"); } catch (e) { }
-            updateTradeOffer(trade, side, trade.offer[side] === mine[pick].id ? null : mine[pick]);
+            updateTradeOffer(trade, side, trade.offer[side] === memberKey(mine[pick]) ? null : mine[pick]);
             return;
         }
         if (pick === 12 && enabled) {
