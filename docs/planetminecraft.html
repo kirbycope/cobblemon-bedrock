@@ -1,0 +1,168 @@
+<title>Cobblemon Bedrock Listing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+/* Layout: a narrow tool bar of copy actions over one long preview card that reads like the listing itself */
+:root {
+  --bg: #eef1f4; --card: #ffffff; --fg: #1e2530; --muted: #5d6877; --rule: #d6dce3;
+  --accent: #c8302c; --accent-fg: #ffffff; --code: #eef1f4; --th: #f3f5f8;
+  --display: "Rubik", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #161a20; --card: #1f252d; --fg: #e4e8ee; --muted: #9aa5b3; --rule: #343c47;
+  --accent: #ef5a52; --accent-fg: #160c0b; --code: #2a313a; --th: #262d36; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #161a20; --card: #1f252d; --fg: #e4e8ee; --muted: #9aa5b3; --rule: #343c47;
+  --accent: #ef5a52; --accent-fg: #160c0b; --code: #2a313a; --th: #262d36; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body); padding-inline: 16px; padding-block: 24px 48px; }
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 20px; }
+.tools { display: grid; gap: 12px; }
+.tools h1 { font: 700 1.35rem/1.2 var(--display); margin: 0; text-wrap: balance; }
+.tools p { margin: 0; color: var(--muted); max-width: 65ch; }
+.fields { display: grid; grid-template-columns: max-content 1fr auto; gap: 8px 12px; align-items: center; }
+.fields .k { font: 600 .78rem/1 var(--display); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.fields .v { min-width: 0; overflow-wrap: anywhere; }
+button { font: 600 .9rem/1 var(--display); border: 1px solid var(--rule); background: var(--card); color: var(--fg); border-radius: 6px; padding: 9px 14px; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.status { font-size: .9rem; color: var(--muted); min-height: 1.2em; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 8px; padding: 24px clamp(16px, 4vw, 32px); min-width: 0; }
+#desc h2 { font: 700 1.4rem/1.25 var(--display); margin: 1.4em 0 .5em; text-wrap: balance; }
+#desc h2:first-child { margin-top: 0; }
+#desc h3 { font: 600 1.1rem/1.3 var(--display); margin: 1.2em 0 .4em; }
+#desc p { margin: .6em 0; max-width: 70ch; }
+#desc ul, #desc ol { padding-left: 1.4em; margin: .6em 0; display: grid; gap: .35em; }
+#desc hr { border: 0; border-top: 1px solid var(--rule); margin: 1.6em 0; }
+#desc a { color: var(--accent); }
+#desc code { background: var(--code); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+.tablebox { overflow-x: auto; }
+#desc table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+#desc th, #desc td { border: 1px solid var(--rule); padding: 7px 10px; text-align: left; vertical-align: top; }
+#desc th { background: var(--th); font-family: var(--display); font-weight: 600; }
+@media (max-width: 560px) { .fields { grid-template-columns: 1fr auto; } .fields .k { grid-column: 1 / -1; } }
+</style>
+
+<div class="wrap">
+  <section class="tools" aria-label="Copy for Planet Minecraft">
+    <h1>Cobblemon Bedrock listing</h1>
+    <p>The new description for the existing page, planetminecraft.com/mod/cobblemon-bedrock-addon. Copy it and paste it into the description editor; the headings, lists and tables come with it.</p>
+    <div class="fields">
+      <span class="k">Title</span><span class="v" id="title">Cobblemon (Bedrock Addon) - 1.26.52</span><button type="button" id="copy-title">Copy</button>
+      <span class="k">Category</span><span class="v">Mods (as now)</span><span></span>
+      <span class="k">Version</span><span class="v">Minecraft Bedrock 1.26.52</span><span></span>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="copy-desc">Copy description</button>
+      <button type="button" id="copy-text">Copy as plain text</button>
+      <span class="status" id="status" role="status"></span>
+    </div>
+  </section>
+
+  <article class="card" id="desc">
+<h2>Cobblemon Bedrock</h2>
+<p>Catch, battle, train and ride Pokémon in Minecraft Bedrock Edition. Pick a starter from any region, fill your Pokédex, build a team of six, and take on wild Pokémon, trainers and your friends.</p>
+<p>This is a Bedrock Edition add-on port of <b>Cobblemon</b>, the open-source Pokémon mod for Java Edition by the Cobblemon team. The Pokémon models, animations, textures, sounds and data all come from Cobblemon itself, converted by a script, so every Pokémon looks, moves and sounds the way it does in the mod.</p>
+<hr>
+<h2>📥 Installation</h2>
+<ol>
+<li>Download <a href="https://github.com/kirbycope/cobblemon-bedrock/releases/latest/download/cobblemon-bedrock.mcaddon">cobblemon-bedrock.mcaddon</a> from the latest release.</li>
+<li>Double-click the <code>.mcaddon</code> file to import both packs into Minecraft Bedrock.</li>
+<li>In a world's settings, add the <b>Cobblemon</b> behavior pack (it brings its resource pack with it) and load the world.</li>
+</ol>
+<p>No experiments are needed. Made for Minecraft Bedrock 1.26.52 and tested on a dedicated server.</p>
+<hr>
+<h2>🎮 How It Works</h2>
+<p>When you first join, the starter screen opens: choose a region, then your partner Pokémon. You also get two books signed by Kirbycope, a <b>README</b> with every control and a <b>Getting Started</b> guide, and the <b>Party</b> item. Your Pokémon travel with you in their Poké Balls and show down the left of your screen. Send one out with the Party item, battle wild Pokémon to level up, catch more with Poké Balls crafted from apricorns, and keep the rest in a PC.</p>
+<h3>Core Features</h3>
+<ul>
+<li>🐾 <b>904 Pokémon</b>: every species Cobblemon has, with their regional forms, gendered and shiny looks, cries and animations, spawning in the biomes and at the times of day Cobblemon gives them.</li>
+<li>⚔️ <b>Turn-based Battles</b>: Cobblemon's battle screen with 696 moves, abilities, stat stages, statuses, weather, held items and each move's animation, sounds and particles. Fight, switch, use items, catch or run.</li>
+<li>🎒 <b>Party and PC</b>: six Pokémon in their balls with the party overlay, a PC with 40 boxes of 30, and pastures where boxed Pokémon roam.</li>
+<li>🎯 <b>Catching</b>: all 49 Poké Balls with their own catch rules, and the throw, shake and capture of the mod.</li>
+<li>✨ <b>Evolution</b>: by level, by the 52 evolution items and by trade, with the evolution animation.</li>
+<li>💪 <b>Training</b>: natures, IVs and EVs, 335 TMs and the TM Machine, held items, friendship, candies and 168 marks.</li>
+<li>🐉 <b>Riding</b>: 93 species you can ride, 43 of them flying, with stamina and the ride controls on screen.</li>
+<li>📖 <b>Pokédex and Scanner</b>: register what you see and catch, and scan Pokémon in the world.</li>
+<li>🤝 <b>Multiplayer</b>: trade Pokémon with other players and challenge them to battles.</li>
+<li>🌿 <b>Living World</b>: wild Pokémon move in herds, flee when hurt, and some fight back.</li>
+<li>🎣 <b>Berries, Apricorns, Fossils and Fishing</b>: 70 berry bushes, seven colours of apricorn tree, fossils revived in a Restoration Tank, and Poké Rod fishing with 48 rods and bait.</li>
+<li>🍲 <b>Cooking</b>: the Campfire Pot with Cobblemon's 117 recipes, seasonings and Aprijuices.</li>
+<li>🏛️ <b>Structures</b>: Cobblemon's ruins and other generated structures, with their loot.</li>
+</ul>
+<hr>
+<h2>🕹️ Controls</h2>
+<div class="tablebox"><table>
+<thead><tr><th>To do this</th><th>Do this</th></tr></thead>
+<tbody>
+<tr><td><b>Send out or call back a Pokémon</b></td><td>Use the Party item (hotbar slot 3)</td></tr>
+<tr><td><b>Pick the next Pokémon</b></td><td>Sneak and use the Party item</td></tr>
+<tr><td><b>Battle a wild Pokémon</b></td><td>Use the Party item on it, or use it with an empty hand</td></tr>
+<tr><td><b>Catch</b></td><td>In battle, choose Catch, then throw a Poké Ball at it</td></tr>
+<tr><td><b>Summary, held item, Ride, Shoulder, Stay</b></td><td>Sneak and use one of your Pokémon for its wheel</td></tr>
+<tr><td><b>Heal</b></td><td>Use a Potion on your Pokémon, or a Healing Machine for the whole party</td></tr>
+<tr><td><b>Ride</b></td><td>Use a rideable Pokémon; double-tap forward to sprint, sneak to get off</td></tr>
+<tr><td><b>Fly</b></td><td>Look where to go, hold jump to climb, look down while moving to dive</td></tr>
+<tr><td><b>Pokédex</b></td><td>Tap use to open it, hold use for the scanner</td></tr>
+<tr><td><b>Fish</b></td><td>Use a Poké Rod to cast, and again when the bobber splashes</td></tr>
+<tr><td><b>Trade or battle a player</b></td><td>Sneak and use the other player</td></tr>
+</tbody>
+</table></div>
+<p>The README book in your hotbar lists every control.</p>
+<hr>
+<h2>💡 Good to Know</h2>
+<ul>
+<li>The battle music is not in the download. Battles play without it.</li>
+<li>Bedrock add-ons cannot add new keys, so the Party item takes the place of Cobblemon's send-out and party keys.</li>
+<li>Battles are single battles, one Pokémon a side.</li>
+<li>The menus show rendered portraits of each Pokémon rather than live 3D models.</li>
+<li>The port follows the mod closely and is still growing. The <a href="https://github.com/kirbycope/cobblemon-bedrock#readme">README on GitHub</a> lists what is carried over and what is not yet.</li>
+</ul>
+<hr>
+<h2>📜 Credits &amp; License</h2>
+<ul>
+<li>Original Java Edition mod, its models, animations, textures, sounds and data by the <a href="https://gitlab.com/cable-mc/cobblemon">Cobblemon</a> team, under the Mozilla Public License 2.0</li>
+<li>Bedrock Edition port by <a href="https://github.com/kirbycope/cobblemon-bedrock">Kirbycope</a></li>
+<li>Pokémon is a trademark of Nintendo, Game Freak and The Pokémon Company. This is an unofficial fan project, not affiliated with or endorsed by them.</li>
+</ul>
+  </article>
+</div>
+
+<script>
+const status = document.getElementById("status");
+const desc = document.getElementById("desc");
+function say(text) { status.textContent = text; }
+function selectNode(node) {
+  const range = document.createRange(); range.selectNodeContents(node);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
+// the description as Planet Minecraft's editor takes it: the elements alone, without this page's classes and wrappers
+function cleanHtml() {
+  const copy = desc.cloneNode(true);
+  copy.querySelectorAll(".tablebox").forEach((box) => box.replaceWith(...box.childNodes));
+  copy.querySelectorAll("[class]").forEach((el) => el.removeAttribute("class"));
+  return copy.innerHTML.trim();
+}
+document.getElementById("copy-desc").addEventListener("click", async () => {
+  try {
+    const html = cleanHtml();
+    await navigator.clipboard.write([new ClipboardItem({
+      "text/html": new Blob([html], { type: "text/html" }),
+      "text/plain": new Blob([desc.innerText], { type: "text/plain" }) })]);
+    say("Copied. Paste it into the description editor.");
+  } catch (e) {
+    selectNode(desc);
+    say("Selected. Press Ctrl+C (or Cmd+C) to copy it.");
+  }
+});
+document.getElementById("copy-text").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(desc.innerText); say("Copied as plain text."); }
+  catch (e) { selectNode(desc); say("Selected. Press Ctrl+C (or Cmd+C) to copy it."); }
+});
+document.getElementById("copy-title").addEventListener("click", async () => {
+  const t = document.getElementById("title");
+  try { await navigator.clipboard.writeText(t.textContent); say("Title copied."); }
+  catch (e) { selectNode(t); say("Title selected. Press Ctrl+C (or Cmd+C) to copy it."); }
+});
+</script>
