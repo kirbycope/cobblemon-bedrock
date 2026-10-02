@@ -994,6 +994,27 @@ def cosmetic_icons(items):
     return icons
 
 
+# The books' icons (loot_tables/readme_book.json, getting_started_book.json): a glyph sheet the font reads for U+E700 to
+# U+E7FF, sixteen by sixteen cells of 16 pixels, which the font draws one line of text high
+BOOK_GLYPHS = [("item", "poke_ball"), ("item", "pokedex_red"), ("item", "poke_rod"), ("item", "potion"), ("item", "red_apricorn"),
+               ("item", "rare_candy"), ("wheel", "battle"), ("wheel", "trade"), ("wheel", "ride"), ("wheel", "held_item")]
+
+
+def create_book_glyphs():
+    """font/glyph_E7.png: BOOK_GLYPHS in order from U+E700, the 16 pixel item icons as they are and the 32 pixel wheel icons
+    halved and in dark brown (they are white, drawn on the wheel's dark buttons; the books' pages are cream)."""
+    os.makedirs(f"{resourcePack}/font", exist_ok=True)
+    sheet = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    for n, (kind, name) in enumerate(BOOK_GLYPHS):
+        src = f"{texturesItemsBedrock}/{name}.png" if kind == "item" else f"{guiMain}/interact/interact_wheel_icon_{name}.png"
+        icon = Image.open(src).convert("RGBA")
+        if kind == "wheel":
+            icon = icon.resize((icon.width // 2, icon.height // 2), Image.BOX)
+            icon.putdata([(70, 50, 30, 255 if a > 96 else 0) for r, g, b, a in icon.getdata()])
+        sheet.alpha_composite(icon, ((n % 16) * 16 + (16 - icon.width) // 2, (n // 16) * 16 + (16 - icon.height) // 2))
+    sheet.save(f"{resourcePack}/font/glyph_E7.png")
+
+
 def create_cosmetics():
     """scripts/cosmetics.js: Cobblemon's cosmetic items (data/cosmetic_items, CosmeticItemAssignment) for each species
     that can wear them: the items (a tag's items each) and the aspects each gives, and each variant's form, gender and
@@ -8479,6 +8500,7 @@ def main():
     create_campfire_blocks()
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
+    create_book_glyphs()
     create_recipes()
     create_structures()
     create_battle_data()

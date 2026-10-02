@@ -2749,6 +2749,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         for (let dx = -8; dx <= 8; dx++) for (let dy = -4; dy <= 4; dy++) for (let dz = -8; dz <= 8; dz++) {
             try { joinFence(source.dimension.getBlock({ x: Math.floor(x) + dx, y: Math.floor(y) + dy, z: Math.floor(z) + dz })); } catch (e) { }
         }
+    } else if (event.id === "cobblemon:readme") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:readme" gives the README and Getting Started books
+        // again, as a first join does
+        if (source.typeId === "minecraft:player") { for (const book of BOOKS) source.setDynamicProperty(book.given, undefined); giveBooks(source); }
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -6038,6 +6042,33 @@ world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState 
     const last = lastSneak.get(player.id) ?? -100;
     lastSneak.set(player.id, system.currentTick);
     if (system.currentTick - last <= 10 && !summaryParty(player).length) { lastSneak.delete(player.id); openStarter(player); }
+});
+// The books signed by Kirbycope: README (loot_tables/readme_book.json), every control, in the first hotbar slot, and
+// Getting Started (getting_started_book.json), a first-steps guide, in the second, each given once, on the first join
+// after it exists; whatever was in its slot moves to a free one past the books, or drops at their feet when there is none
+const BOOKS = [{ given: "cobblemon:readme_given", table: "readme_book", slot: 0 }, { given: "cobblemon:guide_given", table: "getting_started_book", slot: 1 }];
+function giveBooks(player) {
+    if (!player.isValid) return;
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    if (!inv) return;
+    for (const book of BOOKS) {
+        if (player.getDynamicProperty(book.given)) continue;
+        try {
+            // moved by hand, since addItem would fill the slot it just left before the book goes in
+            const held = inv.getItem(book.slot);
+            if (held) {
+                let free = -1;
+                for (let n = BOOKS.length; n < inv.size && free < 0; n++) if (!inv.getItem(n)) free = n;
+                if (free >= 0) inv.setItem(free, held); else player.dimension.spawnItem(held, player.location);
+                inv.setItem(book.slot, undefined);
+            }
+            player.runCommand(`loot replace entity @s slot.hotbar ${book.slot} loot "${book.table}"`);
+            player.setDynamicProperty(book.given, true);
+        } catch (e) { console.warn(`[cobblemon] ${book.table}: ${e}`); }
+    }
+}
+world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
+    if (initialSpawn) system.runTimeout(() => giveBooks(player), 40);
 });
 world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
     if (!initialSpawn || player.getDynamicProperty(STARTER_CHOSEN)) return;
