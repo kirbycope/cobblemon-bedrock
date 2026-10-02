@@ -4877,6 +4877,10 @@ const RIDE_SETTINGS = {
 const RIDE_KINDS = ["bird", "hover", "jet", "rocket", "horse", "horse", "boat", "dolphin", "submarine"];   // by RIDE_ICONS' index
 const FLY_TIERS = Array.from({ length: 16 }, (_, n) => 0.05 * Math.pow(1.2 / 0.05, n / 15));
 const RIDE_STAMINA = "cobblemon:ride_stamina", RIDE_STAMINA_AT = "cobblemon:ride_stamina_at";
+// the double tap of forward that stands in for the sprint key: Cobblemon's handleSprinting gives the second press 7
+// ticks from the first, held time included, but a Java rider mostly sprints with the sprint key, which Bedrock never
+// passes on from a rider (isSprinting stays false), so the window is 12 ticks here to catch an ordinary double tap
+const RIDE_TAP_TICKS = 12;
 const rideStates = new Map();   // mount id -> the ride's state
 const probeHold = new Map();    // mount id -> a movement value the ride_probe test hook holds
 function rideStatValue(mount, style, stat) {
@@ -4948,7 +4952,7 @@ system.runInterval(() => {
         } else if (style === "liquid" && kind !== "horse") {
             // the double tap of forward stands in for the sprint key (Bedrock gives no sprint to a rider)
             let doubleTapped = false;
-            if (!st.forwardLast && forward && st.timer === 0) st.timer = 7;
+            if (!st.forwardLast && forward && st.timer === 0) st.timer = RIDE_TAP_TICKS;
             else if (!st.forwardLast && forward && st.timer !== 0) { doubleTapped = true; st.timer = 0; }
             else if (st.timer > 0) st.timer--;
             st.forwardLast = forward;
@@ -4983,7 +4987,7 @@ system.runInterval(() => {
             if (st.tired && mount.isOnGround) { st.tired = false; st.tier = -1; try { mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
             // handleSprinting: a second press of forward within seven ticks sprints, while there is stamina and forward is held
             let doubleTapped = false;
-            if (!st.forwardLast && forward && !st.sprinting && st.timer === 0) st.timer = 7;
+            if (!st.forwardLast && forward && !st.sprinting && st.timer === 0) st.timer = RIDE_TAP_TICKS;
             else if (!st.forwardLast && forward && st.timer !== 0) doubleTapped = true;
             else if (!st.sprinting && st.timer > 0) st.timer--;
             else st.timer = 0;
