@@ -4,9 +4,30 @@
 An open-source Pokémon mod ported to Minecraft Bedrock Edition.
 
 ## Installation
-1. Download the [mcaddon](https://github.com/kirbycope/cobblemon-bedrock/raw/main/cobblemon-bedrock.mcaddon)
-1. Double-click the mcaddon file
-1. Load world
+1. Download [cobblemon-bedrock.mcaddon](https://github.com/kirbycope/cobblemon-bedrock/releases/latest/download/cobblemon-bedrock.mcaddon) from the latest release
+1. Double-click the file; Minecraft imports both packs
+1. In a world's settings, turn on the Cobblemon behavior pack (it brings the resource pack with it) and load the world
+
+No experiments are needed: the scripts use the stable `@minecraft/server` 2.6.0 and `@minecraft/server-ui` 2.0.0,
+and the packs load on a world with none turned on. The battle music is not in the add-on (it is the games' own
+tracks, fetched by `tools/fetch_battle_music.py` for a local build), so battles are silent unless you build it yourself.
+
+## Building the add-on
+`cobblemon-bedrock.mcaddon` is built from the repository, never assembled by hand, and published as a release asset
+(at about 113 MB it is over GitHub's 100 MB limit for a file in the repository, so it is git-ignored):
+
+```powershell
+python tools/build_addon.py           # writes cobblemon-bedrock.mcaddon
+python tools/build_addon.py --check   # non-zero when the archive on disk is stale
+gh release create v1.0.336 cobblemon-bedrock.mcaddon --title "1.0.336" --notes "..."
+```
+
+The archive holds `cobblemon_behavior_pack/` and `cobblemon_resource_pack/` at its root, each with its `manifest.json`
+directly inside, and only the files git tracks under `development_behavior_packs/cobblemon` and
+`development_resource_packs/cobblemon`, so the battle music and the hub's generated functions stay out as they stay
+out of git. Entry names use forward slashes, images and sounds are stored and the rest deflated, with no zip64 and a
+fixed timestamp so a rebuild of the same files is byte for byte the same. Run `python port.py --fix` first when the
+packs need regenerating; the release tag is the manifests' version, which `port.py` bumps.
 
 ## Important Links
 - https://gitlab.com/cable-mc/cobblemon
