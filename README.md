@@ -12,14 +12,20 @@ No experiments are needed: the scripts use the stable `@minecraft/server` 2.6.0 
 and the packs load on a world with none turned on. The battle music is not in the add-on (it is the games' own
 tracks, fetched by `tools/fetch_battle_music.py` for a local build), so battles are silent unless you build it yourself.
 
+Every screen the add-on draws (the starter screen, battles, Summary, PC, Pokedex and the rest) works with a mouse, with
+touch, and with a controller: the D-pad or left stick moves between buttons, A presses and B closes. On a keyboard the
+arrow keys and Enter do the same.
+
 ## Building the add-on
 `cobblemon-bedrock.mcaddon` is built from the repository, never assembled by hand, and published as a release asset
-(at about 113 MB it is over GitHub's 100 MB limit for a file in the repository, so it is git-ignored):
+(at about 113 MB it is over GitHub's 100 MB limit for a file in the repository, so it is git-ignored). Pushing a
+version tag runs `.github/workflows/release.yml`, which builds it with `tools/build_addon.py` and attaches it to the
+release; the workflow can also be run by hand from the Actions tab with a tag. Locally:
 
 ```powershell
-python tools/build_addon.py           # writes cobblemon-bedrock.mcaddon
-python tools/build_addon.py --check   # non-zero when the archive on disk is stale
-gh release create v1.0.336 cobblemon-bedrock.mcaddon --title "1.0.336" --notes "..."
+git tag v1.0.339; git push origin v1.0.339   # publishes the release through the workflow
+python tools/build_addon.py                   # writes cobblemon-bedrock.mcaddon here, for testing an import
+python tools/build_addon.py --check           # non-zero when the archive on disk is stale
 ```
 
 The archive holds `cobblemon_behavior_pack/` and `cobblemon_resource_pack/` at its root, each with its `manifest.json`
@@ -164,7 +170,18 @@ double-sided `entity_alphatest` draws both of their coincident faces, which z-fi
 `tools/client_drive.py` brings the Minecraft window to the front and drives it with real input, so a
 change can be looked at without touching the keyboard: `shot <name>` captures the screen into
 `captures/`, `click x y`, `key <key>`, `chat "/summon cobblemon:p0006_charizard ~ ~ ~5"` and `look dx dy`
-do what they say; `join` joins the dedicated server's LAN tile by its name, and `dropped` backs out of the "Terracotta" disconnect the first join after a new pack version often gets, so `join` can run again. Content errors show in `%APPDATA%\Minecraft Bedrock\logs\ContentLog*.txt`.
+do what they say; `join` joins the dedicated server's LAN tile by its name, and `dropped` backs out of the "Terracotta" disconnect the first join after a new pack version often gets, so `join` can run again.
+
+Controller input goes through a virtual Xbox 360 controller, which needs the
+[ViGEmBus](https://github.com/nefarius/ViGEmBus/releases) driver (an administrator install) and `pip install vgamepad`.
+A controller that disconnects stops the game on "Controller lost connection" and closes any open form, so one
+`padhost` keeps it connected in the background and each `pad` call hands it presses:
+
+```powershell
+python tools/client_drive.py padhost 3600     # in the background: a controller for up to an hour
+python tools/client_drive.py pad right right a   # D-pad right twice, then A
+python tools/client_drive.py pad lup:0.4 rt:1.5  # left stick up for 0.4 s, right trigger held 1.5 s
+``` Content errors show in `%APPDATA%\Minecraft Bedrock\logs\ContentLog*.txt`.
 
 ## Developing against a local Bedrock Dedicated Server
 Keep this repository where it is and junction its two pack folders into the world on the server, so an

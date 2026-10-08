@@ -1,0 +1,50 @@
+name: Release
+
+# Publishes cobblemon-bedrock.mcaddon as a GitHub Release asset.
+# Trigger it by pushing a version tag, or manually from the Actions tab:
+#   git tag v1.0.337 && git push origin v1.0.337
+# The .mcaddon is built from the repo by tools/build_addon.py — never committed.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag for the release (e.g. v1.0.337)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Build cobblemon-bedrock.mcaddon
+        run: python3 tools/build_addon.py
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "value=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.value }}
+          files: cobblemon-bedrock.mcaddon
+          generate_release_notes: true

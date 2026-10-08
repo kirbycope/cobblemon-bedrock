@@ -12,6 +12,17 @@ The game window is found by its title, brought to the front, and driven with rea
     python tools/client_drive.py join                 main menu -> Play -> Worlds -> LAN world (the server)
     python tools/client_drive.py leave                pause menu -> Save & Quit (lands on the Worlds list)
     python tools/client_drive.py dropped              after a join: back out of a "Terracotta" drop, so join can run again
+    python tools/client_drive.py pad down right a     press buttons on a virtual Xbox 360 controller, in order
+    python tools/client_drive.py pad lup:0.4 rt:1.5   tilt the left stick up for 0.4 s, hold the right trigger 1.5 s
+
+    python tools/client_drive.py padhost 1800         keep a virtual controller connected for up to 1800 s (run it in the background)
+
+`pad` needs the ViGEmBus driver (nefarius/ViGEmBus, installed on this PC) and `pip install vgamepad`. A controller
+that disconnects makes the game stop on "Controller lost connection" and close any open form, so the controller
+lives in `padhost`, started once in the background, and each `pad` call hands it a line through
+captures/pad.cmd and waits until it has been pressed. Buttons are a, b, x, y,
+up, down, left, right (the D-pad), lb, rb, lt, rt, start, back, ls, rs, and lup, ldown, lleft, lright and the
+same with r for the sticks; name:seconds holds one.
 
 Screen positions are for the 1920x1200 desktop with the game maximised.
 """
@@ -141,6 +152,66 @@ def recover() -> None:
     click(36, 58); time.sleep(3)
 
 
+PAD_BUTTONS = {"a": "XUSB_GAMEPAD_A", "b": "XUSB_GAMEPAD_B", "x": "XUSB_GAMEPAD_X", "y": "XUSB_GAMEPAD_Y",
+               "up": "XUSB_GAMEPAD_DPAD_UP", "down": "XUSB_GAMEPAD_DPAD_DOWN", "left": "XUSB_GAMEPAD_DPAD_LEFT",
+               "right": "XUSB_GAMEPAD_DPAD_RIGHT", "lb": "XUSB_GAMEPAD_LEFT_SHOULDER", "rb": "XUSB_GAMEPAD_RIGHT_SHOULDER",
+               "start": "XUSB_GAMEPAD_START", "back": "XUSB_GAMEPAD_BACK", "ls": "XUSB_GAMEPAD_LEFT_THUMB", "rs": "XUSB_GAMEPAD_RIGHT_THUMB"}
+PAD_STICKS = {"up": (0.0, 1.0), "down": (0.0, -1.0), "left": (-1.0, 0.0), "right": (1.0, 0.0)}
+
+
+PAD_FILE = os.path.join(CAPTURES, "pad.cmd")
+
+
+def press_on(controller, press: str, gap: float = 0.35) -> None:
+    import vgamepad as vg
+    name, _, hold = press.partition(":")
+    hold = float(hold) if hold else 0.12
+    if name in PAD_BUTTONS:
+        button = getattr(vg.XUSB_BUTTON, PAD_BUTTONS[name])
+        controller.press_button(button=button); controller.update(); time.sleep(hold)
+        controller.release_button(button=button)
+    elif name in ("lt", "rt"):
+        trigger = controller.left_trigger_float if name == "lt" else controller.right_trigger_float
+        trigger(1.0); controller.update(); time.sleep(hold); trigger(0.0)
+    elif name[:1] in ("l", "r") and name[1:] in PAD_STICKS:
+        stick = controller.left_joystick_float if name[0] == "l" else controller.right_joystick_float
+        stick(*PAD_STICKS[name[1:]]); controller.update(); time.sleep(hold); stick(0.0, 0.0)
+    else:
+        print(f"unknown pad input {name}")
+    controller.update(); time.sleep(gap)
+
+
+def padhost(lifetime: float) -> None:
+    """Hold one virtual Xbox 360 controller connected, pressing each line written to captures/pad.cmd, and end
+    after lifetime seconds so a forgotten host does not outlive the session."""
+    import vgamepad as vg
+    controller = vg.VX360Gamepad()
+    if os.path.exists(PAD_FILE): os.remove(PAD_FILE)
+    print("pad host ready", flush=True)
+    end = time.time() + lifetime
+    while time.time() < end:
+        time.sleep(0.1)
+        if not os.path.exists(PAD_FILE): continue
+        with open(PAD_FILE, encoding="utf-8") as file: line = file.read().split()
+        for press in line: press_on(controller, press)
+        os.remove(PAD_FILE)
+        print("pressed", " ".join(line), flush=True)
+
+
+def pad(presses) -> None:
+    """Hand a sequence of presses to the running padhost and wait until it has pressed them."""
+    for name in presses:
+        base = name.partition(":")[0]
+        if base not in PAD_BUTTONS and base not in ("lt", "rt") and not (base[:1] in ("l", "r") and base[1:] in PAD_STICKS):
+            sys.exit(f"unknown pad input {base}")
+    with open(PAD_FILE, "w", encoding="utf-8") as file: file.write(" ".join(presses))
+    for _ in range(100 + 10 * len(presses)):
+        time.sleep(0.1)
+        if not os.path.exists(PAD_FILE): return
+    os.remove(PAD_FILE)
+    sys.exit("no pad host took the presses; start one with: python tools/client_drive.py padhost 1800")
+
+
 def leave() -> None:
     """Pause menu -> Save & Quit lands on the Worlds list, so back out once more to the main menu."""
     key("escape"); time.sleep(2)
@@ -150,6 +221,7 @@ def leave() -> None:
 
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
+    if cmd == "padhost": padhost(float(args[0]) if args else 1800); sys.exit()
     focus()
     if cmd == "shot": time.sleep(float(args[1]) if len(args) > 1 else 0); shot(args[0])
     elif cmd == "click": click(int(args[0]), int(args[1]))
@@ -161,4 +233,5 @@ if __name__ == "__main__":
     elif cmd == "leave": leave()
     elif cmd == "recover": recover()
     elif cmd == "dropped": print(dropped())
+    elif cmd == "pad": pad(args)
     else: sys.exit(f"unknown command {cmd}")

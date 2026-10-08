@@ -796,7 +796,7 @@ function showScene(player, npc, tag) {
     const kind = npc.typeId.slice("cobblemon:".length);
     const body = padBytes(kind, 16) + layout + scene.text.replace(/%/g, "%%");
     const form = new ActionFormData().title("cbm:dialogue" + scene.npc_name).body(body);
-    if (layout === "n") form.button("", "textures/ui/cobblemon/dialogue/none");
+    if (layout === "n") form.button("", HIT);   // a click on the box goes on
     for (const o of options) form.button(o.name, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}`);
     form.show(player).then((r) => {
         if (r.canceled || layout === "n" || !npc.isValid) return;
@@ -957,7 +957,7 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
     const busy = burning.has(tmKey(block));
     form.button("back", `${UI}/tm/${state.mode === "t" ? "none" : "back"}`);
     form.button("start", `${UI}/tm/${state.mode !== "s" ? "none" : busy ? "start_off" : "start"}`);
-    form.button("search", `${UI}/tm/none`);
+    form.button("search", HIT);
     for (const icon of icons) form.button("", icon);
     form.button("", blank);
     const held = heldTm(player), move = held ? TMS[TM_INDEX.get(held)][0] : state.mode === "s" && chosen ? chosen[0] : null;
@@ -1389,7 +1389,7 @@ function openPot(block, player) {
     form.button(book.set.filter ? "Showing Cookable" : "Showing All", `${P}filter_${book.set.filter ? "enabled" : "disabled"}`);
     form.button("back", book.page > 0 ? `${P}page_backward` : none);
     form.button("forward", book.page < book.pages - 1 ? `${P}page_forward` : none);
-    form.button("search", none);
+    form.button("search", HIT);
     RB_TAB_ICONS.forEach((icon, l) => form.button((state.tab ?? 0) === l ? "s" : "n", potIcon(icon)));
     const onPage = book.shown.slice(book.page * 20, book.page * 20 + 20);
     for (let l = 0; l < 20; l++) {
@@ -1403,7 +1403,7 @@ function openPot(block, player) {
     for (let k = 0; k < 9; k++) form.button("", ghostAt[k] && !data.s[k + 1] ? potIcon(ghostAt[k][0]) : none);
     if (open) {
         // OverlayRecipeComponent: the group's recipes, each with its ingredients small in their places
-        for (let n = 0; n < 16; n++) form.button(ovl?.[n] ? (book.craftable(ovl[n]) ? "_overlay" : "_overlay_disabled") : "", none);
+        for (let n = 0; n < 16; n++) form.button(ovl?.[n] ? (book.craftable(ovl[n]) ? "_overlay" : "_overlay_disabled") : "", ovl?.[n] ? HIT : none);
         for (let n = 0; n < 16; n++) { const at = ovl?.[n] ? rbPlace(ovl[n]) : []; for (let k = 0; k < 9; k++) form.button("", at[k] ? potIcon(at[k][0]) : none); }
     }
     form.show(player).then((r) => {
@@ -2035,6 +2035,9 @@ function turn(battle) {
 // The battle screen, laid out by the resource pack's ui/server_form.json on Cobblemon's battle textures: the form's
 // title picks the layout and its body carries both Pokemon as fixed-width fields (see BATTLE_FIELDS in port.py).
 const UI = "textures/ui/cobblemon";
+// A transparent button that does something (a click area over text drawn by the layout, a search field), as against
+// "none", a button that is off: ui/server_form.json lets a controller focus a "hit" button and skips a "none" one.
+const HIT = "textures/ui/cobblemon/hit";
 function pad(value, width) { const s = String(value ?? ""); return s.length >= width ? s.slice(0, width) : s + " ".repeat(width - s.length); }
 // BattleMessagePane's expand toggle: the log grows to twice its height, showing more lines, until toggled back
 const LOG_TOGGLE = "textures/ui/cobblemon/battle/log_toggle";
@@ -3843,7 +3846,7 @@ function openPasture(block, player, state) {
     // the defend toggle (PastureSlotIconConflictButton) on the player's own rows of species that defend
     for (let n = 0; n < PASTURE_LIMIT; n++) {
         const e = shown[n], can = e && prop(e, OWNER) === player.id && DEFENDERS_SET.has(e.typeId);
-        form.button(e ? "defend" : "", `${PC_UI}/pc/def_${can ? (prop(e, CONFLICT) ? "y" : "n") : "x"}`);   // empty text: no row
+        form.button(e ? "defend" : "", can ? `${PC_UI}/pc/def_${prop(e, CONFLICT) ? "y" : "n"}` : `${PC_UI}/pc/none`);   // empty text: no row
     }
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 32) return;
@@ -5994,15 +5997,15 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         form.button(text, `${SUMMARY_UI}/swap_${typeCode(mv.type)}`);
     }
     // StatWidget's page tabs, after the switch list's rows
-    for (let i = 0; i < 4; i++) form.button("stat page", `${SUMMARY_UI}/none`);
+    for (let i = 0; i < 4; i++) form.button("stat page", tab === "s" ? HIT : `${SUMMARY_UI}/none`);
     form.button("marks", `${SUMMARY_UI}/tab_marks${tab === "k" ? "_on" : ""}`);
     // the slot's face is drawn under it; the text is the hovered tooltip, the mark's name
-    for (let i = 0; i < 30; i++) form.button(tab === "k" && markIds[i] ? MARKS[markIds[i]][1] : "", `${SUMMARY_UI}/none`);
-    form.button("mark chosen", `${SUMMARY_UI}/none`);
-    for (let i = 0; i < 5; i++) form.button("stat page", `${SUMMARY_UI}/none`);   // the tabs with Ride
+    for (let i = 0; i < 30; i++) form.button(tab === "k" && markIds[i] ? MARKS[markIds[i]][1] : "", tab === "k" && markIds[i] ? HIT : `${SUMMARY_UI}/none`);
+    form.button("mark chosen", tab === "k" && mine && prop(source, ACTIVE_MARK) ? HIT : `${SUMMARY_UI}/none`);
+    for (let i = 0; i < 5; i++) form.button("stat page", tab === "s" ? HIT : `${SUMMARY_UI}/none`);   // the tabs with Ride
     // the Ride page's centre and icon: "P", the polygon, the style, whether it can switch, the icon, the tooltip
     const rideCentre = tab === "s" && stab === "r" && rides ? `P${v.pent}${v.rsty}${rides.length > 1 ? "y" : "n"}${v.rico}${RIDE_STYLE_NAMES[v.rico]} | ${cap(rides[(summaryRideStyle.get(player.id) ?? 0) % rides.length][0])}` : "";
-    form.button(rideCentre, `${SUMMARY_UI}/none`);
+    form.button(rideCentre, rideCentre && rides.length > 1 ? HIT : `${SUMMARY_UI}/none`);
     // the chart's hover text: "R" and the Ride page's readout, or "x" and the IV or EV page's (each out of its most, then
     // as a share of it), or nothing on the other pages
     const hexHover = () => HEX_ORDER.map((k) => {
@@ -6011,7 +6014,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     }).join("");
     const labelsText = tab !== "s" ? "" : stab === "r" ? "R" + rideHover : (stab === "v" || stab === "e") && mine ? "x" + hexHover() : "";
     form.button(labelsText, `${SUMMARY_UI}/none`);
-    form.button(rideCentre, `${SUMMARY_UI}/none`);
+    form.button(rideCentre, rideCentre && rides.length > 1 ? HIT : `${SUMMARY_UI}/none`);
     form.button(tab === "i" ? `Size: ${sizeCategory(source)}` : "", `${SUMMARY_UI}/none`);   // the size icon's tooltip
     form.button("item toggle", `${SUMMARY_UI}/itog_${v.imode === "c" ? "h" : "c"}`);
     form.show(player).then((r) => {
@@ -7214,7 +7217,7 @@ function showTradeForm(trade, side, version) {
     const locked = trade.accepted[side] || trade.processing;
     const slot = (e, offered, own) => !e ? "i----non" : iconOf(e.typeId, variantOf(e)) + (offered ? "y" : "n") + ({ male: "m", female: "f" }[genderOf(e)] ?? "o")
         + (own && !locked ? "y" : "n") + `Lv. ${prop(e, LEVEL) ?? POKEMON[e.typeId].level}`;
-    for (let n = 0; n < 6; n++) form.button(slot(mine[n], !!mine[n] && memberKey(mine[n]) === trade.offer[side], true), `${UI}/trade/none`);
+    for (let n = 0; n < 6; n++) form.button(slot(mine[n], !!mine[n] && memberKey(mine[n]) === trade.offer[side], true), mine[n] ? HIT : `${UI}/trade/none`);
     for (let n = 0; n < 6; n++) form.button(slot(theirs[n], !!theirs[n] && memberKey(theirs[n]) === trade.offer[1 - side], false), `${UI}/trade/none`);
     // TradeButton: disabled until both have offered, ready, then the dots while waiting on the other side
     const enabled = !!(myOffer && theirOffer) && !trade.processing, active = trade.accepted[side] && !trade.accepted[1 - side];
