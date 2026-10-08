@@ -5999,6 +5999,36 @@ def feature_bars():
     return bars
 
 
+# What every button on the port's screens shares: the three state controls, the click from a pointer (menu_select,
+# pressed) and from a controller or the arrow keys (menu_ok, on the focused button), and focus itself. The vanilla
+# form's buttons get focus from common.button in ui_common.json; a raw "type": "button" has none, so without these
+# three a controller could not reach any button on a cbm: screen (reported on Planet Minecraft, October 2026).
+# The hover control doubles as the focus highlight.
+# A button whose texture names "none" (none, north_none) is switched off (an empty slot, a tab's control on another tab, a hover-only
+# tooltip area), and a controller must skip it rather than land on nothing; scripts/main.js gives the transparent
+# buttons that do act a "hit" texture instead. Each button builder lists these after its collection_details.
+FOCUS_WASH = (255, 255, 255, 64)   # the hover of a transparent button that acts (HIT in scripts/main.js)
+FOCUS_BINDINGS = [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                  {"binding_type": "view", "source_property_name": "((#form_button_texture - 'none') = #form_button_texture)",
+                   "target_property_name": "#focus_enabled"}]
+FORM_BUTTON = {"focus_enabled": True, "focus_magnet_enabled": True, "focus_wrap_enabled": True,
+               "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
+               "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                   {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}]}
+
+
+def focus_frame(image):
+    """A hover frame for a button Cobblemon draws in one state only (its page arrows, the cry button), since on Java
+    the mouse is the only way to reach them. With a controller the hover frame is the only sign of focus, so this one
+    is the image a third brighter, or, for an all-white image, tinted the light blue of a selected slot."""
+    r, g, b, a = image.split()
+    if r.getextrema()[0] >= 250 and g.getextrema()[0] >= 250 and b.getextrema()[0] >= 250:
+        r, g, b = (band.point(lambda v, c=c: v * c // 255) for band, c in ((r, 110), (g, 200), (b, 255)))
+    else:
+        r, g, b = (band.point(lambda v: min(255, v * 4 // 3)) for band in (r, g, b))
+    return Image.merge("RGBA", (r, g, b, a))
+
+
 def create_summary_ui():
     S = f"{uiTextures}/summary"
     os.makedirs(S, exist_ok=True)
@@ -6367,10 +6397,8 @@ def create_summary_ui():
     def button(index, offset, size):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
                                     "collection_index": index, "layer": 5,
-                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [button(0, (78, -1), (39, 13)), button(1, (109, -1), (39, 13)), button(2, (140, -1), (39, 13))]
     for n in range(6):
@@ -6682,7 +6710,7 @@ def create_pc_ui():
         normal.save(f"{P}/{out}.png"); lit.save(f"{P}/{out}_hover.png"); lit.save(f"{P}/{out}_on.png"); lit.save(f"{P}/{out}_on_hover.png")
     for name in ("none", "none_hover"): blank1.save(f"{P}/{name}.png")
     Image.open(f"{src}/pc_icon_filter.png").convert("RGBA").crop((0, 0, 16, 16)).save(f"{P}/filter_icon.png")
-    for name in ("bar", "bar_hover"): blank1.save(f"{P}/{name}.png")
+    blank1.save(f"{P}/bar.png"); Image.new("RGBA", (1, 1), FOCUS_WASH).save(f"{P}/bar_hover.png")   # the filter and box name fields
     def two(path):
         image = Image.open(path).convert("RGBA")
         return image.crop((0, 0, image.width, image.height // 2)), image.crop((0, image.height // 2, image.width, image.height))
@@ -6802,10 +6830,8 @@ def create_pc_ui():
     def button(index, offset, size):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
                                     "collection_index": index, "layer": 6,
-                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [while_("n", button(n, (x, y), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
     box_opts = [while_("y", button(n, (x, y + 5), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
@@ -6962,9 +6988,9 @@ def create_pokedex_ui():
         normal.crop((0, 16, 16, 32)).save(f"{D}/tab_{name}_on.png"); normal.crop((0, 16, 16, 32)).save(f"{D}/tab_{name}_on_hover.png")
     for name in ("arrow_up", "arrow_down"):
         image = Image.open(f"{src}/{name}.png").convert("RGBA")
-        image.save(f"{D}/{name}.png"); image.save(f"{D}/{name}_hover.png")
+        image.save(f"{D}/{name}.png"); focus_frame(image).save(f"{D}/{name}_hover.png")
     sound = Image.open(f"{src}/button_sound.png").convert("RGBA")
-    sound.save(f"{D}/cry.png"); sound.save(f"{D}/cry_hover.png")
+    sound.save(f"{D}/cry.png"); focus_frame(sound).save(f"{D}/cry_hover.png")
     blank.save(f"{D}/none.png"); blank.save(f"{D}/none_hover.png")
     for letter in DEX_TABS:
         for tab in DEX_TABS + "x": (Image.open(f"{src}/select_arrow.png").convert("RGBA") if tab == letter else blank).save(f"{D}/t{letter}_{tab}.png")
@@ -7061,10 +7087,8 @@ def create_pokedex_ui():
     def button(index, offset, size):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
                                     "collection_index": index, "layer": 8,
-                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     def dex_tooltip(b, dy):
         # PokedexTooltip's renderTooltip: its background stretched to the text and 6 more, an edge each side, 11 high,
@@ -7209,10 +7233,8 @@ def create_starter_ui():
     def button(index, offset, size):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
                                     "collection_index": index, "layer": 7,
-                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [button(n, xy, (25, 25)) for n, xy in enumerate(slots)]
     buttons += [button(9, (13, 180), (106, 14)), button(10, (210, 181), (26, 13)), button(11, (229, 30), (4, 6)), button(12, (229, 164), (4, 6))]
@@ -7293,10 +7315,8 @@ def create_dialogue_ui():
                                         "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}]}}]}
     def button(index, x, y, w, h, layout):
         return {f"b{layout}{index}": {"type": "button", "collection_index": index, "layer": 6, **at(x, y, w, h),
-                                      "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                      "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                          {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                      "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
+                                      **FORM_BUTTON,
+                                      "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS,
                                                    {"binding_name": "#form_text"}, {"binding_type": "view",
                                                     "source_property_name": f"({field('layout')} = '{layout}')", "target_property_name": "#visible"}],
                                       "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
@@ -7567,10 +7587,8 @@ def create_pot_ui():
         return face
     def button(index, offset, size, faces):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
-                                    "collection_index": index, "layer": 4, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "collection_index": index, "layer": 4, **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": faces(False)}, {"hover": faces(True)}, {"pressed": faces(True)}]}}
     def cook_face(hover):
         return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
@@ -7825,10 +7843,8 @@ def create_challenge_ui():
     def view(source, target): return {"binding_type": "view", "source_property_name": source, "target_property_name": target}
     def button(index, offset, size, faces, layer=8):
         return {f"button_{index}": {"type": "button", **place(offset, size), "collection_index": index, "layer": layer,
-                                    "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": faces(False)}, {"hover": faces(True)}, {"pressed": faces(True)}]}}
     def face(hover, extra=None, image_offset=(0, 0), image_size=("100%", "100%")):
         controls = [{"face": {"type": "image", "size": list(image_size), "offset": list(image_offset), "anchor_from": "top_left", "anchor_to": "top_left",
@@ -7995,10 +8011,8 @@ def create_trade_ui():
             (f"('%.{b}s' * #form_button_text)" if a == 0 else f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))")
     def button(index, offset, size, faces, layer=8):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
-                                    "collection_index": index, "layer": layer, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "collection_index": index, "layer": layer, **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": faces(False)}, {"hover": faces(True)}, {"pressed": faces(True)}]}}
     def view(source, target): return {"binding_type": "view", "source_property_name": source, "target_property_name": target}
     # a slot's text: the portrait (5), "y" or "n" for on offer, the gender (1), "y" when it can be offered, then "Lv. N"
@@ -8184,10 +8198,8 @@ def create_tm_ui():
         return body
     def button(index, offset, size, extra=None):
         return {f"button_{index}": {"type": "button", "size": list(size), "offset": list(offset), "anchor_from": "top_left", "anchor_to": "top_left",
-                                    "collection_index": index, "layer": 8, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                        {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                    "collection_index": index, "layer": 8, **FORM_BUTTON,
+                                    "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("", extra)}, {"hover": face("_hover", extra)}, {"pressed": face("_hover", extra)}]}}
     text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
     def part(a, b): return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
@@ -8242,7 +8254,7 @@ def create_tm_ui():
         return {name: {"type": "image", "size": list(size), "offset": list(offset), "layer": layer, "keep_ratio": False, "anchor_from": "top_left", "anchor_to": "top_left",
                        "bindings": [text, {"binding_type": "view", "source_property_name": source, "target_property_name": "#texture"}]}}
     slot_controls = [slot_image("portrait", "('textures/ui/cobblemon/icons/' + ('%.5s' * #form_button_text))", (1, 0), (29, 29)),
-                     slot_image("ball", f"('textures/ui/cobblemon/party/' + {part(5, 8)})", (-2, -3), (9, 11), 5),
+                     slot_image("ball", f"('textures/ui/cobblemon/party/' + {part(5, 8)} + 'c')", (-2, -3), (9, 11), 5),   # the closed ball
                      slot_image("gender", f"('textures/ui/cobblemon/party/' + {part(8, 9)})", (51, 19), (3, 4), 5),
                      slot_part("level", part(9, 15), (24, 13), (30, 5), "right"),
                      slot_part("label", part(15, 27), (0, 26), (57, 5), "center"),
@@ -8306,10 +8318,8 @@ def create_interact_ui():
         # the hovered option's name in Java's tooltip beside it (InteractWheelButton, an offered option only)
         hover = face("_hover"); hover["controls"] = [java_tooltip("#form_button_text", "(not (#form_button_text = ''))", (w / 2 + 6, h / 2 - 12))]
         buttons.append({f"button_{index}": {"type": "button", "size": [w, h], "offset": [x, y], "anchor_from": "top_left", "anchor_to": "top_left",
-                                            "collection_index": index, "layer": 5, "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                                            "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                                                {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                                            "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                                            "collection_index": index, "layer": 5, **FORM_BUTTON,
+                                            "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                             "controls": [{"default": face("")}, {"hover": hover}, {"pressed": face("_hover")}]}})
     wheel = {"type": "panel", "size": [170, 170], "anchor_from": "center", "anchor_to": "center",
              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
@@ -8465,10 +8475,8 @@ def create_battle_ui():
                                     {"binding_type": "view", "source_property_name": source, "target_property_name": "#value"}]}}
     def button(size, labels):
         return {"type": "button", "size": size, "layer": 2,
-                "default_control": "default", "hover_control": "hover", "pressed_control": "pressed",
-                "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
-                                    {"from_button_id": "button.menu_ok", "to_button_id": "button.form_button_click", "mapping_type": "focused"}],
-                "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}],
+                **FORM_BUTTON,
+                "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                 "controls": [{"default": face("", labels)}, {"hover": face("_hover", labels)}, {"pressed": face("_hover", labels)}]}
     shown = {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}
     text_binding = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
@@ -8531,7 +8539,7 @@ def create_battle_ui():
                        "bindings": [text_binding, {"binding_type": "view", "source_property_name": source, "target_property_name": "#texture"}]}}
     tile_labels = [button_label("level", tile_field("level"), [5, 4]), button_label("name", tile_field("name"), [5, 12]),
                    tile_image("portrait", [26, 26], [62, 0], f"('{T}/icons/' + {tile_field('icon')})", 3),
-                   tile_image("ball", [9, 11], [85, -3], f"('{T}/party/' + {tile_field('ball')})", 5),
+                   tile_image("ball", [9, 11], [85, -3], f"('{T}/party/' + {tile_field('ball')} + 'c')", 5),   # the closed ball
                    tile_image("hp", [90, 1], [1, 22], f"('{T}/battle/hpbar_' + {tile_field('hp')})"),
                    button_label("hptext", tile_field("hptext"), [14 - 20, 24], scale=0.5, size=(40, 6), align="center"),
                    tile_image("status", [37, 5], [27, 24], f"('{T}/battle/pstatus_' + {tile_field('status')})"),
@@ -8588,6 +8596,9 @@ def create_battle_ui():
         "cobblemon_battle_log_lines": log_lines,
         "cobblemon_move_item": move_item,
     }
+    # scripts/main.js's HIT: a transparent face for a button that acts, which a controller can focus (FOCUS_BINDINGS)
+    # its hover a faint white wash over the button, the one sign of focus a transparent button can give a controller
+    Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/hit.png"); Image.new("RGBA", (1, 1), FOCUS_WASH).save(f"{uiTextures}/hit_hover.png")
     ui.update(create_summary_ui())
     ui.update(create_pc_ui())
     ui.update(create_pokedex_ui())

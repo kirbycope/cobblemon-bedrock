@@ -691,7 +691,8 @@ def render_all(out_dir, naming, size=128, processes=None, variants=None):
     jobs = [(n, os.path.join(out_dir, naming(n, v)), size, v) for n in names if re.match(r"^\d{4}_", n)
             for v in range((variants or {}).get(n, 1))]
     os.makedirs(out_dir, exist_ok=True)
-    with Pool(processes) as pool: results = pool.map(_render_to, jobs, chunksize=8)
+    # each worker holds about 900 MB, so one per core (24 on the PC) ran Windows out of commit memory in October 2026
+    with Pool(processes or min(os.cpu_count() or 1, 8)) as pool: results = pool.map(_render_to, jobs, chunksize=8)
     return [r for r in results if r]
 
 
