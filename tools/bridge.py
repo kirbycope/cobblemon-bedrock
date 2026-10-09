@@ -16,7 +16,7 @@ import re
 import sys
 import urllib.request
 
-URL = "http://localhost:8765/mcp"
+URL = "http://127.0.0.1:8765/mcp"   # not localhost: Windows tries IPv6 first and the bridge listens on IPv4 only, a 2 s stall per call
 ENV = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "minecraft-bedrock-mcp-server", ".env")
 TEST_SPOT = (33, 64, 53)     # the beach the world spawn was moved to; pillars go five above it
 PLAYER = "Kirbycope"
