@@ -125,7 +125,15 @@ def join() -> None:
     if not spot:
         click(36, 58)                   # back to the main menu, touching no world
         sys.exit("the server's LAN tile did not appear; is the server up?")
-    click(spot[0], spot[1]); time.sleep(40)
+    click(spot[0], spot[1])
+    # A server offering a resource pack this client has not cached asks first ("Download Resource Packs?"); take
+    # the download, or the client joins without the pack and the server's items and models are missing.
+    # OCR reads the prompt's question but not its green button's label, so the button is clicked where it sits.
+    for _ in range(6):
+        time.sleep(2)
+        if find_text(["would you like to download"]):
+            click(960, 654); break
+    time.sleep(40)
     try:
         sys.path.insert(0, os.path.dirname(__file__))
         from bridge import Bridge, PLAYER
