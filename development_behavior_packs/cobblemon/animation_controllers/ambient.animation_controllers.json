@@ -90,13 +90,35 @@
                 }
             }
         },
+        "controller.animation.0250_hooh.ambient": {
+            "initial_state": "a",
+            "states": {
+                "a": {
+                    "on_entry": [
+                        "/particle cobblemon:hooh_tailtrail_ambient ~0.0 ~1.66 ~2.02"
+                    ],
+                    "transitions": [
+                        {
+                            "b": "math.mod(q.life_time, 1.0) >= 0.5"
+                        }
+                    ]
+                },
+                "b": {
+                    "transitions": [
+                        {
+                            "a": "math.mod(q.life_time, 1.0) < 0.5"
+                        }
+                    ]
+                }
+            }
+        },
         "controller.animation.0448_lucario.ambient": {
             "initial_state": "a",
             "states": {
                 "a": {
                     "on_entry": [
-                        "/particle cobblemon:lucario_aura_ambient ~-0.66 ~1.19 ~-0.03",
-                        "/particle cobblemon:lucario_aura_ambient ~0.66 ~1.19 ~-0.03"
+                        "/particle cobblemon:lucario_aura_ambient ~0.66 ~1.19 ~-0.03",
+                        "/particle cobblemon:lucario_aura_ambient ~-0.66 ~1.19 ~-0.03"
                     ],
                     "transitions": [
                         {

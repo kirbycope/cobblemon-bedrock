@@ -1,0 +1,91 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0122_mrmime",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0122_mrmime/mr_mime",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0122_mrmime/mr_mime",
+                "v1": "textures/entity/0122_mrmime/mr_mime_shiny",
+                "v2": "textures/entity/0122_mrmime/mr_mime_galarian",
+                "v3": "textures/entity/0122_mrmime/mr_mime_galarian_shiny"
+            },
+            "geometry": {
+                "g_mr_mime": "geometry.mr_mime",
+                "g_mr_mime_galarian": "geometry.mr_mime_galarian"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && q.has_rider))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !q.has_rider && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && q.has_rider))) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider && (q.has_rider && q.ground_speed > 7)))) ? 6 : (((v.pose_type == 2)) ? 7 : (0))))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.mrmime.pose",
+                "blink_quirk": "controller.animation.mrmime.blink",
+                "quirk": "controller.animation.mrmime.quirk",
+                "quirk_0": "animation.mr_mime.mount_run_quirk",
+                "look_at_target": "animation.0122_mrmime.look",
+                "ground_idle": "animation.mr_mime.ground_idle",
+                "ground_walk": "animation.mr_mime.ground_walk",
+                "ground_run": "animation.mr_mime.ground_run",
+                "battle_idle": "animation.mr_mime.battle_idle",
+                "faint": "animation.mr_mime.faint",
+                "mount_idle": "animation.mr_mime.mount_idle",
+                "mount_run": "animation.mr_mime.mount_run",
+                "ride_mount_run": "animation.mr_mime.ride_mount_run",
+                "mount_run_quirk": "animation.mr_mime.mount_run_quirk",
+                "ride_jump": "animation.mr_mime.ride_jump",
+                "ride_drift": "animation.mr_mime.ride_drift",
+                "blink": "animation.mr_mime.blink",
+                "battle_idle_old": "animation.mr_mime.battle_idle_old",
+                "battle_idle_old2": "animation.mr_mime.battle_idle_old2",
+                "shock": "animation.mr_mime.shock",
+                "angry": "animation.mr_mime.angry",
+                "sad": "animation.mr_mime.sad",
+                "happy": "animation.mr_mime.happy",
+                "hurt": "animation.mr_mime.hurt",
+                "battle_pose": "animation.mr_mime.battle_pose",
+                "ground_pose": "animation.mr_mime.ground_pose",
+                "walkspeed": "animation.mr_mime.walkspeed",
+                "runspeed": "animation.mr_mime.runspeed",
+                "mr_mime__battle_idle": "animation.mr_mime.battle_idle",
+                "pose_battle_standing": "animation.0122_mrmime.pose_battle_standing",
+                "mr_mime__ride_jump": "animation.mr_mime.ride_jump",
+                "pose_jump": "animation.0122_mrmime.pose_jump",
+                "mr_mime__ground_idle": "animation.mr_mime.ground_idle",
+                "pose_standing": "animation.0122_mrmime.pose_standing",
+                "mr_mime__mount_idle": "animation.mr_mime.mount_idle",
+                "pose_mount_standing": "animation.0122_mrmime.pose_mount_standing",
+                "mr_mime__ground_walk": "animation.mr_mime.ground_walk",
+                "pose_walking": "animation.0122_mrmime.pose_walking",
+                "mr_mime__mount_run": "animation.mr_mime.mount_run",
+                "mr_mime__ride_mount_run": "animation.mr_mime.ride_mount_run",
+                "pose_mount_walking": "animation.0122_mrmime.pose_mount_walking",
+                "mr_mime__ground_run": "animation.mr_mime.ground_run",
+                "pose_running": "animation.0122_mrmime.pose_running"
+            },
+            "render_controllers": [
+                "controller.render.mrmime"
+            ],
+            "spawn_egg": {
+                "texture": "0122_mrmime_spawn_egg"
+            }
+        }
+    }
+}

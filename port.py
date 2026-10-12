@@ -609,7 +609,8 @@ def download_spawn_egg_textures():
         fileName = f"{texturesItemsBedrock}/{pokemon}_spawn_egg.png"
         if not os.path.exists(fileName):
             pokemonName = pokemon[pokemon.index("_")+1:]
-            for old, new in (("nidoranf", "nidoran-f"), ("nidoranm", "nidoran-m"), ("mrmime", "mr-mime"), ("mimejr", "mime-jr"), ("porygonz", "porygon-z"), ("walkingwake", "walking-wake"), ("ironleaves", "iron-leaves")):
+            # the dex slug strips the punctuation pokemondb's sprite names keep
+            for old, new in (("nidoranf", "nidoran-f"), ("nidoranm", "nidoran-m"), ("mrmime", "mr-mime"), ("mimejr", "mime-jr"), ("porygonz", "porygon-z"), ("walkingwake", "walking-wake"), ("ironleaves", "iron-leaves"), ("hooh", "ho-oh"), ("jangmoo", "jangmo-o"), ("hakamoo", "hakamo-o"), ("kommoo", "kommo-o"), ("mrrime", "mr-rime")):
                 pokemonName = pokemonName.replace(old, new)
             for base in ("https://img.pokemondb.net/sprites/sword-shield/icon", "https://img.pokemondb.net/sprites/scarlet-violet/icon"):
                 try:
@@ -835,6 +836,21 @@ def geometry_for(pokemon, pokemonName):
     return f"geometry.{stems[0]}" if stems else f"geometry.{pokemonName}"
 
 
+def animation_file(pokemon, pokemonName):
+    """A Pokemon's animation file: the plain one, else male, else female, else the first. Cobblemon names
+    these after the model rather than the dex slug, so the plain name is often absent: Ho-Oh's is
+    ho_oh.animation.json, Kommo-o's kommo-o, and a species whose forms each have their own model has one
+    file per form (kadabra_male, sawsbuck_spring, lycanroc_midday) and no plain file at all. The candidate
+    order is geometry_for's, so the animations describe the same model the client entity renders."""
+    folder = f"{animationsBedrock}/{pokemon}"
+    if not os.path.isdir(folder): return None
+    stems = sorted(f[:-len(".animation.json")] for f in os.listdir(folder)
+                   if f.endswith(".animation.json") and f != "poses.animation.json")
+    for candidate in (pokemonName, f"{pokemonName}_male", f"{pokemonName}_female"):
+        if candidate in stems: return f"{folder}/{candidate}.animation.json"
+    return f"{folder}/{stems[0]}.animation.json" if stems else None
+
+
 posersMain = f"{cobblemon}/bedrock/pokemon/posers"
 LOOK_DEFAULTS = (1.0, 1.0, 70.0, -45.0, 45.0, -45.0)   # SingleBoneLookAnimation: multipliers, then max/min pitch and yaw
 look_animations = {}
@@ -1054,7 +1070,15 @@ def variant_geometries(pokemon):
 
 def dedupe_variant_locators(pokemon):
     """Bedrock merges the locators of every geometry an entity lists and logs an error for each name two
-    of them place differently. The base model's locators win, so a variant model drops its copies."""
+    of them place differently. The base model's locators win, so a variant model drops its copies.
+
+    This cannot reach `armor_offset.default_neck`, which is in no model file: Bedrock synthesises one per
+    geometry from the skeleton (the `neck` bone's height, or other bones when there is none) and logs the
+    same clash when an entity's forms disagree. Toxtricity and Avalugg are quiet because their forms share
+    a neck height; Lycanroc is not, because Midday's neck sits at y 16 and Midnight's at 27.5. Defining the
+    locator explicitly makes it worse, because the synthesised one then clashes with it inside every single
+    geometry. Nothing short of changing Cobblemon's models or giving each form its own entity type removes
+    it, and nothing uses the offset, since Pokemon wear no armour."""
     variations = resolver_variations(pokemon)
     stems = []
     for variation in variations:
@@ -1396,8 +1420,8 @@ def variant_battle_overrides(pokemon, species):
 
 def animation_names(pokemon, pokemonName):
     """The short names in a Pokemon's animation file: ground_idle, ground_walk, air_fly, sleep, blink..."""
-    path = f"{animationsBedrock}/{pokemon}/{pokemonName}.animation.json"
-    if not os.path.exists(path): return {}
+    path = animation_file(pokemon, pokemonName)
+    if not path: return {}
     with open(path, encoding="utf-8") as file: data = json.load(file)
     return {name[name.rindex(".")+1:]: name for name in data.get("animations", {})}
 
@@ -1535,9 +1559,14 @@ def create_client_entities():
     for pokemon in pokemons:
         pokemonName = pokemon[pokemon.index("_")+1:]
         names = animation_names(pokemon, pokemonName)
-        if not names: print(f"No animation file for {pokemon}, no client entity."); continue
-        animations = {"pose": f"controller.animation.{pokemonName}.pose"}
-        animate = ["pose"]
+        # Without a client entity a Pokemon is invisible in the world and a black square in the creative
+        # menu, so having no animations is no reason to leave it out: Bounsweet and Pyukumuku have no
+        # animation file of their own and still render, posed by their generated poses.animation.json.
+        if not model_files(pokemon): print(f"No model for {pokemon}, no client entity."); continue
+        animations = {}
+        animate = []
+        if os.path.exists(f"{animationControllersBedrock}/{pokemon}.animation_controllers.json"):
+            animations["pose"] = f"controller.animation.{pokemonName}.pose"; animate.append("pose")
         if "blink" in names:
             animations["blink_quirk"] = f"controller.animation.{pokemonName}.blink"; animate.append("blink_quirk")
         quirks = [n for n in names if "quirk" in n and "sleep" not in n and "battle" not in n]
@@ -2387,9 +2416,9 @@ def ambient_particles(pokemon, pokemonName):
     controller state that plays the animation as well (the keyframe still fires once at spawn, which is harmless)."""
     if pokemon in ambient_cache: return ambient_cache[pokemon]
     load_particle_ids()
-    path = f"{animationsBedrock}/{pokemon}/{pokemonName}.animation.json"
+    path = animation_file(pokemon, pokemonName)
     result = ambient_cache[pokemon] = {}
-    if not os.path.exists(path): return result
+    if not path: return result
     with open(path, encoding="utf-8") as file: data = json.load(file)
     for name, anim in data.get("animations", {}).items():
         if not anim.get("loop") or "0.0" not in anim.get("particle_effects", {}): continue
@@ -2402,9 +2431,9 @@ def ambient_particles(pokemon, pokemonName):
 
 def animation_effects(pokemon, pokemonName):
     """The particle and sound effect names a Pokemon's animations fire, mapped to the pack's identifiers."""
-    path = f"{animationsBedrock}/{pokemon}/{pokemonName}.animation.json"
+    path = animation_file(pokemon, pokemonName)
     particles = {}; sounds = {}
-    if not os.path.exists(path): return particles, sounds
+    if not path: return particles, sounds
     with open(path, encoding="utf-8") as file: data = json.load(file)
     for name, entries in ambient_particles(pokemon, pokemonName).items():
         for entry in entries: particles[entry["effect"]] = f"cobblemon:{entry['effect']}"
@@ -9093,6 +9122,23 @@ def create_building_blocks():
     return made
 
 
+def check_pokemon_complete():
+    """What every Pokemon needs to be seen at all, checked after the pack is written. A species with no
+    client entity is invisible in the world and a black square in the creative menu, and its portrait falls
+    back to the spawn egg, so a stage that quietly skips one costs three things at once; 32 species were
+    missing theirs because their animation file is named after the model rather than the dex slug."""
+    missing = []
+    for pokemon in pokemons:
+        for what, path in (("client entity", f"{entityBedrock}/{pokemon}.entity.json"),
+                           ("render controller", f"{renderControllersBedrock}/{pokemon}.render_controllers.json"),
+                           ("spawn egg texture", f"{texturesItemsBedrock}/{pokemon}_spawn_egg.png"),
+                           ("behavior entity", f"{entitiesBedrock}/{pokemon}.behavior.json")):
+            if not os.path.exists(path): missing.append(f"  {pokemon}: no {what}")
+    print("\n".join(missing) or f"Check complete: all {len(pokemons)} Pokemon have a client entity, render controller, spawn egg and behavior.")
+    if missing: print(f"INCOMPLETE: {len(missing)} missing file(s) across {len(pokemons)} Pokemon.")
+    return len(missing)
+
+
 def main():
     global pokemons
     fix_only = "--fix" in sys.argv
@@ -9150,6 +9196,7 @@ def main():
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
     create_move_fx()   # after the client entities and particles, whose clips and ids it keeps
     ensure_script_module()
+    check_pokemon_complete()
     bump_pack_versions()
 
 

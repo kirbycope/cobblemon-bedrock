@@ -1,0 +1,73 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0916_oinkologne",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0916_oinkologne/oinkologne_male",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0916_oinkologne/oinkologne_male",
+                "v1": "textures/entity/0916_oinkologne/oinkologne_male_shiny",
+                "v2": "textures/entity/0916_oinkologne/oinkologne_female",
+                "v3": "textures/entity/0916_oinkologne/oinkologne_female_shiny"
+            },
+            "geometry": {
+                "g_oinkologne_male": "geometry.oinkologne_male",
+                "g_oinkologne_female": "geometry.oinkologne_female"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                ],
+                "animate": [
+                    "pose",
+                    "blink_quirk",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.oinkologne.pose",
+                "blink_quirk": "controller.animation.oinkologne.blink",
+                "quirk": "controller.animation.oinkologne.quirk",
+                "quirk_0": "animation.oinkologne_male.snort_quirk",
+                "quirk_1": "animation.oinkologne_male.look_quirk",
+                "look_at_target": "animation.0916_oinkologne.look",
+                "ground_idle": "animation.oinkologne_male.ground_idle",
+                "battle_idle": "animation.oinkologne_male.battle_idle",
+                "ground_walk": "animation.oinkologne_male.ground_walk",
+                "sleep": "animation.oinkologne_male.sleep",
+                "cry": "animation.oinkologne_male.cry",
+                "blink": "animation.oinkologne_male.blink",
+                "snort_quirk": "animation.oinkologne_male.snort_quirk",
+                "look_quirk": "animation.oinkologne_male.look_quirk",
+                "recoil": "animation.oinkologne_male.recoil",
+                "base": "animation.oinkologne_male.base",
+                "pose_animation": "animation.oinkologne_male.pose",
+                "walk_speed_test": "animation.oinkologne_male.walk_speed_test",
+                "oinkologne_male__battle_idle": "animation.oinkologne_male.battle_idle",
+                "pose_battle_standing": "animation.0916_oinkologne.pose_battle_standing",
+                "oinkologne_male__ground_idle": "animation.oinkologne_male.ground_idle",
+                "pose_standing": "animation.0916_oinkologne.pose_standing",
+                "oinkologne_male__ground_walk": "animation.oinkologne_male.ground_walk",
+                "pose_walking": "animation.0916_oinkologne.pose_walking",
+                "oinkologne_male__sleep": "animation.oinkologne_male.sleep"
+            },
+            "render_controllers": [
+                "controller.render.oinkologne"
+            ],
+            "spawn_egg": {
+                "texture": "0916_oinkologne_spawn_egg"
+            }
+        }
+    }
+}

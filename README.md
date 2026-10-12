@@ -50,7 +50,16 @@ Cobblemon's Blockbench exports carry things Bedrock's content log rejects (a `ge
 key, `NaN` and unary `+` in Molang, animation names with spaces or parentheses, catmullrom keyframes on
 Molang values, models named `geometry.unknown`, Cobblemon-only queries such as `q.r.velocity_y`), so the
 port fixes them after copying and names each model after its file. `python port.py --fix` runs only those fixes and regenerates the animation
-controllers and client entities, without downloading anything. Every run bumps the pack version in both
+controllers and client entities, without downloading anything.
+
+Cobblemon names a species' animation file after the model rather than the dex slug, so the plain name is
+often absent: Ho-Oh's is `ho_oh.animation.json` and Kommo-o's `kommo-o.animation.json`, and a species whose
+forms each have their own model (Kadabra, Sawsbuck, Lycanroc, Gimmighoul) has one file per form and no plain
+file at all. The port resolves it the way it resolves the geometry, the plain name then male then female then
+the first, so the animations describe the model the client entity renders. A species with no client entity is
+invisible in the world, a black square in the creative menu, and falls back to its spawn egg for the party and
+PC portrait, so `check_pokemon_complete` runs at the end of every port and names any Pokemon missing a client
+entity, render controller, spawn egg or behavior. Every run bumps the pack version in both
 manifests, because the client caches the pack the server sent it by version; `python tools/deploy.py`
 then writes that version into the server world's pack lists and restarts the server. It runs the server under
 `tools/bds_host.py`, which gives it a console that `bds.cmd` in the server folder types into, so a restart sends `stop` and
