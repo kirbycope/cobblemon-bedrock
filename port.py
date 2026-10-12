@@ -2179,6 +2179,46 @@ BIOME_IDS = {
 # Cobblemon's bucket weights (data/cobblemon/spawning/best-spawner-config.json), so rarity survives the port
 BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2}
 SURFACE_PRESETS = {"natural", "wild", "treetop", "foliage", "water"}
+# What a species' conditions add up to once normalised, in the 1 to 240 band vanilla's own rules keep to
+# (husk 240 is the highest Bedrock ships, median 10), in Cobblemon's 94 : 5 : 0.5 : 0.2 bucket proportions.
+SPAWN_TOTALS = {"common": 240, "uncommon": 13, "rare": 2, "ultra-rare": 1}
+# Bedrock treats the whole Nether as underground: it has no sky, so a rule that only spawns on the surface
+# never fires there. Every vanilla Nether mob spawns underground, Hoglin and Strider included.
+NETHER_TAGS = {"nether", "nether_wastes", "crimson_forest", "warped_forest", "soulsand_valley", "basalt_deltas"}
+# The cap vanilla puts on its water mobs so they do not fill every shore (cod 20, salmon 10, dolphin 5, squid 4)
+WATER_DENSITY = 5
+
+
+def biome_tags_in(biome_filter):
+    """Every biome tag a filter tests, however deeply it is nested in any_of/all_of."""
+    found = set()
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("test") == "has_biome_tag": found.add(node.get("value"))
+            for value in node.values(): walk(value)
+        elif isinstance(node, list):
+            for value in node: walk(value)
+    walk(biome_filter)
+    return found
+
+
+def normalise_weights(pairs):
+    """Turn Cobblemon's raw spawn weights into a share of a Bedrock population pool.
+
+    Cobblemon rolls a rarity bucket first and then picks within it by weight, so a weight only means
+    anything among the spawns eligible at one spot: Dratini's two ocean-ruins entries are 4500 where the
+    median entry in the whole game is 18. Bedrock instead makes one weighted pick across the pool, so those
+    raw numbers carried over unchanged let a handful of species own it - Dratini alone was 62 percent of
+    water_animal, and the top five 85 percent, which is why the same few Pokemon kept turning up.
+
+    Each species is given a total of its own, from the mix of buckets its entries use, and that total is
+    split between its conditions in proportion to their raw weight. Where a species prefers to spawn is
+    kept, how often it wins against other species is not left to an unbounded number."""
+    raw = [rule["minecraft:weight"]["default"] for rule, _ in pairs]
+    total = sum(raw) or 1.0
+    target = sum(r / total * SPAWN_TOTALS.get(spawn.get("bucket", "common"), 1) for r, (_, spawn) in zip(raw, pairs))
+    for (rule, _), r in zip(pairs, raw):
+        rule["minecraft:weight"]["default"] = max(1, round(target * r / total))
 
 
 def biome_filter_for(biome_ids):
@@ -2199,13 +2239,20 @@ def spawn_condition(spawn, species, kind):
     biome_filter = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
     if biome_filter is None: return None
     position = spawn.get("spawnablePositionType", "grounded")
-    weight = max(1, round(spawn.get("weight", 10) * BUCKET_WEIGHTS.get(spawn.get("bucket", "common"), 1.0) / 6))
+    # the raw Cobblemon score; normalise_weights rescales a species' conditions into Bedrock's band
+    weight = spawn.get("weight", 10) * BUCKET_WEIGHTS.get(spawn.get("bucket", "common"), 1.0)
     rule = {"minecraft:weight": {"default": weight}, "minecraft:biome_filter": biome_filter}
     in_water = position in ("submerged", "surface", "seafloor") or kind == "fish"
     underground = condition.get("canSeeSky") is False or (condition.get("maxY") is not None and condition["maxY"] < 60)
-    if in_water: rule["minecraft:spawns_underwater"] = {}; rule["minecraft:spawns_on_surface"] = {}
-    elif underground: rule["minecraft:spawns_underground"] = {}
-    else: rule["minecraft:spawns_on_surface"] = {}
+    tags = biome_tags_in(biome_filter)
+    nether = bool(tags & NETHER_TAGS)
+    if in_water: rule["minecraft:spawns_underwater"] = {}; rule["minecraft:spawns_on_surface"] = {}; rule["minecraft:density_limit"] = {"surface": WATER_DENSITY}
+    else:
+        # a filter that names Nether and overworld biomes together needs both, the way vanilla's Enderman
+        # spawns on the surface of the overworld and underground in the Nether from one rule
+        elsewhere = bool(tags - NETHER_TAGS) or not tags
+        if nether or underground: rule["minecraft:spawns_underground"] = {}
+        if elsewhere and not underground: rule["minecraft:spawns_on_surface"] = {}
     if "minSkyLight" in condition or "maxSkyLight" in condition or "timeRange" in condition:
         low = condition.get("minSkyLight", 0); high = condition.get("maxSkyLight", 15)
         time_range = condition.get("timeRange", "")
@@ -2243,15 +2290,18 @@ def create_spawn_rules():
             form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
             rule = spawn_condition(spawn, species, kind)
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
-            if rule: conditions.append(rule)
+            if rule: conditions.append((rule, spawn))
             else: skipped += 1
         if not conditions: continue
         # one population pool per file: water spawns go in water_animal, and a species that spawns both
         # on land and in water keeps only its land spawns, because water spawns counted in the animal
         # pool fill it from every shore and starve the land spawns (vanilla cows included)
-        water = [c for c in conditions if "minecraft:spawns_underwater" in c]
+        water = [p for p in conditions if "minecraft:spawns_underwater" in p[0]]
         if len(water) == len(conditions): population = "water_animal"
-        else: population = "animal"; conditions = [c for c in conditions if "minecraft:spawns_underwater" not in c]
+        else: population = "animal"; conditions = [p for p in conditions if "minecraft:spawns_underwater" not in p[0]]
+        # after the split, so a species keeps the whole of its share in the pool it actually spawns in
+        normalise_weights(conditions)
+        conditions = [rule for rule, _ in conditions]
         data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
         with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
         written += 1
@@ -9139,6 +9189,32 @@ def check_pokemon_complete():
     return len(missing)
 
 
+def check_spawn_balance(share=0.05):
+    """Bedrock makes one weighted pick per population pool, so a species whose weights dwarf the rest is the
+    only thing anyone meets. Dratini's raw Cobblemon weights once made it 62 percent of water_animal on their
+    own. This reports any species holding more than `share` of its pool, any weight outside the 1 to 240 band
+    vanilla keeps to, and any Nether spawn left on the surface, where it can never fire."""
+    pools, problems = {}, []
+    for path in glob.glob(f"{spawnRulesBedrock}/*.json"):
+        name = os.path.basename(path)[:-len(".json")]
+        with open(path, encoding="utf-8") as file: rules = json.load(file)["minecraft:spawn_rules"]
+        pools.setdefault(rules["description"].get("population_control"), {})[name] = sum(
+            condition["minecraft:weight"]["default"] for condition in rules["conditions"])
+        for condition in rules["conditions"]:
+            weight = condition["minecraft:weight"]["default"]
+            if not 1 <= weight <= max(SPAWN_TOTALS.values()): problems.append(f"  {name}: weight {weight} outside 1..{max(SPAWN_TOTALS.values())}")
+            if biome_tags_in(condition.get("minecraft:biome_filter", {})) & NETHER_TAGS and "minecraft:spawns_underground" not in condition:
+                problems.append(f"  {name}: a Nether spawn that only spawns on the surface")
+    for population, totals in sorted(pools.items()):
+        total = sum(totals.values()) or 1
+        for name, weight in sorted(totals.items(), key=lambda kv: -kv[1]):
+            if weight / total > share: problems.append(f"  {name}: {100 * weight / total:.1f}% of the {population} pool")
+        print(f"Spawn balance: {population} has {len(totals)} species, heaviest "
+              f"{100 * max(totals.values()) / total:.1f}% of the pool (even share would be {100 / len(totals):.1f}%).")
+    print("\n".join(problems) or "Spawn balance check passed.")
+    return len(problems)
+
+
 def main():
     global pokemons
     fix_only = "--fix" in sys.argv
@@ -9197,6 +9273,7 @@ def main():
     create_move_fx()   # after the client entities and particles, whose clips and ids it keeps
     ensure_script_module()
     check_pokemon_complete()
+    check_spawn_balance()
     bump_pack_versions()
 
 
