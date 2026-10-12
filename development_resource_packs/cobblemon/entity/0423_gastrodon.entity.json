@@ -1,0 +1,92 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0423_gastrodon",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0423_gastrodon/gastrodon_west",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0423_gastrodon/gastrodon_west",
+                "v1": "textures/entity/0423_gastrodon/gastrodon_west_shiny",
+                "v2": "textures/entity/0423_gastrodon/gastrodon_east",
+                "v3": "textures/entity/0423_gastrodon/gastrodon_east_shiny",
+                "v4": "textures/entity/0423_gastrodon/gastrodon_west",
+                "v5": "textures/entity/0423_gastrodon/gastrodon_west_shiny"
+            },
+            "geometry": {
+                "g_gastrodon_west": "geometry.gastrodon_west",
+                "g_gastrodon_east": "geometry.gastrodon_east"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && (q.is_on_ground && (q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 2)) ? 5 : (0))))));"
+                ],
+                "animate": [
+                    "pose",
+                    "quirk"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.gastrodon.pose",
+                "quirk": "controller.animation.gastrodon.quirk",
+                "quirk_0": "animation.gastrodon_east.quirk",
+                "look_at_target": "animation.0423_gastrodon.look",
+                "cry": "animation.gastrodon_east.cry",
+                "sleep": "animation.gastrodon_east.sleep",
+                "ground_idle": "animation.gastrodon_east.ground_idle",
+                "quirk_animation": "animation.gastrodon_east.quirk",
+                "ground_walk": "animation.gastrodon_east.ground_walk",
+                "ground_run": "animation.gastrodon_east.ground_run",
+                "walkspeed_test": "animation.gastrodon_east.walkspeed_test",
+                "runspeed_test": "animation.gastrodon_east.runspeed_test",
+                "ride_ground_run": "animation.gastrodon_east.ride_ground_run",
+                "ride_ground_walk": "animation.gastrodon_east.ride_ground_walk",
+                "ride_jump": "animation.gastrodon_east.ride_jump",
+                "battle_idle": "animation.gastrodon_east.battle_idle",
+                "physical": "animation.gastrodon_east.physical",
+                "special": "animation.gastrodon_east.special",
+                "status": "animation.gastrodon_east.status",
+                "battle_cry": "animation.gastrodon_east.battle_cry",
+                "faint": "animation.gastrodon_east.faint",
+                "recoil": "animation.gastrodon_east.recoil",
+                "surfacewater_idle": "animation.gastrodon_east.surfacewater_idle",
+                "surfacewater_swim": "animation.gastrodon_east.surfacewater_swim",
+                "shock": "animation.gastrodon_east.shock",
+                "happy": "animation.gastrodon_east.happy",
+                "neutral": "animation.gastrodon_east.neutral",
+                "gastrodon_east__battle_idle": "animation.gastrodon_east.battle_idle",
+                "pose_battle_standing": "animation.0423_gastrodon.pose_battle_standing",
+                "gastrodon_east__ride_jump": "animation.gastrodon_east.ride_jump",
+                "pose_jump": "animation.0423_gastrodon.pose_jump",
+                "gastrodon_east__ground_run": "animation.gastrodon_east.ground_run",
+                "gastrodon_east__ride_ground_run": "animation.gastrodon_east.ride_ground_run",
+                "pose_running": "animation.0423_gastrodon.pose_running",
+                "gastrodon_east__ground_idle": "animation.gastrodon_east.ground_idle",
+                "pose_standing": "animation.0423_gastrodon.pose_standing",
+                "gastrodon_east__ground_walk": "animation.gastrodon_east.ground_walk",
+                "gastrodon_east__ride_ground_walk": "animation.gastrodon_east.ride_ground_walk",
+                "pose_walking": "animation.0423_gastrodon.pose_walking",
+                "gastrodon_east__sleep": "animation.gastrodon_east.sleep"
+            },
+            "render_controllers": [
+                "controller.render.gastrodon"
+            ],
+            "spawn_egg": {
+                "texture": "0423_gastrodon_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.gastrodon.cry": "cobblemon.gastrodon.cry"
+            }
+        }
+    }
+}

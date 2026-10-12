@@ -1,0 +1,68 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:p0925_maushold",
+            "materials": {
+                "default": "entity_alphatest_one_sided",
+                "emissive": "entity_emissive_alpha",
+                "translucent": "entity_alphablend"
+            },
+            "textures": {
+                "default": "textures/entity/0925_maushold/maushold",
+                "blank": "textures/entity/blank",
+                "v0": "textures/entity/0925_maushold/maushold",
+                "v1": "textures/entity/0925_maushold/maushold_shiny",
+                "v2": "textures/entity/0925_maushold/maushold",
+                "v3": "textures/entity/0925_maushold/maushold_shiny"
+            },
+            "geometry": {
+                "g_maushold_three": "geometry.maushold_three",
+                "g_maushold_four": "geometry.maushold_four"
+            },
+            "scripts": {
+                "initialize": [
+                    "v.clip_roll = math.random(0, 1);"
+                ],
+                "pre_animation": [
+                    "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1)) ? 1 : (((v.pose_type == 2)) ? 2 : (((v.pose_type == 7)) ? 3 : (((v.pose_type == 8)) ? 4 : (0)))));"
+                ],
+                "animate": [
+                    "pose"
+                ],
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+            },
+            "animations": {
+                "pose": "controller.animation.maushold.pose",
+                "look_at_target": "animation.0925_maushold.look",
+                "ground_idle": "animation.maushold_four.ground_idle",
+                "ground_walk": "animation.maushold_four.ground_walk",
+                "blink3": "animation.maushold_four.blink3",
+                "blink4": "animation.maushold_four.blink4",
+                "cry": "animation.maushold_four.cry",
+                "shoulder_left": "animation.maushold_four.shoulder_left",
+                "shoulder_right": "animation.maushold_four.shoulder_right",
+                "sleep": "animation.maushold_four.sleep",
+                "faint": "animation.maushold_four.faint",
+                "blink1": "animation.maushold_four.blink1",
+                "blink2": "animation.maushold_four.blink2",
+                "maushold_four__ground_idle": "animation.maushold_four.ground_idle",
+                "pose_standing": "animation.0925_maushold.pose_standing",
+                "maushold_four__ground_walk": "animation.maushold_four.ground_walk",
+                "pose_walking": "animation.0925_maushold.pose_walking",
+                "maushold_four__sleep": "animation.maushold_four.sleep",
+                "maushold_four__shoulder_left": "animation.maushold_four.shoulder_left",
+                "pose_shoulder_left": "animation.0925_maushold.pose_shoulder_left",
+                "maushold_four__shoulder_right": "animation.maushold_four.shoulder_right",
+                "pose_shoulder_right": "animation.0925_maushold.pose_shoulder_right"
+            },
+            "render_controllers": [
+                "controller.render.maushold"
+            ],
+            "spawn_egg": {
+                "texture": "0925_maushold_spawn_egg"
+            }
+        }
+    }
+}
