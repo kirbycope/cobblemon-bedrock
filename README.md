@@ -66,6 +66,12 @@ then writes that version into the server world's pack lists and restarts the ser
 the world is saved; killing the server instead loses everything since the last autosave, Pokemon's properties and the
 player's inventory with it.
 
+Stop the server before porting. The packs reach its world through junctions, so a running server holds their files
+open, and a folder the port generates in full cannot be emptied: the run dies part way through and leaves the pack
+half written, which looks like a content bug rather than a locked file (one such run left 560 of 913 render
+controllers). The port refuses to start while `bedrock_server.exe` is running and says so; `PORT_IGNORE_SERVER=1`
+overrides it for a server that is not serving this repository's packs.
+
 ### What the port generates from Cobblemon's data
 The Wolf-based templates are gone. `port.py` keeps a sparse clone of the Cobblemon repository in
 `java/` (git-ignored; only the data, bedrock asset, lang, sound and Pokemon texture folders)
