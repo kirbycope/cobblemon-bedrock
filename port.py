@@ -22,6 +22,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import textwrap
 import urllib.request
@@ -68,8 +69,31 @@ SPARSE_PATHS = [
 ]
 
 
+_server_checked = False
+
+
+def refuse_while_server_runs():
+    """The Bedrock server holds the packs' files open through the world's junctions, so emptying a folder
+    that is generated in full fails part way and leaves the pack half written: one run that died here left
+    560 of 913 render controllers behind, which reads like a content bug rather than a locked file. Checked
+    once, at the first folder the port clears. Set PORT_IGNORE_SERVER=1 for a server that is not serving
+    this repository's packs."""
+    global _server_checked
+    if _server_checked or os.name != "nt" or os.environ.get("PORT_IGNORE_SERVER"): return
+    _server_checked = True
+    try:
+        running = subprocess.run(["tasklist", "/fi", "imagename eq bedrock_server.exe", "/nh"],
+                                 capture_output=True, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError): return   # no tasklist: nothing to check against
+    if "bedrock_server.exe" in running:
+        sys.exit("bedrock_server.exe is running and holds the packs' files open through the world's junctions;\n"
+                 "a port now would empty a generated folder part way and leave the pack half written.\n"
+                 "Stop the server first: python tools/deploy.py starts it again once the port is done.")
+
+
 def fresh(folder):
     """Empty a folder that is generated in full, so a Pokemon that no longer qualifies leaves no stale file."""
+    refuse_while_server_runs()
     if os.path.isdir(folder): shutil.rmtree(folder)
     os.makedirs(folder, exist_ok=True)
 
