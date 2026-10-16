@@ -5967,7 +5967,9 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
 
     const form = new ActionFormData().title("cbm:summary").body(body);
     for (const [key, name] of [["i", "info"], ["m", "moves"], ["s", "stats"]]) form.button(name, `${SUMMARY_UI}/tab_${name}${tab === key ? "_on" : ""}`);
-    for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
+    // the party slots are switched off while the evolution or switch list covers them, or a controller's focus lands
+    // on them under the list and never reaches the list's own buttons
+    for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", side !== "p" ? `${SUMMARY_UI}/none` : `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
     form.button(v.itemName, `${SUMMARY_UI}/item`);   // its text is the hovered tooltip
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
