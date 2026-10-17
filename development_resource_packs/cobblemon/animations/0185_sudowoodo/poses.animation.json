@@ -4,10 +4,50 @@
   "animation.0185_sudowoodo.pose_standing": {
    "loop": true,
    "bones": {
-    "head": {
+    "torso": {
      "rotation": [
-      "1 * math.clamp(q.target_x_rotation, -45, 70)",
-      "0",
+      "0.75 * math.clamp(q.target_x_rotation, -5, 5)",
+      "1 * math.clamp(q.target_y_rotation, -12.5, 12.5)",
+      "0"
+     ]
+    },
+    "torso2": {
+     "rotation": [
+      "0.75 * math.clamp(q.target_x_rotation, 0, 10)",
+      "1 * math.clamp(q.target_y_rotation, 0, 0)",
+      "0"
+     ]
+    },
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -5, 7.5)",
+      "1 * math.clamp(q.target_y_rotation, -10, 10)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0185_sudowoodo.pose_battle_standing": {
+   "loop": true,
+   "bones": {
+    "torso": {
+     "rotation": [
+      "0.5 * math.clamp(q.target_x_rotation, -5, 2.5)",
+      "1 * math.clamp(q.target_y_rotation, -2.5, 2.5)",
+      "0"
+     ]
+    },
+    "torso2": {
+     "rotation": [
+      "0.5 * math.clamp(q.target_x_rotation, 5, 15)",
+      "1 * math.clamp(q.target_y_rotation, 0, 0)",
+      "0"
+     ]
+    },
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -10, 10)",
+      "1 * math.clamp(q.target_y_rotation, -10, 10)",
       "0"
      ]
     }
@@ -16,39 +56,51 @@
   "animation.0185_sudowoodo.pose_walk": {
    "loop": true,
    "bones": {
-    "head": {
+    "torso": {
      "rotation": [
-      "1 * math.clamp(q.target_x_rotation, -45, 70)",
-      "0",
+      "0.75 * math.clamp(q.target_x_rotation, -5, 5)",
+      "1 * math.clamp(q.target_y_rotation, -12.5, 12.5)",
       "0"
      ]
     },
-    "leg_right": {
+    "torso2": {
      "rotation": [
-      "math.cos(q.modified_distance_moved * 34.3775 + 180) * q.modified_move_speed * 51.5662",
-      "0",
+      "0.75 * math.clamp(q.target_x_rotation, 0, 10)",
+      "1 * math.clamp(q.target_y_rotation, 0, 0)",
       "0"
      ]
     },
-    "leg_left": {
+    "head_ai": {
      "rotation": [
-      "math.cos(q.modified_distance_moved * 34.3775) * q.modified_move_speed * 51.5662",
-      "0",
+      "1 * math.clamp(q.target_x_rotation, -5, 7.5)",
+      "1 * math.clamp(q.target_y_rotation, -10, 10)",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0185_sudowoodo.pose_run": {
+   "loop": true,
+   "bones": {
+    "torso": {
+     "rotation": [
+      "0.75 * math.clamp(q.target_x_rotation, -5, 5)",
+      "1 * math.clamp(q.target_y_rotation, -12.5, 12.5)",
       "0"
      ]
     },
-    "arm_right": {
+    "torso2": {
      "rotation": [
-      "0",
-      "math.cos(q.modified_distance_moved * 34.3775) * q.modified_move_speed * 51.5662 + math.sin((q.life_time * 20) * 3.8388) * 2.8648",
-      "(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+      "0.75 * math.clamp(q.target_x_rotation, 0, 10)",
+      "1 * math.clamp(q.target_y_rotation, 0, 0)",
+      "0"
      ]
     },
-    "arm_left": {
+    "head_ai": {
      "rotation": [
-      "0",
-      "math.cos(q.modified_distance_moved * 34.3775) * q.modified_move_speed * 51.5662 - math.sin((q.life_time * 20) * 3.8388) * 2.8648",
-      "-(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+      "1 * math.clamp(q.target_x_rotation, -5, 7.5)",
+      "1 * math.clamp(q.target_y_rotation, -10, 10)",
+      "0"
      ]
     }
    }

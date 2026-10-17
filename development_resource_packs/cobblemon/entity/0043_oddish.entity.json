@@ -296,7 +296,7 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 2)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && ((!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2) && ((!(q.property('cobblemon:on_sand') > 0)))) ? 4 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 5 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && ((q.property('cobblemon:on_sand') > 0)))) ? 6 : (0)))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
@@ -312,13 +312,25 @@
             "animations": {
                 "pose": "controller.animation.oddish.pose",
                 "blink_quirk": "controller.animation.oddish.blink",
-                "ground_walk": "animation.oddish.ground_walk",
+                "look_at_target": "animation.0043_oddish.look",
                 "ground_idle": "animation.oddish.ground_idle",
-                "special_attack": "animation.oddish.special_attack",
-                "faint": "animation.oddish.faint",
+                "ground_walk": "animation.oddish.ground_walk",
+                "ground_run": "animation.oddish.ground_run",
+                "battle_idle": "animation.oddish.battle_idle",
                 "sleep": "animation.oddish.sleep",
+                "wild_sleep": "animation.oddish.wild_sleep",
                 "blink": "animation.oddish.blink",
                 "cry": "animation.oddish.cry",
+                "recoil": "animation.oddish.recoil",
+                "ditto_face": "animation.oddish.ditto_face",
+                "happy": "animation.oddish.happy",
+                "angry": "animation.oddish.angry",
+                "sad": "animation.oddish.sad",
+                "shock": "animation.oddish.shock",
+                "speed_test": "animation.oddish.speed_test",
+                "run_test": "animation.oddish.run_test",
+                "pose_battle_standing": "animation.0043_oddish.pose_battle_standing",
+                "pose_standing": "animation.0043_oddish.pose_standing",
                 "evolution": "animation.0043_oddish.evolution"
             },
             "render_controllers": [

@@ -1,0 +1,103 @@
+{
+	"format_version": "1.10.0",
+	"particle_effect": {
+		"description": {
+			"identifier": "cobblemon:greninja_cloud",
+			"basic_render_parameters": {
+				"material": "particles_alpha",
+				"texture": "textures/particles/vanilla/big_smoke_white"
+			}
+		},
+		"events": {
+			"cloudfade": {
+				"particle_effect": {
+					"effect": "cobblemon:greninja_cloud_fade",
+					"type": "particle_with_velocity"
+				}
+			}
+		},
+		"components": {
+			"minecraft:emitter_rate_instant": {
+				"num_particles": "math.random_integer(10,12)"
+			},
+			"minecraft:emitter_lifetime_once": {
+				"active_time": 1
+			},
+			"minecraft:emitter_shape_box": {
+				"offset": [
+					0,
+					1,
+					0
+				],
+				"half_dimensions": [
+					0.35,
+					0.75,
+					0.35
+				],
+				"direction": [
+					"math.round(math.random(-1,1))",
+					0,
+					"math.round(math.random(-1,1))"
+				]
+			},
+			"minecraft:particle_initialization": {
+				"per_render_expression": "v.smoke_color = v.particle_random_3;v.smoke_rotation = math.round(v.particle_random_2)*90;"
+			},
+			"minecraft:particle_lifetime_expression": {
+				"max_lifetime": "0.7+(0.1*math.round(v.particle_random_4))"
+			},
+			"minecraft:particle_lifetime_events": {
+				"expiration_event": "cloudfade"
+			},
+			"minecraft:particle_initial_spin": {
+				"rotation": "v.smoke_rotation"
+			},
+			"minecraft:particle_initial_speed": 0.85,
+			"minecraft:particle_motion_dynamic": {
+				"linear_acceleration": [
+					0,
+					"0.75+(0.75*math.round(v.particle_random_4))",
+					0
+				],
+				"linear_drag_coefficient": 2
+			},
+			"minecraft:particle_appearance_billboard": {
+				"size": [
+					0.4,
+					0.4
+				],
+				"facing_camera_mode": "rotate_xyz",
+				"uv": {
+					"texture_width": 16,
+					"texture_height": 192,
+					"flipbook": {
+						"base_UV": [
+							0,
+							160
+						],
+						"size_UV": [
+							16,
+							16
+						],
+						"step_UV": [
+							0,
+							-16
+						],
+						"frames_per_second": 28,
+						"max_frame": 7
+					}
+				}
+			},
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_appearance_tinting": {
+				"color": {
+					"interpolant": "v.smoke_color",
+					"gradient": {
+						"0.0": "#FFE8E8E8",
+						"1.0": "#FFC1C1C1"
+					}
+				}
+			}
+		}
+	}
+}

@@ -22,6 +22,34 @@
       "1 * math.clamp(q.target_y_rotation, -45, 45)",
       "0"
      ]
+    },
+    "right_arm": {
+     "rotation": [
+      "0",
+      "math.cos(q.modified_distance_moved * 57.2958) * q.modified_move_speed * 45.8366 + math.sin((q.life_time * 20) * 3.8388) * 2.8648",
+      "(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+     ]
+    },
+    "left_arm": {
+     "rotation": [
+      "0",
+      "math.cos(q.modified_distance_moved * 57.2958) * q.modified_move_speed * 45.8366 - math.sin((q.life_time * 20) * 3.8388) * 2.8648",
+      "-(math.cos((q.life_time * 20) * 5.1566) * 2.8648 + 2.8648)"
+     ]
+    },
+    "right_thigh": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 57.2958 + 180) * q.modified_move_speed * 45.8366",
+      "0",
+      "0"
+     ]
+    },
+    "left_thigh": {
+     "rotation": [
+      "math.cos(q.modified_distance_moved * 57.2958) * q.modified_move_speed * 45.8366",
+      "0",
+      "0"
+     ]
     }
    }
   },

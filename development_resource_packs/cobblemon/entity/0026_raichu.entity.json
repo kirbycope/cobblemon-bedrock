@@ -416,13 +416,14 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 2)) ? 3 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && q.is_in_water)) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water)) ? 5 : (0))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
+                    "quirk",
                     {
                         "evolution": "q.property('cobblemon:evolving')"
                     }
@@ -432,19 +433,38 @@
             "animations": {
                 "pose": "controller.animation.raichu.pose",
                 "blink_quirk": "controller.animation.raichu.blink",
+                "quirk": "controller.animation.raichu.quirk",
+                "quirk_0": "animation.raichu.idle_quirk",
+                "quirk_1": "animation.raichu.rub_quirk",
                 "look_at_target": "animation.0026_raichu.look",
                 "ground_idle": "animation.raichu.ground_idle",
+                "water_surface_location": "animation.raichu.water_surface_location",
+                "water_surface_idle": "animation.raichu.water_surface_idle",
+                "water_surface_swim": "animation.raichu.water_surface_swim",
                 "battle_idle": "animation.raichu.battle_idle",
+                "battle_base": "animation.raichu.battle_base",
+                "faint": "animation.raichu.faint",
+                "physical": "animation.raichu.physical",
+                "status": "animation.raichu.status",
+                "battle_cry": "animation.raichu.battle_cry",
+                "special": "animation.raichu.special",
+                "special2": "animation.raichu.special2",
                 "ground_walk": "animation.raichu.ground_walk",
-                "ground_idle_hat": "animation.raichu.ground_idle_hat",
-                "blink": "animation.raichu.blink",
-                "render": "animation.raichu.render",
-                "cheeks_active": "animation.raichu.cheeks_active",
+                "ground_run": "animation.raichu.ground_run",
+                "recoil": "animation.raichu.recoil",
                 "cry": "animation.raichu.cry",
+                "blink": "animation.raichu.blink",
                 "sleep": "animation.raichu.sleep",
+                "sleep2": "animation.raichu.sleep2",
+                "walkspeedtest": "animation.raichu.walkspeedtest",
+                "runspeedtest": "animation.raichu.runspeedtest",
+                "idle_quirk": "animation.raichu.idle_quirk",
+                "rub_quirk": "animation.raichu.rub_quirk",
                 "pose_battle_standing": "animation.0026_raichu.pose_battle_standing",
                 "pose_standing": "animation.0026_raichu.pose_standing",
                 "pose_walking": "animation.0026_raichu.pose_walking",
+                "pose_surface_float": "animation.0026_raichu.pose_surface_float",
+                "pose_surface_swim": "animation.0026_raichu.pose_surface_swim",
                 "evolution": "animation.0026_raichu.evolution"
             },
             "render_controllers": [

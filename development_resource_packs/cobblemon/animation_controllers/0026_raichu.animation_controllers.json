@@ -18,6 +18,12 @@
                         },
                         {
                             "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -36,6 +42,12 @@
                         },
                         {
                             "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -54,6 +66,12 @@
                         },
                         {
                             "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -71,6 +89,60 @@
                         },
                         {
                             "walking": "v.pose == 2"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_float": {
+                    "animations": [
+                        "water_surface_idle",
+                        "pose_surface_float"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "surface_swim": {
+                    "animations": [
+                        "water_surface_swim",
+                        "pose_surface_swim"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -88,6 +160,42 @@
                         },
                         {
                             "sleep": "v.pose == 3"
+                        },
+                        {
+                            "surface_float": "v.pose == 4"
+                        },
+                        {
+                            "surface_swim": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.raichu.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
+                    ]
+                },
+                "play": {
+                    "animations": [
+                        {
+                            "quirk_0": "v.quirk == 0"
+                        },
+                        {
+                            "quirk_1": "v.quirk == 1"
+                        }
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 2));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
                         }
                     ]
                 }

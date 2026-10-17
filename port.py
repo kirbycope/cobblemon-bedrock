@@ -159,6 +159,27 @@ def load_species_features():
             feature_aspects[form.replace("{{choice}}", choice)] = {"feature": name, "random": default == "random", "default": default_aspect}
 
 
+LEGENDARY_POOLS = f"{pwd}/legendary_encounters/spawn_pool_world"
+
+
+def legendary_spawn_pools():
+    """The Legendary Encounters datapack's spawn pools (legendary_encounters/README.md), as {species name: pool}: the
+    ultra-rare natural spawns Cobblemon itself never gives a legendary or mythical. It was written against an older
+    Cobblemon, so its fields are put back into this one's names: "context" is spawnablePositionType, and a Pokemon is
+    named without its cobblemon: namespace, as Cobblemon's own pools name them."""
+    pools = {}
+    for path in sorted(glob.glob(f"{LEGENDARY_POOLS}/*.json")):
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        if not pool.get("enabled", True): continue
+        for spawn in pool.get("spawns", []):
+            if "context" in spawn: spawn.setdefault("spawnablePositionType", spawn.pop("context"))
+            # and as one word, the way Cobblemon keys a species: ho_oh is hooh
+            words = spawn.get("pokemon", "").replace("cobblemon:", "", 1).split(" ")
+            spawn["pokemon"] = " ".join([re.sub(r"[^a-z0-9]", "", words[0].lower())] + words[1:])
+        pools[os.path.basename(path)[:-len(".json")]] = pool
+    return pools
+
+
 def load_cobblemon_data():
     global lang, cobblemon_sounds
     load_species_features()
@@ -167,10 +188,14 @@ def load_cobblemon_data():
             if not name.endswith(".json"): continue
             with open(os.path.join(root, name), encoding="utf-8") as file: data = json.load(file)
             species_by_number[data["nationalPokedexNumber"]] = data
-    for root, _, files in os.walk(f"{cobblemonData}/spawn_pool_world"):
-        for name in files:
-            if not name.endswith(".json"): continue
-            with open(os.path.join(root, name), encoding="utf-8") as file: data = json.load(file)
+    def every_pool():
+        for root, _, files in os.walk(f"{cobblemonData}/spawn_pool_world"):
+            for name in files:
+                if name.endswith(".json"):
+                    with open(os.path.join(root, name), encoding="utf-8") as file: yield json.load(file)
+        yield from legendary_spawn_pools().values()
+    if True:
+        for data in every_pool():
             for spawn in data.get("spawns", []):
                 low, _, high = str(spawn.get("level", "5")).partition("-")
                 low, high = int(low), int(high or low)
@@ -775,6 +800,7 @@ def fix_molang(expr):
     expr = re.sub(r"(?<![\w.])NaN(?![\w.])", "0", expr)
     # Cobblemon's NPC animations use Java-side helpers: radians to degrees, limb swing and age in ticks
     expr = re.sub(r"math\.r2d\(", "57.2958*(", expr)
+    expr = re.sub(r"math\.s\(", "math.sin(", expr)   # Slakoth's ground_sprint in 1.8.2 has math.s( for math.sin(
     expr = re.sub(r"(?<![\w.])(?:v|variable)\.limb_swing_amount(?![\w])", "q.modified_move_speed", expr)
     expr = re.sub(r"(?<![\w.])(?:v|variable)\.limb_swing(?![\w])", "q.walk_distance", expr)
     expr = re.sub(r"(?<![\w.])(?:v|variable)\.age_in_ticks(?![\w])", "(q.life_time*20)", expr)
@@ -1896,9 +1922,9 @@ def create_behavior_entities():
         # evolution: level-up evolutions are the script's (levelling up, with their requirements); stones, trades and
         # the rest go through add_item_evolutions(), which also makes every evolution's transformation event
         add_sleep(entity, species, kind)
-        if ambient_particles(pokemon, pokemon[pokemon.index("_")+1:]):
-            entity["minecraft:entity"]["description"]["animations"]["ambient"] = f"controller.animation.{pokemon}.ambient"
-            entity["minecraft:entity"]["description"]["scripts"]["animate"].append("ambient")
+        for key in ambient_groups(pokemon, pokemon[pokemon.index("_")+1:]):
+            entity["minecraft:entity"]["description"]["animations"][key] = f"controller.animation.{pokemon}.{key}"
+            entity["minecraft:entity"]["description"]["scripts"]["animate"].append(key)
         add_capture(entity, species, pokemon, kind)
         add_item_evolutions(entity, species, pokemon)
         add_pokemon_interactions(entity, species, pokemon)
@@ -2275,6 +2301,7 @@ BIOME_FILTERS = {
     "is_cold": _any(_tag("cold"), _tag("frozen"), _tag("taiga"), _tag("mountains")),
     "is_tundra": _tag("ice_plains"),
     "is_snowy_flat": _all(_tag("ice_plains"), _tag("mutated", False)),
+    "is_snowy_plains": _all(_tag("ice_plains"), _tag("mutated", False)),   # 1.8.2's name for is_snowy_flat
     "is_temperate": _any(_all(_tag("forest"), _tag("taiga", False), _tag("extreme_hills", False)), _tag("flower_forest"), _tag("cherry_grove"), _tag("grove"), _tag("plains"), _tag("meadow")),
     "is_floral": _any(_tag("cherry_grove"), _tag("flower_forest"), _tag("meadow"), _all(_tag("plains"), _tag("mutated"))),
     "is_cherry_blossom": _tag("cherry_grove"),
@@ -2306,6 +2333,37 @@ BIOME_IDS = {
     "minecraft:stony_shore": _all(_tag("beach"), _tag("stone")), "minecraft:frozen_river": _all(_tag("river"), _tag("frozen")), "minecraft:river": _all(_tag("river"), _tag("frozen", False)),
     "minecraft:warm_ocean": _all(_tag("ocean"), _tag("warm")), "minecraft:pale_garden": _tag("pale_garden"),
 }
+
+# Java's names for the vanilla biomes Bedrock calls something else (the rest are the same in both)
+JAVA_BIOMES = {"badlands": "mesa", "eroded_badlands": "mesa_bryce", "wooded_badlands": "mesa_plateau_stone",
+               "ice_spikes": "ice_plains_spikes", "snowy_plains": "ice_plains", "snowy_beach": "cold_beach",
+               "soul_sand_valley": "soulsand_valley", "sparse_jungle": "jungle_edge", "old_growth_birch_forest": "birch_forest_mutated",
+               "old_growth_pine_taiga": "mega_taiga", "old_growth_spruce_taiga": "redwood_taiga_mutated",
+               "windswept_hills": "extreme_hills", "windswept_forest": "extreme_hills_plus_trees",
+               "windswept_gravelly_hills": "extreme_hills_mutated", "windswept_savanna": "savanna_mutated",
+               "dark_forest": "roofed_forest", "swamp": "swampland", "mushroom_fields": "mushroom_island", "stony_shore": "stone_beach",
+               # Bedrock's End is one biome
+               "the_end": "the_end", "end_barrens": "the_end", "end_highlands": "the_end", "end_midlands": "the_end", "small_end_islands": "the_end"}
+
+
+def bedrock_biome_filter(java_name):
+    """A filter that holds in exactly one Bedrock biome, from tools/bedrock_biome_tags.json (the server's own biome
+    definitions): all of that biome's tags, and for every other biome that also has them all, one of its tags not."""
+    global bedrock_biome_tags
+    if not bedrock_biome_tags:
+        with open(os.path.join(pwd, "tools", "bedrock_biome_tags.json"), encoding="utf-8") as file: bedrock_biome_tags = json.load(file)
+    name = JAVA_BIOMES.get(java_name, java_name)
+    own = set(bedrock_biome_tags.get(name, []))
+    if not own: return None
+    tests = [_tag(t) for t in sorted(own)]
+    for other, theirs in sorted(bedrock_biome_tags.items()):
+        extra = sorted(set(theirs) - own)
+        if other != name and own <= set(theirs) and extra: tests.append(_tag(extra[0], False))
+    return _all(*tests)
+
+
+bedrock_biome_tags = {}
+
 
 # Cobblemon's bucket weights (data/cobblemon/spawning/best-spawner-config.json), so rarity survives the port
 BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2}
@@ -2356,7 +2414,8 @@ def biome_filter_for(biome_ids):
     filters = []
     for biome in biome_ids:
         if biome.startswith("#cobblemon:"): rule = BIOME_FILTERS.get(biome[len("#cobblemon:"):])
-        else: rule = BIOME_IDS.get(biome)
+        elif biome == "#minecraft:is_deep_ocean": rule = _all(_tag("deep"), _tag("ocean"))
+        else: rule = BIOME_IDS.get(biome) or (bedrock_biome_filter(biome.split(":")[-1]) if biome.startswith("minecraft:") else None)
         if rule: filters.append(rule)
     if not filters: return None
     return filters[0] if len(filters) == 1 else _any(*filters)
@@ -2405,6 +2464,15 @@ def create_spawn_rules():
         for name in files:
             if name.endswith(".json") and "herds" not in root:
                 with open(os.path.join(root, name), encoding="utf-8") as file: pools[name[:-5]] = json.load(file)
+    # the datapack names its files by species (rayquaza.json), Cobblemon by folder (0384_rayquaza.json)
+    folders = {species_key(species_for(p)): p for p in pokemons if species_for(p)}
+    legendary = 0
+    for name, pool in legendary_spawn_pools().items():
+        pokemon = folders.get(name)
+        if not pokemon: continue
+        pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
+        legendary += 1
+    weather_events = {}
     written = 0; skipped = 0
     for pokemon in pokemons:
         species = species_for(pokemon)
@@ -2421,6 +2489,12 @@ def create_spawn_rules():
             form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
             rule = spawn_condition(spawn, species, kind)
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
+            # Bedrock's spawn rules have no weather filter, so a spawn that needs one (Zapdos in a thunderstorm) fires an
+            # event on spawning that tests the weather where it stands and takes it away again in the wrong weather
+            weather = spawn.get("condition", {}).get("weather")
+            if rule and weather and not form:
+                rule["minecraft:herd"]["event"] = f"cobblemon:spawn_weather_{weather}"; rule["minecraft:herd"]["event_skip_count"] = 0
+                weather_events.setdefault(pokemon, set()).add(weather)
             if rule: conditions.append((rule, spawn))
             else: skipped += 1
         if not conditions: continue
@@ -2436,7 +2510,20 @@ def create_spawn_rules():
         data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
         with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
         written += 1
-    print(f"Create spawn rules complete: {written} Pokemon spawn naturally, {skipped} spawn entries not expressible (structures, nearby blocks, fishing, modded biomes).")
+    for pokemon, kinds in weather_events.items():
+        path = f"{entitiesBedrock}/{pokemon}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
+        for weather in kinds:
+            # as Cobblemon's condition reads it: rain is any falling weather, a thunderstorm included, clear is none.
+            # (The script's Dimension.getWeather() went on answering Clear well into a thunderstorm, so the entity's
+            # own weather_at_position filter decides.)
+            wanted = {"thunder": "thunderstorm", "rain": "precipitation", "clear": "clear"}[weather]
+            events[f"cobblemon:spawn_weather_{weather}"] = {"sequence": [{"filters": {"test": "weather_at_position", "subject": "self", "operator": "!=", "value": wanted},
+                                                                           "add": {"component_groups": ["cobblemon:gone"]}}]}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    print(f"Create spawn rules complete: {written} Pokemon spawn naturally ({legendary} legendary and mythical from Legendary Encounters), {skipped} spawn entries not expressible (structures, nearby blocks, fishing, modded biomes).")
 
 
 
@@ -3750,26 +3837,48 @@ def locator_offset(pokemon, pokemonName, locator):
     return [0, round(height / 2, 2), 0]
 
 
+def ambient_groups(pokemon, pokemonName):
+    """The ambient effects grouped by when they may fire, as {controller key: (Molang condition, effects)}. Each
+    comes from an animation that plays in one situation, so it fires only in that one: an effect of a battle clip
+    (Lucario's aura) in battle, of an air clip (Ho-Oh's flames) off the ground, of a sleep clip asleep, the rest
+    always. A ride clip's effect is left out: Cobblemon plays it as thrust only while a rider holds forward (Blastoise's
+    jets, from its feet), and fired all the time from the feet it looked like a puddle running out of the Pokemon."""
+    rules = [("battle", "q.property('cobblemon:battle')"), ("air", "!q.is_on_ground"), ("sleep", "q.is_sleeping")]
+    groups = {}
+    for anim, entries in ambient_particles(pokemon, pokemonName).items():
+        if anim.startswith("ride"): continue
+        key, condition = next(((k, c) for k, c in rules if k in anim), ("", "1"))
+        found = groups.setdefault(f"ambient{'_' + key if key else ''}", (condition, []))[1]
+        for e in entries:
+            if (e["effect"], e["locator"]) not in {(f["effect"], f["locator"]) for f in found}: found.append(e)
+    always = {(e["effect"], e["locator"]) for e in groups.get("ambient", ("", []))[1]}
+    for key in [k for k in groups if k != "ambient"]:
+        kept = [e for e in groups[key][1] if (e["effect"], e["locator"]) not in always]
+        if kept: groups[key] = (groups[key][0], kept)
+        else: groups.pop(key)
+    return groups
+
+
 def create_ambient_particles():
     print("Creating ambient particles...")
     load_particle_ids()
     twins = set(); animations = {}
     for pokemon in pokemons:
         pokemonName = pokemon[pokemon.index("_")+1:]
-        effects = [e for entries in ambient_particles(pokemon, pokemonName).values() for e in entries]
-        if not effects: continue
-        commands = []
-        for effect in {(e["effect"], e["locator"]) for e in effects}:
-            name, locator = effect
-            twins.add(name)
-            x, y, z = locator_offset(pokemon, pokemonName, locator)
-            commands.append(f"/particle cobblemon:{name}_ambient ~{x} ~{y} ~{z}")
-        # a controller that ping-pongs between two states on the half second; on_entry commands are
-        # the one server-side trigger proven to run here (the dialogue controllers use it)
-        animations[f"controller.animation.{pokemon}.ambient"] = {"initial_state": "a", "states": {
-            "a": {"on_entry": commands, "transitions": [{"b": "math.mod(q.life_time, 1.0) >= 0.5"}]},
-            "b": {"transitions": [{"a": "math.mod(q.life_time, 1.0) < 0.5"}]}
-        }}
+        for key, (condition, effects) in ambient_groups(pokemon, pokemonName).items():
+            commands = []
+            for name, locator in dict.fromkeys((e["effect"], e["locator"]) for e in effects):
+                twins.add(name)
+                x, y, z = locator_offset(pokemon, pokemonName, locator)
+                commands.append(f"/particle cobblemon:{name}_ambient ~{x} ~{y} ~{z}")
+            # a controller that ping-pongs between two states on the half second, entering the firing one only while
+            # its condition holds; on_entry commands are the one server-side trigger proven to run here (the
+            # dialogue controllers use it)
+            gate = "" if condition == "1" else f" && ({condition})"
+            animations[f"controller.animation.{pokemon}.{key}"] = {"initial_state": "b", "states": {
+                "a": {"on_entry": commands, "transitions": [{"b": "math.mod(q.life_time, 1.0) >= 0.5"}]},
+                "b": {"transitions": [{"a": f"math.mod(q.life_time, 1.0) < 0.5{gate}"}]}
+            }}
     with open(f"{behaviorPack}/animation_controllers/ambient.animation_controllers.json", "w") as file:
         file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": animations}, indent=4))
     for name in sorted(twins):
@@ -5277,7 +5386,8 @@ def create_recipes():
         """Java's name for a vanilla item where Bedrock calls it something else (magma_block is magma)."""
         if item_id and item_id.startswith("minecraft:"):
             name = item_id.split(":", 1)[1]
-            renamed = BLOCK_NAMES.get(name, name)
+            # item frames are items Bedrock names differently, not blocks, so BLOCK_NAMES has no entry for them
+            renamed = {"item_frame": "frame", "glow_item_frame": "glow_frame"}.get(name) or BLOCK_NAMES.get(name, name)
             if renamed not in ("air", "water", "lava"): return f"minecraft:{renamed}"
         return item_id
     def ingredient(entry):
@@ -5300,7 +5410,7 @@ def create_recipes():
         result = recipe.get("result", {})
         result_id = result if isinstance(result, str) else result.get("id") or result.get("item")
         if not result_id or not (result_id.startswith("minecraft:") or result_id in items): skipped += 1; missing[f"result {result_id}"] += 1; continue
-        out = {"item": result_id, **({"count": result["count"]} if isinstance(result, dict) and result.get("count", 1) > 1 else {})}
+        out = {"item": bedrock_item(result_id), **({"count": result["count"]} if isinstance(result, dict) and result.get("count", 1) > 1 else {})}
         description = {"identifier": f"cobblemon:{name}"}
         body = None
         if kind == "minecraft:crafting_shaped":

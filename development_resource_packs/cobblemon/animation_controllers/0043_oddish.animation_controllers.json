@@ -4,16 +4,108 @@
         "controller.animation.oddish.pose": {
             "initial_state": "spawn",
             "states": {
-                "standing": {
+                "battle_standing": {
                     "animations": [
-                        "ground_idle"
+                        "battle_idle",
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "running": {
+                    "animations": [
+                        "ground_run"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
                         }
                     ],
                     "blend_transition": 0.5
@@ -24,24 +116,74 @@
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "battle_sleep": {
                     "animations": [
-                        "ground_walk"
+                        "sleep"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "wild_sleep": {
+                    "animations": [
+                        "wild_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -49,13 +191,25 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleep": "v.pose == 4"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 5"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 6"
                         }
                     ]
                 }
