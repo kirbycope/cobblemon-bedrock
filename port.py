@@ -344,6 +344,51 @@ def add_evolution_animation():
     print(f"Evolution animation: {len(animations)} species.")
 
 
+def rename_clashing_body_bones():
+    """Bedrock builds an armor_offset.default_neck locator in every geometry from its bone named body, and merges
+    the locators of all the geometries a client entity lists. Where a species' forms place body at different pivots
+    (Alolan Ninetales, Lycanroc's Midnight form, Muk and Alolan Muk, 25 species) each later one logged "model already
+    has a locator armor_offset.default_neck that doesn't exactly match" on every launch, opening the Content Log over
+    the world. Moving the pivot would change how a body that animates turns, so in those species the bone is renamed
+    body_ instead, in every model and in every animation that moves it: the forms look and move as they did, and no
+    bone named body is left to build the locator from. Nothing reads the locator, since Pokemon wear no armour."""
+    renamed = []
+    look_path = f"{animationsBedrock}/look.animation.json"
+    with open(look_path, encoding="utf-8") as file: look = json.load(file)
+    evolution_path = f"{animationsBedrock}/evolution.animation.json"
+    with open(evolution_path, encoding="utf-8") as file: evolution = json.load(file)
+    for path in sorted(glob.glob(f"{entityBedrock}/*.entity.json")):
+        pokemon = os.path.basename(path)[:-len(".entity.json")]
+        if not re.match(r"\d{4}_", pokemon): continue
+        with open(path, encoding="utf-8") as file: listed = set(json.load(file)["minecraft:client_entity"]["description"].get("geometry", {}).values())
+        models = {}
+        for name in model_files(pokemon):
+            with open(f"{modelsBedrock}/{pokemon}/{name}", encoding="utf-8") as file: models[name] = json.load(file)
+        pivots = {json.dumps(b.get("pivot")) for data in models.values() for geo in data.get("minecraft:geometry", [])
+                  if geo["description"]["identifier"] in listed for b in geo.get("bones", []) if b["name"] == "body"}
+        if len(pivots) < 2: continue
+        for name, data in models.items():
+            for geo in data.get("minecraft:geometry", []):
+                for bone in geo.get("bones", []):
+                    if bone["name"] == "body": bone["name"] = "body_"
+                    if bone.get("parent") == "body": bone["parent"] = "body_"
+            with open(f"{modelsBedrock}/{pokemon}/{name}", "w", encoding="utf-8") as file: file.write(json.dumps(data, indent="\t"))
+        def rename(animations):
+            for animation in animations.values():
+                bones = animation.get("bones")
+                if isinstance(bones, dict) and "body" in bones: animation["bones"] = {("body_" if k == "body" else k): v for k, v in bones.items()}
+        for anim_path in glob.glob(f"{animationsBedrock}/{pokemon}/*.json"):
+            with open(anim_path, encoding="utf-8") as file: data = json.load(file)
+            rename(data.get("animations", {}))
+            with open(anim_path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=1))
+        rename({k: v for k, v in look["animations"].items() if k.startswith(f"animation.{pokemon}.")})
+        rename({k: v for k, v in evolution["animations"].items() if k.startswith(f"animation.{pokemon}.")})
+        renamed.append(pokemon)
+    with open(look_path, "w", encoding="utf-8") as file: file.write(json.dumps(look, indent=1))
+    with open(evolution_path, "w", encoding="utf-8") as file: file.write(json.dumps(evolution, indent=1))
+    print(f"Renamed the body bone in {len(renamed)} species whose forms disagree on its pivot.")
+
+
 def add_pasture_conflict():
     """How an owned Pokemon fights mobs, as pokemon_owned.json's behaviours give it: a species whose combat behaviour
     willDefendOwner defends its trainer while with them (defend_owner, which scripts/main.js drives), and out in a pasture with the defend toggle on (PastureSlotIconConflictButton, pasture_conflict_enabled)
@@ -1155,8 +1200,8 @@ def dedupe_variant_locators(pokemon):
     of them place differently. The base model's locators win, so a variant model drops its copies.
 
     This cannot reach `armor_offset.default_neck`, which is in no model file: Bedrock synthesises one per
-    geometry from the skeleton (the `neck` bone's height, or other bones when there is none) and logs the
-    same clash when an entity's forms disagree. Toxtricity and Avalugg are quiet because their forms share
+    geometry from the pivot of its bone named body and logs the same clash when an entity's forms disagree;
+    rename_clashing_body_bones() deals with that (what follows was written before the bone was known). Toxtricity and Avalugg are quiet because their forms share
     a neck height; Lycanroc is not, because Midday's neck sits at y 16 and Midnight's at 27.5. Defining the
     locator explicitly makes it worse, because the synthesised one then clashes with it inside every single
     geometry. Nothing short of changing Cobblemon's models or giving each form its own entity type removes
@@ -9374,6 +9419,7 @@ def main():
     add_intrinsic_scale()
     add_shoulder_mount()
     add_evolution_animation()
+    rename_clashing_body_bones()   # after every animation that names bones is written
     add_owned_protection()
     add_pasture_conflict()
     add_wild_behaviours()
