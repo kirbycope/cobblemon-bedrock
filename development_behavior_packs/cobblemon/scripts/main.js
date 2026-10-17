@@ -4631,7 +4631,9 @@ system.runInterval(() => {
         let target;
         try {
             const range = SCAN_RANGE + st.zoom * BLOCK_LENGTH_PER_ZOOM_STAGE;
-            const hit = player.getEntitiesFromViewDirection({ maxDistance: range }).find((h) => POKEMON[h.entity.typeId]);
+            // ignoreBlockCollision: left on its default the ray found no entity at all on 1.26 (a Pokemon in plain view
+            // came back as nothing, so a scan never began); the wall check below does what the block collision was for
+            const hit = player.getEntitiesFromViewDirection({ maxDistance: range, ignoreBlockCollision: true }).find((h) => POKEMON[h.entity.typeId]);
             const wall = player.getBlockFromViewDirection({ maxDistance: range });
             const eye = player.getHeadLocation(), at = wall && { x: wall.block.location.x + wall.faceLocation.x, y: wall.block.location.y + wall.faceLocation.y, z: wall.block.location.z + wall.faceLocation.z };
             if (hit && !(at && Math.hypot(at.x - eye.x, at.y - eye.y, at.z - eye.z) < hit.distance)) target = hit.entity;
