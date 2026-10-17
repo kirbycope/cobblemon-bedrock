@@ -25,9 +25,16 @@
             "scripts": {
                 "animate": [
                     "pose",
-                    "look_at_target"
+                    "look_at_target",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
-                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
+                "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')",
+                "pre_animation": [
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
+                ]
             },
             "animations": {
                 "pose": "controller.animation.wishiwashi.pose",
@@ -36,7 +43,8 @@
                 "water_swim": "animation.wishiwashi_school.water_swim",
                 "water_sleep": "animation.wishiwashi_school.water_sleep",
                 "cry": "animation.wishiwashi_school.cry",
-                "pose_animation": "animation.wishiwashi_school.pose"
+                "pose_animation": "animation.wishiwashi_school.pose",
+                "evolution": "animation.0746_wishiwashi.evolution"
             },
             "render_controllers": [
                 "controller.render.wishiwashi",
@@ -44,6 +52,9 @@
             ],
             "spawn_egg": {
                 "texture": "0746_wishiwashi_spawn_egg"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

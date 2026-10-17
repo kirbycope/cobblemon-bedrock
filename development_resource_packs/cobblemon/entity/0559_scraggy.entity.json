@@ -296,11 +296,16 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));"
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
-                    "blink_quirk"
+                    "blink_quirk",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -313,7 +318,8 @@
                 "mouth": "animation.scraggy.mouth",
                 "mouth2": "animation.scraggy.mouth2",
                 "pose_standing": "animation.0559_scraggy.pose_standing",
-                "pose_walking": "animation.0559_scraggy.pose_walking"
+                "pose_walking": "animation.0559_scraggy.pose_walking",
+                "evolution": "animation.0559_scraggy.evolution"
             },
             "render_controllers": [
                 "controller.render.scraggy",
@@ -323,6 +329,9 @@
             ],
             "spawn_egg": {
                 "texture": "0559_scraggy_spawn_egg"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

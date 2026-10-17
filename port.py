@@ -286,6 +286,64 @@ def add_shoulder_mount():
     print(f"Shoulder mount: {len(mountable)} species.")
 
 
+def add_evolution_animation():
+    """Evolution.forceEvolve plays generic/animations/evolution.animation.json on the Pokemon: the evo_particles cloud
+    from its middle locator at the start, then from five seconds it spins ten times, shrinks to three quarters and
+    rises, glowing white (q.evo_glow_time(5.08) at 5.25), and drops back as the burst comes. Its bones name
+    root_part, which Cobblemon's renderer reads as the model's root; Bedrock names bones as the model does, so each
+    species gets its own copy naming its own root bones, played while cobblemon:evolving is on (scripts/main.js turns
+    it on a second in, as forceEvolve's after(1F) does). The spin's 103 keyframes are its ease, a smoothstep."""
+    with open(f"{cobblemon}/bedrock/generic/animations/evolution.animation.json", encoding="utf-8") as file:
+        source = json.load(file)["animations"]["animation.evolution.evolution"]
+    bone = source["bones"]["root_part"]
+    ease = "math.clamp((q.anim_time - 5.0) / 5.125, 0, 1)"
+    spin = {"rotation": [0, f"3600 * {ease} * {ease} * (3 - 2 * {ease})", 0]}
+    # q.entity_size is Cobblemon's; at the sizes it clamps to, the rise is 20 pixels and the hop half a block's worth
+    position = json.loads(json.dumps(bone["position"]).replace('"20 * math.clamp(q.entity_size,1,1.2)"', "20").replace('"q.entity_size / 2"', "8"))
+    animations = {}
+    for path in glob.glob(f"{entityBedrock}/*.entity.json"):
+        pokemon = os.path.basename(path)[:-len(".entity.json")]
+        if not re.match(r"\d{4}_", pokemon): continue
+        roots, middles = set(), []
+        for name in model_files(pokemon):
+            with open(f"{modelsBedrock}/{pokemon}/{name}", encoding="utf-8") as file: geo = json.load(file)
+            for geometry in geo.get("minecraft:geometry", []):
+                bones = geometry.get("bones", [])
+                roots |= {b["name"] for b in bones if not b.get("parent")}
+                middles.append(any("middle" in (b.get("locators") or {}) for b in bones))
+        if not roots: continue
+        particle = {"effect": "evo"}
+        # a client entity's locators are shared by all its geometries (dedupe_variant_locators keeps each in one)
+        if any(middles): particle["locator"] = "middle"
+        animations[f"animation.{pokemon}.evolution"] = {
+            "animation_length": source["animation_length"],
+            "bones": {root: {**spin, "position": position, "scale": bone["scale"]} for root in sorted(roots)},
+            "particle_effects": {"0.0": particle},
+        }
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        description = data["minecraft:client_entity"]["description"]
+        description["animations"]["evolution"] = f"animation.{pokemon}.evolution"
+        scripts = description.setdefault("scripts", {})
+        animate = [a for a in scripts.get("animate", []) if not (isinstance(a, dict) and "evolution" in a)]
+        scripts["animate"] = animate + [{"evolution": "q.property('cobblemon:evolving')"}]
+        # how long it has been evolving, for the glow, which runs from 5.25 to 10.33 seconds, eased in and out
+        timing = ["v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                  "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"]
+        scripts["pre_animation"] = [line for line in scripts.get("pre_animation", []) if "evo_" not in line] + timing
+        description.setdefault("particle_effects", {})["evo"] = "cobblemon:evo_particles"
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=4))
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        if not re.match(r"\d{4}_", os.path.basename(path)): continue
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text)
+        data["minecraft:entity"]["description"].setdefault("properties", {})["cobblemon:evolving"] = {"type": "bool", "default": False, "client_sync": True}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    with open(f"{animationsBedrock}/evolution.animation.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.8.0", "animations": animations}, indent=1))
+    print(f"Evolution animation: {len(animations)} species.")
+
+
 def add_pasture_conflict():
     """How an owned Pokemon fights mobs, as pokemon_owned.json's behaviours give it: a species whose combat behaviour
     willDefendOwner defends its trainer while with them (defend_owner, which scripts/main.js drives), and out in a pasture with the defend toggle on (PastureSlotIconConflictButton, pasture_conflict_enabled)
@@ -1127,8 +1185,10 @@ def render_controller_names(pokemon, pokemonName):
     return [f"controller.render.{pokemonName}"] + [f"controller.render.{pokemonName}_{name}" for name in _layer_names(resolver_variations(pokemon))]
 
 
-# PokemonRenderer.renderTransition: a Pokemon beamed into a ball turns red as it shrinks (recallBeamColour)
-RED_OVERLAY = {"r": 1.0, "g": 0.1, "b": 0.1, "a": "q.property('cobblemon:red')"}
+# PokemonRenderer.renderTransition: a Pokemon beamed into a ball turns red as it shrinks (recallBeamColour), and an
+# evolving one glows white for the evolution animation's q.evo_glow_time (v.evo_glow, add_evolution_animation)
+RED_OVERLAY = {"r": 1.0, "g": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0", "b": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+               "a": "math.max(q.property('cobblemon:red'), v.evo_glow ?? 0)"}
 
 
 def create_render_controllers():
@@ -3082,7 +3142,9 @@ def create_capture_ball():
             "textures": {f"b{n}": f"textures/entity/poke_ball/{b['texture']}" for n, b in enumerate(balls)},
             "geometry": {"default": f"geometry.{model}"},
             "animations": {**{n: a(n) for n in names}, "state": f"controller.animation.{stem}"},
-            "scripts": {"scale": "0.7", "animate": ["state"]},   # PokeBallRenderer draws the ball at 0.7
+            # PokeBallRenderer draws the ball at 0.7; on a healing machine's tray HealingMachineRenderer draws it as a
+            # ground item at 0.65, about 0.4 of that
+            "scripts": {"scale": "q.property('cobblemon:tray') ? 0.28 : 0.7", "animate": ["state"]},
             "sound_effects": {e: f"cobblemon.{e}" for e in effects},
             # a key cannot hold a namespace, so an effect the clip names by its full id is left out
             "particle_effects": {e: f"cobblemon:{e}" for e in particles if ":" not in e},
@@ -3092,7 +3154,8 @@ def create_capture_ball():
             "description": {"identifier": ident, "is_spawnable": False, "is_summonable": True, "is_experimental": False,
                             "properties": {"cobblemon:ball": {"type": "int", "range": [0, 63], "default": 0, "client_sync": True},
                                            "cobblemon:state": {"type": "int", "range": [0, 15], "default": 0, "client_sync": True},
-                                           "cobblemon:shake": {"type": "int", "range": [0, 15], "default": 0, "client_sync": True}}},
+                                           "cobblemon:shake": {"type": "int", "range": [0, 15], "default": 0, "client_sync": True},
+                                           "cobblemon:tray": {"type": "bool", "default": False, "client_sync": True}}},
             "components": {
                 "minecraft:type_family": {"family": ["capture_ball", "inanimate"]},
                 "minecraft:collision_box": {"width": 0.25, "height": 0.25},
@@ -3821,6 +3884,11 @@ BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", 
 terrain_textures = {}
 
 
+# Cobblemon's animated healing machine textures (their .mcmeta: two ticks a frame), as terrain flipbooks
+HEALING_FLIPBOOKS = [{"flipbook_texture": f"textures/blocks/cobblemon/block/functional/{name}", "atlas_tile": f"cobblemon_block_functional_{name}",
+                      "ticks_per_frame": 2} for name in ("healing_machine_active", "healing_machine_tray")]
+
+
 def java_texture(ref):
     """A Java texture reference as a terrain texture key, copying Cobblemon's file into the pack."""
     ref = ref.split("minecraft:", 1)[-1]
@@ -4124,7 +4192,8 @@ def create_campfire_blocks():
     flipbooks = [{"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_fire", "atlas_tile": "cobblemon_block_campfire_pot_campfire_fire", "ticks_per_frame": 2},
                  {"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_pot_broth", "atlas_tile": "cobblemon_block_campfire_pot_campfire_pot_broth", "ticks_per_frame": 3},
                  {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2}] \
-        + [{"flipbook_texture": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}", "atlas_tile": key, "ticks_per_frame": 3} for n, key in enumerate(broth_keys)]
+        + [{"flipbook_texture": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}", "atlas_tile": key, "ticks_per_frame": 3} for n, key in enumerate(broth_keys)] \
+        + HEALING_FLIPBOOKS
     with open(f"{resourcePack}/textures/flipbook_textures.json", "w") as file: file.write(json.dumps(flipbooks, indent=2))
     with open(f"{textsBedrock}/en_US.lang", encoding="utf-8") as file: written = file.read()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
@@ -4211,12 +4280,17 @@ def create_blocks():
         with open(f"{itemsBedrock}/berries/{berry}.json", "w") as file: file.write(json.dumps(item, indent=4))
         yield_range = data.get("baseYield", {"min": 1, "max": 3})
         berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3)}
-    # the healing machine, facing the player who places it
-    cubes, instances = java_model_cubes(java_model("cobblemon:block/healing_machine_0") or {})
+    # the healing machine, facing the player who places it. It never runs out here, so it stands at full charge
+    # (healing_machine_5, its five lights lit); while it heals (cobblemon:active, scripts/main.js) its front and back
+    # are healing_machine_active, whose screen is a flipbook, as is the tray's glow (HEALING_FLIPBOOKS)
+    cubes, instances = java_model_cubes(java_model("cobblemon:block/healing_machine_5") or {})
     write_block_geometry("geometry.cobblemon_healing_machine", cubes)
+    active_cubes, active_instances = java_model_cubes(java_model("cobblemon:block/healing_machine_active") or {})
+    write_block_geometry("geometry.cobblemon_healing_machine_active", active_cubes)
     turns = {"north": 180, "south": 0, "east": 90, "west": 270}
     machine = {"format_version": "1.21.90", "minecraft:block": {
         "description": {"identifier": "cobblemon:healing_machine", "menu_category": {"category": "equipment"},
+                        "states": {"cobblemon:active": [False, True]},
                         "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
         "components": {
             "minecraft:geometry": "geometry.cobblemon_healing_machine",
@@ -4227,7 +4301,11 @@ def create_blocks():
             "minecraft:light_dampening": 0, "minecraft:light_emission": 4,
             "cobblemon:healing_machine": {}},
         "permutations": [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}'",
-                          "components": {"minecraft:transformation": {"rotation": [0, r, 0]}}} for d, r in turns.items()]}}
+                          "components": {"minecraft:transformation": {"rotation": [0, r, 0]}}} for d, r in turns.items()]
+                       + [{"condition": "q.block_state('cobblemon:active')",
+                           "components": {"minecraft:geometry": "geometry.cobblemon_healing_machine_active",
+                                          "minecraft:material_instances": material_instances(active_instances),
+                                          "minecraft:light_emission": 10}}]}}
     with open(f"{blocksBedrock}/healing_machine.json", "w") as file: file.write(json.dumps(machine, indent=2))
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     fossil_items = create_fossil_blocks()
@@ -9288,6 +9366,7 @@ def main():
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()
+    add_evolution_animation()
     add_owned_protection()
     add_pasture_conflict()
     add_wild_behaviours()

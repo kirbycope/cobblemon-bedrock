@@ -2634,6 +2634,51 @@ function healAround(dimension, location, player) {
     return healed;
 }
 
+// HealingMachineBlock.useWithoutItem and HealingMachineBlockEntity: the party's balls go onto the tray, one a slot in
+// HealingMachineRenderer's two rows of three, the machine lights up (charge MAX_CHARGE_LEVEL + 1, its active screen)
+// with healing_machine.active, and 24 ticks later (healTimeLeft) the party is healed, the balls come off and the
+// message shows over the hotbar (healingmachine.healed). A machine in use, or a player already healing, is refused,
+// as alreadyHealing does. It never runs out of charge here.
+const HEAL_TICKS = 24, TRAY = [[0.2, 0.385], [-0.2, 0.385], [0.2, 0], [-0.2, 0], [0.2, -0.385], [-0.2, -0.385]];
+const healingAt = new Set(), healingPlayers = new Set();
+function useHealingMachine(block, player) {
+    const key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+    if (healingAt.has(key) || healingPlayers.has(player.id)) {
+        player.onScreenDisplay.setActionBar(healingAt.has(key) ? "§cThis healing machine is already in use!" : "§cYour Pokémon party is being healed!");
+        return;
+    }
+    const party = summaryParty(player);
+    if (!party.length) { player.onScreenDisplay.setActionBar("§cYou don't have any Pokémon in your party to heal!"); return; }
+    healingAt.add(key); healingPlayers.add(player.id);
+    const dim = block.dimension, { x, y, z } = block.location;
+    // the tray's slots turned with the machine: HealingMachineRenderer rotates by -FACING.toYRot() and draws at 0.65.
+    // A machine placed facing a way (the placer's look, cardinal_direction) has its open front toward the placer, which
+    // is Java's FACING the other way, so a south machine turns its slots as Java's north one (toYRot 180)
+    const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
+    const turn = ({ north: 0, east: 90, south: 180, west: 270 }[facing] * Math.PI) / 180;
+    const balls = party.slice(0, 6).map((member, n) => {
+        const [ox, oz] = TRAY[n];
+        const at = { x: x + 0.5 + (ox * Math.cos(turn) - oz * Math.sin(turn)) * 0.65, y: y + 0.71, z: z + 0.5 + (ox * Math.sin(turn) + oz * Math.cos(turn)) * 0.65 };
+        try {
+            const ball = captureBall(dim, prop(member, "cobblemon:caught_ball") ?? "cobblemon:poke_ball", at);
+            ball.setProperty("cobblemon:tray", true); ballState(ball, "hover");
+            ball.setRotation({ x: 0, y: (turn * 180) / Math.PI });
+            return ball;
+        } catch (e) { return undefined; }
+    });
+    const lit = (on) => { try { const b = dim.getBlock({ x, y, z }); if (b?.typeId === "cobblemon:healing_machine") b.setPermutation(b.permutation.withState("cobblemon:active", on)); } catch (e) { } };
+    lit(true);
+    try { dim.playSound("cobblemon.block.healing_machine.active", { x: x + 0.5, y, z: z + 0.5 }); } catch (e) { }
+    system.runTimeout(() => {
+        healingAt.delete(key); healingPlayers.delete(player.id);
+        for (const ball of balls) try { ball?.remove(); } catch (e) { }
+        lit(false);
+        if (!player.isValid) return;
+        healAround(dim, { x: x + 0.5, y: y + 0.5, z: z + 0.5 }, player);
+        player.onScreenDisplay.setActionBar("§aYour Pokémon party has been healed!");
+    }, HEAL_TICKS);
+}
+
 function nearestPlayer(entity) {
     let best, bestDist = 100;
     for (const p of entity.dimension.getPlayers({ location: entity.location, maxDistance: 10 })) {
@@ -5170,9 +5215,11 @@ function readyEvolutions(entity, player) {
     const seen = new Set();
     return info.evolutions.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
-// Evolution.forceEvolve's effect: the Pokemon stops where it is, a second later its evolution animation starts
-// (evo_particles' twelve-second timeline from the body's middle: sparkles, build-up, the obscuring cloud and godrays,
-// then the implosion and burst, with evolution.full), and at 11.2 seconds it becomes its evolution, which cries
+// Evolution.forceEvolve's effect: the Pokemon stops where it is (navigation.stop, here the battle group's movement 0),
+// a second later its evolution animation starts (port.py's add_evolution_animation, played while cobblemon:evolving is
+// on: evo_particles' twelve-second timeline from its middle locator, sparkles, build-up, the obscuring cloud and
+// godrays, then the implosion and burst; the Pokemon spinning, shrinking, rising and glowing inside it; and
+// evolution.full), and at 11.2 seconds it becomes its evolution, which cries
 const evolvingNow = new Set();
 function evolve(entity, evolution) {
     if (!entity.isValid || evolvingNow.has(entity.id)) return;
@@ -5180,19 +5227,18 @@ function evolve(entity, evolution) {
     if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
     setProp(entity, EVO_NOTE, undefined);
     evolvingNow.add(entity.id);
-    try { entity.addEffect("slowness", 240, { amplifier: 255, showParticles: false }); } catch (e) { }
+    try { entity.triggerEvent("cobblemon:battle_start"); } catch (e) { }
     system.runTimeout(() => {
         if (!entity.isValid) { evolvingNow.delete(entity.id); return; }
         try {
-            const feet = entity.location, head = entity.getHeadLocation();
-            entity.dimension.spawnParticle("cobblemon:evo_particles", { x: feet.x, y: (feet.y + head.y) / 2 - 1, z: feet.z });
-            entity.dimension.playSound("cobblemon.evolution.full", feet);
+            entity.setProperty("cobblemon:evolving", true);
+            entity.dimension.playSound("cobblemon.evolution.full", entity.location);
         } catch (e) { }
     }, 20);
     system.runTimeout(() => {
         evolvingNow.delete(entity.id);
         if (!entity.isValid) return;
-        try { entity.removeEffect("slowness"); } catch (e) { }
+        try { entity.setProperty("cobblemon:evolving", false); entity.triggerEvent("cobblemon:battle_end"); } catch (e) { }
         entity.triggerEvent(evolution.event);
     }, 224);
 }
@@ -6216,13 +6262,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
         onPlayerInteract({ block, player }) { if (player) openPc(block, player); }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:healing_machine", {
-        onPlayerInteract({ block, player }) {
-            if (!player) return;
-            const center = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
-            const healed = healAround(block.dimension, center, player);
-            player.sendMessage(healed ? `§aYour Pokemon are fully healed! (${healed})` : "§7No Pokemon of yours nearby to heal.");
-            try { block.dimension.playSound("cobblemon.block.healing_machine.active", center); } catch (err) { }
-        }
+        onPlayerInteract({ block, player }) { if (player) useHealingMachine(block, player); }
     });
 });
 
