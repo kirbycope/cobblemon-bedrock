@@ -160,6 +160,9 @@ def load_species_features():
 
 
 LEGENDARY_POOLS = f"{pwd}/legendary_encounters/spawn_pool_world"
+LEGENDARY_CREDIT = ("The legendary and mythical spawn rules in spawn_rules/ are made from Cobblemon Legendary Encounters by\n"
+                    "Yağız (kurbagayagiz), https://www.curseforge.com/minecraft/data-packs/cobblemon-legendary-encounters,\n"
+                    "used under the MIT licence:\n\n")
 
 
 def legendary_spawn_pools():
@@ -2510,6 +2513,12 @@ def create_spawn_rules():
         data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
         with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
         written += 1
+    # the legendary spawn rules are made from an MIT datapack, whose licence asks for its notice in every copy, so the
+    # behavior pack (and the .mcaddon built from it) carries it beside them
+    if legendary:
+        with open(f"{pwd}/legendary_encounters/LICENSE", encoding="utf-8") as file: notice = file.read()
+        with open(f"{behaviorPack}/LEGENDARY_ENCOUNTERS_LICENSE.txt", "w", encoding="utf-8", newline="\n") as file:
+            file.write(LEGENDARY_CREDIT + notice)
     for pokemon, kinds in weather_events.items():
         path = f"{entitiesBedrock}/{pokemon}.behavior.json"
         with open(path, encoding="utf-8") as file: text = file.read()

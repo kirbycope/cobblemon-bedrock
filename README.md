@@ -40,7 +40,7 @@ packs need regenerating; the release tag is the manifests' version, which `port.
     - Entity animations, models, and textures. The port is built from Cobblemon 1.8.2 (the `1.8.2` tag), checked out
       in the git-ignored `java/`.
 - https://www.curseforge.com/minecraft/data-packs/cobblemon-legendary-encounters
-    - Legendary Encounters by Yağız (kurbagayagiz), MIT: the legendary and mythical spawns, in `legendary_encounters/`.
+    - Legendary Encounters by Yağız (kurbagayagiz), MIT: the legendary and mythical spawns, in `legendary_encounters/`. Its MIT notice ships in the add-on as the behavior pack's `LEGENDARY_ENCOUNTERS_LICENSE.txt`, written by `port.py`.
 - https://pokemondb.net/sprites/
     - [Spawn Egg] Item textures
 - https://learn.microsoft.com/en-us/minecraft/creator/documents/gettingstarted?view=minecraft-bedrock-stable&tabs=Windows10#installing-extensions
