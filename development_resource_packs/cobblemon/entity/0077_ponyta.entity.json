@@ -309,12 +309,17 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));"
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk"
+                    "quirk",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -334,7 +339,8 @@
                 "true_faint": "animation.ponyta.true_faint",
                 "quirk1": "animation.ponyta.quirk1",
                 "pose_standing": "animation.0077_ponyta.pose_standing",
-                "pose_walk": "animation.0077_ponyta.pose_walk"
+                "pose_walk": "animation.0077_ponyta.pose_walk",
+                "evolution": "animation.0077_ponyta.evolution"
             },
             "render_controllers": [
                 "controller.render.ponyta",
@@ -348,6 +354,9 @@
             },
             "sound_effects": {
                 "pokemon.ponyta.cry": "cobblemon.ponyta.cry"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

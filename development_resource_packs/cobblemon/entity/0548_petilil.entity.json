@@ -296,12 +296,17 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 3 : (((v.pose_type == 7)) ? 4 : (((v.pose_type == 8)) ? 5 : (0))))));"
+                    "v.pose = ((v.pose_type == 2)) ? 0 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 3 : (((v.pose_type == 7)) ? 4 : (((v.pose_type == 8)) ? 5 : (0))))));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk"
+                    "quirk",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -325,7 +330,8 @@
                 "pose_walk": "animation.0548_petilil.pose_walk",
                 "pose_battle_idle": "animation.0548_petilil.pose_battle_idle",
                 "pose_shoulderleft": "animation.0548_petilil.pose_shoulderleft",
-                "pose_shoulderright": "animation.0548_petilil.pose_shoulderright"
+                "pose_shoulderright": "animation.0548_petilil.pose_shoulderright",
+                "evolution": "animation.0548_petilil.evolution"
             },
             "render_controllers": [
                 "controller.render.petilil",
@@ -338,6 +344,9 @@
             },
             "sound_effects": {
                 "pokemon.petilil.cry": "cobblemon.petilil.cry"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

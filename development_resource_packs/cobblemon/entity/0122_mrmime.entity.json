@@ -26,12 +26,17 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && q.has_rider))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !q.has_rider && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && q.has_rider))) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider && (q.has_rider && q.ground_speed > 7)))) ? 6 : (((v.pose_type == 2)) ? 7 : (0))))))));"
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 1 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider))) ? 2 : (((v.pose_type == 0) && (!q.property('cobblemon:battle') && (q.is_on_ground && q.has_rider))) ? 3 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && !q.has_rider && !(q.has_rider && q.ground_speed > 7)))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && ((q.is_on_ground && q.has_rider))) ? 5 : (((v.pose_type == 1 || v.pose_type == 6) && (!q.property('cobblemon:battle') && (q.is_on_ground && !q.has_rider && (q.has_rider && q.ground_speed > 7)))) ? 6 : (((v.pose_type == 2)) ? 7 : (0))))))));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk"
+                    "quirk",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -78,13 +83,17 @@
                 "mr_mime__ride_mount_run": "animation.mr_mime.ride_mount_run",
                 "pose_mount_walking": "animation.0122_mrmime.pose_mount_walking",
                 "mr_mime__ground_run": "animation.mr_mime.ground_run",
-                "pose_running": "animation.0122_mrmime.pose_running"
+                "pose_running": "animation.0122_mrmime.pose_running",
+                "evolution": "animation.0122_mrmime.evolution"
             },
             "render_controllers": [
                 "controller.render.mrmime"
             ],
             "spawn_egg": {
                 "texture": "0122_mrmime_spawn_egg"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

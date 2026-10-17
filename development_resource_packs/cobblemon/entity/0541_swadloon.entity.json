@@ -296,12 +296,17 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));"
+                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1)) ? 2 : (((v.pose_type == 2)) ? 3 : (0))));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
-                    "quirk"
+                    "quirk",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -326,7 +331,8 @@
                 "render": "animation.swadloon.render",
                 "walkspeedtest": "animation.swadloon.walkspeedtest",
                 "runspeedtest": "animation.swadloon.runspeedtest",
-                "sewaddle__battle_idle": "animation.sewaddle.battle_idle"
+                "sewaddle__battle_idle": "animation.sewaddle.battle_idle",
+                "evolution": "animation.0541_swadloon.evolution"
             },
             "render_controllers": [
                 "controller.render.swadloon",
@@ -339,6 +345,9 @@
             },
             "sound_effects": {
                 "pokemon.swadloon.cry": "cobblemon.swadloon.cry"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

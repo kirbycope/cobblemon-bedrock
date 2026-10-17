@@ -6,6 +6,12 @@
       "menu_category": {
         "category": "equipment"
       },
+      "states": {
+        "cobblemon:active": [
+          false,
+          true
+        ]
+      },
       "traits": {
         "minecraft:placement_direction": {
           "enabled_states": [
@@ -19,12 +25,6 @@
       "minecraft:material_instances": {
         "t0": {
           "texture": "cobblemon_block_functional_healing_machine",
-          "render_method": "alpha_test",
-          "ambient_occlusion": false,
-          "face_dimming": false
-        },
-        "t1": {
-          "texture": "cobblemon_block_functional_healing_machine_tray",
           "render_method": "alpha_test",
           "ambient_occlusion": false,
           "face_dimming": false
@@ -114,6 +114,33 @@
               0
             ]
           }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:active')",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_healing_machine_active",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_functional_healing_machine_active",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_functional_healing_machine",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_healing_machine_active",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:light_emission": 10
         }
       }
     ]

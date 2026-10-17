@@ -30,10 +30,15 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 3 : (((v.pose_type == 0) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 5 : (((v.pose_type == 1) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 6 : (((v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 8 : (0)))))))));"
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 1) && ((!q.is_on_ground))) ? 0 : (((v.pose_type == 0) && (!q.is_in_water)) ? 1 : (((v.pose_type == 1) && (!q.is_in_water)) ? 2 : (((v.pose_type == 0 || v.pose_type == 5) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 3 : (((v.pose_type == 0) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 4 : (((v.pose_type == 1 || v.pose_type == 6) && (q.is_in_water && !q.property('cobblemon:submerged') && (q.has_rider))) ? 5 : (((v.pose_type == 1) && (q.is_in_water && !q.property('cobblemon:submerged') && (!q.has_rider))) ? 6 : (((v.pose_type == 5) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 7 : (((v.pose_type == 6) && (q.is_in_water && q.property('cobblemon:submerged'))) ? 8 : (0)))))))));",
+                    "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
-                    "pose"
+                    "pose",
+                    {
+                        "evolution": "q.property('cobblemon:evolving')"
+                    }
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -48,7 +53,8 @@
                 "ground_speed_test": "animation.relicanth.ground_speed_test",
                 "cry": "animation.relicanth.cry",
                 "pose_surface_floating": "animation.0369_relicanth.pose_surface_floating",
-                "pose_surface_swimming": "animation.0369_relicanth.pose_surface_swimming"
+                "pose_surface_swimming": "animation.0369_relicanth.pose_surface_swimming",
+                "evolution": "animation.0369_relicanth.evolution"
             },
             "render_controllers": [
                 "controller.render.relicanth",
@@ -59,6 +65,9 @@
             },
             "sound_effects": {
                 "pokemon.relicanth.cry": "cobblemon.relicanth.cry"
+            },
+            "particle_effects": {
+                "evo": "cobblemon:evo_particles"
             }
         }
     }

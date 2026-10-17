@@ -9,9 +9,9 @@
             ],
             "overlay_color": {
                 "r": 1.0,
-                "g": 0.1,
-                "b": 0.1,
-                "a": "q.property('cobblemon:red')"
+                "g": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "b": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "a": "math.max(q.property('cobblemon:red'), v.evo_glow ?? 0)"
             },
             "arrays": {
                 "textures": {
@@ -61,9 +61,9 @@
             ],
             "overlay_color": {
                 "r": 1.0,
-                "g": 0.1,
-                "b": 0.1,
-                "a": "q.property('cobblemon:red')"
+                "g": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "b": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "a": "math.max(q.property('cobblemon:red'), v.evo_glow ?? 0)"
             },
             "geometry": "Array.geo[query.variant]"
         },
