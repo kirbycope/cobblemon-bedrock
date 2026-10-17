@@ -313,8 +313,8 @@
                 "value": 1.5
             },
             "minecraft:health": {
-                "value": 27,
-                "max": 27
+                "value": 248,
+                "max": 248
             },
             "minecraft:attack": {
                 "damage": 15
@@ -642,6 +642,23 @@
                         "cobblemon:variant_1"
                     ]
                 }
+            },
+            "cobblemon:spawn_weather_thunder": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "thunderstorm"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:conflict_on": {
                 "add": {

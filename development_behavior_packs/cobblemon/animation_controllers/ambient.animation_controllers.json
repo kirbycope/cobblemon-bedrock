@@ -1,31 +1,8 @@
 {
     "format_version": "1.10.0",
     "animation_controllers": {
-        "controller.animation.0009_blastoise.ambient": {
-            "initial_state": "a",
-            "states": {
-                "a": {
-                    "on_entry": [
-                        "/particle cobblemon:blastoise6_ambient ~0.73 ~0.08 ~-0.28",
-                        "/particle cobblemon:blastoise6_ambient ~-0.73 ~0.08 ~-0.28"
-                    ],
-                    "transitions": [
-                        {
-                            "b": "math.mod(q.life_time, 1.0) >= 0.5"
-                        }
-                    ]
-                },
-                "b": {
-                    "transitions": [
-                        {
-                            "a": "math.mod(q.life_time, 1.0) < 0.5"
-                        }
-                    ]
-                }
-            }
-        },
         "controller.animation.0092_gastly.ambient": {
-            "initial_state": "a",
+            "initial_state": "b",
             "states": {
                 "a": {
                     "on_entry": [
@@ -47,7 +24,7 @@
             }
         },
         "controller.animation.0218_slugma.ambient": {
-            "initial_state": "a",
+            "initial_state": "b",
             "states": {
                 "a": {
                     "on_entry": [
@@ -69,7 +46,7 @@
             }
         },
         "controller.animation.0219_magcargo.ambient": {
-            "initial_state": "a",
+            "initial_state": "b",
             "states": {
                 "a": {
                     "on_entry": [
@@ -90,8 +67,8 @@
                 }
             }
         },
-        "controller.animation.0250_hooh.ambient": {
-            "initial_state": "a",
+        "controller.animation.0250_hooh.ambient_air": {
+            "initial_state": "b",
             "states": {
                 "a": {
                     "on_entry": [
@@ -106,19 +83,19 @@
                 "b": {
                     "transitions": [
                         {
-                            "a": "math.mod(q.life_time, 1.0) < 0.5"
+                            "a": "math.mod(q.life_time, 1.0) < 0.5 && (!q.is_on_ground)"
                         }
                     ]
                 }
             }
         },
-        "controller.animation.0448_lucario.ambient": {
-            "initial_state": "a",
+        "controller.animation.0448_lucario.ambient_battle": {
+            "initial_state": "b",
             "states": {
                 "a": {
                     "on_entry": [
-                        "/particle cobblemon:lucario_aura_ambient ~-0.66 ~1.19 ~-0.03",
-                        "/particle cobblemon:lucario_aura_ambient ~0.66 ~1.19 ~-0.03"
+                        "/particle cobblemon:lucario_aura_ambient ~-0.71 ~1.18 ~-0.03",
+                        "/particle cobblemon:lucario_aura_ambient ~0.71 ~1.18 ~-0.03"
                     ],
                     "transitions": [
                         {
@@ -129,7 +106,7 @@
                 "b": {
                     "transitions": [
                         {
-                            "a": "math.mod(q.life_time, 1.0) < 0.5"
+                            "a": "math.mod(q.life_time, 1.0) < 0.5 && (q.property('cobblemon:battle'))"
                         }
                     ]
                 }

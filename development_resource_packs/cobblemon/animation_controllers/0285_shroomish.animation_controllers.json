@@ -4,6 +4,23 @@
         "controller.animation.shroomish.pose": {
             "initial_state": "spawn",
             "states": {
+                "sleep": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "battle_standing": "v.pose == 2"
+                        },
+                        {
+                            "walking": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "standing": {
                     "animations": [
                         "ground_idle",
@@ -11,66 +28,49 @@
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "battlestanding": "v.pose == 2"
+                            "battle_standing": "v.pose == 2"
                         },
                         {
-                            "sleeping": "v.pose == 3"
+                            "walking": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
-                    "animations": [
-                        "ground_walk",
-                        "pose_walk"
-                    ],
-                    "transitions": [
-                        {
-                            "standing": "v.pose == 0"
-                        },
-                        {
-                            "battlestanding": "v.pose == 2"
-                        },
-                        {
-                            "sleeping": "v.pose == 3"
-                        }
-                    ],
-                    "blend_transition": 0.5
-                },
-                "battlestanding": {
+                "battle_standing": {
                     "animations": [
                         "battle_idle",
-                        "pose_battlestanding"
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "sleeping": "v.pose == 3"
+                            "walking": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "sleeping": {
+                "walking": {
                     "animations": [
-                        "sleep"
+                        "ground_walk",
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "battlestanding": "v.pose == 2"
+                            "battle_standing": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -78,16 +78,16 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "battlestanding": "v.pose == 2"
+                            "battle_standing": "v.pose == 2"
                         },
                         {
-                            "sleeping": "v.pose == 3"
+                            "walking": "v.pose == 3"
                         }
                     ]
                 }

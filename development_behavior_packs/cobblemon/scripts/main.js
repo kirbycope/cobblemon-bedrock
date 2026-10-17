@@ -2679,6 +2679,17 @@ function useHealingMachine(block, player) {
     }, HEAL_TICKS);
 }
 
+// The weather in a dimension. Dimension.getWeather() went on answering Clear for some seconds into a thunderstorm the
+// /weather command had started, so the last weatherChange is believed first and getWeather() only before there is one
+const weatherNow = new Map();   // dimension id -> "Clear", "Rain" or "Thunder"
+// the event names a dimension "overworld" where Dimension.id is "minecraft:overworld"
+world.afterEvents.weatherChange.subscribe(({ dimension, newWeather }) => { weatherNow.set(dimension.includes(":") ? dimension : `minecraft:${dimension}`, newWeather); });
+function weatherIn(dimension) {
+    const known = weatherNow.get(dimension.id);
+    if (known) return known;
+    try { return dimension.getWeather(); } catch (e) { return "Clear"; }
+}
+
 function nearestPlayer(entity) {
     let best, bestDist = 100;
     for (const p of entity.dimension.getPlayers({ location: entity.location, maxDistance: 10 })) {
@@ -4177,7 +4188,7 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     if (spawn.rodType && ![].concat(spawn.rodType).some((r) => cast.rod === r || cast.rod === `cobblemon:${r}`)) return false;
     if (spawn.isRaining !== undefined) {
         let raining = false;
-        try { raining = bobber.dimension.getWeather() !== "Clear"; } catch (e) { }
+        raining = weatherIn(bobber.dimension) !== "Clear";
         if (raining !== spawn.isRaining) return false;
     }
     if (spawn.canSeeSky !== undefined) {
@@ -5193,7 +5204,7 @@ function meets(entity, f, r, player) {
         case "move": return f.moves.some((m) => m.id === r.move);
         case "move_type": return f.moves.some((m) => m.type === r.type);
         case "party": { const has = !!player && findParty(player, entity.location).some((e) => e.id !== entity.id && (POKEMON[e.typeId]?.name ?? "").toLowerCase() === r.species); return has === r.contains; }
-        case "weather": { let w = "Clear"; try { w = entity.dimension.getWeather(); } catch (e) { } return (r.rain === undefined || (w !== "Clear") === r.rain) && (r.thunder === undefined || (w === "Thunder") === r.thunder); }
+        case "weather": { const w = weatherIn(entity.dimension); return (r.rain === undefined || (w !== "Clear") === r.rain) && (r.thunder === undefined || (w === "Thunder") === r.thunder); }
         case "moon": { let phase = 0; try { phase = world.getMoonPhase(); } catch (e) { } return MOON_PHASES[phase] === r.phase; }
         case "stat_gt": return f.stats[r.hi] > f.stats[r.lo];
         case "stat_eq": return f.stats[r.a] === f.stats[r.b];

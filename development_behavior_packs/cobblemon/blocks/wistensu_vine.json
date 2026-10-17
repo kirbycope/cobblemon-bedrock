@@ -1,0 +1,262 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:wistensu_vine",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {
+        "cobblemon:facing": [
+          "down",
+          "east",
+          "north",
+          "south",
+          "up",
+          "west"
+        ],
+        "cobblemon:root": [
+          false,
+          true
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_wistensu_vine_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_block_flowers_wistensu_stem",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_block_flowers_wistensu_stem",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          8,
+          12
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          12,
+          14
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.5
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/wistensu_vine.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:root') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_stem",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_stem",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'north'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'east'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'south'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'west'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'down'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:root') == true && q.block_state('cobblemon:facing') == 'up'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_wistensu_vine_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_wistensu_root",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_wistensu_root",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

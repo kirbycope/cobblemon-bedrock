@@ -6,7 +6,7 @@
             "states": {
                 "battle_standing": {
                     "animations": [
-                        "pose",
+                        "battle_idle",
                         "pose_battle_standing"
                     ],
                     "transitions": [
@@ -17,7 +17,10 @@
                             "walking": "v.pose == 2"
                         },
                         {
-                            "sleep": "v.pose == 3"
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleeping": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -35,14 +38,17 @@
                             "walking": "v.pose == 2"
                         },
                         {
-                            "sleep": "v.pose == 3"
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleeping": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
                 },
                 "walking": {
                     "animations": [
-                        "ground_idle",
+                        "ground_walk",
                         "pose_walking"
                     ],
                     "transitions": [
@@ -53,12 +59,19 @@
                             "standing": "v.pose == 1"
                         },
                         {
-                            "sleep": "v.pose == 3"
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleeping": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "sleep": {
+                "running": {
+                    "animations": [
+                        "ground_run",
+                        "pose_running"
+                    ],
                     "transitions": [
                         {
                             "battle_standing": "v.pose == 0"
@@ -68,6 +81,29 @@
                         },
                         {
                             "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleeping": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleeping": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "running": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
@@ -84,7 +120,10 @@
                             "walking": "v.pose == 2"
                         },
                         {
-                            "sleep": "v.pose == 3"
+                            "running": "v.pose == 3"
+                        },
+                        {
+                            "sleeping": "v.pose == 4"
                         }
                     ]
                 }

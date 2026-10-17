@@ -147,21 +147,54 @@
 			}
 		},
 		"animation.fennekin.blink": {
-			"animation_length": 0.125,
+			"animation_length": 0.1667,
 			"bones": {
 				"eyelid_right": {
 					"position": {
 						"0.0": [-0.1, 0, -0.1],
-						"0.0417": [-0.1, 0, -0.1],
-						"0.0833": [0, 0, 0]
+						"0.1667": {"pre": [-0.1, 0, -0.1], "post": [0, 0, 0]}
 					}
 				},
 				"eyelid_left": {
 					"position": {
 						"0.0": [0.1, 0, -0.1],
-						"0.0417": [0.1, 0, -0.1],
-						"0.0833": [0, 0, 0]
+						"0.1667": {"pre": [0.1, 0, -0.1], "post": [0, 0, 0]}
 					}
+				},
+				"eye_left": {
+					"position": {
+						"0.0": [-0.1, 0, 0.1],
+						"0.1667": {"pre": [-0.1, 0, 0.1], "post": [0, 0, 0]}
+					}
+				},
+				"eye_right": {
+					"position": {
+						"0.0": [0.1, 0, 0.1],
+						"0.1667": {"pre": [0.1, 0, 0.1], "post": [0, 0, 0]}
+					}
+				},
+				"eyes_ditto": {
+					"position": {
+						"0.0": [0, 0, 0.1],
+						"0.1667": {"pre": [0, 0, 0.1], "post": [0, 0, 0]}
+					}
+				},
+				"eyes_blink_ditto": {
+					"position": {
+						"0.0": [0, 0, -0.1],
+						"0.1667": {"pre": [0, 0, -0.1], "post": [0, 0, 0]}
+					}
+				}
+			}
+		},
+		"animation.fennekin.ditto_face": {
+			"loop": true,
+			"bones": {
+				"face": {
+					"scale": 0
+				},
+				"face_ditto": {
+					"position": [0, 0, -0.1]
 				}
 			}
 		},
@@ -182,27 +215,31 @@
 						"0.5833": [0, 0, 0]
 					}
 				},
-				"jaw": {
-					"rotation": {
-						"0.0": [0, 0, 0],
-						"0.0833": [64.27, 0, 0],
-						"0.125": [70, 0, 0],
-						"0.1667": [38.9, 0, 0],
-						"0.2083": [35, 0, 0],
-						"0.25": [38.75, 0, 0],
-						"0.2917": [65.58, 0, 0],
-						"0.3333": [70, 0, 0],
-						"0.4167": [65.76, 0, 0],
-						"0.5417": [3.9, 0, 0],
-						"0.5833": [0, 0, 0]
-					}
-				},
-				"mouth_top": {
+				"mouth_open": {
 					"position": {
 						"0.0": [0, 0, 0],
-						"0.0417": [0, -1, 0],
-						"0.5": [0, -1, 0],
-						"0.5417": [0, 0, 0]
+						"0.0417": {"pre": [0, 0, 0], "post": [0, -1, 0]},
+						"0.1667": {"pre": [0, -1, 0], "post": [0, 0, 0]},
+						"0.2083": {"pre": [0, 0, 0], "post": [0, -1, 0]},
+						"0.5417": {"pre": [0, -1, 0], "post": [0, 0, 0]}
+					}
+				},
+				"mouth_ditto": {
+					"position": {
+						"0.0": [0, 0, 0],
+						"0.0417": {"pre": [0, 0, 0], "post": [0, 0, 0.1]},
+						"0.1667": {"pre": [0, 0, 0.1], "post": [0, 0, 0]},
+						"0.2083": {"pre": [0, 0, 0], "post": [0, 0, 0.1]},
+						"0.5417": {"pre": [0, 0, 0.1], "post": [0, 0, 0]}
+					}
+				},
+				"mouth_open_ditto": {
+					"position": {
+						"0.0": [0, 0, 0],
+						"0.0417": {"pre": [0, 0, 0], "post": [0, 0, -0.1]},
+						"0.1667": {"pre": [0, 0, -0.1], "post": [0, 0, 0]},
+						"0.2083": {"pre": [0, 0, 0], "post": [0, 0, -0.1]},
+						"0.5417": {"pre": [0, 0, -0.1], "post": [0, 0, 0]}
 					}
 				}
 			},
@@ -238,23 +275,30 @@
 				},
 				"ear_ruff_shock_left": {
 					"rotation": [0, 0, 0]
+				},
+				"ear_ruff_right": {
+					"rotation": [0, 0, -2.5]
 				}
 			}
 		},
 		"animation.fennekin.shock": {
 			"loop": true,
 			"bones": {
-				"pupil_left2": {
-					"scale": [0.7, 0.7, 1]
+				"pupil_left": {
+					"rotation": [-2.1, 0, 0],
+					"position": [0, 0.75, 0.028],
+					"scale": [0.7, 0.8, 1]
 				},
-				"mouth_top": {
+				"mouth_open": {
 					"position": [0, -1, 0]
 				},
 				"jaw": {
 					"rotation": [65, 0, 0]
 				},
-				"pupil_right2": {
-					"scale": [0.7, 0.7, 1]
+				"pupil_right": {
+					"rotation": [-2.1, 0, 0],
+					"position": [0, 0.75, 0.028],
+					"scale": [0.7, 0.8, 1]
 				}
 			}
 		},
@@ -272,6 +316,12 @@
 				},
 				"ear_ruff_shock_right": {
 					"scale": 0
+				},
+				"eye_neutral_left": {
+					"position": [-0.1, 0, 0.1]
+				},
+				"eye_neutral_right": {
+					"position": [0.1, 0, 0.1]
 				}
 			}
 		},
@@ -289,6 +339,12 @@
 				},
 				"ear_ruff_shock_right": {
 					"scale": 0
+				},
+				"eye_neutral_left": {
+					"position": [-0.1, 0, 0.1]
+				},
+				"eye_neutral_right": {
+					"position": [0.1, 0, 0.1]
 				}
 			}
 		},
@@ -298,7 +354,7 @@
 				"eyelid_happy_left": {
 					"position": [0.1, 0, -0.1]
 				},
-				"mouth_top": {
+				"mouth_open": {
 					"position": [0, -1, 0]
 				},
 				"jaw": {
@@ -312,23 +368,12 @@
 				},
 				"ear_ruff_shock_right": {
 					"scale": 0
-				}
-			}
-		},
-		"animation.fennekin.blush": {
-			"loop": true,
-			"bones": {
-				"blush_left": {
-					"position": [0.1, 0, 0]
 				},
-				"blush_right": {
-					"position": [-0.1, 0, 0]
+				"eye_neutral_left": {
+					"position": [-0.1, 0, 0.1]
 				},
-				"ear_ruff_shock_left": {
-					"scale": 0
-				},
-				"ear_ruff_shock_right": {
-					"scale": 0
+				"eye_neutral_right": {
+					"position": [0.1, 0, 0.1]
 				}
 			}
 		},
@@ -346,6 +391,12 @@
 				},
 				"ear_ruff_shock_right": {
 					"scale": 0
+				},
+				"eye_neutral_left": {
+					"position": [-0.1, 0, 0.1]
+				},
+				"eye_neutral_right": {
+					"position": [0.1, 0, 0.1]
 				}
 			}
 		}

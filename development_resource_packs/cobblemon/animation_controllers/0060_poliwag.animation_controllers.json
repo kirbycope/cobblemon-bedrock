@@ -4,71 +4,102 @@
         "controller.animation.poliwag.pose": {
             "initial_state": "spawn",
             "states": {
-                "standing": {
+                "sleep": {
                     "animations": [
-                        "ground_idle",
-                        "pose_standing"
+                        "sleep_placeholder"
                     ],
                     "transitions": [
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "float": "v.pose == 2"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "swim": "v.pose == 3"
+                            "float": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "sleep": {
+                "standing": {
                     "animations": [
-                        "sleep"
+                        "ground_idle_placeholder"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "float": "v.pose == 2"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "swim": "v.pose == 3"
+                            "float": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk_placeholder"
+                    ],
+                    "transitions": [
+                        {
+                            "sleep": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "float": "v.pose == 3"
+                        },
+                        {
+                            "swim": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
                 },
                 "float": {
                     "animations": [
-                        "water_idle"
+                        "water_idle_placeholder"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "swim": "v.pose == 3"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "swim": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
                 },
                 "swim": {
                     "animations": [
-                        "water_swim"
+                        "water_swim_placeholder"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "float": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "float": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
@@ -76,38 +107,19 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "sleep": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "float": "v.pose == 2"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "swim": "v.pose == 3"
-                        }
-                    ]
-                }
-            }
-        },
-        "controller.animation.poliwag.blink": {
-            "initial_state": "open",
-            "states": {
-                "open": {
-                    "transitions": [
+                            "float": "v.pose == 3"
+                        },
                         {
-                            "blink": "math.random(0, 200) < 1"
-                        }
-                    ]
-                },
-                "blink": {
-                    "animations": [
-                        "blink"
-                    ],
-                    "transitions": [
-                        {
-                            "open": "q.all_animations_finished"
+                            "swim": "v.pose == 4"
                         }
                     ]
                 }

@@ -309,6 +309,18 @@
                     "value": 1
                 }
             },
+            "cobblemon:shoulder": {
+                "minecraft:type_family": {
+                    "family": [
+                        "mob",
+                        "pokemon",
+                        "npc",
+                        "rock",
+                        "owned",
+                        "parrot_tame"
+                    ]
+                }
+            },
             "cobblemon:panics": {
                 "minecraft:behavior.panic": {
                     "priority": 1,
@@ -515,7 +527,7 @@
                 ]
             },
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.24
             },
             "minecraft:underwater_movement": {
                 "value": 0.1159
@@ -881,6 +893,25 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:variant_1"
+                    ]
+                }
+            },
+            "cobblemon:shoulder_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:shoulder"
+                    ]
+                }
+            },
+            "cobblemon:shoulder_off": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:shoulder"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:owned"
                     ]
                 }
             },

@@ -11,15 +11,15 @@
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "walking": {
                     "animations": [
                         "ground_idle",
-                        "pose_walk"
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
@@ -34,7 +34,29 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.luxray.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
+                        {
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
                         }
                     ]
                 }

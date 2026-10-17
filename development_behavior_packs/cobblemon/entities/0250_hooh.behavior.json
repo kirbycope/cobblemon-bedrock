@@ -84,11 +84,11 @@
                 }
             },
             "animations": {
-                "ambient": "controller.animation.0250_hooh.ambient"
+                "ambient_air": "controller.animation.0250_hooh.ambient_air"
             },
             "scripts": {
                 "animate": [
-                    "ambient"
+                    "ambient_air"
                 ]
             }
         },
@@ -571,8 +571,8 @@
                 "value": 1
             },
             "minecraft:health": {
-                "value": 27,
-                "max": 27
+                "value": 250,
+                "max": 250
             },
             "minecraft:attack": {
                 "damage": 13
@@ -1453,6 +1453,23 @@
                         "cobblemon:variant_1"
                     ]
                 }
+            },
+            "cobblemon:spawn_weather_clear": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
             },
             "cobblemon:conflict_on": {
                 "add": {

@@ -6,24 +6,71 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "render",
+                        "water_idle",
                         "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "flying": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "walking": {
                     "animations": [
-                        "render",
-                        "pose_walk"
+                        "water_swim",
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
                             "standing": "v.pose == 0"
+                        },
+                        {
+                            "flying": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "flying": {
+                    "animations": [
+                        "water_swim",
+                        "pose_flying"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        "sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "flying": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -34,7 +81,13 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "flying": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
                         }
                     ]
                 }

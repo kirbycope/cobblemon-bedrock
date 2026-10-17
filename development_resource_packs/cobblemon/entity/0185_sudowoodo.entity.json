@@ -14,8 +14,12 @@
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0185_sudowoodo/sudowoodo",
                 "v1": "textures/entity/0185_sudowoodo/sudowoodo_shiny",
-                "v2": "textures/entity/0185_sudowoodo/sudowoodo__golden",
-                "v3": "textures/entity/0185_sudowoodo/sudowoodo_shiny__golden",
+                "v2": "textures/entity/0185_sudowoodo/sudowoodo",
+                "v3": "textures/entity/0185_sudowoodo/sudowoodo_shiny",
+                "v4": "textures/entity/0185_sudowoodo/sudowoodo__golden",
+                "v5": "textures/entity/0185_sudowoodo/sudowoodo_shiny__golden",
+                "v6": "textures/entity/0185_sudowoodo/sudowoodo__golden",
+                "v7": "textures/entity/0185_sudowoodo/sudowoodo_shiny__golden",
                 "held_1": "textures/items/ability_shield",
                 "held_2": "textures/items/absorb_bulb",
                 "held_3": "textures/items/aguav_berry",
@@ -289,8 +293,9 @@
                 "held_271": "textures/items/glowstone_dust"
             },
             "geometry": {
-                "g_sudowoodo": "geometry.sudowoodo",
-                "g_sudowoodo_held": "geometry.sudowoodo.held"
+                "g_sudowoodo_male": "geometry.sudowoodo_male",
+                "g_sudowoodo_female": "geometry.sudowoodo_female",
+                "g_sudowoodo_male_held": "geometry.sudowoodo_male.held"
             },
             "scripts": {
                 "initialize": [
@@ -298,7 +303,7 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 1 : (0));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && ((q.is_on_ground)))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && ((!(q.has_rider && q.ground_speed > 7)))) ? 2 : (((v.pose_type == 1 || v.pose_type == 6) && (((q.has_rider && q.ground_speed > 7)))) ? 3 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 4 : (((v.pose_type == 2) && (!q.property('cobblemon:battle'))) ? 5 : (0))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
@@ -316,10 +321,31 @@
                 "blink_quirk": "controller.animation.sudowoodo.blink",
                 "look_at_target": "animation.0185_sudowoodo.look",
                 "ground_idle": "animation.sudowoodo.ground_idle",
+                "battle_idle": "animation.sudowoodo.battle_idle",
+                "sleep": "animation.sudowoodo.sleep",
+                "battle_sleep": "animation.sudowoodo.battle_sleep",
+                "ground_walk": "animation.sudowoodo.ground_walk",
+                "wild_ground_walk": "animation.sudowoodo.wild_ground_walk",
+                "ground_run": "animation.sudowoodo.ground_run",
+                "battle_quirk": "animation.sudowoodo.battle_quirk",
                 "blink": "animation.sudowoodo.blink",
                 "cry": "animation.sudowoodo.cry",
+                "recoil": "animation.sudowoodo.recoil",
+                "ditto_face": "animation.sudowoodo.ditto_face",
+                "happy": "animation.sudowoodo.happy",
+                "hurt": "animation.sudowoodo.hurt",
+                "angry": "animation.sudowoodo.angry",
+                "sad": "animation.sudowoodo.sad",
+                "shock": "animation.sudowoodo.shock",
+                "unamused": "animation.sudowoodo.unamused",
+                "head_test": "animation.sudowoodo.head_test",
+                "walkspeedtest": "animation.sudowoodo.walkspeedtest",
+                "wildwalktest": "animation.sudowoodo.wildwalktest",
+                "runspeedtest": "animation.sudowoodo.runspeedtest",
                 "pose_standing": "animation.0185_sudowoodo.pose_standing",
+                "pose_battle_standing": "animation.0185_sudowoodo.pose_battle_standing",
                 "pose_walk": "animation.0185_sudowoodo.pose_walk",
+                "pose_run": "animation.0185_sudowoodo.pose_run",
                 "evolution": "animation.0185_sudowoodo.evolution"
             },
             "render_controllers": [
@@ -330,6 +356,9 @@
             ],
             "spawn_egg": {
                 "texture": "0185_sudowoodo_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.sudowoodo.cry": "cobblemon.sudowoodo.cry"
             },
             "particle_effects": {
                 "evo": "cobblemon:evo_particles"

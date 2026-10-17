@@ -4,46 +4,26 @@
         "controller.animation.luxio.pose": {
             "initial_state": "spawn",
             "states": {
-                "sleep": {
-                    "animations": [
-                        "sleep"
-                    ],
-                    "transitions": [
-                        {
-                            "standing": "v.pose == 1"
-                        },
-                        {
-                            "walk": "v.pose == 2"
-                        }
-                    ],
-                    "blend_transition": 0.5
-                },
                 "standing": {
                     "animations": [
-                        "idle",
+                        "ground_idle",
                         "pose_standing"
                     ],
                     "transitions": [
                         {
-                            "sleep": "v.pose == 0"
-                        },
-                        {
-                            "walk": "v.pose == 2"
+                            "walking": "v.pose == 1"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "walking": {
                     "animations": [
-                        "idle",
-                        "pose_walk"
+                        "ground_idle",
+                        "pose_walking"
                     ],
                     "transitions": [
                         {
-                            "sleep": "v.pose == 0"
-                        },
-                        {
-                            "standing": "v.pose == 1"
+                            "standing": "v.pose == 0"
                         }
                     ],
                     "blend_transition": 0.5
@@ -51,13 +31,32 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "sleep": "v.pose == 0"
+                            "standing": "v.pose == 0"
                         },
                         {
-                            "standing": "v.pose == 1"
-                        },
+                            "walking": "v.pose == 1"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.luxio.blink": {
+            "initial_state": "open",
+            "states": {
+                "open": {
+                    "transitions": [
                         {
-                            "walk": "v.pose == 2"
+                            "blink": "math.random(0, 200) < 1"
+                        }
+                    ]
+                },
+                "blink": {
+                    "animations": [
+                        "blink"
+                    ],
+                    "transitions": [
+                        {
+                            "open": "q.all_animations_finished"
                         }
                     ]
                 }

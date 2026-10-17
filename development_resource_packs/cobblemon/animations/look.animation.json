@@ -156,8 +156,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -180,8 +180,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -333,10 +333,10 @@
   "animation.0023_ekans.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -552,6 +552,42 @@
     "torso": {
      "rotation": [
       "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -10, 10)",
+      0
+     ]
+    }
+   }
+  },
+  "animation.0043_oddish.look": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -18, 8)",
+      "1 * math.clamp(query.target_y_rotation, -10, 10)",
+      0
+     ]
+    }
+   }
+  },
+  "animation.0044_gloom.look": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -18, 6)",
+      "1 * math.clamp(query.target_y_rotation, -10, 10)",
+      0
+     ]
+    }
+   }
+  },
+  "animation.0045_vileplume.look": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -18, 6)",
       "1 * math.clamp(query.target_y_rotation, -10, 10)",
       0
      ]
@@ -1946,10 +1982,10 @@
   "animation.0182_bellossom.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -1958,10 +1994,24 @@
   "animation.0185_sudowoodo.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "torso": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "0.75 * math.clamp(query.target_x_rotation, -5, 5)",
+      "1 * math.clamp(query.target_y_rotation, -12.5, 12.5)",
+      0
+     ]
+    },
+    "torso2": {
+     "rotation": [
+      "0.75 * math.clamp(query.target_x_rotation, 0, 10)",
+      "1 * math.clamp(query.target_y_rotation, 0, 0)",
+      0
+     ]
+    },
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -5, 7.5)",
+      "1 * math.clamp(query.target_y_rotation, -10, 10)",
       0
      ]
     }
@@ -1972,8 +2022,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -2647,10 +2697,10 @@
   "animation.0252_treecko.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "1 * math.clamp(query.target_x_rotation, -45, 70)",
-      "1 * math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -30, 30)",
+      "1 * math.clamp(query.target_y_rotation, -35, 35)",
       0
      ]
     }
@@ -2968,6 +3018,18 @@
     }
    }
   },
+  "animation.0285_shroomish.look": {
+   "loop": true,
+   "bones": {
+    "torso": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
+      0
+     ]
+    }
+   }
+  },
   "animation.0286_breloom.look": {
    "loop": true,
    "bones": {
@@ -2983,7 +3045,7 @@
   "animation.0287_slakoth.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
       "1 * math.clamp(query.target_x_rotation, -45, 70)",
       "1 * math.clamp(query.target_y_rotation, -45, 45)",
@@ -4121,10 +4183,10 @@
   "animation.0403_shinx.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -4133,10 +4195,10 @@
   "animation.0404_luxio.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -4145,10 +4207,10 @@
   "animation.0405_luxray.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -4454,13 +4516,25 @@
     }
    }
   },
+  "animation.0438_bonsly.look": {
+   "loop": true,
+   "bones": {
+    "torso": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -7.5, 12.5)",
+      "1 * math.clamp(query.target_y_rotation, -12.5, 12.5)",
+      0
+     ]
+    }
+   }
+  },
   "animation.0439_mimejr.look": {
    "loop": true,
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -4536,7 +4610,7 @@
   "animation.0447_riolu.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
       "1 * math.clamp(query.target_x_rotation, -45, 70)",
       "1 * math.clamp(query.target_y_rotation, -45, 45)",
@@ -4548,7 +4622,7 @@
   "animation.0448_lucario.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
       "1 * math.clamp(query.target_x_rotation, -45, 70)",
       "1 * math.clamp(query.target_y_rotation, -45, 45)",
@@ -6007,8 +6081,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -6499,8 +6573,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -6511,8 +6585,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -6557,10 +6631,10 @@
   "animation.0656_froakie.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -6569,10 +6643,10 @@
   "animation.0657_frogadier.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "1 * math.clamp(query.target_x_rotation, -45, 5)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -6581,10 +6655,17 @@
   "animation.0658_greninja.look": {
    "loop": true,
    "bones": {
-    "head": {
+    "head_ai": {
      "rotation": [
-      "math.clamp(query.target_x_rotation, -45, 70)",
-      "math.clamp(query.target_y_rotation, -45, 45)",
+      "-1 * math.clamp(query.target_x_rotation, 0, 0)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
+      0
+     ]
+    },
+    "tongue1": {
+     "rotation": [
+      "-1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, 0, 0)",
       0
      ]
     }
@@ -7487,8 +7568,8 @@
    "bones": {
     "head": {
      "rotation": [
-      "1 * math.clamp(query.target_x_rotation, -45, 70)",
-      "1 * math.clamp(query.target_y_rotation, -45, 45)",
+      "math.clamp(query.target_x_rotation, -45, 70)",
+      "math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }
@@ -7834,6 +7915,18 @@
      "rotation": [
       "math.clamp(query.target_x_rotation, -45, 70)",
       "math.clamp(query.target_y_rotation, -45, 45)",
+      0
+     ]
+    }
+   }
+  },
+  "animation.0774_minior.look": {
+   "loop": true,
+   "bones": {
+    "head_ai": {
+     "rotation": [
+      "1 * math.clamp(query.target_x_rotation, -45, 70)",
+      "1 * math.clamp(query.target_y_rotation, -45, 45)",
       0
      ]
     }

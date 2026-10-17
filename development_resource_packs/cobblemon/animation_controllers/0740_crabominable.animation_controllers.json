@@ -6,21 +6,19 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
-                        "pose_standing"
+                        "ground_idle"
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "walking": {
                     "animations": [
                         "ground_idle",
-                        "ground_walk",
-                        "pose_walk"
+                        "ground_walk"
                     ],
                     "transitions": [
                         {
@@ -35,7 +33,7 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         }
                     ]
                 }

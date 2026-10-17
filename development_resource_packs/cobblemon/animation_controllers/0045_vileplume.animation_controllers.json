@@ -4,16 +4,73 @@
         "controller.animation.vileplume.pose": {
             "initial_state": "spawn",
             "states": {
-                "standing": {
+                "battle_standing": {
                     "animations": [
-                        "idle"
+                        "battle_idle",
+                        "pose_battle_standing"
                     ],
                     "transitions": [
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "standing": {
+                    "animations": [
+                        "ground_idle",
+                        "pose_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "walking": {
+                    "animations": [
+                        "ground_walk"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -24,24 +81,65 @@
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "battle_sleep": {
                     "animations": [
-                        "ground_walk"
+                        "sleep"
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "wild_sleep": {
+                    "animations": [
+                        "wild_sleep"
+                    ],
+                    "transitions": [
+                        {
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -49,13 +147,47 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 1"
+                            "standing": "v.pose == 1"
                         },
                         {
-                            "walk": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 4"
+                        },
+                        {
+                            "wild_sleep": "v.pose == 5"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.vileplume.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
+                    ]
+                },
+                "play": {
+                    "animations": [
+                        "quirk_0"
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 1));"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
                         }
                     ]
                 }

@@ -11,16 +11,43 @@
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "sleep": "v.pose == 2"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "battlesleep": "v.pose == 3"
+                            "sleep": "v.pose == 3"
                         },
                         {
-                            "battle_idle": "v.pose == 4"
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_standing": {
+                    "animations": [
+                        "battle_idle",
+                        "pose_battle_standing"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
@@ -35,38 +62,21 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "sleep": "v.pose == 2"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "battlesleep": "v.pose == 3"
+                            "sleep": "v.pose == 3"
                         },
                         {
-                            "battle_idle": "v.pose == 4"
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
                 },
                 "sleep": {
-                    "animations": [
-                        "sleep_pot"
-                    ],
-                    "transitions": [
-                        {
-                            "standing": "v.pose == 0"
-                        },
-                        {
-                            "walk": "v.pose == 1"
-                        },
-                        {
-                            "battlesleep": "v.pose == 3"
-                        },
-                        {
-                            "battle_idle": "v.pose == 4"
-                        }
-                    ],
-                    "blend_transition": 0.5
-                },
-                "battlesleep": {
                     "animations": [
                         "sleep"
                     ],
@@ -75,34 +85,64 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "sleep": "v.pose == 2"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "battle_idle": "v.pose == 4"
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "battle_idle": {
+                "shoulder_left": {
                     "animations": [
-                        "battle_idle",
-                        "pose_battle_idle"
+                        "shoulder_left",
+                        "pose_shoulder_left"
                     ],
                     "transitions": [
                         {
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "sleep": "v.pose == 2"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "battlesleep": "v.pose == 3"
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "shoulder_right": {
+                    "animations": [
+                        "shoulder_right",
+                        "pose_shoulder_right"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walk": "v.pose == 2"
+                        },
+                        {
+                            "sleep": "v.pose == 3"
+                        },
+                        {
+                            "shoulder_left": "v.pose == 4"
                         }
                     ],
                     "blend_transition": 0.5
@@ -113,16 +153,19 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "sleep": "v.pose == 2"
+                            "walk": "v.pose == 2"
                         },
                         {
-                            "battlesleep": "v.pose == 3"
+                            "sleep": "v.pose == 3"
                         },
                         {
-                            "battle_idle": "v.pose == 4"
+                            "shoulder_left": "v.pose == 4"
+                        },
+                        {
+                            "shoulder_right": "v.pose == 5"
                         }
                     ]
                 }

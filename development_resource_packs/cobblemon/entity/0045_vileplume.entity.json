@@ -10,12 +10,12 @@
                 "held": "entity_alphatest"
             },
             "textures": {
-                "default": "textures/entity/0045_vileplume/vileplume_male",
+                "default": "textures/entity/0045_vileplume/vileplume",
                 "blank": "textures/entity/blank",
-                "v0": "textures/entity/0045_vileplume/vileplume_male",
-                "v1": "textures/entity/0045_vileplume/vileplume_male_shiny",
-                "v2": "textures/entity/0045_vileplume/vileplume_female",
-                "v3": "textures/entity/0045_vileplume/vileplume_female_shiny",
+                "v0": "textures/entity/0045_vileplume/vileplume",
+                "v1": "textures/entity/0045_vileplume/vileplume_shiny",
+                "v2": "textures/entity/0045_vileplume/vileplume",
+                "v3": "textures/entity/0045_vileplume/vileplume_shiny",
                 "v4": "textures/entity/0045_vileplume/vileplume_valencian",
                 "v5": "textures/entity/0045_vileplume/vileplume_valencian_shiny",
                 "v6": "textures/entity/0045_vileplume/vileplume_valencian",
@@ -293,8 +293,9 @@
                 "held_271": "textures/items/glowstone_dust"
             },
             "geometry": {
-                "g_vileplume": "geometry.vileplume",
-                "g_vileplume_held": "geometry.vileplume.held"
+                "g_vileplume_male": "geometry.vileplume_male",
+                "g_vileplume_female": "geometry.vileplume_female",
+                "g_vileplume_male_held": "geometry.vileplume_male.held"
             },
             "scripts": {
                 "initialize": [
@@ -302,13 +303,14 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (v.moving ? 1 : 0))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 3 || v.pose_type == 5)) ? 0 : (((v.pose_type == 2)) ? 1 : (((v.pose_type == 1 || v.pose_type == 4 || v.pose_type == 6)) ? 2 : (0)));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (((v.pose_type == 2) && ((!(q.property('cobblemon:on_sand') > 0)))) ? 3 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 4 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && ((q.property('cobblemon:on_sand') > 0)))) ? 5 : (0))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
+                    "quirk",
                     {
                         "evolution": "q.property('cobblemon:evolving')"
                     }
@@ -318,14 +320,25 @@
             "animations": {
                 "pose": "controller.animation.vileplume.pose",
                 "blink_quirk": "controller.animation.vileplume.blink",
-                "sleep": "animation.vileplume.sleep",
-                "faint": "animation.vileplume.faint",
-                "special_attack": "animation.vileplume.special_attack",
-                "ground_run": "animation.vileplume.ground_run",
+                "quirk": "controller.animation.vileplume.quirk",
+                "quirk_0": "animation.vileplume.quirk",
+                "look_at_target": "animation.0045_vileplume.look",
+                "ground_idle": "animation.vileplume.ground_idle",
                 "ground_walk": "animation.vileplume.ground_walk",
-                "idle": "animation.vileplume.idle",
+                "battle_idle": "animation.vileplume.battle_idle",
+                "sleep": "animation.vileplume.sleep",
+                "wild_sleep": "animation.vileplume.wild_sleep",
                 "blink": "animation.vileplume.blink",
                 "cry": "animation.vileplume.cry",
+                "recoil": "animation.vileplume.recoil",
+                "quirk_animation": "animation.vileplume.quirk",
+                "ditto_face": "animation.vileplume.ditto_face",
+                "shock": "animation.vileplume.shock",
+                "angry": "animation.vileplume.angry",
+                "sad": "animation.vileplume.sad",
+                "happy": "animation.vileplume.happy",
+                "pose_battle_standing": "animation.0045_vileplume.pose_battle_standing",
+                "pose_standing": "animation.0045_vileplume.pose_standing",
                 "evolution": "animation.0045_vileplume.evolution"
             },
             "render_controllers": [

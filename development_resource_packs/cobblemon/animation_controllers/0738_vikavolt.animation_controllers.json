@@ -6,24 +6,76 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_walk",
-                        "pose_standing"
+                        "ground_idle"
                     ],
                     "transitions": [
                         {
                             "walking": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
-                        "pose_walking"
+                        "ground_walk"
                     ],
                     "transitions": [
                         {
                             "standing": "v.pose == 0"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "hover": {
+                    "animations": [
+                        "air_idle",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_hover"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "fly": "v.pose == 3"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "fly": {
+                    "animations": [
+                        "air_fly",
+                        {
+                            "hold_item": "q.property('cobblemon:holding')"
+                        },
+                        "pose_fly"
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -35,6 +87,12 @@
                         },
                         {
                             "walking": "v.pose == 1"
+                        },
+                        {
+                            "hover": "v.pose == 2"
+                        },
+                        {
+                            "fly": "v.pose == 3"
                         }
                     ]
                 }

@@ -1,0 +1,131 @@
+{
+  "format_version": "1.21.90",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblemon:lobaila",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {
+        "cobblemon:half": [
+          "lower",
+          "upper"
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblemon_lobaila_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblemon_block_flowers_lobaila_bottom",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "t1": {
+          "texture": "cobblemon_block_flowers_lobaila_details",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblemon_block_flowers_lobaila_bottom",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          8,
+          12
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -7,
+          0,
+          -7
+        ],
+        "size": [
+          14,
+          12,
+          14
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 0.5
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/lobaila.json"
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_lobaila_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_lobaila_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblemon_block_flowers_lobaila_details",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_lobaila_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_lobaila_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblemon_block_flowers_lobaila_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_flowers_lobaila_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
