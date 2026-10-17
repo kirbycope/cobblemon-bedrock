@@ -9068,12 +9068,15 @@ def create_party_hud():
                 "offset": [2.5, 0],   # the HUD's root panel reaches 2.5 past the screen's left edge
                 "controls": [c for n in range(6) for c in ([slot_panel(n)] + ([{f"gap_{n}": {"type": "panel", "size": [62, 4]}}] if n < 5 else []))]}}]}}}]},
         # a title carrying the party is data, not something to show
+        # mm:map is minimap-bedrock's HUD title: both packs add a #visible binding here and the one added last decides, so each
+        # hides the other's titles too and they work in either order
         "hud_title_text": {"modifications": [{"array_name": "bindings", "operation": "insert_back", "value": [
             {"binding_name": "#hud_title_text_string", "binding_type": "global"},
             {"binding_type": "view", "source_property_name": f"(((#hud_title_text_string - '{PARTY_MARKER}') = #hud_title_text_string) and "
                                                              f"((#hud_title_text_string - '{SCAN_MARKER}') = #hud_title_text_string) and "
                                                              f"((#hud_title_text_string - '{RIDE_MARKER}') = #hud_title_text_string) and "
-                                                             f"((#hud_title_text_string - '{TOAST_MARKER}') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
+                                                             f"((#hud_title_text_string - '{TOAST_MARKER}') = #hud_title_text_string) and "
+                                                             f"((#hud_title_text_string - 'mm:map') = #hud_title_text_string))", "target_property_name": "#visible"}]}]},
     }
     hud.update(create_scan_hud())
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_scan@hud.cobblemon_scan": {}}})
