@@ -1,0 +1,29 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "cobblemon:fossil_display_3",
+      "materials": {
+        "default": "entity_alphatest"
+      },
+      "textures": {
+        "default": "textures/entity/fossils/aerodactyl"
+      },
+      "geometry": {
+        "default": "geometry.aerodactyl_fetus"
+      },
+      "scripts": {
+        "scale": "0.5 + query.mark_variant * 0.1",
+        "animate": [
+          "sleep"
+        ]
+      },
+      "render_controllers": [
+        "controller.render.fossil_display"
+      ],
+      "animations": {
+        "sleep": "animation.aerodactyl_fetus.sleep"
+      }
+    }
+  }
+}
