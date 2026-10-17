@@ -661,7 +661,7 @@ def create_texts():
             file.write(f"item.cobblemon:{name}.name={lang.get('item.cobblemon.' + name, name.replace('_', ' ').title())}\n")
         for name, title in (("fossil_analyzer", "Fossil Analyzer"), ("restoration_tank", "Restoration Tank"), ("monitor", "Monitor"), ("pc", "PC"), ("pasture", "Pasture")):
             file.write(f"tile.cobblemon:{name}.name={lang.get('block.cobblemon.' + name, title)}\n")
-        file.write("entity.cobblemon:fossil_display.name=Fossil\n")
+        for n in range(3 + len(fossil_recipes())): file.write(f"entity.cobblemon:fossil_display_{n}.name=Fossil\n")
         file.write("tile.cobblemon:healing_machine.name=Healing Machine\n")
         for rod, _ in poke_rods(): file.write(f"item.cobblemon:{rod}.name={lang.get('item.cobblemon.' + rod, rod.replace('_', ' ').title())}\n")
         file.write(f"item.cobblemon:pokerod_smithing_template.name={lang.get('item.cobblemon.pokerod_smithing_template', 'Poke Rod Smithing Template')}\n")
@@ -4477,54 +4477,60 @@ def create_fossil_blocks():
 
 
 def create_fossil_display():
-    """cobblemon:fossil_display, what floats in the tank: variant 0 to 2 are the embryo stages, then one fetus per
-    result in recipe order; mark_variant 0 to 4 grows the fetus from half size to Cobblemon's 0.9."""
+    """What floats in the tank: cobblemon:fossil_display_<n>, one entity per stage, 0 to 2 the embryo stages and then
+    one fetus per result in recipe order; mark_variant 0 to 4 grows the fetus from half size to Cobblemon's 0.9.
+
+    One entity each, not one entity with a geometry per stage: Bedrock merges the locators of every geometry a client
+    entity lists, and it synthesises armor_offset.default_neck in each from the skeleton, so eighteen models whose necks
+    sit at eighteen heights logged a clash for each on every launch, the content log opening over the world. They
+    share the fossil_display family, which is what scripts/main.js finds them by."""
     recipes = fossil_recipes()
     stages = ["embryo_stage1", "embryo_stage2", "embryo_stage3"] + [f"{p[p.index('_')+1:]}_fetus" for p, _ in recipes]
     stages = [st if os.path.exists(f"{fossilModelsMain}/models/{st}.geo.json") else "substitute_fetus" for st in stages]
     os.makedirs(f"{modelsBedrock}/fossils", exist_ok=True); os.makedirs(f"{animationsBedrock}/fossils", exist_ok=True); os.makedirs(f"{texturesEntityBedrock}/fossils", exist_ok=True)
-    textures, animations = {}, {}
+    for stale in (f"{entityBedrock}/fossil_display.entity.json", f"{entitiesBedrock}/fossil_display.behavior.json"):
+        if os.path.exists(stale): os.remove(stale)
+    with open(f"{renderControllersBedrock}/fossil_display.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.fossil_display": {
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Texture.default"]}}}, indent=2))
+    groups = {f"cobblemon:growth_{g}": {"minecraft:mark_variant": {"value": g}} for g in range(5)}
+    events = {f"cobblemon:growth_{g}": {"remove": {"component_groups": [f"cobblemon:growth_{h}" for h in range(5) if h != g]}, "add": {"component_groups": [f"cobblemon:growth_{g}"]}} for g in range(5)}
     for n, stage in enumerate(stages):
         shutil.copyfile(f"{fossilModelsMain}/models/{stage}.geo.json", f"{modelsBedrock}/fossils/{stage}.geo.json")
         with open(f"{fossilModelsMain}/variations/{stage}.json", encoding="utf-8") as file: variation = json.load(file)["variations"][0]
         texture = os.path.basename(variation["texture"])[:-len(".png")]
         shutil.copyfile(f"{cobblemon}/textures/fossils/{texture}.png", f"{texturesEntityBedrock}/fossils/{texture}.png")
-        textures[f"t{n}"] = f"textures/entity/fossils/{texture}"
+        animations = {}
         anim = f"{fossilModelsMain}/animations/{stage}.animation.json"
         if os.path.exists(anim):
             shutil.copyfile(anim, f"{animationsBedrock}/fossils/{stage}.animation.json")
             with open(anim, encoding="utf-8") as file: names = list(json.load(file)["animations"])
             sleep = next((a for a in names if a.endswith(".sleep")), None)
-            if sleep: animations[f"sleep_{n}"] = sleep
-    client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
-        "identifier": "cobblemon:fossil_display",
-        "materials": {"default": "entity_alphatest"},
-        "textures": textures,
-        "geometry": {f"g{n}": f"geometry.{stage}" for n, stage in enumerate(stages)},
-        "animations": animations,
-        "scripts": {"scale": "0.5 + query.mark_variant * 0.1", "animate": [{k: f"query.variant == {k.split('_')[1]}"} for k in animations]},
-        "render_controllers": ["controller.render.fossil_display"]}}}
-    with open(f"{entityBedrock}/fossil_display.entity.json", "w") as file: file.write(json.dumps(client, indent=2))
-    with open(f"{renderControllersBedrock}/fossil_display.render_controllers.json", "w") as file:
-        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.fossil_display": {
-            "arrays": {"textures": {"Array.skin": [f"Texture.t{n}" for n in range(len(stages))]}, "geometries": {"Array.geo": [f"Geometry.g{n}" for n in range(len(stages))]}},
-            "geometry": "Array.geo[query.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[query.variant]"]}}}, indent=2))
-    groups = {f"cobblemon:stage_{n}": {"minecraft:variant": {"value": n}} for n in range(len(stages))}
-    groups.update({f"cobblemon:growth_{g}": {"minecraft:mark_variant": {"value": g}} for g in range(5)})
-    events = {f"cobblemon:stage_{n}": {"remove": {"component_groups": [f"cobblemon:stage_{m}" for m in range(len(stages)) if m != n]}, "add": {"component_groups": [f"cobblemon:stage_{n}"]}} for n in range(len(stages))}
-    events.update({f"cobblemon:growth_{g}": {"remove": {"component_groups": [f"cobblemon:growth_{h}" for h in range(5) if h != g]}, "add": {"component_groups": [f"cobblemon:growth_{g}"]}} for g in range(5)})
-    behavior = {"format_version": "1.16.0", "minecraft:entity": {
-        "description": {"identifier": "cobblemon:fossil_display", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
-        "component_groups": groups, "events": events,
-        "components": {
-            "minecraft:type_family": {"family": ["fossil_display", "inanimate"]},
-            "minecraft:collision_box": {"width": 0.1, "height": 0.1},
-            "minecraft:physics": {"has_gravity": False, "has_collision": False},
-            "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
-            "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
-            "minecraft:persistent": {}, "minecraft:health": {"value": 1, "max": 1}, "minecraft:knockback_resistance": {"value": 1.0},
-            "minecraft:variant": {"value": 0}, "minecraft:mark_variant": {"value": 0}}}}
-    with open(f"{entitiesBedrock}/fossil_display.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=2))
+            if sleep: animations["sleep"] = sleep
+        ident = f"cobblemon:fossil_display_{n}"
+        client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": ident,
+            "materials": {"default": "entity_alphatest"},
+            "textures": {"default": f"textures/entity/fossils/{texture}"},
+            "geometry": {"default": f"geometry.{stage}"},
+            "scripts": {"scale": "0.5 + query.mark_variant * 0.1"},
+            "render_controllers": ["controller.render.fossil_display"]}}}
+        if animations:   # an embryo has none, and Bedrock refuses an empty animations or animate list
+            client["minecraft:client_entity"]["description"]["animations"] = animations
+            client["minecraft:client_entity"]["description"]["scripts"]["animate"] = list(animations)
+        with open(f"{entityBedrock}/fossil_display_{n}.entity.json", "w") as file: file.write(json.dumps(client, indent=2))
+        behavior = {"format_version": "1.16.0", "minecraft:entity": {
+            "description": {"identifier": ident, "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "component_groups": groups, "events": events,
+            "components": {
+                "minecraft:type_family": {"family": ["fossil_display", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.1, "height": 0.1},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
+                "minecraft:persistent": {}, "minecraft:health": {"value": 1, "max": 1}, "minecraft:knockback_resistance": {"value": 1.0},
+                "minecraft:mark_variant": {"value": 0}}}}
+        with open(f"{entitiesBedrock}/fossil_display_{n}.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=2))
     table = {"results": [{"entity": entity_id(p), "fossils": f, "stage": 3 + n} for n, (p, f) in enumerate(recipes)],
              "fossilItems": sorted({x for _, f in recipes for x in f}), "materials": natural_materials(),
              "maxFossils": MAX_FOSSILS, "materialToStart": MATERIAL_TO_START, "reviveSeconds": REVIVE_SECONDS, "protectionSeconds": PROTECTION_SECONDS}

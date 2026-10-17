@@ -3115,16 +3115,17 @@ function show(m, st) {
 // what floats in the tank: nothing idle, the embryo through its three stages, then the fetus growing
 function showFetus(m, st) {
     const d = m.tank.dimension, at = { x: m.tank.location.x + 0.5, y: m.tank.location.y + 0.55, z: m.tank.location.z + 0.5 };
-    let display = d.getEntities({ type: "cobblemon:fossil_display", location: at, maxDistance: 0.8 })[0];
+    // one entity per stage, cobblemon:fossil_display_<stage> (port.py's create_fossil_display says why), found by family
+    let display = d.getEntities({ families: ["fossil_display"], location: at, maxDistance: 0.8 })[0];
     const active = st.left > 0 || st.done;
     if (!active) { display?.remove(); return; }
-    if (!display) { try { display = d.spawnEntity("cobblemon:fossil_display", at); } catch (e) { return; } }
     const progress = st.done ? 1 : (FOSSILS.reviveSeconds - st.left) / FOSSILS.reviveSeconds;
     const result = FOSSILS.results.find((r) => r.entity === st.result);
     const stage = progress < 0.25 ? 0 : progress < 0.4 ? 1 : progress < 0.55 ? 2 : (result?.stage ?? 2);
     const growth = Math.max(0, Math.min(4, Math.floor(((progress - 0.55) / 0.45) * 5)));
+    if (display && display.typeId !== `cobblemon:fossil_display_${stage}`) { try { display.remove(); } catch (e) { } display = undefined; }
+    if (!display) { try { display = d.spawnEntity(`cobblemon:fossil_display_${stage}`, at); } catch (e) { return; } }
     try {
-        if (display.getComponent("minecraft:variant")?.value !== stage) display.triggerEvent(`cobblemon:stage_${stage}`);
         if (display.getComponent("minecraft:mark_variant")?.value !== growth) display.triggerEvent(`cobblemon:growth_${growth}`);
     } catch (e) { }
 }
@@ -3244,7 +3245,7 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
         for (const f of st.fossils) { try { block.dimension.spawnItem(new ItemStack(f, 1), block.location); } catch (e) { } }
         machines.delete(key); saveMachines();
     }
-    for (const e of block.dimension.getEntities({ type: "cobblemon:fossil_display", location: bottom.location, maxDistance: 2 })) e.remove();
+    for (const e of block.dimension.getEntities({ families: ["fossil_display"], location: bottom.location, maxDistance: 2 })) e.remove();
 });
 
 // Brushing a fossil formation. Bedrock gives nothing for a suspicious block placed from a structure, whatever
