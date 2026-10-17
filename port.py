@@ -3884,9 +3884,10 @@ BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", 
 terrain_textures = {}
 
 
-# Cobblemon's animated healing machine textures (their .mcmeta: two ticks a frame), as terrain flipbooks
-HEALING_FLIPBOOKS = [{"flipbook_texture": f"textures/blocks/cobblemon/block/functional/{name}", "atlas_tile": f"cobblemon_block_functional_{name}",
-                      "ticks_per_frame": 2} for name in ("healing_machine_active", "healing_machine_tray")]
+# Cobblemon's animated healing machine screen (its .mcmeta: two ticks a frame), as a terrain flipbook. The tray's
+# animated texture is only on the empty machine (healing_machine_0), which never shows here
+HEALING_FLIPBOOKS = [{"flipbook_texture": "textures/blocks/cobblemon/block/functional/healing_machine_active",
+                      "atlas_tile": "cobblemon_block_functional_healing_machine_active", "ticks_per_frame": 2}]
 
 
 def java_texture(ref):
@@ -4282,7 +4283,7 @@ def create_blocks():
         berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3)}
     # the healing machine, facing the player who places it. It never runs out here, so it stands at full charge
     # (healing_machine_5, its five lights lit); while it heals (cobblemon:active, scripts/main.js) its front and back
-    # are healing_machine_active, whose screen is a flipbook, as is the tray's glow (HEALING_FLIPBOOKS)
+    # are healing_machine_active, whose screen is a flipbook (HEALING_FLIPBOOKS)
     cubes, instances = java_model_cubes(java_model("cobblemon:block/healing_machine_5") or {})
     write_block_geometry("geometry.cobblemon_healing_machine", cubes)
     active_cubes, active_instances = java_model_cubes(java_model("cobblemon:block/healing_machine_active") or {})
