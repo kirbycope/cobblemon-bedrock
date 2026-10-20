@@ -1,0 +1,112 @@
+{
+    "format_version": "1.13.0",
+    "minecraft:feature_rules": {
+        "description": {
+            "identifier": "cobblemon:rgs_cinnabar_gym_rule",
+            "places_feature": "cobblemon:rgs_cinnabar_gym"
+        },
+        "conditions": {
+            "placement_pass": "surface_pass",
+            "minecraft:biome_filter": {
+                "any_of": [
+                    {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "nether_wastes"
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "crimson_forest"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "nether"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "netherwart_forest"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawn_few_zombified_piglins"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawn_piglin"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_warm_variant_farm_animals"
+                            }
+                        ]
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "nether"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "netherwart_forest"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawn_endermen"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_warm_variant_farm_animals"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "warped_forest"
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "distribution": {
+            "iterations": 1,
+            "scatter_chance": {
+                "numerator": 1,
+                "denominator": 1024
+            },
+            "x": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            },
+            "y": {
+                "distribution": "uniform",
+                "extent": [
+                    32,
+                    70
+                ]
+            },
+            "z": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            }
+        }
+    }
+}

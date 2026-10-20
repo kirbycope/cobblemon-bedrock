@@ -91,7 +91,14 @@
         "component_groups": {
             "cobblemon:wild": {
                 "minecraft:despawn": {
-                    "despawn_from_distance": {}
+                    "despawn_from_chance": false,
+                    "despawn_from_inactivity": false,
+                    "despawn_from_simulation_edge": false,
+                    "filters": {
+                        "test": "has_tag",
+                        "subject": "self",
+                        "value": "cobblemon:despawn_never"
+                    }
                 }
             },
             "cobblemon:released": {

@@ -1,0 +1,69 @@
+{
+    "format_version": "1.21.0",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "cobblemon:rct_trainer",
+            "is_spawnable": false,
+            "is_summonable": true,
+            "is_experimental": false,
+            "properties": {
+                "cobblemon:trainer": {
+                    "type": "int",
+                    "range": [
+                        0,
+                        13
+                    ],
+                    "default": 0,
+                    "client_sync": true
+                }
+            }
+        },
+        "components": {
+            "minecraft:type_family": {
+                "family": [
+                    "npc",
+                    "rct_trainer",
+                    "cobblemon_npc"
+                ]
+            },
+            "minecraft:nameable": {
+                "always_show": true,
+                "allow_name_tag_renaming": false
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 1.8
+            },
+            "minecraft:health": {
+                "value": 20,
+                "max": 20
+            },
+            "minecraft:persistent": {},
+            "minecraft:physics": {},
+            "minecraft:pushable": {
+                "is_pushable": false,
+                "is_pushable_by_piston": false
+            },
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "cause": "all",
+                        "deals_damage": false
+                    }
+                ]
+            },
+            "minecraft:knockback_resistance": {
+                "value": 1
+            },
+            "minecraft:movement": {
+                "value": 0
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:behavior.look_at_player": {
+                "priority": 1,
+                "look_distance": 10,
+                "probability": 0.8
+            }
+        }
+    }
+}

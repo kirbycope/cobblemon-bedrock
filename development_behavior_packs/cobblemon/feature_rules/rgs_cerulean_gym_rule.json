@@ -1,0 +1,188 @@
+{
+    "format_version": "1.13.0",
+    "minecraft:feature_rules": {
+        "description": {
+            "identifier": "cobblemon:rgs_cerulean_gym_rule",
+            "places_feature": "cobblemon:rgs_cerulean_gym"
+        },
+        "conditions": {
+            "placement_pass": "surface_pass",
+            "minecraft:biome_filter": {
+                "any_of": [
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "beach"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "monster"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "overworld"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "warm"
+                            }
+                        ]
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "fast_fishing"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "high_seas"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "lukewarm"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "monster"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "ocean"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "overworld"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_warm_variant_farm_animals"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "!=",
+                                "value": "deep"
+                            }
+                        ]
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "ocean"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "warm"
+                            }
+                        ]
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "beach"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "stone"
+                            }
+                        ]
+                    },
+                    {
+                        "all_of": [
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "beach"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "cold"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "monster"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "overworld"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_cold_variant_farm_animals"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_cold_variant_frogs"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_snow_foxes"
+                            },
+                            {
+                                "test": "has_biome_tag",
+                                "operator": "==",
+                                "value": "spawns_white_rabbits"
+                            }
+                        ]
+                    },
+                    {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "mangrove_swamp"
+                    },
+                    {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "swamp"
+                    }
+                ]
+            }
+        },
+        "distribution": {
+            "iterations": 1,
+            "scatter_chance": {
+                "numerator": 1,
+                "denominator": 1024
+            },
+            "x": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            },
+            "y": "query.heightmap(variable.worldx, variable.worldz) - 1",
+            "z": {
+                "distribution": "uniform",
+                "extent": [
+                    0,
+                    15
+                ]
+            }
+        }
+    }
+}

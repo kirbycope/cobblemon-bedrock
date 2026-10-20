@@ -125,6 +125,9 @@ BLOCK_NAMES = {
 # Cobblemon blocks with a vanilla stand-in; the rest (berries, relic coins) become air until they are ported
 COBBLEMON_BLOCKS = {"gilded_chest": "chest", "gimmighoul_chest": "chest", "apricorn_planks": "oak_planks", "habitat_block": "grass_block"}
 PACK_BLOCKS = set()   # names of Cobblemon blocks the pack defines; port.py fills it before converting
+# the CobbleFurnies blocks the pack defines, each with its Java properties' Bedrock states (port.py's FURNITURE_STATES)
+FURNITURE = {}
+TWO_PART = {"lower": 0, "upper": 1, "bottom": 0, "top": 1}
 FACING_WEIRDO = {"east": 0, "west": 1, "south": 2, "north": 3}
 FACING_DIRECTION = {"down": 0, "up": 1, "north": 2, "south": 3, "west": 4, "east": 5}
 TORCH_FACING = {"east": "west", "west": "east", "south": "north", "north": "south"}   # Bedrock names the side it hangs from
@@ -132,6 +135,7 @@ TORCH_FACING = {"east": "west", "west": "east", "south": "north", "north": "sout
 
 def bedrock_name(java):
     name = java.split(":", 1)[1] if ":" in java else java
+    if java.startswith("cobblefurnies:"): return f"cobblefurnies:{name}" if name in FURNITURE else None
     if java.startswith("cobblemon:"):
         if name in PACK_BLOCKS: return f"cobblemon:{name}"   # a block the pack has: Cobblemon's own
         if name.endswith("_ore"): return "deepslate" if name.startswith("deepslate") else "stone"
@@ -150,6 +154,16 @@ def convert_states(java_name, name, props):
     states = {}
     if name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
     if name.startswith("cobblemon:"): return {}   # the pack's blocks keep their default states
+    if name.startswith("cobblefurnies:"):
+        # a furniture piece keeps the shape it was saved in: its facing, its half and the rest of its properties
+        for key, state in FURNITURE.get(name.split(":", 1)[1], {}).items():
+            if key not in props: continue
+            value = props[key]
+            if state == "minecraft:multi_block_part": states[state] = Tag(INT, TWO_PART[value])
+            elif value in ("true", "false"): states[state] = Tag(BYTE, 1 if value == "true" else 0)
+            elif value.isdigit() and state != "minecraft:cardinal_direction": states[state] = Tag(INT, int(value))
+            else: states[state] = Tag(STRING, value)
+        return states
     if "axis" in props: states["pillar_axis"] = Tag(STRING, props["axis"])
     if name.endswith("_stairs"):
         states["weirdo_direction"] = Tag(INT, FACING_WEIRDO.get(props.get("facing", "east"), 0))
@@ -167,6 +181,12 @@ def convert_states(java_name, name, props):
     if name.endswith("torch") and java_name.endswith("wall_torch"):
         states["torch_facing_direction"] = Tag(STRING, TORCH_FACING.get(props.get("facing", "north"), "south"))
     if name in ("wheat", "carrots", "potatoes", "beetroot") and "age" in props: states["growth"] = Tag(INT, int(props["age"]))
+    # a button points out of the block it is on, as the face it sits on; a wall sign hangs on the side it faces from
+    if name.endswith("_button"):
+        face = props.get("face", "wall")
+        states["facing_direction"] = Tag(INT, 1 if face == "floor" else 0 if face == "ceiling" else FACING_DIRECTION.get(props.get("facing", "north"), 2))
+    if name.endswith("wall_sign"): states["facing_direction"] = Tag(INT, FACING_DIRECTION.get(props.get("facing", "north"), 2))
+    if name.endswith("standing_sign") and "rotation" in props: states["ground_sign_direction"] = Tag(INT, int(props["rotation"]))
     return states
 
 
@@ -247,21 +267,51 @@ def container(block_name, loot_table):
         LootTable=Tag(STRING, loot_table), LootTableSeed=Tag(INT, 0)))
 
 
-def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None):
+# Java's dye colours for sign text, as the ARGB Bedrock signs keep
+SIGN_COLOURS = {"black": 0xFF000000, "white": 0xFFF0F0F0, "light_gray": 0xFF9D9D97, "gray": 0xFF474F52, "red": 0xFFB02E26, "orange": 0xFFF9801D,
+                "yellow": 0xFFFED83D, "lime": 0xFF80C71F, "green": 0xFF5E7C16, "cyan": 0xFF169C9C, "light_blue": 0xFF3AB3DA, "blue": 0xFF3C44AA,
+                "purple": 0xFF8932B8, "magenta": 0xFFC74EBD, "pink": 0xFFF38BAA, "brown": 0xFF835432}
+
+
+def sign(nbt):
+    """Block entity data for a sign with its text, colour and glow on each side."""
+    def side(text):
+        lines = []
+        for line in (text or {}).get("messages", []):
+            try: value = json.loads(line)
+            except (ValueError, TypeError): value = line
+            lines.append(value if isinstance(value, str) else (value.get("text", "") if isinstance(value, dict) else ""))
+        colour = SIGN_COLOURS.get((text or {}).get("color", "black"), 0xFF000000)
+        return compound(Text=Tag(STRING, "\n".join(lines).rstrip("\n")), TextOwner=Tag(STRING, ""), SignTextColor=Tag(INT, colour - (1 << 32)),
+                        IgnoreLighting=Tag(BYTE, 1 if (text or {}).get("has_glowing_text") else 0), HideGlowOutline=Tag(BYTE, 0), PersistFormatting=Tag(BYTE, 1))
+    return compound(block_entity_data=compound(id=Tag(STRING, "Sign"), isMovable=Tag(BYTE, 1), IsWaxed=Tag(BYTE, 1),
+                                               FrontText=side(nbt.get("front_text")), BackText=side(nbt.get("back_text"))))
+
+
+def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None, overrides=None, region=None):
     """Write one .mcstructure; returns the set of Bedrock names it uses. Unmapped Java names are counted into
     `unmapped` (a dict) when given; `processors` (from parse_processors) run over every block first, with a
     random seed fixed by the file name so a rebuild gives the same result. air_as_void leaves the world's own
     blocks where the template has air (a buried formation must not carve a cave), and loot_path turns a Java loot
-    table name into the Bedrock path a suspicious block's data names."""
+    table name into the Bedrock path a suspicious block's data names. overrides maps a position (x, y, z) to the
+    (Bedrock name, {state: Tag}) to put there instead, whatever the template holds (the gyms' command blocks). region,
+    (x0, z0, x1, z1), writes only that part of the template, for one wider than the 64 blocks a Bedrock structure can be,
+    and a fifth number keeps only that many layers from the bottom."""
     invalid = load_invalid() if invalid is None else invalid
     with open(src, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
     sx, sy, sz = java["size"]
+    x0, z0, x1, z1 = (region or (0, 0, sx, sz))[:4]
+    sx, sz = x1 - x0, z1 - z0
+    if region and len(region) > 4: sy = min(sy, region[4])   # only the bottom layers
     rng = random.Random(os.path.basename(src))
     palette, names = [], set()
 
     def block_key(java_name, props):
         if java_name == "minecraft:structure_void": return -1
         name = bedrock_name(java_name)
+        # a Java slab of type double is Bedrock's <slab>_double_slab block
+        if name and name.endswith("_slab") and props.get("type") == "double" and name[:-5] + "_double_slab" not in invalid:
+            name = name[:-5] + "_double_slab"
         if name is None or name in invalid:
             if unmapped is not None: unmapped[java_name] = unmapped.get(java_name, 0) + 1
             name = "air"
@@ -286,6 +336,7 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
     layer = [-1] * (sx * sy * sz)
     for block in blocks:
         x, y, z = block["pos"]
+        if not (x0 <= x < x1 and z0 <= z < z1) or y >= sy: continue
         java_name, props = source_palette[block["state"]]
         if java_name == "minecraft:jigsaw":
             # a jigsaw block leaves its final state behind, usually air
@@ -294,14 +345,19 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
         loot = loot or (block.get("nbt") or {}).get("LootTable")   # a chest or barrel saved with its own table
         if air_as_void and java_name in ("minecraft:air", "minecraft:cave_air"): continue
         key = block_key(java_name, props)
+        if overrides and (x, y, z) in overrides:
+            name, states = overrides[(x, y, z)]; names.add(name)
+            key = (name, json.dumps({k: (t.kind, t.value) for k, t in states.items()}, sort_keys=True))
         if key == -1: continue
         if loot and key[0].startswith("cobblemon:") and key[0].endswith(("gilded_chest", "gimmighoul_chest")) and loot in CHEST_LOOT:
             key = (key[0], json.dumps({k: (t.kind, t.value) for k, t in chest_loot_states(loot).items()}, sort_keys=True))
-        index = (x * sy + y) * sz + z
+        index = ((x - x0) * sy + y) * sz + (z - z0)
         layer[index] = palette_index(key)
         if loot and loot_path and key[0] in CONTAINER_ENTITIES:
             position_data[str(index)] = container(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
+        if key[0].endswith("_sign") and (block.get("nbt") or {}).get("front_text"):
+            position_data[str(index)] = sign(block["nbt"])
         if loot and loot_path and key[0] in ("suspicious_sand", "suspicious_gravel"):
             position_data[str(index)] = brushable(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
