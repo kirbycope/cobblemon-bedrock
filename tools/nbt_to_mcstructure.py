@@ -121,6 +121,10 @@ BLOCK_NAMES = {
     "quartz_block": "quartz_block", "stone_slab": "normal_stone_slab", "moving_piston": "air", "piston_head": "air",
     "tripwire": "trip_wire", "grass": "short_grass", "light": "light_block", "water": "water", "lava": "lava",
     "carved_pumpkin": "carved_pumpkin", "frosted_ice": "frosted_ice", "bubble_column": "water",
+    # Bedrock's own names, checked against the server with /setblock (the Radical Gyms structures used these)
+    "stone_stairs": "normal_stone_stairs", "cobblestone_stairs": "stone_stairs", "dead_bush": "deadbush",
+    "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "prismarine_brick_stairs": "prismarine_bricks_stairs",
+    "waxed_copper_block": "waxed_copper",
 }
 # Cobblemon blocks with a vanilla stand-in; the rest (berries, relic coins) become air until they are ported
 COBBLEMON_BLOCKS = {"gilded_chest": "chest", "gimmighoul_chest": "chest", "apricorn_planks": "oak_planks", "habitat_block": "grass_block"}
@@ -143,6 +147,7 @@ def bedrock_name(java):
         return COBBLEMON_BLOCKS.get(name)
     if name.startswith("potted_"): return "flower_pot"
     if name.endswith("_wall_sign"): return name[:-len("_wall_sign")] + "_wall_sign" if not name.startswith("oak") else "wall_sign"
+    if name.endswith("_sign") and not name.endswith("hanging_sign") and name != "oak_sign": return name[:-len("_sign")] + "_standing_sign"
     if name.endswith("_wall_banner"): return "wall_banner"
     if name.endswith("_banner"): return "standing_banner"
     if name.endswith("_wall_head") or name.endswith("_head") or name.endswith("_skull"): return "skull"

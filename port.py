@@ -9964,7 +9964,7 @@ def create_model_blocks():
 # structure; one a player places keeps its first shape.
 # ---------------------------------------------------------------------------
 
-STATUE_SCALE = 0.84
+STATUE_SCALE = 0.8   # 54 pixels into two blocks, the top inside Bedrock's 30 pixel limit over the upper half
 TWO_PART = {"half": {"lower": 0, "upper": 1}, "vertical_part": {"bottom": 0, "top": 1}}
 FURNITURE_STATES = {}   # block name -> {Java property: Bedrock state}, for the structure converter
 
@@ -10141,8 +10141,9 @@ def model_furniture(name, variants):
                 conds.append(f"q.block_state('{mapping[k]}') == " + (f"'{sv}'" if isinstance(sv, str) else str(sv).lower()))
         box = bounding(cubes)
         components = {"minecraft:geometry": gid, "minecraft:material_instances": materials,
-                      "minecraft:transformation": {"rotation": [-rx % 360, -ry % 360, 0]},
                       "minecraft:collision_box": box if cubes else False, "minecraft:selection_box": box}
+        # an empty variant (a curtain's open middle) is not turned: Bedrock rejects a transformation of empty geometry
+        if cubes: components["minecraft:transformation"] = {"rotation": [-rx % 360, -ry % 360, 0]}
         if props_v.get("lit") == "true": components["minecraft:light_emission"] = 15
         if base is None and cubes: base = components
         permutations.append({"condition": " && ".join(conds) or "1", "components": components})
