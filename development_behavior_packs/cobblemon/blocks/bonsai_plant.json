@@ -1,0 +1,123 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblefurnies:bonsai_plant",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {},
+      "traits": {
+        "minecraft:multi_block": {
+          "enabled_states": [
+            "minecraft:multi_block_part"
+          ],
+          "parts": 2,
+          "direction": "up"
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblefurnies_bonsai_plant_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblefurnies_block_plant_bonsai",
+          "render_method": "alpha_test",
+          "ambient_occlusion": 0.0,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblefurnies_block_plant_bonsai",
+          "render_method": "alpha_test",
+          "ambient_occlusion": 0.0,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          16,
+          12
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -6,
+          0,
+          -6
+        ],
+        "size": [
+          12,
+          16,
+          12
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.0
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/cobblefurnies_bonsai_plant.json",
+      "minecraft:movable": {
+        "movement_type": "popped"
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:multi_block_part') == 0",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_bonsai_plant_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_plant_bonsai",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_plant_bonsai",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -6,
+              0,
+              -6
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -6,
+              0,
+              -6
+            ],
+            "size": [
+              12,
+              16,
+              12
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

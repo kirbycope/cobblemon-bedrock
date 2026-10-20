@@ -1,0 +1,4343 @@
+{
+  "format_version": "1.26.40",
+  "minecraft:block": {
+    "description": {
+      "identifier": "cobblefurnies:green_curtain",
+      "menu_category": {
+        "category": "construction"
+      },
+      "states": {
+        "cobblemon:hinge": [
+          "left",
+          "right"
+        ],
+        "cobblemon:horizontal_part": [
+          "left",
+          "middle",
+          "right",
+          "single"
+        ],
+        "cobblemon:open": [
+          false,
+          true
+        ]
+      },
+      "traits": {
+        "minecraft:placement_direction": {
+          "enabled_states": [
+            "minecraft:cardinal_direction"
+          ]
+        },
+        "minecraft:multi_block": {
+          "enabled_states": [
+            "minecraft:multi_block_part"
+          ],
+          "parts": 2,
+          "direction": "up"
+        }
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+      "minecraft:material_instances": {
+        "t0": {
+          "texture": "cobblefurnies_block_curtain_wood",
+          "render_method": "alpha_test",
+          "ambient_occlusion": 0.0,
+          "face_dimming": false
+        },
+        "t1": {
+          "texture": "cobblefurnies_block_curtain_green_closed_top",
+          "render_method": "alpha_test",
+          "ambient_occlusion": 0.0,
+          "face_dimming": false
+        },
+        "*": {
+          "texture": "cobblefurnies_block_curtain_wood",
+          "render_method": "alpha_test",
+          "ambient_occlusion": 0.0,
+          "face_dimming": false
+        }
+      },
+      "minecraft:collision_box": {
+        "origin": [
+          -8,
+          0,
+          6
+        ],
+        "size": [
+          16,
+          16,
+          2
+        ]
+      },
+      "minecraft:selection_box": {
+        "origin": [
+          -8,
+          0,
+          6
+        ],
+        "size": [
+          16,
+          16,
+          2
+        ]
+      },
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.0
+      },
+      "minecraft:light_dampening": 0,
+      "minecraft:loot": "loot_tables/blocks/cobblefurnies_green_curtain.json",
+      "cobblemon:openable": {},
+      "minecraft:movable": {
+        "movement_type": "popped"
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_middle_open",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_empty",
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblefurnies_block_particles_color_white",
+              "render_method": "alpha_test"
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": false,
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_middle_open",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_empty",
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblefurnies_block_particles_color_white",
+              "render_method": "alpha_test"
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": false,
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_middle_open",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_empty",
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblefurnies_block_particles_color_white",
+              "render_method": "alpha_test"
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": false,
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'left' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_4",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_5",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_middle_open",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_6",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'middle' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_empty",
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblefurnies_block_particles_color_white",
+              "render_method": "alpha_test"
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": false,
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              -8
+            ],
+            "size": [
+              16,
+              16,
+              16
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'right' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_0",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_7",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_closed_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_1",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 1 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_8",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "t1": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_top",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_wood",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              6
+            ],
+            "size": [
+              16,
+              16,
+              2
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_2",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_9",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_closed_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_3",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_left_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:horizontal_part') == 'single' && q.block_state('minecraft:multi_block_part') == 0 && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblefurnies_green_curtain_10",
+          "minecraft:material_instances": {
+            "t0": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblefurnies_block_curtain_green_right_open_bottom",
+              "render_method": "alpha_test",
+              "ambient_occlusion": 0.0,
+              "face_dimming": false
+            }
+          },
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          },
+          "minecraft:collision_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          },
+          "minecraft:selection_box": {
+            "origin": [
+              -8,
+              0,
+              7
+            ],
+            "size": [
+              16,
+              16,
+              0.5
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

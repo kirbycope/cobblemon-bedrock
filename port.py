@@ -16,6 +16,7 @@ The generated files come from Cobblemon's own data rather than from a template:
 """
 import collections
 import glob
+import gzip
 import importlib.util
 import json
 import math
@@ -59,6 +60,16 @@ cobblemonData = f"{cobblemonResources}/data/cobblemon"
 animationsMain = f"{cobblemon}/bedrock/pokemon/animations"
 modelsMain = f"{cobblemon}/bedrock/pokemon/models"
 texturesMain = f"{cobblemon}/textures/pokemon"
+
+# java_cobblefurnies/ (a clone of https://github.com/gifluana/CobbleFurnies, see get_cobblefurnies; git-ignored, its art
+# is All Rights Reserved) and the two datapacks the gyms come from, kept in the repository with their licences
+furniRepo = f"{pwd}/java_cobblefurnies"
+FURNI_COMMIT = "bd398fa"   # CobbleFurnies 1.2
+cobblefurnies = f"{furniRepo}/common/src/main/resources/assets/cobblefurnies"
+gymsData = f"{pwd}/radical_gyms/data"
+rctTrainers = f"{pwd}/rct_trainers/trainers"
+# the mods whose Java block models and textures the port reads, by namespace
+ASSET_ROOTS = {"cobblemon": cobblemon, "cobblefurnies": cobblefurnies}
 
 SPARSE_PATHS = [
     "common/src/main/resources/data/cobblemon",
@@ -1135,7 +1146,9 @@ def _baked_texture(base, layers):
     """A plain layer (not emissive, not translucent, not animated: Pikachu's caps, Conkeldurr's concrete) drawn over
     the base texture into one texture, as Cobblemon draws such a layer over the model. A second render pass over the
     same geometry z-fights with the first in Bedrock, so the layer flickers in and out; baked, there is one pass."""
-    name = base + "".join(f"__{layer['name']}" for layer in layers)
+    # named by the layers' own files: two unnamed layers are both "layer0" (Blastoise's Black and Wise Glasses), and a
+    # name from that would bake both into one file, the second pair of glasses overwriting the first
+    name = base + "".join(f"__{os.path.basename(layer['frames'][0])}" for layer in layers)
     image = Image.open(f"{resourcePack}/{base}.png").convert("RGBA")
     for layer in layers:
         top = Image.open(f"{resourcePack}/{layer['frames'][0]}.png").convert("RGBA")
@@ -1688,16 +1701,219 @@ def create_animation_controllers():
     print(f"Create animation controllers complete: {len(report)} from Cobblemon's posers.")
 
 
+# ---------------------------------------------------------------------------
+# Layered faces. Cobblemon's models stack eyes, pupils, eyelids and shines as cubes and planes a hundredth of a pixel
+# apart (Blastoise's eye 0.01 in front of its eyelid's face, its shine 0.01 in front of that). Java draws them fine;
+# on Bedrock the depth buffer cannot tell such faces apart a few blocks away, so they flicker through each other and
+# the eyes look broken. Each stack of near-flush faces facing one way is spread to LAYER_GAP between neighbours, in the
+# same order, and the small nudges an animation gives those bones along that axis (the blink moving an eyelid 0.1 in
+# front of the eye) are stretched the same way, so a lid still closes over the eye it now sits further behind.
+# ---------------------------------------------------------------------------
+
+LAYER_NEAR = 0.15   # faces closer than this (pixels) along their normal are one stack
+LAYER_GAP = 0.15    # the gap a face is moved out to, in front of each face it overlaps
+LAYER_NUDGE = 0.3   # animation offsets at most this big along the axis are layering nudges
+
+
+def _rest_rotated(bones):
+    """Each bone's rotated ancestors, itself included: faces compare only with faces turned by the same rotations, which
+    keep their places relative to each other."""
+    frames = {}
+    by_name = {b["name"]: b for b in bones}
+    def chain(name, depth=0):
+        if name in frames: return frames[name]
+        b = by_name.get(name)
+        if not b or depth > 60: return ()
+        own = (name,) if b.get("rotation") and any(b["rotation"]) else ()
+        frames[name] = chain(b.get("parent"), depth + 1) + own
+        return frames[name]
+    for b in bones: chain(b["name"])
+    return frames
+
+
+DETAIL_BONES = re.compile(r"eye|pupil|iris|lid|shine|brow|blush|mouth|emote|tear|teeth|tongue|glasses|lash")
+
+
+def separate_layers(geo):
+    """Spread the near-flush faces of one geometry's face details; returns {bone: stretch(axis, value)} for the
+    animations. Only bones named for face details (or under one) take part, so body cubes never shift. A face moves
+    out just far enough to sit LAYER_GAP in front of every face it overlaps and was already in front of."""
+    bones = geo.get("bones", [])
+    rotated = _rest_rotated(bones)
+    by_name = {b["name"]: b for b in bones}
+    def detail(name, depth=0):
+        if not name or depth > 40: return False
+        return bool(DETAIL_BONES.search(name.lower())) or detail(by_name.get(name, {}).get("parent"), depth + 1)
+    faces = []   # (axis, sign, depth, rect, bone, cube); the body's faces are anchors that never move
+    detail_cubes, solids, volumes = set(), [], []
+    for b in bones:
+        frame = rotated.get(b["name"], ())
+        is_detail = detail(b["name"])
+        for c in b.get("cubes", []):
+            if c.get("rotation") and any(c["rotation"]): continue
+            o, s, inf = c["origin"], c["size"], c.get("inflate", 0)
+            box = (frame, [(o[k] - inf, o[k] + s[k] + inf) for k in range(3)])
+            if is_detail: detail_cubes.add(id(c))
+            elif all(x > 0 for x in s): solids.append(box)
+            if all(x > 0 for x in s): volumes.append(box)
+            for a in range(3):
+                i, j = [k for k in range(3) if k != a]
+                rect = (o[i] - inf, o[i] + s[i] + inf, o[j] - inf, o[j] + s[j] + inf)
+                if rect[1] - rect[0] <= 0 or rect[3] - rect[2] <= 0: continue
+                faces.append((a, -1, round(o[a] - inf, 6), rect, b["name"], c, frame))
+                faces.append((a, 1, round(o[a] + s[a] + inf, 6), rect, b["name"], c, frame))
+    overlap = lambda r, q: min(r[1], q[1]) > max(r[0], q[0]) and min(r[3], q[3]) > max(r[2], q[2])
+    # the model's middle: a face that matters points away from it along its axis (the back of an eye never does)
+    cubes = [c for b in bones for c in b.get("cubes", [])]
+    middle = [sum(c["origin"][k] + c["size"][k] / 2 for c in cubes) / (len(cubes) or 1) for k in range(3)]
+    def inside(p, boxes, frame): return any(fr == frame and all(lo < p[k] < hi for k, (lo, hi) in enumerate(box)) for fr, box in boxes)
+    def exposed(f):
+        # a face whose middle, a little out along its normal, is inside the body is never seen; a flat plane's face counts
+        # only on the side away from what it lies on (a plane has a face each way at one depth)
+        a, sign, d, r = f[:4]
+        if (d - middle[a]) * sign <= 0: return False
+        i, j = [k for k in range(3) if k != a]
+        p = [0, 0, 0]; p[a] = d + sign * 0.02; p[i] = (r[0] + r[1]) / 2; p[j] = (r[2] + r[3]) / 2
+        if inside(p, solids, f[6]): return False
+        if f[5]["size"][a] == 0:
+            p[a] = d - sign * 0.3
+            return inside(p, volumes, f[6])
+        return True
+    # the faces each seen detail face sits on: same direction, overlapping, behind it by less than LAYER_NEAR
+    under = {n: ([m for m, g in enumerate(faces) if g[0] == f[0] and g[1] == f[1] and g[5] is not f[5] and g[6] == f[6]
+                  and 0 < (f[2] - g[2]) * f[1] < LAYER_NEAR and overlap(f[3], g[3])] if id(f[5]) in detail_cubes and exposed(f) else [])
+             for n, f in enumerate(faces)}
+    placed = {}
+    def new_depth(n, seen=()):
+        if n in placed: return placed[n]
+        f = faces[n]
+        d = f[2]
+        for m in under[n]:
+            if m in seen: continue
+            d = d + f[1] * max(0, (new_depth(m, seen + (n,)) + f[1] * LAYER_GAP - d) * f[1])
+        placed[n] = round(d, 4)
+        return placed[n]
+    shifts = {}   # id(cube) -> (cube, axis, shift)
+    for n, f in enumerate(faces):
+        if not under[n]: continue
+        shift = new_depth(n) - f[2]
+        if abs(shift) < 1e-9: continue
+        # a cube moves by its largest shift along an axis (its front and back faces may ask for different ones)
+        key = (id(f[5]), f[0])
+        if key not in shifts or abs(shift) > abs(shifts[key][2]): shifts[key] = (f[5], f[0], shift)
+    for cube, a, shift in shifts.values(): cube["origin"][a] = round(cube["origin"][a] + shift, 4)
+    moved = {n: placed.get(n, faces[n][2]) + 0 for n in range(len(faces))}
+    for n, f in enumerate(faces):
+        s = shifts.get((id(f[5]), f[0]))
+        moved[n] = round(f[2] + (s[2] if s else 0), 4)
+    # an animation's nudge of a bone along an axis (a blink moving a lid in front of the eye) goes as far past the faces
+    # it crossed as it went before, measured on the spread faces
+    def stretcher(bone):
+        mine = [n for n, f in enumerate(faces) if f[4] == bone]
+        def stretch(a, value):
+            if not isinstance(value, (int, float)) or not value or abs(value) > LAYER_NUDGE: return value
+            flip = -1 if a == 0 else 1   # Bedrock animations negate x
+            move = flip * value
+            best = None
+            for n in mine:
+                f = faces[n]
+                if f[0] != a: continue
+                ahead = move * f[1] > 0   # moving the way this face points
+                d0, d1 = f[2], f[2] + move
+                crossed = [m for m, g in enumerate(faces) if g[0] == a and g[1] == f[1] and g[4] != bone and g[6] == f[6] and overlap(f[3], g[3])
+                           and min(d0, d1) < g[2] < max(d0, d1)]
+                if not crossed: continue
+                edge = (max if (move > 0) else min)(moved[m] for m in crossed)
+                target = edge + (LAYER_GAP if move > 0 else -LAYER_GAP) * (1 if ahead or True else 1)
+                new = target - moved[n]
+                if best is None or abs(new) > abs(best): best = new
+            return value if best is None else round(flip * best, 4)
+        return stretch
+    return {f[4]: stretcher(f[4]) for f in faces} if shifts else {}
+
+
+def stretch_animation(anim, nudges):
+    for bone, channels in anim.get("bones", {}).items():
+        if bone not in nudges or "position" not in channels: continue
+        stretch = nudges[bone]
+        def fix(v):
+            if isinstance(v, list) and len(v) == 3: return [stretch(a, x) for a, x in enumerate(v)]
+            if isinstance(v, dict): return {k: fix(x) if k in ("pre", "post", "vector") else x for k, x in v.items()}
+            return v
+        pos = channels["position"]
+        if isinstance(pos, dict) and not any(k in pos for k in ("pre", "post", "vector")):
+            channels["position"] = {t: fix(v) for t, v in pos.items()}
+        else:
+            channels["position"] = fix(pos)
+
+
+def separate_model_layers():
+    spread, folders = 0, 0
+    for folder in sorted(os.listdir(modelsBedrock)):
+        nudges = {}
+        for path in glob.glob(f"{modelsBedrock}/{folder}/*.geo.json"):
+            with open(path, encoding="utf-8") as file: data = json.load(file)
+            changed = False
+            for geo in data.get("minecraft:geometry", []):
+                found = separate_layers(geo)
+                if found:
+                    changed = True
+                    for bone, stretch in found.items(): nudges.setdefault(bone, stretch)
+            if changed:
+                with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent="\t"))
+                spread += 1
+        if not nudges: continue
+        folders += 1
+        for path in glob.glob(f"{animationsBedrock}/{folder}/*.animation.json"):
+            with open(path, encoding="utf-8") as file: data = json.load(file)
+            for anim in data.get("animations", {}).values(): stretch_animation(anim, nudges)
+            with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+    print(f"Layered faces spread in {spread} models ({folders} species' animations stretched to match).")
+
+
+PRIMARY_CALL = re.compile(r"""bedrock_?primary(?:_?quirk)?\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]""", re.IGNORECASE)
+
+
+def mark_primary_animations():
+    """Cobblemon's primary animations (bedrock_primary, bedrockPrimary and their quirk forms: attacks, faints, some
+    quirks) fade the pose out while they play, the two intensities summing to one (PrimaryAnimation.kt), so each clip is
+    a whole pose of its own. Bedrock adds every running animation together, which bent Greninja's torso double on an
+    attack; override_previous_animation makes such a clip replace the pose's values on the bones it keys."""
+    primary = set()
+    for folder, _, files in os.walk(f"{cobblemonRepo}/common/src/main"):
+        for name in files:
+            if not name.endswith((".json", ".kt")): continue
+            if name.endswith(".json") and "posers" not in folder.replace(os.sep, "/"): continue
+            with open(os.path.join(folder, name), encoding="utf-8", errors="replace") as file: text = file.read()
+            primary.update(f"animation.{g}.{c}" for g, c in PRIMARY_CALL.findall(text))
+    marked = 0
+    for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        hit = [a for a in data.get("animations", {}) if a in primary]
+        if not hit: continue
+        for a in hit: data["animations"][a]["override_previous_animation"] = True
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+        marked += len(hit)
+    print(f"Primary animations: {marked} of {len(primary)} marked to replace the pose.")
+
+
 def add_quirk_controllers(controllers, pokemonName, names):
     """The quirk and blink controllers, which run beside the pose controller."""
     if True:
         quirks = [n for n in names if "quirk" in n and "sleep" not in n and "battle" not in n]
         if quirks:
+            # a quirk plays only in the pose it belongs to (Cobblemon lists quirks per pose): a ground quirk standing on
+            # the ground, a water one in water, an air one off the ground
+            def gate(quirk):
+                if "ground" in quirk or "stand" in quirk: return "q.is_on_ground && !q.is_in_water"
+                if "water" in quirk or "swim" in quirk or "surface" in quirk: return "q.is_in_water"
+                if "air" in quirk or "fly" in quirk or "hover" in quirk: return "!q.is_on_ground && !q.is_in_water"
+                return "1"
             controllers[f"controller.animation.{pokemonName}.quirk"] = {
                 "initial_state": "wait",
                 "states": {
                     "wait": {"transitions": [{"play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"}]},
-                    "play": {"animations": [f"quirk_{i}" for i in range(len(quirks))] if len(quirks) == 1 else [{f"quirk_{i}": f"v.quirk == {i}"} for i in range(len(quirks))],
+                    "play": {"animations": [{f"quirk_{i}": f"v.quirk == {i} && ({gate(q)})"} for i, q in enumerate(quirks)],
                              "on_entry": [f"v.quirk = math.floor(math.random(0, {len(quirks)}));"],
                              "transitions": [{"wait": "q.all_animations_finished || q.is_sleeping"}]}
                 }
@@ -1883,7 +2099,7 @@ def create_behavior_entities():
             "minecraft:health": {"value": health, "max": health},
             "minecraft:attack": {"damage": max(1, round(stats.get("attack", 40) / 10))},
             "minecraft:loot": {"table": f"loot_tables/entities/{pokemon}.json"},
-            "minecraft:despawn": {"despawn_from_distance": {}},
+            "minecraft:despawn": WILD_DESPAWN,
             "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 6, "probability": 0.02}
@@ -2180,6 +2396,17 @@ def create_move_fx():
         try: desc = json.load(open(f"{entityBedrock}/{name}", encoding="utf-8"))["minecraft:client_entity"]["description"]
         except Exception: continue
         clips = {k: v for k, v in desc.get("animations", {}).items() if k in used}
+        # the poser's own names for a move (Greninja: kick and lowkick to physical_kick, nightslash to physical_katana),
+        # which an effect's $name finds before the generic physical
+        stem = name[:-len(".entity.json")]
+        poser = f"{cobblemon}/bedrock/pokemon/posers/{stem}/{stem.split('_', 1)[-1]}.json"
+        if os.path.exists(poser):
+            ids = set(desc.get("animations", {}).values())
+            with open(poser, encoding="utf-8") as file: aliases = json.load(file).get("animations", {})
+            for move, call in aliases.items():
+                m = PRIMARY_CALL.search(call) or re.search(r"""bedrock\w*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]""", call)
+                if m and f"animation.{m.group(1)}.{m.group(2)}" in ids and move not in clips:
+                    clips[move] = f"animation.{m.group(1)}.{m.group(2)}"
         if clips and desc.get("identifier", "").startswith("cobblemon:p"): anims[desc["identifier"]] = clips
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
@@ -2454,8 +2681,9 @@ def spawn_condition(spawn, species, kind):
         rule["minecraft:brightness_filter"] = {"min": low, "max": high, "adjust_for_weather": time_range in ("night", "midnight", "dusk", "day", "morning", "afternoon", "noon")}
     if "minY" in condition or "maxY" in condition:
         rule["minecraft:height_filter"] = {"min": condition.get("minY", -64), "max": condition.get("maxY", 320)}
-    herd = species.get("behaviour", {}).get("herd", {}).get("maxSize", 1)
-    rule["minecraft:herd"] = {"min_size": 1, "max_size": max(1, min(int(herd), 4))}
+    # one Pokemon per spawn: behaviour.herd.maxSize is how many may follow a leader, not a spawn size, and Cobblemon's
+    # groups come from its separate spawn_pool_world/herds entries
+    rule["minecraft:herd"] = {"min_size": 1, "max_size": 1}
     return rule
 
 
@@ -2756,9 +2984,11 @@ def nap_component():
             {"test": "on_ground", "subject": "self", "operator": "==", "value": True},
             {"test": "is_weather", "subject": "self", "operator": "!=", "value": "thunderstorm"}
         ]},
+        # Cobblemon's DrowsySensor looks only at the time, being hurt and being angry: no player or mob nearby keeps a
+        # Pokemon awake or wakes it (SleepDepth's player checks are never called in 1.8.2), so every mob is an exception
         "wake_mob_exceptions": {"any_of": [
-            {"test": "is_family", "subject": "other", "operator": "==", "value": "pokemon"},
-            {"test": "is_sneaking", "subject": "other", "operator": "==", "value": True}
+            {"test": "is_family", "subject": "other", "operator": "==", "value": "mob"},
+            {"test": "is_family", "subject": "other", "operator": "==", "value": "player"}
         ]}
     }
 
@@ -3091,13 +3321,21 @@ def add_riding(entity, species, pokemon):
     owned["minecraft:rideable"]["on_rider_exit_event"] = "cobblemon:ride_air_off"
 
 
+# A wild Pokemon's minecraft:despawn marks it wild (the wild group's filters test for it) but despawns nothing itself:
+# Bedrock's own rules removed a Pokemon the moment it reached the simulation edge. scripts/main.js despawns as
+# CobblemonAgingDespawner does instead.
+# (every rule switched off despawned it at once, so it carries a filter that never holds)
+WILD_DESPAWN = {"despawn_from_chance": False, "despawn_from_inactivity": False, "despawn_from_simulation_edge": False,
+                "filters": {"test": "has_tag", "subject": "self", "value": "cobblemon:despawn_never"}}
+
+
 def add_capture(entity, species, pokemon, kind):
     rate = catch_rate(species)
     components = entity["minecraft:entity"]["components"]
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
     events = entity["minecraft:entity"].setdefault("events", {})
     # wild: may despawn, may be tamed at the catch rate; owned: follows and fights for its owner
-    despawn = components.pop("minecraft:despawn", {"despawn_from_distance": {}})
+    despawn = components.pop("minecraft:despawn", WILD_DESPAWN)
     groups["cobblemon:wild"] = {"minecraft:despawn": despawn}
     balls = poke_balls(); ball_items = [b["item"] for b in balls]; classes = sorted({b["catch"] for b in balls})
     # tamed only by the script when a capture succeeds, so a ball in hand is always thrown, as Cobblemon's is
@@ -4026,6 +4264,338 @@ def create_structures():
 
 
 # ---------------------------------------------------------------------------
+# Gyms: Radical Gyms & Structures by JayOnline (radical_gyms/, MIT) with its key trainers from Radical Cobblemon
+# Trainers by HDainester (rct_trainers/, MCOML). Each of RGS's nine buildings is converted whole, its CobbleFurnies
+# furniture included, and placed where its worldgen places it: the Kanto gyms in their biomes, Cinnabar's in the
+# Nether, Blackthorn's and the Kanto League on the End islands. The buildings run on command blocks, which a
+# Bedrock structure cannot carry working, so each one becomes a cobblemon:gym_marker block naming its job, and
+# scripts/main.js does the job when the pressure plate or button above it is used:
+#   entrance      the plate in the doorway: the trainer appears on the spot marker, and the plate goes (setblock air)
+#   spot          where that trainer stands, `rise` blocks above the marker
+#   rematch       the button by the sign: takes one type gem from the player and calls the trainer back
+#   rematch_spot  where the called-back trainer stands
+#   lift          a League plate that lifts the player `rise` blocks to the next floor (tp @p ~ ~20 ~)
+# The chain command blocks become what each building's own fill command turns them into (dirt in the gyms, air in
+# the League). The trainers' teams, bags and order are written to scripts/rct_trainers.js, which stays under the
+# MCOML (rct_trainers/README.md); the trainers wear their RCT skins on the player model, as RCT draws them.
+# ---------------------------------------------------------------------------
+
+GYM_ROLES = ["entrance", "spot", "rematch", "rematch_spot", "lift"]
+GYM_RISES = [2, 3, 4, 5, 16, 20]
+GYM_BIOMES = {"minecraft:nether_wastes": _tag("nether_wastes")}
+NETHER_BLOCKS = ["minecraft:air", "minecraft:netherrack", "minecraft:lava", "minecraft:soul_sand", "minecraft:soul_soil", "minecraft:magma",
+                 "minecraft:glowstone", "minecraft:nether_gold_ore", "minecraft:quartz_ore", "minecraft:gravel", "minecraft:crimson_nylium",
+                 "minecraft:warped_nylium", "minecraft:blackstone", "minecraft:basalt", "minecraft:nether_wart_block", "minecraft:warped_wart_block"]
+RCT_INITIAL_CAP = 15   # IServerConfig.initialLevelCap
+# The badges: Cobblemon Pokemon Badges by Jamesssssssssssssss, designs by SireSolo (https://modrinth.com/mod/cobblemon-pokemon-badges,
+# All Rights Reserved, used with credit; its jar is fetched into the git-ignored java_badges/), given as RCT's own badge
+# datapack (rct-badges-cobblemonpokemonbadges by hd42) gives them: each Kanto leader's on the first win.
+BADGES_JAR = "https://cdn.modrinth.com/data/pPldOOeY/versions/LFfopB1R/cobblemonpokemonbadges-fabric-0.1.1.jar"
+badgesJar = f"{pwd}/java_badges/cobblemonpokemonbadges-fabric-0.1.1.jar"
+GYM_BADGES = {"leader_brock_019e": "boulder_badge", "leader_misty_019f": "cascade_badge", "leader_lt_surge_01a0": "thunder_badge",
+              "leader_erika_01a1": "rainbow_badge", "leader_sabrina_01a4": "marsh_badge", "leader_koga_01a2": "soul_badge",
+              "leader_blaine_01a3": "volcano_badge", "leader_clair_004a": "rising_badge"}
+STEP_OF = {"north": (0, 0, -1), "south": (0, 0, 1), "east": (1, 0, 0), "west": (-1, 0, 0), "up": (0, 1, 0), "down": (0, -1, 0)}
+
+
+def rct_trainer_ids():
+    return sorted(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{rctTrainers}/*.json"))
+
+
+def gym_commands(data, trainers):
+    """A building's command blocks as {position: (Bedrock name, states)}, and the gem each rematch takes."""
+    from nbt_to_mcstructure import Tag, INT, STRING
+    palette, grid = data["palette"], {tuple(b["pos"]): b for b in data["blocks"]}
+    name_of = lambda b: palette[b["state"]]["Name"]
+    command = lambda b: ((b.get("nbt") or {}).get("Command") or "").lstrip("/")
+    marker = lambda role, trainer=0, rise=GYM_RISES[0]: ("cobblemon:gym_marker", {
+        "cobblemon:role": Tag(STRING, role), "cobblemon:trainer": Tag(INT, trainer), "cobblemon:rise": Tag(INT, rise)})
+    def chain(start):
+        # an impulse block runs the chain blocks it points into, one after another
+        out, pos = [], start
+        while True:
+            facing = palette[grid[pos]["state"]].get("Properties", {}).get("facing", "north")
+            step = STEP_OF[facing]; pos = (pos[0] + step[0], pos[1] + step[1], pos[2] + step[2])
+            if pos not in grid or name_of(grid[pos]) != "minecraft:chain_command_block": return out
+            out.append(pos)
+    filler = "dirt"
+    for b in data["blocks"]:
+        m = re.match(r"fill .* (\S+) replace minecraft:chain_command_block", command(b))
+        if m: filler = m.group(1).split(":")[-1]
+    overrides, gems = {}, {}
+    for b in data["blocks"]:
+        if name_of(b) == "minecraft:chain_command_block": overrides[tuple(b["pos"])] = (filler, {})
+    for b in data["blocks"]:
+        if name_of(b) != "minecraft:command_block": continue
+        pos, text = tuple(b["pos"]), command(b)
+        summons = [(p, re.match(r"rctmod trainer summon (\S+) ~ ~(\d+) ~", command(grid[p]))) for p in chain(pos)]
+        summons = [(p, m.group(1), int(m.group(2))) for p, m in summons if m]
+        lift = re.match(r"tp @p ~ ~(\d+) ~", text)
+        if text.startswith("setblock ~ ~3 ~ air") and summons:
+            p, trainer, rise = summons[0]
+            overrides[pos] = marker("entrance", trainers.index(trainer))
+            overrides[p] = marker("spot", trainers.index(trainer), rise)
+        elif text.startswith("clear @p ") and summons:
+            p, trainer, rise = summons[0]
+            overrides[pos] = marker("rematch", trainers.index(trainer))
+            overrides[p] = marker("rematch_spot", trainers.index(trainer), rise)
+            gems[trainers.index(trainer)] = text.split()[2]
+        elif lift:
+            overrides[pos] = marker("lift", 0, int(lift.group(1)))
+        else:
+            overrides[pos] = (filler, {})
+    return overrides, gems
+
+
+def rct_trainer_data(trainers, items):
+    """RCT's teams, bags and order, as the script reads them: species as this pack's entities, moves the battle knows."""
+    with open(f"{rctTrainers}/../progression.json", encoding="utf-8") as file: requires = json.load(file)
+    out, levels = {}, {}
+    for tid in trainers:
+        with open(f"{rctTrainers}/{tid}.json", encoding="utf-8") as file: data = json.load(file)
+        team = []
+        for member in data.get("team", []):
+            species = member["species"].split(":")[-1]
+            pokemon = pokemon_for_species_name(species)
+            if not pokemon: print(f"  {tid}: no {species}"); continue
+            held = member.get("heldItem", [])
+            held = [held] if isinstance(held, str) else held
+            held = next((f"cobblemon:{h.split(':')[-1]}" for h in held if f"cobblemon:{h.split(':')[-1]}" in items), None)
+            team.append({"t": entity_id(pokemon), "lv": member.get("level", 1), "nature": (member.get("nature") or "").split(":")[-1] or None,
+                         "ability": member.get("ability"), "moves": [m.split(":")[-1] for m in member.get("moveset", [])],
+                         "ivs": {k: member.get("ivs", {}).get(k, 0) for k in ("hp", "atk", "def", "spa", "spd", "spe")},
+                         "evs": {k: member.get("evs", {}).get(k, 0) for k in ("hp", "atk", "def", "spa", "spd", "spe")},
+                         "held": held, "female": member.get("gender") == "FEMALE", "shiny": bool(member.get("shiny")),
+                         "form": next(iter(member.get("aspects", [])), None)})
+        out[tid] = {"name": data.get("name", tid), "team": team, "requires": requires.get(tid, []),
+                    "bag": [[f"cobblemon:{b['item'].split(':')[-1]}", b.get("quantity", 1)] for b in data.get("bag", [])],
+                    "maxItemUses": data.get("battleRules", {}).get("maxItemUses", -1),
+                    "margin": data.get("ai", {}).get("data", {}).get("maxSelectMargin", 0.25),
+                    "doubles": data.get("battleFormat") == "GEN_9_DOUBLES"}
+    # LevelUtils: a trainer's level is its strongest Pokemon's, or a required trainer's where that is higher
+    def level_of(tid):
+        if tid not in levels:
+            own = max((m["lv"] for m in out[tid]["team"]), default=1)
+            levels[tid] = max([own] + [level_of(r) for group in out[tid]["requires"] for r in group if r in out])
+        return levels[tid]
+    for tid in trainers: out[tid]["level"] = level_of(tid)
+    return out
+
+
+def create_trainer_entity(trainers):
+    """cobblemon:rct_trainer: the player model in the trainer's RCT skin (TrainerRenderer's PlayerModel, wide arms)."""
+    os.makedirs(f"{texturesEntityBedrock}/rct_trainers", exist_ok=True)
+    faces = f"{uiTextures}/dialogue"; os.makedirs(faces, exist_ok=True)
+    for n, tid in enumerate(trainers):
+        source = f"{pwd}/rct_trainers/skins/{tid}.png"
+        shutil.copyfile(source, f"{texturesEntityBedrock}/rct_trainers/{tid}.png")
+        # the dialogue's portrait: the skin's face with its hat layer, as the face of a player head
+        skin = Image.open(source).convert("RGBA")
+        face = skin.crop((8, 8, 16, 16)); face.alpha_composite(skin.crop((40, 8, 48, 16)))
+        face.resize((64, 64), Image.NEAREST).save(f"{faces}/face_rct_{n}.png")
+    behavior = {"format_version": "1.21.0", "minecraft:entity": {
+        "description": {"identifier": "cobblemon:rct_trainer", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
+                        "properties": {"cobblemon:trainer": {"type": "int", "range": [0, len(trainers) - 1], "default": 0, "client_sync": True}}},
+        "components": {
+            "minecraft:type_family": {"family": ["npc", "rct_trainer", "cobblemon_npc"]},
+            "minecraft:nameable": {"always_show": True, "allow_name_tag_renaming": False},
+            "minecraft:collision_box": {"width": 0.6, "height": 1.8},
+            "minecraft:health": {"value": 20, "max": 20},
+            "minecraft:persistent": {}, "minecraft:physics": {},
+            "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+            "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
+            "minecraft:knockback_resistance": {"value": 1},
+            # the buildings give their trainers Slowness 100, so they stand where they were summoned
+            "minecraft:movement": {"value": 0}, "minecraft:movement.basic": {},
+            "minecraft:behavior.look_at_player": {"priority": 1, "look_distance": 10, "probability": 0.8}}}}
+    with open(f"{entitiesBedrock}/rct_trainer.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=4))
+    client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+        "identifier": "cobblemon:rct_trainer", "materials": {"default": "entity_alphatest"},
+        "textures": {tid: f"textures/entity/rct_trainers/{tid}" for tid in trainers},
+        "geometry": {"default": "geometry.humanoid.custom"},
+        "animations": {"base": "animation.humanoid.base_pose", "look": "animation.humanoid.look_at_target.default", "bob": "animation.humanoid.bob"},
+        "scripts": {"animate": ["base", "look", "bob"]},
+        "render_controllers": ["controller.render.rct_trainer"]}}}
+    with open(f"{entityBedrock}/rct_trainer.entity.json", "w") as file: file.write(json.dumps(client, indent=4))
+    with open(f"{renderControllersBedrock}/rct_trainer.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.rct_trainer": {
+            "arrays": {"textures": {"Array.skins": [f"Texture.{tid}" for tid in trainers]}},
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}],
+            "textures": ["Array.skins[q.property('cobblemon:trainer')]"]}}}, indent=4))
+
+
+def create_badges():
+    """The eight Kanto badges as items with the badge mod's icons and names."""
+    import urllib.request, zipfile
+    if not os.path.exists(badgesJar):
+        os.makedirs(os.path.dirname(badgesJar), exist_ok=True)
+        urllib.request.urlretrieve(BADGES_JAR, badgesJar)
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    os.makedirs(f"{texturesItemsBedrock}/badges", exist_ok=True)
+    with zipfile.ZipFile(badgesJar) as jar:
+        names = json.loads(jar.read("assets/cobblemonpokemonbadges/lang/en_us.json"))
+        for badge in GYM_BADGES.values():
+            with open(f"{texturesItemsBedrock}/badges/{badge}.png", "wb") as file: file.write(jar.read(f"assets/cobblemonpokemonbadges/textures/item/{badge}.png"))
+            itemTextureData["texture_data"][f"cpb_{badge}"] = {"textures": [f"textures/items/badges/{badge}"]}
+            item = {"format_version": "1.21.90", "minecraft:item": {
+                "description": {"identifier": f"cobblemonpokemonbadges:{badge}", "menu_category": {"category": "items"}},
+                "components": {"minecraft:icon": f"cpb_{badge}", "minecraft:display_name": {"value": names.get(f"item.cobblemonpokemonbadges.{badge}", badge)},
+                               "minecraft:max_stack_size": 1}}}
+            with open(f"{itemsBedrock}/{badge}.json", "w") as file: file.write(json.dumps(item, indent=2))
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    with open(f"{behaviorPack}/BADGES_CREDITS.txt", "w", encoding="utf-8", newline="\n") as file:
+        file.write("The eight badge items (the cobblemonpokemonbadges: items) use the icons and names of Cobblemon Pokemon Badges by\n"
+                   "Jamesssssssssssssss (https://modrinth.com/mod/cobblemon-pokemon-badges), version 0.1.1, whose badge designs are\n"
+                   "credited to SireSolo. They remain their authors' work (the mod is All Rights Reserved) and are used with credit.\n"
+                   "Which leader gives which badge follows Radical Cobblemon Trainers' badge datapack by hd42.\n")
+
+
+LEAGUE_ANCHORS = 16
+LEAGUE_SEED, LEAGUE_SEED_SIDE = 8, (25, 26)   # the worldgen seed: as wide and long as a gym, and its bottom 8 layers
+
+
+def league_anchors(template, tile, overrides):
+    """Plain blocks in the first tile's bottom layer, one nearest the middle of each of a 4 by 4 grid over it, as
+    (x, y, z, Bedrock name): the anchors the script finds the League by."""
+    from nbt_to_mcstructure import bedrock_name
+    x0, z0, x1, z1 = tile
+    palette = template["palette"]
+    candidates = []
+    for b in template["blocks"]:
+        x, y, z = b["pos"]
+        entry = palette[b["state"]]
+        if y != 0 or not (x0 <= x < x1 and z0 <= z < z1) or (x, y, z) in overrides or entry.get("Properties"): continue
+        name = bedrock_name(entry["Name"])
+        if name and name not in ("air", "water", "lava") and not name.startswith("cobble"): candidates.append((x, y, z, name if ":" in name else f"minecraft:{name}"))
+    side = int(LEAGUE_ANCHORS ** 0.5)
+    picks = []
+    for i in range(side):
+        for j in range(side):
+            cx, cz = x0 + (i + 0.5) * (x1 - x0) / side, z0 + (j + 0.5) * (z1 - z0) / side
+            best = min((c for c in candidates if c not in picks), key=lambda c: (c[0] - cx) ** 2 + (c[2] - cz) ** 2)
+            picks.append(best)
+    return picks
+
+
+def tile_probe(template, tile, overrides):
+    """A plain block high in a tile, (x, y, z, Bedrock name) from the building's corner, to tell the tile is there."""
+    from nbt_to_mcstructure import bedrock_name
+    x0, z0, x1, z1 = tile
+    best = None
+    for b in template["blocks"]:
+        x, y, z = b["pos"]
+        entry = template["palette"][b["state"]]
+        if not (x0 <= x < x1 and z0 <= z < z1) or (x, y, z) in overrides or entry.get("Properties"): continue
+        name = bedrock_name(entry["Name"])
+        if name and name not in ("air", "water", "lava") and not name.startswith("cobble") and (best is None or y > best[1]):
+            best = (x, y, z, name if ":" in name else f"minecraft:{name}")
+    return list(best)
+
+
+def write_terrain_textures():
+    with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file:
+        file.write(json.dumps({"resource_pack_name": "cobblemon", "texture_name": "atlas.terrain", "padding": 8, "num_mip_levels": 4,
+                               "texture_data": terrain_textures}, indent=2))
+
+
+def create_gyms():
+    """Radical Gyms' buildings and worldgen, the marker block, the trainer entity and the trainers' data."""
+    print("Creating gyms...")
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import nbt_to_mcstructure
+    from nbt_to_mcstructure import convert, load_invalid, read_nbt, Tag, INT
+    nbt_to_mcstructure.FURNITURE.update(FURNITURE_STATES)
+    league = None
+    nbt_to_mcstructure.PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
+    trainers = rct_trainer_ids()
+    invalid, unmapped, gems, placed = load_invalid(), {}, {}, []
+    # the marker: a plain block under the floor, where the command block was
+    full_block("cobblemon:gym_marker", {"*": "minecraft:block/stone"}, states={
+        "cobblemon:role": GYM_ROLES, "cobblemon:trainer": list(range(len(trainers))), "cobblemon:rise": GYM_RISES})
+    full_block("cobblemon:league_anchor", {"*": "minecraft:block/stone"}, states={"cobblemon:anchor": list(range(LEAGUE_ANCHORS))},
+               extra={"cobblemon:league_anchor": {}})
+    for path in sorted(glob.glob(f"{gymsData}/rgs/worldgen/structure/*.json")):
+        name = os.path.basename(path)[:-len(".json")]
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        with open(f"{gymsData}/rgs/worldgen/template_pool/{data['start_pool'].split(':')[-1]}.json", encoding="utf-8") as file: pool = json.load(file)
+        with open(f"{gymsData}/rgs/worldgen/structure_set/{name}.json", encoding="utf-8") as file: placement = json.load(file)["placement"]
+        with open(f"{gymsData}/rgs/tags/worldgen/biome/{data['biomes'].split(':')[-1]}.json", encoding="utf-8") as file: biome_ids = json.load(file)["values"]
+        source = f"{gymsData}/rgs/structure/{pool['elements'][0]['element']['location'].split(':')[-1]}.nbt"
+        with open(source, "rb") as file: template = read_nbt(gzip.decompress(file.read()))
+        overrides, its_gems = gym_commands(template, trainers)
+        gems.update(its_gems)
+        # a building wider than 64 blocks (the League, 73 by 78) is cut into tiles that fit. Worldgen places only a seed,
+        # the bottom LEAGUE_SEED layers of a gym-sized corner, facing one way, with LEAGUE_ANCHORS of its bottom blocks
+        # swapped for cobblemon:league_anchor; the first random tick of an anchor has scripts/main.js place every tile
+        # over it and put the anchors' blocks back. Worldgen stalled chunk generation placing the tiles themselves,
+        # together or the first alone (37 by 170 by 39), on BDS 1.26.52.
+        sx, _, sz = template["size"]
+        cuts_x, cuts_z = [0] + ([sx // 2] if sx > 64 else []) + [sx], [0] + ([sz // 2] if sz > 64 else []) + [sz]
+        tiles = [(cuts_x[i], cuts_z[j], cuts_x[i + 1], cuts_z[j + 1]) for i in range(len(cuts_x) - 1) for j in range(len(cuts_z) - 1)]
+        for n, tile in enumerate(tiles):
+            convert(source, f"{structuresBedrock}/{f'rgs_{name}' if len(tiles) == 1 else f'rgs_{name}_{n}'}.mcstructure", invalid, unmapped, overrides=overrides, region=tile)
+        if len(tiles) > 1:
+            seed = (0, 0, min(LEAGUE_SEED_SIDE[0], sx), min(LEAGUE_SEED_SIDE[1], sz), LEAGUE_SEED)
+            anchors = league_anchors(template, seed[:4], overrides)
+            # each tile with a block of its own to check it landed by (a structure placed into chunks that are not
+            # ticking is silently left out), the first tile last, since it covers the anchors
+            league = {"tiles": [[f"cobblemon:rgs_{name}_{n}", tx, tz, *tile_probe(template, tile, overrides)] for n, (tx, tz, *_), tile in
+                                sorted(((n, t, t) for n, t in enumerate(tiles)), key=lambda e: e[0] == 0)],
+                      "size": [sx, template["size"][1], sz], "anchors": [[x, y, z, block] for x, y, z, block in anchors]}
+            here = {**overrides, **{(x, y, z): ("cobblemon:league_anchor", {"cobblemon:anchor": Tag(INT, i)}) for i, (x, y, z, _) in enumerate(anchors)}}
+            convert(source, f"{structuresBedrock}/rgs_{name}_seed.mcstructure", invalid, unmapped, overrides=here, region=seed)
+        filters = [GYM_BIOMES.get(b) or biome_filter_for([b]) for b in biome_ids]
+        filters = [f for f in filters if f]
+        nether, end = data["step"] == "underground_decoration", "end_" in biome_ids[0]
+        constraints = {"block_intersection": {"block_allowlist": NETHER_BLOCKS if nether else STRUCTURE_REPLACEABLE}}
+        if not nether: constraints.update({"grounded": {}, "unburied": {}})
+        first = f"rgs_{name}" if len(tiles) == 1 else f"rgs_{name}_seed"
+        with open(f"{featuresBedrock}/rgs_{name}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:structure_template_feature": {
+                "description": {"identifier": f"cobblemon:rgs_{name}"}, "structure_name": f"cobblemon:{first}",
+                "adjustment_radius": 4 if len(tiles) == 1 else 0, "facing_direction": "random" if len(tiles) == 1 else "north",
+                "constraints": constraints}}, indent=4))
+        # a structure set's spacing gives one per spacing-by-spacing chunk square; Cinnabar's starts 32 to 70 high
+        y = {"distribution": "uniform", "extent": [32, 70]} if nether else "query.heightmap(variable.worldx, variable.worldz) - 1"
+        with open(f"{featureRulesBedrock}/rgs_{name}_rule.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
+                "description": {"identifier": f"cobblemon:rgs_{name}_rule", "places_feature": f"cobblemon:rgs_{name}"},
+                "conditions": {"placement_pass": "surface_pass", "minecraft:biome_filter": filters[0] if len(filters) == 1 else _any(*filters)},
+                "distribution": {"iterations": 1, "scatter_chance": {"numerator": 1, "denominator": placement["spacing"] ** 2},
+                                 "x": {"distribution": "uniform", "extent": [0, 15]}, "y": y,
+                                 "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=4))
+        placed.append(name)
+    if unmapped: print("  Gym blocks with no Bedrock equivalent, placed as air:", ", ".join(f"{k} ({v})" for k, v in sorted(unmapped.items())))
+    write_terrain_textures()   # the marker's texture, after create_model_blocks wrote the rest
+    data = rct_trainer_data(trainers, defined_items())
+    with open(f"{scriptsBedrock}/rct_trainers.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// Generated by port.py from rct_trainers/ (Radical Cobblemon Trainers by HDainester, https://gitlab.com/srcmc/rct/mod).\n"
+                   "// This file is licensed under the Mod Community License (MCOML) v1, the licence of the work it derives from; the\n"
+                   "// licence text ships as RCT_LICENSE.txt in this behavior pack. Changes: see rct_trainers/README.md.\n")
+        file.write("export const RCT_TRAINER_IDS = " + json.dumps(trainers) + ";\n")
+        file.write("export const RCT_TRAINERS = " + json.dumps(data, separators=(",", ":")) + ";\n")
+        file.write(f"export const RCT_INITIAL_CAP = {RCT_INITIAL_CAP};\n")
+    with open(f"{scriptsBedrock}/gyms.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// generated by port.py: the Radical Gyms markers' states and the gem each building's rematch button takes\n")
+        file.write("export const GYM_ROLES = " + json.dumps(GYM_ROLES) + ";\n")
+        file.write("export const GYM_GEMS = " + json.dumps({str(k): v for k, v in sorted(gems.items())}) + ";\n")
+        file.write("export const GYM_BADGES = " + json.dumps({k: f"cobblemonpokemonbadges:{v}" for k, v in GYM_BADGES.items()}) + ";\n")
+        file.write("// the League's other tiles by their offset from the first, and the first tile's anchors with the block each stands for\n")
+        file.write("export const GYM_LEAGUE = " + json.dumps(league) + ";\n")
+    create_trainer_entity(trainers)
+    create_badges()
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        file.write("tile.cobblemon:gym_marker.name=Gym Marker\ntile.cobblemon:league_anchor.name=League Anchor\nentity.cobblemon:rct_trainer.name=Trainer\n")
+    shutil.copyfile(f"{pwd}/radical_gyms/LICENSE", f"{behaviorPack}/RADICAL_GYMS_LICENSE.txt")
+    shutil.copyfile(f"{pwd}/rct_trainers/LICENSE.txt", f"{behaviorPack}/RCT_LICENSE.txt")
+    for tid in trainers:
+        caps = data[tid]
+        print(f"  {caps['name']}: {len(caps['team'])} Pokemon, level {caps['level']}, requires {caps['requires']}")
+    print(f"Create gyms complete: {len(placed)} buildings ({', '.join(placed)}), {len(trainers)} trainers, rematch gems {len(gems)}.")
+
+
+# ---------------------------------------------------------------------------
 # Blocks: berry bushes and the healing machine. Cobblemon draws them from Java block models
 # (assets/cobblemon/models/block), which java_model_geometry() turns into Bedrock block geometry: each
 # element a cube with its faces' UVs, mirrored on x as Bedrock geometry is, each texture a named material
@@ -4054,19 +4624,20 @@ HEALING_FLIPBOOKS = [{"flipbook_texture": "textures/blocks/cobblemon/block/funct
 
 
 def java_texture(ref):
-    """A Java texture reference as a terrain texture key, copying Cobblemon's file into the pack."""
+    """A Java texture reference as a terrain texture key, copying the mod's file (Cobblemon's or CobbleFurnies') into the pack."""
     ref = ref.split("minecraft:", 1)[-1]
-    if not ref.startswith("cobblemon:"):
+    ns = ref.split(":", 1)[0] if ":" in ref else None
+    if ns not in ASSET_ROOTS:
         path = VANILLA_TEXTURES.get(ref, "textures/blocks/" + ref.split("/")[-1])
         key = "cobblemon_vanilla_" + re.sub(r"[^a-z0-9_]", "_", ref)
     else:
         rel = ref.split(":", 1)[1]
-        source = f"{cobblemon}/textures/{rel}.png"
+        source = f"{ASSET_ROOTS[ns]}/textures/{rel}.png"
         if not os.path.exists(source): return None
-        os.makedirs(os.path.dirname(f"{texturesBlocksBedrock}/{rel}"), exist_ok=True)
-        shutil.copyfile(source, f"{texturesBlocksBedrock}/{rel}.png")
-        path = f"textures/blocks/cobblemon/{rel}"
-        key = "cobblemon_" + re.sub(r"[^a-z0-9_]", "_", rel)
+        os.makedirs(os.path.dirname(f"{resourcePack}/textures/blocks/{ns}/{rel}"), exist_ok=True)
+        shutil.copyfile(source, f"{resourcePack}/textures/blocks/{ns}/{rel}.png")
+        path = f"textures/blocks/{ns}/{rel}"
+        key = f"{ns}_" + re.sub(r"[^a-z0-9_]", "_", rel)
     terrain_textures[key] = {"textures": path}
     return key
 
@@ -4093,11 +4664,12 @@ def vanilla_template_elements(parent):
 def java_model(name):
     """A Java block model with its parents' elements and textures filled in, and the elements of Minecraft's own
     template parents (orientable, crop, cross) where the model has none of its own."""
-    path = f"{modelsJavaMain}/{name.split(':', 1)[-1]}.json"
+    ns, rel = name.split(":", 1) if ":" in name else ("cobblemon", name)
+    path = f"{ASSET_ROOTS.get(ns, cobblemon)}/models/{rel}.json"
     if not os.path.exists(path): return None
     with open(path, encoding="utf-8") as file: model = json.load(file)
     parent = model.get("parent")
-    if parent and parent.startswith("cobblemon:"):
+    if parent and parent.split(":", 1)[0] in ASSET_ROOTS:
         base = java_model(parent) or {}
         model = {"textures": {**base.get("textures", {}), **model.get("textures", {})}, "elements": model.get("elements", base.get("elements", []))}
     elif parent and not model.get("elements"):
@@ -4397,7 +4969,7 @@ def berry_bushes():
 def create_blocks():
     print("Creating blocks...")
     for folder in (blocksBedrock, blockModelsBedrock, texturesBlocksBedrock, lootBlocksBedrock, f"{behaviorPack}/recipes",
-                   structuresBedrock, featuresBedrock, featureRulesBedrock): fresh(folder)
+                   structuresBedrock, featuresBedrock, featureRulesBedrock, f"{resourcePack}/textures/blocks/cobblefurnies"): fresh(folder)
     terrain_textures.clear()
     itemTexturePath = f"{resourcePack}/textures/item_texture.json"
     with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
@@ -9379,6 +9951,240 @@ def create_model_blocks():
     return made
 
 
+# ---------------------------------------------------------------------------
+# Furniture: the CobbleFurnies blocks (by LunazStudios, credited in README.md and in the behavior pack's
+# COBBLEFURNIES_CREDITS.txt) that the Radical Gyms buildings are furnished with, and only those. Each is drawn from
+# CobbleFurnies' own blockstate and Java block models, as the Cobblemon blocks are: a permutation per variant, its
+# facing as minecraft:cardinal_direction and its other properties as cobblemon: states, which the structures set
+# (tools/nbt_to_mcstructure.py). A two-block piece (a curtain, the plants, the statue) uses the multi-block trait, so
+# placing one sets both halves. Poke Wool's connected textures (AthenaCTM) have no Bedrock equivalent; wool and its
+# carpet show the joined-up centre tile, which is how a floor or wall of it looks. The statue is a GeckoLib model too
+# tall for two block spaces (54 pixels), so it is drawn at STATUE_SCALE, its cubes split between the halves.
+# Shapes Java works out from the neighbours (a sofa's ends, cabinetry corners, a table's legs) come from the
+# structure; one a player places keeps its first shape.
+# ---------------------------------------------------------------------------
+
+STATUE_SCALE = 0.84
+TWO_PART = {"half": {"lower": 0, "upper": 1}, "vertical_part": {"bottom": 0, "top": 1}}
+FURNITURE_STATES = {}   # block name -> {Java property: Bedrock state}, for the structure converter
+
+
+def get_cobblefurnies():
+    """CobbleFurnies at FURNI_COMMIT; its resources are All Rights Reserved, so the clone stays out of git."""
+    if os.path.isdir(furniRepo): return
+    print("Cloning CobbleFurnies...")
+    os.system(f'git clone -q https://github.com/gifluana/CobbleFurnies.git "{furniRepo}"')
+    os.system(f'git -C "{furniRepo}" checkout -q {FURNI_COMMIT}')
+
+
+def gym_block_names(namespace):
+    """Every block of a namespace the Radical Gyms structures use."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import read_nbt
+    names = set()
+    for path in glob.glob(f"{gymsData}/rgs/structure/*.nbt"):
+        with open(path, "rb") as file: data = read_nbt(gzip.decompress(file.read()))
+        names.update(e["Name"].split(":", 1)[1] for e in data.get("palette", []) if e["Name"].startswith(namespace + ":"))
+    return sorted(names)
+
+
+def furniture_variants(name):
+    """(properties, model, x, y) for each variant of a CobbleFurnies blockstate, a multipart of whole states included."""
+    with open(f"{cobblefurnies}/blockstates/{name}.json", encoding="utf-8") as file: state = json.load(file)
+    out = []
+    for key, value in state.get("variants", {}).items():
+        v = value if isinstance(value, dict) else value[0]
+        out.append((dict(kv.split("=", 1) for kv in key.split(",") if "=" in kv), v["model"], v.get("x", 0), v.get("y", 0)))
+    for part in state.get("multipart", []):
+        a = part["apply"] if isinstance(part["apply"], dict) else part["apply"][0]
+        out.append(({k: str(v).lower() for k, v in part.get("when", {}).items()}, a["model"], a.get("x", 0), a.get("y", 0)))
+    return out, state
+
+
+def bounding(cubes):
+    """The box round a model's cubes, inside the block (Bedrock's collision stops at its edges)."""
+    if not cubes: return {"origin": [-8, 0, -8], "size": [16, 16, 16]}
+    lo = [max(-8 if i != 1 else 0, min(c["origin"][i] for c in cubes)) for i in range(3)]
+    hi = [min(8 if i != 1 else 16, max(c["origin"][i] + c["size"][i] for c in cubes)) for i in range(3)]
+    return {"origin": lo, "size": [max(0.5, hi[i] - lo[i]) for i in range(3)]}
+
+
+def write_furniture(name, states, traits, components, permutations):
+    # format 1.26.40 (which the multi-block trait needs) takes ambient occlusion as a strength, not a switch
+    def ao(node):
+        if isinstance(node, dict):
+            return {k: (float(v) if k == "ambient_occlusion" and isinstance(v, bool) else ao(v)) for k, v in node.items()}
+        return [ao(v) for v in node] if isinstance(node, list) else node
+    components, permutations = ao(components), ao(permutations)
+    if traits and "minecraft:multi_block" in traits: components["minecraft:movable"] = {"movement_type": "popped"}
+    with open(f"{blocksBedrock}/{name}.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.26.40", "minecraft:block": {
+            "description": {"identifier": f"cobblefurnies:{name}", "menu_category": {"category": "construction"}, "states": states,
+                            **({"traits": traits} if traits else {})},
+            "components": components, "permutations": permutations}}, indent=2))
+
+
+def furniture_loot(name):
+    table = {"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblefurnies:{name}"}]}]}
+    with open(f"{lootBlocksBedrock}/cobblefurnies_{name}.json", "w") as file: file.write(json.dumps(table))
+    return f"loot_tables/blocks/cobblefurnies_{name}.json"
+
+
+def furniture_base(name):
+    return {"minecraft:destructible_by_mining": {"seconds_to_destroy": 1.0}, "minecraft:light_dampening": 0, "minecraft:loot": furniture_loot(name)}
+
+
+def ctm_furniture(name, state):
+    """Poke Wool and its carpet: the centre of AthenaCTM's connected tiles."""
+    texture = java_texture(state["ctm_textures"]["empty"])
+    if name.endswith("_carpet"):
+        gid = "geometry.cobblefurnies_carpet"
+        write_bone_geometry(gid, {"carpet": [([-8, 0, -8], [16, 1, 16])]})
+        box = {"origin": [-8, 0, -8], "size": [16, 1, 16]}
+        write_furniture(name, {}, None, {"minecraft:geometry": gid, "minecraft:material_instances": {"*": {"texture": texture, "render_method": "opaque"}},
+                                         "minecraft:collision_box": box, "minecraft:selection_box": box, **furniture_base(name)}, [])
+    else:
+        write_furniture(name, {}, None, {"minecraft:geometry": "minecraft:geometry.full_block",
+                                         "minecraft:material_instances": {"*": {"texture": texture, "render_method": "opaque"}},
+                                         **furniture_base(name), "minecraft:light_dampening": 15}, [])
+
+
+def box_uv_faces(cube):
+    """A GeckoLib cube's box UV as per-face UVs, so the cube can be scaled without its texture moving."""
+    u, v = cube["uv"]; w, h, d = cube["size"]
+    return {"north": {"uv": [u + d, v + d], "uv_size": [w, h]}, "east": {"uv": [u, v + d], "uv_size": [d, h]},
+            "south": {"uv": [u + d + w + d, v + d], "uv_size": [w, h]}, "west": {"uv": [u + d + w, v + d], "uv_size": [d, h]},
+            "up": {"uv": [u + d, v], "uv_size": [w, d]}, "down": {"uv": [u + d + w, v + d], "uv_size": [w, -d]}}
+
+
+def statue_furniture(name):
+    """The statue: its GeckoLib model scaled to fit two blocks, each cube drawn by the half it mostly stands in."""
+    with open(f"{cobblefurnies}/geo/{name}.geo.json", encoding="utf-8") as file: geo = json.load(file)["minecraft:geometry"][0]
+    s = STATUE_SCALE
+    halves = {0: [], 1: []}
+    for bone in geo["bones"]:
+        for part in (0, 1):
+            shift = 16 * part
+            pivot = bone.get("pivot", [0, 0, 0])
+            b = {k: v for k, v in bone.items() if k not in ("cubes", "pivot")}
+            b["pivot"] = [pivot[0] * s, pivot[1] * s - shift, pivot[2] * s]
+            b["cubes"] = []
+            for cube in bone.get("cubes", []):
+                centre = (cube["origin"][1] + cube["size"][1] / 2) * s
+                if (centre >= 24) != (part == 1): continue
+                c = {"origin": [cube["origin"][0] * s, cube["origin"][1] * s - shift, cube["origin"][2] * s],
+                     "size": [x * s for x in cube["size"]], "uv": box_uv_faces(cube) if isinstance(cube["uv"], list) else cube["uv"]}
+                for key in ("inflate", "mirror"):
+                    if key in cube: c[key] = cube[key]
+                if "rotation" in cube:
+                    c["rotation"] = cube["rotation"]
+                    p = cube.get("pivot", [0, 0, 0]); c["pivot"] = [p[0] * s, p[1] * s - shift, p[2] * s]
+                b["cubes"].append(c)
+            halves[part].append(b)
+    texture = java_texture(f"cobblefurnies:block/statue/{name}")
+    perms = []
+    for part in (0, 1):
+        gid = f"geometry.cobblefurnies_{name}_{part}"
+        with open(f"{blockModelsBedrock}/cobblefurnies_{name}_{part}.geo.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+                "description": {"identifier": gid, "texture_width": geo["description"]["texture_width"], "texture_height": geo["description"]["texture_height"],
+                                "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1, 0]},
+                "bones": halves[part]}]}, indent=1))
+        perms.append({"condition": f"q.block_state('minecraft:multi_block_part') == {part}", "components": {"minecraft:geometry": gid}})
+    for d, r in TURN.items():
+        perms.append({"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}'", "components": {"minecraft:transformation": {"rotation": [0, (r + 180) % 360, 0]}}})
+    box = {"origin": [-7, 0, -7], "size": [14, 16, 14]}
+    write_furniture(name, {}, {"minecraft:multi_block": {"enabled_states": ["minecraft:multi_block_part"], "parts": 2, "direction": "up"},
+                               "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}},
+                    {"minecraft:geometry": f"geometry.cobblefurnies_{name}_0", "minecraft:material_instances": {"*": {"texture": texture, "render_method": "alpha_test"}},
+                     "minecraft:collision_box": box, "minecraft:selection_box": box, **furniture_base(name)}, perms)
+    FURNITURE_STATES[name] = {"facing": "minecraft:cardinal_direction", "half": "minecraft:multi_block_part"}
+
+
+def model_furniture(name, variants):
+    """A piece drawn from Java element models: one permutation per variant."""
+    props = sorted({k for p, *_ in variants for k in p if k != "waterlogged"})
+    horizontal = "facing" in props and all(p.get("facing") in ("north", "south", "east", "west") for p, *_ in variants if "facing" in p)
+    two_part = next((k for k in props if k in TWO_PART), None)
+    states, mapping = {}, {}
+    first = {"type": "single", "shape": "default", "mount_type": "floor"}   # the shape a placed piece starts in
+    for k in props:
+        if k == "facing" and horizontal: mapping[k] = "minecraft:cardinal_direction"; continue
+        if k == two_part: mapping[k] = "minecraft:multi_block_part"; continue
+        values = sorted({state_value(p[k]) for p, *_ in variants if k in p}, key=lambda v: (v is not False, str(type(v)), v))
+        if first.get(k) in values: values = [first[k]] + [v for v in values if v != first[k]]
+        states[f"cobblemon:{k}"] = values
+        mapping[k] = f"cobblemon:{k}"
+    geometries, permutations, base = {}, [], None
+    for props_v, model_ref, rx, ry in variants:
+        if model_ref.endswith("block/air"):
+            gid, cubes = "geometry.cobblefurnies_empty", []
+            materials = {"*": {"texture": java_texture("cobblefurnies:block/particles/color/white") or "cobblemon_vanilla_block_white_wool", "render_method": "alpha_test"}}
+            if not os.path.exists(f"{blockModelsBedrock}/cobblefurnies_empty.geo.json"): write_bone_geometry(gid, {"none": []})
+        else:
+            if model_ref not in geometries:
+                model = java_model(model_ref)
+                if not model or not model.get("elements"): continue
+                cubes, instances = java_model_cubes(model)
+                if not cubes: continue
+                gid = f"geometry.cobblefurnies_{name}_{len(geometries)}"
+                write_block_geometry(gid, cubes)
+                geometries[model_ref] = (gid, material_instances(instances), fit_block(cubes))
+            gid, materials, cubes = geometries[model_ref]
+        conds = []
+        for k, v in props_v.items():
+            if k not in mapping: continue
+            if k == two_part: conds.append(f"q.block_state('minecraft:multi_block_part') == {TWO_PART[k][v]}")
+            elif mapping[k] == "minecraft:cardinal_direction": conds.append(f"q.block_state('minecraft:cardinal_direction') == '{v}'")
+            else:
+                sv = state_value(v)
+                conds.append(f"q.block_state('{mapping[k]}') == " + (f"'{sv}'" if isinstance(sv, str) else str(sv).lower()))
+        box = bounding(cubes)
+        components = {"minecraft:geometry": gid, "minecraft:material_instances": materials,
+                      "minecraft:transformation": {"rotation": [-rx % 360, -ry % 360, 0]},
+                      "minecraft:collision_box": box if cubes else False, "minecraft:selection_box": box}
+        if props_v.get("lit") == "true": components["minecraft:light_emission"] = 15
+        if base is None and cubes: base = components
+        permutations.append({"condition": " && ".join(conds) or "1", "components": components})
+    if base is None: return False
+    traits = {}
+    if horizontal: traits["minecraft:placement_direction"] = {"enabled_states": ["minecraft:cardinal_direction"]}
+    if two_part: traits["minecraft:multi_block"] = {"enabled_states": ["minecraft:multi_block_part"], "parts": 2, "direction": "up"}
+    extra = {"cobblemon:openable": {}} if "open" in props else {}
+    write_furniture(name, states, traits, {**{k: v for k, v in base.items() if k != "minecraft:transformation"}, **furniture_base(name), **extra},
+                    [pm for pm in permutations if pm["condition"] != "1"] or permutations)
+    FURNITURE_STATES[name] = mapping
+    return True
+
+
+def create_furniture():
+    """The CobbleFurnies blocks the gyms use, their names, and the credit the behavior pack carries."""
+    print("Creating furniture...")
+    get_cobblefurnies()
+    with open(f"{cobblefurnies}/lang/en_us.json", encoding="utf-8") as file: names = json.load(file)
+    made = []
+    for name in gym_block_names("cobblefurnies"):
+        variants, state = furniture_variants(name)
+        model = java_model(variants[0][1]) if len(variants) == 1 else None
+        FURNITURE_STATES[name] = {}
+        if "ctm_textures" in state: ctm_furniture(name, state)
+        elif os.path.exists(f"{cobblefurnies}/geo/{name}.geo.json"): statue_furniture(name)
+        elif model and model.get("textures", {}).get("all") and not model.get("elements"):
+            full_block(f"cobblefurnies:{name}", {"*": model["textures"]["all"]}, extra={"minecraft:loot": furniture_loot(name)})
+        elif not model_furniture(name, variants):
+            del FURNITURE_STATES[name]; print(f"  {name}: no element models"); continue
+        made.append(name)
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for name in made: file.write(f"tile.cobblefurnies:{name}.name={names.get('block.cobblefurnies.' + name, name.replace('_', ' ').title())}" + chr(10))
+    with open(f"{furniRepo}/LICENSE", encoding="utf-8") as file: licence = file.read()
+    with open(f"{behaviorPack}/COBBLEFURNIES_CREDITS.txt", "w", encoding="utf-8", newline="\n") as file:
+        file.write("The furniture blocks in this add-on (the cobblefurnies: blocks) are converted from CobbleFurnies by LunazStudios\n"
+                   "(https://modrinth.com/mod/cobblefurnies, https://github.com/gifluana/CobbleFurnies), version 1.2, and remain\n"
+                   "LunazStudios' work, credited as CobbleFurnies' README asks. CobbleFurnies' licence follows.\n\n" + licence)
+    print(f"Create furniture complete: {len(made)} blocks.")
+    return made
+
+
 def create_building_blocks():
     made = create_wood_pieces()
     existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
@@ -9533,12 +10339,15 @@ def main():
     create_tms()
     create_held_display()
     write_item_names(general_items)
+    create_furniture()   # before create_model_blocks, which writes the terrain textures
     create_model_blocks()
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()
     add_evolution_animation()
     rename_clashing_body_bones()   # after every animation that names bones is written
+    mark_primary_animations()
+    separate_model_layers()   # after the bone renames, on the files as written
     add_owned_protection()
     add_pasture_conflict()
     add_wild_behaviours()
@@ -9552,6 +10361,7 @@ def main():
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
+    create_gyms()   # after the furniture and the structures' folders
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
     create_move_fx()   # after the client entities and particles, whose clips and ids it keeps

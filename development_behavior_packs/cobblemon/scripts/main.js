@@ -13,6 +13,8 @@ import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
+import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP } from "./rct_trainers.js";
+import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
 import { FEATURE_BARS } from "./features.js";
@@ -691,6 +693,7 @@ function endBattle(battle, text) {
         if (slot) recallMember(owner, slot);
     }
     // PokemonBattle.end: a wild Pokemon still out heals fully, whether it won, fled or was left
+    if (battle.gym) gymEnded(battle);
     const foe = battle.foe?.entity;
     if (!battle.trainer && foe?.isValid && POKEMON[foe.typeId] && !prop(foe, OWNER)) { healFully(foe); setProp(foe, STATUS, undefined); }
     if (text) say(battle, text);
@@ -1881,7 +1884,7 @@ function startBattle(player, foeEntity, trainer) {
     battles.set(player.id, battle);
     battleMusic(player, trainer ? "pvn" : "pvw");
     freeze(foeEntity, true);
-    say(battle, `§6A ${trainer ? "Trainer's " : "wild "}${foe.info.name} appeared! §7(Lv ${foe.level})`);
+    say(battle, trainer ? `§6${typeof trainer === "string" ? trainer : "Trainer"} sent out ${foe.info.name}! §7(Lv ${foe.level})` : `§6A wild ${foe.info.name} appeared! §7(Lv ${foe.level})`);
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
     if (!sendOut(battle, lead, { x: battle.spot.x, y: lead.isProxy ? foeEntity.location.y : lead.location.y, z: battle.spot.z })) { endBattle(battle); return; }
     enter(battle, foe, battle.ally);
@@ -2014,7 +2017,7 @@ function turn(battle) {
         const move = choice.move;
         if (held(ally)?.startsWith("choice_") && move !== STRUGGLE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
-        const foeMove = pickFoeMove(foe);
+        const foeMove = battle.gym ? gymFoeAction(battle) : pickFoeMove(foe);
         const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
         const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
         const allyClaw = claw(ally), foeClaw = claw(foe);
@@ -2025,7 +2028,7 @@ function turn(battle) {
         battle.movedFirst = allyFirst ? ally : foe;
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, m] of order) {
-            if (a.hp <= 0 || d.hp <= 0) continue;
+            if (a.hp <= 0 || d.hp <= 0 || m === GYM_ITEM) continue;
             useMove(battle, a, d, m);
         }
         endOfTurn(battle);
@@ -2184,7 +2187,7 @@ function pickFoeMove(foe) {
 function foeTurn(battle) {
     const { ally, foe } = battle;
     battle.movedFirst = null;   // the player used an item or switched; the foe's move can make nobody flinch
-    if (foe.hp > 0 && ally.hp > 0) useMove(battle, foe, ally, pickFoeMove(foe));
+    if (foe.hp > 0 && ally.hp > 0) { const m = battle.gym ? gymFoeAction(battle) : pickFoeMove(foe); if (m !== GYM_ITEM) useMove(battle, foe, ally, m); }
     endOfTurn(battle);
 }
 
@@ -2279,6 +2282,13 @@ function gainExperience(battle, f, foe, amount) {
     // from the level it has already reached in this battle (the fighter's own is the one it entered with)
     let level = Math.max(f.level, prop(f.entity, LEVEL) ?? f.level), exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level)) + gain;
     const startLevel = level;
+    // a player on the gym challenge gains nothing past their level cap (RCT's ModServer, allowOverLeveling false)
+    const levelCap = rctLevelCap(battle.player);
+    if (levelCap < 100 && exp > expFor(group, levelCap)) {
+        exp = Math.max(expFor(group, levelCap), exp - gain);
+        say(battle, `§e${f.info.name} can't gain experience past the level cap (Lv. ${levelCap}).`);
+        if (exp <= Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level))) { setProp(f.entity, EXP, exp); return; }
+    }
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
     const note = gained.get(f.entity) ?? { exp: 0, move: false };
     note.exp += gain; gained.set(f.entity, note);
@@ -2322,7 +2332,6 @@ function faint(battle, fainted) {
         if (!battle.trainer) wildDrops(gone, true);
         try { if (clip) gone.playAnimation(clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
-        if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         gainExperience(battle, battle.ally, battle.foe);
         // an Exp. Share holder elsewhere in the party gets Cobblemon's half share
         for (const e of findParty(battle.player)) {
@@ -2330,6 +2339,9 @@ function faint(battle, fainted) {
             const sharer = fighter(e);
             if (sharer) gainExperience(battle, sharer, null, Math.max(1, Math.floor(((battle.foe.info.baseExp || 50) * battle.foe.level * (battle.trainer ? 1.5 : 1)) / 7 * 0.5)));
         }
+        if (battle.gym && gymNextPokemon(battle)) return;
+        if (battle.gym) gymWon(battle);
+        else if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         endBattle(battle);
         return;
     }
@@ -2343,6 +2355,314 @@ function faint(battle, fainted) {
         switchTo(battle, entity);
         system.runTimeout(() => turn(battle), 20);
     }).catch(() => endBattle(battle));
+}
+
+// Gyms: Radical Gyms & Structures by JayOnline (MIT) and its key trainers from Radical Cobblemon Trainers by
+// HDainester (rct_trainers.js, MCOML). The buildings' command blocks are gym markers (port.py's create_gyms): stepping
+// on the doorway plate calls the building's trainer to its spot and the plate goes, as `setblock ~ ~3 ~ air` and the
+// summon did; the button by the sign takes one of the named type gems from the player's inventory (`clear @p`) and calls
+// the trainer back; the League's plates lift the player to the next floor. A trainer stands where it was called (the
+// buildings give it Slowness 100). Talking to one offers a battle unless (TrainerMob.canBattleAgainst) the player has
+// beaten it already (maxTrainerDefeats 1), has not beaten the trainers it requires (requiredDefeats, one of each
+// group), it is still resting from the last battle (battleCooldownTicks 240), or the player's strongest Pokemon is over
+// their level cap. The cap (LevelUtils.getLevelCap) is the lowest level among the trainers next in line, never under 15,
+// and 100 once none are left; a Pokemon gains no experience past it (allowOverLeveling false). A player is on that path
+// from their first gym battle on, which stands in for choosing a series at RCT's Trainer Association.
+// The trainer's side fights RCT's way (RCTBattleAI): each turn its moves and potions are scored and one of the best,
+// within a random margin, is picked; after a faint it sends out the Pokemon with the best matchup.
+const RCT_DEFEATS = "cobblemon:rct_defeats", RCT_SERIES = "cobblemon:rct_series", GYM_COOLDOWN = 240;
+const RCT_HEALS = { "cobblemon:potion": 20, "cobblemon:super_potion": 50, "cobblemon:hyper_potion": 200, "cobblemon:max_potion": Infinity, "cobblemon:full_restore": Infinity };
+const RCT_STATUS_BIAS = 0.85, RCT_ITEM_BIAS = 0.85;
+const GYM_ITEM = { name: "(item)", priority: 6 };   // the trainer used an item this turn instead of a move
+const gymRest = new Map();   // trainer entity id -> the tick it battles again
+// trainers in the same group of a requirement stand in for each other (SeriesManager's siblings): the two Agathas
+const RCT_SIBLINGS = new Map();
+for (const t of Object.values(RCT_TRAINERS)) for (const group of t.requires) if (group.length > 1) for (const id of group) RCT_SIBLINGS.set(id, group);
+function rctDefeats(player) { return jsonProp(player, RCT_DEFEATS, {}); }
+function rctDone(player, id) { const d = rctDefeats(player); return (RCT_SIBLINGS.get(id) ?? [id]).some((s) => (d[s] ?? 0) > 0); }
+function rctUnlocked(player, id) { return RCT_TRAINERS[id].requires.every((group) => group.some((r) => rctDone(player, r))); }
+function rctLevelCap(player) {
+    if (!player?.getDynamicProperty?.(RCT_SERIES)) return 100;
+    const next = RCT_TRAINER_IDS.filter((id) => !rctDone(player, id) && rctUnlocked(player, id));
+    return next.length ? Math.max(RCT_INITIAL_CAP, Math.min(...next.map((id) => RCT_TRAINERS[id].level))) : 100;
+}
+const gymTrainerOf = (npc) => { try { return RCT_TRAINER_IDS[npc.getProperty("cobblemon:trainer")]; } catch (e) { return undefined; } };
+
+// the trainer's dialogue, on Cobblemon's DialogueScreen with the face from its skin
+function gymSay(player, npc, text, options = []) {
+    const n = RCT_TRAINER_IDS.indexOf(gymTrainerOf(npc));
+    const layout = !options.length ? "n" : options.length <= 2 ? "h" : "v";
+    const form = new ActionFormData().title("cbm:dialogue" + (RCT_TRAINERS[gymTrainerOf(npc)]?.name ?? "Trainer")).body(padBytes(`rct_${n}`, 16) + layout + text.replace(/%/g, "%%"));
+    if (layout === "n") form.button("", HIT);
+    for (const [label] of options) form.button(label, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}`);
+    form.show(player).then((r) => { if (!r.canceled && layout !== "n") options[r.selection]?.[1]?.(); }).catch(() => { });
+}
+function gymTalk(player, npc) {
+    const id = gymTrainerOf(npc), data = RCT_TRAINERS[id];
+    if (!data || battles.has(player.id)) return;
+    const names = (group) => group.map((r) => RCT_TRAINERS[r]?.name ?? r).join(" or ");
+    if (rctDone(player, id)) { gymSay(player, npc, "You've already beaten me. Go on, your next challenge is waiting!"); return; }
+    const missing = data.requires.find((group) => !group.some((r) => rctDone(player, r)));
+    if (missing) { gymSay(player, npc, `You aren't ready for me yet. Come back once you've beaten ${names(missing)}.`); return; }
+    if ((gymRest.get(npc.id) ?? 0) > system.currentTick) { gymSay(player, npc, "Give me a moment to rest my team."); return; }
+    const cap = player.getDynamicProperty(RCT_SERIES) ? rctLevelCap(player) : Math.max(RCT_INITIAL_CAP, data.level);
+    const top = Math.max(0, ...summaryParty(player).map((e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 1));
+    if (top > cap) { gymSay(player, npc, `Your Pokemon are stronger than the level cap allows (Lv. ${cap}). Challenge me with a team at or under it.`); return; }
+    if (!findParty(player).length) { gymSay(player, npc, "Your Pokemon can't fight. Heal them and come back."); return; }
+    gymSay(player, npc, `I'm ${data.name}. Will you take on my challenge?`, [["Battle", () => startGymBattle(player, npc, id)], ["Not now", null]]);
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    if (event.target?.typeId !== "cobblemon:rct_trainer") return;
+    event.cancel = true;
+    const { player, target } = event;
+    system.run(() => { if (target.isValid) gymTalk(player, target); });
+});
+
+// a trainer's Pokemon as RCT's team gives it: level, moves, IVs, EVs, nature, ability, held item, gender and form
+function spawnGymPokemon(npc, spec, player) {
+    const dx = player.location.x - npc.location.x, dz = player.location.z - npc.location.z, len = Math.hypot(dx, dz) || 1;
+    let e;
+    try { e = npc.dimension.spawnEntity(spec.t, { x: npc.location.x + (dx / len) * 1.5, y: npc.location.y, z: npc.location.z + (dz / len) * 1.5 }); } catch (err) { return undefined; }
+    e.addTag("trainer_pokemon");
+    const info = POKEMON[spec.t], looks = VARIANT_LOOKS[spec.t];
+    const variant = looks ? Math.max(0, looks.findIndex(([form, female, shiny]) => form === spec.form && !!female === (spec.female && looks.some((l) => l[1])) && !!shiny === spec.shiny)) : 0;
+    try { if (looks) e.triggerEvent(`cobblemon:set_variant_${variant}`); } catch (err) { }
+    setProp(e, LEVEL, spec.lv); setProp(e, EXP, expFor(info.expGroup, spec.lv));
+    setProp(e, MOVESET, JSON.stringify(spec.moves.filter((m) => MOVES[m]).slice(0, 4)));
+    setProp(e, "cobblemon:ivs", JSON.stringify(spec.ivs)); setProp(e, "cobblemon:evs", JSON.stringify(spec.evs));
+    if (NATURES[spec.nature]) setProp(e, "cobblemon:nature", spec.nature);
+    if (spec.ability) setProp(e, "cobblemon:ability", spec.ability);
+    if (spec.held) setProp(e, HELD, spec.held);
+    setProp(e, "cobblemon:gender", (info.maleRatio ?? 0.5) < 0 ? "genderless" : spec.female ? "female" : "male");
+    return e;
+}
+function startGymBattle(player, npc, id) {
+    const data = RCT_TRAINERS[id];
+    if (!data?.team.length || battles.has(player.id) || !npc.isValid) return;
+    player.setDynamicProperty(RCT_SERIES, true);
+    const party = data.team.map((spec) => ({ spec, down: false }));
+    const foe = spawnGymPokemon(npc, party[0].spec, player);
+    if (!foe) return;
+    system.runTimeout(() => {
+        if (!foe.isValid || !player.isValid) return;
+        startBattle(player, foe, data.name);
+        const battle = battles.get(player.id);
+        if (!battle || battle.foe.entity !== foe) { try { foe.remove(); } catch (e) { } return; }
+        battle.gym = { id, npc, party, at: 0, turns: 0, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
+                       bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin };
+    }, 5);
+}
+
+// an estimate of a move's damage (PokeMath.damage's role), without the random roll's spread or a critical hit
+function gymDamage(battle, a, d, move) {
+    if (!move.power || move.type === "???") return 0;
+    const physical = move.category === "Physical";
+    const atk = (physical ? a.stats.atk : a.stats.spa) * stage(physical ? a.stages.atk : a.stages.spa);
+    const def = (physical ? d.stats.def : d.stats.spd) * stage(physical ? d.stages.def : d.stages.spd);
+    const base = Math.floor(Math.floor(Math.floor((2 * a.level) / 5 + 2) * move.power * atk / Math.max(1, def)) / 50) + 2;
+    const stab = a.info.types.includes(move.type) ? 1.5 : 1, eff = effectiveness(move.type, d.info.types);
+    return base * stab * eff * 0.925 * (physical && a.status === "brn" ? 0.5 : 1);
+}
+// RCTBattleAI's choice: each option weighs 1 - its evaluation; of those within a random margin of the best, a later one
+// takes the pick with a chance that falls the further it is behind (ResponseBuilder)
+function rctPick(options, maxMargin) {
+    const margin = Math.random() * maxMargin;
+    const sorted = options.map((o) => ({ ...o, w: o.e === 0 ? 2 : 1 - o.e })).sort((x, y) => x.w - y.w);
+    const best = sorted[0];
+    let pick = best;
+    sorted.filter((o) => o.w - best.w <= margin).forEach((o, i) => {
+        if (i > 0 && margin > 0 && Math.random() < 1 / (i + ((o.w - best.w) / margin) * 16)) pick = o;
+    });
+    return pick;
+}
+function gymMoveValue(battle, foe, ally, move, maxMargin) {
+    const rngSin = Math.sin(Math.random() * Math.PI / 2 * Math.PI / 2), margin = Math.random() * maxMargin;
+    const hpShare = (f) => Math.max(0, f.hp) / f.stats.hp;
+    let e;
+    if (move.power) e = Math.min(1, Math.min(ally.hp, gymDamage(battle, foe, ally, move)) / Math.max(1, ally.hp) + (1 - rngSin) * maxMargin);
+    else if (move.status || move.volatileStatus === "confusion") e = (ally.status ? rngSin * margin : 1 - rngSin) * RCT_STATUS_BIAS;
+    else if (move.heal || move.id === "rest") e = Math.max(rngSin * margin, 1 - hpShare(foe)) * RCT_STATUS_BIAS;
+    else if (move.boosts && (move.target === "self" || move.target === "adjacentAllyOrSelf")) e = (1 - rngSin) * RCT_STATUS_BIAS * hpShare(foe) ** 2;
+    else if (move.boosts) e = (1 - rngSin) * RCT_STATUS_BIAS * hpShare(ally) ** 2;
+    else e = rngSin * margin * RCT_STATUS_BIAS;
+    const faster = speedOf(foe, battle) >= speedOf(ally, battle) || (move.priority || 0) > 0;
+    return e * (faster ? 1 : hpShare(foe) + Math.random() * (1 - hpShare(foe)));
+}
+// the trainer's move or item for the turn; an item is used here, before anyone moves, as items go first
+function gymFoeAction(battle) {
+    const g = battle.gym, foe = battle.foe, ally = battle.ally;
+    g.turns++;
+    const usable = foe.moves.filter((m) => m.left > 0);
+    const options = (usable.length ? usable : [STRUGGLE]).map((move) => ({ move, e: gymMoveValue(battle, foe, ally, move, g.margin) }));
+    if (g.itemsLeft > 0 && foe.hp < foe.stats.hp) {
+        for (const slot of g.bag) {
+            const heal = RCT_HEALS[slot[0]];
+            if (!heal || slot[1] <= 0) continue;
+            const share = Math.max(0, foe.hp) / foe.stats.hp, amount = Math.min(heal, foe.stats.hp - foe.hp) / foe.stats.hp;
+            const cures = slot[0] === "cobblemon:full_restore" && foe.status ? 1.25 : 1;
+            options.push({ item: slot, e: Math.min(1, g.turns / 3) * Math.min(1, amount * (1 - share) * 4 * cures) * RCT_ITEM_BIAS });
+        }
+    }
+    const pick = rctPick(options, g.margin);
+    if (!pick.item) return pick.move;
+    const [item] = pick.item, data = RCT_TRAINERS[g.id];
+    pick.item[1]--; g.itemsLeft--;
+    foe.hp = Math.min(foe.stats.hp, foe.hp + Math.min(RCT_HEALS[item], foe.stats.hp));
+    if (item === "cobblemon:full_restore") foe.status = null;
+    syncHealth(foe);
+    say(battle, `§e${data.name} used a ${item.slice("cobblemon:".length).split("_").map(cap).join(" ")} on ${foe.info.name}!`);
+    return GYM_ITEM;
+}
+// after a faint, the Pokemon left whose types and moves stand up best to the player's (the matchup term of
+// RCTBattleAI's switch rating, its heaviest)
+function gymNextPokemon(battle) {
+    const g = battle.gym, ally = battle.ally;
+    g.party[g.at].down = true;
+    const left = g.party.map((p, i) => [p, i]).filter(([p]) => !p.down);
+    if (!left.length) return false;
+    const typesOf = (spec) => { const info = POKEMON[spec.t]; const v = VARIANT_LOOKS[spec.t]?.findIndex((l) => l[0] === spec.form); return (v > 0 && info.variants?.[v]?.types) || info.types; };
+    const score = ([p]) => {
+        const types = typesOf(p.spec);
+        const offence = Math.max(1, ...p.spec.moves.filter((m) => MOVES[m]?.power).map((m) => effectiveness(MOVES[m].type, ally.info.types) * (types.includes(MOVES[m].type) ? 1.5 : 1)));
+        const defence = Math.max(...ally.info.types.map((t) => effectiveness(t, types)));
+        return offence - defence;
+    };
+    const [next, index] = left.reduce((best, c) => (score(c) > score(best) ? c : best));
+    g.at = index; g.turns = 0;
+    const entity = spawnGymPokemon(g.npc.isValid ? g.npc : battle.foe.entity, next.spec, battle.player);
+    if (!entity) return false;
+    system.runTimeout(() => {
+        if (!battles.has(battle.player.id) || !entity.isValid) { try { entity.remove(); } catch (e) { } return; }
+        const f = fighter(entity);
+        freeze(entity, true);
+        battle.foe = f;
+        say(battle, `§6${RCT_TRAINERS[g.id].name} sent out ${f.info.name}! §7(Lv ${f.level})`);
+        register(battle.player, entity.typeId, 1, variantOf(entity));
+        enter(battle, f, battle.ally);
+        system.runTimeout(() => turn(battle), 20);
+    }, 30);
+    return true;
+}
+function gymWon(battle) {
+    const g = battle.gym, player = battle.player, data = RCT_TRAINERS[g.id];
+    const before = rctLevelCap(player), defeats = rctDefeats(player);
+    defeats[g.id] = (defeats[g.id] ?? 0) + 1;
+    player.setDynamicProperty(RCT_DEFEATS, JSON.stringify(defeats));
+    g.won = true;
+    say(battle, `§6You defeated ${data.name}!`);
+    const after = rctLevelCap(player);
+    if (after > before) say(battle, `§bYour level cap rose to Lv. ${after}.`);
+    try { player.playSound("random.levelup"); } catch (e) { }
+    giveGymReward(player, g.id);
+}
+// the battle is over, won or lost: the trainer's Pokemon still out goes, and the trainer rests
+function gymEnded(battle) {
+    const g = battle.gym;
+    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + GYM_COOLDOWN);
+    const foe = battle.foe?.entity;
+    if (foe?.isValid) system.runTimeout(() => { try { if (foe.isValid) foe.triggerEvent("cobblemon:vanish"); } catch (e) { } }, g.won ? 30 : 0);
+}
+
+// The Kanto League is wider than a Bedrock structure can be, so worldgen places only a seed of it (port.py's
+// create_gyms): a gym-sized corner of its bottom layers with anchor blocks in them. The first random tick of an anchor
+// places every tile of the League over the seed. A structure placed into chunks that are not ticking is silently left
+// out, so a ticking area holds the League's chunks while the tiles go in; each tile is checked by a block of its own,
+// the first tile (which covers the anchors, putting their own blocks back) last, and a later tick retries what failed.
+const leagueBuilding = new Set();   // "x y z" of each League being placed
+function completeLeague(block) {
+    const a = GYM_LEAGUE?.anchors[block.permutation.getState("cobblemon:anchor")];
+    if (!a) return;
+    const o = { x: block.x - a[0], y: block.y - a[1], z: block.z - a[2] }, dim = block.dimension, key = `${o.x} ${o.y} ${o.z}`;
+    if (leagueBuilding.has(key)) return;
+    leagueBuilding.add(key);
+    const [sx, sy, sz] = GYM_LEAGUE.size, area = `cbl_${o.x}_${o.z}`.replace(/-/g, "m");
+    try { dim.runCommand(`tickingarea add ${o.x} ${o.y} ${o.z} ${o.x + sx - 1} ${o.y + sy - 1} ${o.z + sz - 1} ${area}`); } catch (e) { }
+    system.runTimeout(() => {
+        try {
+            for (const [id, dx, dz, px, py, pz, probe] of GYM_LEAGUE.tiles) {
+                const at = dim.getBlock({ x: o.x + px, y: o.y + py, z: o.z + pz });
+                if (at?.typeId === probe) continue;   // placed already
+                world.structureManager.place(id, dim, { x: o.x + dx, y: o.y, z: o.z + dz }, { includeEntities: false });
+                if (dim.getBlock({ x: o.x + px, y: o.y + py, z: o.z + pz })?.typeId !== probe) throw new Error(`${id} did not land`);
+            }
+        } catch (e) { console.warn(`league at ${key}: ${e}`); }
+        try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { }
+        leagueBuilding.delete(key);
+    }, 60);
+}
+
+// the markers' jobs (port.py's GYM_ROLES), when the plate or button above one is used
+function gymMarker(block) {
+    if (block?.typeId !== "cobblemon:gym_marker") return undefined;
+    const p = block.permutation;
+    return { block, role: p.getState("cobblemon:role"), trainer: p.getState("cobblemon:trainer"), rise: p.getState("cobblemon:rise") };
+}
+function findMarker(dimension, at, role, trainer, reach, height) {
+    for (let r = 0; r <= reach; r++) {
+        for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+            for (let dy = -height; dy <= height; dy++) {
+                let m;
+                try { m = gymMarker(dimension.getBlock({ x: at.x + dx, y: at.y + dy, z: at.z + dz })); } catch (e) { }
+                if (m && m.role === role && m.trainer === trainer) return m;
+            }
+        }
+    }
+    return undefined;
+}
+function summonGymTrainer(marker) {
+    const id = RCT_TRAINER_IDS[marker.trainer], { dimension, location } = marker.block;
+    if (!id) return;
+    // the one already there makes way, as a rematch calls the trainer back
+    for (const old of dimension.getEntities({ type: "cobblemon:rct_trainer", location, maxDistance: 48 })) if (gymTrainerOf(old) === id) old.remove();
+    try {
+        const npc = dimension.spawnEntity("cobblemon:rct_trainer", { x: location.x + 0.5, y: location.y + marker.rise, z: location.z + 0.5 });
+        npc.setProperty("cobblemon:trainer", marker.trainer);
+        npc.nameTag = RCT_TRAINERS[id].name;
+    } catch (e) { }
+}
+world.afterEvents.pressurePlatePush.subscribe(({ block, source }) => {
+    const player = source?.typeId === "minecraft:player" ? source : undefined;
+    for (const dy of [2, 3]) {
+        let m;
+        try { m = gymMarker(block.dimension.getBlock({ x: block.x, y: block.y - dy, z: block.z })); } catch (e) { }
+        if (!m) continue;
+        if (m.role === "lift" && player) {
+            const { x, y, z } = m.block.location;
+            system.run(() => player.teleport({ x: x + 0.5, y: y + m.rise, z: z + 0.5 }));
+        } else if (m.role === "entrance") {
+            const spot = findMarker(block.dimension, m.block.location, "spot", m.trainer, 30, 3);
+            system.run(() => { try { block.setType("minecraft:air"); } catch (e) { } if (spot) summonGymTrainer(spot); });
+        }
+        return;
+    }
+});
+world.afterEvents.buttonPush.subscribe(({ block, source }) => {
+    if (source?.typeId !== "minecraft:player") return;
+    let m;
+    for (const dy of [2, 3]) for (let dx = -1; dx <= 1 && !m; dx++) for (let dz = -1; dz <= 1 && !m; dz++) {
+        try { const here = gymMarker(block.dimension.getBlock({ x: block.x + dx, y: block.y - dy, z: block.z + dz })); if (here?.role === "rematch") m = here; } catch (e) { }
+    }
+    if (!m) return;
+    const id = RCT_TRAINER_IDS[m.trainer], gem = GYM_GEMS[m.trainer];
+    if (!id || !gem) return;
+    const inv = source.getComponent(EntityComponentTypes.Inventory)?.container;
+    let slot = -1;
+    for (let i = 0; i < (inv?.size ?? 0); i++) if (inv.getItem(i)?.typeId === gem) { slot = i; break; }
+    const gemName = gem.slice("cobblemon:".length).split("_").map(cap).join(" ");
+    if (slot < 0) { source.sendMessage(`§7You need a ${gemName} to call ${RCT_TRAINERS[id].name} back.`); return; }
+    const item = inv.getItem(slot);
+    if (item.amount > 1) { item.amount--; inv.setItem(slot, item); } else inv.setItem(slot);
+    const spot = findMarker(block.dimension, m.block.location, "rematch_spot", m.trainer, 2, 1);
+    if (spot) system.run(() => summonGymTrainer(spot));
+});
+// a Kanto leader's badge on the first win, as RCT's badge datapack gives it (defeat_count == 1), into the inventory
+function giveGymReward(player, id) {
+    const badge = GYM_BADGES[id];
+    if (!badge || rctDefeats(player)[id] !== 1) return;
+    const stack = new ItemStack(badge, 1), left = player.getComponent(EntityComponentTypes.Inventory)?.container?.addItem(stack);
+    if (left) player.dimension.spawnItem(left, player.location);
+    player.sendMessage(`§6${player.name} received the ${badge.slice(badge.indexOf(":") + 1).split("_").map(cap).join(" ")}!`);
 }
 
 // Battles between players (ChallengeManager, BattleConfigureGUI, BattleBuilder.pvp1v1). The player wheel's Battle opens
@@ -2707,6 +3027,20 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
         if (player) startBattle(player, source, false);
+    } else if (event.id === "cobblemon:gym" && source.typeId === "minecraft:player") {
+        // testing: battle a gym trainer (part of its id or name) without the order or the level cap, the nearest one
+        // of them within 16 blocks or one called up beside the player
+        const want = event.message.trim().toLowerCase(), n = RCT_TRAINER_IDS.findIndex((id) => id.includes(want) || RCT_TRAINERS[id].name.toLowerCase().includes(want));
+        if (!want || n < 0) { source.sendMessage(`§7Gym trainers: ${RCT_TRAINER_IDS.join(", ")}`); return; }
+        let npc = source.dimension.getEntities({ type: "cobblemon:rct_trainer", location: source.location, maxDistance: 16 }).find((e) => gymTrainerOf(e) === RCT_TRAINER_IDS[n]);
+        if (!npc) {
+            npc = source.dimension.spawnEntity("cobblemon:rct_trainer", { x: source.location.x + 3, y: source.location.y, z: source.location.z });
+            npc.setProperty("cobblemon:trainer", n); npc.nameTag = RCT_TRAINERS[RCT_TRAINER_IDS[n]].name;
+        }
+        system.runTimeout(() => startGymBattle(source, npc, RCT_TRAINER_IDS[n]), 2);
+    } else if (event.id === "cobblemon:gym_reset" && source.typeId === "minecraft:player") {
+        source.setDynamicProperty(RCT_DEFEATS, undefined); source.setDynamicProperty(RCT_SERIES, undefined);
+        source.sendMessage("§7Your gym challenge is reset: no trainers beaten, no level cap.");
     } else if (event.id === "cobblemon:speed_probe") {
         // testing: "/execute as <entity> run scriptevent cobblemon:speed_probe [value]" logs its mean and top speed in blocks a tick
         // over ten seconds, and what it moved in (water or not)
@@ -4844,6 +5178,15 @@ function registerModelBlockComponents(registry) {
         onPlayerInteract({ block }) {
             const open = !block.permutation.getState("cobblemon:open");
             block.setPermutation(block.permutation.withState("cobblemon:open", open));
+            if (block.typeId.startsWith("cobblefurnies:")) {
+                // a curtain draws both its halves
+                let part;
+                try { part = block.permutation.getState("minecraft:multi_block_part"); } catch (e) { }
+                const other = part === 0 ? block.above() : part === 1 ? block.below() : undefined;
+                if (other?.typeId === block.typeId) other.setPermutation(other.permutation.withState("cobblemon:open", open));
+                try { block.dimension.playSound("use.cloth", block.location); } catch (e) { }
+                return;
+            }
             const kind = block.typeId === "cobblemon:tm_machine" ? "tm_machine" : "campfire_pot";
             try { block.dimension.playSound(`cobblemon.block.${kind}.${open ? "open" : "close"}`, block.location); } catch (e) { }
         }
@@ -6266,6 +6609,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
     });
+    blockComponentRegistry.registerCustomComponent("cobblemon:league_anchor", { onRandomTick({ block }) { completeLeague(block); } });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
         onPlayerInteract({ block, player }) { if (player) useMachine(block, player); }
     });
@@ -6361,7 +6705,50 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
     system.runTimeout(() => {
         try { if (entity.isValid && prop(entity, LEVEL) === undefined && prop(entity, OWNER) === undefined) setProp(entity, LEVEL, wildLevel(entity)); } catch (e) { }
     }, 4);
+    // The spawner's cap (Spawner.kt, pokemonPerChunk 1.0): a natural spawn into the 3 by 3 chunks round it that already
+    // hold nine Pokemon is taken back. Checked a tick before the wild level is set, by when the scripts' own spawns
+    // (fishing, fossils, starters, the PC, the gyms) have given theirs a level or an owner
+    if (cause !== EntityInitializationCause.Spawned) return;
+    system.runTimeout(() => {
+        try {
+            if (!entity.isValid || prop(entity, LEVEL) !== undefined || prop(entity, OWNER) !== undefined || entity.getTags().length) return;
+            const cx = Math.floor(entity.location.x / 16) * 16, cz = Math.floor(entity.location.z / 16) * 16;
+            const near = entity.dimension.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } });
+            if (near.filter((e) => e.id !== entity.id).length >= POKEMON_PER_AREA) entity.remove();
+        } catch (e) { }
+    }, 3);
 });
+const POKEMON_PER_AREA = 9;   // pokemonPerChunk 1.0 over 3 by 3 chunks
+
+// Despawning (CobblemonAgingDespawner; despawnerNearDistance 32, despawnerFarDistance 96, despawnerMinAgeTicks 600,
+// despawnerMaxAgeTicks 3600): a wild Pokemon stays its first 30 seconds and while a player is within 32 blocks; past
+// 96 blocks, or once 3 minutes old, it goes; between, it goes once its age passes a share of the 2.5 minutes that
+// shrinks with the distance. Never one in battle, being caught or ridden. Its age counts from when this server first
+// saw it, as Cobblemon's ticksLived is not saved either.
+const DESPAWN_NEAR = 32, DESPAWN_FAR = 96, DESPAWN_MIN_AGE = 600, DESPAWN_MAX_AGE = 3600;
+const firstSeen = new Map();   // entity id -> the tick it was first seen
+system.runInterval(() => {
+    const now = system.currentTick, alive = new Set(), busy = new Set(capturing);
+    for (const b of battles.values()) for (const f of [b.ally, b.foe]) if (f?.entity) busy.add(f.entity.id);
+    for (const id of ["overworld", "nether", "the_end"]) {
+        const dim = world.getDimension(id), players = dim.getPlayers();
+        let list = [];
+        try { list = dim.getEntities({ families: ["pokemon"] }); } catch (e) { continue; }
+        for (const e of list) {
+            alive.add(e.id);
+            if (!firstSeen.has(e.id)) firstSeen.set(e.id, now);
+            const age = now - firstSeen.get(e.id);
+            if (age < DESPAWN_MIN_AGE || busy.has(e.id) || prop(e, OWNER) !== undefined || e.hasTag("trainer_pokemon")) continue;
+            try { if (e.getComponent("minecraft:rideable")?.getRiders().length) continue; } catch (err) { }
+            let d = Infinity;
+            for (const p of players) d = Math.min(d, Math.hypot(p.location.x - e.location.x, p.location.y - e.location.y, p.location.z - e.location.z));
+            if (d < DESPAWN_NEAR) continue;
+            const share = 1 - (d - DESPAWN_NEAR) / (DESPAWN_FAR - DESPAWN_NEAR);
+            if (d > DESPAWN_FAR || age > DESPAWN_MAX_AGE || age > share * (DESPAWN_MAX_AGE - DESPAWN_MIN_AGE)) { try { e.remove(); } catch (err) { } }
+        }
+    }
+    for (const id of firstSeen.keys()) if (!alive.has(id)) firstSeen.delete(id);
+}, 20);
 
 const SCALE = "cobblemon:scale", SIZE_MIN = 0.95, SIZE_MAX = 1.05, SIZE_CATEGORIES = ["XS", "S", "M", "L", "XL"];
 function scaleOf(e) {
