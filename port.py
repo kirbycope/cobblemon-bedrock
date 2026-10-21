@@ -669,8 +669,13 @@ def add_wild_behaviours():
                                                       {"weight": 1, "remove": {"component_groups": ["cobblemon:herd_follower"]}}]})
         # the battle freeze stops movement but not a melee swing, so a battle takes retaliation away, and its end gives
         # it back to a Pokemon still wild (despawn is the wild group's)
-        events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]}, **({"remove": {"component_groups": ["cobblemon:retaliates"]}} if retaliates else {})}
-        events["cobblemon:battle_end"] = {"sequence": [{"remove": {"component_groups": ["cobblemon:in_battle"]}}] + ([{
+        # in battle it follows nobody and looks at no player (the battling activity: look_at_targeted_battle_pokemon);
+        # the script turns both sides to face each other, and gives the following back to a Pokemon not told to stay
+        events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]},
+                                            "remove": {"component_groups": ["cobblemon:following"] + (["cobblemon:retaliates"] if retaliates else [])}}
+        looks = ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True)
+        events["cobblemon:battle_end"] = {"sequence": [{"remove": {"component_groups": ["cobblemon:in_battle"]}}]
+                                          + ([{"add": {"component_groups": ["cobblemon:looks_around"]}}] if looks else []) + ([{
             "filters": {"all_of": [{"test": "has_component", "subject": "self", "value": "minecraft:despawn"},
                                    {"test": "is_family", "subject": "self", "operator": "!=", "value": "owned"}]},
             "add": {"component_groups": ["cobblemon:retaliates"]}}] if retaliates else [])}
@@ -679,6 +684,7 @@ def add_wild_behaviours():
         if ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True):
             components["minecraft:behavior.look_at_player"] = {"priority": 6, "look_distance": 15, "probability": 1.0,
                                                                "look_time": {"min": 4, "max": 8} if word else [4, 8]}
+            groups["cobblemon:looks_around"] = {"minecraft:behavior.look_at_player": dict(components["minecraft:behavior.look_at_player"])}
             counts["looks around"] += 1
         else:
             components.pop("minecraft:behavior.look_at_player", None)
@@ -1712,7 +1718,8 @@ def create_animation_controllers():
 
 LAYER_NEAR = 0.15   # faces closer than this (pixels) along their normal are one stack
 LAYER_GAP = 0.15    # the gap a face is moved out to, in front of each face it overlaps
-LAYER_NUDGE = 0.3   # animation offsets at most this big along the axis are layering nudges
+LAYER_NUDGE = 0.7   # animation offsets at most this big along the axis are layering nudges (a blink's lid, 0.65)
+LAYER_TUCK = 0.3    # how far under a body face a hidden face detail is put
 
 
 def _rest_rotated(bones):
@@ -1759,7 +1766,8 @@ def separate_layers(geo):
             for a in range(3):
                 i, j = [k for k in range(3) if k != a]
                 rect = (o[i] - inf, o[i] + s[i] + inf, o[j] - inf, o[j] + s[j] + inf)
-                if rect[1] - rect[0] <= 0 or rect[3] - rect[2] <= 0: continue
+                # a plane's hairline sides (only its inflate wide) are not faces to spread: they slid eyes sideways
+                if rect[1] - rect[0] < 0.1 or rect[3] - rect[2] < 0.1: continue
                 faces.append((a, -1, round(o[a] - inf, 6), rect, b["name"], c, frame))
                 faces.append((a, 1, round(o[a] + s[a] + inf, 6), rect, b["name"], c, frame))
     overlap = lambda r, q: min(r[1], q[1]) > max(r[0], q[0]) and min(r[3], q[3]) > max(r[2], q[2])
@@ -1773,16 +1781,30 @@ def separate_layers(geo):
         a, sign, d, r = f[:4]
         if (d - middle[a]) * sign <= 0: return False
         i, j = [k for k in range(3) if k != a]
-        p = [0, 0, 0]; p[a] = d + sign * 0.02; p[i] = (r[0] + r[1]) / 2; p[j] = (r[2] + r[3]) / 2
-        if inside(p, solids, f[6]): return False
-        if f[5]["size"][a] == 0:
-            p[a] = d - sign * 0.3
-            return inside(p, volumes, f[6])
-        return True
-    # the faces each seen detail face sits on: same direction, overlapping, behind it by less than LAYER_NEAR
-    under = {n: ([m for m, g in enumerate(faces) if g[0] == f[0] and g[1] == f[1] and g[5] is not f[5] and g[6] == f[6]
-                  and 0 < (f[2] - g[2]) * f[1] < LAYER_NEAR and overlap(f[3], g[3])] if id(f[5]) in detail_cubes and exposed(f) else [])
-             for n, f in enumerate(faces)}
+        # seen if any of five points over it (the middle and four inset corners), a little out along its normal, is
+        # outside the body: a bump over the middle (Mr. Rime's torso under its belly face) does not hide the rest
+        seen = False
+        for u, v in ((0.5, 0.5), (0.2, 0.2), (0.2, 0.8), (0.8, 0.2), (0.8, 0.8)):
+            p = [0, 0, 0]; p[a] = d + sign * 0.02; p[i] = r[0] + (r[1] - r[0]) * u; p[j] = r[2] + (r[3] - r[2]) * v
+            if inside(p, solids, f[6]): continue
+            if f[5]["size"][a] == 0:
+                p[a] = d - sign * 0.3
+                if not inside(p, volumes, f[6]): continue
+            seen = True; break
+        return seen
+    area = lambda r: (r[1] - r[0]) * (r[3] - r[2])
+    shared = lambda r, q: max(0, min(r[1], q[1]) - max(r[0], q[0])) * max(0, min(r[3], q[3]) - max(r[2], q[2]))
+    twin = lambda c1, c2: c1["origin"] == c2["origin"] and [abs(x) for x in c1["size"]] == [abs(x) for x in c2["size"]]
+    # the faces each seen face sits on (same direction, overlapping, behind it by less than LAYER_NEAR) and moves out
+    # from: any face of a face detail, and elsewhere the smaller of two that share a pixel or more (Ursaring's belly plate
+    # on its body), never one of two identical boxes (Greninja's water orbs, its bubble and the bubble turned inside out)
+    seen_faces = {n: exposed(f) for n, f in enumerate(faces)}
+    def sits_on(f, g):
+        if g[0] != f[0] or g[1] != f[1] or g[5] is f[5] or g[6] != f[6]: return False
+        if not (0 < (f[2] - g[2]) * f[1] < LAYER_NEAR and overlap(f[3], g[3])): return False
+        if id(f[5]) in detail_cubes: return True
+        return not twin(f[5], g[5]) and area(f[3]) < area(g[3]) and shared(f[3], g[3]) >= 1
+    under = {n: ([m for m, g in enumerate(faces) if sits_on(f, g)] if seen_faces[n] else []) for n, f in enumerate(faces)}
     placed = {}
     def new_depth(n, seen=()):
         if n in placed: return placed[n]
@@ -1801,6 +1823,16 @@ def separate_layers(geo):
         # a cube moves by its largest shift along an axis (its front and back faces may ask for different ones)
         key = (id(f[5]), f[0])
         if key not in shifts or abs(shift) > abs(shifts[key][2]): shifts[key] = (f[5], f[0], shift)
+    # a face detail tucked just under a seen body face (a closed eyelid or a spare expression 0.07 inside the head, which
+    # the depth buffer lets through at a distance, so the Pokemon looks asleep) goes LAYER_TUCK under it
+    for n, f in enumerate(faces):
+        if id(f[5]) not in detail_cubes or (id(f[5]), f[0]) in shifts: continue
+        for m, g in enumerate(faces):
+            if id(g[5]) in detail_cubes or g[0] != f[0] or g[1] != f[1] or g[6] != f[6] or not seen_faces[m]: continue
+            gap = (g[2] - f[2]) * f[1]
+            if 0 <= gap < LAYER_NEAR and shared(f[3], g[3]) > 0:
+                shifts[(id(f[5]), f[0])] = (f[5], f[0], -f[1] * (LAYER_TUCK - gap))
+                break
     for cube, a, shift in shifts.values(): cube["origin"][a] = round(cube["origin"][a] + shift, 4)
     moved = {n: placed.get(n, faces[n][2]) + 0 for n in range(len(faces))}
     for n, f in enumerate(faces):
@@ -1848,8 +1880,14 @@ def stretch_animation(anim, nudges):
 
 
 def separate_model_layers():
+    """Once per copy of the models: --fix does not copy them afresh, and spreading twice would spread further. A full
+    run (without --fix) starts from Cobblemon's models again, so a change to this pass needs one."""
     spread, folders = 0, 0
+    done_path = f"{modelsBedrock}/layered.txt"   # not .json: fix_models reads every .json there as a model
+    done = set(json.load(open(done_path))) if os.path.exists(done_path) else set()
     for folder in sorted(os.listdir(modelsBedrock)):
+        if folder in done or not os.path.isdir(f"{modelsBedrock}/{folder}"): continue
+        done.add(folder)
         nudges = {}
         for path in glob.glob(f"{modelsBedrock}/{folder}/*.geo.json"):
             with open(path, encoding="utf-8") as file: data = json.load(file)
@@ -1868,6 +1906,7 @@ def separate_model_layers():
             with open(path, encoding="utf-8") as file: data = json.load(file)
             for anim in data.get("animations", {}).values(): stretch_animation(anim, nudges)
             with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+    with open(done_path, "w") as file: file.write(json.dumps(sorted(done)))
     print(f"Layered faces spread in {spread} models ({folders} species' animations stretched to match).")
 
 
@@ -1897,6 +1936,47 @@ def mark_primary_animations():
     print(f"Primary animations: {marked} of {len(primary)} marked to replace the pose.")
 
 
+def hide_scaled_out_parts():
+    """A part Cobblemon keeps at scale 0 in every pose outside battle (Greninja's shuriken, kunai, katana and water
+    planes, which its attacks bring out) is hidden by the render controller outside battle as well. Scale 0 from an
+    animation only holds while the animation is evaluated: at spawn, on a blend between poses, or when the client does
+    not animate the entity, the plane showed, floating by Greninja as a thin blue line."""
+    clip = re.compile(r"""bedrock\w*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]""")
+    def zero(v):
+        if isinstance(v, (int, float)): return v == 0
+        if isinstance(v, list): return all(zero(x) for x in v) if v else False
+        if isinstance(v, dict):
+            keys = [x for k, x in v.items() if k in ("pre", "post", "vector")] or list(v.values())
+            return all(zero(x) for x in keys) if keys else False
+        return False
+    hidden_total = 0
+    for path in glob.glob(f"{renderControllersBedrock}/*.render_controllers.json"):
+        stem = os.path.basename(path)[:-len(".render_controllers.json")]
+        poser = f"{posersMain}/{stem}/{stem.split('_', 1)[-1]}.json"
+        if not os.path.exists(poser): continue
+        with open(poser, encoding="utf-8") as file: poses = json.load(file).get("poses", {})
+        poses = poses.values() if isinstance(poses, dict) else poses
+        names = set()
+        for pose in poses:
+            if pose.get("isBattle") or any(t in ("PORTRAIT", "PROFILE") for t in pose.get("poseTypes", [])): continue
+            for call in pose.get("animations", []):
+                names.update(f"animation.{g}.{c}" for g, c in clip.findall(call if isinstance(call, str) else json.dumps(call)))
+        anims = {}
+        for apath in glob.glob(f"{animationsBedrock}/{stem}/*.animation.json"):
+            with open(apath, encoding="utf-8") as file: anims.update(json.load(file).get("animations", {}))
+        used = [anims[n] for n in names if n in anims]
+        if not used: continue
+        bones = set.intersection(*[{b for b, ch in a.get("bones", {}).items() if "scale" in ch and zero(ch["scale"])} for a in used])
+        if not bones: continue
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        for name, controller in data.get("render_controllers", {}).items():
+            if name.endswith("_held"): continue
+            controller["part_visibility"] = [{"*": True}] + [{b: "q.property('cobblemon:battle')"} for b in sorted(bones)]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=4))
+        hidden_total += 1
+    print(f"Scaled-out parts hidden outside battle in {hidden_total} species.")
+
+
 def add_quirk_controllers(controllers, pokemonName, names):
     """The quirk and blink controllers, which run beside the pose controller."""
     if True:
@@ -1912,7 +1992,7 @@ def add_quirk_controllers(controllers, pokemonName, names):
             controllers[f"controller.animation.{pokemonName}.quirk"] = {
                 "initial_state": "wait",
                 "states": {
-                    "wait": {"transitions": [{"play": "!q.is_sleeping && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"}]},
+                    "wait": {"transitions": [{"play": "!q.is_sleeping && !q.property('cobblemon:battle') && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"}]},
                     "play": {"animations": [{f"quirk_{i}": f"v.quirk == {i} && ({gate(q)})"} for i, q in enumerate(quirks)],
                              "on_entry": [f"v.quirk = math.floor(math.random(0, {len(quirks)}));"],
                              "transitions": [{"wait": "q.all_animations_finished || q.is_sleeping"}]}
@@ -2407,6 +2487,15 @@ def create_move_fx():
                 m = PRIMARY_CALL.search(call) or re.search(r"""bedrock\w*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]""", call)
                 if m and f"animation.{m.group(1)}.{m.group(2)}" in ids and move not in clips:
                     clips[move] = f"animation.{m.group(1)}.{m.group(2)}"
+        if os.path.exists(poser):
+            with open(poser, encoding="utf-8") as file: poses = json.load(file).get("poses", {})
+            for pose in (poses.values() if isinstance(poses, dict) else poses):
+                if not pose.get("isBattle"): continue
+                air = any(t in ("HOVER", "FLY", "FLOAT") for t in pose.get("poseTypes", [])) and "STAND" not in pose.get("poseTypes", [])
+                for name, call in (pose.get("namedAnimations") or {}).items():
+                    m = PRIMARY_CALL.search(call) or re.search(r"""bedrock\w*\(\s*['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]""", call)
+                    clip = m and f"animation.{m.group(1)}.{m.group(2)}"
+                    if clip and clip in ids: clips[("air:" if air else "") + name] = clip
         if clips and desc.get("identifier", "").startswith("cobblemon:p"): anims[desc["identifier"]] = clips
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
@@ -2961,6 +3050,14 @@ def animation_effects(pokemon, pokemonName):
 # sleep in the dark nap at night, species that sleep by day nap in daylight, "any" naps whenever.
 # ---------------------------------------------------------------------------
 
+def rest_data(species):
+    """RestBehaviour for the script's drowsiness (DrowsySensor): the time ranges it sleeps in and its chances a second
+    of growing drowsy and of rousing (RestBehaviour's defaults 1/30 and 1/240), or None if it never sleeps."""
+    resting = species.get("behaviour", {}).get("resting", {})
+    if not resting.get("canSleep", False): return None
+    return {"times": resting.get("times", ["night"]), "drowsy": resting.get("drowsyChance", 1 / 30), "rouse": resting.get("rouseChance", 1 / 240)}
+
+
 def sleep_time(species):
     """'night', 'day', 'any' or None for a species, from behaviour.resting."""
     resting = species.get("behaviour", {}).get("resting", {})
@@ -2994,19 +3091,17 @@ def nap_component():
 
 
 def add_sleep(entity, species, kind):
+    """The nap, as a group scripts/main.js adds when the Pokemon grows drowsy (Cobblemon's DrowsySensor, rolled each
+    second) and removes when it rouses, its sleeping hours end, or it is hurt."""
     when = sleep_time(species)
     if when is None or kind == "fish": return
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
     events = entity["minecraft:entity"].setdefault("events", {})
-    groups["cobblemon:sleepy"] = {"minecraft:behavior.nap": nap_component()}
-    if when == "any":
-        entity["minecraft:entity"]["components"]["minecraft:behavior.nap"] = nap_component()
-        return
-    daytime = when == "day"
-    entity["minecraft:entity"]["components"]["minecraft:environment_sensor"] = {"triggers": [
-        {"filters": {"test": "is_daytime", "value": daytime}, "event": "cobblemon:bedtime"},
-        {"filters": {"test": "is_daytime", "value": not daytime}, "event": "cobblemon:wake_up"}
-    ]}
+    nap = nap_component()
+    nap.update({"cooldown_min": 0.0, "cooldown_max": 0.5})
+    groups["cobblemon:sleepy"] = {"minecraft:behavior.nap": nap}
+    entity["minecraft:entity"]["components"].pop("minecraft:behavior.nap", None)
+    entity["minecraft:entity"]["components"].pop("minecraft:environment_sensor", None)
     events["cobblemon:bedtime"] = {"add": {"component_groups": ["cobblemon:sleepy"]}}
     events["cobblemon:wake_up"] = {"remove": {"component_groups": ["cobblemon:sleepy"]}}
 
@@ -3998,8 +4093,11 @@ def create_battle_data():
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []), "legendary": "legendary" in species.get("labels", []), "mythical": "mythical" in species.get("labels", []),
             "ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in species.get("abilities", []) if a.startswith("h:")], "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
             "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
+            "rest": rest_data(species),
             "evYield": {STAT_KEYS[k]: v for k, v in species.get("evYield", {}).items() if v and k in STAT_KEYS},
             "friendship": species.get("baseFriendship", 50), "height": species.get("height", 0),
+            # its hitbox width at its base scale, which spaces a battle's send-outs (ActiveBattlePokemon.getSendOutPosition)
+            "width": round((species.get("hitbox") or {}).get("width", 1) * species.get("baseScale", 1), 3),
             "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
             "variants": variant_battle_overrides(pokemon, species),
             # the cry the send-out and the Pokedex play, when the pack has one
@@ -4051,7 +4149,8 @@ def add_battle_states(entity):
     """Frozen in place while a turn-based battle runs; captured outright from the battle's ball throw."""
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
     events = entity["minecraft:entity"].setdefault("events", {})
-    groups["cobblemon:in_battle"] = {"minecraft:movement": {"value": 0.0}}
+    groups["cobblemon:in_battle"] = {"minecraft:movement": {"value": 0.0}, "minecraft:body_rotation_blocked": {},
+                                     "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 0.1, "probability": 0.0}}
     events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]}}
     events["cobblemon:battle_end"] = {"remove": {"component_groups": ["cobblemon:in_battle"]}}
     events["cobblemon:capture"] = {"remove": {"component_groups": ["cobblemon:wild", "cobblemon:in_battle"]}, "add": {"component_groups": ["cobblemon:captured"]}}
@@ -4493,6 +4592,26 @@ def tile_probe(template, tile, overrides):
     return list(best)
 
 
+def create_trainer_card():
+    """RCT's Trainer Card (TrainerCard.java): one to a stack, made from paper round a name tag, a glass pane and redstone
+    (data/rctmod/recipe/trainer_card.json), on RCT's icon (rct_trainers/trainer_card.png, MCOML)."""
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    os.makedirs(f"{texturesItemsBedrock}/rct", exist_ok=True)
+    shutil.copyfile(f"{pwd}/rct_trainers/trainer_card.png", f"{texturesItemsBedrock}/rct/trainer_card.png")
+    itemTextureData["texture_data"]["rct_trainer_card"] = {"textures": ["textures/items/rct/trainer_card"]}
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    item = {"format_version": "1.21.90", "minecraft:item": {
+        "description": {"identifier": "rctmod:trainer_card", "menu_category": {"category": "items"}},
+        "components": {"minecraft:icon": "rct_trainer_card", "minecraft:display_name": {"value": "Trainer Card"}, "minecraft:max_stack_size": 1}}}
+    with open(f"{itemsBedrock}/trainer_card.json", "w") as file: file.write(json.dumps(item, indent=2))
+    recipe = {"format_version": "1.20.10", "minecraft:recipe_shaped": {
+        "description": {"identifier": "rctmod:trainer_card"}, "tags": ["crafting_table"], "pattern": ["PPP", "NGR", "PPP"],
+        "key": {"P": {"item": "minecraft:paper"}, "N": {"item": "minecraft:name_tag"}, "G": {"item": "minecraft:glass_pane"}, "R": {"item": "minecraft:redstone"}},
+        "result": {"item": "rctmod:trainer_card"}, "unlock": [{"item": "minecraft:name_tag"}]}}
+    with open(f"{behaviorPack}/recipes/trainer_card.json", "w") as file: file.write(json.dumps(recipe, indent=2))
+
+
 def write_terrain_textures():
     with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file:
         file.write(json.dumps({"resource_pack_name": "cobblemon", "texture_name": "atlas.terrain", "padding": 8, "num_mip_levels": 4,
@@ -4585,6 +4704,7 @@ def create_gyms():
         file.write("export const GYM_LEAGUE = " + json.dumps(league) + ";\n")
     create_trainer_entity(trainers)
     create_badges()
+    create_trainer_card()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         file.write("tile.cobblemon:gym_marker.name=Gym Marker\ntile.cobblemon:league_anchor.name=League Anchor\nentity.cobblemon:rct_trainer.name=Trainer\n")
     shutil.copyfile(f"{pwd}/radical_gyms/LICENSE", f"{behaviorPack}/RADICAL_GYMS_LICENSE.txt")
@@ -10349,6 +10469,7 @@ def main():
     rename_clashing_body_bones()   # after every animation that names bones is written
     mark_primary_animations()
     separate_model_layers()   # after the bone renames, on the files as written
+    hide_scaled_out_parts()
     add_owned_protection()
     add_pasture_conflict()
     add_wild_behaviours()

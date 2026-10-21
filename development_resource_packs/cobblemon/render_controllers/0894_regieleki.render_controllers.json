@@ -30,6 +30,17 @@
             "geometry": "Array.geo[query.variant]",
             "textures": [
                 "Array.skin[query.variant]"
+            ],
+            "part_visibility": [
+                {
+                    "*": true
+                },
+                {
+                    "tendrils_left": "q.property('cobblemon:battle')"
+                },
+                {
+                    "tendrils_right": "q.property('cobblemon:battle')"
+                }
             ]
         },
         "controller.render.regieleki_emissive": {
@@ -61,7 +72,18 @@
                 "b": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
                 "a": "math.max(q.property('cobblemon:red'), v.evo_glow ?? 0)"
             },
-            "geometry": "Array.geo[query.variant]"
+            "geometry": "Array.geo[query.variant]",
+            "part_visibility": [
+                {
+                    "*": true
+                },
+                {
+                    "tendrils_left": "q.property('cobblemon:battle')"
+                },
+                {
+                    "tendrils_right": "q.property('cobblemon:battle')"
+                }
+            ]
         }
     }
 }
