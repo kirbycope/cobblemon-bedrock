@@ -276,6 +276,12 @@
             "cobblemon:in_battle": {
                 "minecraft:movement": {
                     "value": 0.0
+                },
+                "minecraft:body_rotation_blocked": {},
+                "minecraft:behavior.look_at_player": {
+                    "priority": 6,
+                    "look_distance": 0.1,
+                    "probability": 0.0
                 }
             },
             "cobblemon:variant_0": {
@@ -365,6 +371,17 @@
                             }
                         ]
                     }
+                }
+            },
+            "cobblemon:looks_around": {
+                "minecraft:behavior.look_at_player": {
+                    "priority": 6,
+                    "look_distance": 15,
+                    "probability": 1.0,
+                    "look_time": [
+                        4,
+                        8
+                    ]
                 }
             }
         },
@@ -674,6 +691,7 @@
                 },
                 "remove": {
                     "component_groups": [
+                        "cobblemon:following",
                         "cobblemon:retaliates"
                     ]
                 }
@@ -684,6 +702,13 @@
                         "remove": {
                             "component_groups": [
                                 "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:looks_around"
                             ]
                         }
                     },

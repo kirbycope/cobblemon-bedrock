@@ -92,8 +92,8 @@
             "cobblemon:sleepy": {
                 "minecraft:behavior.nap": {
                     "priority": 8,
-                    "cooldown_min": 20.0,
-                    "cooldown_max": 120.0,
+                    "cooldown_min": 0.0,
+                    "cooldown_max": 0.5,
                     "mob_detect_dist": 6.0,
                     "mob_detect_height": 4.0,
                     "can_nap_filters": {
@@ -298,6 +298,12 @@
             "cobblemon:in_battle": {
                 "minecraft:movement": {
                     "value": 0.0
+                },
+                "minecraft:body_rotation_blocked": {},
+                "minecraft:behavior.look_at_player": {
+                    "priority": 6,
+                    "look_distance": 0.1,
+                    "probability": 0.0
                 }
             },
             "cobblemon:variant_0": {
@@ -538,6 +544,17 @@
                         ]
                     }
                 }
+            },
+            "cobblemon:looks_around": {
+                "minecraft:behavior.look_at_player": {
+                    "priority": 6,
+                    "look_distance": 15,
+                    "probability": 1.0,
+                    "look_time": [
+                        4,
+                        8
+                    ]
+                }
             }
         },
         "components": {
@@ -620,24 +637,6 @@
                         },
                         "cause": "lava",
                         "damage_per_tick": 4
-                    }
-                ]
-            },
-            "minecraft:environment_sensor": {
-                "triggers": [
-                    {
-                        "filters": {
-                            "test": "is_daytime",
-                            "value": false
-                        },
-                        "event": "cobblemon:bedtime"
-                    },
-                    {
-                        "filters": {
-                            "test": "is_daytime",
-                            "value": true
-                        },
-                        "event": "cobblemon:wake_up"
                     }
                 ]
             },
@@ -862,6 +861,7 @@
                 },
                 "remove": {
                     "component_groups": [
+                        "cobblemon:following",
                         "cobblemon:retaliates"
                     ]
                 }
@@ -872,6 +872,13 @@
                         "remove": {
                             "component_groups": [
                                 "cobblemon:in_battle"
+                            ]
+                        }
+                    },
+                    {
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:looks_around"
                             ]
                         }
                     },

@@ -227,8 +227,10 @@ function fxEvent(e, user, target, move, outcome) {
     if (!entity?.isValid || f.clone && !entity.isValid) return;
     try {
         if (e.k === "a") {
-            const clips = FX_ANIMS[entity.typeId] ?? {}, name = e.a.map((a) => fxFill(a, move)).find((a) => clips[a]);
-            if (name) entity.playAnimation(clips[name], { blendOutTime: 0.2 });
+            const clips = FX_ANIMS[entity.typeId] ?? {}, air = !entity.isOnGround && !entity.isInWater;
+            const pick = (a) => (air && clips[`air:${a}`]) || clips[a];
+            const name = e.a.map((a) => fxFill(a, move)).find((a) => pick(a));
+            if (name) entity.playAnimation(pick(name), { blendOutTime: 0.2 });
         } else if (e.k === "s") {
             entity.dimension.playSound(fxFill(e.s, move), entity.location);
         } else if (e.k === "p") {
@@ -613,7 +615,16 @@ function freeze(entity, on) {
         entity.setProperty("cobblemon:battle", on);   // the client's battle poses
         if (on) entity.addEffect("slowness", 20 * 600, { amplifier: 255, showParticles: false });
         else entity.removeEffect("slowness");
+        // battle_start stopped it following its trainer; one not told to stay follows again
+        if (!on && prop(entity, OWNER) !== undefined && !prop(entity, "cobblemon:staying")) entity.triggerEvent("cobblemon:follow");
     } catch (e) { }
+}
+// the two Pokemon in battle turn to each other (LookAtTargetedBattlePokemonTask), not to the players watching
+function faceEachOther(battle) {
+    const a = battle?.ally?.entity, b = battle?.foe?.entity;
+    if (!a?.isValid || !b?.isValid) return;
+    try { a.teleport(a.location, { facingLocation: b.location }); } catch (e) { }
+    try { b.teleport(b.location, { facingLocation: a.location }); } catch (e) { }
 }
 
 function gainFriendship(entity, amount, cap = 255) {
@@ -1886,8 +1897,12 @@ function startBattle(player, foeEntity, trainer) {
     freeze(foeEntity, true);
     say(battle, trainer ? `§6${typeof trainer === "string" ? trainer : "Trainer"} sent out ${foe.info.name}! §7(Lv ${foe.level})` : `§6A wild ${foe.info.name} appeared! §7(Lv ${foe.level})`);
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
+    // the player's Pokemon is sent out between the player and the foe, spaced by both sizes (a trainer's foe is placed
+    // the same way from its trainer when spawned)
+    battle.spot = battleSpot(player.location, foeEntity.location, widthOf(lead), widthOf(foeEntity), trainer ? 0.3 : 0.4);
     if (!sendOut(battle, lead, { x: battle.spot.x, y: lead.isProxy ? foeEntity.location.y : lead.location.y, z: battle.spot.z })) { endBattle(battle); return; }
     enter(battle, foe, battle.ally);
+    system.runTimeout(() => faceEachOther(battle), 2);
     system.runTimeout(() => turn(battle), 20);
 }
 
@@ -1933,7 +1948,8 @@ function switchTo(battle, entity) {
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
-    const spot = { x: battle.spot.x, y: old.isValid ? old.location.y : entity.location.y, z: battle.spot.z };
+    const at = battleSpot(battle.player.location, battle.foe.entity.location, widthOf(entity), widthOf(battle.foe.entity), battle.trainer ? 0.3 : 0.4);
+    const spot = { x: at.x, y: old.isValid ? old.location.y : entity.location.y, z: at.z };
     if (old.isValid) {
         freeze(old, false);
         if (leaving.hp > 0) sayEach(battle, `§7${battle.ally.info.name}, come back!`, `§7${battle.player.name} withdrew ${battle.ally.info.name}!`);
@@ -1989,6 +2005,7 @@ function turn(battle) {
     if (!battles.has(battle.player.id)) return;
     const { ally, foe } = battle;
     if (!ally.entity.isValid || !foe.entity.isValid) { endBattle(battle, "§7The battle ended."); return; }
+    faceEachOther(battle);
     battle.turn++;
     const usable = ally.moves.filter((m) => m.left > 0);
     const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
@@ -2420,9 +2437,9 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 
 // a trainer's Pokemon as RCT's team gives it: level, moves, IVs, EVs, nature, ability, held item, gender and form
 function spawnGymPokemon(npc, spec, player) {
-    const dx = player.location.x - npc.location.x, dz = player.location.z - npc.location.z, len = Math.hypot(dx, dz) || 1;
+    const at = battleSpot(npc.location, player.location, POKEMON[spec.t]?.width ?? 1, widthOf(selectedMember(player)), 0.3);
     let e;
-    try { e = npc.dimension.spawnEntity(spec.t, { x: npc.location.x + (dx / len) * 1.5, y: npc.location.y, z: npc.location.z + (dz / len) * 1.5 }); } catch (err) { return undefined; }
+    try { e = npc.dimension.spawnEntity(spec.t, { x: at.x, y: npc.location.y, z: at.z }); } catch (err) { return undefined; }
     e.addTag("trainer_pokemon");
     const info = POKEMON[spec.t], looks = VARIANT_LOOKS[spec.t];
     const variant = looks ? Math.max(0, looks.findIndex(([form, female, shiny]) => form === spec.form && !!female === (spec.female && looks.some((l) => l[1])) && !!shiny === spec.shiny)) : 0;
@@ -2591,6 +2608,76 @@ function completeLeague(block) {
     }, 60);
 }
 
+// RCT's Trainer Card (TrainerCard.java, TrainerCardScreen, TargetArrowRenderer). Used, it opens the card: the player's
+// level cap, how many gym trainers they have beaten, and those trainers in order of their teams' level, a beaten one by
+// name, the next one to beat hidden as RCT hides its key trainer, the rest as "???"; picking a beaten or next one shows
+// its type, the level cap it needs and gives, and who must be beaten first. Held, it points at the next trainer the
+// player can battle, if one is loaded (RCT draws a small arrow over the card in the hand; here an arrow over the hotbar),
+// spinning when that trainer is in another dimension. Nothing locates a trainer whose building has not been loaded.
+const CARD = "rctmod:trainer_card";
+const ARROWS = ["\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196"];
+const rctOrder = () => [...RCT_TRAINER_IDS].sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name));
+const rctType = (id) => id.startsWith("leader_") ? "Gym Leader" : id.startsWith("elite_four_") ? "Elite Four" : "Champion";
+function cardTarget(player) {
+    let best, bestD = Infinity;
+    for (const id of ["overworld", "nether", "the_end"]) {
+        let list = [];
+        try { list = world.getDimension(id).getEntities({ type: "cobblemon:rct_trainer" }); } catch (e) { continue; }
+        for (const npc of list) {
+            const tid = gymTrainerOf(npc);
+            if (!tid || rctDone(player, tid) || !rctUnlocked(player, tid)) continue;
+            const same = npc.dimension.id === player.dimension.id;
+            const d = same ? Math.hypot(npc.location.x - player.location.x, npc.location.z - player.location.z) : Infinity;
+            if (!best || d < bestD) { best = npc; bestD = d; }
+        }
+    }
+    return best;
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let held;
+        try { held = player.getComponent(EntityComponentTypes.Equippable)?.getEquipment(EquipmentSlot.Mainhand)?.typeId; } catch (e) { }
+        if (held !== CARD) continue;
+        const npc = cardTarget(player);
+        if (!npc) continue;
+        let arrow;
+        if (npc.dimension.id !== player.dimension.id) arrow = ARROWS[Math.floor(system.currentTick / 5) % 8];
+        else {
+            const yaw = player.getRotation().y, dx = npc.location.x - player.location.x, dz = npc.location.z - player.location.z;
+            const bearing = (Math.atan2(-dx, dz) * 180) / Math.PI;   // Minecraft yaw: 0 is south, 90 west
+            arrow = ARROWS[(Math.round((((bearing - yaw) % 360) + 360) % 360 / 45)) % 8];
+        }
+        try { player.onScreenDisplay.setActionBar(`\u00a7c${arrow}`); } catch (e) { }
+    }
+}, 5);
+function showTrainerCard(player) {
+    const ids = rctOrder(), defeats = rctDefeats(player), next = new Set(ids.filter((id) => !rctDone(player, id) && rctUnlocked(player, id)));
+    const total = ids.reduce((n, id) => n + (defeats[id] ?? 0), 0);
+    const form = new ActionFormData().title("Trainer Card")
+        .body(`\u00a7f${player.name}\n\u00a77Level Cap: \u00a7f${rctLevelCap(player)}\n\u00a77Total: \u00a7f${total}`);
+    const rows = ids.map((id) => {
+        const n = defeats[id] ?? 0, key = next.has(id);
+        const name = n > 0 ? RCT_TRAINERS[id].name : key ? "\u00a7k" + "x".repeat(RCT_TRAINERS[id].name.length) + "\u00a7r" : "???";
+        form.button(`${key ? "\u00a72" : n > 0 ? "\u00a70" : "\u00a78"}${name}  ${n > 0 ? n : ""}`);
+        return id;
+    });
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        const id = rows[r.selection];
+        if (!(defeats[id] > 0) && !next.has(id)) { showTrainerCard(player); return; }
+        const t = RCT_TRAINERS[id], missing = t.requires.filter((g) => !g.some((x) => rctDone(player, x))).map((g) => g.map((x) => RCT_TRAINERS[x]?.name ?? x).join(" or "));
+        const later = ids.filter((x) => RCT_TRAINERS[x].requires.some((g) => g.includes(id))).map((x) => RCT_TRAINERS[x].level);
+        new ActionFormData().title("Trainer Card")
+            .body(`\u00a7f${defeats[id] > 0 ? t.name : "???"}\n\u00a77Type: \u00a7f${rctType(id)}\n\u00a77Level Cap: \u00a7f${Math.max(RCT_INITIAL_CAP, t.level)} -> ${later.length ? Math.max(RCT_INITIAL_CAP, Math.min(...later)) : 100}`
+                + (missing.length ? `\n\u00a77Required Trainers:\n\u00a7f${missing.join("\n")}` : "")
+                + (defeats[id] > 0 ? `\n\u00a77Team:\n\u00a7f${t.team.map((m) => `${POKEMON[m.t]?.name ?? m.t} Lv. ${m.lv}`).join("\n")}` : ""))
+            .button("Back").show(player).then((b) => { if (!b.canceled) showTrainerCard(player); }).catch(() => { });
+    }).catch(() => { });
+}
+world.afterEvents.itemUse.subscribe(({ itemStack, source }) => {
+    if (itemStack?.typeId === CARD && source?.typeId === "minecraft:player") showTrainerCard(source);
+});
+
 // the markers' jobs (port.py's GYM_ROLES), when the plate or button above one is used
 function gymMarker(block) {
     if (block?.typeId !== "cobblemon:gym_marker") return undefined;
@@ -2707,9 +2794,20 @@ function pvpReady(view) {
 function pvpLead(player, level) {
     return (level > 0 ? summaryParty(player) : summaryParty(player).filter((e) => !prop(e, FAINTED)))[0];
 }
-function pvpSpot(from, to, share) {
-    return { x: from.x + (to.x - from.x) * share, y: from.y, z: from.z + (to.z - from.z) * share };
+function pvpSpot(from, to, share, wMe = 1, wOpp = 1) { return battleSpot(from, to, wMe, wOpp, share); }
+// Where a Pokemon is sent out in a single battle (ActiveBattlePokemon.getSendOutPosition): its trainer and the other side
+// are kept at least 4 blocks plus the front halves of both Pokemon's hitboxes apart (the trainer's point moving back if they
+// stand closer), the Pokemon goes 40 percent of the way across in a wild battle and 30 otherwise, and steps aside by
+// 0.3 plus its own width, so two big Pokemon do not stand inside each other
+function battleSpot(actor, opposing, wMe, wOpp, share) {
+    let ox = opposing.x - actor.x, oz = opposing.z - actor.z;
+    let len = Math.hypot(ox, oz) || 1, x = actor.x, z = actor.z;
+    const min = 4 + (wMe + wOpp) / 2;
+    if (len < min) { x -= ox * (min / len - 1); z -= oz * (min / len - 1); ox *= min / len; oz *= min / len; len = min; }
+    const side = -0.3 - wMe;
+    return { x: x + ox * share + (-oz / len) * side, y: actor.y, z: z + oz * share + (ox / len) * side };
 }
+const widthOf = (e) => POKEMON[e?.typeId]?.width ?? 1;
 function startPvp(p1, p2, level) {
     if (battles.has(p1.id) || battles.has(p2.id)) return;
     const a = pvpLead(p1, level), b = pvpLead(p2, level);
@@ -2719,7 +2817,7 @@ function startPvp(p1, p2, level) {
     }
     const battle = { pvp: true, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
                      kept: {}, down: new Set(), choices: [], choiceLock: null,
-                     spot: pvpSpot(p1.location, p2.location, 0.3), foeSpot: pvpSpot(p2.location, p1.location, 0.3) };
+                     spot: pvpSpot(p1.location, p2.location, 0.3, widthOf(a), widthOf(b)), foeSpot: pvpSpot(p2.location, p1.location, 0.3, widthOf(b), widthOf(a)) };
     const m = mirrorOf(battle);
     battles.set(p1.id, battle); battles.set(p2.id, m);
     battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
@@ -2743,6 +2841,7 @@ function startPvp(p1, p2, level) {
 function pvpLive(battle) { return battles.get(battle.player.id) === battle && battles.get(battle.opponent.id) === battle.mirror; }
 function pvpTurn(battle) {
     if (!pvpLive(battle)) return;
+    faceEachOther(battle);
     for (const v of [battle, battle.mirror]) {
         if (!v.player.isValid || !v.ally.entity.isValid) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
     }
@@ -6719,6 +6818,39 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
     }, 3);
 });
 const POKEMON_PER_AREA = 9;   // pokemonPerChunk 1.0 over 3 by 3 chunks
+
+// Sleep (DrowsySensor, RestBehaviour): once a second a Pokemon that can sleep, in one of its sleeping hours, not hurt
+// lately and not in battle, grows drowsy at its drowsyChance and then naps; it rouses at its rouseChance, when its hours
+// end, or when hurt. Nobody walking by wakes it. Greninja, drowsy at 0.0014 a second, naps about once in twelve minutes.
+const drowsy = new Set(), hurtAt = new Map();   // entity ids; entity id -> the tick it was last hurt
+const HURT_MEMORY = 20 * 10;
+system.runInterval(() => {
+    const now = system.currentTick;
+    for (const id of ["overworld", "nether", "the_end"]) {
+        let list = [];
+        try { list = world.getDimension(id).getEntities({ families: ["pokemon"] }); } catch (e) { continue; }
+        for (const e of list) {
+            const rest = POKEMON[e.typeId]?.rest;
+            if (!rest) continue;
+            let battling = false;
+            try { battling = !!e.getProperty("cobblemon:battle"); } catch (err) { }
+            const hurt = now - (hurtAt.get(e.id) ?? -HURT_MEMORY) < HURT_MEMORY;
+            const should = !battling && !hurt && rest.times.some((t) => inTimeRange(t));
+            const was = drowsy.has(e.id);
+            let now_drowsy = was;
+            if (!was && should && Math.random() < rest.drowsy) now_drowsy = true;
+            else if (was && (!should || Math.random() < rest.rouse)) now_drowsy = false;
+            if (now_drowsy === was) continue;
+            if (now_drowsy) drowsy.add(e.id); else drowsy.delete(e.id);
+            try { e.triggerEvent(now_drowsy ? "cobblemon:bedtime" : "cobblemon:wake_up"); } catch (err) { }
+        }
+    }
+}, 20);
+world.afterEvents.entityHurt.subscribe(({ hurtEntity }) => {
+    if (!POKEMON[hurtEntity?.typeId]) return;
+    hurtAt.set(hurtEntity.id, system.currentTick);
+    if (drowsy.delete(hurtEntity.id)) try { hurtEntity.triggerEvent("cobblemon:wake_up"); } catch (e) { }
+});
 
 // Despawning (CobblemonAgingDespawner; despawnerNearDistance 32, despawnerFarDistance 96, despawnerMinAgeTicks 600,
 // despawnerMaxAgeTicks 3600): a wild Pokemon stays its first 30 seconds and while a player is within 32 blocks; past
