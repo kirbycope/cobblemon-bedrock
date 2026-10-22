@@ -646,6 +646,18 @@ system.runInterval(() => {
     }
 }, 20 * 120);
 
+// A flier that breathes under water (port.py's add_water_flight) swims while its head is under and nobody rides it,
+// and flies again out of the water; a rider's own events take both away, so a ridden one is left alone and checked
+// afresh once the rider is off
+const waterMode = new Map();
+function swimOrFly(e, under) {
+    if (!e.matches({ families: ["water_flier"] })) return;
+    if (e.getComponent("minecraft:rideable")?.getRiders().length) { waterMode.delete(e.id); return; }
+    if (waterMode.get(e.id) === under) return;
+    waterMode.set(e.id, under);
+    e.triggerEvent(under ? "cobblemon:enter_water" : "cobblemon:leave_water");
+}
+
 // Under water, as Cobblemon's poses mean it: the head in water. Molang on the client only knows whether a Pokemon
 // touches water, so the server looks at the block at each Pokemon's eyes, four times a second, near players; and
 // whether it holds an item, which the client cannot read from a dynamic property.
@@ -658,6 +670,7 @@ system.runInterval(() => {
                 const block = e.dimension.getBlock(e.getHeadLocation());
                 const under = !!block && (block.typeId === "minecraft:water" || block.typeId === "minecraft:flowing_water" || block.isWaterlogged);
                 if (e.getProperty("cobblemon:submerged") !== under) e.setProperty("cobblemon:submerged", under);
+                swimOrFly(e, under);
                 // the sand underfoot, within two blocks, as Cobblemon's is_standing_on_blocks(2, sand, red sand) reads it
                 let sand = 0;
                 for (let dy = 1; dy <= 2 && !sand; dy++) {

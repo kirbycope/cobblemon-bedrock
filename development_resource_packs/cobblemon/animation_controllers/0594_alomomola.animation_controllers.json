@@ -172,7 +172,7 @@
                 "open": {
                     "transitions": [
                         {
-                            "blink": "math.random(0, 200) < 1"
+                            "blink": "!q.is_sleeping && !(v.quirking ?? 0) && math.random(0, 200) < 1"
                         }
                     ]
                 },
@@ -182,7 +182,7 @@
                     ],
                     "transitions": [
                         {
-                            "open": "q.all_animations_finished"
+                            "open": "q.all_animations_finished || q.is_sleeping"
                         }
                     ]
                 }

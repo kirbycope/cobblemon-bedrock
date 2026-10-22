@@ -567,7 +567,11 @@
                         }
                     ],
                     "on_entry": [
-                        "v.quirk = math.floor(math.random(0, 2));"
+                        "v.quirk = math.floor(math.random(0, 2));",
+                        "v.quirking = 1;"
+                    ],
+                    "on_exit": [
+                        "v.quirking = 0;"
                     ],
                     "transitions": [
                         {
@@ -583,7 +587,7 @@
                 "open": {
                     "transitions": [
                         {
-                            "blink": "math.random(0, 200) < 1"
+                            "blink": "!q.is_sleeping && !(v.quirking ?? 0) && math.random(0, 200) < 1"
                         }
                     ]
                 },
@@ -593,7 +597,7 @@
                     ],
                     "transitions": [
                         {
-                            "open": "q.all_animations_finished"
+                            "open": "q.all_animations_finished || q.is_sleeping"
                         }
                     ]
                 }
