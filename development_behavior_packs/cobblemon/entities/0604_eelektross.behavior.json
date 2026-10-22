@@ -170,7 +170,8 @@
                         "pokemon",
                         "npc",
                         "electric",
-                        "owned"
+                        "owned",
+                        "water_flier"
                     ]
                 },
                 "minecraft:persistent": {},
@@ -218,6 +219,48 @@
             },
             "cobblemon:gone": {
                 "minecraft:instant_despawn": {}
+            },
+            "cobblemon:gravity": {
+                "minecraft:movement.fly": {},
+                "minecraft:navigation.fly": {
+                    "can_path_from_air": true,
+                    "can_path_over_water": true,
+                    "avoid_water": false,
+                    "avoid_damage_blocks": true
+                },
+                "minecraft:physics": {},
+                "minecraft:behavior.random_fly": {
+                    "priority": 8,
+                    "xz_dist": 15,
+                    "y_dist": 1,
+                    "y_offset": 0,
+                    "avoid_damage_blocks": true
+                }
+            },
+            "cobblemon:water_moves": {
+                "minecraft:underwater_movement": {
+                    "value": 0.2007
+                },
+                "minecraft:movement.amphibious": {
+                    "max_turn": 15
+                },
+                "minecraft:navigation.generic": {
+                    "is_amphibious": true,
+                    "can_swim": true,
+                    "can_walk": true,
+                    "can_sink": false,
+                    "can_breach": true,
+                    "can_path_over_water": false,
+                    "avoid_damage_blocks": true
+                },
+                "minecraft:physics": {},
+                "minecraft:behavior.random_swim": {
+                    "priority": 7,
+                    "interval": 20,
+                    "xz_dist": 10,
+                    "y_dist": 5,
+                    "speed_multiplier": 1
+                }
             },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
@@ -358,6 +401,7 @@
                     "pokemon",
                     "npc",
                     "electric",
+                    "water_flier",
                     "species_eelektross"
                 ]
             },
@@ -395,13 +439,6 @@
             "minecraft:movement": {
                 "value": 0.25
             },
-            "minecraft:movement.fly": {},
-            "minecraft:navigation.fly": {
-                "can_path_from_air": true,
-                "can_path_over_water": true,
-                "avoid_water": false,
-                "avoid_damage_blocks": true
-            },
             "minecraft:can_fly": {},
             "minecraft:jump.static": {},
             "minecraft:breathable": {
@@ -410,20 +447,9 @@
                 "breathes_air": true,
                 "breathes_water": true
             },
-            "minecraft:physics": {},
-            "minecraft:behavior.random_fly": {
-                "priority": 8,
-                "xz_dist": 15,
-                "y_dist": 1,
-                "y_offset": 0,
-                "avoid_damage_blocks": true
-            },
             "minecraft:behavior.random_stroll": {
                 "priority": 9,
                 "speed_multiplier": 1
-            },
-            "minecraft:behavior.float": {
-                "priority": 0
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
@@ -511,6 +537,7 @@
                         "add": {
                             "component_groups": [
                                 "cobblemon:wild",
+                                "cobblemon:gravity",
                                 "cobblemon:retaliates"
                             ]
                         }
@@ -561,6 +588,7 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:wild",
+                        "cobblemon:gravity",
                         "cobblemon:retaliates"
                     ]
                 }
@@ -569,6 +597,7 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:wild",
+                        "cobblemon:gravity",
                         "cobblemon:retaliates"
                     ]
                 }
@@ -583,7 +612,8 @@
                 },
                 "add": {
                     "component_groups": [
-                        "cobblemon:released"
+                        "cobblemon:released",
+                        "cobblemon:gravity"
                     ]
                 }
             },
@@ -599,7 +629,8 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:owned",
-                        "cobblemon:following"
+                        "cobblemon:following",
+                        "cobblemon:gravity"
                     ]
                 }
             },
@@ -621,6 +652,30 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:gone"
+                    ]
+                }
+            },
+            "cobblemon:enter_water": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:gravity"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:water_moves"
+                    ]
+                }
+            },
+            "cobblemon:leave_water": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:water_moves"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gravity"
                     ]
                 }
             },

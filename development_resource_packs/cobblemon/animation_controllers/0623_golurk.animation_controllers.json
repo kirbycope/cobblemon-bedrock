@@ -305,7 +305,11 @@
                         }
                     ],
                     "on_entry": [
-                        "v.quirk = math.floor(math.random(0, 2));"
+                        "v.quirk = math.floor(math.random(0, 2));",
+                        "v.quirking = 1;"
+                    ],
+                    "on_exit": [
+                        "v.quirking = 0;"
                     ],
                     "transitions": [
                         {

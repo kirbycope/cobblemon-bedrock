@@ -28,6 +28,7 @@ import sys
 import textwrap
 import urllib.request
 
+import numpy
 from PIL import Image, ImageDraw
 
 import poses
@@ -1145,7 +1146,8 @@ def _resolver_layer(layer, index):
     if not paths: return None
     label = re.sub(r"[^a-z0-9]+", "_", str(layer.get("name") or f"layer{index}").lower()).strip("_") or f"layer{index}"
     fps = texture.get("fps", LAYER_FPS) if isinstance(texture, dict) else LAYER_FPS
-    return {"name": label, "frames": paths, "fps": fps, "plain": not layer.get("emissive") and not layer.get("translucent")}
+    return {"name": label, "frames": paths, "fps": fps, "plain": not layer.get("emissive") and not layer.get("translucent"),
+            "emissive": bool(layer.get("emissive"))}
 
 
 def _baked_texture(base, layers):
@@ -1161,6 +1163,26 @@ def _baked_texture(base, layers):
         if top.size != image.size: top = top.resize(image.size, Image.NEAREST)
         image.alpha_composite(top)
     image.save(f"{resourcePack}/{name}.png")
+    return name
+
+
+def _glow_texture(base, frame):
+    """An emissive layer frame for entity_emissive_alpha_one_sided, which alpha-tests rather than blends: Cobblemon draws
+    such a layer translucent, and entity_alphablend writes depth even for its clear texels, so the whole model's outline
+    hid the water behind it wherever the base is cut out (Charizard's wings and tail fire). Texels under Java's 0.1 alpha
+    cut are clear (all zero, which that material discards); the rest are the layer over this variant's base by the
+    layer's alpha, glowing by it (that material's alpha 0 is full glow, 255 lit as usual)."""
+    name = f"{frame}__glow__{os.path.basename(base)}"
+    under = numpy.asarray(Image.open(f"{resourcePack}/{base}.png").convert("RGBA"), dtype=numpy.float32)
+    top = Image.open(f"{resourcePack}/{frame}.png").convert("RGBA")
+    if top.size != (under.shape[1], under.shape[0]): top = top.resize((under.shape[1], under.shape[0]), Image.NEAREST)
+    top = numpy.asarray(top, dtype=numpy.float32)
+    t = top[..., 3:4] / 255
+    rgb = numpy.where(under[..., 3:4] >= 128, under[..., :3] * (1 - t) + top[..., :3] * t, top[..., :3])
+    rgb = numpy.where(rgb.sum(axis=2, keepdims=True) < 1, 1, rgb)
+    out = numpy.concatenate([rgb, 255 - top[..., 3:4]], axis=2)
+    out = numpy.where(top[..., 3:4] < 26, 0, out)
+    Image.fromarray(numpy.round(out).astype(numpy.uint8), "RGBA").save(f"{resourcePack}/{name}.png")
     return name
 
 
@@ -1205,6 +1227,8 @@ def resolver_variations(pokemon):
                 texture = texture or base_texture
                 plain = [layer for layer in layers.values() if layer["plain"] and len(layer["frames"]) == 1]
                 if plain: texture = _baked_texture(texture, plain)
+                for layer in layers.values():
+                    if layer["emissive"] and layer not in plain: layer["frames"] = [_glow_texture(texture, f) for f in layer["frames"]]
                 result.append({"aspects": want, "form": form, "female": female, "shiny": shiny,
                                "model": model or base_model, "texture": texture, "layers": [l for l in layers.values() if l not in plain]})
     if not result:
@@ -1316,7 +1340,8 @@ def create_render_controllers():
                 else: flat += [f"Texture.{name}_{n}_{i % len(layer['frames'])}" for i in range(stride)]
             frame = f" + math.mod(math.floor(q.life_time * {max(fps)}), {stride})" if stride > 1 else ""
             index = (f"query.variant * {stride}" if len(variations) > 1 else "0") + frame
-            controller = {"materials": [{"*": "Material.translucent"}], "arrays": {"textures": {f"Array.{name}": flat}}, "textures": [f"Array.{name}[{index}]"], "overlay_color": RED_OVERLAY}
+            material = "Material.emissive" if all(l["emissive"] for l in layers if l) else "Material.translucent"
+            controller = {"materials": [{"*": material}], "arrays": {"textures": {f"Array.{name}": flat}}, "textures": [f"Array.{name}[{index}]"], "overlay_color": RED_OVERLAY}
             if len(variations) == 1: controller["geometry"] = geometry_array[0]
             else: controller.update({"geometry": "Array.geo[query.variant]"}); controller["arrays"]["geometries"] = {"Array.geo": geometry_array}
             controllers[f"controller.render.{pokemonName}_{name}"] = controller
@@ -1712,8 +1737,8 @@ def create_animation_controllers():
 # apart (Blastoise's eye 0.01 in front of its eyelid's face, its shine 0.01 in front of that). Java draws them fine;
 # on Bedrock the depth buffer cannot tell such faces apart a few blocks away, so they flicker through each other and
 # the eyes look broken. Each stack of near-flush faces facing one way is spread to LAYER_GAP between neighbours, in the
-# same order, and the small nudges an animation gives those bones along that axis (the blink moving an eyelid 0.1 in
-# front of the eye) are stretched the same way, so a lid still closes over the eye it now sits further behind.
+# same order, and the small nudges an animation gives the face details (the blink moving an eyelid 0.1 in front of the
+# eye) are moved to match, so a lid still closes over the eye it now sits further behind and behind the glasses.
 # ---------------------------------------------------------------------------
 
 LAYER_NEAR = 0.15   # faces closer than this (pixels) along their normal are one stack
@@ -1741,70 +1766,139 @@ def _rest_rotated(bones):
 DETAIL_BONES = re.compile(r"eye|pupil|iris|lid|shine|brow|blush|mouth|emote|tear|teeth|tongue|glasses|lash")
 
 
-def separate_layers(geo):
-    """Spread the near-flush faces of one geometry's face details; returns {bone: stretch(axis, value)} for the
-    animations. Only bones named for face details (or under one) take part, so body cubes never shift. A face moves
-    out just far enough to sit LAYER_GAP in front of every face it overlaps and was already in front of."""
+def _collinear(v, c):
+    """t when v is t times c, else None."""
+    cc = sum(x * x for x in c)
+    if not cc: return None
+    t = sum(a * b for a, b in zip(v, c)) / cc
+    return t if all(abs(a - t * b) < 1e-6 for a, b in zip(v, c)) else None
+
+
+def closed_vectors(anims):
+    """{bone: [vector]}: the small position nudges (every axis within LAYER_NUDGE) a species' animations give a bone, one
+    for each direction (a nudge half as far the same way is the same one). An animation's x is the geometry's x: Bulbasaur's
+    left lid at x 2.4 closes over its eye at 2.5 with +0.1."""
+    out = {}
+    def grab(bone, v):
+        if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
+            if any(v) and max(abs(x) for x in v) <= LAYER_NUDGE: out.setdefault(bone, set()).add(tuple(v))
+        elif isinstance(v, dict):
+            for k in ("pre", "post", "vector"):
+                if k in v: grab(bone, v[k])
+    for anim in anims:
+        for bone, channels in anim.get("bones", {}).items():
+            pos = channels.get("position")
+            if pos is None: continue
+            if isinstance(pos, dict) and not any(k in pos for k in ("pre", "post", "vector")):
+                for v in pos.values(): grab(bone, v)
+            else: grab(bone, pos)
+    for bone, vs in list(out.items()):
+        keep = []
+        for v in sorted(vs, key=lambda v: -sum(x * x for x in v)):
+            if not any(_collinear(v, k) is not None for k in keep): keep.append(v)
+        out[bone] = keep
+    return out
+
+
+def separate_layers(geo, nudges=None, clear=()):
+    """Spread the near-flush faces of one geometry; returns {(bone, nudge): new nudge} for the animations. A face moves
+    out just far enough to sit LAYER_GAP in front of every face it overlaps and was already in front of: any face of a
+    face detail (a bone named for one, or under one) within a pixel, keeping Cobblemon's front-to-back order (the
+    glasses stay in front of Blastoise's spread eye), and elsewhere the smaller of two body faces within LAYER_NEAR.
+    Each nudge an animation gives a face detail (a lid closing over the eye) is a ghost copy of its cubes at the nudged
+    place, which stacks with the rest but never moves, so the closed lid lands in the same order among the spread faces
+    as it did in Cobblemon; the new nudge is the ghost's place less the bone's own shift. A cube in clear (no texel of the
+    base texture on it, a box only a translucent layer draws) hides nothing behind it."""
+    nudges = nudges or {}
     bones = geo.get("bones", [])
     rotated = _rest_rotated(bones)
     by_name = {b["name"]: b for b in bones}
     def detail(name, depth=0):
         if not name or depth > 40: return False
         return bool(DETAIL_BONES.search(name.lower())) or detail(by_name.get(name, {}).get("parent"), depth + 1)
-    faces = []   # (axis, sign, depth, rect, bone, cube); the body's faces are anchors that never move
-    detail_cubes, solids, volumes = set(), [], []
+    children = {}
+    for b in bones: children.setdefault(b.get("parent"), []).append(b["name"])
+    def descendants(name):
+        found, stack = {name}, [name]
+        while stack:
+            for c in children.get(stack.pop(), []):
+                if c not in found: found.add(c); stack.append(c)
+        return found
+    faces = []   # (axis, sign, depth, rect, bone, cube, frame, ghost); the body's faces are anchors that never move
+    detail_cubes, solids, volumes, ghosts = set(), [], [], {}
+    def add_faces(b, c, frame, ghost):
+        o, s, inf = c["origin"], c["size"], c.get("inflate", 0)
+        for a in range(3):
+            i, j = [k for k in range(3) if k != a]
+            rect = (o[i] - inf, o[i] + s[i] + inf, o[j] - inf, o[j] + s[j] + inf)
+            # a plane's hairline sides (only its inflate wide) are not faces to spread: they slid eyes sideways
+            if rect[1] - rect[0] < 0.1 or rect[3] - rect[2] < 0.1: continue
+            faces.append((a, -1, round(o[a] - inf, 6), rect, b["name"], c, frame, ghost))
+            faces.append((a, 1, round(o[a] + s[a] + inf, 6), rect, b["name"], c, frame, ghost))
     for b in bones:
         frame = rotated.get(b["name"], ())
         is_detail = detail(b["name"])
+        turned = bool(b.get("rotation") and any(b["rotation"]))
         for c in b.get("cubes", []):
             if c.get("rotation") and any(c["rotation"]): continue
             o, s, inf = c["origin"], c["size"], c.get("inflate", 0)
             box = (frame, [(o[k] - inf, o[k] + s[k] + inf) for k in range(3)])
             if is_detail: detail_cubes.add(id(c))
-            elif all(x > 0 for x in s): solids.append(box)
-            if all(x > 0 for x in s): volumes.append(box)
-            for a in range(3):
-                i, j = [k for k in range(3) if k != a]
-                rect = (o[i] - inf, o[i] + s[i] + inf, o[j] - inf, o[j] + s[j] + inf)
-                # a plane's hairline sides (only its inflate wide) are not faces to spread: they slid eyes sideways
-                if rect[1] - rect[0] < 0.1 or rect[3] - rect[2] < 0.1: continue
-                faces.append((a, -1, round(o[a] - inf, 6), rect, b["name"], c, frame))
-                faces.append((a, 1, round(o[a] + s[a] + inf, 6), rect, b["name"], c, frame))
+            elif all(x > 0 for x in s) and id(c) not in clear: solids.append(box)
+            if all(x > 0 for x in s) and id(c) not in clear: volumes.append(box)
+            add_faces(b, c, frame, False)
+            if is_detail and not turned:
+                for v in nudges.get(b["name"], []):
+                    g = dict(c, origin=[o[k] + v[k] for k in range(3)])
+                    ghosts[id(g)] = (c, b["name"], v, g); detail_cubes.add(id(g))
+                    add_faces(b, g, frame, True)
     overlap = lambda r, q: min(r[1], q[1]) > max(r[0], q[0]) and min(r[3], q[3]) > max(r[2], q[2])
     # the model's middle: a face that matters points away from it along its axis (the back of an eye never does)
     cubes = [c for b in bones for c in b.get("cubes", [])]
     middle = [sum(c["origin"][k] + c["size"][k] / 2 for c in cubes) / (len(cubes) or 1) for k in range(3)]
     def inside(p, boxes, frame): return any(fr == frame and all(lo < p[k] < hi for k, (lo, hi) in enumerate(box)) for fr, box in boxes)
-    def exposed(f):
-        # a face whose middle, a little out along its normal, is inside the body is never seen; a flat plane's face counts
-        # only on the side away from what it lies on (a plane has a face each way at one depth)
-        a, sign, d, r = f[:4]
-        if (d - middle[a]) * sign <= 0: return False
-        i, j = [k for k in range(3) if k != a]
+    def exposed(f, inward=False):
         # seen if any of five points over it (the middle and four inset corners), a little out along its normal, is
         # outside the body: a bump over the middle (Mr. Rime's torso under its belly face) does not hide the rest
-        seen = False
+        a, sign, d, r = f[:4]
+        if (d - middle[a]) * sign <= 0 and not inward: return False
+        i, j = [k for k in range(3) if k != a]
         for u, v in ((0.5, 0.5), (0.2, 0.2), (0.2, 0.8), (0.8, 0.2), (0.8, 0.8)):
             p = [0, 0, 0]; p[a] = d + sign * 0.02; p[i] = r[0] + (r[1] - r[0]) * u; p[j] = r[2] + (r[3] - r[2]) * v
             if inside(p, solids, f[6]): continue
             if f[5]["size"][a] == 0:
-                p[a] = d - sign * 0.3
-                if not inside(p, volumes, f[6]): continue
-            seen = True; break
-        return seen
+                # a plane's face lying on a body (within a pixel: Blastoise's glasses float 0.45 off its head) is its
+                # front; one whose other side lies on a body is its back; one lying on nothing (a wing membrane) is seen
+                near = lambda side: any(inside(p[:a] + [d + side * t] + p[a + 1:], volumes, f[6]) for t in (0.3, 0.6, 1.0))
+                if not near(-sign) and near(sign): continue
+            return True
+        return False
     area = lambda r: (r[1] - r[0]) * (r[3] - r[2])
     shared = lambda r, q: max(0, min(r[1], q[1]) - max(r[0], q[0])) * max(0, min(r[3], q[3]) - max(r[2], q[2]))
     twin = lambda c1, c2: c1["origin"] == c2["origin"] and [abs(x) for x in c1["size"]] == [abs(x) for x in c2["size"]]
-    # the faces each seen face sits on (same direction, overlapping, behind it by less than LAYER_NEAR) and moves out
-    # from: any face of a face detail, and elsewhere the smaller of two that share a pixel or more (Ursaring's belly plate
-    # on its body), never one of two identical boxes (Greninja's water orbs, its bubble and the bubble turned inside out)
+    # level body faces fight wherever they show, so for them a face turned toward the model's middle counts too (the
+    # inside of Charizard's mouth, seen when its jaw opens), and of two exactly level the smaller (or, as large, the
+    # later) moves
     seen_faces = {n: exposed(f) for n, f in enumerate(faces)}
-    def sits_on(f, g):
-        if g[0] != f[0] or g[1] != f[1] or g[5] is f[5] or g[6] != f[6]: return False
-        if not (0 < (f[2] - g[2]) * f[1] < LAYER_NEAR and overlap(f[3], g[3])): return False
-        if id(f[5]) in detail_cubes: return True
-        return not twin(f[5], g[5]) and area(f[3]) < area(g[3]) and shared(f[3], g[3]) >= 1
-    under = {n: ([m for m, g in enumerate(faces) if sits_on(f, g)] if seen_faces[n] else []) for n, f in enumerate(faces)}
+    open_faces = {n: seen_faces[n] or exposed(f, inward=True) for n, f in enumerate(faces)}
+    lines = {}
+    def sits_on(n, m):
+        f, g = faces[n], faces[m]
+        if g[0] != f[0] or g[1] != f[1] or g[5] is f[5] or g[6] != f[6] or not overlap(f[3], g[3]): return False
+        if f[7] and g[7]: return False
+        # a ghost goes with its bone's children, which move with it (Frogadier's pupils with its eye), but stacks on its
+        # parent (Blastoise's lid on the eye it closes over)
+        if f[7] or g[7]:
+            bone, other = (f[4], g[4]) if f[7] else (g[4], f[4])
+            if bone not in lines: lines[bone] = descendants(bone)
+            if other in lines[bone]: return False
+        gap = (f[2] - g[2]) * f[1]
+        if gap < 0 or (gap > 0 and not seen_faces[n]): return False
+        # level face details are spare expressions, one shown at a time; stacking their sides slid Greninja's aside
+        if id(f[5]) in detail_cubes: return 0 < gap <= 1.0
+        if gap == 0 and (area(f[3]), -n) >= (area(g[3]), -m): return False
+        return gap < LAYER_NEAR and not twin(f[5], g[5]) and area(f[3]) <= area(g[3]) and shared(f[3], g[3]) >= 1
+    under = {n: ([m for m in range(len(faces)) if sits_on(n, m)] if open_faces[n] else []) for n in range(len(faces))}
     placed = {}
     def new_depth(n, seen=()):
         if n in placed: return placed[n]
@@ -1815,7 +1909,7 @@ def separate_layers(geo):
             d = d + f[1] * max(0, (new_depth(m, seen + (n,)) + f[1] * LAYER_GAP - d) * f[1])
         placed[n] = round(d, 4)
         return placed[n]
-    shifts = {}   # id(cube) -> (cube, axis, shift)
+    shifts = {}   # (id(cube), axis) -> (cube, axis, shift)
     for n, f in enumerate(faces):
         if not under[n]: continue
         shift = new_depth(n) - f[2]
@@ -1826,50 +1920,49 @@ def separate_layers(geo):
     # a face detail tucked just under a seen body face (a closed eyelid or a spare expression 0.07 inside the head, which
     # the depth buffer lets through at a distance, so the Pokemon looks asleep) goes LAYER_TUCK under it
     for n, f in enumerate(faces):
-        if id(f[5]) not in detail_cubes or (id(f[5]), f[0]) in shifts: continue
+        if f[7] or id(f[5]) not in detail_cubes or (id(f[5]), f[0]) in shifts: continue
         for m, g in enumerate(faces):
-            if id(g[5]) in detail_cubes or g[0] != f[0] or g[1] != f[1] or g[6] != f[6] or not seen_faces[m]: continue
+            if g[7] or id(g[5]) in detail_cubes or g[0] != f[0] or g[1] != f[1] or g[6] != f[6] or not seen_faces[m]: continue
             gap = (g[2] - f[2]) * f[1]
             if 0 <= gap < LAYER_NEAR and shared(f[3], g[3]) > 0:
                 shifts[(id(f[5]), f[0])] = (f[5], f[0], -f[1] * (LAYER_TUCK - gap))
                 break
-    for cube, a, shift in shifts.values(): cube["origin"][a] = round(cube["origin"][a] + shift, 4)
-    moved = {n: placed.get(n, faces[n][2]) + 0 for n in range(len(faces))}
-    for n, f in enumerate(faces):
-        s = shifts.get((id(f[5]), f[0]))
-        moved[n] = round(f[2] + (s[2] if s else 0), 4)
-    # an animation's nudge of a bone along an axis (a blink moving a lid in front of the eye) goes as far past the faces
-    # it crossed as it went before, measured on the spread faces
-    def stretcher(bone):
-        mine = [n for n, f in enumerate(faces) if f[4] == bone]
-        def stretch(a, value):
-            if not isinstance(value, (int, float)) or not value or abs(value) > LAYER_NUDGE: return value
-            flip = -1 if a == 0 else 1   # Bedrock animations negate x
-            move = flip * value
-            best = None
-            for n in mine:
-                f = faces[n]
-                if f[0] != a: continue
-                ahead = move * f[1] > 0   # moving the way this face points
-                d0, d1 = f[2], f[2] + move
-                crossed = [m for m, g in enumerate(faces) if g[0] == a and g[1] == f[1] and g[4] != bone and g[6] == f[6] and overlap(f[3], g[3])
-                           and min(d0, d1) < g[2] < max(d0, d1)]
-                if not crossed: continue
-                edge = (max if (move > 0) else min)(moved[m] for m in crossed)
-                target = edge + (LAYER_GAP if move > 0 else -LAYER_GAP) * (1 if ahead or True else 1)
-                new = target - moved[n]
-                if best is None or abs(new) > abs(best): best = new
-            return value if best is None else round(flip * best, 4)
-        return stretch
-    return {f[4]: stretcher(f[4]) for f in faces} if shifts else {}
+    shift_of = lambda cid, a: shifts[(cid, a)][2] if (cid, a) in shifts else 0
+    # what a closed lid wraps in Cobblemon (another bone's face detail inside the ghost, give or take 0.05): across the
+    # axis it closes along, it follows that eye's own shift, as it fitted it before (Bulbasaur's lid slid off the edge of
+    # its spread eye and left a line of red showing)
+    box = lambda c: [(c["origin"][k] - c.get("inflate", 0), c["origin"][k] + abs(c["size"][k]) + c.get("inflate", 0)) for k in range(3)]
+    detail_boxes = [(b["name"], c) for b in bones if detail(b["name"]) for c in b.get("cubes", [])
+                    if not (c.get("rotation") and any(c["rotation"])) and all(x != 0 for x in c["size"])]
+    closed = {}
+    for gid, (real, bone, v, g) in ghosts.items():
+        prev = closed.get((bone, v))
+        new = [v[a] + shift_of(gid, a) - shift_of(id(real), a) for a in range(3)]
+        gb = box(g)
+        hosts = [c for name, c in detail_boxes if name != bone and all(gb[k][0] <= box(c)[k][0] + 0.05 and gb[k][1] >= box(c)[k][1] - 0.05 for k in range(3))]
+        if hosts:
+            depth = max(range(3), key=lambda a: abs(new[a] - v[a]))
+            for a in range(3):
+                if a != depth: new[a] = v[a] + max((shift_of(id(c), a) for c in hosts), key=abs) - shift_of(id(real), a)
+        if prev is not None: new = [x if abs(x) > abs(p) else p for x, p in zip(new, prev)]
+        closed[(bone, v)] = [round(x, 4) for x in new]
+    for (cid, a), (cube, _, shift) in shifts.items():
+        if cid not in ghosts: cube["origin"][a] = round(cube["origin"][a] + shift, 4)
+    return {k: v for k, v in closed.items() if list(k[1]) != v}
 
 
-def stretch_animation(anim, nudges):
+def stretch_animation(anim, closed):
+    """Each nudge (or part of one) the layer pass moved to its new place, keyframe by keyframe."""
+    by_bone = {}
+    for (bone, v), new in closed.items(): by_bone.setdefault(bone, []).append((v, new))
     for bone, channels in anim.get("bones", {}).items():
-        if bone not in nudges or "position" not in channels: continue
-        stretch = nudges[bone]
-        def fix(v):
-            if isinstance(v, list) and len(v) == 3: return [stretch(a, x) for a, x in enumerate(v)]
+        if bone not in by_bone or "position" not in channels: continue
+        def fix(v, pairs=by_bone[bone]):
+            if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
+                for c, new in pairs:
+                    t = _collinear(v, c)
+                    if t is not None and 0 < t <= 1.0001: return [round(t * x, 4) for x in new]
+                return v
             if isinstance(v, dict): return {k: fix(x) if k in ("pre", "post", "vector") else x for k, x in v.items()}
             return v
         pos = channels["position"]
@@ -1877,6 +1970,48 @@ def stretch_animation(anim, nudges):
             channels["position"] = {t: fix(v) for t, v in pos.items()}
         else:
             channels["position"] = fix(pos)
+
+
+def base_skins(folder):
+    """The base textures of a species' variants (the client entity's v0, v1...), as RGBA images."""
+    path = f"{entityBedrock}/{folder}.entity.json"
+    if not os.path.exists(path): return []
+    with open(path, encoding="utf-8") as file: textures = json.load(file)["minecraft:client_entity"]["description"].get("textures", {})
+    skins = []
+    for key, texture in textures.items():
+        if re.fullmatch(r"v\d+", key) and os.path.exists(f"{resourcePack}/{texture}.png"):
+            skins.append(Image.open(f"{resourcePack}/{texture}.png").convert("RGBA"))
+    return skins
+
+
+def clear_cubes(geo, skins):
+    """The ids of a geometry's cubes with no opaque texel in any base skin (Greninja's translucent arm bumps, which only
+    its transparency layer draws)."""
+    if not skins: return set()
+    desc = geo.get("description", {})
+    tw, th = desc.get("texture_width", 64), desc.get("texture_height", 64)
+    alphas = [(img.size, img.getchannel("A")) for img in skins]
+    def regions(c):
+        uv, s = c.get("uv"), [abs(x) for x in c["size"]]
+        if isinstance(uv, list):   # box UV: the whole unwrap
+            return [(uv[0], uv[1], 2 * s[2] + 2 * s[0], s[2] + s[1])]
+        if isinstance(uv, dict):
+            return [(f["uv"][0], f["uv"][1], f.get("uv_size", [0, 0])[0], f.get("uv_size", [0, 0])[1]) for f in uv.values() if "uv" in f]
+        return []
+    clear = set()
+    for b in geo.get("bones", []):
+        for c in b.get("cubes", []):
+            rects = regions(c)
+            if not rects: continue
+            seen = False
+            for (w, h), alpha in alphas:
+                for u, v, du, dv in rects:
+                    x0, x1 = sorted((u * w / tw, (u + du) * w / tw)); y0, y1 = sorted((v * h / th, (v + dv) * h / th))
+                    box = (max(0, math.floor(x0)), max(0, math.floor(y0)), min(w, max(math.ceil(x1), math.floor(x0) + 1)), min(h, max(math.ceil(y1), math.floor(y0) + 1)))
+                    if box[2] > box[0] and box[3] > box[1] and alpha.crop(box).getextrema()[1] > 0: seen = True; break
+                if seen: break
+            if not seen: clear.add(id(c))
+    return clear
 
 
 def separate_model_layers():
@@ -1888,23 +2023,25 @@ def separate_model_layers():
     for folder in sorted(os.listdir(modelsBedrock)):
         if folder in done or not os.path.isdir(f"{modelsBedrock}/{folder}"): continue
         done.add(folder)
-        nudges = {}
+        anim_paths = glob.glob(f"{animationsBedrock}/{folder}/*.animation.json")
+        anim_files = {}
+        for path in anim_paths:
+            with open(path, encoding="utf-8") as file: anim_files[path] = json.load(file)
+        nudges = closed_vectors([a for d in anim_files.values() for a in d.get("animations", {}).values()])
+        closed = {}
+        skins = base_skins(folder)
         for path in glob.glob(f"{modelsBedrock}/{folder}/*.geo.json"):
-            with open(path, encoding="utf-8") as file: data = json.load(file)
-            changed = False
+            with open(path, encoding="utf-8") as file: text = file.read()
+            data = json.loads(text)
             for geo in data.get("minecraft:geometry", []):
-                found = separate_layers(geo)
-                if found:
-                    changed = True
-                    for bone, stretch in found.items(): nudges.setdefault(bone, stretch)
-            if changed:
+                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins)).items(): closed.setdefault(key, new)
+            if json.loads(text) != data:
                 with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent="\t"))
                 spread += 1
-        if not nudges: continue
+        if not closed: continue
         folders += 1
-        for path in glob.glob(f"{animationsBedrock}/{folder}/*.animation.json"):
-            with open(path, encoding="utf-8") as file: data = json.load(file)
-            for anim in data.get("animations", {}).values(): stretch_animation(anim, nudges)
+        for path, data in anim_files.items():
+            for anim in data.get("animations", {}).values(): stretch_animation(anim, closed)
             with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
     with open(done_path, "w") as file: file.write(json.dumps(sorted(done)))
     print(f"Layered faces spread in {spread} models ({folders} species' animations stretched to match).")
@@ -1928,9 +2065,23 @@ def mark_primary_animations():
     marked = 0
     for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
         with open(path, encoding="utf-8") as file: data = json.load(file)
-        hit = [a for a in data.get("animations", {}) if a in primary]
+        anims = data.get("animations", {})
+        hit = [a for a in anims if a in primary]
         if not hit: continue
-        for a in hit: data["animations"][a]["override_previous_animation"] = True
+        # the pose fades out entirely, so a bone the pose moves and the clip does not key goes back to rest (Greninja's
+        # battle pose lowers body_spin 11 pixels and its attacks lower body as well, which sank it into the ground);
+        # a scaled bone is left alone, so a weapon at scale 0 never comes back
+        posed = {}
+        for name, anim in anims.items():
+            if name in primary or not anim.get("loop"): continue
+            for bone, channels in anim.get("bones", {}).items():
+                if "scale" in channels: continue
+                posed.setdefault(bone, set()).update(k for k in ("position", "rotation") if k in channels)
+        for a in hit:
+            anims[a]["override_previous_animation"] = True
+            keyed = anims[a].setdefault("bones", {})
+            for bone, channels in posed.items():
+                for k in sorted(channels): keyed.setdefault(bone, {}).setdefault(k, [0, 0, 0])
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
         marked += len(hit)
     print(f"Primary animations: {marked} of {len(primary)} marked to replace the pose.")
@@ -1968,6 +2119,17 @@ def hide_scaled_out_parts():
         if not used: continue
         bones = set.intersection(*[{b for b, ch in a.get("bones", {}).items() if "scale" in ch and zero(ch["scale"])} for a in used])
         if not bones: continue
+        # part_visibility is per bone, and the planes often sit in a child of the bone the animation scales (kunai_left's
+        # kunai_left_mid, water_orb_left's water_orb_left_active), so the children are hidden with it
+        kids = {}
+        for gpath in glob.glob(f"{modelsBedrock}/{stem}/*.geo.json"):
+            with open(gpath, encoding="utf-8") as file:
+                for g in json.load(file).get("minecraft:geometry", []):
+                    for b in g.get("bones", []): kids.setdefault(b.get("parent"), set()).add(b["name"])
+        stack = list(bones)
+        while stack:
+            for c in kids.get(stack.pop(), ()):
+                if c not in bones: bones.add(c); stack.append(c)
         with open(path, encoding="utf-8") as file: data = json.load(file)
         for name, controller in data.get("render_controllers", {}).items():
             if name.endswith("_held"): continue
@@ -1994,7 +2156,8 @@ def add_quirk_controllers(controllers, pokemonName, names):
                 "states": {
                     "wait": {"transitions": [{"play": "!q.is_sleeping && !q.property('cobblemon:battle') && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"}]},
                     "play": {"animations": [{f"quirk_{i}": f"v.quirk == {i} && ({gate(q)})"} for i, q in enumerate(quirks)],
-                             "on_entry": [f"v.quirk = math.floor(math.random(0, {len(quirks)}));"],
+                             "on_entry": [f"v.quirk = math.floor(math.random(0, {len(quirks)}));", "v.quirking = 1;"],
+                             "on_exit": ["v.quirking = 0;"],
                              "transitions": [{"wait": "q.all_animations_finished || q.is_sleeping"}]}
                 }
             }
@@ -2002,8 +2165,12 @@ def add_quirk_controllers(controllers, pokemonName, names):
             controllers[f"controller.animation.{pokemonName}.blink"] = {
                 "initial_state": "open",
                 "states": {
-                    "open": {"transitions": [{"blink": "math.random(0, 200) < 1"}]},
-                    "blink": {"animations": ["blink"], "transitions": [{"open": "q.all_animations_finished"}]}
+                    # never asleep: Cobblemon's sleep poses carry no blink, and a blink's lid added to the closed one
+                    # pushed it out through the face
+                    # nor during a quirk, many of which close the lids too: Bedrock adds the two closes together, which put
+                    # Blastoise's lid out in front of its glasses
+                    "open": {"transitions": [{"blink": "!q.is_sleeping && !(v.quirking ?? 0) && math.random(0, 200) < 1"}]},
+                    "blink": {"animations": ["blink"], "transitions": [{"open": "q.all_animations_finished || q.is_sleeping"}]}
                 }
             }
 
@@ -2053,7 +2220,7 @@ def create_client_entities():
                     "identifier": entity_id(pokemon),
                     "materials": {
                         "default": "entity_alphatest_one_sided",
-                        "emissive": "entity_emissive_alpha",
+                        "emissive": "entity_emissive_alpha_one_sided",
                         "translucent": "entity_alphablend"
                     },
                     "textures": variant_textures(pokemon),
@@ -2090,13 +2257,13 @@ def movement_components(species, kind):
     """The vanilla component set for each way of moving: fish, bee, parrot and wolf are the references."""
     moving = species.get("behaviour", {}).get("moving", {})
     walk_speed = moving.get("walk", {}).get("walkSpeed", 0.25)
-    swim_speed = moving.get("swim", {}).get("swimSpeed", 0.1)
+    swim_speed = moving.get("swim", {}).get("swimSpeed", 0.3)   # SwimBehaviour's default
     # a speed Cobblemon gives as Molang (faster on sand) is a number here: the speed away from sand, the last one named
     def plain(speed, fallback):
         if isinstance(speed, (int, float)): return speed
         numbers = re.findall(r"\d*\.\d+|\d+", str(speed))
         return float(numbers[-1]) if numbers else fallback
-    walk_speed, swim_speed = plain(walk_speed, 0.25), plain(swim_speed, 0.1)
+    walk_speed, swim_speed = plain(walk_speed, 0.25), plain(swim_speed, 0.3)
     # PokemonMoveControl swims a Pokemon at its movement attribute (0.7) times the walk target's speed (0.33 for
     # ChooseWaterWanderTargetTask) times its swimSpeed times 2.5, in blocks a tick; a Bedrock swimmer wandering with
     # random_swim moves at about 4.3 times the square of its underwater movement value (measured: 0.1 gives 0.05 blocks
@@ -2116,6 +2283,9 @@ def movement_components(species, kind):
             "minecraft:behavior.random_swim": {"priority": 3, "interval": 0, "xz_dist": 16, "y_dist": 4, "speed_multiplier": 1}
         }
     breathable = {"total_supply": 15, "suffocate_time": 0, "breathes_air": True, "breathes_water": breathes_water}
+    # Cobblemon keeps afloat (stay_afloat) only a Pokemon that cannot breathe under water (pokemon_no_underwater.json); one
+    # that can wanders the water instead (wanders_water) and stays under, where its swim poses play
+    floats = {} if breathes_water else {"minecraft:behavior.float": {"priority": 0}}
     if kind == "hover":
         return {
             "minecraft:movement": {"value": walk_speed},
@@ -2126,7 +2296,7 @@ def movement_components(species, kind):
             "minecraft:breathable": breathable,
             "minecraft:physics": {},
             "minecraft:behavior.random_hover": {"priority": 8, "xz_dist": 8, "y_dist": 8, "y_offset": -1, "interval": 1, "hover_height": [1, 4]},
-            "minecraft:behavior.float": {"priority": 0}
+            **floats
         }
     if kind == "bird":
         return {
@@ -2139,7 +2309,15 @@ def movement_components(species, kind):
             "minecraft:physics": {},
             "minecraft:behavior.random_fly": {"priority": 8, "xz_dist": 15, "y_dist": 1, "y_offset": 0, "avoid_damage_blocks": True},
             "minecraft:behavior.random_stroll": {"priority": 9, "speed_multiplier": 1},
-            "minecraft:behavior.float": {"priority": 0}
+            **floats
+        }
+    if breathes_water:   # walks the land and swims under water, as the vanilla turtle does
+        return {
+            "minecraft:movement": {"value": walk_speed},
+            **water_movement(swim_speed, True),
+            "minecraft:jump.static": {},
+            "minecraft:breathable": breathable,
+            "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1}
         }
     return {
         "minecraft:movement": {"value": walk_speed},
@@ -2150,7 +2328,20 @@ def movement_components(species, kind):
         "minecraft:breathable": breathable,
         "minecraft:physics": {},
         "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1},
-        "minecraft:behavior.float": {"priority": 0}
+        **floats
+    }
+
+
+def water_movement(swim_speed, can_walk):
+    """Swimming under water and, for one that walks, walking out of it (the turtle's amphibious set), with Cobblemon's
+    water wander (ChooseWaterWanderTargetTask: 10 across, 5 up or down)."""
+    return {
+        "minecraft:underwater_movement": {"value": swim_speed},
+        "minecraft:movement.amphibious": {"max_turn": 15},
+        "minecraft:navigation.generic": {"is_amphibious": True, "can_swim": True, "can_walk": can_walk, "can_sink": False, "can_breach": True,
+                                         "can_path_over_water": False, "avoid_damage_blocks": True},
+        "minecraft:physics": {},
+        "minecraft:behavior.random_swim": {"priority": 7, "interval": 20, "xz_dist": 10, "y_dist": 5, "speed_multiplier": 1}
     }
 
 
@@ -2227,6 +2418,7 @@ def create_behavior_entities():
         add_capture(entity, species, pokemon, kind)
         add_item_evolutions(entity, species, pokemon)
         add_pokemon_interactions(entity, species, pokemon)
+        add_water_flight(entity, species, kind)
         add_battle(entity, species)
         add_battle_states(entity)
         add_variants(entity, species, pokemon)
@@ -3414,6 +3606,35 @@ def add_riding(entity, species, pokemon):
         events.setdefault(event, {}).setdefault("add", {}).setdefault("component_groups", []).append("cobblemon:gravity")
     owned["minecraft:rideable"]["on_rider_enter_event"] = "cobblemon:ride_air_on"
     owned["minecraft:rideable"]["on_rider_exit_event"] = "cobblemon:ride_air_off"
+
+
+def add_water_flight(entity, species, kind):
+    """A flier that breathes under water (Dragonite, the Tynamo line) swims there as Cobblemon's does: one navigation
+    cannot both fly and swim, so its flight (movement, pathing and wander) is a group, cobblemon:gravity, the same one
+    a rideable flier's rider takes away, and scripts/main.js swaps it for cobblemon:water_moves while its head is
+    under water and nobody rides it (the water_flier family)."""
+    moving = species.get("behaviour", {}).get("moving", {})
+    if kind not in ("bird", "hover") or not moving.get("swim", {}).get("canBreatheUnderwater", False): return
+    minecraft = entity["minecraft:entity"]
+    components, groups, events = minecraft["components"], minecraft["component_groups"], minecraft["events"]
+    air = groups.get("cobblemon:gravity")
+    if air is None:
+        air = groups["cobblemon:gravity"] = {}
+        for key in [k for k in components if k.startswith("minecraft:movement.") or k.startswith("minecraft:navigation.") or k == "minecraft:physics"]:
+            air[key] = components.pop(key)
+        for event in ("minecraft:entity_spawned", "minecraft:entity_born", "minecraft:entity_transformed", "cobblemon:caught", "cobblemon:released"):
+            events.setdefault(event, {}).setdefault("add", {}).setdefault("component_groups", []).append("cobblemon:gravity")
+    for key in ("minecraft:behavior.random_fly", "minecraft:behavior.random_hover"):
+        if key in components: air[key] = components.pop(key)
+    swim = movement_components(species, "walk")["minecraft:underwater_movement"]["value"]
+    groups["cobblemon:water_moves"] = water_movement(swim, kind == "bird")
+    events["cobblemon:enter_water"] = {"remove": {"component_groups": ["cobblemon:gravity"]}, "add": {"component_groups": ["cobblemon:water_moves"]}}
+    events["cobblemon:leave_water"] = {"remove": {"component_groups": ["cobblemon:water_moves"]}, "add": {"component_groups": ["cobblemon:gravity"]}}
+    # a rider takes the water moves away with the flight, and leaving gives the flight back (main.js swaps again if under)
+    for event in ("cobblemon:ride_air_on", "cobblemon:ride_air_off"):
+        if event in events: events[event].setdefault("remove", {}).setdefault("component_groups", []).append("cobblemon:water_moves")
+    for family in [components["minecraft:type_family"]] + [g["minecraft:type_family"] for g in groups.values() if "minecraft:type_family" in g]:
+        family["family"].append("water_flier")
 
 
 # A wild Pokemon's minecraft:despawn marks it wild (the wild group's filters test for it) but despawns nothing itself:

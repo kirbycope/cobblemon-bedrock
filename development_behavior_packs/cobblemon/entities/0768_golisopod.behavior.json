@@ -447,11 +447,25 @@
             "minecraft:underwater_movement": {
                 "value": 0.1639
             },
-            "minecraft:movement.basic": {},
-            "minecraft:navigation.walk": {
-                "can_path_over_water": true,
-                "avoid_water": false,
+            "minecraft:movement.amphibious": {
+                "max_turn": 15
+            },
+            "minecraft:navigation.generic": {
+                "is_amphibious": true,
+                "can_swim": true,
+                "can_walk": true,
+                "can_sink": false,
+                "can_breach": true,
+                "can_path_over_water": false,
                 "avoid_damage_blocks": true
+            },
+            "minecraft:physics": {},
+            "minecraft:behavior.random_swim": {
+                "priority": 7,
+                "interval": 20,
+                "xz_dist": 10,
+                "y_dist": 5,
+                "speed_multiplier": 1
             },
             "minecraft:jump.static": {},
             "minecraft:breathable": {
@@ -460,13 +474,9 @@
                 "breathes_air": true,
                 "breathes_water": true
             },
-            "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
                 "speed_multiplier": 1
-            },
-            "minecraft:behavior.float": {
-                "priority": 0
             },
             "minecraft:hurt_on_condition": {
                 "damage_conditions": [
