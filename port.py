@@ -841,8 +841,10 @@ def fix_molang(expr):
     expr = re.sub(r"(\d+\.\d+?)(?=\d+\.\d)", r"\1+", expr)
     # Molang has no unary plus: "(+math.sin" and "+0.01*x" are parse errors
     expr = re.sub(r"(^|[(,])\s*\+", r"\1", expr)
-    # two calls with no operator between them: "clamp(...)math.clamp(" was a "+"
+    # two calls with no operator between them: "clamp(...)math.clamp(" was a "+", and so was "*5math.clamp(" (Pidgeot's
+    # ride clips)
     expr = re.sub(r"\)\s*(?=math\.)", ")+", expr)
+    expr = re.sub(r"(\d)\s*(?=math\.)", r"\g<1>+", expr)
     # a number glued after a call, "math.sin(...)5", was a "*"; a stray 0 is just dropped
     expr = re.sub(r"\)\s*0(?![\d.])", ")", expr)
     expr = re.sub(r"\)\s*(?=\d)", ")*", expr)
@@ -851,19 +853,21 @@ def fix_molang(expr):
     # an identifier that is neither a namespace nor a function is a test-only variable (walk, run)
     for tok in re.findall(r"(?<![\w.])([A-Za-z_]\w*)(?![\w.(])", expr):
         if tok not in MOLANG_KNOWN: return None
-    for query in re.findall(r"(?<![\w.])(?:q|query)\.([A-Za-z_][\w.]*)", expr):
-        if query not in BEDROCK_ANIMATION_QUERIES: return None
+    # a query only Cobblemon answers (q.r.velocity_y(0), q.r.yaw_change, q.input_up) reads 0, as on a still mount, and
+    # the rest of the expression stays: dropping it zeroed its constants too (Gyarados' ride clips lost the body's 12.5
+    # lift and every coil, so ridden it stood as a straight column)
+    def known(m): return m.group(0) if m.group(1) in BEDROCK_ANIMATION_QUERIES else "0"
+    for _ in range(3): expr = re.sub(r"(?<![\w.])(?:q|query)\.([A-Za-z_][\w.]*)(?:\([^()]*\))?", known, expr)
     # surplus closing parentheses are dropped from the end, missing ones appended, before any wrapping
     while expr.count(")") > expr.count("(") and expr.rstrip().endswith(")"): expr = expr.rstrip()[:-1]
-    # parentheses closed before they are opened: wrap until the depth never goes negative
-    for _ in range(4):
-        depth = 0; broken = False
-        for ch in expr:
-            depth += (ch == "(") - (ch == ")")
-            if depth < 0: broken = True; break
-        if not broken and depth == 0: break
-        expr = f"({expr})" if broken else expr + ")" * depth
-    return expr
+    # a parenthesis closed before one is opened ends the expression there, as Cobblemon's parser stops at it (wrapping
+    # the whole instead swung Blaziken's hand flames 60 degrees), and any still open are closed
+    depth = 0
+    for i, ch in enumerate(expr):
+        depth += (ch == "(") - (ch == ")")
+        if depth < 0: expr = expr[:i].rstrip(" +-*/"); break
+    if not expr.strip(): return None
+    return expr + ")" * max(0, expr.count("(") - expr.count(")"))
 
 
 def fix_channel(channel):
@@ -909,11 +913,14 @@ def fix_animations():
                 # a keyframe with no effect is an export artefact; a name without the prefix is not an animation
                 if "particle_effects" in anim:
                     anim["particle_effects"] = {k: v for k, v in anim["particle_effects"].items() if v}
-                    # a pre_effect_script is Molang too, and Cobblemon's ride queries do not exist here
+                    # a pre_effect_script is Molang too, and Cobblemon's ride queries do not exist here: one that asks them
+                    # goes (the effect plays unconditioned, as Blastoise's jets in its ride clip)
                     for keyframe in anim["particle_effects"].values():
                         for entry in (keyframe if isinstance(keyframe, list) else [keyframe]):
-                            if isinstance(entry, dict) and "pre_effect_script" in entry and fix_molang(entry["pre_effect_script"].rstrip(";")) is None:
-                                entry.pop("pre_effect_script")
+                            if not isinstance(entry, dict) or "pre_effect_script" not in entry: continue
+                            script = entry["pre_effect_script"].rstrip(";")
+                            asks = re.findall(r"(?<![\w.])(?:q|query)\.([A-Za-z_][\w.]*)", script)
+                            if fix_molang(script) is None or any(q not in BEDROCK_ANIMATION_QUERIES for q in asks): entry.pop("pre_effect_script")
                 anim.pop("timeline", None)
                 # only keyframe times belong in these maps; Blockbench sometimes leaves animation_length inside
                 for key in ("particle_effects", "sound_effects"):
@@ -1095,7 +1102,7 @@ def pose_plan(pokemon, pokemonName):
         has_look = bool(look_animation(pokemon, pokemonName)) or model_has_head(pokemon, pokemonName)
         flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
         plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
-                                ambient_particles(pokemon, pokemonName))
+                                ambient_particles(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}))
         plan["source"] = found["source"]
     pose_plans[pokemon] = plan
     return plan
@@ -1747,19 +1754,31 @@ LAYER_NUDGE = 0.7   # animation offsets at most this big along the axis are laye
 LAYER_TUCK = 0.3    # how far under a body face a hidden face detail is put
 
 
-def _rest_rotated(bones):
-    """Each bone's rotated ancestors, itself included: faces compare only with faces turned by the same rotations, which
-    keep their places relative to each other."""
+def _rotation(r):
+    """A bone or cube rotation in degrees as a matrix in the geometry file's axes: Blockbench shows a Bedrock model with x
+    mirrored and turns it z, y, x, so in the file it is Rz(-z) Ry(y) Rx(-x)."""
+    x, y, z = (math.radians(a) for a in r)
+    cx, sx, cy, sy, cz, sz = math.cos(-x), math.sin(-x), math.cos(y), math.sin(y), math.cos(-z), math.sin(-z)
+    return (numpy.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]]) @ numpy.array([[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]])
+            @ numpy.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]]))
+
+
+def _rest_frames(bones):
+    """Each bone's rest pose in model space as (R, t, turned), a point going to R p + t, turned its rotated ancestors (itself
+    included): Bedrock's pivots are in model space, so only a turned bone moves anything, about its own pivot."""
     frames = {}
     by_name = {b["name"]: b for b in bones}
-    def chain(name, depth=0):
+    def frame(name, depth=0):
         if name in frames: return frames[name]
         b = by_name.get(name)
-        if not b or depth > 60: return ()
-        own = (name,) if b.get("rotation") and any(b["rotation"]) else ()
-        frames[name] = chain(b.get("parent"), depth + 1) + own
+        if not b or depth > 60: return numpy.eye(3), numpy.zeros(3), ()
+        R, t, turned = frame(b.get("parent"), depth + 1)
+        if b.get("rotation") and any(b["rotation"]):
+            Rb, p = _rotation(b["rotation"]), numpy.array(b.get("pivot", [0, 0, 0]), float)
+            R, t, turned = R @ Rb, R @ (p - Rb @ p) + t, turned + (name,)
+        frames[name] = (R, t, turned)
         return frames[name]
-    for b in bones: chain(b["name"])
+    for b in bones: frame(b["name"])
     return frames
 
 
@@ -1774,103 +1793,175 @@ def _collinear(v, c):
     return t if all(abs(a - t * b) < 1e-6 for a, b in zip(v, c)) else None
 
 
-def closed_vectors(anims):
+def closed_vectors(anims, plays=None):
     """{bone: [vector]}: the small position nudges (every axis within LAYER_NUDGE) a species' animations give a bone, one
-    for each direction (a nudge half as far the same way is the same one). An animation's x is the geometry's x: Bulbasaur's
-    left lid at x 2.4 closes over its eye at 2.5 with +0.1."""
-    out = {}
-    def grab(bone, v):
+    for each place (a nudge within a tenth as far the same way is the same one). An animation's x
+    is the geometry's x: Bulbasaur's left lid at x 2.4 closes over its eye at 2.5 with +0.1. Given (name, animation)
+    pairs and a dict for plays, it also fills plays with {(bone, nudge): the names of the animations giving it}."""
+    out, names = {}, {}
+    def grab(bone, v, name):
         if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
-            if any(v) and max(abs(x) for x in v) <= LAYER_NUDGE: out.setdefault(bone, set()).add(tuple(v))
+            if any(v) and max(abs(x) for x in v) <= LAYER_NUDGE:
+                out.setdefault(bone, set()).add(tuple(v))
+                if name: names.setdefault((bone, tuple(v)), set()).add(name)
         elif isinstance(v, dict):
             for k in ("pre", "post", "vector"):
-                if k in v: grab(bone, v[k])
-    for anim in anims:
+                if k in v: grab(bone, v[k], name)
+    for item in anims:
+        name, anim = item if isinstance(item, tuple) else (None, item)
         for bone, channels in anim.get("bones", {}).items():
             pos = channels.get("position")
             if pos is None: continue
             if isinstance(pos, dict) and not any(k in pos for k in ("pre", "post", "vector")):
-                for v in pos.values(): grab(bone, v)
-            else: grab(bone, pos)
+                for v in pos.values(): grab(bone, v, name)
+            else: grab(bone, pos, name)
     for bone, vs in list(out.items()):
         keep = []
         for v in sorted(vs, key=lambda v: -sum(x * x for x in v)):
-            if not any(_collinear(v, k) is not None for k in keep): keep.append(v)
+            # a nudge nearly as far the same way is the same one; a shorter one or the opposite way is its own, with a
+            # ghost of its own: Blaziken's lid opens -0.1 and closes +0.1, and Frogadier's lid closes 0.1 asleep and
+            # 0.125 in its faint, where scaling one stretched nudge by 0.8 for the other left its sleeping lid short
+            same = next((k for k in keep if (t := _collinear(v, k)) is not None and 0.9 <= t <= 1), None)
+            if same is None: keep.append(v)
+            if plays is not None: plays.setdefault((bone, same or v), set()).update(names.get((bone, v), ()))
         out[bone] = keep
     return out
 
 
-def separate_layers(geo, nudges=None, clear=()):
-    """Spread the near-flush faces of one geometry; returns {(bone, nudge): new nudge} for the animations. A face moves
-    out just far enough to sit LAYER_GAP in front of every face it overlaps and was already in front of: any face of a
-    face detail (a bone named for one, or under one) within a pixel, keeping Cobblemon's front-to-back order (the
-    glasses stay in front of Blastoise's spread eye), and elsewhere the smaller of two body faces within LAYER_NEAR.
-    Each nudge an animation gives a face detail (a lid closing over the eye) is a ghost copy of its cubes at the nudged
-    place, which stacks with the rest but never moves, so the closed lid lands in the same order among the spread faces
-    as it did in Cobblemon; the new nudge is the ghost's place less the bone's own shift. A cube in clear (no texel of the
-    base texture on it, a box only a translucent layer draws) hides nothing behind it."""
-    nudges = nudges or {}
+def separate_layers(geo, nudges=None, clear=(), plays=None):
+    """Spread the near-flush faces of one geometry; returns {(bone, nudge): new nudge} for the animations. Faces are
+    compared where they lie at rest in model space, so a face detail stacks on the body face it sits on though different
+    bones or cubes turn the two (Venusaur's eyes against its turned head, Greninja's against its muzzle cube turned 45
+    degrees). A face moves out just far enough to sit LAYER_GAP in front of every face it overlaps and was already in
+    front of: any face of a face detail (a bone named for one, or under one) within a pixel, keeping Cobblemon's
+    front-to-back order (the glasses stay in front of Blastoise's spread eye), and elsewhere the smaller of two body faces
+    within LAYER_NEAR. A face detail behind a seen body face stays LAYER_TUCK under it. Each nudge an animation gives a
+    face detail, or a face-detail bone above it, is a ghost copy of the cubes it moves at the nudged place, which stacks
+    with the rest but never moves, so the closed lid lands in the same order among the spread faces as it did in
+    Cobblemon; the new nudge is the ghost's place less the cube's own shift. A cube in clear (no texel of the base texture
+    on it, a box only a translucent layer draws) hides nothing behind it. plays names the animations giving each nudge
+    (closed_vectors)."""
+    nudges, plays = nudges or {}, plays or {}
     bones = geo.get("bones", [])
-    rotated = _rest_rotated(bones)
+    frames = _rest_frames(bones)
     by_name = {b["name"]: b for b in bones}
     def detail(name, depth=0):
         if not name or depth > 40: return False
         return bool(DETAIL_BONES.search(name.lower())) or detail(by_name.get(name, {}).get("parent"), depth + 1)
+    turned = lambda b: bool(b.get("rotation") and any(b["rotation"]))
     children = {}
     for b in bones: children.setdefault(b.get("parent"), []).append(b["name"])
+    # the animations that move a bone, by a nudge of its own or of a bone above it
+    moving = {}
+    def moved_by(name, depth=0):
+        if name not in moving:
+            b = by_name.get(name)
+            if not b or depth > 60: return set()
+            moving[name] = moved_by(b.get("parent"), depth + 1) | {a for v in nudges.get(name, []) for a in plays.get((name, v), ())}
+        return moving[name]
+    lines = {}
     def descendants(name):
+        if name in lines: return lines[name]
         found, stack = {name}, [name]
         while stack:
             for c in children.get(stack.pop(), []):
                 if c not in found: found.add(c); stack.append(c)
+        lines[name] = found
         return found
-    faces = []   # (axis, sign, depth, rect, bone, cube, frame, ghost); the body's faces are anchors that never move
-    detail_cubes, solids, volumes, ghosts = set(), [], [], {}
-    def add_faces(b, c, frame, ghost):
+    # (plane, depth, rect, bone, cube, ghost, axis, sign, frame): plane is the face's outward normal in model space,
+    # rounded so the faces of one plane share it, depth how far out along it, rect its extent across it; ghost is (nudged
+    # bone, nudge) for a ghost's face; axis and sign are the face's in the cube's own frame, and frame the turned bones
+    # (and cube) it hangs from
+    faces = []
+    detail_cubes, fixed, boxes, ghosts, frame_of, bases = set(), set(), [], {}, {}, {}
+    def basis(plane):
+        if plane not in bases:
+            n = numpy.array(plane)
+            if max(abs(n)) > 0.9999:   # an unturned face measures across in the other two axes, in order
+                e = numpy.eye(3)[[k for k in range(3) if k != int(numpy.argmax(abs(n)))]]
+                bases[plane] = (n, e[0], e[1])
+            else:
+                e1 = numpy.cross(numpy.array([0, 1, 0]) if abs(n[1]) < 0.9 else numpy.array([1, 0, 0]), n)
+                e1 /= numpy.linalg.norm(e1)
+                bases[plane] = (n, e1, numpy.cross(n, e1))
+        return bases[plane]
+    def extent(c):
         o, s, inf = c["origin"], c["size"], c.get("inflate", 0)
+        return [min(o[k], o[k] + s[k]) - inf for k in range(3)], [max(o[k], o[k] + s[k]) + inf for k in range(3)]
+    def add_faces(bone, c, R, t, ghost, frame):
+        lo, hi = extent(c)
         for a in range(3):
             i, j = [k for k in range(3) if k != a]
-            rect = (o[i] - inf, o[i] + s[i] + inf, o[j] - inf, o[j] + s[j] + inf)
             # a plane's hairline sides (only its inflate wide) are not faces to spread: they slid eyes sideways
-            if rect[1] - rect[0] < 0.1 or rect[3] - rect[2] < 0.1: continue
-            faces.append((a, -1, round(o[a] - inf, 6), rect, b["name"], c, frame, ghost))
-            faces.append((a, 1, round(o[a] + s[a] + inf, 6), rect, b["name"], c, frame, ghost))
+            if hi[i] - lo[i] < 0.1 or hi[j] - lo[j] < 0.1: continue
+            for sign in (-1, 1):
+                plane = tuple(round(float(x), 3) + 0.0 for x in R[:, a] * sign)
+                n, e1, e2 = basis(plane)
+                corners = []
+                for u in (lo[i], hi[i]):
+                    for v in (lo[j], hi[j]):
+                        p = [0.0, 0.0, 0.0]; p[a] = hi[a] if sign > 0 else lo[a]; p[i] = u; p[j] = v
+                        corners.append(R @ numpy.array(p) + t)
+                us = [float(e1 @ p) for p in corners]; vs = [float(e2 @ p) for p in corners]
+                faces.append((plane, round(float(n @ corners[0]), 6), (min(us), max(us), min(vs), max(vs)), bone, c, ghost, a, sign, frame))
     for b in bones:
-        frame = rotated.get(b["name"], ())
+        R, t, chain = frames[b["name"]]
         is_detail = detail(b["name"])
-        turned = bool(b.get("rotation") and any(b["rotation"]))
         for c in b.get("cubes", []):
-            if c.get("rotation") and any(c["rotation"]): continue
-            o, s, inf = c["origin"], c["size"], c.get("inflate", 0)
-            box = (frame, [(o[k] - inf, o[k] + s[k] + inf) for k in range(3)])
+            Rc, tc, frame = R, t, chain
+            if turned(c):
+                # a turned cube is an anchor: it hides and carries the faces of others, but never moves itself
+                Rr, p = _rotation(c["rotation"]), numpy.array(c.get("pivot", [0, 0, 0]), float)
+                Rc, tc, frame = R @ Rr, R @ (p - Rr @ p) + t, chain + (id(c),)
+                fixed.add(id(c))
+            frame_of[id(c)] = (Rc, tc)
+            lo, hi = extent(c)
             if is_detail: detail_cubes.add(id(c))
-            elif all(x > 0 for x in s) and id(c) not in clear: solids.append(box)
-            if all(x > 0 for x in s) and id(c) not in clear: volumes.append(box)
-            add_faces(b, c, frame, False)
-            if is_detail and not turned:
-                for v in nudges.get(b["name"], []):
-                    g = dict(c, origin=[o[k] + v[k] for k in range(3)])
-                    ghosts[id(g)] = (c, b["name"], v, g); detail_cubes.add(id(g))
-                    add_faces(b, g, frame, True)
+            if all(x > 0 for x in c["size"]) and id(c) not in clear: boxes.append((Rc, tc, lo, hi, is_detail, frame))
+            add_faces(b["name"], c, Rc, tc, None, frame)
+            if id(c) in fixed: continue
+            # a nudge moves its bone and everything under it: ghosts for the nudges of this bone and of each face-detail
+            # bone above it, up to the first turned one, whose nudge is in another frame (Pichu's mouth_closed has no
+            # cubes of its own; moving its pieces back is how it hides them)
+            name = b["name"]
+            while name and detail(name) and not turned(by_name.get(name, {})):
+                for v in nudges.get(name, []):
+                    g = dict(c, origin=[c["origin"][k] + v[k] for k in range(3)])
+                    ghosts[id(g)] = (c, name, v, g, b["name"]); detail_cubes.add(id(g))
+                    add_faces(b["name"], g, Rc, tc, (name, v), frame)
+                name = by_name.get(name, {}).get("parent")
+    # what hides a face is looked for among the boxes turned as it is, as before: a box another bone turns may be a part
+    # an animation scales away (Froakie's bubble hoodie, which hid its whole face)
+    def stack(keep):
+        out = {}
+        for R, t, lo, hi, is_detail, frame in boxes:
+            if keep(is_detail): out.setdefault(frame, []).append((R.T, t, lo, hi))
+        return {frame: tuple(numpy.array(col) for col in zip(*rows)) for frame, rows in out.items()}
+    solids, volumes = stack(lambda is_detail: not is_detail), stack(lambda is_detail: True)
+    def inside(p, where, frame):
+        if frame not in where: return False
+        Rt, T, LO, HI = where[frame]
+        q = numpy.einsum("sij,sj->si", Rt, p - T)
+        return bool(numpy.any(numpy.all((q > LO) & (q < HI), axis=1)))
     overlap = lambda r, q: min(r[1], q[1]) > max(r[0], q[0]) and min(r[3], q[3]) > max(r[2], q[2])
-    # the model's middle: a face that matters points away from it along its axis (the back of an eye never does)
-    cubes = [c for b in bones for c in b.get("cubes", [])]
-    middle = [sum(c["origin"][k] + c["size"][k] / 2 for c in cubes) / (len(cubes) or 1) for k in range(3)]
-    def inside(p, boxes, frame): return any(fr == frame and all(lo < p[k] < hi for k, (lo, hi) in enumerate(box)) for fr, box in boxes)
+    # the model's middle: a face that matters points away from it (the back of an eye never does)
+    centres = [frame_of[id(c)][0] @ ((numpy.array(extent(c)[0]) + numpy.array(extent(c)[1])) / 2) + frame_of[id(c)][1]
+               for b in bones for c in b.get("cubes", [])]
+    middle = sum(centres) / len(centres) if centres else numpy.zeros(3)
     def exposed(f, inward=False):
         # seen if any of five points over it (the middle and four inset corners), a little out along its normal, is
         # outside the body: a bump over the middle (Mr. Rime's torso under its belly face) does not hide the rest
-        a, sign, d, r = f[:4]
-        if (d - middle[a]) * sign <= 0 and not inward: return False
-        i, j = [k for k in range(3) if k != a]
+        n, e1, e2 = basis(f[0])
+        d, r = f[1], f[2]
+        if d - n @ middle <= 0 and not inward: return False
         for u, v in ((0.5, 0.5), (0.2, 0.2), (0.2, 0.8), (0.8, 0.2), (0.8, 0.8)):
-            p = [0, 0, 0]; p[a] = d + sign * 0.02; p[i] = r[0] + (r[1] - r[0]) * u; p[j] = r[2] + (r[3] - r[2]) * v
-            if inside(p, solids, f[6]): continue
-            if f[5]["size"][a] == 0:
+            p = (r[0] + (r[1] - r[0]) * u) * e1 + (r[2] + (r[3] - r[2]) * v) * e2 + d * n
+            if inside(p + 0.02 * n, solids, f[8]): continue
+            if f[4]["size"][f[6]] == 0:
                 # a plane's face lying on a body (within a pixel: Blastoise's glasses float 0.45 off its head) is its
                 # front; one whose other side lies on a body is its back; one lying on nothing (a wing membrane) is seen
-                near = lambda side: any(inside(p[:a] + [d + side * t] + p[a + 1:], volumes, f[6]) for t in (0.3, 0.6, 1.0))
-                if not near(-sign) and near(sign): continue
+                near = lambda side: any(inside(p + side * s * n, volumes, f[8]) for s in (0.3, 0.6, 1.0))
+                if not near(-1) and near(1): continue
             return True
         return False
     area = lambda r: (r[1] - r[0]) * (r[3] - r[2])
@@ -1878,74 +1969,155 @@ def separate_layers(geo, nudges=None, clear=()):
     twin = lambda c1, c2: c1["origin"] == c2["origin"] and [abs(x) for x in c1["size"]] == [abs(x) for x in c2["size"]]
     # level body faces fight wherever they show, so for them a face turned toward the model's middle counts too (the
     # inside of Charizard's mouth, seen when its jaw opens), and of two exactly level the smaller (or, as large, the
-    # later) moves
-    seen_faces = {n: exposed(f) for n, f in enumerate(faces)}
-    open_faces = {n: seen_faces[n] or exposed(f, inward=True) for n, f in enumerate(faces)}
-    lines = {}
-    def sits_on(n, m):
+    # later) moves; a face detail hidden at rest counts where a nudge shows it (Bayleef's angry eye, whose layers came
+    # out of the head in battle a hundredth apart), but a box's side turned inward does not, which pulled against its
+    # front (Venusaur's pupil, a box through its eye plane)
+    seen_faces = {k: exposed(f) for k, f in enumerate(faces)}
+    outward = {k: f[1] - basis(f[0])[0] @ middle > 0 for k, f in enumerate(faces)}
+    shown = {(id(ghosts[id(f[4])][0]), f[6], f[7]) for k, f in enumerate(faces) if f[5] and seen_faces[k]}
+    open_faces = {k: seen_faces[k] or (id(f[4]), f[6], f[7]) in shown
+                     or ((id(f[4]) not in detail_cubes or f[4]["size"][f[6]] == 0) and exposed(f, inward=True)) for k, f in enumerate(faces)}
+    by_plane = {}
+    for k, f in enumerate(faces): by_plane.setdefault(f[0], []).append(k)
+    def sits_on(n, m, lifted):
         f, g = faces[n], faces[m]
-        if g[0] != f[0] or g[1] != f[1] or g[5] is f[5] or g[6] != f[6] or not overlap(f[3], g[3]): return False
-        if f[7] and g[7]: return False
-        # a ghost goes with its bone's children, which move with it (Frogadier's pupils with its eye), but stacks on its
-        # parent (Blastoise's lid on the eye it closes over)
-        if f[7] or g[7]:
-            bone, other = (f[4], g[4]) if f[7] else (g[4], f[4])
-            if bone not in lines: lines[bone] = descendants(bone)
-            if other in lines[bone]: return False
-        gap = (f[2] - g[2]) * f[1]
-        if gap < 0 or (gap > 0 and not seen_faces[n]): return False
-        # level face details are spare expressions, one shown at a time; stacking their sides slid Greninja's aside
-        if id(f[5]) in detail_cubes: return 0 < gap <= 1.0
-        if gap == 0 and (area(f[3]), -n) >= (area(g[3]), -m): return False
-        return gap < LAYER_NEAR and not twin(f[5], g[5]) and area(f[3]) <= area(g[3]) and shared(f[3], g[3]) >= 1
-    under = {n: ([m for m in range(len(faces)) if sits_on(n, m)] if open_faces[n] else []) for n in range(len(faces))}
+        if g[4] is f[4] or not overlap(f[2], g[2]): return False
+        # a bone's nudges never play at once, but ghosts of two bones do (the battle pose's angry eye under the blink's
+        # lid), and one nudge's ghosts keep their order among themselves, as the cubes they copy do (Bayleef's angry eye)
+        if f[5] and g[5] and f[5] != g[5] and f[5][0] == g[5][0]: return False
+        # a ghost goes with what its nudge moves (Frogadier's pupils with its eye), but stacks on the rest (Blastoise's
+        # lid on the eye it closes over)
+        for ghost, other, real in ((f[5], g[3], not g[5]), (g[5], f[3], not f[5])):
+            if ghost and real and other in descendants(ghost[0]): return False
+            # nor on where another bone rests when every animation giving the nudge moves that one too, apart from what
+            # moves both (a head's bob): the battle pose takes Bayleef's idle eye back as it brings the angry one out,
+            # which stacked on the idle eye's rest and stood two pixels out of the head; it stacks on that bone's ghost
+            if ghost and real and plays.get(ghost) and plays[ghost] <= moved_by(other) - moved_by(by_name.get(ghost[0], {}).get("parent")):
+                return False
+        gap = f[1] - g[1]
+        is_detail = id(f[4]) in detail_cubes
+        if gap < 0 or (gap > 0 and not (seen_faces[n] or (id(f[4]), f[6], f[7]) in shown)): return False
+        if is_detail:
+            # level face details are spare expressions, one shown at a time (stacking their sides slid Greninja's
+            # aside); but a ghost its nudge brought level, out along the face, is a lid closing exactly onto the eye
+            # (Pikachu's blink), and covers it
+            if gap == 0: return bool(f[5]) and not g[5] and f[5][1][f[6]] * f[7] > 0
+            return gap <= 1.0
+        if gap == 0 and (area(f[2]), -n) >= (area(g[2]), -m): return False
+        if gap >= LAYER_NEAR or twin(f[4], g[4]): return False
+        if area(f[2]) <= area(g[2]) + 1e-6 and shared(f[2], g[2]) >= 0.999: return True
+        # a face already lifted carries what lay on it in front, small as the overlap is (Raichu's nose plane, 0.01 in
+        # front of the nose box: both went up off the muzzle to one depth and fought)
+        return m in lifted and shared(f[2], g[2]) >= 0.25
+    def unders(lifted):
+        return {k: ([m for m in by_plane[f[0]] if sits_on(k, m, lifted)] if open_faces[k] else []) for k, f in enumerate(faces)}
+    under = unders(set())
+    lifted = {k for k, ms in under.items() if ms and id(faces[k][4]) not in detail_cubes}
+    if lifted: under = unders(lifted)
     placed = {}
     def new_depth(n, seen=()):
         if n in placed: return placed[n]
-        f = faces[n]
-        d = f[2]
+        d = faces[n][1]
         for m in under[n]:
-            if m in seen: continue
-            d = d + f[1] * max(0, (new_depth(m, seen + (n,)) + f[1] * LAYER_GAP - d) * f[1])
+            if m not in seen: d = max(d, new_depth(m, seen + (n,)) + LAYER_GAP)
         placed[n] = round(d, 4)
         return placed[n]
-    shifts = {}   # (id(cube), axis) -> (cube, axis, shift)
-    for n, f in enumerate(faces):
-        if not under[n]: continue
-        shift = new_depth(n) - f[2]
-        if abs(shift) < 1e-9: continue
-        # a cube moves by its largest shift along an axis (its front and back faces may ask for different ones)
-        key = (id(f[5]), f[0])
-        if key not in shifts or abs(shift) > abs(shifts[key][2]): shifts[key] = (f[5], f[0], shift)
-    # a face detail tucked just under a seen body face (a closed eyelid or a spare expression 0.07 inside the head, which
-    # the depth buffer lets through at a distance, so the Pokemon looks asleep) goes LAYER_TUCK under it
-    for n, f in enumerate(faces):
-        if f[7] or id(f[5]) not in detail_cubes or (id(f[5]), f[0]) in shifts: continue
-        for m, g in enumerate(faces):
-            if g[7] or id(g[5]) in detail_cubes or g[0] != f[0] or g[1] != f[1] or g[6] != f[6] or not seen_faces[m]: continue
-            gap = (g[2] - f[2]) * f[1]
-            if 0 <= gap < LAYER_NEAR and shared(f[3], g[3]) > 0:
-                shifts[(id(f[5]), f[0])] = (f[5], f[0], -f[1] * (LAYER_TUCK - gap))
-                break
+    final = {k: new_depth(k) for k in range(len(faces))}
+    # a face detail behind a seen body face it overlaps, by up to a pixel (a closed eyelid or a spare expression 0.07
+    # inside the head, which the depth buffer lets through at a distance, so the Pokemon looks asleep), ends LAYER_TUCK
+    # under it at least: the spread never brings it out (Venusaur's spare lids came 0.24 out of its head), a nudge that
+    # hides it hides it that deep (Pikachu's battle eyes stayed 0.09 under), and the details behind it go further under,
+    # each LAYER_GAP below the one in front, rather than all to one depth (Frogadier's two lids, which then fought asleep)
+    cover = {}
+    for k, f in enumerate(faces):
+        if id(f[4]) not in detail_cubes: continue
+        for m in by_plane[f[0]]:
+            g = faces[m]
+            # over most of it, and not level with it: Mr. Rime's mustache over the foot of its eyes, Squirtle's lips
+            # under its mouth and Bulbasaur's spot pattern, a box level with its eyes, sank the eyes under the head
+            if g[5] or id(g[4]) in detail_cubes or id(g[4]) in clear or not seen_faces[m] or shared(f[2], g[2]) < area(f[2]) / 2: continue
+            if 0.005 < g[1] - f[1] <= 1.0 and (k not in cover or g[1] < faces[cover[k]][1]): cover[k] = m
+    above = {}
+    for k, ms in under.items():
+        for m in ms: above.setdefault(m, []).append(k)
+    capped = set()
+    for k in sorted((k for k in range(len(faces)) if id(faces[k][4]) in detail_cubes), key=lambda k: (-faces[k][1], not faces[k][5])):
+        # within LAYER_NEAR it goes LAYER_TUCK under; deeper, it only never comes up (a box's side deep in the head slid
+        # sideways when tucked: Ekans' lids)
+        lim = [] if k not in cover else [final[cover[k]] - LAYER_TUCK if faces[cover[k]][1] - faces[k][1] < LAYER_NEAR else faces[k][1]]
+        lim += [final[h] - LAYER_GAP for h in above.get(k, ()) if h in capped]
+        if lim and min(lim) < final[k]: final[k] = round(min(lim), 4); capped.add(k)
+    if capped:
+        # what stacked on a face that went under comes back down with it
+        placed = {k: final[k] for k in capped}
+        final = {k: new_depth(k) for k in range(len(faces))}
+    # each cube moves along its own axis by the largest of what its faces ask; a face-detail box asked out on both
+    # sides, by faces facing away from the model's middle, off one face detail, is around it, not on it, and stays
+    # (Dragonite's closed mouth, 0.02 wider than its open and sad ones on both sides, slid 0.14 one way and left them
+    # 0.4 out of the other), as does one tucked from both sides (those open and sad ones, under the muzzle's sides),
+    # and what stacked on it is stacked again on where it stays; otherwise it, and a plane seen
+    # from both sides (a wing membrane), takes what its faces on the model's outer side ask, which keeps Cobblemon's
+    # order from either side (Wartortle's jaw box, around its head, comes out at the front)
+    stays = set()
+    while True:
+        asks = {}
+        for k, f in enumerate(faces):
+            delta = final[k] - f[1]
+            if abs(delta) > 1e-3 and id(f[4]) not in fixed: asks.setdefault((id(f[4]), f[6]), []).append((f[7] * delta, k))
+        shifts, held = {}, set()   # shifts: (id(cube), axis) -> (cube, axis, shift)
+        for (cid, a), wants in asks.items():
+            cube = faces[wants[0][1]][4]
+            if any(s > 0 for s, _ in wants) and any(s < 0 for s, _ in wants):
+                out = [w for w in wants if outward[w[1]]] or wants
+                off = lambda up: {id(faces[m][4]) for s, k in out if (s > 0) == up for m in under[k]}
+                tucked = any(k in capped for s, k in out)
+                if cube["size"][a] != 0 and cid in detail_cubes and (off(True) & off(False) & detail_cubes or tucked):
+                    held.add((cid, a)); continue
+                if cube["size"][a] == 0 or cid in detail_cubes: wants = out
+            shifts[(cid, a)] = (cube, a, max(wants, key=lambda w: abs(w[0]))[0])
+        if held <= stays: break
+        stays |= held
+        placed = {k: final[k] for k in capped}
+        placed.update({k: f[1] for k, f in enumerate(faces) if (id(f[4]), f[6]) in stays})
+        final = {k: new_depth(k) for k in range(len(faces))}
     shift_of = lambda cid, a: shifts[(cid, a)][2] if (cid, a) in shifts else 0
+    need = lambda gid, a: ghosts[gid][2][a] + shift_of(gid, a) - shift_of(id(ghosts[gid][0]), a)
     # what a closed lid wraps in Cobblemon (another bone's face detail inside the ghost, give or take 0.05): across the
     # axis it closes along, it follows that eye's own shift, as it fitted it before (Bulbasaur's lid slid off the edge of
     # its spread eye and left a line of red showing)
     box = lambda c: [(c["origin"][k] - c.get("inflate", 0), c["origin"][k] + abs(c["size"][k]) + c.get("inflate", 0)) for k in range(3)]
     detail_boxes = [(b["name"], c) for b in bones if detail(b["name"]) for c in b.get("cubes", [])
-                    if not (c.get("rotation") and any(c["rotation"])) and all(x != 0 for x in c["size"])]
+                    if id(c) not in fixed and all(x != 0 for x in c["size"])]
     closed = {}
-    for gid, (real, bone, v, g) in ghosts.items():
+    for gid, (real, bone, v, g, owner) in ghosts.items():
         prev = closed.get((bone, v))
-        new = [v[a] + shift_of(gid, a) - shift_of(id(real), a) for a in range(3)]
+        new = [need(gid, a) for a in range(3)]
         gb = box(g)
-        hosts = [c for name, c in detail_boxes if name != bone and all(gb[k][0] <= box(c)[k][0] + 0.05 and gb[k][1] >= box(c)[k][1] - 0.05 for k in range(3))]
+        hosts = [c for name, c in detail_boxes if name not in descendants(bone) and frames[name][2] == frames[owner][2]
+                 and all(gb[k][0] <= box(c)[k][0] + 0.05 and gb[k][1] >= box(c)[k][1] - 0.05 for k in range(3))]
         if hosts:
             depth = max(range(3), key=lambda a: abs(new[a] - v[a]))
             for a in range(3):
-                if a != depth: new[a] = v[a] + max((shift_of(id(c), a) for c in hosts), key=abs) - shift_of(id(real), a)
+                host = max((shift_of(id(c), a) for c in hosts), key=abs)
+                if a == depth: continue
+                wrap = v[a] + host - shift_of(id(real), a) if abs(v[a]) >= 0.01 or abs(host) > 1e-3 else v[a]
+                # but never short of where the ghost stacked (Charizard's sleeping lid, raised 0.1, stayed under its eye's
+                # spread top)
+                new[a] = wrap if wrap * new[a] < 0 or abs(wrap) >= abs(new[a]) or abs(v[a]) < 0.01 else new[a]
+        else:
+            # otherwise a nudge keeps to its own axes, and a hair's breadth along one is none: Froakie's iris, dropped 0.3
+            # in battle, came forward 0.14 as well, and the blink added to that could no longer hide it; Bayleef's eyes,
+            # raised 0.25 in battle and 0.002 out, came a pixel out
+            new = [x if abs(v[a]) >= 0.01 else v[a] for a, x in enumerate(new)]
         if prev is not None: new = [x if abs(x) > abs(p) else p for x, p in zip(new, prev)]
         closed[(bone, v)] = [round(x, 4) for x in new]
+    # a cube's twin (the same box in another bone: Pichu's cheek and the sparks cheek_active scales out through it)
+    # moves with it, or the spread splits the pair and the sparks never show
+    cubes = [c for b in bones for c in b.get("cubes", [])]
+    for (cid, a), (cube, _, shift) in list(shifts.items()):
+        if cid in ghosts: continue
+        for c in cubes:
+            if c is not cube and id(c) not in fixed and (id(c), a) not in shifts and twin(c, cube): shifts[(id(c), a)] = (c, a, shift)
     for (cid, a), (cube, _, shift) in shifts.items():
         if cid not in ghosts: cube["origin"][a] = round(cube["origin"][a] + shift, 4)
     return {k: v for k, v in closed.items() if list(k[1]) != v}
@@ -1959,9 +2131,11 @@ def stretch_animation(anim, closed):
         if bone not in by_bone or "position" not in channels: continue
         def fix(v, pairs=by_bone[bone]):
             if isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v):
-                for c, new in pairs:
-                    t = _collinear(v, c)
-                    if t is not None and 0 < t <= 1.0001: return [round(t * x, 4) for x in new]
+                # the nudge this one is (or the nearest it is a part of)
+                fits = [(t, new) for c, new in pairs if (t := _collinear(v, c)) is not None and 0 < t <= 1.0001]
+                if fits:
+                    t, new = max(fits, key=lambda f: f[0])
+                    return [round(t * x, 4) for x in new]
                 return v
             if isinstance(v, dict): return {k: fix(x) if k in ("pre", "post", "vector") else x for k, x in v.items()}
             return v
@@ -2027,21 +2201,36 @@ def separate_model_layers():
         anim_files = {}
         for path in anim_paths:
             with open(path, encoding="utf-8") as file: anim_files[path] = json.load(file)
-        nudges = closed_vectors([a for d in anim_files.values() for a in d.get("animations", {}).values()])
-        closed = {}
+        every_plays = {}
+        every = closed_vectors([item for d in anim_files.values() for item in d.get("animations", {}).items()], every_plays)
+        # a model takes its nudges from, and stretches, the animation file named as it is (raichu_alolan.geo.json plays
+        # raichu_alolan.animation.json, pikachu_cap_female pikachu_cap): the first model's stretch went into every file,
+        # though Alolan Raichu's spread is not Raichu's; a file no model is named for takes them all
+        stems = {p: os.path.basename(p)[:-len(".animation.json")] for p in anim_files}
+        def own_file(path):
+            stem = os.path.basename(path)[:-len(".geo.json")]
+            fits = [p for p, s in stems.items() if stem == s or stem.startswith(s + "_")]
+            return max(fits, key=lambda p: len(stems[p])) if fits else None
+        closed, per_file, owned = {}, {}, set()
         skins = base_skins(folder)
         for path in glob.glob(f"{modelsBedrock}/{folder}/*.geo.json"):
+            own = own_file(path)
+            if own: owned.add(own)
+            plays = {} if own else every_plays
+            nudges = closed_vectors(list(anim_files[own].get("animations", {}).items()), plays) if own else every
             with open(path, encoding="utf-8") as file: text = file.read()
             data = json.loads(text)
             for geo in data.get("minecraft:geometry", []):
-                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins)).items(): closed.setdefault(key, new)
+                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins), plays).items():
+                    closed.setdefault(key, new)
+                    if own: per_file.setdefault(own, {}).setdefault(key, new)
             if json.loads(text) != data:
                 with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent="\t"))
                 spread += 1
         if not closed: continue
         folders += 1
         for path, data in anim_files.items():
-            for anim in data.get("animations", {}).values(): stretch_animation(anim, closed)
+            for anim in data.get("animations", {}).values(): stretch_animation(anim, per_file.get(path, {}) if path in owned else closed)
             with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
     with open(done_path, "w") as file: file.write(json.dumps(sorted(done)))
     print(f"Layered faces spread in {spread} models ({folders} species' animations stretched to match).")
@@ -2079,6 +2268,8 @@ def mark_primary_animations():
                 posed.setdefault(bone, set()).update(k for k in ("position", "rotation") if k in channels)
         for a in hit:
             anims[a]["override_previous_animation"] = True
+            # played once by a move (Pichu's status clip looped on forever); a faint holds its last frame
+            if anims[a].get("loop") is True: anims[a]["loop"] = "hold_on_last_frame" if "faint" in a else False
             keyed = anims[a].setdefault("bones", {})
             for bone, channels in posed.items():
                 for k in sorted(channels): keyed.setdefault(bone, {}).setdefault(k, [0, 0, 0])
@@ -2400,7 +2591,9 @@ def create_behavior_entities():
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
                                    # Pokemon.scaleModifier, rolled between pokemonIntrinsicSizeMin and Max by the script
                                    "cobblemon:intrinsic": {"type": "float", "range": [0.5, 1.5], "default": 1.0, "client_sync": True},
-                                   "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True}},
+                                   "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True},
+                                   # a primary clip (an attack, a faint) is playing: the pose's own clips stop meanwhile
+                                   "cobblemon:primary": {"type": "bool", "default": False, "client_sync": True}},
                     "animations": {},
                     "scripts": {"animate": []}
                 },
@@ -2689,12 +2882,23 @@ def create_move_fx():
                     clip = m and f"animation.{m.group(1)}.{m.group(2)}"
                     if clip and clip in ids: clips[("air:" if air else "") + name] = clip
         if clips and desc.get("identifier", "").startswith("cobblemon:p"): anims[desc["identifier"]] = clips
+    # how long each primary clip runs: while one plays, scripts/main.js sets cobblemon:primary and the pose controller
+    # stops the pose's own clips (Cobblemon's PrimaryAnimation fades the pose out). override_previous_animation does
+    # not do it for a clip a script plays, which Bedrock runs before the controller: Greninja sank into the ground
+    wanted = {clip for clips in anims.values() for clip in clips.values()}
+    primary = {}
+    for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
+        with open(path, encoding="utf-8") as file: text = file.read()
+        if "override_previous_animation" not in text: continue
+        for aid, anim in json.loads(text).get("animations", {}).items():
+            if aid in wanted and anim.get("override_previous_animation"): primary[aid] = round(float(anim.get("animation_length", 1.0)), 3)
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py (create_move_fx): Cobblemon's move effects, the species' battle clips and the impact particles\n")
         file.write(f"export const MOVE_FX = {json.dumps(effects, separators=(',', ':'))};\n")
         file.write(f"export const FX_ANIMS = {json.dumps(anims, separators=(',', ':'))};\n")
         file.write(f"export const FX_PARTICLES = {json.dumps(impact)};\n")
+        file.write(f"export const FX_PRIMARY = {json.dumps(primary, separators=(',', ':'))};\n")
     print(f"Move effects: {len(effects)} timelines, {len(anims)} species with battle clips.")
 
 
@@ -3670,7 +3874,13 @@ def add_capture(entity, species, pokemon, kind):
     groups["cobblemon:pastured"] = {"minecraft:home": {"restriction_radius": 32, "restriction_type": "random_movement"},
                                     "minecraft:behavior.random_stroll": {"priority": 6, "speed_multiplier": 0.8}}
     events["cobblemon:pasture"] = {"remove": {"component_groups": ["cobblemon:following"]}, "add": {"component_groups": ["cobblemon:pastured"]}}
-    groups["cobblemon:following"] = {"minecraft:behavior.follow_owner": {"priority": 5, "speed_multiplier": 1.2, "start_distance": 5, "stop_distance": 2, "can_teleport": True}}
+    # following at a wolf's pace at least (movement 0.3 at multiplier 1): a big Pokemon's walkSpeed is small (Charizard
+    # 0.147, Blastoise 0.17), and at 1.2 times that it fell behind a walking player until follow_owner teleported it,
+    # again and again; it stops off its owner by half its width, as Cobblemon's MoveToOwnerTask does
+    walk = (components.get("minecraft:movement") or {}).get("value", 0.25) or 0.25
+    width = components.get("minecraft:collision_box", {}).get("width", 0.6) * (components.get("minecraft:scale") or {}).get("value", 1.0)
+    groups["cobblemon:following"] = {"minecraft:behavior.follow_owner": {"priority": 5, "speed_multiplier": round(max(1.2, 0.3 / walk), 2),
+                                                                         "start_distance": 5, "stop_distance": max(2, math.ceil(width / 2) + 1), "can_teleport": True}}
     groups["cobblemon:captured"] = {
         "minecraft:spawn_entity": {"entities": [{"spawn_item": f"cobblemon:poke_ball_{pokemon}", "min_wait_time": 0, "max_wait_time": 0, "num_to_spawn": 1, "single_use": True}]},
         "minecraft:timer": {"time": 1.0, "looping": False, "time_down_event": {"event": "cobblemon:vanish", "target": "self"}}
@@ -4370,7 +4580,7 @@ def add_battle_states(entity):
     """Frozen in place while a turn-based battle runs; captured outright from the battle's ball throw."""
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
     events = entity["minecraft:entity"].setdefault("events", {})
-    groups["cobblemon:in_battle"] = {"minecraft:movement": {"value": 0.0}, "minecraft:body_rotation_blocked": {},
+    groups["cobblemon:in_battle"] = {"minecraft:movement": {"value": 0.0}, "minecraft:underwater_movement": {"value": 0.0}, "minecraft:body_rotation_blocked": {},
                                      "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 0.1, "probability": 0.0}}
     events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]}}
     events["cobblemon:battle_end"] = {"remove": {"component_groups": ["cobblemon:in_battle"]}}
@@ -4824,7 +5034,9 @@ def create_trainer_card():
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     item = {"format_version": "1.21.90", "minecraft:item": {
         "description": {"identifier": "rctmod:trainer_card", "menu_category": {"category": "items"}},
-        "components": {"minecraft:icon": "rct_trainer_card", "minecraft:display_name": {"value": "Trainer Card"}, "minecraft:max_stack_size": 1}}}
+        # usable as the Party item is, so it opens aimed at a block too, not only into the air
+        "components": {"minecraft:icon": "rct_trainer_card", "minecraft:display_name": {"value": "Trainer Card"}, "minecraft:max_stack_size": 1,
+                       "minecraft:use_modifiers": {"use_duration": 0.05, "movement_modifier": 1.0}, "minecraft:use_animation": "none"}}}
     with open(f"{itemsBedrock}/trainer_card.json", "w") as file: file.write(json.dumps(item, indent=2))
     recipe = {"format_version": "1.20.10", "minecraft:recipe_shaped": {
         "description": {"identifier": "rctmod:trainer_card"}, "tags": ["crafting_table"], "pattern": ["PPP", "NGR", "PPP"],
@@ -4851,8 +5063,10 @@ def create_gyms():
     trainers = rct_trainer_ids()
     invalid, unmapped, gems, placed = load_invalid(), {}, {}, []
     # the marker: a plain block under the floor, where the command block was
+    # a random tick of a spot marker records where its trainer stands, for the Trainer Card's arrow (scripts/main.js)
     full_block("cobblemon:gym_marker", {"*": "minecraft:block/stone"}, states={
-        "cobblemon:role": GYM_ROLES, "cobblemon:trainer": list(range(len(trainers))), "cobblemon:rise": GYM_RISES})
+        "cobblemon:role": GYM_ROLES, "cobblemon:trainer": list(range(len(trainers))), "cobblemon:rise": GYM_RISES},
+        extra={"cobblemon:gym_site": {}})
     full_block("cobblemon:league_anchor", {"*": "minecraft:block/stone"}, states={"cobblemon:anchor": list(range(LEAGUE_ANCHORS))},
                extra={"cobblemon:league_anchor": {}})
     for path in sorted(glob.glob(f"{gymsData}/rgs/worldgen/structure/*.json")):
@@ -4952,7 +5166,10 @@ blockModelsBedrock = f"{resourcePack}/models/blocks"
 texturesBlocksBedrock = f"{resourcePack}/textures/blocks/cobblemon"
 lootBlocksBedrock = f"{behaviorPack}/loot_tables/blocks"
 # vanilla Java textures a Cobblemon model borrows, by their Bedrock file
-VANILLA_TEXTURES = {"block/farmland_moist": "textures/blocks/farmland_wet", "block/farmland": "textures/blocks/farmland_dry"}
+VANILLA_TEXTURES = {"block/farmland_moist": "textures/blocks/farmland_wet", "block/farmland": "textures/blocks/farmland_dry",
+                    # Bedrock names its planks the other way round: the ring target's frame drew the missing texture
+                    **{f"block/{w}_planks": f"textures/blocks/planks_{'big_oak' if w == 'dark_oak' else w}"
+                       for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak")}}
 BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", "minecraft:podzol", "minecraft:coarse_dirt",
                "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots"]
 terrain_textures = {}
@@ -6142,6 +6359,9 @@ def write_tree(path, blocks):
     return (ox, oy, oz)
 
 
+APRICORN_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud"]
+
+
 def create_apricorns():
     """Wood, leaves, fruit, saplings, sprouts, apricorn items and the tree structures and feature rules."""
     import random
@@ -6191,6 +6411,17 @@ def create_apricorns():
                                "minecraft:loot": f"loot_tables/blocks/{colour}_apricorn_sapling.json",
                                "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:farmland"]}]},
                                "cobblemon:apricorn_sapling": {}}}}, indent=2))
+        # a wild tree's seed: worldgen places this sapling look-alike on dirt (single_block_feature, below), and
+        # scripts/main.js grows it into a wild tree on its first tick, unrotated, so the fruit keeps hanging from its leaf
+        with open(f"{blocksBedrock}/{colour}_apricorn_tree_wild.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                "description": {"identifier": f"cobblemon:{colour}_apricorn_tree_wild"},
+                "components": {"minecraft:geometry": "minecraft:geometry.cross",
+                               "minecraft:material_instances": {"*": {"texture": java_texture(f"cobblemon:block/crops/{colour}_apricorn_sapling"), "render_method": "alpha_test", "face_dimming": False, "ambient_occlusion": False}},
+                               "minecraft:collision_box": False, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0}, "minecraft:light_dampening": 0,
+                               "minecraft:loot": f"loot_tables/blocks/{colour}_apricorn_sapling.json",
+                               "minecraft:tick": {"interval_range": [1, 1], "looping": False},
+                               "cobblemon:wild_apricorn_tree": {}}}}, indent=2))
         # the fruit: stage models 0 to 2 are shared, 3 is the colour's own; it faces the leaf it hangs from
         permutations = []
         base = None
@@ -6235,16 +6466,14 @@ def create_apricorns():
         if not biome_filter: continue
         colour_features = []
         for colour in APRICORN_COLOURS:
-            pieces = []
-            for n in range(TREE_VARIANTS):
-                name = f"apricorn_tree_{colour}_wild_{n}"
-                with open(f"{featuresBedrock}/{name}.json", "w") as file:
-                    file.write(json.dumps({"format_version": "1.13.0", "minecraft:structure_template_feature": {
-                        "description": {"identifier": f"cobblemon:{name}"}, "structure_name": f"cobblemon:{name}", "adjustment_radius": 1, "facing_direction": "random",
-                        "constraints": {"grounded": {}, "unburied": {}, "block_intersection": {"block_allowlist": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern", "minecraft:snow_layer"]}}}}, indent=2))
-                pieces.append([f"cobblemon:{name}", 1])
+            # the seed, only on the dirt a sapling grows on (Cobblemon's would_survive and ApricornTreeFeature's dirt
+            # check), so no tree stands on sand, terracotta, leaves or water; main.js grows the tree from it
             with open(f"{featuresBedrock}/apricorn_tree_{colour}.json", "w") as file:
-                file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {"description": {"identifier": f"cobblemon:apricorn_tree_{colour}"}, "features": pieces}}, indent=2))
+                file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
+                    "description": {"identifier": f"cobblemon:apricorn_tree_{colour}"},
+                    "places_block": f"cobblemon:{colour}_apricorn_tree_wild", "enforce_placement_rules": False, "enforce_survivability_rules": False,
+                    "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": APRICORN_SOILS},
+                    "may_replace": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern", "minecraft:snow_layer"]}}, indent=2))
             colour_features.append([f"cobblemon:apricorn_tree_{colour}", 1])
         with open(f"{featuresBedrock}/apricorn_trees.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {"description": {"identifier": "cobblemon:apricorn_trees"}, "features": colour_features}}, indent=2))
@@ -10461,7 +10690,9 @@ def model_furniture(name, variants):
         if model_ref.endswith("block/air"):
             gid, cubes = "geometry.cobblefurnies_empty", []
             materials = {"*": {"texture": java_texture("cobblefurnies:block/particles/color/white") or "cobblemon_vanilla_block_white_wool", "render_method": "alpha_test"}}
-            if not os.path.exists(f"{blockModelsBedrock}/cobblefurnies_empty.geo.json"): write_bone_geometry(gid, {"none": []})
+            # Bedrock refuses a block geometry with no cube ("cannot find geometry"), and the whole block with it, which
+            # showed as "?" (every coloured curtain); a speck 0.01 across in the middle of the floor stands for nothing
+            write_bone_geometry(gid, {"none": [([-0.005, 0, -0.005], [0.01, 0.01, 0.01])]})
         else:
             if model_ref not in geometries:
                 model = java_model(model_ref)
@@ -10645,6 +10876,17 @@ def check_spawn_balance(share=0.05):
     return len(problems)
 
 
+def check_structure_blocks():
+    """Every block in every structure is one Bedrock knows, with states it has (tools/check_structures.py, against
+    Mojang's own block list); one it does not loads as the "?" block, as gyms' light blocks did."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import check_structures
+    try: found = check_structures.check()
+    except Exception as e: print(f"Structure block check skipped: {e}"); return
+    for path, entries in found.items(): print(f"  {os.path.basename(path)}: {'; '.join(sorted(set(entries)))[:300]}")
+    print(f"Structure block check: {sum(len(set(v)) for v in found.values())} entries in {len(found)} structures would load as '?'.")
+
+
 def main():
     global pokemons
     fix_only = "--fix" in sys.argv
@@ -10711,6 +10953,7 @@ def main():
     ensure_script_module()
     check_pokemon_complete()
     check_spawn_balance()
+    check_structure_blocks()
     bump_pack_versions()
 
 

@@ -6,8 +6,12 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
-                        "pose_standing"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -51,8 +55,12 @@
                 },
                 "battle_standing": {
                     "animations": [
-                        "battle_idle",
-                        "pose_battle_standing"
+                        {
+                            "battle_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -96,8 +104,12 @@
                 },
                 "walk": {
                     "animations": [
-                        "ground_walk",
-                        "pose_walk"
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -141,8 +153,12 @@
                 },
                 "hover": {
                     "animations": [
-                        "air_idle",
-                        "pose_hover"
+                        {
+                            "air_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_hover": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -186,8 +202,12 @@
                 },
                 "fly": {
                     "animations": [
-                        "air_fly",
-                        "pose_fly"
+                        {
+                            "air_fly": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_fly": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -231,8 +251,12 @@
                 },
                 "sleep": {
                     "animations": [
-                        "sleep",
-                        "pose_sleep"
+                        {
+                            "sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -276,8 +300,12 @@
                 },
                 "air_sleep": {
                     "animations": [
-                        "air_sleep",
-                        "pose_air_sleep"
+                        {
+                            "air_sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_air_sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -321,8 +349,12 @@
                 },
                 "battle_sleep": {
                     "animations": [
-                        "battle_sleep",
-                        "pose_battle_sleep"
+                        {
+                            "battle_sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_battle_sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -366,8 +398,12 @@
                 },
                 "mount_idle": {
                     "animations": [
-                        "mount_ground_idle",
-                        "pose_mount_idle"
+                        {
+                            "mount_ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_mount_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -411,9 +447,15 @@
                 },
                 "mount_walk": {
                     "animations": [
-                        "ride_ground_walk",
-                        "mount_ground_walk",
-                        "pose_mount_walk"
+                        {
+                            "ride_ground_walk": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "mount_ground_walk": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_mount_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -457,9 +499,15 @@
                 },
                 "mount_hovering": {
                     "animations": [
-                        "ride_air_idle",
-                        "mount_air_idle",
-                        "pose_mount_hovering"
+                        {
+                            "ride_air_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "mount_air_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_mount_hovering": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -503,9 +551,15 @@
                 },
                 "mount_fly": {
                     "animations": [
-                        "ride_air_fly",
-                        "mount_air_fly",
-                        "pose_mount_fly"
+                        {
+                            "ride_air_fly": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "mount_air_fly": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_mount_fly": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -549,14 +603,18 @@
                 },
                 "glide": {
                     "animations": [
-                        "air_glide",
                         {
-                            "ride_air_glide": "q.has_rider"
+                            "air_glide": "!q.property('cobblemon:primary')"
                         },
                         {
-                            "ride_dive": "q.has_rider"
+                            "ride_air_glide": "(q.has_rider) && !q.property('cobblemon:primary')"
                         },
-                        "pose_glide"
+                        {
+                            "ride_dive": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_glide": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

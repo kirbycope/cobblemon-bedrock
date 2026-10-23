@@ -3041,14 +3041,14 @@
         "torso": {
           "rotation": [
             0,
-            0,
+            "0*20",
             0
           ]
         },
         "head": {
           "rotation": [
             0,
-            0,
+            "0*20",
             0
           ]
         }
@@ -3059,54 +3059,54 @@
       "bones": {
         "body": {
           "rotation": [
-            0,
-            0,
+            "0*30",
+            "0*10",
             0
           ],
           "position": [
             0,
-            0,
+            "0+math.cos((q.anim_time)*90*32-90)*math.clamp((0*-0.5)-0.2, -0.5, 0)",
             0
           ]
         },
         "fire_waist": {
           "position": [
             0,
-            0,
+            "-3+math.clamp(0*3, 0, 3)",
             0
           ],
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((0-0.41), 2)+0.9), 0, 2))+(math.clamp((28*math.pow((0-0.915), 2)-0.2),-2,0))",
+            "0+math.clamp((0*1)+0, 0, 1)+(math.clamp((-28*math.pow((0-0.915), 2)+0.2),0,2))",
+            "1+(math.clamp((-5.4*math.pow((0-0.41), 2)+0.9), 0, 2))+(math.clamp((28*math.pow((0-0.915), 2)-0.2),-2,0))"
           ]
         },
         "shoulder_left": {
           "rotation": [
+            "0*40+0*30",
             0,
-            0,
-            0
+            "0+math.cos((q.anim_time)*90*32)*math.clamp((0*2)+0.4, 0, 2)+math.clamp((0*10)-0, -10, 0)"
           ]
         },
         "fire_hand_left": {
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.41), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.915), 2)-0.2),-2,0))",
+            "0+math.clamp((math.clamp(math.abs(0)+math.abs(0)+0, -1, 1)*1)-0.1, -0.1, 1)+(math.clamp((-28*math.pow(math.clamp(math.abs(0)+math.abs(0)+0-0.915, 0, 1), 2)+0.2),0,2))",
+            "1+(math.clamp((-6*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, -1, 1)-0.41), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.915), 2)-0.2),-2,0))"
           ]
         },
         "shoulder_right": {
           "rotation": [
+            "0*40+0*-30",
             0,
-            0,
-            0
+            "0+math.cos((q.anim_time)*90*32)*math.clamp((0*-2)-0.4, -2, 0)+math.clamp((0*-10)-0, 0, 10)"
           ]
         },
         "fire_hand_right": {
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.41), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.915), 2)-0.2),-2,0))",
+            "0+math.clamp((math.clamp(math.abs(0)+math.abs(0)+0, -1, 1)*1)-0.1, -0.1, 1)+(math.clamp((-28*math.pow(math.clamp(math.abs(0)+math.abs(0)+0-0.915, 0, 1), 2)+0.2),0,2))",
+            "1+(math.clamp((-6*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, -1, 1)-0.41), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((math.clamp(math.abs(0)+math.abs(0)+0, 0, 1)-0.915), 2)-0.2),-2,0))"
           ]
         }
       }
@@ -3116,49 +3116,49 @@
       "bones": {
         "body": {
           "rotation": [
-            0,
-            0,
-            0
+            "0+math.clamp(0*80, -20, 85)+math.cos((query.anim_time)*90*32-90)*math.clamp(0*1, 0, 1)*-0.5+0*-10",
+            "0+0*5",
+            "0+0*-70"
           ]
         },
         "fire_waist": {
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((0+0.59), 2)+0.9), 0, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))",
+            "0+math.clamp((0*1)+1, 0, 1)+(math.clamp((-28*math.pow((0+0.085), 2)+0.2),0,2))",
+            "1+(math.clamp((-5.4*math.pow((0+0.59), 2)+0.9), 0, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))"
           ]
         },
         "shoulder_left": {
           "rotation": [
-            0,
+            "0+math.cos((query.anim_time)*90*32-90)*math.clamp(0*1, 0, 1)*-1+0*20+0*10",
             0,
             0
           ]
         },
         "fire_hand_left": {
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((0+0.59), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))",
+            "0+math.clamp((0*1)+1, 0, 1)+(math.clamp((-28*math.pow((0+0.085), 2)+0.2),0,2))",
+            "1+(math.clamp((-6*math.pow((0+0.59), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))"
           ]
         },
         "shoulder_right": {
           "rotation": [
-            0,
+            "0+math.cos((query.anim_time)*90*32-90)*math.clamp(0*1, 0, 1)*-1+0*-20+0*10",
             0,
             0
           ]
         },
         "fire_hand_right": {
           "scale": [
-            0,
-            0,
-            0
+            "1+(math.clamp((-5.4*math.pow((0+0.59), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))",
+            "0+math.clamp((0*1)+1, 0, 1)+(math.clamp((-28*math.pow((0+0.085), 2)+0.2),0,2))",
+            "1+(math.clamp((-6*math.pow((0+0.59), 2)+0.9), -0.1, 2))+(math.clamp((28*math.pow((0+0.085), 2)-0.2),-2,0))"
           ]
         },
         "seat_1_locator": {
           "rotation": [
-            0,
+            "50+math.clamp(0*-50, -50, 20)",
             0,
             0
           ],
@@ -3175,13 +3175,13 @@
       "bones": {
         "body": {
           "rotation": [
-            0,
+            "0*10+math.cos((query.anim_time)*90*24-90)*math.clamp((0*0.5), 0, 0.5)+math.cos((query.anim_time)*90*24-90)*-0.2",
             0,
             0
           ],
           "position": [
             0,
-            0,
+            "4-math.abs(0*2)+math.cos((query.anim_time)*90*24)*math.clamp((0*0.5), 0, 0.5)+math.cos((query.anim_time)*90*24)*0.2",
             0
           ]
         },
@@ -3213,85 +3213,85 @@
         },
         "shoulder_left": {
           "rotation": [
-            0,
-            0,
-            0
+            "-10+0*15+math.cos((query.anim_time)*90*24-90)*math.clamp((0*-2), -2, 0)",
+            "-10+math.clamp((0*80), -100, 5)",
+            "-12.5+0*0+math.cos((query.anim_time)*90*24-90)*0.5"
           ],
           "position": [
             2,
-            0,
+            "0+math.cos((query.anim_time)*90*24)*math.clamp((0*0.5), 0, 0.5)+math.clamp((0*-5), 0, 5)",
             0
           ]
         },
         "arm_left": {
           "rotation": [
-            0,
+            "-15+0*15",
             0,
             0
           ]
         },
         "forearm_left": {
           "rotation": [
-            0,
+            "-15+0*15+math.cos((query.anim_time)*90*24-90)*1",
             0,
             "0+math.cos((query.anim_time)*90*24)*-0.2"
           ]
         },
         "fire_hand_left": {
           "scale": [
-            0,
-            0,
-            0
+            "0+math.clamp((0*6)-0, 0.6, 1)+math.cos((query.anim_time)*90*48-180)*0.02",
+            "0+math.clamp((0*6)-1.2, 0, 1)+math.cos((query.anim_time)*90*48-90)*0.04",
+            "0+math.clamp((0*6)-0, 0.6, 1)+math.cos((query.anim_time)*90*48)*0.02"
           ]
         },
         "hand_left": {
           "rotation": [
             0,
-            0,
+            "30+0*-20",
             0
           ],
           "position": [
             0,
-            0,
+            "5+math.clamp((0*10), -5, 5)",
             0
           ],
           "scale": [
-            0,
-            0,
-            0
+            "math.clamp((0*-6)+2, 0.8, 1)",
+            "math.clamp((0*-4)+1.5, 0, 1)",
+            "math.clamp((0*-6)+2, 0.8, 1)"
           ]
         },
         "finger_thumb_left": {
           "rotation": [
-            0,
+            "12.5+0*35",
             0,
             0
           ],
           "position": [
             0,
             0,
-            0
+            "3+0*3"
           ]
         },
         "finger_thumb_left2": {
           "rotation": [
-            0,
+            "37.5+0*25",
             0,
             0
           ]
         },
         "finger_index_left": {
           "rotation": [
+            "0+0*10",
             0,
-            0,
-            0
+            "17.5+0*15+math.cos((query.anim_time)*90*24-150)*3"
           ]
         },
         "finger_index_left2": {
           "rotation": [
             0,
             0,
-            0
+            "45+0*35"
           ],
           "position": [
             0,
@@ -3303,217 +3303,217 @@
           "rotation": [
             0,
             0,
-            0
+            "17.5+0*15+math.cos((query.anim_time)*90*24-150)*3"
           ]
         },
         "finger_middle_left2": {
           "rotation": [
             0,
             0,
-            0
+            "45+0*35"
           ]
         },
         "finger_ring_left": {
           "rotation": [
+            "0+0*-10",
             0,
-            0,
-            0
+            "17.5+0*10+math.cos((query.anim_time)*90*24-150)*3"
           ]
         },
         "finger_ring_left2": {
           "rotation": [
             0,
             0,
-            0
+            "45+0*25"
           ]
         },
         "finger_pinky_left": {
           "rotation": [
+            "0+0*-20",
             0,
-            0,
-            0
+            "17.5+0*5+math.cos((query.anim_time)*90*24-150)*3"
           ]
         },
         "finger_pinky_left2": {
           "rotation": [
             0,
             0,
-            0
+            "45+0*5"
           ]
         },
         "shoulder_right": {
           "rotation": [
-            0,
-            0,
-            0
+            "-10+0*15+math.cos((query.anim_time)*90*24-90)*math.clamp((0*-2), -2, 0)",
+            "10+math.clamp((0*-80), -5, 100)",
+            "12.5+0*0+math.cos((query.anim_time)*90*24-90)*-0.5"
           ],
           "position": [
             -2,
-            0,
+            "0+math.cos((query.anim_time)*90*24)*math.clamp((0*0.5), 0, 0.5)+math.clamp((0*-5), 0, 5)",
             0
           ]
         },
         "arm_right": {
           "rotation": [
-            0,
+            "-15+0*15",
             0,
             0
           ]
         },
         "forearm_right": {
           "rotation": [
-            0,
+            "-15+0*15+math.cos((query.anim_time)*90*24-90)*1",
             0,
             "0+math.cos((query.anim_time)*90*24)*0.2"
           ]
         },
         "fire_hand_right": {
           "scale": [
-            0,
-            0,
-            0
+            "0+math.clamp((0*6)-0, 0.6, 1)+math.cos((query.anim_time)*90*48-180)*0.02",
+            "0+math.clamp((0*6)-1.2, 0, 1)+math.cos((query.anim_time)*90*48-90)*0.04",
+            "0+math.clamp((0*6)-0, 0.6, 1)+math.cos((query.anim_time)*90*48)*0.02"
           ]
         },
         "hand_right": {
           "rotation": [
             0,
-            0,
+            "-30+0*20",
             0
           ],
           "position": [
             0,
-            0,
+            "5+math.clamp((0*10), -5, 5)",
             0
           ],
           "scale": [
-            0,
-            0,
-            0
+            "math.clamp((0*-6)+2, 0.8, 1)",
+            "math.clamp((0*-4)+1.5, 0, 1)",
+            "math.clamp((0*-6)+2, 0.8, 1)"
           ]
         },
         "finger_thumb_right": {
           "rotation": [
-            0,
+            "12.5+0*35",
             0,
             0
           ],
           "position": [
             0,
             0,
-            0
+            "3+0*3"
           ]
         },
         "finger_thumb_right2": {
           "rotation": [
-            0,
+            "37.5+0*25",
             0,
             0
           ]
         },
         "finger_index_right": {
           "rotation": [
+            "0+0*10",
             0,
-            0,
-            0
+            "-17.5+0*-15+math.cos((query.anim_time)*90*24-150)*-3"
           ]
         },
         "finger_index_right2": {
           "rotation": [
             0,
             0,
-            0
+            "-45+0*-35"
           ]
         },
         "finger_middle_right": {
           "rotation": [
             0,
             0,
-            0
+            "-17.5+0*-15+math.cos((query.anim_time)*90*24-150)*-3"
           ]
         },
         "finger_middle_right2": {
           "rotation": [
             0,
             0,
-            0
+            "-45+0*-35"
           ]
         },
         "finger_ring_right": {
           "rotation": [
+            "0+0*-10",
             0,
-            0,
-            0
+            "-17.5+0*-10+math.cos((query.anim_time)*90*24-150)*-3"
           ]
         },
         "finger_ring_right2": {
           "rotation": [
             0,
             0,
-            0
+            "-45+0*-25"
           ]
         },
         "finger_pinky_right": {
           "rotation": [
+            "0+0*-20",
             0,
-            0,
-            0
+            "-17.5+0*-5+math.cos((query.anim_time)*90*24-150)*-3"
           ]
         },
         "finger_pinky_right2": {
           "rotation": [
             0,
             0,
-            0
+            "-45+0*-5"
           ]
         },
         "leg_left": {
           "rotation": [
-            0,
+            "-12.5+0*20+math.cos((query.anim_time)*90*24-90)*math.clamp((0*-2), -2, 0)+math.cos((query.anim_time)*90*24-90)*0.5",
             0,
             -5
           ],
           "position": [
             -1,
-            0,
-            0
+            "5-math.abs(0*5)",
+            "1+0*5"
           ]
         },
         "leg_left2": {
           "rotation": [
-            0,
+            "15+math.abs(0*-20)+math.cos((query.anim_time)*90*24-150)*math.clamp((0*-1), -1, 0)+math.cos((query.anim_time)*90*24-90)*0.5",
             0,
             0
           ]
         },
         "foot_left": {
           "rotation": [
-            0,
+            "32.5+0*-20",
             0,
             5
           ]
         },
         "leg_right": {
           "rotation": [
-            0,
+            "-42.5+0*20+math.cos((query.anim_time)*90*24-90)*math.clamp((0*-2), -2, 0)+math.cos((query.anim_time)*90*24-90)*-0.3",
             0,
             5
           ],
           "position": [
             1,
-            0,
-            0
+            "5-math.abs(0*5)",
+            "0+0*-5"
           ]
         },
         "leg_right2": {
           "rotation": [
-            0,
+            "15+math.abs(0*-40)+math.cos((query.anim_time)*90*24-150)*math.clamp((0*-1), -1, 0)+math.cos((query.anim_time)*90*24-150)*0.5",
             0,
             0
           ]
         },
         "foot_right": {
           "rotation": [
-            0,
+            "32.5+0*-20",
             0,
             -5
           ]
@@ -3813,16 +3813,16 @@
         },
         "eyes": {
           "position": [
-            0,
-            0,
-            0.1
+            0.0,
+            0.0,
+            0.45
           ]
         },
         "eyes_off": {
           "position": [
-            0,
-            0,
-            -0.1
+            0.0,
+            0.0,
+            -0.6
           ]
         },
         "shoulder_glow_off_left": {
@@ -18218,7 +18218,7 @@
       "override_previous_animation": true
     },
     "animation.golurk.faint": {
-      "loop": true,
+      "loop": "hold_on_last_frame",
       "animation_length": 3,
       "bones": {
         "body": {
@@ -20591,16 +20591,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.6667": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20615,16 +20615,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.8333": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20639,16 +20639,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.9583": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20663,16 +20663,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "1.0833": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20687,16 +20687,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "1.2083": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20711,16 +20711,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "1.3333": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -20735,9 +20735,9 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             }
           }
@@ -20756,16 +20756,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.6667": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20789,16 +20789,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.8333": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20813,16 +20813,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.9583": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20837,16 +20837,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "1.0833": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20861,16 +20861,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "1.2083": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20885,16 +20885,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "1.3333": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -20909,9 +20909,9 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             }
           }
@@ -22562,16 +22562,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.1667": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -22586,16 +22586,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.2917": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -22610,16 +22610,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.4167": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -22634,16 +22634,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ]
             },
             "0.5417": {
               "pre": [
-                0,
-                0,
-                0.1
+                0.0,
+                0.0,
+                0.45
               ],
               "post": [
                 0,
@@ -22667,16 +22667,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.1667": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -22691,16 +22691,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.2917": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -22715,16 +22715,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.4167": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -22739,16 +22739,16 @@
                 0
               ],
               "post": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ]
             },
             "0.5417": {
               "pre": [
-                0,
-                0,
-                -0.1
+                0.0,
+                0.0,
+                -0.6
               ],
               "post": [
                 0,
@@ -25199,9 +25199,9 @@
       "bones": {
         "eyes": {
           "position": [
-            0,
-            0,
-            0.1
+            0.0,
+            0.0,
+            0.45
           ]
         },
         "hand_fire_left": {
@@ -25226,9 +25226,9 @@
         },
         "eyes_red": {
           "position": [
-            0,
-            0,
-            -0.1
+            0.0,
+            0.0,
+            -0.6
           ]
         },
         "shoulder_glow_red_left": {
@@ -25266,9 +25266,9 @@
       "bones": {
         "eyes": {
           "position": [
-            0,
-            0,
-            0.1
+            0.0,
+            0.0,
+            0.45
           ]
         },
         "hand_fire_left": {
@@ -25286,9 +25286,9 @@
         },
         "eyes_off": {
           "position": [
-            0,
-            0,
-            -0.1
+            0.0,
+            0.0,
+            -0.6
           ]
         },
         "hand_glow_off_left": {

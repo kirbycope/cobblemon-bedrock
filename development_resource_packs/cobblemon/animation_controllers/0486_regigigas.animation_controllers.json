@@ -6,7 +6,9 @@
             "states": {
                 "battle_standing": {
                     "animations": [
-                        "battle_idle"
+                        {
+                            "battle_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -20,7 +22,9 @@
                 },
                 "standing": {
                     "animations": [
-                        "ground_idle"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -34,8 +38,12 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_idle",
-                        "pose_walking"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

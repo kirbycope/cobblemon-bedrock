@@ -6,8 +6,12 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
-                        "pose_standing"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -18,7 +22,9 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_idle"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

@@ -7,12 +7,14 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle2": "v.clip_roll >= 0.0000 && v.clip_roll < 0.4000"
+                            "battle_idle2": "(v.clip_roll >= 0.0000 && v.clip_roll < 0.4000) && !q.property('cobblemon:primary')"
                         },
                         {
-                            "battle_idle": "v.clip_roll >= 0.4000 && v.clip_roll < 1.0000"
+                            "battle_idle": "(v.clip_roll >= 0.4000 && v.clip_roll < 1.0000) && !q.property('cobblemon:primary')"
                         },
-                        "pose_battle_standing"
+                        {
+                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -36,12 +38,14 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle2": "v.clip_roll >= 0.0000 && v.clip_roll < 0.4000"
+                            "ground_idle2": "(v.clip_roll >= 0.0000 && v.clip_roll < 0.4000) && !q.property('cobblemon:primary')"
                         },
                         {
-                            "ground_idle": "v.clip_roll >= 0.4000 && v.clip_roll < 1.0000"
+                            "ground_idle": "(v.clip_roll >= 0.4000 && v.clip_roll < 1.0000) && !q.property('cobblemon:primary')"
                         },
-                        "pose_standing"
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -64,8 +68,12 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
-                        "pose_walking"
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -89,10 +97,10 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep2": "v.clip_roll >= 0.0000 && v.clip_roll < 0.4000"
+                            "sleep2": "(v.clip_roll >= 0.0000 && v.clip_roll < 0.4000) && !q.property('cobblemon:primary')"
                         },
                         {
-                            "sleep": "v.clip_roll >= 0.4000 && v.clip_roll < 1.0000"
+                            "sleep": "(v.clip_roll >= 0.4000 && v.clip_roll < 1.0000) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
@@ -116,8 +124,12 @@
                 },
                 "shoulder_left": {
                     "animations": [
-                        "shoulder_left",
-                        "pose_shoulder_left"
+                        {
+                            "shoulder_left": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_shoulder_left": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -140,8 +152,12 @@
                 },
                 "shoulder_right": {
                     "animations": [
-                        "shoulder_right",
-                        "pose_shoulder_right"
+                        {
+                            "shoulder_right": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_shoulder_right": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

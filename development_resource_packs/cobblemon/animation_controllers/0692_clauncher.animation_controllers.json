@@ -6,8 +6,12 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "clauncher_left__ground_idle",
-                        "pose_standing"
+                        {
+                            "clauncher_left__ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -18,7 +22,9 @@
                 },
                 "swimming": {
                     "animations": [
-                        "clauncher_left__water_idle"
+                        {
+                            "clauncher_left__water_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

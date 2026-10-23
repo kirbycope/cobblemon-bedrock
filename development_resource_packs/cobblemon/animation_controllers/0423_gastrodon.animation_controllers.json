@@ -6,8 +6,12 @@
             "states": {
                 "battle_standing": {
                     "animations": [
-                        "gastrodon_east__battle_idle",
-                        "pose_battle_standing"
+                        {
+                            "gastrodon_east__battle_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -30,8 +34,12 @@
                 },
                 "jump": {
                     "animations": [
-                        "gastrodon_east__ride_jump",
-                        "pose_jump"
+                        {
+                            "gastrodon_east__ride_jump": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_jump": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -54,11 +62,15 @@
                 },
                 "running": {
                     "animations": [
-                        "gastrodon_east__ground_run",
                         {
-                            "gastrodon_east__ride_ground_run": "q.has_rider"
+                            "gastrodon_east__ground_run": "!q.property('cobblemon:primary')"
                         },
-                        "pose_running"
+                        {
+                            "gastrodon_east__ride_ground_run": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_running": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -81,8 +93,12 @@
                 },
                 "standing": {
                     "animations": [
-                        "gastrodon_east__ground_idle",
-                        "pose_standing"
+                        {
+                            "gastrodon_east__ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -105,11 +121,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "gastrodon_east__ground_walk",
                         {
-                            "gastrodon_east__ride_ground_walk": "q.has_rider"
+                            "gastrodon_east__ground_walk": "!q.property('cobblemon:primary')"
                         },
-                        "pose_walking"
+                        {
+                            "gastrodon_east__ride_ground_walk": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -132,7 +152,9 @@
                 },
                 "sleep": {
                     "animations": [
-                        "gastrodon_east__sleep"
+                        {
+                            "gastrodon_east__sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

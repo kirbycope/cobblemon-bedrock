@@ -6,8 +6,12 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
-                        "pose_standing"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -27,8 +31,12 @@
                 },
                 "in_air": {
                     "animations": [
-                        "ride_jump",
-                        "pose_in_air"
+                        {
+                            "ride_jump": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_in_air": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -48,11 +56,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
                         {
-                            "ride_ground_walk": "q.has_rider"
+                            "ground_walk": "!q.property('cobblemon:primary')"
                         },
-                        "pose_walking"
+                        {
+                            "ride_ground_walk": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -72,11 +84,15 @@
                 },
                 "running": {
                     "animations": [
-                        "ground_run",
                         {
-                            "ride_ground_run": "q.has_rider"
+                            "ground_run": "!q.property('cobblemon:primary')"
                         },
-                        "pose_running"
+                        {
+                            "ride_ground_run": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_running": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -96,7 +112,9 @@
                 },
                 "sleeping": {
                     "animations": [
-                        "sleep"
+                        {
+                            "sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

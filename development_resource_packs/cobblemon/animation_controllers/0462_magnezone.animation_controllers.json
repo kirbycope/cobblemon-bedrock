@@ -6,9 +6,11 @@
             "states": {
                 "hover": {
                     "animations": [
-                        "air_idle",
                         {
-                            "ride_air_fly": "q.has_rider"
+                            "air_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "ride_air_fly": "(q.has_rider) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
@@ -23,9 +25,11 @@
                 },
                 "fly": {
                     "animations": [
-                        "air_fly",
                         {
-                            "ride_air_fly": "q.has_rider"
+                            "air_fly": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "ride_air_fly": "(q.has_rider) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
@@ -40,7 +44,9 @@
                 },
                 "sleep": {
                     "animations": [
-                        "sleep"
+                        {
+                            "sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

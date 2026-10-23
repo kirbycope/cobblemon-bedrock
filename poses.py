@@ -41,6 +41,7 @@ BATTLE = "q.property('cobblemon:battle')"
 SUBMERGED = "q.property('cobblemon:submerged')"
 IN_WATER = "q.is_in_water"
 HOLDING = "q.property('cobblemon:holding')"
+PRIMARY = "q.property('cobblemon:primary')"
 SHOULDER = "q.property('cobblemon:shoulder')"   # 1 on the left shoulder, 2 the right, set by the script
 SAND = "q.property('cobblemon:on_sand')"   # 1 sand, 2 red sand within two blocks below, set by the script
 # the queries the translated Molang may use; anything else Cobblemon asks is unknown to Bedrock and reads as false
@@ -231,7 +232,7 @@ def json_condition(pose):
 
 # Cobblemon's Molang queries a pose condition uses, as Bedrock can ask them
 MOLANG_QUERIES = [
-    (r"q\.in_air\b", "!q.is_on_ground"), (r"q\.is_flying\b", "!q.is_on_ground"), (r"q\.is_ridden\b", "q.has_rider"),
+    (r"q\.in_air\b", "(!q.is_on_ground && !q.is_in_water)"), (r"q\.is_flying\b", "!q.is_on_ground"), (r"q\.is_ridden\b", "q.has_rider"),
     (r"q\.has_entity\b", "1"), (r"q\.is_sprinting\b", "(q.has_rider && q.ground_speed > 7)"), (r"q\.is_gliding\b", "0"),
     (r"q\.is_battling\b", BATTLE), (r"q\.is_in_water\b", IN_WATER), (r"q\.is_underwater\b", SUBMERGED), (r"q\.is_touching_water\b", IN_WATER),
     (r"q\.in_battle\b", BATTLE), (r"q\.is_holding_item\b", HOLDING), (r"q\.is_wearing_hat\b", "0"),
@@ -572,15 +573,20 @@ def static_parts(parts, bones):
         elif t.get("scale") and t["scale"] != [1, 1, 1]: bones.setdefault(t["part"], {})["scale"] = t["scale"]
 
 
-def pose_type_molang(flier):
+def pose_type_molang(flier, rides=()):
     """v.pose_type as PokemonServerDelegate.updatePoseType sets it, after the shoulder poses PokemonOnShoulderRenderer
     draws a Pokemon on a player's shoulder in: a passenger stands, then sleep, underwater
     swimming or floating, flying or hovering, walking, standing."""
     moving = "(q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5)"
     ground = "(v.moving ? 1 : 0)"
-    air = f"((!q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : {ground})" if flier else ground
+    # a mount Cobblemon flies (a jet or a bird's riding style, Gyarados' among them) hovers or flies while ridden in the
+    # air, as its PoseProvider has it, though on its own it may not fly; one it swims (Dolphin) floats or swims while
+    # ridden in water, at the surface too
+    lifted = "1" if flier else ("q.has_rider" if "AIR" in rides else "0")
+    air = f"((({lifted}) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : {ground})"
+    under = f"({SUBMERGED} || q.has_rider && q.is_in_water)" if "LIQUID" in rides else SUBMERGED
     return (f"v.moving = {moving}; "
-            f"v.pose_type = {SHOULDER} > 0 ? 6 + {SHOULDER} : (q.is_riding ? 0 : (q.is_sleeping ? 2 : ({SUBMERGED} ? (v.moving ? 6 : 5) : {air})));")
+            f"v.pose_type = {SHOULDER} > 0 ? 6 + {SHOULDER} : (q.is_riding ? 0 : (q.is_sleeping ? 2 : ({under} ? (v.moving ? 6 : 5) : {air})));")
 
 
 def world_poses(found):
@@ -596,7 +602,7 @@ def state_name(name, used):
     return out
 
 
-def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambient=None):
+def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambient=None, rides=()):
     """What the pack needs for one Pokemon's poses:
       pre_animation   Molang setting v.pose_type and v.pose, the index of the first suitable pose
       states          the pose controller's states, one per pose an entity in the world can take
@@ -672,6 +678,9 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
             generated[gid] = {"loop": True, "bones": bones}
             keys[f"pose_{state}"] = gid
             clips.append(f"pose_{state}")
+        # while a primary clip plays (an attack, a faint: cobblemon:primary, set by scripts/main.js) the pose's own clips
+        # stop, as Cobblemon's PrimaryAnimation fades the pose out
+        clips = [{c: f"!{PRIMARY}"} if isinstance(c, str) else {k: f"({v}) && !{PRIMARY}" for k, v in c.items()} for c in clips]
         others = [{other: f"v.pose == {j}"} for j, other in enumerate(names) if other != state]
         # a pose whose clips Cobblemon lacks plays nothing; Bedrock wants no animations key rather than an empty one
         states[state] = {**({"animations": clips} if clips else {}), "transitions": others, "blend_transition": round(min(pose.get("blend", 0.5), 1.0), 2)}
@@ -686,6 +695,6 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
         cond = pose["condition"]
         test = f"({types})" + ("" if cond in ("1", "") else f" && ({cond})")
         choice = f"({test}) ? {j} : ({choice})"
-    pre = [pose_type_molang(flier), f"v.pose = {choice};"]
+    pre = [pose_type_molang(flier, rides), f"v.pose = {choice};"]
     # each Pokemon rolls once for the clips Cobblemon picks at random
     return {"initialize": ["v.clip_roll = math.random(0, 1);"], "pre_animation": pre, "states": states, "keys": keys, "animations": generated, "report": report, "names": names}
