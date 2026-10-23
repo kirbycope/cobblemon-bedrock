@@ -6,7 +6,9 @@
             "states": {
                 "battle_standing": {
                     "animations": [
-                        "dudunsparce_two_segment__battle_idle"
+                        {
+                            "dudunsparce_two_segment__battle_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -29,11 +31,15 @@
                 },
                 "standing": {
                     "animations": [
-                        "dudunsparce_two_segment__ground_idle",
                         {
-                            "dudunsparce_two_segment__ride_ground_walk": "q.has_rider"
+                            "dudunsparce_two_segment__ground_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_standing"
+                        {
+                            "dudunsparce_two_segment__ride_ground_walk": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -56,8 +62,12 @@
                 },
                 "in_air": {
                     "animations": [
-                        "dudunsparce_two_segment__ride_jump",
-                        "pose_in_air"
+                        {
+                            "dudunsparce_two_segment__ride_jump": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_in_air": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -80,11 +90,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "dudunsparce_two_segment__ground_walk",
                         {
-                            "dudunsparce_two_segment__ride_ground_walk": "q.has_rider"
+                            "dudunsparce_two_segment__ground_walk": "!q.property('cobblemon:primary')"
                         },
-                        "pose_walking"
+                        {
+                            "dudunsparce_two_segment__ride_ground_walk": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -107,11 +121,15 @@
                 },
                 "run": {
                     "animations": [
-                        "dudunsparce_two_segment__ground_run",
                         {
-                            "dudunsparce_two_segment__ride_ground_run": "q.has_rider"
+                            "dudunsparce_two_segment__ground_run": "!q.property('cobblemon:primary')"
                         },
-                        "pose_run"
+                        {
+                            "dudunsparce_two_segment__ride_ground_run": "(q.has_rider) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_run": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -134,7 +152,9 @@
                 },
                 "sleep": {
                     "animations": [
-                        "dudunsparce_two_segment__sleep"
+                        {
+                            "dudunsparce_two_segment__sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

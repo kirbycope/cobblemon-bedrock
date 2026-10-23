@@ -6,7 +6,9 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -23,7 +25,9 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk"
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -40,11 +44,15 @@
                 },
                 "hover": {
                     "animations": [
-                        "air_idle",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "air_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_hover"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_hover": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -61,11 +69,15 @@
                 },
                 "fly": {
                     "animations": [
-                        "air_fly",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "air_fly": "!q.property('cobblemon:primary')"
                         },
-                        "pose_fly"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_fly": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

@@ -6,9 +6,11 @@
             "states": {
                 "hover": {
                     "animations": [
-                        "ground_idle",
                         {
-                            "ride_mount_run": "(q.has_rider)"
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "ride_mount_run": "((q.has_rider)) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
@@ -32,7 +34,9 @@
                 },
                 "battle_hover": {
                     "animations": [
-                        "ground_idle"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -55,7 +59,9 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk"
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -78,7 +84,9 @@
                 },
                 "running": {
                     "animations": [
-                        "ground_run"
+                        {
+                            "ground_run": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -101,8 +109,12 @@
                 },
                 "mount_walking": {
                     "animations": [
-                        "mount_run",
-                        "ride_mount_run"
+                        {
+                            "mount_run": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "ride_mount_run": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -125,7 +137,9 @@
                 },
                 "sleep": {
                     "animations": [
-                        "sleep"
+                        {
+                            "sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

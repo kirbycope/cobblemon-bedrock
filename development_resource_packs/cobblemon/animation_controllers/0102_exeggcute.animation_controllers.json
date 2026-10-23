@@ -6,7 +6,9 @@
             "states": {
                 "sleep": {
                     "animations": [
-                        "sleep"
+                        {
+                            "sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -20,7 +22,9 @@
                 },
                 "standing": {
                     "animations": [
-                        "ground_idle"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -34,8 +38,12 @@
                 },
                 "walk": {
                     "animations": [
-                        "ground_idle",
-                        "ground_walk"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

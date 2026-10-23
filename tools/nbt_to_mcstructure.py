@@ -119,12 +119,18 @@ BLOCK_NAMES = {
     "soul_wall_torch": "soul_torch", "redstone_wall_torch": "redstone_torch", "iron_bars": "iron_bars",
     "oak_sign": "standing_sign", "oak_wall_sign": "wall_sign", "rose_bush": "rose_bush", "nether_quartz_ore": "quartz_ore",
     "quartz_block": "quartz_block", "stone_slab": "normal_stone_slab", "moving_piston": "air", "piston_head": "air",
-    "tripwire": "trip_wire", "grass": "short_grass", "light": "light_block", "water": "water", "lava": "lava",
+    "tripwire": "trip_wire", "grass": "short_grass", "water": "water", "lava": "lava",
     "carved_pumpkin": "carved_pumpkin", "frosted_ice": "frosted_ice", "bubble_column": "water",
     # Bedrock's own names, checked against the server with /setblock (the Radical Gyms structures used these)
     "stone_stairs": "normal_stone_stairs", "cobblestone_stairs": "stone_stairs", "dead_bush": "deadbush",
     "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "prismarine_brick_stairs": "prismarine_bricks_stairs",
     "waxed_copper_block": "waxed_copper",
+    # Bedrock 1.26's names, from Mojang's own list (bedrock-samples mojang-blocks.json, tools/check_structures.py): a name
+    # Bedrock does not know loads as the "?" block
+    "rooted_dirt": "dirt_with_roots", "oak_trapdoor": "trapdoor", "flowering_azalea_leaves": "azalea_leaves_flowered",
+    "chain": "iron_chain", "tall_seagrass": "seagrass", "cave_vines_plant": "cave_vines", "small_dripleaf": "small_dripleaf_block",
+    "repeater": "unpowered_repeater", "comparator": "unpowered_comparator",
+    "dirt_block": "dirt",   # a jigsaw's final_state in Cobblemon's flowerbed clearings, which Java does not know either
 }
 # Cobblemon blocks with a vanilla stand-in; the rest (berries, relic coins) become air until they are ported
 COBBLEMON_BLOCKS = {"gilded_chest": "chest", "gimmighoul_chest": "chest", "apricorn_planks": "oak_planks", "habitat_block": "grass_block"}
@@ -137,7 +143,7 @@ FACING_DIRECTION = {"down": 0, "up": 1, "north": 2, "south": 3, "west": 4, "east
 TORCH_FACING = {"east": "west", "west": "east", "south": "north", "north": "south"}   # Bedrock names the side it hangs from
 
 
-def bedrock_name(java):
+def bedrock_name(java, props=None):
     name = java.split(":", 1)[1] if ":" in java else java
     if java.startswith("cobblefurnies:"): return f"cobblefurnies:{name}" if name in FURNITURE else None
     if java.startswith("cobblemon:"):
@@ -150,14 +156,17 @@ def bedrock_name(java):
     if name.endswith("_sign") and not name.endswith("hanging_sign") and name != "oak_sign": return name[:-len("_sign")] + "_standing_sign"
     if name.endswith("_wall_banner"): return "wall_banner"
     if name.endswith("_banner"): return "standing_banner"
-    if name.endswith("_wall_head") or name.endswith("_head") or name.endswith("_skull"): return "skull"
+    # each head is its own block in Bedrock now (the old "skull" with a type state is gone)
+    if name.endswith("_wall_head") or name.endswith("_head") or name.endswith("_skull"): return name.replace("_wall_", "_")
+    if name.endswith("_bed"): return "bed"
+    if name == "light": return f"light_block_{props.get('level', '15') if props else '15'}"
     return BLOCK_NAMES.get(name, name)
 
 
 def convert_states(java_name, name, props):
     """The Bedrock states for the few Java properties that matter to how a ruin looks."""
     states = {}
-    if name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
+    if name.startswith("cobblemon:") and name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
     if name.startswith("cobblemon:"): return {}   # the pack's blocks keep their default states
     if name.startswith("cobblefurnies:"):
         # a furniture piece keeps the shape it was saved in: its facing, its half and the rest of its properties
@@ -313,7 +322,7 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
 
     def block_key(java_name, props):
         if java_name == "minecraft:structure_void": return -1
-        name = bedrock_name(java_name)
+        name = bedrock_name(java_name, props)
         # a Java slab of type double is Bedrock's <slab>_double_slab block
         if name and name.endswith("_slab") and props.get("type") == "double" and name[:-5] + "_double_slab" not in invalid:
             name = name[:-5] + "_double_slab"

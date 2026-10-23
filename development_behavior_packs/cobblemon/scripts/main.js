@@ -26,7 +26,7 @@ import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
-import { MOVE_FX, FX_ANIMS } from "./move_fx.js";
+import { MOVE_FX, FX_ANIMS, FX_PRIMARY } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -220,6 +220,25 @@ function fxLocator(entity, name, toward) {
 function fxFill(text, move) {
     return text.replace("$name", move.id).replace("$type", move.type ?? "normal").replace("$cat", (move.category ?? "status").toLowerCase());
 }
+// A move's or a faint's clip. A primary one (FX_PRIMARY, its length in seconds) replaces the pose while it plays, as
+// Cobblemon's PrimaryAnimation fades the pose out: cobblemon:primary stops the pose controller's own clips meanwhile,
+// since Bedrock runs a clip a script plays before the controller and override_previous_animation never reached them
+// (Greninja's battle pose lowered its body under its attacks' own lowered body). A faint holds, so it stays on.
+const primaryUntil = new Map();
+function playClip(entity, clip) {
+    entity.playAnimation(clip, { blendOutTime: 0.2 });
+    const length = FX_PRIMARY[clip];
+    if (length === undefined) return;
+    try { entity.setProperty("cobblemon:primary", true); } catch (e) { return; }
+    if (/faint/.test(clip)) return;
+    const ticks = Math.ceil(length * 20) + 4, until = system.currentTick + ticks, id = entity.id;
+    primaryUntil.set(id, until);
+    system.runTimeout(() => {
+        if (primaryUntil.get(id) !== until) return;
+        primaryUntil.delete(id);
+        try { if (entity.isValid) entity.setProperty("cobblemon:primary", false); } catch (e) { }
+    }, ticks);
+}
 function fxEvent(e, user, target, move, outcome) {
     if (e.m && outcome.missed) return;
     if (e.n && move.category === "Status") return;
@@ -230,7 +249,7 @@ function fxEvent(e, user, target, move, outcome) {
             const clips = FX_ANIMS[entity.typeId] ?? {}, air = !entity.isOnGround && !entity.isInWater;
             const pick = (a) => (air && clips[`air:${a}`]) || clips[a];
             const name = e.a.map((a) => fxFill(a, move)).find((a) => pick(a));
-            if (name) entity.playAnimation(pick(name), { blendOutTime: 0.2 });
+            if (name) playClip(entity, pick(name));
         } else if (e.k === "s") {
             entity.dimension.playSound(fxFill(e.s, move), entity.location);
         } else if (e.k === "p") {
@@ -2360,7 +2379,7 @@ function faint(battle, fainted) {
         // FaintInstruction: the faint animation plays, then the wild Pokemon goes, leaving its drops
         const gone = battle.foe.entity, clip = FX_ANIMS[gone?.typeId]?.faint;
         if (!battle.trainer) wildDrops(gone, true);
-        try { if (clip) gone.playAnimation(clip); } catch (e) { }
+        try { if (clip) playClip(gone, clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
         gainExperience(battle, battle.ally, battle.foe);
         // an Exp. Share holder elsewhere in the party gets Cobblemon's half share
@@ -2626,24 +2645,56 @@ function completeLeague(block) {
 // name, the next one to beat hidden as RCT hides its key trainer, the rest as "???"; picking a beaten or next one shows
 // its type, the level cap it needs and gives, and who must be beaten first. Held, it points at the next trainer the
 // player can battle, if one is loaded (RCT draws a small arrow over the card in the hand; here an arrow over the hotbar),
-// spinning when that trainer is in another dimension. Nothing locates a trainer whose building has not been loaded.
+// spinning when that trainer is in another dimension. A trainer only stands in its gym once a player steps on the
+// doorway plate, so where each gym trainer stands is remembered (cobblemon:gym_sites) from a random tick of its spot
+// marker while the building is loaded, and the arrow points at the nearest remembered gym when no trainer is out.
 const CARD = "rctmod:trainer_card";
+const GYM_SITES = "cobblemon:gym_sites", SITES_PER_TRAINER = 16;
+function gymSites() { try { return JSON.parse(world.getDynamicProperty(GYM_SITES) ?? "{}"); } catch (e) { return {}; } }
+function noteGymSite(trainer, dimension, at) {
+    const id = RCT_TRAINER_IDS[trainer];
+    if (!id) return;
+    const sites = gymSites(), here = [dimension.id, Math.floor(at.x), Math.floor(at.y), Math.floor(at.z)];
+    const old = sites[id] ?? [];
+    if (old[0]?.join() === here.join()) return;
+    // one entry per building: a site within 64 blocks of this one is the same gym
+    sites[id] = [here, ...old.filter((s) => s[0] !== here[0] || Math.hypot(s[1] - here[1], s[3] - here[3]) > 64)].slice(0, SITES_PER_TRAINER);
+    try { world.setDynamicProperty(GYM_SITES, JSON.stringify(sites)); } catch (e) { console.warn(`[cobblemon] gym sites: ${e}`); }
+}
 const ARROWS = ["\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196"];
 const rctOrder = () => [...RCT_TRAINER_IDS].sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name));
+const REGIONAL = { alolan: "Alolan ", galarian: "Galarian ", hisuian: "Hisuian ", paldean: "Paldean " };   // as the battle names them
 const rctType = (id) => id.startsWith("leader_") ? "Gym Leader" : id.startsWith("elite_four_") ? "Elite Four" : "Champion";
+// the next trainer to battle as { dim, x, z }: one standing in a loaded gym, else the nearest remembered gym
 function cardTarget(player) {
     let best, bestD = Infinity;
+    const consider = (dim, x, z) => {
+        const d = dim === player.dimension.id ? Math.hypot(x - player.location.x, z - player.location.z) : Infinity;
+        if (!best || d < bestD) { best = { dim, x, z }; bestD = d; }
+    };
     for (const id of ["overworld", "nether", "the_end"]) {
         let list = [];
         try { list = world.getDimension(id).getEntities({ type: "cobblemon:rct_trainer" }); } catch (e) { continue; }
         for (const npc of list) {
             const tid = gymTrainerOf(npc);
             if (!tid || rctDone(player, tid) || !rctUnlocked(player, tid)) continue;
-            const same = npc.dimension.id === player.dimension.id;
-            const d = same ? Math.hypot(npc.location.x - player.location.x, npc.location.z - player.location.z) : Infinity;
-            if (!best || d < bestD) { best = npc; bestD = d; }
+            consider(npc.dimension.id, npc.location.x, npc.location.z);
         }
     }
+    if (best) return best;
+    const sites = gymSites();
+    let gone = false;
+    for (const [tid, list] of Object.entries(sites)) {
+        if (!RCT_TRAINERS[tid] || rctDone(player, tid) || !rctUnlocked(player, tid)) continue;
+        for (const [dim, x, y, z] of list) {
+            // a remembered gym whose chunk is loaded and holds no marker any more is forgotten
+            let here;
+            try { here = world.getDimension(dim).getBlock({ x, y, z }); } catch (e) { }
+            if (here && here.typeId !== "cobblemon:gym_marker") { sites[tid] = sites[tid].filter((s) => s[1] !== x || s[3] !== z); gone = true; continue; }
+            consider(dim, x + 0.5, z + 0.5);
+        }
+    }
+    if (gone) try { world.setDynamicProperty(GYM_SITES, JSON.stringify(sites)); } catch (e) { }
     return best;
 }
 system.runInterval(() => {
@@ -2651,12 +2702,16 @@ system.runInterval(() => {
         let held;
         try { held = player.getComponent(EntityComponentTypes.Equippable)?.getEquipment(EquipmentSlot.Mainhand)?.typeId; } catch (e) { }
         if (held !== CARD) continue;
-        const npc = cardTarget(player);
-        if (!npc) continue;
+        const target = cardTarget(player);
+        if (!target) {
+            // nothing to point at yet: no gym with a trainer to battle has been near a player
+            try { player.onScreenDisplay.setActionBar("§7No gym found yet. Explore: the card points to the next one you pass near."); } catch (e) { }
+            continue;
+        }
         let arrow;
-        if (npc.dimension.id !== player.dimension.id) arrow = ARROWS[Math.floor(system.currentTick / 5) % 8];
+        if (target.dim !== player.dimension.id) arrow = ARROWS[Math.floor(system.currentTick / 5) % 8];
         else {
-            const yaw = player.getRotation().y, dx = npc.location.x - player.location.x, dz = npc.location.z - player.location.z;
+            const yaw = player.getRotation().y, dx = target.x - player.location.x, dz = target.z - player.location.z;
             const bearing = (Math.atan2(-dx, dz) * 180) / Math.PI;   // Minecraft yaw: 0 is south, 90 west
             arrow = ARROWS[(Math.round((((bearing - yaw) % 360) + 360) % 360 / 45)) % 8];
         }
@@ -2666,24 +2721,32 @@ system.runInterval(() => {
 function showTrainerCard(player) {
     const ids = rctOrder(), defeats = rctDefeats(player), next = new Set(ids.filter((id) => !rctDone(player, id) && rctUnlocked(player, id)));
     const total = ids.reduce((n, id) => n + (defeats[id] ?? 0), 0);
+    // before the first gym battle there is no cap yet (rctLevelCap's 100); RCT's initial cap starts with that battle
+    const cap = player.getDynamicProperty(RCT_SERIES) ? `${rctLevelCap(player)}` : `none yet (${RCT_INITIAL_CAP} from your first gym battle)`;
     const form = new ActionFormData().title("Trainer Card")
-        .body(`\u00a7f${player.name}\n\u00a77Level Cap: \u00a7f${rctLevelCap(player)}\n\u00a77Total: \u00a7f${total}`);
+        .body(`\u00a7f${player.name}\n\u00a77Level Cap: \u00a7f${cap}\n\u00a77Total: \u00a7f${total}\n\u00a77Hold the card to point at your next trainer.`);
     const rows = ids.map((id) => {
         const n = defeats[id] ?? 0, key = next.has(id);
-        const name = n > 0 ? RCT_TRAINERS[id].name : key ? "\u00a7k" + "x".repeat(RCT_TRAINERS[id].name.length) + "\u00a7r" : "???";
+        // RCT hides the next one in obfuscated text, which a Bedrock form shows as noise: here "???", marked as next
+        const name = n > 0 ? RCT_TRAINERS[id].name : key ? `??? (next ${rctType(id)})` : "???";
         form.button(`${key ? "\u00a72" : n > 0 ? "\u00a70" : "\u00a78"}${name}  ${n > 0 ? n : ""}`);
         return id;
     });
     form.show(player).then((r) => {
         if (r.canceled) return;
         const id = rows[r.selection];
-        if (!(defeats[id] > 0) && !next.has(id)) { showTrainerCard(player); return; }
+        if (!(defeats[id] > 0) && !next.has(id)) {
+            // a locked trainer: say so rather than redraw the card, which looked like the tap did nothing
+            new ActionFormData().title("Trainer Card").body(`§f???\n§7Type: §f${rctType(id)}\n§7Beat the trainers before this one first.`)
+                .button("Back").show(player).then((b) => { if (!b.canceled) showTrainerCard(player); }).catch(() => { });
+            return;
+        }
         const t = RCT_TRAINERS[id], missing = t.requires.filter((g) => !g.some((x) => rctDone(player, x))).map((g) => g.map((x) => RCT_TRAINERS[x]?.name ?? x).join(" or "));
         const later = ids.filter((x) => RCT_TRAINERS[x].requires.some((g) => g.includes(id))).map((x) => RCT_TRAINERS[x].level);
         new ActionFormData().title("Trainer Card")
             .body(`\u00a7f${defeats[id] > 0 ? t.name : "???"}\n\u00a77Type: \u00a7f${rctType(id)}\n\u00a77Level Cap: \u00a7f${Math.max(RCT_INITIAL_CAP, t.level)} -> ${later.length ? Math.max(RCT_INITIAL_CAP, Math.min(...later)) : 100}`
                 + (missing.length ? `\n\u00a77Required Trainers:\n\u00a7f${missing.join("\n")}` : "")
-                + (defeats[id] > 0 ? `\n\u00a77Team:\n\u00a7f${t.team.map((m) => `${POKEMON[m.t]?.name ?? m.t} Lv. ${m.lv}`).join("\n")}` : ""))
+                + (defeats[id] > 0 ? `\n\u00a77Team:\n\u00a7f${t.team.map((m) => `${REGIONAL[m.form] ?? ""}${POKEMON[m.t]?.name ?? m.t} Lv. ${m.lv}`).join("\n")}` : ""))
             .button("Back").show(player).then((b) => { if (!b.canceled) showTrainerCard(player); }).catch(() => { });
     }).catch(() => { });
 }
@@ -2715,6 +2778,7 @@ function summonGymTrainer(marker) {
     if (!id) return;
     // the one already there makes way, as a rematch calls the trainer back
     for (const old of dimension.getEntities({ type: "cobblemon:rct_trainer", location, maxDistance: 48 })) if (gymTrainerOf(old) === id) old.remove();
+    noteGymSite(marker.trainer, dimension, location);
     try {
         const npc = dimension.spawnEntity("cobblemon:rct_trainer", { x: location.x + 0.5, y: location.y + marker.rise, z: location.z + 0.5 });
         npc.setProperty("cobblemon:trainer", marker.trainer);
@@ -3194,6 +3258,19 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const [name, active] = event.message.trim().split(/\s+/), id = `cobblemon:${name.replace(/^cobblemon:/, "")}`;
         if (MARKS[id] && !marksOf(source).includes(id)) setProp(source, MARK_LIST, JSON.stringify([...marksOf(source), id]));
         if (MARKS[id] && active === "active") setProp(source, ACTIVE_MARK, id);
+    } else if (event.id === "cobblemon:gym_sites") {
+        // testing: "/scriptevent cobblemon:gym_sites [clear]" logs the gym trainers' remembered places, or forgets them
+        if (event.message.trim() === "clear") world.setDynamicProperty(GYM_SITES, undefined);
+        console.warn(`[cobblemon] gym sites: ${JSON.stringify(gymSites())}`);
+    } else if (event.id === "cobblemon:battle_pose") {
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:battle_pose [off]" freezes it in its battle poses
+        freeze(source, event.message.trim() !== "off");
+    } else if (event.id === "cobblemon:play_clip") {
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:play_clip <name>" plays the clip a move's effect
+        // names (physical, special, status, cry, faint...), as playMoveFx would; with no name it logs the names it has
+        const clips = FX_ANIMS[source.typeId] ?? {}, name = event.message.trim();
+        if (clips[name]) playClip(source, clips[name]);
+        else console.warn(`[cobblemon] play_clip ${source.typeId}: ${Object.keys(clips).join(", ")}`);
     } else if (event.id === "cobblemon:inspect") {
         // testing: "/execute as <entity> run scriptevent cobblemon:inspect" logs its variant and dynamic properties
         const props = {};
@@ -5143,9 +5220,9 @@ function pickApricorn(block, dimension) {
     if (Math.random() < 0.1) dimension.spawnItem(new ItemStack(`cobblemon:${colour}_apricorn_seed`, 1), at);
 }
 
-function growTree(block) {
+function growTree(block, kind = "grown") {
     const colour = colourOf(block.typeId), n = Math.floor(Math.random() * APRICORN_TREES.variants);
-    const name = `apricorn_tree_${colour}_grown_${n}`, [ox, oy, oz] = APRICORN_TREES.origins[name];
+    const name = `apricorn_tree_${colour}_${kind}_${n}`, [ox, oy, oz] = APRICORN_TREES.origins[name];
     const { x, y, z } = block.location;
     block.setType("minecraft:air");
     try { world.structureManager.place(`cobblemon:${name}`, block.dimension, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
@@ -5392,6 +5469,11 @@ function registerApricornComponents(registry) {
     });
     registry.registerCustomComponent("cobblemon:apricorn_sapling", {
         onRandomTick({ block }) { if (Math.random() < 1 / 7) growTree(block); }
+    });
+    // worldgen's seed of a wild tree grows at once (a random tick, should its first tick be missed)
+    registry.registerCustomComponent("cobblemon:wild_apricorn_tree", {
+        onTick({ block }) { growTree(block, "wild"); },
+        onRandomTick({ block }) { growTree(block, "wild"); }
     });
     registry.registerCustomComponent("cobblemon:strippable", {
         onPlayerInteract({ block, player }) {
@@ -6722,6 +6804,12 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:league_anchor", { onRandomTick({ block }) { completeLeague(block); } });
+    blockComponentRegistry.registerCustomComponent("cobblemon:gym_site", {
+        onRandomTick({ block }) {
+            const m = gymMarker(block);
+            if (m?.role === "spot") noteGymSite(m.trainer, block.dimension, block.location);
+        }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
         onPlayerInteract({ block, player }) { if (player) useMachine(block, player); }
     });

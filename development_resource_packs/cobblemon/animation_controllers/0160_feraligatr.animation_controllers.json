@@ -6,11 +6,15 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "ground_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_standing"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -42,11 +46,15 @@
                 },
                 "battle_standing": {
                     "animations": [
-                        "battle_idle",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "battle_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_battle_standing"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -78,11 +86,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "ground_walk": "!q.property('cobblemon:primary')"
                         },
-                        "pose_walking"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -114,11 +126,15 @@
                 },
                 "surface_float": {
                     "animations": [
-                        "watersurface_idle",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "watersurface_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_surface_float"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_surface_float": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -150,11 +166,15 @@
                 },
                 "surface_swim": {
                     "animations": [
-                        "watersurface_swim",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "watersurface_swim": "!q.property('cobblemon:primary')"
                         },
-                        "pose_surface_swim"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_surface_swim": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -186,11 +206,15 @@
                 },
                 "float": {
                     "animations": [
-                        "water_idle",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "water_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_float"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_float": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -222,11 +246,15 @@
                 },
                 "swim": {
                     "animations": [
-                        "water_swim",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "water_swim": "!q.property('cobblemon:primary')"
                         },
-                        "pose_swim"
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_swim": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -258,9 +286,11 @@
                 },
                 "sleep": {
                     "animations": [
-                        "sleep",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
@@ -293,9 +323,11 @@
                 },
                 "water_sleep": {
                     "animations": [
-                        "water_sleep",
                         {
-                            "hold_item": "q.property('cobblemon:holding')"
+                            "water_sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "hold_item": "(q.property('cobblemon:holding')) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [

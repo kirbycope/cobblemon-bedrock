@@ -6,7 +6,9 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "palafin_hero__ground_idle"
+                        {
+                            "palafin_hero__ground_idle": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -17,8 +19,12 @@
                 },
                 "walking": {
                     "animations": [
-                        "palafin_hero__ground_idle",
-                        "pose_walking"
+                        {
+                            "palafin_hero__ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

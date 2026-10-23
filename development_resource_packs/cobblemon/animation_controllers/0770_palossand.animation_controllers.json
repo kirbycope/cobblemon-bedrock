@@ -6,8 +6,12 @@
             "states": {
                 "standing": {
                     "animations": [
-                        "ground_idle",
-                        "shovel_spin"
+                        {
+                            "ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "shovel_spin": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -18,9 +22,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
-                        "shovel_spin",
-                        "pose_walking"
+                        {
+                            "ground_walk": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "shovel_spin": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

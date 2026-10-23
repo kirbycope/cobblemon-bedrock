@@ -6,7 +6,9 @@
             "states": {
                 "sleep": {
                     "animations": [
-                        "eiscue_ice__sleep"
+                        {
+                            "eiscue_ice__sleep": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -20,8 +22,12 @@
                 },
                 "standing": {
                     "animations": [
-                        "eiscue_ice__ground_idle",
-                        "pose_standing"
+                        {
+                            "eiscue_ice__ground_idle": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -35,7 +41,9 @@
                 },
                 "walk": {
                     "animations": [
-                        "eiscue_ice__ground_walk"
+                        {
+                            "eiscue_ice__ground_walk": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {

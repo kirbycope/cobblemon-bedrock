@@ -6,11 +6,15 @@
             "states": {
                 "battle_standing": {
                     "animations": [
-                        "battle_idle",
                         {
-                            "hat": "0"
+                            "battle_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_battle_standing"
+                        {
+                            "hat": "(0) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -27,11 +31,15 @@
                 },
                 "standing": {
                     "animations": [
-                        "ground_idle",
                         {
-                            "hat": "0"
+                            "ground_idle": "!q.property('cobblemon:primary')"
                         },
-                        "pose_standing"
+                        {
+                            "hat": "(0) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_standing": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -48,11 +56,15 @@
                 },
                 "walking": {
                     "animations": [
-                        "ground_walk",
                         {
-                            "hat": "0"
+                            "ground_walk": "!q.property('cobblemon:primary')"
                         },
-                        "pose_walking"
+                        {
+                            "hat": "(0) && !q.property('cobblemon:primary')"
+                        },
+                        {
+                            "pose_walking": "!q.property('cobblemon:primary')"
+                        }
                     ],
                     "transitions": [
                         {
@@ -69,9 +81,11 @@
                 },
                 "sleeping": {
                     "animations": [
-                        "sleep",
                         {
-                            "hat": "0"
+                            "sleep": "!q.property('cobblemon:primary')"
+                        },
+                        {
+                            "hat": "(0) && !q.property('cobblemon:primary')"
                         }
                     ],
                     "transitions": [
