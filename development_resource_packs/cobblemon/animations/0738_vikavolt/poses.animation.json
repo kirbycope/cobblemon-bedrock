@@ -1,29 +1,29 @@
 {
-	"format_version": "1.8.0",
-	"animations": {
-		"animation.0738_vikavolt.pose_hover": {
-			"loop": true,
-			"bones": {
-				"body": {
-					"rotation": [
-						"(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
-						"0",
-						"0"
-					]
-				}
-			}
-		},
-		"animation.0738_vikavolt.pose_fly": {
-			"loop": true,
-			"bones": {
-				"body": {
-					"rotation": [
-						"(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
-						"0",
-						"0"
-					]
-				}
-			}
-		}
-	}
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0738_vikavolt.pose_hover": {
+   "loop": true,
+   "bones": {
+    "body": {
+     "rotation": [
+      "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+      "0",
+      "0"
+     ]
+    }
+   }
+  },
+  "animation.0738_vikavolt.pose_fly": {
+   "loop": true,
+   "bones": {
+    "body": {
+     "rotation": [
+      "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+      "0",
+      "0"
+     ]
+    }
+   }
+  }
+ }
 }

@@ -6,7 +6,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -77,6 +77,13 @@
             "1 * math.clamp(q.target_y_rotation, -45, 45)",
             "0"
           ]
+        },
+        "dragapult": {
+          "position": [
+            "0",
+            "(q.has_rider ? -11.19 : 0)",
+            "(q.has_rider ? -4.43 : 0)"
+          ]
         }
       }
     },
@@ -85,9 +92,16 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
+          ]
+        },
+        "dragapult": {
+          "position": [
+            "(q.has_rider ? 1.15 : 0)",
+            "(q.has_rider ? 2.55 : 0)",
+            "(q.has_rider ? 11.88 : 0)"
           ]
         }
       }
@@ -104,9 +118,16 @@
         },
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
+          ]
+        },
+        "dragapult": {
+          "position": [
+            "(q.has_rider ? -5.65 : 0)",
+            "(q.has_rider ? -0.39 : 0)",
+            "(q.has_rider ? 11.82 : 0)"
           ]
         }
       }
@@ -128,7 +149,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]

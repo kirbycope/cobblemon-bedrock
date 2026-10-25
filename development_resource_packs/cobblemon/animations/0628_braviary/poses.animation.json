@@ -58,7 +58,7 @@
       "bones": {
         "body_": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -82,6 +82,13 @@
             "1 * math.clamp(q.target_x_rotation, -30, 50)",
             "1 * math.clamp(q.target_y_rotation, -25, 25)",
             "0"
+          ]
+        },
+        "braviary": {
+          "position": [
+            "(q.has_rider ? 1 : 0)",
+            "(q.has_rider ? -0.6 : 0)",
+            "(q.has_rider ? -6.61 : 0)"
           ]
         }
       }
@@ -91,7 +98,7 @@
       "bones": {
         "body_": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -115,6 +122,13 @@
             "1 * math.clamp(q.target_x_rotation, -30, 50)",
             "1 * math.clamp(q.target_y_rotation, -25, 25)",
             "0"
+          ]
+        },
+        "braviary": {
+          "position": [
+            "(q.has_rider ? -0.19 : 0)",
+            "(q.has_rider ? 1.08 : 0)",
+            "(q.has_rider ? -2.77 : 0)"
           ]
         }
       }
@@ -124,7 +138,7 @@
       "bones": {
         "body_": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -147,6 +161,13 @@
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -30, 50)",
             "1 * math.clamp(q.target_y_rotation, -25, 25)",
+            "0"
+          ]
+        },
+        "braviary": {
+          "position": [
+            "(q.has_rider ? -0.24 : 0)",
+            "(q.has_rider ? 1 : 0)",
             "0"
           ]
         }

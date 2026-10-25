@@ -807,7 +807,8 @@ MOLANG_KNOWN = {"q", "query", "v", "variable", "t", "temp", "c", "context", "mat
 BEDROCK_ANIMATION_QUERIES = {"anim_time", "life_time", "modified_move_speed", "ground_speed", "vertical_speed", "is_on_ground", "is_in_water",
     "is_sleeping", "all_animations_finished", "any_animation_finished", "head_x_rotation", "head_y_rotation", "body_x_rotation", "body_y_rotation",
     "time_stamp", "is_moving", "is_jumping", "target_x_rotation", "target_y_rotation", "yaw_speed", "walk_distance", "delta_time", "is_riding",
-    "is_baby", "is_angry", "key_frame_lerp_time", "modified_distance_moved", "is_on_fire", "is_swimming", "is_gliding", "is_sneaking", "is_sprinting"}
+    "is_baby", "is_angry", "key_frame_lerp_time", "modified_distance_moved", "is_on_fire", "is_swimming", "is_gliding", "is_sneaking", "is_sprinting",
+    "has_rider", "property"}
 
 
 def sanitize_animation_name(name):
@@ -1102,7 +1103,8 @@ def pose_plan(pokemon, pokemonName):
         has_look = bool(look_animation(pokemon, pokemonName)) or model_has_head(pokemon, pokemonName)
         flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
         plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
-                                ambient_particles(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}))
+                                ambient_particles(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}),
+                                seat_shift=lambda pose: seat_shift(pokemon, pose))
         plan["source"] = found["source"]
     pose_plans[pokemon] = plan
     return plan
@@ -1173,13 +1175,18 @@ def _baked_texture(base, layers):
     return name
 
 
-def _glow_texture(base, frame):
+def _glow_texture(base, frame, glow=True):
     """An emissive layer frame for entity_emissive_alpha_one_sided, which alpha-tests rather than blends: Cobblemon draws
     such a layer translucent, and entity_alphablend writes depth even for its clear texels, so the whole model's outline
     hid the water behind it wherever the base is cut out (Charizard's wings and tail fire). Texels under Java's 0.1 alpha
     cut are clear (all zero, which that material discards); the rest are the layer over this variant's base by the
-    layer's alpha, glowing by it (that material's alpha 0 is full glow, 255 lit as usual)."""
-    name = f"{frame}__glow__{os.path.basename(base)}"
+    layer's alpha, glowing by it (that material's alpha 0 is full glow, 255 lit as usual).
+
+    A translucent layer that does not glow (Greninja's fins, Masquerain's wings) is the same frame for an alpha-tested
+    pass that does not glow (glow False): over the base, the layer by its alpha; where the base is cut out, the layer
+    where it is at least half opaque and clear elsewhere. It loses the see-through look, which no Bedrock entity material
+    can blend without writing depth, and the water behind no longer vanishes in its outline."""
+    name = f"{frame}__{'glow' if glow else 'cut'}__{os.path.basename(base)}"
     under = numpy.asarray(Image.open(f"{resourcePack}/{base}.png").convert("RGBA"), dtype=numpy.float32)
     top = Image.open(f"{resourcePack}/{frame}.png").convert("RGBA")
     if top.size != (under.shape[1], under.shape[0]): top = top.resize((under.shape[1], under.shape[0]), Image.NEAREST)
@@ -1187,8 +1194,12 @@ def _glow_texture(base, frame):
     t = top[..., 3:4] / 255
     rgb = numpy.where(under[..., 3:4] >= 128, under[..., :3] * (1 - t) + top[..., :3] * t, top[..., :3])
     rgb = numpy.where(rgb.sum(axis=2, keepdims=True) < 1, 1, rgb)
-    out = numpy.concatenate([rgb, 255 - top[..., 3:4]], axis=2)
-    out = numpy.where(top[..., 3:4] < 26, 0, out)
+    if glow:
+        out = numpy.concatenate([rgb, 255 - top[..., 3:4]], axis=2)
+        out = numpy.where(top[..., 3:4] < 26, 0, out)
+    else:
+        keep = (top[..., 3:4] >= 26) & ((under[..., 3:4] >= 128) | (top[..., 3:4] >= 128))
+        out = numpy.where(keep, numpy.concatenate([rgb, numpy.full_like(rgb[..., :1], 255)], axis=2), 0)
     Image.fromarray(numpy.round(out).astype(numpy.uint8), "RGBA").save(f"{resourcePack}/{name}.png")
     return name
 
@@ -1235,7 +1246,7 @@ def resolver_variations(pokemon):
                 plain = [layer for layer in layers.values() if layer["plain"] and len(layer["frames"]) == 1]
                 if plain: texture = _baked_texture(texture, plain)
                 for layer in layers.values():
-                    if layer["emissive"] and layer not in plain: layer["frames"] = [_glow_texture(texture, f) for f in layer["frames"]]
+                    if layer not in plain: layer["frames"] = [_glow_texture(texture, f, layer["emissive"]) for f in layer["frames"]]
                 result.append({"aspects": want, "form": form, "female": female, "shiny": shiny,
                                "model": model or base_model, "texture": texture, "layers": [l for l in layers.values() if l not in plain]})
     if not result:
@@ -1347,7 +1358,7 @@ def create_render_controllers():
                 else: flat += [f"Texture.{name}_{n}_{i % len(layer['frames'])}" for i in range(stride)]
             frame = f" + math.mod(math.floor(q.life_time * {max(fps)}), {stride})" if stride > 1 else ""
             index = (f"query.variant * {stride}" if len(variations) > 1 else "0") + frame
-            material = "Material.emissive" if all(l["emissive"] for l in layers if l) else "Material.translucent"
+            material = "Material.emissive" if all(l["emissive"] for l in layers if l) else "Material.default"
             controller = {"materials": [{"*": material}], "arrays": {"textures": {f"Array.{name}": flat}}, "textures": [f"Array.{name}[{index}]"], "overlay_color": RED_OVERLAY}
             if len(variations) == 1: controller["geometry"] = geometry_array[0]
             else: controller.update({"geometry": "Array.geo[query.variant]"}); controller["arrays"]["geometries"] = {"Array.geo": geometry_array}
@@ -3766,6 +3777,53 @@ def air_riding_groups(groups, events):
     events["cobblemon:ride_air_off"] = {"remove": {"component_groups": ["cobblemon:ridden_air", "cobblemon:ridden_tired"] + tiers}, "add": {"component_groups": ["cobblemon:gravity"]}}
     events["cobblemon:ride_tired"] = {"remove": {"component_groups": ["cobblemon:ridden_air"] + tiers}, "add": {"component_groups": ["cobblemon:ridden_tired"]}}
     events["cobblemon:ride_rested"] = {"remove": {"component_groups": ["cobblemon:ridden_tired"]}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
+
+
+def seat_shift(pokemon, pose):
+    """How far a ridden pose in the air (hovering, flying, or any whose condition has it off the ground and out of the
+    water) must move the model so its first seat locator, where the pose's clips put it at their start, lands back
+    on the fixed seat (the locator at rest), in animation units; None when it is ridden on the ground, not ridden, or
+    moves the locator less than a pixel. Flying with the rest pose's seat, a rider sat inside Charizard's back."""
+    if not ride_behaviours(species_for(pokemon) or {}): return None
+    # in the air only: in water the ride clips sink the body, and lifting the model to its rider took it out of the water
+    cond = pose["condition"]
+    off = "(!q.is_on_ground && !q.is_in_water)"
+    airborne = pose["types"] & {"HOVER", "FLY"} or (off in cond and f"!{off}" not in cond and f"!({off}" not in cond)
+    if not airborne or "!q.has_rider" in cond or "cobblemon:battle')" in cond.replace("!q.property('cobblemon:battle')", ""): return None
+    name = pokemon[pokemon.index("_")+1:]
+    geometry = geometry_for(pokemon, name)[len("geometry."):]
+    path = f"{modelsBedrock}/{pokemon}/{geometry}.geo.json"
+    if not os.path.exists(path): return None
+    with open(path, encoding="utf-8") as file: geo = json.load(file)["minecraft:geometry"][0]
+    locator = ((species_for(pokemon).get("riding") or {}).get("seats") or [{}])[0].get("locator", "seat_1")
+    owner = next((b for b in geo["bones"] if locator in b.get("locators", {})), None)
+    point = owner and owner["locators"][locator]
+    if isinstance(point, dict): point = point.get("offset")
+    if not isinstance(point, list): return None
+    sys.path.insert(0, os.path.join(pwd, "tools"))
+    import render_portraits as rp
+    if pokemon not in seat_clips:
+        seat_clips[pokemon] = {}
+        for clip_path in glob.glob(f"{animationsBedrock}/{pokemon}/*.animation.json"):
+            with open(clip_path, encoding="utf-8") as file: seat_clips[pokemon].update(json.load(file).get("animations", {}))
+    anim = {}
+    for a, cond in pose["animations"]:
+        if a[0] != "bedrock" or (cond and "q.has_rider" not in cond): continue
+        for bone, chans in seat_clips[pokemon].get(f"animation.{a[1]}.{a[2]}", {}).get("bones", {}).items():
+            e = anim.setdefault(bone.lower(), {})
+            for k in ("rotation", "position", "scale"):
+                v = rp.channel_at_zero(chans[k]) if k in chans else None
+                if v is None: continue
+                e[k] = [x * y for x, y in zip(e.get(k, [1, 1, 1]), v)] if k == "scale" else [x + y for x, y in zip(e.get(k, [0, 0, 0]), v)]
+    if not anim: return None
+    at = numpy.append(rp.bbp(point), 1.0)
+    moved = rp.bone_matrices(geo["bones"], anim)[owner["name"]] @ at - rp.bone_matrices(geo["bones"], {})[owner["name"]] @ at
+    if numpy.linalg.norm(moved[:3]) < 1: return None
+    # Blockbench space has x mirrored against an animation's x
+    return [round(moved[0], 2), round(-moved[1], 2), round(-moved[2], 2)]
+
+
+seat_clips = {}
 
 
 def add_riding(entity, species, pokemon):
