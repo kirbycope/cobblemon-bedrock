@@ -72,7 +72,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -97,6 +97,13 @@
             "0",
             "-(math.sin((q.life_time - 0) * 360.0000) * 1.00000 + 0.50000) * 57.2958"
           ]
+        },
+        "articuno": {
+          "position": [
+            "0",
+            "(q.has_rider ? 3.02 : 0)",
+            "(q.has_rider ? -5.93 : 0)"
+          ]
         }
       }
     },
@@ -105,7 +112,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -115,6 +122,13 @@
             "1 * math.clamp(q.target_x_rotation, -90, 20)",
             "1 * math.clamp(q.target_y_rotation, -37, 60)",
             "0"
+          ]
+        },
+        "articuno": {
+          "position": [
+            "0",
+            "(q.has_rider ? 7.71 : 0)",
+            "(q.has_rider ? 9.11 : 0)"
           ]
         }
       }

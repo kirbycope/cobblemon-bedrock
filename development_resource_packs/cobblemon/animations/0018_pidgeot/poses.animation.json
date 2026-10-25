@@ -112,7 +112,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -159,7 +159,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -354,6 +354,13 @@
             0,
             0
           ]
+        },
+        "pidgeot": {
+          "position": [
+            "(q.has_rider ? -0.63 : 0)",
+            "(q.has_rider ? 2.5 : 0)",
+            "(q.has_rider ? 0.63 : 0)"
+          ]
         }
       }
     },
@@ -394,6 +401,13 @@
             0,
             0
           ]
+        },
+        "pidgeot": {
+          "position": [
+            "(q.has_rider ? -0.3 : 0)",
+            "(q.has_rider ? 1.47 : 0)",
+            "(q.has_rider ? 2.07 : 0)"
+          ]
         }
       }
     },
@@ -419,6 +433,13 @@
             "-1 * math.clamp(q.target_x_rotation, -20, 10)",
             "1 * math.clamp(q.target_y_rotation, 0, 0)",
             "0"
+          ]
+        },
+        "pidgeot": {
+          "position": [
+            "(q.has_rider ? -0.66 : 0)",
+            "(q.has_rider ? 1.48 : 0)",
+            "(q.has_rider ? 2.07 : 0)"
           ]
         }
       }

@@ -208,7 +208,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -261,6 +261,13 @@
             "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958",
             "0"
           ]
+        },
+        "lugia": {
+          "position": [
+            "0",
+            "(q.has_rider ? -11.55 : 0)",
+            "(q.has_rider ? 15.34 : 0)"
+          ]
         }
       }
     },
@@ -269,7 +276,7 @@
       "bones": {
         "body": {
           "rotation": [
-            "(0 ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
+            "(q.has_rider ? 0 : -math.clamp(math.atan2(q.vertical_speed, q.ground_speed), -45, 45))",
             "0",
             "0"
           ]
@@ -293,6 +300,13 @@
             "0",
             "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958",
             "0"
+          ]
+        },
+        "lugia": {
+          "position": [
+            "0",
+            "(q.has_rider ? 2.94 : 0)",
+            "(q.has_rider ? 29.54 : 0)"
           ]
         }
       }

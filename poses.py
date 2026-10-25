@@ -602,7 +602,7 @@ def state_name(name, used):
     return out
 
 
-def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambient=None, rides=()):
+def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambient=None, rides=(), seat_shift=None):
     """What the pack needs for one Pokemon's poses:
       pre_animation   Molang setting v.pose_type and v.pose, the index of the first suitable pose
       states          the pose controller's states, one per pose an entity in the world can take
@@ -667,6 +667,12 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
                 arms = next(((l, r) for l, r in (("arm_left", "arm_right"), ("arm_left1", "arm_right1")) if l in model_bones and r in model_bones), None)
                 if pair and arms: procedural(("bimanual", 0.6662, 1, *arms), bones)
         static_parts(found.get("parts", []) + pose["parts"], bones)
+        # ridden off the ground, the model is drawn where its seat locator meets the mount's fixed seat (port.py's
+        # seat_shift): Cobblemon carries the rider with the locator as the ride clips move it, a Bedrock seat stays put
+        shift = seat_shift(pose) if seat_shift else None
+        if shift:
+            for axis, v in enumerate(shift):
+                if v: add(bones, "root", "position", axis, f"(q.has_rider ? {v:g} : 0)")
         # "root" is the model's root part: the poser's rootBone
         if "root" in bones and "root" not in model_bones and found.get("root") in model_bones:
             bones[found["root"]] = bones.pop("root")

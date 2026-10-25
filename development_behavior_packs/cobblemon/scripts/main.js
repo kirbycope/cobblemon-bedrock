@@ -231,7 +231,9 @@ function playClip(entity, clip) {
     if (length === undefined) return;
     try { entity.setProperty("cobblemon:primary", true); } catch (e) { return; }
     if (/faint/.test(clip)) return;
-    const ticks = Math.ceil(length * 20) + 4, until = system.currentTick + ticks, id = entity.id;
+    // the pose comes back a few ticks before the clip ends, while the clip still holds the bones it keys: given back
+    // after the end, there were a few frames with neither playing, and the model stood in its rest pose, a T-pose
+    const ticks = Math.max(1, Math.floor(length * 20) - 3), until = system.currentTick + ticks, id = entity.id;
     primaryUntil.set(id, until);
     system.runTimeout(() => {
         if (primaryUntil.get(id) !== until) return;
