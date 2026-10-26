@@ -4,7 +4,7 @@ The archive is what Minecraft imports when the file is double-clicked: the behav
 each in a folder of its own at the root with its manifest.json directly inside. Only files git tracks go in, so
 what the repository leaves out stays out of the add-on too: the battle music tools/fetch_battle_music.py
 downloads (the games' own tracks), the hub's functions tools/build_hub.py writes for one location, and anything
-else ignored.
+else ignored; sound_definitions.json loses the sounds left out with them (present_sounds).
 
     python tools/build_addon.py            # writes cobblemon-bedrock.mcaddon
     python tools/build_addon.py --check    # exits 1 if the archive on disk differs from what a build would produce
@@ -40,6 +40,25 @@ def tracked(pack: str) -> list[str]:
     return sorted(p[len(pack) + 1:] for p in out.split("\0") if p and os.path.isfile(os.path.join(ROOT, p)))
 
 
+def present_sounds(pack: str, files: list[str], data: bytes) -> bytes:
+    """sound_definitions.json without the sounds whose files the archive leaves out, and without events left with
+    none: the git-ignored battle music is defined on a machine that fetched it, and a definition naming a missing
+    file is a content log error on every player's first join ("Invalid asset path sounds/battle/...")."""
+    have = {os.path.splitext(f)[0] for f in files if f.startswith("sounds/")}
+    definitions = json.loads(data)
+    events = definitions.get("sound_definitions", definitions)
+    dropped = False
+    for name in list(events):
+        sounds = events[name].get("sounds") if isinstance(events[name], dict) else None
+        if not sounds: continue
+        kept = [s for s in sounds if (s if isinstance(s, str) else s.get("name", "")) in have]
+        if len(kept) == len(sounds): continue
+        dropped = True
+        if kept: events[name]["sounds"] = kept
+        else: del events[name]
+    return json.dumps(definitions, indent=2, ensure_ascii=False).encode("utf-8") if dropped else data
+
+
 def build() -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, allowZip64=False) as archive:
@@ -56,14 +75,16 @@ def build() -> bytes:
                 archive.writestr(info, b"", zipfile.ZIP_STORED)
 
         for folder, pack in PACKS.items():
-            for relative in tracked(pack):
+            files = tracked(pack)
+            for relative in files:
                 path = f"{folder}/{relative}"
                 add_dir(path)
                 info = zipfile.ZipInfo(path, STAMP)
                 info.external_attr = 0o666 << 16
                 info.compress_type = zipfile.ZIP_STORED if os.path.splitext(relative)[1].lower() in STORED else zipfile.ZIP_DEFLATED
-                with open(os.path.join(ROOT, pack, relative), "rb") as handle:
-                    archive.writestr(info, handle.read(), compresslevel=9)
+                with open(os.path.join(ROOT, pack, relative), "rb") as handle: data = handle.read()
+                if relative == "sounds/sound_definitions.json": data = present_sounds(pack, files, data)
+                archive.writestr(info, data, compresslevel=9)
     return buffer.getvalue()
 
 

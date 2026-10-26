@@ -7,7 +7,7 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot } from "@minecraft/server";
-import { ActionFormData, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
+import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
@@ -220,26 +220,28 @@ function fxLocator(entity, name, toward) {
 function fxFill(text, move) {
     return text.replace("$name", move.id).replace("$type", move.type ?? "normal").replace("$cat", (move.category ?? "status").toLowerCase());
 }
-// A move's or a faint's clip. A primary one (FX_PRIMARY, its length in seconds) replaces the pose while it plays, as
-// Cobblemon's PrimaryAnimation fades the pose out: cobblemon:primary stops the pose controller's own clips meanwhile,
-// since Bedrock runs a clip a script plays before the controller and override_previous_animation never reached them
-// (Greninja's battle pose lowered its body under its attacks' own lowered body). A faint holds, so it stays on.
+// A move's or a faint's clip. A primary one (FX_PRIMARY: the species' clip number and its length in seconds) replaces
+// the pose while it plays, as Cobblemon's PrimaryAnimation fades the pose out. It is not played from here: setting
+// cobblemon:primary to its number stops the pose's clips and starts it in the species' primary controller on the same
+// frame, where a clip played from a script reached the client after the property and left the model in its rest pose
+// in between (issue 32), and ran before the controller, out of override_previous_animation's reach. A faint holds,
+// so it stays on. A later clip on the same Pokemon takes over the timer.
 const primaryUntil = new Map();
 function playClip(entity, clip) {
-    entity.playAnimation(clip, { blendOutTime: 0.2 });
-    const length = FX_PRIMARY[clip];
-    if (length === undefined) return;
-    try { entity.setProperty("cobblemon:primary", true); } catch (e) { return; }
+    const own = FX_PRIMARY[entity.typeId]?.[clip];
+    if (!own) { entity.playAnimation(clip, { blendOutTime: 0.2 }); return; }
+    const [index, length] = own, id = entity.id, token = {};
+    primaryUntil.set(id, token);
+    const set = (value) => { try { if (entity.isValid) entity.setProperty("cobblemon:primary", value); } catch (e) { } };
+    // the same clip again: back to the pose for a tick, so the controller enters its state afresh
+    if (entity.getProperty("cobblemon:primary") === index) { set(0); system.runTimeout(() => { if (primaryUntil.get(id) === token) set(index); }, 1); }
+    else set(index);
     if (/faint/.test(clip)) return;
-    // the pose comes back a few ticks before the clip ends, while the clip still holds the bones it keys: given back
-    // after the end, there were a few frames with neither playing, and the model stood in its rest pose, a T-pose
-    const ticks = Math.max(1, Math.floor(length * 20) - 3), until = system.currentTick + ticks, id = entity.id;
-    primaryUntil.set(id, until);
     system.runTimeout(() => {
-        if (primaryUntil.get(id) !== until) return;
+        if (primaryUntil.get(id) !== token) return;
         primaryUntil.delete(id);
-        try { if (entity.isValid) entity.setProperty("cobblemon:primary", false); } catch (e) { }
-    }, ticks);
+        set(0);
+    }, Math.max(1, Math.round(length * 20)));
 }
 function fxEvent(e, user, target, move, outcome) {
     if (e.m && outcome.missed) return;
@@ -872,12 +874,14 @@ const LEARNED_TMS = "cobblemon:learned_tms", BENCHED = "cobblemon:benched";
 function tmLore(typeId) { const n = TM_INDEX.get(typeId); return n === undefined ? undefined : [MOVES[TMS[n][0]]?.name ?? "Unknown Move"]; }
 function benchedOf(e) { try { return JSON.parse(prop(e, BENCHED) ?? "[]"); } catch (err) { return []; } }
 function learnedTms(player) { return new Set(jsonProp(player, LEARNED_TMS, [])); }
-function learnTms(player, moves) {
+// the default TMs are passively obtained (TechnicalMachine.isPassivelyObtained): unlocked from the start, with no toast
+function learnTms(player, moves, passive = []) {
     const known = learnedTms(player), fresh = moves.filter((m) => TM_BY_MOVE.has(m) && !known.has(m));
-    if (!fresh.length) return;
-    for (const m of fresh) known.add(m);
+    const quiet = passive.filter((m) => TM_BY_MOVE.has(m) && !known.has(m));
+    if (!fresh.length && !quiet.length) return;
+    for (const m of [...quiet, ...fresh]) known.add(m);
     player.setDynamicProperty(LEARNED_TMS, JSON.stringify([...known]));
-    player.sendMessage(fresh.length === 1 ? `§bYou unlocked the ${MOVES[fresh[0]]?.name ?? fresh[0]} TM!` : "§bNew TMs Learned! §7Check the TM Machine");
+    if (fresh.length) player.sendMessage(fresh.length === 1 ? `§bYou unlocked the ${MOVES[fresh[0]]?.name ?? fresh[0]} TM!` : "§bNew TMs Learned! §7Check the TM Machine");
 }
 // a Pokemon's moves learned without a TM: its level-up moves to its level, its moves and the ones it can relearn
 function accessibleMoves(typeId, level, moves, benched) {
@@ -886,8 +890,7 @@ function accessibleMoves(typeId, level, moves, benched) {
     return out;
 }
 function syncTms(player) {
-    const moves = new Set();
-    for (const id of TMS.filter((tm) => tm[2] === "default" || tm[2] === "advancement").map((tm) => tm[0])) moves.add(id);
+    const moves = new Set(), passive = TMS.filter((tm) => tm[2] === "default" || tm[2] === "advancement").map((tm) => tm[0]);
     let mine = [];
     try { mine = player.dimension.getEntities({ families: ["owned"] }).filter((e) => POKEMON[e.typeId] && prop(e, OWNER) === player.id && !prop(e, PID)); } catch (e) { }
     for (const e of [...summaryParty(player), ...mine]) {
@@ -901,7 +904,7 @@ function syncTms(player) {
         try { known = JSON.parse(rec.mv ?? "null") ?? []; benched = JSON.parse(rec.k?.[BENCHED] ?? "[]"); } catch (err) { }
         for (const m of accessibleMoves(rec.t, rec.lv ?? 1, known, benched)) moves.add(m);
     }
-    learnTms(player, [...moves]);
+    learnTms(player, [...moves].filter((m) => !passive.includes(m)), passive);
 }
 system.runInterval(() => { for (const player of world.getPlayers()) syncTms(player); }, 200);
 function teachTm(player, target, itemId) {
@@ -5223,6 +5226,9 @@ function pickApricorn(block, dimension) {
 }
 
 function growTree(block, kind = "grown") {
+    // a wild tree's seed gets both its scheduled tick and a random tick, and the second can come after the first has
+    // already put the tree in its place: the block is then air or a log, with no tree of its own to grow
+    if (!block.isValid || !/^cobblemon:[a-z]+_apricorn_(sapling|tree_wild)$/.test(block.typeId)) return;
     const colour = colourOf(block.typeId), n = Math.floor(Math.random() * APRICORN_TREES.variants);
     const name = `apricorn_tree_${colour}_${kind}_${n}`, [ox, oy, oz] = APRICORN_TREES.origins[name];
     const { x, y, z } = block.location;
@@ -5496,6 +5502,34 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { player, block, itemStack } = event;
     if (itemStack?.typeId !== "minecraft:bone_meal") return;
     const sapling = /^cobblemon:[a-z]+_apricorn_sapling$/.test(block.typeId), fruit = /^cobblemon:[a-z]+_apricorn$/.test(block.typeId);
+    // a berry bush (BerryBlock.performBonemeal): a stage on, the berry's boneMealChance of the time, until it is ripe;
+    // the bone meal is used either way, as it is on Java
+    // a revival herb (CropBlock.performBonemeal): two to five ages on
+    if (block.typeId === "cobblemon:revival_herb") {
+        if (block.permutation.getState("cobblemon:age") >= 8) return;
+        event.cancel = true;
+        system.run(() => {
+            if (!block.isValid) return;
+            useBoneMeal(player);
+            try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+            const age = Math.min(8, block.permutation.getState("cobblemon:age") + 2 + Math.floor(Math.random() * 4));
+            block.setPermutation(block.permutation.withState("cobblemon:age", age));
+        });
+        return;
+    }
+    const bush = BERRIES[block.typeId];
+    if (bush) {
+        if (block.permutation.getState("cobblemon:stage") >= 3) return;
+        event.cancel = true;
+        system.run(() => {
+            if (!block.isValid) return;
+            useBoneMeal(player);
+            try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+            const stage = block.permutation.getState("cobblemon:stage");
+            if (stage < 3 && Math.random() < bush.boneMeal) block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1));
+        });
+        return;
+    }
     if (!sapling && !fruit) return;
     if (fruit && block.permutation.getState("cobblemon:age") >= 3) return;
     event.cancel = true;
@@ -6343,17 +6377,27 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target } = event;
     system.run(() => { if (player.isValid) usePartyItem(player, target?.isValid ? target : undefined); });
 });
-// the party item, given once
-world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
-    if (!initialSpawn) return;
+// the party item, given on first join and kept on death, since it stands in for Cobblemon's party keys and nothing
+// crafts another: a player found without one when they spawn (it was dropped before it was kept) is given it again
+function partyItem() {
+    const item = new ItemStack(PARTY_ITEM, 1);
+    item.setLore(["§7Use: send out or call back", "§7the selected Pokemon", "§7Use on a wild Pokemon: battle", "§7Sneak and use: next Pokemon"]);
+    item.keepOnDeath = true;
+    return item;
+}
+world.afterEvents.playerSpawn.subscribe(({ player }) => {
     system.runTimeout(() => {
-        if (!player.isValid || player.getDynamicProperty(PARTY_GIVEN)) return;
+        if (!player.isValid) return;
         const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
         if (!inv) return;
         try {
-            const item = new ItemStack(PARTY_ITEM, 1);
-            item.setLore(["§7Use: send out or call back", "§7the selected Pokemon", "§7Use on a wild Pokemon: battle", "§7Sneak and use: next Pokemon"]);
-            if (!inv.getItem(2)) inv.setItem(2, item); else inv.addItem(item);
+            for (let n = 0; n < inv.size; n++) {
+                const held = inv.getItem(n);
+                if (held?.typeId !== PARTY_ITEM) continue;
+                if (!held.keepOnDeath) { held.keepOnDeath = true; inv.setItem(n, held); }
+                return;
+            }
+            if (!inv.getItem(2)) inv.setItem(2, partyItem()); else inv.addItem(partyItem());
             player.setDynamicProperty(PARTY_GIVEN, true);
         } catch (e) { console.warn(`[cobblemon] party item: ${e}`); }
     }, 50);
@@ -6803,6 +6847,13 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             block.dimension.spawnItem(new ItemStack(berry.item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
             try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
+        }
+    });
+    // a revival herb (RevivalHerbBlock.randomTick): an age on, one random tick in 26, as a dry crop's
+    blockComponentRegistry.registerCustomComponent("cobblemon:revival_herb", {
+        onRandomTick({ block }) {
+            const age = block.permutation.getState("cobblemon:age");
+            if (age < 8 && Math.random() < 1 / 26) block.setPermutation(block.permutation.withState("cobblemon:age", age + 1));
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:league_anchor", { onRandomTick({ block }) { completeLeague(block); } });
@@ -7436,7 +7487,10 @@ world.afterEvents.worldLoad?.subscribe?.(() => {
 // without having chosen, as Cobblemon's starter prompt is, until they choose. The starter comes out of its ball
 // beside them at the level StarterConfig gives it, and is registered as caught.
 const STARTER_CHOSEN = "cobblemon:starter_chosen";
-function openStarter(player, state = { page: 0, cat: 0, pick: 0 }) {
+// A form shown while the client is busy (still on the Loading screen of a first join, which can take minutes the
+// first time a world loads the pack, or in another screen) is cancelled as UserBusy and never seen, so the screen is
+// offered again every second until it shows: busy counts those tries, up to ten minutes' worth.
+function openStarter(player, state = { page: 0, cat: 0, pick: 0 }, busy = 0) {
     if (player.getDynamicProperty(STARTER_CHOSEN)) { player.sendMessage("§7You already selected a starter!"); return; }
     const pages = Math.ceil(STARTERS.length / 3);
     // a category's slots are its starters and, with randomStarter, the Random slot after them
@@ -7462,6 +7516,10 @@ function openStarter(player, state = { page: 0, cat: 0, pick: 0 }) {
     form.button("choose", `${PC_UI}/starter/choose`).button("exit", `${PC_UI}/summary/exit`);
     form.button("up", `${PC_UI}/pokedex/arrow_up`).button("down", `${PC_UI}/pokedex/arrow_down`);
     form.show(player).then((r) => {
+        if (r.canceled && r.cancelationReason === FormCancelationReason.UserBusy && busy < 600) {
+            system.runTimeout(() => { if (player.isValid && !player.getDynamicProperty(STARTER_CHOSEN)) openStarter(player, state, busy + 1); }, 20);
+            return;
+        }
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
         if (pick < 9) {

@@ -1,0 +1,41 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:revival_herb_rule",
+      "places_feature": "cobblemon:revival_herb_patch"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "test": "has_biome_tag",
+        "operator": "==",
+        "value": "lush_caves"
+      }
+    },
+    "distribution": {
+      "iterations": 2,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "uniform",
+        "extent": [
+          -56,
+          60
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

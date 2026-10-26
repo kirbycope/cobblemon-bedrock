@@ -1,0 +1,72 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:berry_grove_chesto_berry_rule",
+      "places_feature": "cobblemon:berry_grove_chesto_berry"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "all_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "forest"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "!=",
+                "value": "taiga"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "!=",
+                "value": "extreme_hills"
+              }
+            ]
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "flower_forest"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "cherry_grove"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "grove"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 105
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      }
+    }
+  }
+}

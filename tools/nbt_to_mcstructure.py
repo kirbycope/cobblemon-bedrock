@@ -302,7 +302,8 @@ def sign(nbt):
                                                FrontText=side(nbt.get("front_text")), BackText=side(nbt.get("back_text"))))
 
 
-def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None, overrides=None, region=None):
+def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None, overrides=None, region=None,
+            foundation=0):
     """Write one .mcstructure; returns the set of Bedrock names it uses. Unmapped Java names are counted into
     `unmapped` (a dict) when given; `processors` (from parse_processors) run over every block first, with a
     random seed fixed by the file name so a rebuild gives the same result. air_as_void leaves the world's own
@@ -310,7 +311,10 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
     table name into the Bedrock path a suspicious block's data names. overrides maps a position (x, y, z) to the
     (Bedrock name, {state: Tag}) to put there instead, whatever the template holds (the gyms' command blocks). region,
     (x0, z0, x1, z1), writes only that part of the template, for one wider than the 64 blocks a Bedrock structure can be,
-    and a fifth number keeps only that many layers from the bottom."""
+    and a fifth number keeps only that many layers from the bottom. foundation adds that many layers under the
+    template, each column of its floor carried down in the floor's own block (stone bricks where the floor is a slab,
+    stairs, glass or the like), so a building placed that much lower stands on a plinth where the ground falls away
+    rather than floating over a slope, as Java's terrain adaptation would have it."""
     invalid = load_invalid() if invalid is None else invalid
     with open(src, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
     sx, sy, sz = java["size"]
@@ -375,6 +379,21 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
         if loot and loot_path and key[0] in ("suspicious_sand", "suspicious_gravel"):
             position_data[str(index)] = brushable(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
+    if foundation:
+        thin = ("_slab", "_stairs", "glass", "_pane", "fence", "door", "carpet", "torch", "sign", "button", "plate", "lantern",
+                "_wall", "bars", "chain", "ladder", "rail", "candle", "flower", "air")
+        bricks = palette_index(("stone_bricks", "{}"))
+        tall = sy + foundation
+        grown = [-1] * (sx * tall * sz)
+        for x in range(sx):
+            for z in range(sz):
+                for y in range(sy): grown[(x * tall + y + foundation) * sz + z] = layer[(x * sy + y) * sz + z]
+                floor = layer[(x * sy) * sz + z]
+                if floor == -1 or floor == air: continue   # no floor here: an open side stays open
+                block = bricks if any(t in keys[floor][0] for t in thin) else floor
+                for y in range(foundation): grown[(x * tall + y) * sz + z] = block
+        position_data = {str((int(i) // sz // sy * tall + int(i) // sz % sy + foundation) * sz + int(i) % sz): v for i, v in position_data.items()}
+        layer, sy = grown, tall
     root = compound(
         format_version=Tag(INT, 1),
         size=int_list([sx, sy, sz]),
