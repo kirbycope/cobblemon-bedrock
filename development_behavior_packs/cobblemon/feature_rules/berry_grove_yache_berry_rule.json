@@ -1,0 +1,85 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:berry_grove_yache_berry_rule",
+      "places_feature": "cobblemon:berry_grove_yache_berry"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "any_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "frozen"
+              },
+              {
+                "all_of": [
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "beach"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "cold"
+                  }
+                ]
+              },
+              {
+                "all_of": [
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "taiga"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "cold"
+                  }
+                ]
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "grove"
+              }
+            ]
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "taiga"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 856
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      }
+    }
+  }
+}

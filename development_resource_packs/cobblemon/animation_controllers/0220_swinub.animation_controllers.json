@@ -119,6 +119,107 @@
                     ]
                 }
             }
+        },
+        "controller.animation.swinub.primary": {
+            "initial_state": "off",
+            "states": {
+                "off": {
+                    "transitions": [
+                        {
+                            "clip_1": "q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "q.property('cobblemon:primary') == 4"
+                        }
+                    ]
+                },
+                "clip_1": {
+                    "animations": [
+                        "primary_1"
+                    ],
+                    "blend_transition": 0.2,
+                    "transitions": [
+                        {
+                            "off": "q.property('cobblemon:primary') == 0"
+                        },
+                        {
+                            "clip_2": "q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "q.property('cobblemon:primary') == 4"
+                        }
+                    ]
+                },
+                "clip_2": {
+                    "animations": [
+                        "primary_2"
+                    ],
+                    "blend_transition": 0.2,
+                    "transitions": [
+                        {
+                            "off": "q.property('cobblemon:primary') == 0"
+                        },
+                        {
+                            "clip_1": "q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_3": "q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "q.property('cobblemon:primary') == 4"
+                        }
+                    ]
+                },
+                "clip_3": {
+                    "animations": [
+                        "primary_3"
+                    ],
+                    "blend_transition": 0.2,
+                    "transitions": [
+                        {
+                            "off": "q.property('cobblemon:primary') == 0"
+                        },
+                        {
+                            "clip_1": "q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_4": "q.property('cobblemon:primary') == 4"
+                        }
+                    ]
+                },
+                "clip_4": {
+                    "animations": [
+                        "primary_4"
+                    ],
+                    "blend_transition": 0.2,
+                    "transitions": [
+                        {
+                            "off": "q.property('cobblemon:primary') == 0"
+                        },
+                        {
+                            "clip_1": "q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "q.property('cobblemon:primary') == 3"
+                        }
+                    ]
+                }
+            }
         }
     }
 }

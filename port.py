@@ -29,7 +29,7 @@ import textwrap
 import urllib.request
 
 import numpy
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 import poses
 
@@ -744,6 +744,8 @@ def create_texts():
         for f in sorted(os.listdir(evolutionItemsMain)):
             if f.endswith(".png"): name = f[:-len(".png")]; file.write(f"item.cobblemon:{name}.name={lang.get('item.cobblemon.' + name, name.replace('_', ' ').title())}\n")
         for name in ("shed_shell", "moomoo_milk", "revival_herb"): file.write(f"item.cobblemon:{name}.name={lang.get('item.cobblemon.' + name, name.replace('_', ' ').title())}\n")
+        file.write(f"item.cobblemon:pep_up_flower.name={lang.get('block.cobblemon.pep_up_flower', 'Pep-Up Flower')}\n")
+        file.write(f"tile.cobblemon:revival_herb.name={lang.get('item.cobblemon.revival_herb', 'Revival Herb')}\n")
         for berry, _ in berry_bushes():
             name = lang.get("item.cobblemon." + berry, berry.replace("_", " ").title())
             file.write(f"item.cobblemon:{berry}.name={name}\n")
@@ -1839,7 +1841,7 @@ def closed_vectors(anims, plays=None):
     return out
 
 
-def separate_layers(geo, nudges=None, clear=(), plays=None):
+def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
     """Spread the near-flush faces of one geometry; returns {(bone, nudge): new nudge} for the animations. Faces are
     compared where they lie at rest in model space, so a face detail stacks on the body face it sits on though different
     bones or cubes turn the two (Venusaur's eyes against its turned head, Greninja's against its muzzle cube turned 45
@@ -2020,8 +2022,28 @@ def separate_layers(geo, nudges=None, clear=(), plays=None):
         # a face already lifted carries what lay on it in front, small as the overlap is (Raichu's nose plane, 0.01 in
         # front of the nose box: both went up off the muzzle to one depth and fought)
         return m in lifted and shared(f[2], g[2]) >= 0.25
+    # a blink's ghost (stack_blinks: it replaces the pose's values on the bones it keys) stacks only on what shows while
+    # it plays over the standing pose: not on a bone the blink itself moves elsewhere, nor on a bone the standing pose's
+    # clips move (it is at its ghost there), nor on a ghost neither those clips nor the blink give. Stacked on every spare lid of every
+    # pose, Greninja's closed-eye line came a pixel out of its eye and overhung its sides at each blink (issue 32)
+    blinks, loops = (steady or {}).get("blinks", {}), (steady or {}).get("loops", set())
+    def chain(name, depth=0):
+        return {name} | chain(by_name[name].get("parent"), depth + 1) if name in by_name and depth < 60 and detail(name) else set()
+    def blink_of(ghost):
+        names = plays.get(ghost, set())
+        return next((blinks[a] for a in names if a in blinks), None) if names and all(a in blinks for a in names) else None
+    def steady_ok(k, m):
+        keyed = blink_of(faces[k][5]) if faces[k][5] else None
+        if keyed is None: return True
+        g = faces[m]
+        if g[5]:
+            names = plays.get(g[5], set())
+            return bool(names & set(blinks)) if g[5][0] in keyed else bool(names & loops)
+        bones_over = chain(g[3])
+        looped = {b for b in bones_over for v in nudges.get(b, []) if plays.get((b, v), set()) & loops}
+        return not (bones_over & keyed) and not looped
     def unders(lifted):
-        return {k: ([m for m in by_plane[f[0]] if sits_on(k, m, lifted)] if open_faces[k] else []) for k, f in enumerate(faces)}
+        return {k: ([m for m in by_plane[f[0]] if sits_on(k, m, lifted) and steady_ok(k, m)] if open_faces[k] else []) for k, f in enumerate(faces)}
     under = unders(set())
     lifted = {k for k, ms in under.items() if ms and id(faces[k][4]) not in detail_cubes}
     if lifted: under = unders(lifted)
@@ -2134,6 +2156,41 @@ def separate_layers(geo, nudges=None, clear=(), plays=None):
     return {k: v for k, v in closed.items() if list(k[1]) != v}
 
 
+def stack_blinks(anims):
+    """A blink is a quirk Cobblemon adds on top of the pose, and its nudges add to the pose's: Greninja's idle moves the
+    pupil 0.1 back and the blink 0.1 more, its closed-eye line 0.1 forward and the blink 0.1 more, so only the sum
+    brings the line past the eye. The layer pass stretches each nudge to its own place, and two stretched nudges added
+    put the line 3 pixels out of the face, black bars beside Greninja's head at every blink (issue 32). So each blink
+    nudge a bone's usual pose nudge sits under (the one most looping clips give it) becomes that sum, which the pass then
+    places as a nudge of its own, and the blink replaces the pose's values on the bones it keys instead of adding."""
+    def nudge(v):
+        return isinstance(v, list) and len(v) == 3 and all(isinstance(x, (int, float)) for x in v) and max(abs(x) for x in v) <= LAYER_NUDGE
+    standing = {}   # blink: the looping clips that give each of its bones that usual nudge (the standing pose's)
+    for name, anim in anims.items():
+        if not name.endswith(".blink"): continue
+        bases = {}
+        for bone, channels in anim.get("bones", {}).items():
+            if "position" not in channels: continue
+            count = collections.Counter(tuple(p) if nudge(p := other.get("bones", {}).get(bone, {}).get("position")) else None
+                                        for key, other in anims.items() if key != name and other.get("loop") is True)
+            base = count.most_common(1)[0][0] if count else None
+            if base and any(base): bases[bone] = base
+        if not bases: continue
+        standing[name] = {key for key, other in anims.items() if key != name and other.get("loop") is True
+                          and all(tuple(other.get("bones", {}).get(bone, {}).get("position") or ()) == base for bone, base in bases.items())}
+        def add(v, base):
+            if nudge(v): return [round(a + b, 4) for a, b in zip(v, base)]
+            if isinstance(v, dict): return {k: add(x, base) if k in ("pre", "post", "vector") else x for k, x in v.items()}
+            return v
+        for bone, base in bases.items():
+            pos = anim["bones"][bone]["position"]
+            if isinstance(pos, dict) and not any(k in pos for k in ("pre", "post", "vector")):
+                anim["bones"][bone]["position"] = {t: add(v, base) for t, v in pos.items()}
+            else: anim["bones"][bone]["position"] = add(pos, base)
+        anim["override_previous_animation"] = True
+    return standing
+
+
 def stretch_animation(anim, closed):
     """Each nudge (or part of one) the layer pass moved to its new place, keyframe by keyframe."""
     by_bone = {}
@@ -2212,6 +2269,12 @@ def separate_model_layers():
         anim_files = {}
         for path in anim_paths:
             with open(path, encoding="utf-8") as file: anim_files[path] = json.load(file)
+        standing = {}
+        for data in anim_files.values(): standing.update(stack_blinks(data.get("animations", {})))
+        # the standing pose's clips and what each blink keys, for where a blink's ghost stacks
+        every_anim = {n: a for d in anim_files.values() for n, a in d.get("animations", {}).items()}
+        steady = {"loops": set().union(*standing.values()) if standing else set(),
+                  "blinks": {n: set(every_anim[n].get("bones", {})) for n in standing}}
         every_plays = {}
         every = closed_vectors([item for d in anim_files.values() for item in d.get("animations", {}).items()], every_plays)
         # a model takes its nudges from, and stretches, the animation file named as it is (raichu_alolan.geo.json plays
@@ -2232,7 +2295,7 @@ def separate_model_layers():
             with open(path, encoding="utf-8") as file: text = file.read()
             data = json.loads(text)
             for geo in data.get("minecraft:geometry", []):
-                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins), plays).items():
+                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins), plays, steady).items():
                     closed.setdefault(key, new)
                     if own: per_file.setdefault(own, {}).setdefault(key, new)
             if json.loads(text) != data:
@@ -2453,6 +2516,10 @@ def health_at(base_hp, level):
 
 
 SWIM_SCALE = 0.7 * 0.33 * 2.5   # Cobblemon's wandering swim speed in blocks a tick for each point of swimSpeed
+# WaterWanderTaskConfig: a new spot one tick in 60 (water_wander_chance 1 / (20 * 3)) once the last is reached, within
+# 10 blocks across and 7 up or down. With interval 0 a swimmer never rested and dashed about at full speed all the
+# time, which read as far too fast (issue 32); it rests between swims as on Java
+WATER_WANDER = {"priority": 3, "interval": 60, "xz_dist": 10, "y_dist": 7, "speed_multiplier": 1}
 
 
 def movement_components(species, kind):
@@ -2482,7 +2549,7 @@ def movement_components(species, kind):
             # a Pokemon breathes air even when it lives in water (PokemonEntity is no WaterAnimal, so none dries out)
             "minecraft:breathable": {"breathes_air": True, "breathes_water": True, "suffocate_time": 0, "total_supply": 15},
             "minecraft:physics": {"has_gravity": False},
-            "minecraft:behavior.random_swim": {"priority": 3, "interval": 0, "xz_dist": 16, "y_dist": 4, "speed_multiplier": 1}
+            "minecraft:behavior.random_swim": WATER_WANDER
         }
     breathable = {"total_supply": 15, "suffocate_time": 0, "breathes_air": True, "breathes_water": breathes_water}
     # Cobblemon keeps afloat (stay_afloat) only a Pokemon that cannot breathe under water (pokemon_no_underwater.json); one
@@ -2846,6 +2913,49 @@ def fx_flatten(keyframes, t, events, hold, flags):
     return t, hold
 
 
+def add_primary_controllers(anims, lengths, stems):
+    """Each species' primary clips are played by its own primary controller, chosen by cobblemon:primary (1 for the
+    first clip, 0 for none), rather than by the script's playAnimation: the property and a clip played from a script
+    reach the client in separate packets, the clip later, and in between the pose had stopped and the clip had not
+    started, Greninja in its rest pose for three frames as Hydro Pump began (issue 32, filmed at 20 fps). One property
+    stops the pose and starts the clip on the same frame. Returns {species: {clip: [index, seconds]}} for main.js."""
+    primary = {}
+    for species, clips in anims.items():
+        own = sorted({c for c in clips.values() if c in lengths})
+        if not own: continue
+        primary[species] = {c: [n, lengths[c]] for n, c in enumerate(own, 1)}
+        stem = stems[species]
+        name = stem[stem.index("_") + 1:]
+        path = f"{entityBedrock}/{stem}.entity.json"
+        with open(path, encoding="utf-8") as file: client = json.load(file)
+        desc = client["minecraft:client_entity"]["description"]
+        for n, c in enumerate(own, 1): desc["animations"][f"primary_{n}"] = c
+        desc["animations"]["primary_controller"] = f"controller.animation.{name}.primary"
+        # after the pose, so override_previous_animation replaces whatever the pose still holds
+        animate = desc.setdefault("scripts", {}).setdefault("animate", [])
+        if "primary_controller" not in animate: animate.append("primary_controller")
+        with open(path, "w") as file: file.write(json.dumps(client, indent=4))
+        is_clip = lambda n: f"q.property('cobblemon:primary') == {n}"
+        states = {"off": {"transitions": [{f"clip_{n}": is_clip(n)} for n in range(1, len(own) + 1)]}}
+        for n in range(1, len(own) + 1):
+            states[f"clip_{n}"] = {"animations": [f"primary_{n}"], "blend_transition": 0.2,
+                                   "transitions": [{"off": "q.property('cobblemon:primary') == 0"}] +
+                                                  [{f"clip_{m}": is_clip(m)} for m in range(1, len(own) + 1) if m != n]}
+        path = f"{animationControllersBedrock}/{stem}.animation_controllers.json"
+        controllers = {"format_version": "1.10.0", "animation_controllers": {}}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as file: controllers = json.load(file)
+        controllers["animation_controllers"][f"controller.animation.{name}.primary"] = {"initial_state": "off", "states": states}
+        with open(path, "w") as file: file.write(json.dumps(controllers, indent=4))
+        path = f"{entitiesBedrock}/{stem}.behavior.json"
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: behavior = json.load(file)
+        behavior["minecraft:entity"]["description"]["properties"]["cobblemon:primary"] = {
+            "type": "int", "range": [0, len(own)], "default": 0, "client_sync": True}
+        with open(path, "w") as file: file.write(json.dumps(behavior, indent=4))
+    return primary
+
+
 def create_move_fx():
     root = f"{cobblemonData}/action_effects/moves"
     particles = set()
@@ -2867,10 +2977,11 @@ def create_move_fx():
                 if e["k"] == "a": used.update(a for a in e["a"] if "$" not in a)
             effects[name[:-5]] = {"h": round(hold if hold is not None else end, 2), "e": events}
     used.update(("physical", "special", "status", "recoil", "battle_recoil", "faint"))
-    anims = {}
+    anims, stems = {}, {}
     for name in os.listdir(entityBedrock):
         try: desc = json.load(open(f"{entityBedrock}/{name}", encoding="utf-8"))["minecraft:client_entity"]["description"]
         except Exception: continue
+        stems[desc.get("identifier")] = name[:-len(".entity.json")]
         clips = {k: v for k, v in desc.get("animations", {}).items() if k in used}
         # the poser's own names for a move (Greninja: kick and lowkick to physical_kick, nightslash to physical_katana),
         # which an effect's $name finds before the generic physical
@@ -2897,12 +3008,13 @@ def create_move_fx():
     # stops the pose's own clips (Cobblemon's PrimaryAnimation fades the pose out). override_previous_animation does
     # not do it for a clip a script plays, which Bedrock runs before the controller: Greninja sank into the ground
     wanted = {clip for clips in anims.values() for clip in clips.values()}
-    primary = {}
+    lengths = {}
     for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
         with open(path, encoding="utf-8") as file: text = file.read()
         if "override_previous_animation" not in text: continue
         for aid, anim in json.loads(text).get("animations", {}).items():
-            if aid in wanted and anim.get("override_previous_animation"): primary[aid] = round(float(anim.get("animation_length", 1.0)), 3)
+            if aid in wanted and anim.get("override_previous_animation"): lengths[aid] = round(float(anim.get("animation_length", 1.0)), 3)
+    primary = add_primary_controllers(anims, lengths, stems)
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py (create_move_fx): Cobblemon's move effects, the species' battle clips and the impact particles\n")
@@ -4756,6 +4868,31 @@ STRUCTURE_REPLACEABLE = ["minecraft:air", "minecraft:short_grass", "minecraft:ta
                          "minecraft:snow_layer", "minecraft:water", "minecraft:seagrass", "minecraft:dandelion", "minecraft:poppy"]
 
 
+# What a gym may build over (rgs_*): the natural ground of the biomes it is set in as well as STRUCTURE_REPLACEABLE.
+# Radical Gyms' Java structures adapt the terrain around them; a Bedrock structure feature cannot, and with only
+# STRUCTURE_REPLACEABLE and "grounded" a gym fitted nowhere but dead flat open ground: in meadows, stony peaks and
+# windswept hills the Pewter Gym never generated in 11 seeds searched out to 1,200 blocks (the FTUE test, October 2026).
+# So a gym clears what it stands in (its template's air carves its room out of a hillside) and stands on a
+# GYM_FOUNDATION-layer plinth of its own floor (tools/nbt_to_mcstructure.py) where the ground falls away. Every name
+# here is one tools/bedrock_blocks.json or a /setblock on BDS 1.26.52 proved Bedrock knows.
+GYM_REPLACEABLE = STRUCTURE_REPLACEABLE + [f"minecraft:{n}" for n in (
+    "dirt", "grass_block", "podzol", "coarse_dirt", "dirt_with_roots", "mud", "mycelium", "moss_block", "moss_carpet",
+    "stone", "granite", "diorite", "andesite", "deepslate", "tuff", "calcite", "gravel", "sand", "red_sand", "sandstone",
+    "red_sandstone", "clay", "snow", "powder_snow", "ice", "packed_ice", "blue_ice", "coal_ore", "iron_ore", "copper_ore",
+    "emerald_ore", "gold_ore", "hardened_clay", "stained_hardened_clay", "white_terracotta", "orange_terracotta",
+    "yellow_terracotta", "brown_terracotta", "red_terracotta", "light_gray_terracotta",
+    "cornflower", "allium", "azure_bluet", "oxeye_daisy", "red_tulip", "orange_tulip", "white_tulip", "pink_tulip",
+    "lily_of_the_valley", "blue_orchid", "sunflower", "lilac", "rose_bush", "peony", "pink_petals", "wildflowers",
+    "leaf_litter", "bush", "firefly_bush", "deadbush", "short_dry_grass", "tall_dry_grass", "sweet_berry_bush",
+    "azalea", "flowering_azalea", "vine", "glow_lichen", "brown_mushroom", "red_mushroom", "cactus", "pumpkin",
+    "melon_block", "big_dripleaf", "small_dripleaf_block", "kelp",
+    "oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves", "acacia_leaves", "dark_oak_leaves", "mangrove_leaves",
+    "cherry_leaves", "azalea_leaves", "azalea_leaves_flowered", "pale_oak_leaves",
+    "oak_log", "spruce_log", "birch_log", "jungle_log", "acacia_log", "dark_oak_log", "mangrove_log", "cherry_log",
+    "pale_oak_log", "end_stone", "chorus_plant", "chorus_flower")]
+GYM_FOUNDATION = 6
+
+
 def structure_key(location):
     """'cobblemon:ruins/ancient_dais_ruins' -> 'ruins_ancient_dais_ruins', the flat name a Bedrock structure takes."""
     return re.sub(r"[^a-z0-9_]", "_", location.split(":", 1)[-1].lower())
@@ -5145,8 +5282,11 @@ def create_gyms():
         sx, _, sz = template["size"]
         cuts_x, cuts_z = [0] + ([sx // 2] if sx > 64 else []) + [sx], [0] + ([sz // 2] if sz > 64 else []) + [sz]
         tiles = [(cuts_x[i], cuts_z[j], cuts_x[i + 1], cuts_z[j + 1]) for i in range(len(cuts_x) - 1) for j in range(len(cuts_z) - 1)]
+        nether, end = data["step"] == "underground_decoration", "end_" in biome_ids[0]
+        plinth = GYM_FOUNDATION if len(tiles) == 1 and not nether else 0   # the League is placed by script, Cinnabar in the Nether's caves
         for n, tile in enumerate(tiles):
-            convert(source, f"{structuresBedrock}/{f'rgs_{name}' if len(tiles) == 1 else f'rgs_{name}_{n}'}.mcstructure", invalid, unmapped, overrides=overrides, region=tile)
+            convert(source, f"{structuresBedrock}/{f'rgs_{name}' if len(tiles) == 1 else f'rgs_{name}_{n}'}.mcstructure", invalid, unmapped, overrides=overrides, region=tile,
+                    foundation=plinth)
         if len(tiles) > 1:
             seed = (0, 0, min(LEAGUE_SEED_SIDE[0], sx), min(LEAGUE_SEED_SIDE[1], sz), LEAGUE_SEED)
             anchors = league_anchors(template, seed[:4], overrides)
@@ -5159,9 +5299,9 @@ def create_gyms():
             convert(source, f"{structuresBedrock}/rgs_{name}_seed.mcstructure", invalid, unmapped, overrides=here, region=seed)
         filters = [GYM_BIOMES.get(b) or biome_filter_for([b]) for b in biome_ids]
         filters = [f for f in filters if f]
-        nether, end = data["step"] == "underground_decoration", "end_" in biome_ids[0]
-        constraints = {"block_intersection": {"block_allowlist": NETHER_BLOCKS if nether else STRUCTURE_REPLACEABLE}}
-        if not nether: constraints.update({"grounded": {}, "unburied": {}})
+        if nether: constraints = {"block_intersection": {"block_allowlist": NETHER_BLOCKS}}
+        elif plinth: constraints = {"block_intersection": {"block_allowlist": GYM_REPLACEABLE}}   # the plinth stands in for "grounded"
+        else: constraints = {"block_intersection": {"block_allowlist": STRUCTURE_REPLACEABLE}, "grounded": {}, "unburied": {}}
         first = f"rgs_{name}" if len(tiles) == 1 else f"rgs_{name}_seed"
         with open(f"{featuresBedrock}/rgs_{name}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:structure_template_feature": {
@@ -5169,7 +5309,8 @@ def create_gyms():
                 "adjustment_radius": 4 if len(tiles) == 1 else 0, "facing_direction": "random" if len(tiles) == 1 else "north",
                 "constraints": constraints}}, indent=4))
         # a structure set's spacing gives one per spacing-by-spacing chunk square; Cinnabar's starts 32 to 70 high
-        y = {"distribution": "uniform", "extent": [32, 70]} if nether else "query.heightmap(variable.worldx, variable.worldz) - 1"
+        # a plinth goes in below the ground, so the floor lies where the ground was
+        y = {"distribution": "uniform", "extent": [32, 70]} if nether else f"query.heightmap(variable.worldx, variable.worldz) - {1 + plinth}"
         with open(f"{featureRulesBedrock}/rgs_{name}_rule.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
                 "description": {"identifier": f"cobblemon:rgs_{name}_rule", "places_feature": f"cobblemon:rgs_{name}"},
@@ -5327,7 +5468,29 @@ def java_model_cubes(model):
             u1, v1, u2, v2 = info.get("uv", default)
             cube["uv"][face] = {"uv": [u1, v1], "uv_size": [u2 - u1, v2 - v1], "material_instance": instances[texture][0]}
         if cube["uv"]: cubes.append(cube)
+    spread_flush_planes(cubes)
     return cubes, {name: key for name, key in instances.values()}
+
+
+def spread_flush_planes(cubes):
+    """A flat panel a Java model floats a hair off a box's face (the Healing Machine's two screens, 0.01 pixel out)
+    shares its depth with that face a few blocks away on Bedrock, and the two flickered through each other (issue 32);
+    such a panel is moved out to LAYER_GAP, the spacing the stacked faces of Pokemon get."""
+    flat = lambda c: not (c.get("rotation") and any(c["rotation"]))
+    for plane in cubes:
+        if not flat(plane) or 0 not in plane["size"]: continue
+        axis = plane["size"].index(0)
+        others = [k for k in range(3) if k != axis]
+        at = plane["origin"][axis]
+        for box in cubes:
+            if box is plane or not flat(box) or 0 in box["size"]: continue
+            # the box overlaps the panel across it
+            if not all(min(plane["origin"][k] + plane["size"][k], box["origin"][k] + box["size"][k]) - max(plane["origin"][k], box["origin"][k]) > 0.01
+                       for k in others): continue
+            for face in (box["origin"][axis], box["origin"][axis] + box["size"][axis]):
+                gap = at - face
+                if 0 < abs(gap) < LAYER_GAP: at = face + math.copysign(LAYER_GAP, gap)
+        plane["origin"][axis] = round(at, 4)
 
 
 def fruit_cubes(berry, points):
@@ -5582,6 +5745,152 @@ def berry_bushes():
     return result
 
 
+# Wild berry groves (BerryGroveFeature, placed_feature/berry_groves.json): in about one chunk in 25 (one in 1.4 in
+# Cobblemon's sparse biomes, one in 10 in its dense ones) Cobblemon picks a berry whose preferred biomes hold the
+# spot, weighted by the berry's weight, and plants a grove of its spawn condition's minGroveSize to maxGroveSize bushes
+# around one block, part grown, on wild soil (cobblemon:berry_wild_soil: dirt, sand, terracotta, snow). Here each
+# berry is a scatter of its bush over its own preferred biomes, at the chunk rate times its share of the weight of
+# the berries that grow there; the bushes come up flowering or ripe (Java's age 3 to 5 of 5). The Mirage Island
+# berries have no biome of their own on Bedrock and are left out, as they would be in any world without one.
+BERRY_WILD_SOIL = ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots",
+                   "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium", "minecraft:sand", "minecraft:red_sand",
+                   "minecraft:hardened_clay", "minecraft:stained_hardened_clay", "minecraft:snow"]
+BERRY_GROVE_CHUNKS = 25
+
+
+def create_berry_groves():
+    berries = [(berry, data) for berry, data in berry_bushes() if data.get("spawnConditions")]
+    tags_of = {}
+    for berry, data in berries:
+        kinds = {c.get("variant") for c in data["spawnConditions"]}
+        if kinds <= {"cobblemon:specific_biome"}: tags_of[berry] = []; continue   # a biome of its own (the Mirage Island's)
+        tags_of[berry] = None if "cobblemon:all_biome" in kinds else [t for t in data.get("preferredBiomeTags", []) if biome_filter_for([f"#{t}"])]
+    # the weight of the berries that grow in each tag's biomes (the all-biome ones grow in every one)
+    everywhere = sum(data.get("weight", 1) for berry, data in berries if tags_of[berry] is None)
+    pool = {}
+    for berry, data in berries:
+        for tag in tags_of[berry] or []: pool[tag] = pool.get(tag, everywhere) + data.get("weight", 1)
+    placed = 0
+    for berry, data in berries:
+        tags = tags_of[berry]
+        if tags == []: continue   # only the Mirage Island
+        weight = data.get("weight", 1)
+        share = weight / (sum(pool[t] for t in tags) / len(tags) if tags else max(pool.values(), default=weight))
+        sizes = [(c.get("minGroveSize", 3), c.get("maxGroveSize", 5)) for c in data["spawnConditions"]]
+        least, most = min(a for a, _ in sizes), max(b for _, b in sizes)
+        bush = f"cobblemon:{berry}_bush"
+        for stage in (2, 3):
+            with open(f"{featuresBedrock}/berry_{berry}_{stage}.json", "w") as file:
+                file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
+                    "description": {"identifier": f"cobblemon:berry_{berry}_{stage}"},
+                    "places_block": {"name": bush, "states": {"cobblemon:stage": stage}},
+                    "enforce_placement_rules": False, "enforce_survivability_rules": False,
+                    "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": BERRY_WILD_SOIL},
+                    "may_replace": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern",
+                                    "minecraft:snow_layer", "minecraft:deadbush", "minecraft:vine", "minecraft:glow_lichen"]}}, indent=2))
+        with open(f"{featuresBedrock}/berry_{berry}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {
+                "description": {"identifier": f"cobblemon:berry_{berry}"},
+                "features": [[f"cobblemon:berry_{berry}_2", 1], [f"cobblemon:berry_{berry}_3", 2]]}}, indent=2))
+        with open(f"{featuresBedrock}/berry_grove_{berry}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:scatter_feature": {
+                "description": {"identifier": f"cobblemon:berry_grove_{berry}"}, "places_feature": f"cobblemon:berry_{berry}",
+                "iterations": f"math.random_integer({least}, {most})",
+                "x": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]},
+                "y": {"distribution": "uniform", "extent": [-1, 1]}}}, indent=2))   # offsets from the grove's centre, as Java's
+        biome_filter = biome_filter_for([f"#{t}" for t in tags]) if tags else biome_filter_for(["#cobblemon:is_overworld"])
+        with open(f"{featureRulesBedrock}/berry_grove_{berry}_rule.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
+                "description": {"identifier": f"cobblemon:berry_grove_{berry}_rule", "places_feature": f"cobblemon:berry_grove_{berry}"},
+                "conditions": {"placement_pass": "surface_pass", "minecraft:biome_filter": biome_filter},
+                "distribution": {"iterations": 1, "scatter_chance": {"numerator": 1, "denominator": max(1, round(BERRY_GROVE_CHUNKS / share))},
+                                 "x": {"distribution": "uniform", "extent": [1, 14]}, "y": "query.heightmap(variable.worldx, variable.worldz)",
+                                 "z": {"distribution": "uniform", "extent": [1, 14]}}}}, indent=2))
+        placed += 1
+    print(f"  berry groves: {placed} of {len(berries)} wild berries in their biomes")
+
+
+# Revival herbs (RevivalHerbBlock, configured_feature/revival_herb.json): a crop of nine ages on Cobblemon's own stage
+# models, planted from the Revival Herb item on farmland and found wild, fully grown, in lush caves: two tries a
+# chunk, each a patch of five within 4 blocks across and 1 up or down, on a floor of dirt or moss with air or a moss
+# carpet over it. A random tick grows it one age one time in 26 (Cobblemon's 25 / moisture + 1, dry); bone meal two to
+# five (CropBlock.getBonemealAgeIncrease). Broken, it drops what loot_table/blocks/revival_herb.json gives: the herb,
+# one or two more at age 7, two or three more and one or two Pep-Up Flowers at age 8. Not carried: the surprise mulch
+# mutations (mental, mirror, power and white herbs), since mulch is not ported.
+HERB_SOILS = ["minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots",
+              "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium"]
+
+
+def create_revival_herb():
+    herb = "cobblemon:revival_herb"
+    permutations = []
+    for age in range(9):
+        cubes, instances = java_model_cubes(java_model(f"cobblemon:block/revival_herb_stage_{age}") or {})
+        geometry = f"geometry.cobblemon_revival_herb_{age}"
+        write_block_geometry(geometry, cubes)
+        loot = "loot_tables/blocks/revival_herb_8.json" if age == 8 else "loot_tables/blocks/revival_herb_7.json" if age == 7 else "loot_tables/blocks/revival_herb.json"
+        permutations.append({"condition": f"q.block_state('cobblemon:age') == {age}", "components": {
+            "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances), "minecraft:loot": loot}})
+    one = {"type": "item", "name": herb}
+    def extra(least, most): return {"rolls": 1, "entries": [{"type": "item", "name": herb, "functions": [{"function": "set_count", "count": {"min": least, "max": most}}]}]}
+    tables = {"revival_herb": [{"rolls": 1, "entries": [one]}],
+              "revival_herb_7": [{"rolls": 1, "entries": [one]}, extra(1, 2)],
+              "revival_herb_8": [{"rolls": 1, "entries": [one]}, extra(2, 3),
+                                 {"rolls": 1, "entries": [{"type": "item", "name": "cobblemon:pep_up_flower", "functions": [{"function": "set_count", "count": {"min": 1, "max": 2}}]}]}]}
+    for name, pools in tables.items():
+        with open(f"{lootBlocksBedrock}/{name}.json", "w") as file: file.write(json.dumps({"pools": pools}, indent=2))
+    with open(f"{blocksBedrock}/revival_herb.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+            "description": {"identifier": herb, "states": {"cobblemon:age": list(range(9))}},
+            "components": {"minecraft:geometry": "geometry.cobblemon_revival_herb_0",
+                           "minecraft:material_instances": permutations[0]["components"]["minecraft:material_instances"],
+                           "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 12, 12]},
+                           "minecraft:destructible_by_mining": {"seconds_to_destroy": 0}, "minecraft:destructible_by_explosion": {"explosion_resistance": 0},
+                           "minecraft:light_dampening": 0, "minecraft:loot": "loot_tables/blocks/revival_herb.json",
+                           "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:farmland"] + HERB_SOILS}]},
+                           "cobblemon:revival_herb": {}},
+            "permutations": permutations}}, indent=2))
+    # the Revival Herb plants it on farmland, as a crop's seed does
+    path = f"{itemsBedrock}/revival_herb.json"
+    with open(path, encoding="utf-8") as file: item = json.load(file)
+    item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": herb, "use_on": ["minecraft:farmland"]}
+    with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=4))
+    # the Pep-Up Flower, a fully grown herb's second drop
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    shutil.copyfile(f"{cobblemon}/textures/item/pep_up_flower.png", f"{texturesItemsBedrock}/pep_up_flower.png")
+    itemTextureData["texture_data"]["pep_up_flower"] = {"textures": ["textures/items/pep_up_flower"]}
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    with open(f"{itemsBedrock}/pep_up_flower.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.20.50", "minecraft:item": {
+            "description": {"identifier": "cobblemon:pep_up_flower", "menu_category": {"category": "nature"}},
+            "components": {"minecraft:icon": "pep_up_flower", "minecraft:display_name": {"value": "item.cobblemon:pep_up_flower.name"}, "minecraft:max_stack_size": 64}}}, indent=4))
+    # worldgen: a wild herb, snapped to the cave floor near each try, five tries to a patch
+    with open(f"{featuresBedrock}/revival_herb_wild.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
+            "description": {"identifier": "cobblemon:revival_herb_wild"},
+            "places_block": {"name": herb, "states": {"cobblemon:age": 8}},
+            "enforce_placement_rules": False, "enforce_survivability_rules": False,
+            "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": HERB_SOILS},
+            "may_replace": ["minecraft:air", "minecraft:moss_carpet", "minecraft:short_grass"]}}, indent=2))
+    with open(f"{featuresBedrock}/revival_herb_snap.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:snap_to_surface_feature": {
+            "description": {"identifier": "cobblemon:revival_herb_snap"}, "feature_to_snap": "cobblemon:revival_herb_wild",
+            "vertical_search_range": 8, "surface": "floor"}}, indent=2))
+    with open(f"{featuresBedrock}/revival_herb_patch.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:scatter_feature": {
+            "description": {"identifier": "cobblemon:revival_herb_patch"}, "places_feature": "cobblemon:revival_herb_snap", "iterations": 5,
+            "x": {"distribution": "uniform", "extent": [-4, 4]}, "y": {"distribution": "uniform", "extent": [-1, 1]},
+            "z": {"distribution": "uniform", "extent": [-4, 4]}}}, indent=2))
+    with open(f"{featureRulesBedrock}/revival_herb_rule.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
+            "description": {"identifier": "cobblemon:revival_herb_rule", "places_feature": "cobblemon:revival_herb_patch"},
+            "conditions": {"placement_pass": "underground_pass", "minecraft:biome_filter": biome_filter_for(["#cobblemon:is_lush"])},
+            "distribution": {"iterations": 2, "x": {"distribution": "uniform", "extent": [0, 15]},
+                             "y": {"distribution": "uniform", "extent": [-56, 60]}, "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=2))
+    print("  revival herbs: a crop of 9 ages, planted on farmland and found in lush caves; Pep-Up Flower item")
+
+
 def create_blocks():
     print("Creating blocks...")
     for folder in (blocksBedrock, blockModelsBedrock, texturesBlocksBedrock, lootBlocksBedrock, f"{behaviorPack}/recipes",
@@ -5631,7 +5940,8 @@ def create_blocks():
                            "minecraft:block_placer": {"block": bush, "use_on": BERRY_SOILS}}}}
         with open(f"{itemsBedrock}/berries/{berry}.json", "w") as file: file.write(json.dumps(item, indent=4))
         yield_range = data.get("baseYield", {"min": 1, "max": 3})
-        berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3)}
+        berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3),
+                         "boneMeal": data.get("boneMealChance", 0.5)}
     # the healing machine, facing the player who places it. It never runs out here, so it stands at full charge
     # (healing_machine_5, its five lights lit); while it heals (cobblemon:active, scripts/main.js) its front and back
     # are healing_machine_active, whose screen is a flipbook (HEALING_FLIPBOOKS)
@@ -7587,6 +7897,113 @@ def focus_frame(image):
     return Image.merge("RGBA", (r, g, b, a))
 
 
+# The battle menu and move list: a 2 by 3 block of the form's buttons where a grid would put them, but as numbered
+# tiles in a collection panel. A grid makes every tile the same template, so a focus precedence on it made Bedrock
+# open the menu on its last tile (Run) and a new player's A ran from the battle (found by the FTUE test, October
+# 2026); numbered tiles each carry their own D-pad neighbours and the first alone takes the focus, through the
+# template's variables (TILE_FOCUS on its button, TILE_DEFAULTS on its root).
+TILE_FOCUS = {"focus_identifier": "$tile_id", "focus_change_up": "$tile_up", "focus_change_down": "$tile_down",
+              "focus_change_left": "$tile_left", "focus_change_right": "$tile_right", "default_focus_precedence": "$tile_precedence"}
+TILE_DEFAULTS = {"$tile_id|default": "tile", "$tile_up|default": "FOCUS_OVERRIDE_STOP", "$tile_down|default": "FOCUS_OVERRIDE_STOP",
+                 "$tile_left|default": "FOCUS_OVERRIDE_STOP", "$tile_right|default": "FOCUS_OVERRIDE_STOP", "$tile_precedence|default": 0}
+
+
+def battle_tiles(name, template, item_size, offset, marker, count=6):
+    stop = "FOCUS_OVERRIDE_STOP"
+    def tid(n): return f"{name}_{n}" if 0 <= n < count else stop
+    controls = []
+    for n in range(count):
+        col, row = n % 2, n // 2
+        controls.append({f"tile_{n}@server_form.{template}": {
+            "collection_index": n, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [col * item_size[0], row * item_size[1]],
+            "$tile_id": tid(n), "$tile_up": tid(n - 2), "$tile_down": tid(n + 2),
+            "$tile_left": tid(n - 1) if col else stop, "$tile_right": tid(n + 1) if not col else stop, "$tile_precedence": 1 if n == 0 else 0}})
+    return {name: {"type": "collection_panel", "size": [item_size[0] * 2, item_size[1] * 3], "collection_name": "form_buttons",
+                   "anchor_from": "bottom_left", "anchor_to": "top_left", "offset": offset, "controls": controls,
+                   "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                                "source_property_name": f"(not ((#title_text - '{marker}') = #title_text))", "target_property_name": "#visible"}]}}
+
+
+def add_focus_links(ui):
+    """The D-pad's moves on every screen, from where its buttons sit. Inside a collection panel Bedrock does not move
+    the focus by position (up from a starter went to "I choose you!", up again to Hoenn, left to Johto; found by the
+    FTUE test, October 2026), so each button names the nearest button in each direction as its focus_change_*: the
+    one whose middle lies that way within a 60 degree cone, by distance with the sideways part counted double.
+    Buttons stacked in one spot (alternates a binding shows one at a time) are left to Bedrock, since a link can
+    name only one of them, and so is an edge with nothing beyond it, so the focus can still leave for another panel
+    (a Back button). A panel whose buttons already name their moves (the starter screen) is kept as it is."""
+    import math
+
+    def panels(node):
+        if isinstance(node, dict):
+            if node.get("type") == "collection_panel": yield node
+            for value in node.values(): yield from panels(value)
+        elif isinstance(node, list):
+            for value in node: yield from panels(value)
+
+    def buttons(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if isinstance(value, dict) and value.get("type") == "button": yield key, value
+                elif key != "type": yield from buttons(value)
+        elif isinstance(node, list):
+            for value in node: yield from buttons(value)
+
+    linked = 0
+    for screen, root in ui.items():
+        if not screen.startswith("cobblemon_"): continue
+        for p, panel in enumerate(panels(root)):
+            found = [(key, b) for key, b in buttons(panel.get("controls", []))
+                     if isinstance(b.get("offset"), list) and isinstance(b.get("size"), list) and all(isinstance(v, (int, float)) for v in b["offset"] + b["size"])]
+            if len(found) < 2 or any(k.startswith("focus_change_") for _, b in found for k in b): continue
+            if len({(b.get("anchor_from"), b.get("anchor_to")) for _, b in found}) > 1: continue   # no common frame
+            spots = {}
+            for key, b in found: spots.setdefault((tuple(b["offset"]), tuple(b["size"])), []).append((key, b))
+            cells = [(spot, group[0]) for spot, group in spots.items() if len(group) == 1]
+            # a button shown only in one state of its screen (the PC's slots, drawn 5 lower while the options show)
+            # links only to buttons shown in the same state, or always
+            def shown(b): return tuple(sorted(x.get("source_property_name", "") for x in b.get("bindings", []) if x.get("target_property_name") == "#visible"))
+            for n, (spot, (key, b)) in enumerate(cells):
+                b["focus_identifier"] = f"{screen}_{p}_{key}"
+            for spot, (key, b) in cells:
+                (x, y), (w, h) = spot
+                cx, cy = x + w / 2, y + h / 2
+                for direction, (ux, uy) in (("up", (0, -1)), ("down", (0, 1)), ("left", (-1, 0)), ("right", (1, 0))):
+                    best = None
+                    for other, (okey, ob) in cells:
+                        if okey == key: continue
+                        if shown(ob) and shown(b) and shown(ob) != shown(b): continue
+                        (ox, oy), (ow, oh) = other
+                        dx, dy = ox + ow / 2 - cx, oy + oh / 2 - cy
+                        along, across = dx * ux + dy * uy, abs(dx * uy - dy * ux)
+                        if along <= 1 or across > along * math.tan(math.radians(60)): continue
+                        score = along + 2 * across
+                        if best is None or score < best[0]: best = (score, ob["focus_identifier"])
+                    if best: b[f"focus_change_{direction}"] = best[1]; linked += 1
+    print(f"  focus links: {linked} D-pad moves named on the screens' buttons")
+
+
+def add_focus_frames():
+    """Every screen button whose hover image is its plain image again gets a focus frame (focus_frame). Some of
+    Cobblemon's sprite sheets draw the hover row the same as the plain one (48 of the port's 502 hovers: TM Machine,
+    PC, Pokedex, Summary, battle and trade buttons), since on Java the pointer shows where it is; with a controller
+    the hover control is the only sign of which button has focus (found by the FTUE test, October 2026)."""
+    framed = 0
+    for hover in sorted(glob.glob(f"{uiTextures}/**/*_hover.png", recursive=True)):
+        plain = hover[:-len("_hover.png")] + ".png"
+        if not os.path.exists(plain): continue
+        a, b = Image.open(plain).convert("RGBA"), Image.open(hover).convert("RGBA")
+        # a hover of its own (getbbox on an RGBA difference looks at alpha alone unless told otherwise), or nothing to frame
+        if a.size != b.size or ImageChops.difference(a, b).getbbox(alpha_only=False) or not a.getbbox(): continue
+        frame = focus_frame(a)
+        if not ImageChops.difference(a, frame).getbbox(alpha_only=False):   # black and white only: nothing to brighten
+            frame = a.copy()
+            ImageDraw.Draw(frame).rectangle((0, 0, a.width - 1, a.height - 1), outline=(255, 255, 255, 255))
+        frame.save(hover)
+        framed += 1
+    print(f"focus frames: {framed} hover images that matched their plain image")
+
+
 def create_summary_ui():
     S = f"{uiTextures}/summary"
     os.makedirs(S, exist_ok=True)
@@ -8392,7 +8809,9 @@ def create_pc_ui():
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [while_("n", button(n, (x, y), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
-    box_opts = [while_("y", button(n, (x, y + 5), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
+    # the same 30 slots again, 5 lower while the options show; named apart, since Bedrock wants every control in a
+    # panel named once ("Child controls must have unique names: cobblemon_pc/buttons/button_0", issue 33)
+    box_opts = [while_("y", {f"button_{n}_opts": button(n, (x, y + 5), (25, 25))[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
     buttons += [while_("n", button(n, (x, y), (25, 25))) for n, (x, y) in enumerate(slots[30:], 30)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (279, 151), (58, 16)), button(39, (320, 186), (26, 13))]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
@@ -8796,6 +9215,21 @@ def create_starter_ui():
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
     buttons = [button(n, xy, (25, 25)) for n, xy in enumerate(slots)]
     buttons += [button(9, (13, 180), (106, 14)), button(10, (210, 181), (26, 13)), button(11, (229, 30), (4, 6)), button(12, (229, 164), (4, 6))]
+    # The D-pad's moves, spelt out: Bedrock's own guess inside a collection panel jumps about the screen (up from a
+    # starter went to "I choose you!", up again to Hoenn; found by the FTUE test), so each button names its neighbours:
+    # the 3 by 3 grid of starters, the page arrows on its right, "I choose you!" and the exit below it. The screen opens
+    # on "I choose you!", so picking a starter (which opens the screen again) leaves A on the button that confirms it.
+    stop = "FOCUS_OVERRIDE_STOP"
+    def slot(r, c): return f"st{r * 3 + c}"
+    links = {r * 3 + c: (slot(r - 1, c) if r else stop, slot(r + 1, c) if r < 2 else ("st9" if c == 0 else "st10"),
+                         slot(r, c - 1) if c else stop, slot(r, c + 1) if c < 2 else ("st11" if r < 2 else "st12"))
+             for r in range(3) for c in range(3)}
+    links.update({9: ("st6", stop, stop, "st10"), 10: ("st8", stop, "st9", stop), 11: (stop, "st12", "st2", stop), 12: ("st11", "st10", "st8", stop)})
+    for n, control in enumerate(buttons):
+        up, down, left, right = links[n]
+        control[f"button_{n}"].update({"focus_identifier": f"st{n}", "focus_change_up": up, "focus_change_down": down,
+                                       "focus_change_left": left, "focus_change_right": right})
+    buttons[9]["button_9"]["default_focus_precedence"] = 1
     starter = {"type": "panel", "size": [239, 197], "anchor_from": "center", "anchor_to": "center",
                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                             "source_property_name": "(not ((#title_text - 'cbm:starter') = #title_text))", "target_property_name": "#visible"}],
@@ -10039,8 +10473,9 @@ def create_battle_ui():
     shown = {"binding_type": "view", "source_property_name": "(not (#form_button_text = ''))", "target_property_name": "#visible"}
     text_binding = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
     # BattleOptionTile: 90 by 26, the label 6 in and 8 down
-    menu_item = {"type": "panel", "size": [93, 29], "bindings": [text_binding, shown],
-                 "controls": [{"tile": {**button([90, 26], [button_label("label", "#form_button_text", [6, 8])]), "anchor_from": "top_left", "anchor_to": "top_left"}}]}
+    menu_item = {"type": "panel", "size": [93, 29], **TILE_DEFAULTS, "bindings": [text_binding, shown],
+                 "controls": [{"tile": {**button([90, 26], [button_label("label", "#form_button_text", [6, 8])]), "anchor_from": "top_left", "anchor_to": "top_left",
+                                        **TILE_FOCUS}}]}
     # BattleMoveTile: 92 by 24, the type icon 9 out to the left, the name 17 in, the PP at the right; Back below
     move_labels = [button_label("name", "('%.16s' * #form_button_text)", [17, 3]),
                    # the PP, centred at 75 across and 14 down, gold at half or less and red when out (its colour code leads the text)
@@ -10049,12 +10484,12 @@ def create_battle_ui():
                                   "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                                {"binding_type": "view", "source_property_name": f"('{T}/types/' + ((#form_button_texture - '{T}/battle/move_') - '_off'))", "target_property_name": "#texture"}]}}]
     is_back = f"(not ((#form_button_texture - 'battle/back') = #form_button_texture))"
-    move_item = {"type": "panel", "size": [105, 29], "bindings": [text_binding, shown], "controls": [
-        {"move": {**button([92, 24], move_labels), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 0],
+    move_item = {"type": "panel", "size": [105, 29], **TILE_DEFAULTS, "bindings": [text_binding, shown], "controls": [
+        {"move": {**button([92, 24], move_labels), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 0], **TILE_FOCUS,
                   "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
                                {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                {"binding_type": "view", "source_property_name": f"(not {is_back})", "target_property_name": "#visible"}]}},
-        {"back": {**button([29, 17], []), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [-8, 4],
+        {"back": {**button([29, 17], []), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [-8, 4], **TILE_FOCUS,
                   "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
                                {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                {"binding_type": "view", "source_property_name": is_back, "target_property_name": "#visible"}]}}]}
@@ -10064,7 +10499,13 @@ def create_battle_ui():
     # down, and the expand toggle (5 by 5 at 160, 46, or 92 expanded); the toggle is the form's button whose texture
     # is battle/log_toggle, wherever it falls among a form's buttons
     def log_panel(flag, height, box_height, toggle_y):
+        # kept out of the D-pad's way: as a focusable button it took the focus when a battle screen opened, so A
+        # toggled the log instead of choosing Fight (found by the FTUE test); a controller's secondary button
+        # toggles it from anywhere on the screen instead, and a pointer still clicks it
         toggles = [{f"toggle_{i}": {**button([7, 7], []), "collection_index": i, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [159, toggle_y - 1],
+                                    "focus_enabled": False,
+                                    "button_mappings": [{"from_button_id": "button.menu_select", "to_button_id": "button.form_button_click", "mapping_type": "pressed"},
+                                                        {"from_button_id": "button.menu_secondary", "to_button_id": "button.form_button_click", "mapping_type": "global"}],
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
                                                  {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                                  {"binding_type": "view", "source_property_name": f"(#form_button_texture = '{T}/battle/log_toggle')", "target_property_name": "#visible"}]}}
@@ -10122,12 +10563,6 @@ def create_battle_ui():
         {"back_panel": {"type": "collection_panel", "collection_name": "form_buttons", "size": ["100%", "100%"], "layer": 5, "controls": [
             {"back": {**button([29, 17], []), "collection_index": 6, "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [9, -5],
                       "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}}]}}]}}
-    def grid(name, template, item_size, offset, marker):
-        return {name: {"type": "grid", "size": [item_size[0] * 2, item_size[1] * 3], "grid_dimensions": [2, 3],
-                       "grid_item_template": f"server_form.{template}", "collection_name": "form_buttons",
-                       "anchor_from": "bottom_left", "anchor_to": "top_left", "offset": offset,
-                       "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
-                                    "source_property_name": f"(not ((#title_text - '{marker}') = #title_text))", "target_property_name": "#visible"}]}}
     ui = {
         "namespace": "server_form",
         # the vanilla panel is sized 0 by 0 at the centre; the battle layout anchors to the screen's corners
@@ -10148,8 +10583,8 @@ def create_battle_ui():
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
                              "controls": [info_tile(0), info_tile(1), battle_log, switch_screen,
-                                          grid("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
-                                          grid("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
+                                          battle_tiles("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
+                                          battle_tiles("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
         "cobblemon_menu_item": menu_item,
         "cobblemon_battle_log_lines": log_lines,
         "cobblemon_move_item": move_item,
@@ -10167,6 +10602,7 @@ def create_battle_ui():
     ui.update(create_pot_ui())
     ui.update(create_trade_ui())
     ui.update(create_challenge_ui())
+    add_focus_links(ui)
     os.makedirs(f"{resourcePack}/ui", exist_ok=True)
     with open(f"{resourcePack}/ui/server_form.json", "w", encoding="utf-8") as file: file.write(json.dumps(ui, indent=2))
     print("  battle screen: Cobblemon's battle tiles and move tiles as a JSON UI layout")
@@ -10975,9 +11411,11 @@ def main():
     create_poke_ball_entity()
     create_npcs()
     create_blocks()
+    create_berry_groves()
     create_fishing()
     create_pokedex()
     general_items = create_general_items()
+    create_revival_herb()   # after the items, whose Revival Herb it makes plantable
     create_tms()
     create_held_display()
     write_item_names(general_items)
@@ -11008,6 +11446,7 @@ def main():
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
     create_move_fx()   # after the client entities and particles, whose clips and ids it keeps
+    add_focus_frames()   # after every screen's textures are written
     ensure_script_module()
     check_pokemon_complete()
     check_spawn_balance()

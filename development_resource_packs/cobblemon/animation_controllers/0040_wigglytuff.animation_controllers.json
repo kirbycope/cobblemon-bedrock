@@ -66,6 +66,29 @@
                     ]
                 }
             }
+        },
+        "controller.animation.wigglytuff.primary": {
+            "initial_state": "off",
+            "states": {
+                "off": {
+                    "transitions": [
+                        {
+                            "clip_1": "q.property('cobblemon:primary') == 1"
+                        }
+                    ]
+                },
+                "clip_1": {
+                    "animations": [
+                        "primary_1"
+                    ],
+                    "blend_transition": 0.2,
+                    "transitions": [
+                        {
+                            "off": "q.property('cobblemon:primary') == 0"
+                        }
+                    ]
+                }
+            }
         }
     }
 }
