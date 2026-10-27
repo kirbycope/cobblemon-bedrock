@@ -64,8 +64,12 @@ Radical Cobblemon Trainers with a full team to beat:
   you have beaten, and the trainers in order: a beaten one by name, the next one to beat as "??? (next Gym Leader)",
   the rest as ???; pick one to see its type, the level cap it needs and gives, and who comes first. Held, it shows an
   arrow above the hotbar pointing at the next trainer you can battle (it spins when they are in another dimension).
-  Each gym remembers where its trainer stands once its building has been loaded near a player, so the arrow points at
-  the nearest such gym before anyone has called its trainer out; a gym nobody has been near cannot be found.
+  Each gym remembers where its trainer stands once a player has been within about 64 blocks of it, so the arrow points
+  at the nearest such gym before anyone has called its trainer out. Gyms are rare and Bedrock cannot sense one further
+  off, so the first time anyone holds the card in a world with no gym found, a Pewter Gym (Brock's, the first leader)
+  is built on natural, level ground 150 to 250 blocks ahead of them with no water on the way, door toward them, and
+  the card points at it
+  ("Your Trainer Card picked up a gym. Follow the arrow."). This happens once per world.
 - **Calling a trainer back.** The button under a gym's sign calls its trainer back for one type gem from your
   inventory, the gem the sign names (a Rock Gem for Brock).
 

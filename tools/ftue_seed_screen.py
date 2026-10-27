@@ -8,7 +8,7 @@ with ticking areas, a batch at a time, with random ticks sped up so every gym's 
 first seed with Brock's gym in reach is printed and written to captures/ftue/seed.json; the FTUE then plays it in a
 fresh world from that seed (FTUE_SEED), where nothing has been noticed yet.
 
-    python tools/ftue_seed_screen.py --addon captures/ftue/local.mcaddon [--tries 8] [--reach 1200]
+    python tools/ftue_seed_screen.py --addon captures/ftue/local.mcaddon [--tries 8] [--reach 1200] [--near 240]
 """
 import argparse
 import json
@@ -38,7 +38,7 @@ def gym_sites(server):
     return json.loads(found[-1]) if found else {}
 
 
-def screen(run, addon, reach, batch=8):
+def screen(run, addon, reach, batch=8, near=None):
     server = run.server
     name = "ftue-screen-" + time.strftime("%Y%m%d-%H%M%S")
     server.prepare_world(name, addon, fresh_version=True)
@@ -63,7 +63,7 @@ def screen(run, addon, reach, batch=8):
         for i, (x, z) in enumerate(group): bridge.command(f"tickingarea add circle {x} 0 {z} 4 screen{i}")   # 9 areas at most beside the probe's
         time.sleep(25)   # long enough to generate the chunks and give every block a few random ticks at this speed
         for i in range(len(group)): bridge.command(f"tickingarea remove screen{i}")
-        brock = [s for s in gym_sites(server).get(BROCK, []) if s[0] == "minecraft:overworld" and math.hypot(s[1], s[3]) <= reach * 1.5]
+        brock = [s for s in gym_sites(server).get(BROCK, []) if s[0] == "minecraft:overworld" and math.hypot(s[1], s[3]) <= (near or reach * 1.5)]
         if brock: return server.seed, name, brock
     return server.seed, name, []
 
@@ -73,6 +73,8 @@ def main():
     parser.add_argument("--addon", required=True)
     parser.add_argument("--tries", type=int, default=8)
     parser.add_argument("--reach", type=int, default=1200)   # 640 found no Pewter Gym in 8 seeds
+    # only a gym this close to the middle counts: one 313 blocks out took longer than the FTUE's 45 minutes of walking
+    parser.add_argument("--near", type=int, default=None)
     args = parser.parse_args()
     out = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "captures", "ftue")
     run = ftue.Run("seed screen", os.path.join(out, "screen"))
@@ -80,7 +82,7 @@ def main():
     run.server.set_level(original)
     try:
         for attempt in range(args.tries):
-            seed, world, brock = screen(run, args.addon, args.reach)
+            seed, world, brock = screen(run, args.addon, args.reach, near=args.near)
             print(f"try {attempt + 1}: seed {seed} ({world}): Brock's gym {brock or 'not within reach'}", flush=True)
             if not brock:   # nothing to keep: the world goes, so failed tries do not pile up gigabytes
                 run.server.stop()
