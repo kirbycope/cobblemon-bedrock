@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, StructureRotation, BlockVolume } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -2702,6 +2702,135 @@ function cardTarget(player) {
     if (gone) try { world.setDynamicProperty(GYM_SITES, JSON.stringify(sites)); } catch (e) { }
     return best;
 }
+// The first gym, built for the first player who holds the card with nothing to point at. A Pewter Gym generates in
+// one chunk in 1,024 of three biomes, and a gym is only noticed within the server's tick distance (64 blocks: blocks
+// further out cannot be read, and a structure feature drops the entities a marker would need), so a new player could
+// walk for an hour with the card saying "No gym found yet" (the FTUE did, and no seed in 12 had one within 240 blocks
+// of spawn). Once per world, Brock's gym goes up on natural, fairly level ground 150 to 250 blocks ahead of that
+// player, door toward them, the way the League is built (a ticking area, the ground cleared, the structure placed),
+// and the card points at it from then on.
+const FIRST_GYM = "cobblemon:first_gym", FIRST_GYM_TRAINER = "leader_brock_019e", FIRST_GYM_SIZE = 26, FIRST_GYM_HEIGHT = 19;
+const FIRST_GYM_FLOOR = 6;   // the structure's floor sits on its six-layer foundation (port.py GYM_FOUNDATION)
+const GROUND = new Set(["grass_block", "dirt", "coarse_dirt", "podzol", "mycelium", "dirt_with_roots", "mud", "moss_block", "sand", "red_sand",
+    "gravel", "stone", "granite", "diorite", "andesite", "tuff", "calcite", "snow", "sandstone", "red_sandstone", "hardened_clay", "stained_hardened_clay", "clay"]);
+const COVER = /leaves|_log|grass|fern|flower|bush|mushroom|vine|snow_layer|petals|sapling|tulip|daisy|orchid|allium|bluet|cornflower|lily|poppy|dandelion|lilac|peony|rose|sunflower|deadbush|moss_carpet|cactus|bamboo|pumpkin|melon|cobblemon:.*(berry|apricorn|mint|herb)/;
+let firstGymBusy = false, firstGymRetry = 0;
+// the ground under a column, or undefined where it is water, lava or anything a player may have built
+function groundAt(dim, x, z) {
+    let block;
+    try { block = dim.getTopmostBlock({ x, z }); } catch (e) { return undefined; }
+    for (let n = 0; block && n < 40; n++) {
+        const id = block.typeId.replace("minecraft:", "");
+        if (GROUND.has(id)) {
+            // the topmost block query looks through water: a sea floor is no ground (the first test built it there)
+            let above;
+            try { above = block.above(); } catch (e) { }
+            return above && (above.isLiquid || /water|kelp|seagrass|lava/.test(above.typeId)) ? undefined : block.location.y;
+        }
+        if (block.isLiquid) return undefined;
+        if (!COVER.test(block.typeId) && id !== "air") return undefined;   // water, lava, or a build
+        try { block = block.below(); } catch (e) { return undefined; }
+    }
+    return undefined;
+}
+// whether a column's ground lies under water or lava (the topmost block query looks through water to the floor)
+function wetAt(dim, x, z) {
+    let block;
+    try { block = dim.getTopmostBlock({ x, z }); } catch (e) { return true; }
+    for (let n = 0; block && n < 40; n++) {
+        if (block.isLiquid || /water|lava|kelp|seagrass/.test(block.typeId)) return true;
+        const id = block.typeId.replace("minecraft:", "");
+        if (GROUND.has(id) || !(COVER.test(block.typeId) || id === "air")) {
+            let above;
+            try { above = block.above(); } catch (e) { }
+            return !!above && (above.isLiquid || /water|lava|kelp|seagrass/.test(above.typeId));
+        }
+        try { block = block.below(); } catch (e) { return true; }
+    }
+    return false;
+}
+function buildFirstGym(player) {
+    if (firstGymBusy || system.currentTick < firstGymRetry || world.getDynamicProperty(FIRST_GYM)) return;
+    if (player.dimension.id !== "minecraft:overworld" || rctDone(player, FIRST_GYM_TRAINER)) return;
+    firstGymBusy = true;
+    const dim = player.dimension, from = { x: player.location.x, z: player.location.z }, yaw = player.getRotation().y;
+    const tries = [];
+    for (const turn of [0, 30, -30, 60, -60, 100, -100, 180]) for (const far of [200, 160, 240]) tries.push([turn, far]);
+    // one ticking area name a try: a removed area keeps its name to the end of the tick, so the next try adding the
+    // same name in that tick was refused, every try after the first; any left by a server stopped mid-try go first
+    const areaName = (n) => `cobblemon_first_gym_${n}`;
+    for (let n = 0; n < tries.length; n++) for (const name of [areaName(n), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `${areaName(n)}_${i}`)]) {
+        try { dim.runCommand(`tickingarea remove ${name}`); } catch (e) { }
+    }
+    const attempt = (n) => {
+        if (n >= tries.length) { firstGymBusy = false; firstGymRetry = system.currentTick + 20 * 60; return; }
+        const [turn, far] = tries[n], a = ((yaw + turn) * Math.PI) / 180;
+        const cx = Math.floor(from.x - far * Math.sin(a)), cz = Math.floor(from.z + far * Math.cos(a));
+        const x0 = cx - FIRST_GYM_SIZE / 2, z0 = cz - FIRST_GYM_SIZE / 2, x1 = x0 + FIRST_GYM_SIZE - 1, z1 = z0 + FIRST_GYM_SIZE - 1;
+        // the way there too, every 32 blocks: a site across the sea is natural ground, and the FTUE's player walked
+        // off the beach after the card's arrow and drowned; each point gets a ticking area of its own while it is read
+        const path = [];
+        for (let d = 32; d < far - 16 && path.length < 8; d += 32) path.push([Math.floor(from.x - d * Math.sin(a)), Math.floor(from.z + d * Math.cos(a))]);
+        try {
+            const added = dim.runCommand(`tickingarea add ${x0 - 3} -64 ${z0 - 3} ${x1 + 3} 320 ${z1 + 3} ${areaName(n)}`);
+            if (!added.successCount) console.warn(`[cobblemon] first gym ticking area at ${cx} ${cz} not added`);
+            path.forEach(([px, pz], i) => dim.runCommand(`tickingarea add ${px} 0 ${pz} ${px} 0 ${pz} ${areaName(n)}_${i}`));
+        } catch (e) { console.warn(`[cobblemon] first gym ticking area: ${e}`); }
+        // chunks never visited are generated first, which can take many seconds: wait until every corner is loaded
+        const corners = [[x0, z0], [x1, z0], [x0, z1], [x1, z1], ...path];
+        // getBlock throws in a chunk not loaded, where getTopmostBlock only comes back empty
+        const loaded = () => corners.every(([x, z]) => { try { return !!dim.getBlock({ x, y: 64, z }); } catch (e) { return false; } });
+        const ready = (waited) => {
+            if (!loaded() && waited < 600) { system.runTimeout(() => ready(waited + 20), 20); return; }
+            build();
+        };
+        const build = () => {
+            const done = () => {
+                for (const name of [areaName(n), ...path.map((_, i) => `${areaName(n)}_${i}`)]) try { dim.runCommand(`tickingarea remove ${name}`); } catch (e) { }
+            };
+            try {
+                if (path.some(([px, pz]) => wetAt(dim, px, pz))) { done(); attempt(n + 1); return; }
+                const heights = [];
+                for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) heights.push(groundAt(dim, x0 + Math.round(i * (FIRST_GYM_SIZE - 1) / 4), z0 + Math.round(j * (FIRST_GYM_SIZE - 1) / 4)));
+                const ground = heights.filter((h) => h !== undefined).sort((p, q) => p - q);
+                // every column natural ground, and none more than the foundation's depth below the floor
+                if (ground.length < heights.length) { done(); attempt(n + 1); return; }
+                const floor = ground[Math.floor(ground.length / 2)];
+                if (floor - ground[0] > FIRST_GYM_FLOOR || ground[ground.length - 1] - floor > 10) { done(); attempt(n + 1); return; }
+                const oy = floor - FIRST_GYM_FLOOR;
+                // cleared up to the treetops, and three blocks round: a jungle's canopy over the roof and its bushes
+                // against the door hid the gym and blocked the way in
+                const top = Math.max(oy + FIRST_GYM_HEIGHT + 2, ground[ground.length - 1] + 30);
+                for (let y = floor + 1; y <= top; y += 16) {
+                    dim.runCommand(`fill ${x0 - 3} ${y} ${z0 - 3} ${x1 + 3} ${Math.min(top, y + 15)} ${z1 + 3} air`);
+                }
+                // the door toward the player: the template's entrance is on its north side
+                const dx = from.x - cx, dz = from.z - cz;
+                const rotation = Math.abs(dz) >= Math.abs(dx) ? (dz < 0 ? StructureRotation.None : StructureRotation.Rotate180)
+                    : (dx > 0 ? StructureRotation.Rotate90 : StructureRotation.Rotate270);
+                world.structureManager.place("cobblemon:rgs_pewter_gym", dim, { x: x0, y: oy, z: z0 }, { includeEntities: false, rotation });
+                // where its trainer stands, noted as a random tick of the spot marker would note it
+                const markers = dim.getBlocks(new BlockVolume({ x: x0, y: oy, z: z0 }, { x: x1, y: oy + FIRST_GYM_HEIGHT, z: z1 }), { includeTypes: ["cobblemon:gym_marker"] }, true);
+                let noted = false;
+                for (const at of markers.getBlockLocationIterator()) {
+                    const m = gymMarker(dim.getBlock(at));
+                    if (m?.role === "spot") { noteGymSite(m.trainer, dim, at); noted = true; break; }
+                }
+                if (!noted) throw new Error("no spot marker after placing");
+                world.setDynamicProperty(FIRST_GYM, JSON.stringify([cx, floor, cz]));
+                try { player.sendMessage("§7Your Trainer Card picked up a gym. Follow the arrow."); } catch (e) { }
+                done();
+                firstGymBusy = false;
+            } catch (e) {
+                console.warn(`[cobblemon] first gym at ${cx} ${cz}: ${e}`);
+                done();
+                attempt(n + 1);
+            }
+        };
+        system.runTimeout(() => ready(0), 20);
+    };
+    attempt(0);
+}
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
         let held;
@@ -2710,6 +2839,7 @@ system.runInterval(() => {
         const target = cardTarget(player);
         if (!target) {
             // nothing to point at yet: no gym with a trainer to battle has been near a player
+            buildFirstGym(player);
             try { player.onScreenDisplay.setActionBar("§7No gym found yet. Explore: the card points to the next one you pass near."); } catch (e) { }
             continue;
         }
@@ -3267,6 +3397,13 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // testing: "/scriptevent cobblemon:gym_sites [clear]" logs the gym trainers' remembered places, or forgets them
         if (event.message.trim() === "clear") world.setDynamicProperty(GYM_SITES, undefined);
         console.warn(`[cobblemon] gym sites: ${JSON.stringify(gymSites())}`);
+        // "clear first" also forgets the first gym built for the card, so the next card holder gets one again
+        if (event.message.trim() === "clear first") { world.setDynamicProperty(GYM_SITES, undefined); world.setDynamicProperty(FIRST_GYM, undefined); }
+    } else if (event.id === "cobblemon:held") {
+        // testing: "/execute as <player> run scriptevent cobblemon:held" logs what is in their hand and its hotbar slot
+        let held;
+        try { held = source.getComponent(EntityComponentTypes.Equippable)?.getEquipment(EquipmentSlot.Mainhand)?.typeId; } catch (e) { }
+        console.warn(`[cobblemon] held: ${held ?? "nothing"} slot ${source.selectedSlotIndex}`);
     } else if (event.id === "cobblemon:battle_pose") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:battle_pose [off]" freezes it in its battle poses
         freeze(source, event.message.trim() !== "off");

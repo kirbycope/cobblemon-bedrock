@@ -381,7 +381,8 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
     if foundation:
         thin = ("_slab", "_stairs", "glass", "_pane", "fence", "door", "carpet", "torch", "sign", "button", "plate", "lantern",
-                "_wall", "bars", "chain", "ladder", "rail", "candle", "flower", "air")
+                "_wall", "bars", "chain", "ladder", "rail", "candle", "flower", "air",
+                "gym_marker")   # a marker copied down stacked seven of each (a spot noted at seven heights by turns)
         bricks = palette_index(("stone_bricks", "{}"))
         tall = sy + foundation
         grown = [-1] * (sx * tall * sz)

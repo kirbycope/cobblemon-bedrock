@@ -9,6 +9,7 @@ development junctions to this repository) is moved aside first and put back by c
 """
 import math
 import os
+import re
 import shutil
 import time
 import urllib.request
@@ -58,7 +59,18 @@ def create_world(t):
     t.connect_pad()   # already in from install; plugged in here when the run resumes at this step
     c.focus(); c.park_mouse()
     c.wait("play", "settings", timeout=120, why="the main menu")
-    c.select("play", then=("create new", "import world"))
+    # straight after an import the menu is drawn but takes no input for a minute or two (the game is still taking the
+    # packs in): Play is tried again until it opens
+    began = time.time()
+    while True:
+        try:
+            c.select("play", then=("create new", "import world"))
+            break
+        except Exception as error:   # by name: the runner's StepFailed is ftue.py run as __main__, not this import's
+            if type(error).__name__ != "StepFailed" or time.time() - began > 240: raise
+            time.sleep(15)
+    if time.time() - began > 30:
+        t.finding(f"After the import the main menu ignored the controller and the mouse for {time.time() - began:.0f} s.")
     c.select("create new world", then=("create new world", "templates", "game mode", "world name"))
     if not c.find("behavior packs", "world name", timeout=3):   # the "Create from..." screen: a new world or a template
         c.select("create new world", then=("behavior packs", "world name", "game mode"))
@@ -86,7 +98,11 @@ def starter_screen(t):
     c = t.client
     t.connect_pad()
     began = time.time()
-    found = c.wait("starter", "choose", "kanto", "content log", timeout=900, why="the starter screen on first join")
+    # past the Loading screen first: read loosely, its tips passed for the starter screen ("Use phantom membranes to
+    # repair your elytra" was taken for one of "starter", "choose", "kanto")
+    while time.time() - began < 900 and c.find("loading", timeout=0):
+        time.sleep(3)
+    found = c.wait("starter selection", "i choose you", "kanto", "content log", timeout=max(60, 900 - (time.time() - began)), why="the starter screen on first join")
     if time.time() - began > 120:
         t.finding(f"The first load of the new world took {(time.time() - began) / 60:.1f} minutes on the Loading screen.")
     if "content log" in found[2].lower():
@@ -117,8 +133,14 @@ def pick_starter(t):
     check(c.find("charmander", timeout=4), "up, up, up, right and A did not bring up Charmander on the starter screen")
     c.shot("charmander")
     pad.press("a")   # the focus is back on "I choose you!"
-    found = c.wait("you chose", timeout=10, why="the chat line after choosing")
-    return found[2]
+    found = c.find("you chose", timeout=10)
+    if found: return found[2]
+    # the chat line is light text that OCR can lose over a bright world (bamboo); the party panel naming the starter,
+    # with the starter screen gone, says the same
+    check(c.find("charmander", timeout=3) and not c.find("starter selection", "i choose you", timeout=0),
+          "neither the chat line after choosing nor Charmander in the party panel")
+    t.note("no 'You chose' chat line read; Charmander shows in the party panel")
+    return "Charmander in the party panel"
 
 
 @step("First join: no TM unlock message before any Pokemon", blocking=False)
@@ -178,6 +200,11 @@ def join_server(t):
         spot = c.find("dedicated server", timeout=5)
         if not spot: c.nav("down")
     check(spot, "the server's LAN tile never showed on the Play screen")
+    # steered by the world's name, the line over "Dedicated Server's world": the tile's focus outline stops the OCR
+    # reading that subtitle, and the walk lost the tile the moment it reached it (a LAN tile first in the list)
+    over = [(abs(spot[1] - (ly + lh // 2)), (lx + lw // 2, ly + lh // 2, t)) for lx, ly, lw, lh, t in c.ocr()
+            if 10 < spot[1] - (ly + lh // 2) < 70 and abs(lx - (spot[0] - 210)) < 260 and not matches("dedicated server", t)]
+    if over: spot = min(over)[1]
     c.select_at(*spot, then=("download", "joining", "loading", "locating server", "resource packs"))
     if c.find("download resource packs", "would you like to download", timeout=8):   # packs this client has not cached
         c.select("download everything", then=("joining", "loading", "downloading", "locating", "building terrain"))
@@ -335,22 +362,29 @@ def play_battle(t, target):
 PEWTER_BIOMES = ("meadow", "stony_peaks", "extreme_hills")   # its feature rule's biomes, by their Bedrock ids (extreme_hills is windswept hills)
 
 
-def card_arrow(c):
+def card_arrow(c, path=None):
     """The Trainer Card's reading over the hotbar: the arrow's direction in degrees clockwise from straight ahead,
-    "none" for its "No gym found yet" line, or None when neither shows. The arrow is a red Unicode arrow (main.js
-    ARROWS); its heavier end is the head, so the direction runs from the middle of its box to its centre of mass."""
+    "none" for its "No gym found yet" line, or None when neither shows. The arrow is one red Unicode glyph (main.js
+    ARROWS), about 8 pixels tall, alone on the action bar's dark backing in the middle of the screen; its heavier end is
+    the head, so the direction runs from the middle of its box to its centre of mass. Only the bar's own red (#FF5555)
+    on that backing counts: read anywhere red, a red block or Pokemon in view came back as an arrow, and the run
+    stopped exploring with no gym found (the arrow it "saw" was a Charmander)."""
     import numpy
     from PIL import Image
-    path = c.shot("card")
+    path = path or c.shot("card")
     image = numpy.asarray(Image.open(path).convert("RGB")).astype(int)
     h, w = image.shape[:2]
-    box = image[int(h * 0.70):int(h * 0.83), int(w * 0.38):int(w * 0.62)]   # where the action bar sits, above the hearts
-    red = (box[:, :, 0] > 150) & (box[:, :, 1] < 90) & (box[:, :, 2] < 90)
+    win = image[int(h * 0.73):int(h * 0.79), int(w * 0.475):int(w * 0.525)]
+    red = (abs(win[:, :, 0] - 254) < 24) & (abs(win[:, :, 1] - 84) < 28) & (abs(win[:, :, 2] - 84) < 28)
     ys, xs = numpy.nonzero(red)
-    if len(xs) >= 15:
-        cx, cy = (xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2
-        return round(math.degrees(math.atan2(xs.mean() - cx, -(ys.mean() - cy))) / 45) * 45 % 360
-    if matches("no gym found", c.action_bar(path)) or matches("gym found yet", c.action_bar(path)): return "none"
+    if len(xs) >= 6 and xs.max() - xs.min() < 30 and ys.max() - ys.min() < 30:
+        around = win[max(0, ys.min() - 6):ys.max() + 7, max(0, xs.min() - 6):xs.max() + 7]
+        backing = around[~red[max(0, ys.min() - 6):ys.max() + 7, max(0, xs.min() - 6):xs.max() + 7]]
+        if len(backing) and backing.mean() < 70:
+            cx, cy = (xs.min() + xs.max()) / 2, (ys.min() + ys.max()) / 2
+            return round(math.degrees(math.atan2(xs.mean() - cx, -(ys.mean() - cy))) / 45) * 45 % 360
+    bar = c.action_bar(path)
+    if matches("no gym found", bar) or matches("gym found yet", bar): return "none"
     return None
 
 
@@ -389,6 +423,13 @@ def hold(t, name=None, tries=10):
     game shows the held item's name over the hotbar for a moment after each change, and nothing for an empty slot,
     so each step is read at once (Client.action_bar, the name's strip)."""
     c, pad = t.client, t.connect_pad()
+    if name is None and held_item(t) is not None:
+        # an empty hand, asked of the server: a blank name strip read as empty with a book in hand, and "use" on the
+        # crafting table opened the book
+        for _ in range(tries):
+            if held_item(t) == "nothing": return True
+            pad.press("rb", gap=0.15)
+        return held_item(t) == "nothing"
     for _ in range(tries):
         pad.press("rb", gap=0.15)
         shown = c.action_bar(band=(0.80, 0.90), cols=(0.3, 0.7)).strip()
@@ -411,9 +452,43 @@ def eat(t):
     return True
 
 
+def held_item(t):
+    """What the player holds, from the add-on's cobblemon:held test hook in the server log, or None where the build
+    has no such hook (reading the item's name off the screen missed the Trainer Card in some worlds)."""
+    bridge = t.connect_bridge()
+    who = t.data.get("player") or bridge.player()["name"]
+    log = os.path.join(t.server.ROOT, "bds.out.log")
+    mark = os.path.getsize(log)
+    bridge.command(f"execute as {who} run scriptevent cobblemon:held")
+    time.sleep(0.7)
+    with open(log, encoding="utf-8", errors="replace") as file:
+        file.seek(mark)
+        found = re.findall(r"held: (\S+) slot", file.read())
+    return found[-1] if found else None
+
+
 def hold_card(t):
     """The Trainer Card in hand, from wherever it sits in the hotbar."""
-    return hotbar_slot(t, "rctmod:trainer_card") is not None and hold(t, "trainer card")
+    if hotbar_slot(t, "rctmod:trainer_card") is None: return False
+    pad = t.connect_pad()
+    for _ in range(10):
+        held = held_item(t)
+        if held is None: return hold(t, "trainer card")   # a build without the hook
+        if held == "rctmod:trainer_card": return True
+        pad.press("rb", gap=0.15)
+    return held_item(t) == "rctmod:trainer_card"
+
+
+def in_world(t):
+    """Back to plain play: chat closed (B only: Escape opens the pause menu, where a later A lands on Save & Quit), a
+    pause menu left, and a death's Respawn pressed. True if it had died."""
+    c, pad = t.client, t.connect_pad()
+    pad.press("b"); time.sleep(0.8)
+    if c.find("resume game", timeout=0.5): pad.press("b"); time.sleep(0.8)
+    if c.find("respawn", "you died", timeout=0.5):
+        pad.press("a"); time.sleep(4)
+        return True
+    return False
 
 
 def stuck(at, memory={}):
@@ -442,11 +517,15 @@ def card_craft(t):
     pad.press("b"); time.sleep(0.6)   # any screen a stray press opened
     check(hold(t, None), "no empty hotbar slot to free the hand")
     steer.face((x + 0.5, y + 0.6, z + 0.5), tolerance=3)
-    for attempt in range(5):
+    for attempt in range(6):
+        # aimed afresh each try, the empty hand checked again: the aim drifted off the table and a slot change put
+        # an ingredient in hand, and the table never opened (two runs in a row)
+        if attempt: hold(t, None)
+        steer.face((x + 0.5, y + 0.5 + 0.1 * (attempt % 3), z + 0.5), tolerance=2)
         pad.press("lt:0.2"); time.sleep(2)
         if c.find("all recipes", "construction", "equipment", "items", "nature", timeout=2): break
-        pad.look(0, -0.7, 0.15); time.sleep(0.4)
     else:
+        c.shot("crafting_table_not_open")
         check(False, "the crafting table did not open")
     c.shot("crafting")
     # the recipe book's tabs go round with LB and RB; the card is in Items, where the focus starts on its first recipe
@@ -475,20 +554,30 @@ def card_craft(t):
 
 @step("Trainer Card: what it says at spawn", blocking=False)
 def card_at_spawn(t):
+    """The card with nothing to point at builds Brock's gym ahead of the player (main.js buildFirstGym) and then points at
+    it; the site search takes a few tries, so the card is watched for a minute and a half."""
     check(hold_card(t), "no Trainer Card in the hotbar")
-    time.sleep(1)
-    reading = card_arrow(t.client)
+    started, reading, said_none = time.time(), None, False
+    while time.time() - started < 90:
+        reading = card_arrow(t.client)
+        if isinstance(reading, int): break
+        said_none = said_none or reading == "none"
+        time.sleep(2)
     t.client.shot("card_at_spawn")
-    if reading == "none":
-        t.finding("A new player's Trainer Card says 'No gym found yet': it cannot point at a gym nobody has been near, so the first gym is found by exploring.")
+    if said_none:
         t.finding("The card's 'No gym found yet. Explore: ...' line is too long for the action bar: with a controller its end runs under the RT hint and off the screen.")
-    return f"card reads {reading}"
+    if not isinstance(reading, int):
+        t.finding("A new player's Trainer Card still had no gym to point at after a minute and a half: it cannot sense a gym further than 64 blocks off.")
+        return f"card reads {reading}"
+    return f"the card pointed at a gym {time.time() - started:.0f} s after it was first held"
 
 
 @step("Explore toward a Pewter Gym's biomes until the card shows an arrow")
 def explore_for_gym(t):
     c, pad, bridge = t.client, t.connect_pad(), t.connect_bridge()
     t.data.setdefault("player", bridge.player()["name"])   # a run started at this step has not joined in this process
+    hold_card(t)
+    if isinstance(card_arrow(c), int): return "no exploring needed: the card already points at a gym"
     steer = t.steer(t.data["player"])
     here = bridge.player(t.data["player"])["location"]
     found = []
@@ -511,58 +600,100 @@ def explore_for_gym(t):
     check(found, "locate found none of a Pewter Gym's biomes")
     distance, biome, bx, bz = min(found)
     t.data["gym_biome"] = (biome, bx, bz)
-    started, budget = time.time(), 60 * 25
-    # to the biome, then round it in widening squares, looking at the card every leg
-    legs = [(bx, bz)] + [(bx + dx * r, bz + dz * r) for r in range(48, 400, 48)
-                         for dx, dz in ((1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1))]
+    started, budget = time.time(), 60 * 45   # rings to 384 blocks at the 3 blocks a second the terrain allows
+    # to the biome, then round spawn in rings 96 blocks apart, looking at the card every leg. The server only notices a
+    # gym within its tick distance (64 blocks), so rings that far apart leave no gap; squares round the nearest biome
+    # patch circled a meadow 45 blocks from spawn while the gym stood 320 blocks off in another patch
+    sx, sz = here["x"], here["z"]
+    legs = [(bx, bz)] + [(sx + r * math.cos(math.radians(a)), sz + r * math.sin(math.radians(a)))
+                         for r in range(96, 480, 96) for a in range(0, 360, 45)]
     for n, (gx, gz) in enumerate(legs):
         if time.time() - started > budget: break
         if in_world(t): t.note(f"died on the way; respawned at the world spawn")
         if n % 4 == 3: eat(t)
-        hold_card(t)
+        if not hold_card(t) and hotbar_slot(t, "rctmod:trainer_card") is None:
+            t.finding("The player died exploring and dropped the Trainer Card with everything else; only the Party item comes back on respawn.")
+            check(False, "the Trainer Card was lost on the way")
         reading = card_arrow(c)
         if isinstance(reading, int):
             return f"the card showed an arrow after {(time.time() - started) / 60:.1f} minutes, heading for a {biome} {distance:.0f} blocks off"
         top = bridge.data("mc_block_get_top", dimension="overworld", x=int(gx), z=int(gz))
         gy = top["location"]["y"] + 1 if isinstance(top, dict) and "location" in top else 80
-        at = bridge.player(t.data.get("player"))["location"]
-        left = steer.walk_to((gx, gy, gz), within=6, timeout=max(30, math.dist((gx, gz), (at["x"], at["z"])) / 3))
-        if left is not None and left > 20:
-            # terrain the controller could not cross (a pit, a cliff, a lake): the run moves on to the leg's end and
-            # says where, so the report shows how far it got on foot
+        for hop in range(12):
             at = bridge.player(t.data.get("player"))["location"]
-            t.note(f"stuck at {round(at['x'])}, {round(at['y'])}, {round(at['z'])} with {left:.0f} blocks to go; moved on to {gx}, {gz}")
+            left = steer.walk_to((gx, gy, gz), within=6, timeout=max(30, math.dist((gx, gz), (at["x"], at["z"])) / 3))
+            if left is None or left <= 20 or time.time() - started > budget: break
+            # terrain the controller could not cross (a pit, a cliff, a lake): the run hops 32 blocks on along the leg,
+            # not to its end, so the ground between still passes within the card's reach (hopping to each leg's end
+            # skipped the stretch that ran past the gym), and says where, so the report shows how far it got on foot
+            at = bridge.player(t.data.get("player"))["location"]
+            far = math.dist((gx, gz), (at["x"], at["z"]))
+            step_to = min(1, 32 / max(far, 1))
+            hx, hz = at["x"] + (gx - at["x"]) * step_to, at["z"] + (gz - at["z"]) * step_to
+            t.note(f"stuck at {round(at['x'])}, {round(at['y'])}, {round(at['z'])} with {left:.0f} blocks to go; hopped on to {round(hx)}, {round(hz)}")
             # spreadplayers puts the player on the surface, where a teleport to a guessed height into a chunk not
             # yet loaded can land inside a hill ("suffocated in a wall")
-            bridge.command(f"spreadplayers {gx} {gz} 0 1 {t.data['player']}")
+            bridge.command(f"spreadplayers {hx:.1f} {hz:.1f} 0 1 {t.data['player']}")
             time.sleep(4)
     t.finding(f"After {budget // 60} minutes walking to and around the nearest {biome}, the Trainer Card still had no gym to point at.")
     check(False, "the card never showed an arrow")
 
 
+def gym_block_near(bridge, at, reach=20):
+    """Whether a gym's marker block is within reach blocks of at, asked of the bridge: the run's own check that the
+    player stands at a gym, not a step the player takes."""
+    hit = bridge.data("mc_block_contains", dimension="overworld", timeout=30,
+                      **{"from": {"x": int(at["x"]) - reach, "y": int(at["y"]) - 24, "z": int(at["z"]) - reach},
+                         "to": {"x": int(at["x"]) + reach, "y": int(at["y"]) + 24, "z": int(at["z"]) + reach},
+                         "filter": {"include": ["cobblemon:gym_marker"]}})
+    return isinstance(hit, dict) and bool(hit.get("contains"))
+
+
 @step("Follow the card's arrow to the gym")
 def follow_arrow(t):
-    c, pad, bridge, steer = t.client, t.connect_pad(), t.connect_bridge(), t.steer(t.data.get("player"))
+    c, pad, bridge = t.client, t.connect_pad(), t.connect_bridge()
+    t.data.setdefault("player", bridge.player()["name"])   # a run started at this step has not joined in this process
+    steer = t.steer(t.data["player"])
     hold_card(t)
-    started, flips = time.time(), 0
+    started, behind, legs = time.time(), 0, 0
     while time.time() - started < 60 * 15:
+        if in_world(t): t.note("died on the way; respawned at the world spawn")
+        if not hold_card(t) and hotbar_slot(t, "rctmod:trainer_card") is None:
+            t.finding("The player died following the card and dropped it with everything else; only the Party item comes back on respawn.")
+            check(False, "the Trainer Card was lost on the way to the gym")
         reading = card_arrow(c)
         if not isinstance(reading, int):
             t.note(f"card read {reading}"); pad.walk(0.5); continue
+        p = bridge.player(t.data["player"])
+        at, yaw = p["location"], p["rotation"]["y"]
         turn = (reading + 180) % 360 - 180
-        if abs(turn) > 22:   # turn the camera toward the arrow, then look again
-            if abs(turn) >= 135: flips += 1
-            if flips >= 3: break   # the arrow keeps swinging round behind: the player stands where it points
-            pad.look(0.6 if turn > 0 else -0.6, 0, abs(turn) / 360)
-            time.sleep(0.3)
-            continue
-        flips = 0
-        at = bridge.player(t.data.get("player"))["location"]
-        pad.walk(1.5, hold=("a",) if stuck(at) or steer.in_water(at) else ())
+        # the arrow swinging round behind, again and again, is where it points: checked against the gym's own blocks,
+        # since a camera turn that overshot once read the same way 150 blocks short
+        behind = behind + 1 if abs(turn) >= 135 else 0
+        if behind >= 2 and gym_block_near(bridge, at): break
+        # the way the arrow points, 24 blocks on: the player's yaw (from the bridge) turned by the arrow's reading
+        heading = math.radians(yaw + turn)
+        gx, gz = at["x"] - 24 * math.sin(heading), at["z"] + 24 * math.cos(heading)
+        top = bridge.data("mc_block_get_top", dimension="overworld", x=int(gx), z=int(gz))
+        gy = top["location"]["y"] + 1 if isinstance(top, dict) and "location" in top else at["y"]
+        left = steer.walk_to((gx, gy, gz), within=4, timeout=20)
+        legs += 1
+        if left is not None and left > 12:
+            t.note(f"stuck at {round(at['x'])}, {round(at['y'])}, {round(at['z'])} following the arrow; hopped on to {round(gx)}, {round(gz)}")
+            bridge.command(f"spreadplayers {gx:.1f} {gz:.1f} 0 1 {t.data['player']}")
+            time.sleep(4)
     c.shot("at_gym")
-    check(flips >= 3, "the arrow never settled on a place in 15 minutes")
-    trainers = bridge.entities(type="cobblemon:rct_trainer", location=bridge.player(t.data.get("player"))["location"], max_distance=48)
-    return f"arrived where the card points{', a gym trainer is out' if trainers else ''}"
+    at = bridge.player(t.data["player"])["location"]
+    check(gym_block_near(bridge, at), "the card never led to a gym in 15 minutes")
+    # where the player stands: at the door (the plate over the entrance marker), or somewhere else at the building
+    door = bridge.data("mc_block_contains", dimension="overworld", timeout=30,
+                       **{"from": {"x": int(at["x"]) - 8, "y": int(at["y"]) - 3, "z": int(at["z"]) - 8},
+                          "to": {"x": int(at["x"]) + 8, "y": int(at["y"]) + 3, "z": int(at["z"]) + 8},
+                          "filter": {"include": ["minecraft:bamboo_pressure_plate"]}})
+    if not (isinstance(door, dict) and door.get("contains")):
+        t.finding("Following the card's arrow brings the player to the gym building but not to its door: the arrow points at the trainer's spot inside, so the last stretch is finding the way in.")
+    trainers = bridge.entities(type="cobblemon:rct_trainer", location=at, max_distance=48)
+    return f"arrived at the gym in {(time.time() - started) / 60:.1f} minutes ({legs} legs){', a gym trainer is out' if trainers else ''}"
 
 
 STEPS = [download, install, create_world, starter_screen, pick_starter, no_tm_message,
