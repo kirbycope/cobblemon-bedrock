@@ -1,0 +1,101 @@
+{
+    "format_version": "1.21.0",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "cobblemon:trainer_association",
+            "is_spawnable": false,
+            "is_summonable": true,
+            "is_experimental": false
+        },
+        "component_groups": {
+            "cobblemon:following": {
+                "minecraft:behavior.follow_owner": {
+                    "priority": 2,
+                    "speed_multiplier": 1.0,
+                    "start_distance": 8,
+                    "stop_distance": 3,
+                    "can_teleport": false
+                }
+            }
+        },
+        "components": {
+            "minecraft:type_family": {
+                "family": [
+                    "npc",
+                    "trainer_association",
+                    "cobblemon_npc"
+                ]
+            },
+            "minecraft:nameable": {
+                "always_show": true,
+                "allow_name_tag_renaming": false
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 1.95
+            },
+            "minecraft:health": {
+                "value": 20,
+                "max": 20
+            },
+            "minecraft:physics": {},
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:damage_sensor": {
+                "triggers": [
+                    {
+                        "cause": "all",
+                        "deals_damage": false
+                    }
+                ]
+            },
+            "minecraft:tameable": {
+                "probability": 0,
+                "tame_items": "minecraft:barrier"
+            },
+            "minecraft:movement": {
+                "value": 0.5
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:jump.static": {},
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true,
+                "can_open_doors": true
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 7,
+                "look_distance": 8,
+                "probability": 0.02
+            },
+            "minecraft:behavior.random_stroll": {
+                "priority": 8,
+                "speed_multiplier": 0.35
+            },
+            "minecraft:behavior.random_look_around": {
+                "priority": 9
+            }
+        },
+        "events": {
+            "cobblemon:follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            },
+            "cobblemon:stay": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:following"
+                    ]
+                }
+            }
+        }
+    }
+}

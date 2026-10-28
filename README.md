@@ -53,23 +53,30 @@ Radical Cobblemon Trainers with a full team to beat:
 - **Order.** Trainers must be beaten in RCT's order: Brock, Misty, Lt. Surge, Erika, Sabrina, Koga, Blaine and Clair,
   then the four Elite Four members in any order, then Terry. A trainer you have not unlocked tells you who to beat
   first, and one you have beaten will not battle you again.
-- **Level cap.** Your first gym battle puts you on the challenge, and from then on you have a level cap. It is the
+- **Trainer Association.** Gym trainers only battle players in their series, as in RCT, and a series is chosen at a
+  Trainer Association. Carry a Trainer Card with no series started and one comes to find you: it appears 25 to 70
+  blocks away within about 20 seconds and walks to you, and the card's arrow points at it. Use it to see what it
+  offers: Radical Red (the Kanto gyms and League) for one Trainer Card, which you get back named for the series, and a
+  Trainer Card for a few emeralds and apricorns. Associations also stand about in villages, and one goes away once no
+  player has been near it for half a minute. Once you have finished a series, an Association also offers Freeroam: a
+  break from the series with no level cap, until you choose the series again and carry on where you left off.
+  Starting a series again from the beginning resets its progress.
+- **Level cap.** Starting Radical Red puts you on the challenge, and from then on you have a level cap. It is the
   level of the strongest trainer you can face next, and never below 15: 15 for Brock, 27 for Misty, 34 for Lt. Surge,
   44 for Erika, 59 for Sabrina, 68 for Koga, 76 for Blaine, 81 for Clair, 85 for the League, and no cap once Terry is
   beaten. Your Pokemon gain no battle experience past the cap. A trainer refuses to battle while any Pokemon in your
   party is over it.
-- **Badges.** Each gym leader gives their badge the first time you win.
+- **Badges.** Each gym leader gives their badge the first time you win. A badge is kept on death, like the Party
+  item: it is handed out once and nothing crafts another.
 - **Trainer Card.** RCT's Trainer Card, crafted from a name tag, a glass pane and redstone in a ring of paper. Use it,
-  into the air or at a block, to see your level cap (none until your first gym battle, then 15), how many gym trainers
+  into the air or at a block, to see your series, your level cap (none until you start a series, then 15), how many gym trainers
   you have beaten, and the trainers in order: a beaten one by name, the next one to beat as "??? (next Gym Leader)",
   the rest as ???; pick one to see its type, the level cap it needs and gives, and who comes first. Held, it shows an
-  arrow above the hotbar pointing at the next trainer you can battle (it spins when they are in another dimension).
-  Each gym remembers where its trainer stands once a player has been within about 64 blocks of it, so the arrow points
-  at the nearest such gym before anyone has called its trainer out. Gyms are rare and Bedrock cannot sense one further
-  off, so the first time anyone holds the card in a world with no gym found, a Pewter Gym (Brock's, the first leader)
-  is built on natural, level ground 150 to 250 blocks ahead of them with no water on the way, door toward them, and
-  the card points at it
-  ("Your Trainer Card picked up a gym. Follow the arrow."). This happens once per world.
+  arrow above the hotbar pointing at the next trainer you can battle (it spins when they are in another dimension),
+  or, with no series started or your series finished, at the nearest Trainer Association.
+  Each gym remembers where its trainer stands once a player has been within about 64 blocks of it (Bedrock only
+  sees that far), so the arrow points at the nearest such gym before anyone has called its trainer out; a gym nobody
+  has been near cannot be found.
 - **Calling a trainer back.** The button under a gym's sign calls its trainer back for one type gem from your
   inventory, the gem the sign names (a Rock Gem for Brock).
 
@@ -105,7 +112,7 @@ packs need regenerating; the release tag is the manifests' version, which `port.
 - https://modrinth.com/datapack/radical-gyms-cobblemon
     - Radical Gyms & Structures by JayOnline, MIT: the nine gym and League buildings and where they generate, in `radical_gyms/`. Its MIT notice ships in the add-on as the behavior pack's `RADICAL_GYMS_LICENSE.txt`.
 - https://gitlab.com/srcmc/rct/mod
-    - Radical Cobblemon Trainers by HDainester, Mod Community License (MCOML): the 14 gym and League trainers' teams, bags, order and skins, in `rct_trainers/`, and the battle AI, level cap and progression rules the script re-implements. That data stays under the MCOML in the add-on (`scripts/rct_trainers.js`, with the licence as `RCT_LICENSE.txt`); the changes are listed in `rct_trainers/README.md`.
+    - Radical Cobblemon Trainers by HDainester, Mod Community License (MCOML): the 14 gym and League trainers' teams, bags, order and skins, the Trainer Card's icon, and the Trainer Association's texture, series and text, in `rct_trainers/`, and the battle AI, level cap, progression rules and Trainer Association the script re-implements. That data stays under the MCOML in the add-on (`scripts/rct_trainers.js`, with the licence as `RCT_LICENSE.txt`); the changes are listed in `rct_trainers/README.md`.
 - https://modrinth.com/mod/cobblefurnies
     - CobbleFurnies by LunazStudios, MIT: the furniture in the gyms, converted from its models and textures (All Rights Reserved), which `port.py` reads from a git-ignored clone at `java_cobblefurnies/`. It is credited, as its README asks, in the behavior pack's `COBBLEFURNIES_CREDITS.txt`.
 - https://modrinth.com/mod/cobblemon-pokemon-badges
@@ -292,7 +299,9 @@ moves every installed copy of the packs aside, imports the file as a double-clic
 the behavior pack on, and checks the first join (the starter screen, no content log, no TM message before any
 Pokemon). The in-world steps then play on the local Bedrock Dedicated Server in a world made for the run from the
 same packs, so the bridge can say where the player and the wild Pokemon are: choose a starter with the D-pad, call it
-back and send it out with the Party item, and battle a wild Pokemon. Every input is the virtual controller's.
+back and send it out with the Party item, and battle a wild Pokemon. With a screened seed it then crafts the Trainer
+Card, starts a series at the Trainer Association, follows the card to the Pewter Gym and tours one of every gym the
+seed has (`tools/ftue_seed_screen.py --seed N --every` finds them). Every input is the virtual controller's.
 
 ```powershell
 python ..\.claude\skills\ftue\ftue.py - --padhost 14400                # in the background: a controller that outlives each run
@@ -300,6 +309,10 @@ python tools\build_addon.py --output captures\ftue\local.mcaddon      # to try t
 $env:FTUE_ADDON = "captures\ftue\local.mcaddon"
 python ..\.claude\skills\ftue\ftue.py tools\ftue_playbook.py          # report in captures\ftue\<time>\report.md
 ```
+
+The walks are [baritone-bedrock](https://github.com/kirbycope/baritone-bedrock)'s, a port of Baritone's pathing for
+Bedrock that drives the same controller and reads the world through its own behavior pack; clone it beside this
+repository (`C:\GitHub\baritone-bedrock`), where the skill's `nav.py` looks for it.
 
 ## Developing against a local Bedrock Dedicated Server
 Keep this repository where it is and junction its two pack folders into the world on the server, so an

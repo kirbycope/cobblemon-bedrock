@@ -10,6 +10,11 @@ Sabrina, Blaine and Clair), the Elite Four (Lorelei, Bruno, Agatha and Lance) an
 their skins from RCT's `assets/rctmod/textures/trainers/single/`, unchanged. Agatha is there twice because the League
 summons `elite_four_agatha_0053` and its rematch button `elite_four_agatha_0054`, two teams RCT counts as one member.
 
+`trainer_association.png` is RCT's Trainer Association texture (`assets/rctmod/textures/entity/trainer_association.png`),
+unchanged. `association.json` holds what the Association needs from RCT, unchanged: the series files
+(`data/rctmod/series/*.json`) and the English text of the series, the Association's screen, the series titles and the
+trainers' wrong-series lines (`assets/rctmod/lang/en_us.json`).
+
 `progression.json` is RCT's `requiredDefeats` (`data/rctmod/mobs/trainers/single/`, with Radical Gyms' own versions of the
 leaders' files) cut down to these 14: each trainer's groups of trainers, one of each group to be beaten first. Where RCT
 names a trainer not ported (a rival, Brendan, Giovanni), that trainer's own requirements stand in for it, so the order is
@@ -17,5 +22,6 @@ Brock, Misty, Lt. Surge, Erika, Sabrina, Koga, Blaine, Clair, the Elite Four in 
 
 Changes made in the port (MCOML 2.2): the teams are read as RCT defines them; RCT's progression is cut down to these
 14 trainers, so a trainer's required defeats that name a trainer not ported (a rival, Giovanni) are replaced by the
-ported trainers those require in turn; and RCT's battle AI, level cap and rewards are re-implemented in the add-on's
-script rather than carried over.
+ported trainers those require in turn; RCT's battle AI, level cap and rewards are re-implemented in the add-on's script
+rather than carried over; and the Trainer Association (TrainerAssociation.java) is re-implemented in the script, offering
+the series whose trainers are ported (Radical Red, and Freeroam once a series is completed).
