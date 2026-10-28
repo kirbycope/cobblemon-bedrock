@@ -5149,6 +5149,45 @@ def create_trainer_entity(trainers):
             "textures": ["Array.skins[q.property('cobblemon:trainer')]"]}}}, indent=4))
 
 
+def create_trainer_association():
+    """cobblemon:trainer_association, RCT's Trainer Association (TrainerAssociation.java, a WanderingTrader drawn by
+    WanderingTraderRenderer in RCT's own texture): the villager model in rct_trainers/trainer_association.png, 0.6 by
+    1.95, 20 health, walking about at 0.5. It follows the player it was sent to (RCT's player target), here by being
+    tamed to them; scripts/main.js spawns it, says what it offers and takes it away again."""
+    os.makedirs(f"{texturesEntityBedrock}/rct", exist_ok=True)
+    shutil.copyfile(f"{pwd}/rct_trainers/trainer_association.png", f"{texturesEntityBedrock}/rct/trainer_association.png")
+    behavior = {"format_version": "1.21.0", "minecraft:entity": {
+        "description": {"identifier": "cobblemon:trainer_association", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+        "component_groups": {"cobblemon:following": {
+            "minecraft:behavior.follow_owner": {"priority": 2, "speed_multiplier": 1.0, "start_distance": 8, "stop_distance": 3, "can_teleport": False}}},
+        "components": {
+            "minecraft:type_family": {"family": ["npc", "trainer_association", "cobblemon_npc"]},
+            "minecraft:nameable": {"always_show": True, "allow_name_tag_renaming": False},
+            "minecraft:collision_box": {"width": 0.6, "height": 1.95},
+            "minecraft:health": {"value": 20, "max": 20},
+            "minecraft:physics": {}, "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
+            "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
+            "minecraft:tameable": {"probability": 0, "tame_items": "minecraft:barrier"},
+            "minecraft:movement": {"value": 0.5}, "minecraft:movement.basic": {}, "minecraft:jump.static": {},
+            "minecraft:navigation.walk": {"can_path_over_water": True, "avoid_water": True, "can_open_doors": True},
+            "minecraft:behavior.float": {"priority": 0},
+            "minecraft:behavior.look_at_player": {"priority": 7, "look_distance": 8, "probability": 0.02},
+            "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 0.35},
+            "minecraft:behavior.random_look_around": {"priority": 9}},
+        "events": {"cobblemon:follow": {"add": {"component_groups": ["cobblemon:following"]}},
+                   "cobblemon:stay": {"remove": {"component_groups": ["cobblemon:following"]}}}}}
+    with open(f"{entitiesBedrock}/trainer_association.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=4))
+    client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+        "identifier": "cobblemon:trainer_association", "materials": {"default": "villager"},
+        "textures": {"default": "textures/entity/rct/trainer_association"},
+        "geometry": {"default": "geometry.villager.v1.8"},
+        "animations": {"general": "animation.villager.general", "look_at_target": "animation.common.look_at_target", "move": "animation.villager.move"},
+        "scripts": {"animate": ["general", "look_at_target", {"move": "q.modified_move_speed"}]},
+        "render_controllers": ["controller.render.default"],
+        "spawn_egg": {"base_color": "#2f5aa8", "overlay_color": "#e9c46a"}}}}
+    with open(f"{entityBedrock}/trainer_association.entity.json", "w") as file: file.write(json.dumps(client, indent=4))
+
+
 def create_badges():
     """The eight Kanto badges as items with the badge mod's icons and names."""
     import urllib.request, zipfile
@@ -5329,6 +5368,16 @@ def create_gyms():
         file.write("export const RCT_TRAINER_IDS = " + json.dumps(trainers) + ";\n")
         file.write("export const RCT_TRAINERS = " + json.dumps(data, separators=(",", ":")) + ";\n")
         file.write(f"export const RCT_INITIAL_CAP = {RCT_INITIAL_CAP};\n")
+        # the Trainer Association's series and text (rct_trainers/association.json): the series whose trainers are
+        # ported (Radical Red) and Freeroam, RCT's pause from a series, which needs no trainers of its own
+        with open(f"{pwd}/rct_trainers/association.json", encoding="utf-8") as source: association = json.load(source)
+        text = association["text"]
+        series = {sid: {"title": text.get(f"series.rctmod.{sid}.title", sid), "description": text.get(f"series.rctmod.{sid}.description", ""),
+                        "difficulty": meta.get("difficulty", 0), "requiredSeries": meta.get("requiredSeries", [])}
+                  for sid, meta in association["series"].items() if sid == "radicalred"}
+        series["freeroam"] = {"title": text["series.rctmod.freeroam.title"], "description": text["series.rctmod.freeroam.description"], "difficulty": 0, "requiredSeries": []}
+        file.write("export const RCT_SERIES_DATA = " + json.dumps(series, ensure_ascii=False) + ";\n")
+        file.write("export const RCT_TEXT = " + json.dumps({k: v for k, v in text.items() if not k.startswith("series.")}, ensure_ascii=False) + ";\n")
     with open(f"{scriptsBedrock}/gyms.js", "w", encoding="utf-8", newline="\n") as file:
         file.write("// generated by port.py: the Radical Gyms markers' states and the gem each building's rematch button takes\n")
         file.write("export const GYM_ROLES = " + json.dumps(GYM_ROLES) + ";\n")
@@ -5339,8 +5388,9 @@ def create_gyms():
     create_trainer_entity(trainers)
     create_badges()
     create_trainer_card()
+    create_trainer_association()
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
-        file.write("tile.cobblemon:gym_marker.name=Gym Marker\ntile.cobblemon:league_anchor.name=League Anchor\nentity.cobblemon:rct_trainer.name=Trainer\n")
+        file.write("tile.cobblemon:gym_marker.name=Gym Marker\ntile.cobblemon:league_anchor.name=League Anchor\nentity.cobblemon:rct_trainer.name=Trainer\nentity.cobblemon:trainer_association.name=Trainer Association\nitem.spawn_egg.entity.cobblemon:trainer_association.name=Spawn Trainer Association\n")
     shutil.copyfile(f"{pwd}/radical_gyms/LICENSE", f"{behaviorPack}/RADICAL_GYMS_LICENSE.txt")
     shutil.copyfile(f"{pwd}/rct_trainers/LICENSE.txt", f"{behaviorPack}/RCT_LICENSE.txt")
     for tid in trainers:

@@ -1,0 +1,38 @@
+{
+    "format_version": "1.10.0",
+    "minecraft:client_entity": {
+        "description": {
+            "identifier": "cobblemon:trainer_association",
+            "materials": {
+                "default": "villager"
+            },
+            "textures": {
+                "default": "textures/entity/rct/trainer_association"
+            },
+            "geometry": {
+                "default": "geometry.villager.v1.8"
+            },
+            "animations": {
+                "general": "animation.villager.general",
+                "look_at_target": "animation.common.look_at_target",
+                "move": "animation.villager.move"
+            },
+            "scripts": {
+                "animate": [
+                    "general",
+                    "look_at_target",
+                    {
+                        "move": "q.modified_move_speed"
+                    }
+                ]
+            },
+            "render_controllers": [
+                "controller.render.default"
+            ],
+            "spawn_egg": {
+                "base_color": "#2f5aa8",
+                "overlay_color": "#e9c46a"
+            }
+        }
+    }
+}

@@ -6,14 +6,14 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, StructureRotation, BlockVolume } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES } from "./npc_dialogue.js";
-import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP } from "./rct_trainers.js";
+import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
 import { TMS, TM_SPECIES } from "./tms.js";
@@ -2421,7 +2421,8 @@ function faint(battle, fainted) {
 // group), it is still resting from the last battle (battleCooldownTicks 240), or the player's strongest Pokemon is over
 // their level cap. The cap (LevelUtils.getLevelCap) is the lowest level among the trainers next in line, never under 15,
 // and 100 once none are left; a Pokemon gains no experience past it (allowOverLeveling false). A player is on that path
-// from their first gym battle on, which stands in for choosing a series at RCT's Trainer Association.
+// once they have chosen the Radical Red series at a Trainer Association (below); a trainer turns away a player in no
+// series, or another one, as RCT's do (TrainerMob.canBattleAgainst, "wrong_series").
 // The trainer's side fights RCT's way (RCTBattleAI): each turn its moves and potions are scored and one of the best,
 // within a random margin, is picked; after a faint it sends out the Pokemon with the best matchup.
 const RCT_DEFEATS = "cobblemon:rct_defeats", RCT_SERIES = "cobblemon:rct_series", GYM_COOLDOWN = 240;
@@ -2435,8 +2436,16 @@ for (const t of Object.values(RCT_TRAINERS)) for (const group of t.requires) if 
 function rctDefeats(player) { return jsonProp(player, RCT_DEFEATS, {}); }
 function rctDone(player, id) { const d = rctDefeats(player); return (RCT_SIBLINGS.get(id) ?? [id]).some((s) => (d[s] ?? 0) > 0); }
 function rctUnlocked(player, id) { return RCT_TRAINERS[id].requires.every((group) => group.some((r) => rctDone(player, r))); }
+// the player's series (TrainerPlayerData.getCurrentSeries): "radicalred", "freeroam", or undefined for none; a world from
+// before the Trainer Association kept true for "started", which is Radical Red
+function rctSeries(player) {
+    const s = player?.getDynamicProperty?.(RCT_SERIES);
+    return s === true ? "radicalred" : s || undefined;
+}
+// the series is done once its last trainer, the Champion, is beaten (isSeriesCompleted)
+const rctSeriesDone = (player) => rctSeries(player) === "radicalred" && RCT_TRAINER_IDS.every((id) => rctDone(player, id));
 function rctLevelCap(player) {
-    if (!player?.getDynamicProperty?.(RCT_SERIES)) return 100;
+    if (rctSeries(player) !== "radicalred") return 100;
     const next = RCT_TRAINER_IDS.filter((id) => !rctDone(player, id) && rctUnlocked(player, id));
     return next.length ? Math.max(RCT_INITIAL_CAP, Math.min(...next.map((id) => RCT_TRAINERS[id].level))) : 100;
 }
@@ -2455,11 +2464,17 @@ function gymTalk(player, npc) {
     const id = gymTrainerOf(npc), data = RCT_TRAINERS[id];
     if (!data || battles.has(player.id)) return;
     const names = (group) => group.map((r) => RCT_TRAINERS[r]?.name ?? r).join(" or ");
+    if (rctSeries(player) !== "radicalred" && !rctDone(player, id)) {
+        // RCT's own lines for a player in no series or another (dialogs.rctmod.default.wrong_series.*)
+        const lines = Object.keys(RCT_TEXT).filter((k) => k.startsWith("dialogs.rctmod.default.wrong_series."));
+        gymSay(player, npc, RCT_TEXT[lines[Math.floor(Math.random() * lines.length)]] ?? "Start a series at the Trainer Association first.");
+        return;
+    }
     if (rctDone(player, id)) { gymSay(player, npc, "You've already beaten me. Go on, your next challenge is waiting!"); return; }
     const missing = data.requires.find((group) => !group.some((r) => rctDone(player, r)));
     if (missing) { gymSay(player, npc, `You aren't ready for me yet. Come back once you've beaten ${names(missing)}.`); return; }
     if ((gymRest.get(npc.id) ?? 0) > system.currentTick) { gymSay(player, npc, "Give me a moment to rest my team."); return; }
-    const cap = player.getDynamicProperty(RCT_SERIES) ? rctLevelCap(player) : Math.max(RCT_INITIAL_CAP, data.level);
+    const cap = rctLevelCap(player);
     const top = Math.max(0, ...summaryParty(player).map((e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 1));
     if (top > cap) { gymSay(player, npc, `Your Pokemon are stronger than the level cap allows (Lv. ${cap}). Challenge me with a team at or under it.`); return; }
     if (!findParty(player).length) { gymSay(player, npc, "Your Pokemon can't fight. Heal them and come back."); return; }
@@ -2493,7 +2508,6 @@ function spawnGymPokemon(npc, spec, player) {
 function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
     if (!data?.team.length || battles.has(player.id) || !npc.isValid) return;
-    player.setDynamicProperty(RCT_SERIES, true);
     const party = data.team.map((spec) => ({ spec, down: false }));
     const foe = spawnGymPokemon(npc, party[0].spec, player);
     if (!foe) return;
@@ -2599,11 +2613,18 @@ function gymNextPokemon(battle) {
 }
 function gymWon(battle) {
     const g = battle.gym, player = battle.player, data = RCT_TRAINERS[g.id];
-    const before = rctLevelCap(player), defeats = rctDefeats(player);
+    const before = rctLevelCap(player), defeats = rctDefeats(player), wasDone = rctSeriesDone(player);
     defeats[g.id] = (defeats[g.id] ?? 0) + 1;
     player.setDynamicProperty(RCT_DEFEATS, JSON.stringify(defeats));
     g.won = true;
     say(battle, `§6You defeated ${data.name}!`);
+    if (!wasDone && rctSeriesDone(player)) {
+        // the series completed (TrainerPlayerData's completed series): counted, Freeroam offered from now on
+        const completed = jsonProp(player, RCT_COMPLETED, {});
+        completed.radicalred = (completed.radicalred ?? 0) + 1;
+        player.setDynamicProperty(RCT_COMPLETED, JSON.stringify(completed));
+        try { player.onScreenDisplay.setTitle(RCT_TEXT["gui.rctmod.title.series_completed"] ?? "Completed", { subtitle: RCT_SERIES_DATA.radicalred.title, fadeInDuration: 10, stayDuration: 60, fadeOutDuration: 20 }); } catch (e) { }
+    }
     const after = rctLevelCap(player);
     if (after > before) say(battle, `§bYour level cap rose to Lv. ${after}.`);
     try { player.playSound("random.levelup"); } catch (e) { }
@@ -2670,8 +2691,10 @@ const ARROWS = ["\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2
 const rctOrder = () => [...RCT_TRAINER_IDS].sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name));
 const REGIONAL = { alolan: "Alolan ", galarian: "Galarian ", hisuian: "Hisuian ", paldean: "Paldean " };   // as the battle names them
 const rctType = (id) => id.startsWith("leader_") ? "Gym Leader" : id.startsWith("elite_four_") ? "Elite Four" : "Champion";
-// the next trainer to battle as { dim, x, z }: one standing in a loaded gym, else the nearest remembered gym
+// the next trainer to battle as { dim, x, z }: one standing in a loaded gym, else the nearest remembered gym; in no
+// series, or with the series done, the nearest Trainer Association instead (TrainerCard.inventoryTick's first branch)
 function cardTarget(player) {
+    if (!rctSeries(player) || rctSeriesDone(player)) return nearestAssociation(player);
     let best, bestD = Infinity;
     const consider = (dim, x, z) => {
         const d = dim === player.dimension.id ? Math.hypot(x - player.location.x, z - player.location.z) : Infinity;
@@ -2702,135 +2725,193 @@ function cardTarget(player) {
     if (gone) try { world.setDynamicProperty(GYM_SITES, JSON.stringify(sites)); } catch (e) { }
     return best;
 }
-// The first gym, built for the first player who holds the card with nothing to point at. A Pewter Gym generates in
-// one chunk in 1,024 of three biomes, and a gym is only noticed within the server's tick distance (64 blocks: blocks
-// further out cannot be read, and a structure feature drops the entities a marker would need), so a new player could
-// walk for an hour with the card saying "No gym found yet" (the FTUE did, and no seed in 12 had one within 240 blocks
-// of spawn). Once per world, Brock's gym goes up on natural, fairly level ground 150 to 250 blocks ahead of that
-// player, door toward them, the way the League is built (a ticking area, the ground cleared, the structure placed),
-// and the card points at it from then on.
-const FIRST_GYM = "cobblemon:first_gym", FIRST_GYM_TRAINER = "leader_brock_019e", FIRST_GYM_SIZE = 26, FIRST_GYM_HEIGHT = 19;
-const FIRST_GYM_FLOOR = 6;   // the structure's floor sits on its six-layer foundation (port.py GYM_FOUNDATION)
-const GROUND = new Set(["grass_block", "dirt", "coarse_dirt", "podzol", "mycelium", "dirt_with_roots", "mud", "moss_block", "sand", "red_sand",
-    "gravel", "stone", "granite", "diorite", "andesite", "tuff", "calcite", "snow", "sandstone", "red_sandstone", "hardened_clay", "stained_hardened_clay", "clay"]);
-const COVER = /leaves|_log|grass|fern|flower|bush|mushroom|vine|snow_layer|petals|sapling|tulip|daisy|orchid|allium|bluet|cornflower|lily|poppy|dandelion|lilac|peony|rose|sunflower|deadbush|moss_carpet|cactus|bamboo|pumpkin|melon|cobblemon:.*(berry|apricorn|mint|herb)/;
-let firstGymBusy = false, firstGymRetry = 0;
-// the ground under a column, or undefined where it is water, lava or anything a player may have built
-function groundAt(dim, x, z) {
-    let block;
-    try { block = dim.getTopmostBlock({ x, z }); } catch (e) { return undefined; }
-    for (let n = 0; block && n < 40; n++) {
-        const id = block.typeId.replace("minecraft:", "");
-        if (GROUND.has(id)) {
-            // the topmost block query looks through water: a sea floor is no ground (the first test built it there)
-            let above;
-            try { above = block.above(); } catch (e) { }
-            return above && (above.isLiquid || /water|kelp|seagrass|lava/.test(above.typeId)) ? undefined : block.location.y;
+// RCT's Trainer Association (TrainerAssociation.java): where a player chooses a series. Every 400 ticks a player gets
+// one within 25 to 70 blocks (TrainerSpawner.nextPos) unless one is already within 70: near a village (a bell and three
+// villagers within 48, standing in for RCT's bell and three occupied beds) one that stays about; else, for a player who
+// carries a Trainer Card and is in no series or has finished theirs, one sent to them, which walks to them (here by
+// following them as its owner) and which the card points at. One no player has come within 128 blocks of for 600
+// ticks goes. Used, it shows what it offers: a Trainer Card for emeralds and apricorns (2 to 4 times, restocked after
+// 6000 to 24000 ticks), and each series the player may start, paid with a Trainer Card, which comes back named for the
+// series (SeriesSwitchOffer). Starting a series resets the progress of the one before; Freeroam, once a series is done,
+// pauses it with no level cap, and choosing that series again continues it.
+const TA = "cobblemon:trainer_association", TA_SPAWN_TICKS = 400, TA_MIN = 25, TA_MAX = 70, TA_VERTICAL = 30;
+const TA_DESPAWN_DISTANCE = 128, TA_DESPAWN_TICKS = 600, TA_OFFER = "cobblemon:ta_offer", RCT_COMPLETED = "cobblemon:rct_completed";
+const RCT_PREVIOUS = "cobblemon:rct_previous_series";
+const APRICORNS = ["black", "blue", "green", "pink", "red", "white", "yellow"].map((c) => `cobblemon:${c}_apricorn`);
+const taFor = new Map();       // player id -> the Association sent to them
+const taIdle = new Map();      // Association id -> ticks with no player near
+function nearestAssociation(player) {
+    let best, bestD = Infinity;
+    for (const id of ["overworld", "nether", "the_end"]) {
+        let list = [];
+        try { list = world.getDimension(id).getEntities({ type: TA }); } catch (e) { continue; }
+        for (const ta of list) {
+            const d = ta.dimension.id === player.dimension.id ? Math.hypot(ta.location.x - player.location.x, ta.location.z - player.location.z) : Infinity;
+            if (!best || d < bestD) { best = { dim: ta.dimension.id, x: ta.location.x, z: ta.location.z }; bestD = d; }
         }
-        if (block.isLiquid) return undefined;
-        if (!COVER.test(block.typeId) && id !== "air") return undefined;   // water, lava, or a build
-        try { block = block.below(); } catch (e) { return undefined; }
+    }
+    return best;
+}
+const hasCard = (player) => countItem(player, CARD) > 0;
+function countItem(player, typeId) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    let n = 0;
+    for (let i = 0; inv && i < inv.size; i++) { const it = inv.getItem(i); if (it?.typeId === typeId) n += it.amount; }
+    return n;
+}
+function takeItem(player, typeId, count) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+    for (let i = 0; inv && i < inv.size && count > 0; i++) {
+        const it = inv.getItem(i);
+        if (it?.typeId !== typeId) continue;
+        const n = Math.min(count, it.amount);
+        count -= n;
+        if (it.amount === n) inv.setItem(i, undefined); else { it.amount -= n; inv.setItem(i, it); }
+    }
+}
+// a spot 25 to 70 blocks off along each axis, either way, on the ground, as nextPos picks it
+function associationSpot(player) {
+    const dim = player.dimension, { x: px, y: py, z: pz } = player.location;
+    for (let tries = 0; tries < 8; tries++) {
+        const off = () => (TA_MIN + Math.floor(Math.random() * (TA_MAX - TA_MIN))) * (Math.random() < 0.5 ? -1 : 1);
+        const x = Math.floor(px) + off(), z = Math.floor(pz) + off();
+        for (let y = Math.floor(py) + TA_VERTICAL; y >= Math.floor(py) - TA_VERTICAL; y--) {
+            let ground, feet, head;
+            try { ground = dim.getBlock({ x, y, z }); feet = ground?.above(); head = feet?.above(); } catch (e) { break; }
+            if (!ground || !feet || !head) continue;
+            if (ground.isAir || ground.isLiquid || !feet.isAir || !head.isAir) continue;
+            return { x: x + 0.5, y: y + 1, z: z + 0.5 };
+        }
     }
     return undefined;
 }
-// whether a column's ground lies under water or lava (the topmost block query looks through water to the floor)
-function wetAt(dim, x, z) {
-    let block;
-    try { block = dim.getTopmostBlock({ x, z }); } catch (e) { return true; }
-    for (let n = 0; block && n < 40; n++) {
-        if (block.isLiquid || /water|lava|kelp|seagrass/.test(block.typeId)) return true;
-        const id = block.typeId.replace("minecraft:", "");
-        if (GROUND.has(id) || !(COVER.test(block.typeId) || id === "air")) {
-            let above;
-            try { above = block.above(); } catch (e) { }
-            return !!above && (above.isLiquid || /water|lava|kelp|seagrass/.test(above.typeId));
+function nearVillage(player) {
+    const dim = player.dimension, at = player.location;
+    if (dim.getEntities({ type: "minecraft:villager_v2", location: at, maxDistance: 48 }).length < 3) return false;
+    try {
+        const volume = new BlockVolume({ x: at.x - 48, y: at.y - 16, z: at.z - 48 }, { x: at.x + 48, y: at.y + 16, z: at.z + 48 });
+        return dim.getBlocks(volume, { includeTypes: ["minecraft:bell"] }, true).getCapacity() > 0;
+    } catch (e) { return false; }
+}
+function spawnAssociation(player, sentTo) {
+    const spot = associationSpot(player);
+    if (!spot) return false;
+    let ta;
+    try { ta = player.dimension.spawnEntity(TA, spot); } catch (e) { return false; }
+    ta.nameTag = RCT_TEXT["entity.rctmod.trainer_association"] ?? "Trainer Association";
+    if (sentTo) {
+        try { ta.getComponent(EntityComponentTypes.Tameable)?.tame(player); ta.triggerEvent("cobblemon:follow"); } catch (e) { }
+        taFor.set(player.id, ta.id);
+    }
+    return true;
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        if (player.dimension.id !== "minecraft:overworld") continue;
+        const near = player.dimension.getEntities({ type: TA, location: player.location, maxDistance: TA_MAX });
+        if (near.length) continue;
+        const sent = taFor.get(player.id) && world.getEntity(taFor.get(player.id));
+        if (!sent) taFor.delete(player.id);
+        if (nearVillage(player)) spawnAssociation(player, false);
+        else if (!sent && hasCard(player) && (!rctSeries(player) || rctSeriesDone(player))) spawnAssociation(player, true);
+    }
+}, TA_SPAWN_TICKS);
+system.runInterval(() => {
+    for (const ta of world.getDimension("overworld").getEntities({ type: TA })) {
+        const near = ta.dimension.getPlayers({ location: ta.location, maxDistance: TA_DESPAWN_DISTANCE }).length > 0;
+        const idle = near ? 0 : (taIdle.get(ta.id) ?? 0) + 20;
+        if (idle >= TA_DESPAWN_TICKS) { taIdle.delete(ta.id); try { ta.remove(); } catch (e) { } continue; }
+        taIdle.set(ta.id, idle);
+    }
+}, 20);
+// the Association's item offer, rolled once per Association and kept on it: emeralds and apricorns for a Trainer Card
+function associationOffer(ta) {
+    let offer;
+    try { offer = JSON.parse(ta.getDynamicProperty(TA_OFFER) ?? "null"); } catch (e) { }
+    if (!offer) {
+        const between = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+        offer = { emeralds: between(1, 8), apricorn: APRICORNS[between(0, APRICORNS.length - 1)], apricorns: between(1, 5), max: between(2, 4), used: 0, restock: 0 };
+    }
+    if (offer.used > 0 && system.currentTick >= offer.restock) { offer.used = 0; offer.restock = 0; }
+    ta.setDynamicProperty(TA_OFFER, JSON.stringify(offer));
+    return offer;
+}
+const stars = (n, m = 10) => "\u2605".repeat(Math.floor(Math.min(n, m) / 2)) + (n % 2 ? "\u2bea" : "") + "\u2606".repeat(Math.floor((m - Math.min(n, m)) / 2));
+// the series a player may start here (TrainerAssociation.updateOffersFor): not the one they are in; Freeroam only once
+// a series is completed (freeroamRequiresCompletedSeries); in Freeroam, only the series they paused
+function associationSeries(player) {
+    const current = rctSeries(player), completed = jsonProp(player, RCT_COMPLETED, {});
+    return Object.keys(RCT_SERIES_DATA).filter((sid) => sid !== current)
+        .filter((sid) => sid !== "freeroam" || Object.values(completed).some((n) => n > 0))
+        .filter((sid) => current !== "freeroam" || !player.getDynamicProperty(RCT_PREVIOUS) || sid === player.getDynamicProperty(RCT_PREVIOUS))
+        .filter((sid) => RCT_SERIES_DATA[sid].requiredSeries.every((group) => group.some((r) => (completed[r] ?? 0) > 0)));
+}
+function showAssociation(player, ta) {
+    const offer = associationOffer(ta), series = associationSeries(player);
+    const t = (k) => RCT_TEXT[k] ?? k;
+    const emeraldLeft = offer.max - offer.used;
+    const apricornName = offer.apricorn.split(":")[1].replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const form = new ActionFormData().title(t("entity.rctmod.trainer_association"));
+    const actions = [];
+    form.button(`Trainer Card\n${offer.emeralds} Emerald, ${offer.apricorns} ${apricornName}${emeraldLeft > 0 ? "" : " (sold out)"}`, "textures/items/rct/trainer_card");
+    actions.push(() => {
+        if (emeraldLeft <= 0) { player.sendMessage("§7The Trainer Association has no more cards for now."); return; }
+        if (countItem(player, "minecraft:emerald") < offer.emeralds || countItem(player, offer.apricorn) < offer.apricorns) {
+            player.sendMessage(`§7You need ${offer.emeralds} Emerald and ${offer.apricorns} ${apricornName}.`); return;
         }
-        try { block = block.below(); } catch (e) { return true; }
+        takeItem(player, "minecraft:emerald", offer.emeralds); takeItem(player, offer.apricorn, offer.apricorns);
+        player.getComponent(EntityComponentTypes.Inventory)?.container?.addItem(new ItemStack(CARD, 1));
+        offer.used++;
+        if (!offer.restock) offer.restock = system.currentTick + 6000 + Math.floor(Math.random() * 18000);
+        ta.setDynamicProperty(TA_OFFER, JSON.stringify(offer));
+    });
+    for (const sid of series) {
+        const data = RCT_SERIES_DATA[sid];
+        form.button(`${data.title}\n${sid === "freeroam" ? "" : stars(data.difficulty)}`, "textures/items/rct/trainer_card");
+        actions.push(() => showSeriesOffer(player, ta, sid));
     }
-    return false;
+    if (!series.length) form.body("§7There is no other series for you to start right now.");
+    form.show(player).then((r) => { if (!r.canceled) actions[r.selection]?.(); }).catch(() => { });
 }
-function buildFirstGym(player) {
-    if (firstGymBusy || system.currentTick < firstGymRetry || world.getDynamicProperty(FIRST_GYM)) return;
-    if (player.dimension.id !== "minecraft:overworld" || rctDone(player, FIRST_GYM_TRAINER)) return;
-    firstGymBusy = true;
-    const dim = player.dimension, from = { x: player.location.x, z: player.location.z }, yaw = player.getRotation().y;
-    const tries = [];
-    for (const turn of [0, 30, -30, 60, -60, 100, -100, 180]) for (const far of [200, 160, 240]) tries.push([turn, far]);
-    // one ticking area name a try: a removed area keeps its name to the end of the tick, so the next try adding the
-    // same name in that tick was refused, every try after the first; any left by a server stopped mid-try go first
-    const areaName = (n) => `cobblemon_first_gym_${n}`;
-    for (let n = 0; n < tries.length; n++) for (const name of [areaName(n), ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `${areaName(n)}_${i}`)]) {
-        try { dim.runCommand(`tickingarea remove ${name}`); } catch (e) { }
+function showSeriesOffer(player, ta, sid) {
+    const data = RCT_SERIES_DATA[sid], t = (k) => RCT_TEXT[k] ?? k;
+    const completed = jsonProp(player, RCT_COMPLETED, {})[sid] ?? 0;
+    const resuming = rctSeries(player) === "freeroam" && player.getDynamicProperty(RCT_PREVIOUS) === sid;
+    const body = [data.description, ""];
+    if (sid !== "freeroam") {
+        body.push(`${t("gui.rctmod.trainer_association.difficulty")}: ${stars(data.difficulty)}`, `${t("gui.rctmod.trainer_association.completed")}: ${completed}`, "");
+        body.push(resuming ? `§6${t("gui.rctmod.trainer_association.series_continue")}` : `§l§6${t("gui.rctmod.trainer_association.important")}§r\n§6${t("gui.rctmod.trainer_association.series_reset")}`);
     }
-    const attempt = (n) => {
-        if (n >= tries.length) { firstGymBusy = false; firstGymRetry = system.currentTick + 20 * 60; return; }
-        const [turn, far] = tries[n], a = ((yaw + turn) * Math.PI) / 180;
-        const cx = Math.floor(from.x - far * Math.sin(a)), cz = Math.floor(from.z + far * Math.cos(a));
-        const x0 = cx - FIRST_GYM_SIZE / 2, z0 = cz - FIRST_GYM_SIZE / 2, x1 = x0 + FIRST_GYM_SIZE - 1, z1 = z0 + FIRST_GYM_SIZE - 1;
-        // the way there too, every 32 blocks: a site across the sea is natural ground, and the FTUE's player walked
-        // off the beach after the card's arrow and drowned; each point gets a ticking area of its own while it is read
-        const path = [];
-        for (let d = 32; d < far - 16 && path.length < 8; d += 32) path.push([Math.floor(from.x - d * Math.sin(a)), Math.floor(from.z + d * Math.cos(a))]);
-        try {
-            const added = dim.runCommand(`tickingarea add ${x0 - 3} -64 ${z0 - 3} ${x1 + 3} 320 ${z1 + 3} ${areaName(n)}`);
-            if (!added.successCount) console.warn(`[cobblemon] first gym ticking area at ${cx} ${cz} not added`);
-            path.forEach(([px, pz], i) => dim.runCommand(`tickingarea add ${px} 0 ${pz} ${px} 0 ${pz} ${areaName(n)}_${i}`));
-        } catch (e) { console.warn(`[cobblemon] first gym ticking area: ${e}`); }
-        // chunks never visited are generated first, which can take many seconds: wait until every corner is loaded
-        const corners = [[x0, z0], [x1, z0], [x0, z1], [x1, z1], ...path];
-        // getBlock throws in a chunk not loaded, where getTopmostBlock only comes back empty
-        const loaded = () => corners.every(([x, z]) => { try { return !!dim.getBlock({ x, y: 64, z }); } catch (e) { return false; } });
-        const ready = (waited) => {
-            if (!loaded() && waited < 600) { system.runTimeout(() => ready(waited + 20), 20); return; }
-            build();
-        };
-        const build = () => {
-            const done = () => {
-                for (const name of [areaName(n), ...path.map((_, i) => `${areaName(n)}_${i}`)]) try { dim.runCommand(`tickingarea remove ${name}`); } catch (e) { }
-            };
-            try {
-                if (path.some(([px, pz]) => wetAt(dim, px, pz))) { done(); attempt(n + 1); return; }
-                const heights = [];
-                for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) heights.push(groundAt(dim, x0 + Math.round(i * (FIRST_GYM_SIZE - 1) / 4), z0 + Math.round(j * (FIRST_GYM_SIZE - 1) / 4)));
-                const ground = heights.filter((h) => h !== undefined).sort((p, q) => p - q);
-                // every column natural ground, and none more than the foundation's depth below the floor
-                if (ground.length < heights.length) { done(); attempt(n + 1); return; }
-                const floor = ground[Math.floor(ground.length / 2)];
-                if (floor - ground[0] > FIRST_GYM_FLOOR || ground[ground.length - 1] - floor > 10) { done(); attempt(n + 1); return; }
-                const oy = floor - FIRST_GYM_FLOOR;
-                // cleared up to the treetops, and three blocks round: a jungle's canopy over the roof and its bushes
-                // against the door hid the gym and blocked the way in
-                const top = Math.max(oy + FIRST_GYM_HEIGHT + 2, ground[ground.length - 1] + 30);
-                for (let y = floor + 1; y <= top; y += 16) {
-                    dim.runCommand(`fill ${x0 - 3} ${y} ${z0 - 3} ${x1 + 3} ${Math.min(top, y + 15)} ${z1 + 3} air`);
-                }
-                // the door toward the player: the template's entrance is on its north side
-                const dx = from.x - cx, dz = from.z - cz;
-                const rotation = Math.abs(dz) >= Math.abs(dx) ? (dz < 0 ? StructureRotation.None : StructureRotation.Rotate180)
-                    : (dx > 0 ? StructureRotation.Rotate90 : StructureRotation.Rotate270);
-                world.structureManager.place("cobblemon:rgs_pewter_gym", dim, { x: x0, y: oy, z: z0 }, { includeEntities: false, rotation });
-                // where its trainer stands, noted as a random tick of the spot marker would note it
-                const markers = dim.getBlocks(new BlockVolume({ x: x0, y: oy, z: z0 }, { x: x1, y: oy + FIRST_GYM_HEIGHT, z: z1 }), { includeTypes: ["cobblemon:gym_marker"] }, true);
-                let noted = false;
-                for (const at of markers.getBlockLocationIterator()) {
-                    const m = gymMarker(dim.getBlock(at));
-                    if (m?.role === "spot") { noteGymSite(m.trainer, dim, at); noted = true; break; }
-                }
-                if (!noted) throw new Error("no spot marker after placing");
-                world.setDynamicProperty(FIRST_GYM, JSON.stringify([cx, floor, cz]));
-                try { player.sendMessage("§7Your Trainer Card picked up a gym. Follow the arrow."); } catch (e) { }
-                done();
-                firstGymBusy = false;
-            } catch (e) {
-                console.warn(`[cobblemon] first gym at ${cx} ${cz}: ${e}`);
-                done();
-                attempt(n + 1);
+    new MessageFormData().title(data.title).body(body.join("\n") + "\n\n§7Costs one Trainer Card.")
+        .button1("Not now").button2(sid === "freeroam" ? "Take a break" : resuming ? "Continue" : "Start")
+        .show(player).then((r) => {
+            if (r.canceled || r.selection !== 1) return;
+            if (!hasCard(player)) { player.sendMessage("§7You need a Trainer Card to start a series."); return; }
+            // the card is taken and given back named for the series (SeriesSwitchOffer)
+            takeItem(player, CARD, 1);
+            const card = new ItemStack(CARD, 1);
+            card.nameTag = data.title;
+            try { card.setLore([data.description]); } catch (e) { }
+            player.getComponent(EntityComponentTypes.Inventory)?.container?.addItem(card);
+            const before = rctSeries(player);
+            if (sid === "freeroam") {
+                player.setDynamicProperty(RCT_PREVIOUS, before);
+            } else if (!resuming) {
+                player.setDynamicProperty(RCT_DEFEATS, undefined);   // a new series starts from nothing
             }
-        };
-        system.runTimeout(() => ready(0), 20);
-    };
-    attempt(0);
+            player.setDynamicProperty(RCT_SERIES, sid);
+            const title = sid === "freeroam" ? "gui.rctmod.title.series_paused" : resuming ? "gui.rctmod.title.series_continued" : "gui.rctmod.title.series_started";
+            try { player.onScreenDisplay.setTitle(t(title), { subtitle: RCT_SERIES_DATA[sid === "freeroam" ? before : sid]?.title ?? data.title, fadeInDuration: 10, stayDuration: 60, fadeOutDuration: 20 }); } catch (e) { }
+            // the one sent to this player has done its job: it stops following them
+            if (taFor.get(player.id) === ta.id) { try { ta.triggerEvent("cobblemon:stay"); } catch (e) { } taFor.delete(player.id); }
+        }).catch(() => { });
 }
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    if (event.target?.typeId !== TA) return;
+    event.cancel = true;
+    const { player, target } = event;
+    system.run(() => { if (target.isValid) showAssociation(player, target); });
+});
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
         let held;
@@ -2838,9 +2919,11 @@ system.runInterval(() => {
         if (held !== CARD) continue;
         const target = cardTarget(player);
         if (!target) {
-            // nothing to point at yet: no gym with a trainer to battle has been near a player
-            buildFirstGym(player);
-            try { player.onScreenDisplay.setActionBar("§7No gym found yet. Explore: the card points to the next one you pass near."); } catch (e) { }
+            // nothing to point at yet: no Association about for a player in no series, or no gym with a trainer to
+            // battle near a player in one
+            const line = rctSeries(player) && !rctSeriesDone(player) ? "§7No gym found yet. Explore: the card points to the next one you pass near."
+                : "§7A Trainer Association will find you soon: keep the card on you.";
+            try { player.onScreenDisplay.setActionBar(line); } catch (e) { }
             continue;
         }
         let arrow;
@@ -2856,10 +2939,11 @@ system.runInterval(() => {
 function showTrainerCard(player) {
     const ids = rctOrder(), defeats = rctDefeats(player), next = new Set(ids.filter((id) => !rctDone(player, id) && rctUnlocked(player, id)));
     const total = ids.reduce((n, id) => n + (defeats[id] ?? 0), 0);
-    // before the first gym battle there is no cap yet (rctLevelCap's 100); RCT's initial cap starts with that battle
-    const cap = player.getDynamicProperty(RCT_SERIES) ? `${rctLevelCap(player)}` : `none yet (${RCT_INITIAL_CAP} from your first gym battle)`;
+    // no cap outside a series (rctLevelCap's 100); RCT's initial cap starts with the series
+    const series = RCT_SERIES_DATA[rctSeries(player)];
+    const cap = rctSeries(player) === "radicalred" ? `${rctLevelCap(player)}` : rctSeries(player) === "freeroam" ? "none (Freeroam)" : "none yet (choose a series at a Trainer Association)";
     const form = new ActionFormData().title("Trainer Card")
-        .body(`\u00a7f${player.name}\n\u00a77Level Cap: \u00a7f${cap}\n\u00a77Total: \u00a7f${total}\n\u00a77Hold the card to point at your next trainer.`);
+        .body(`\u00a7f${player.name}\n\u00a77Series: \u00a7f${series?.title ?? "No Series"}\n\u00a77Level Cap: \u00a7f${cap}\n\u00a77Total: \u00a7f${total}\n\u00a77Hold the card to point at your next trainer.`);
     const rows = ids.map((id) => {
         const n = defeats[id] ?? 0, key = next.has(id);
         // RCT hides the next one in obfuscated text, which a Bedrock form shows as noise: here "???", marked as next
@@ -2959,7 +3043,9 @@ world.afterEvents.buttonPush.subscribe(({ block, source }) => {
 function giveGymReward(player, id) {
     const badge = GYM_BADGES[id];
     if (!badge || rctDefeats(player)[id] !== 1) return;
-    const stack = new ItemStack(badge, 1), left = player.getComponent(EntityComponentTypes.Inventory)?.container?.addItem(stack);
+    const stack = new ItemStack(badge, 1);
+    stack.keepOnDeath = true;   // handed out once and not craftable, so a death does not take it, like the party item
+    const left = player.getComponent(EntityComponentTypes.Inventory)?.container?.addItem(stack);
     if (left) player.dimension.spawnItem(left, player.location);
     player.sendMessage(`§6${player.name} received the ${badge.slice(badge.indexOf(":") + 1).split("_").map(cap).join(" ")}!`);
 }
@@ -3350,7 +3436,7 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         }
         system.runTimeout(() => startGymBattle(source, npc, RCT_TRAINER_IDS[n]), 2);
     } else if (event.id === "cobblemon:gym_reset" && source.typeId === "minecraft:player") {
-        source.setDynamicProperty(RCT_DEFEATS, undefined); source.setDynamicProperty(RCT_SERIES, undefined);
+        source.setDynamicProperty(RCT_DEFEATS, undefined); source.setDynamicProperty(RCT_SERIES, undefined); source.setDynamicProperty(RCT_PREVIOUS, undefined);
         source.sendMessage("§7Your gym challenge is reset: no trainers beaten, no level cap.");
     } else if (event.id === "cobblemon:speed_probe") {
         // testing: "/execute as <entity> run scriptevent cobblemon:speed_probe [value]" logs its mean and top speed in blocks a tick
@@ -3397,8 +3483,6 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // testing: "/scriptevent cobblemon:gym_sites [clear]" logs the gym trainers' remembered places, or forgets them
         if (event.message.trim() === "clear") world.setDynamicProperty(GYM_SITES, undefined);
         console.warn(`[cobblemon] gym sites: ${JSON.stringify(gymSites())}`);
-        // "clear first" also forgets the first gym built for the card, so the next card holder gets one again
-        if (event.message.trim() === "clear first") { world.setDynamicProperty(GYM_SITES, undefined); world.setDynamicProperty(FIRST_GYM, undefined); }
     } else if (event.id === "cobblemon:held") {
         // testing: "/execute as <player> run scriptevent cobblemon:held" logs what is in their hand and its hotbar slot
         let held;
