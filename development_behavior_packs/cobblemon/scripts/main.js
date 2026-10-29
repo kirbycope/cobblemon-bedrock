@@ -6203,6 +6203,13 @@ system.runInterval(() => {
             rideStates.set(mount.id, st);
         }
         const style = rideStyle(ride, mount), entry = ride.find(([s]) => s === style), settings = entry[3] ?? {};
+        // the seat where Cobblemon's rider sits in this style (port.py's add_ride_seats); swapping the seat's rideable
+        // may run its rider events, so a ridden flier's state is set again after, tired or not
+        if (settings.seat && st.seat !== style) {
+            st.seat = style;
+            try { mount.triggerEvent(`cobblemon:seat_${style}`); } catch (e) { }
+            if (flier) { st.tier = -1; try { mount.triggerEvent("cobblemon:ride_air_on"); if (st.tired) mount.triggerEvent("cobblemon:ride_tired"); } catch (e) { } }
+        }
         const kind = RIDE_KINDS[entry[1]] ?? "horse";
         rideHint(player, st, style, kind, settings);
         let input = { x: 0, y: 0 }, jumping = false;

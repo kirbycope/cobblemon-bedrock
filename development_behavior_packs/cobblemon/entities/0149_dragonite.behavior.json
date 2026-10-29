@@ -379,6 +379,108 @@
                     "value": 0.21818
                 }
             },
+            "cobblemon:seat_air": {
+                "minecraft:rideable": {
+                    "seat_count": 2,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.0,
+                                2.14,
+                                -0.53
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                1.07,
+                                -0.65
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        }
+                    ],
+                    "on_rider_enter_event": "cobblemon:ride_air_on",
+                    "on_rider_exit_event": "cobblemon:ride_air_off"
+                }
+            },
+            "cobblemon:seat_land": {
+                "minecraft:rideable": {
+                    "seat_count": 2,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.0,
+                                2.2,
+                                -0.23
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        },
+                        {
+                            "position": [
+                                -0.04,
+                                0.99,
+                                -0.71
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        }
+                    ],
+                    "on_rider_enter_event": "cobblemon:ride_air_on",
+                    "on_rider_exit_event": "cobblemon:ride_air_off"
+                }
+            },
+            "cobblemon:seat_liquid": {
+                "minecraft:rideable": {
+                    "seat_count": 2,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.07,
+                                0.48,
+                                0.72
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        },
+                        {
+                            "position": [
+                                0.01,
+                                -0.04,
+                                -1.07
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 2
+                        }
+                    ],
+                    "on_rider_enter_event": "cobblemon:ride_air_on",
+                    "on_rider_exit_event": "cobblemon:ride_air_off"
+                }
+            },
             "cobblemon:water_moves": {
                 "minecraft:underwater_movement": {
                     "value": 0.1639
@@ -1266,6 +1368,45 @@
                     "component_groups": [
                         "cobblemon:ridden_air",
                         "cobblemon:fly_0"
+                    ]
+                }
+            },
+            "cobblemon:seat_air": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_land",
+                        "cobblemon:seat_liquid"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_air"
+                    ]
+                }
+            },
+            "cobblemon:seat_land": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_air",
+                        "cobblemon:seat_liquid"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
+                    ]
+                }
+            },
+            "cobblemon:seat_liquid": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_air",
+                        "cobblemon:seat_land"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_liquid"
                     ]
                 }
             },

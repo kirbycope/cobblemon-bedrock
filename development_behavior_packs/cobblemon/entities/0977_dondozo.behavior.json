@@ -305,6 +305,160 @@
             "cobblemon:gone": {
                 "minecraft:instant_despawn": {}
             },
+            "cobblemon:seat_land": {
+                "minecraft:rideable": {
+                    "seat_count": 7,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.0,
+                                1.86,
+                                1.15
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                -0.81,
+                                1.87,
+                                0.84
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.81,
+                                1.87,
+                                0.84
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                2.12,
+                                0.16
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                -0.81,
+                                1.88,
+                                -0.16
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.81,
+                                1.88,
+                                -0.16
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                2.07,
+                                -0.47
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        }
+                    ]
+                }
+            },
+            "cobblemon:seat_liquid": {
+                "minecraft:rideable": {
+                    "seat_count": 7,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.0,
+                                1.95,
+                                1.13
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                -0.81,
+                                1.93,
+                                0.82
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.81,
+                                1.93,
+                                0.82
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                2.13,
+                                0.11
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                -0.81,
+                                1.87,
+                                -0.18
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.81,
+                                1.87,
+                                -0.18
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                2.03,
+                                -0.51
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 7
+                        }
+                    ]
+                }
+            },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
                     "priority": 1,
@@ -696,6 +850,30 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:gone"
+                    ]
+                }
+            },
+            "cobblemon:seat_land": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_liquid"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
+                    ]
+                }
+            },
+            "cobblemon:seat_liquid": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_liquid"
                     ]
                 }
             },

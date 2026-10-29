@@ -302,6 +302,29 @@
             "cobblemon:gone": {
                 "minecraft:instant_despawn": {}
             },
+            "cobblemon:seat_land": {
+                "minecraft:rideable": {
+                    "seat_count": 1,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                -0.17,
+                                2.07,
+                                0.15
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 1
+                        }
+                    ]
+                }
+            },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
                     "priority": 1,
@@ -619,6 +642,16 @@
                 "add": {
                     "component_groups": [
                         "cobblemon:gone"
+                    ]
+                }
+            },
+            "cobblemon:seat_land": {
+                "remove": {
+                    "component_groups": []
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
                     ]
                 }
             },
