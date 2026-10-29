@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "mr_mime__battle_idle": "!q.property('cobblemon:primary')"
+                            "mr_mime__battle_idle": "!v.primary"
                         },
                         {
-                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                            "pose_battle_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -41,10 +41,10 @@
                 "jump": {
                     "animations": [
                         {
-                            "mr_mime__ride_jump": "!q.property('cobblemon:primary')"
+                            "mr_mime__ride_jump": "!v.primary"
                         },
                         {
-                            "pose_jump": "!q.property('cobblemon:primary')"
+                            "pose_jump": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -75,10 +75,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "mr_mime__ground_idle": "!q.property('cobblemon:primary')"
+                            "mr_mime__ground_idle": "!v.primary"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -109,10 +109,10 @@
                 "mount_standing": {
                     "animations": [
                         {
-                            "mr_mime__mount_idle": "!q.property('cobblemon:primary')"
+                            "mr_mime__mount_idle": "!v.primary"
                         },
                         {
-                            "pose_mount_standing": "!q.property('cobblemon:primary')"
+                            "pose_mount_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -143,10 +143,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "mr_mime__ground_walk": "!q.property('cobblemon:primary')"
+                            "mr_mime__ground_walk": "!v.primary"
                         },
                         {
-                            "pose_walking": "!q.property('cobblemon:primary')"
+                            "pose_walking": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -177,13 +177,13 @@
                 "mount_walking": {
                     "animations": [
                         {
-                            "mr_mime__mount_run": "!q.property('cobblemon:primary')"
+                            "mr_mime__mount_run": "!v.primary"
                         },
                         {
-                            "mr_mime__ride_mount_run": "!q.property('cobblemon:primary')"
+                            "mr_mime__ride_mount_run": "!v.primary"
                         },
                         {
-                            "pose_mount_walking": "!q.property('cobblemon:primary')"
+                            "pose_mount_walking": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -214,10 +214,10 @@
                 "running": {
                     "animations": [
                         {
-                            "mr_mime__ground_run": "!q.property('cobblemon:primary')"
+                            "mr_mime__ground_run": "!v.primary"
                         },
                         {
-                            "pose_running": "!q.property('cobblemon:primary')"
+                            "pose_running": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -360,7 +360,7 @@
                 "off": {
                     "transitions": [
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         }
                     ]
                 },
@@ -371,7 +371,7 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "off": "!v.primary"
                         }
                     ]
                 }

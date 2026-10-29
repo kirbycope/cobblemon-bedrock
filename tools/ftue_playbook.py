@@ -548,6 +548,18 @@ def stuck(at, memory={}):
     return bool(last) and math.hypot(at["x"] - last["x"], at["z"] - last["z"]) < 0.5
 
 
+def recipe_tooltip(t, text):
+    """Whether the tooltip of the recipe under the focus reads text. Read from the crafting window alone: over the
+    whole screen RapidOCR found no line in the tooltip (white on dark purple, across the Inventory label) and two
+    runs walked past the Trainer Card, while the same frame cropped to the window reads "Trainer Card"."""
+    from PIL import Image
+    image = Image.open(t.client.shot("recipes"))
+    w, h = image.size
+    path = os.path.join(t.dir, "_recipes.png")
+    image.crop((int(w * 0.156), int(h * 0.14), int(w * 0.844), int(h * 0.817))).save(path)
+    return any(matches(text, line[4]) for line in t.client.ocr(path))
+
+
 @step("Trainer Card: craft it at a crafting table")
 def card_craft(t):
     c, pad, bridge, steer = t.client, t.connect_pad(), t.connect_bridge(), t.steer(t.data.get("player"))
@@ -618,7 +630,7 @@ def card_craft(t):
     for row in range(4):
         for col in range(7):
             time.sleep(0.9)
-            if c.find("trainer card", timeout=0.2): found = True; break
+            if recipe_tooltip(t, "trainer card"): found = True; break
             if col < 6: pad.press("left" if row % 2 else "right")
         if found: break
         pad.press("down")
@@ -662,7 +674,7 @@ def start_series(t):
     c, pad, bridge = t.client, t.connect_pad(), t.connect_bridge()
     t.data.setdefault("player", bridge.player()["name"])
     who, nv = t.data["player"], navigator(t)
-    started, ta = time.time(), None
+    started, ta, gap = time.time(), None, None
     while time.time() - started < 180:
         at = bridge.player(who)["location"]
         near = bridge.entities(type=TA, location=at, max_distance=96)
@@ -675,7 +687,8 @@ def start_series(t):
         t.say(f"Heading for the Trainer Association, {gap:.0f} blocks off")
         loc = ta["location"]
         nv.go((loc["x"], loc["y"], loc["z"]), within=2.5, timeout=20)
-    check(ta, "the Trainer Association never came within reach")
+    # out of time still far off is a miss too: a run stuck 44 blocks away talked to it from there and blamed the use
+    check(ta and gap is not None and gap < 3.5, f"the Trainer Association never came within reach ({gap:.0f} blocks off)" if gap else "the Trainer Association never came within reach")
     t.note(f"met the Association {time.time() - started:.0f} s after setting off")
     c.shot("association_near")
     # an empty hand (the card in hand would take the use as the card's own screen), the eyes on it, LT to use it
@@ -696,6 +709,10 @@ def start_series(t):
         pad.press("lt:0.2"); time.sleep(1.5)
         # its own form: the series button, or the card offer priced in emeralds
         if c.find("radical red", "emerald", timeout=4): opened = True; break
+        # the probe saw it under the crosshair, but a block was nearer: one stood in a pit below the player, the
+        # crosshair on the grass at its edge, and four uses from there opened nothing. Go right up to it first
+        t.note(f"using it opened nothing (try {attempt + 1}); walking up to it")
+        nv.go(body() or (ta["location"]["x"], ta["location"]["y"], ta["location"]["z"]), within=1.5, timeout=10)
     c.shot("association_screen")
     check(opened, "using the Trainer Association opened nothing")
     t.say("Choosing the Radical Red series")
@@ -964,7 +981,12 @@ def every_gym(t):
             _, left = walk_legs(t, (gx, gy, gz), leg=90, within=40, budget=60 * 6)
             plate = door_plate(bridge, gdim, gx, gy, gz) if left is not None and left <= 40 else None
             if plate: _, left = walk_legs(t, (plate[0] + 0.5, plate[1], plate[2] + 0.5), leg=90, within=4, budget=60 * 6)
-            else: _, left = walk_legs(t, (gx, gy, gz), leg=90, within=10, budget=60 * 4)
+            else:
+                _, left = walk_legs(t, (gx, gy, gz), leg=90, within=10, budget=60 * 4)
+                # the first walk ended over 40 blocks off, so the plate was never looked for, and the walk dug into
+                # Cerulean's and Celadon's halls past the doors their plates stood in: look now, and go to it
+                plate = door_plate(bridge, gdim, gx, gy, gz)
+                if plate: _, left = walk_legs(t, (plate[0] + 0.5, plate[1], plate[2] + 0.5), leg=90, within=4, budget=60 * 3)
             if plate and left is not None and left <= 4:
                 # onto the plate itself (go counts half a block over within as there); and if no trainer comes, the
                 # runner puts the player square on it, so the report tells a missed step from a gym that does nothing
@@ -996,7 +1018,11 @@ def every_gym(t):
         p = bridge.player(name)
         at = p["location"]
         reached = p.get("dimension", "").endswith(gdim) and gym_block_near(bridge, at, dimension=gdim)
-        trainers = bridge.entities(type="cobblemon:rct_trainer", dimension=gdim, location={"x": gx, "y": gy, "z": gz}, max_distance=32)
+        # the trainer is called to its spot, so give it a while: Sabrina was out at Saffron's after the run had looked
+        for _ in range(5):
+            trainers = bridge.entities(type="cobblemon:rct_trainer", dimension=gdim, location={"x": gx, "y": gy, "z": gz}, max_distance=32)
+            if trainers or not reached: break
+            time.sleep(3)
         t.client.shot(f"gym_{town.lower()}")
         if not reached:
             found.append(f"{town} not reached ({math.hypot(gx - at['x'], gz - at['z']):.0f} blocks short)")

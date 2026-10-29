@@ -2936,8 +2936,14 @@ def add_primary_controllers(anims, lengths, stems):
     first clip, 0 for none), rather than by the script's playAnimation: the property and a clip played from a script
     reach the client in separate packets, the clip later, and in between the pose had stopped and the clip had not
     started, Greninja in its rest pose for three frames as Hydro Pump began (issue 32, filmed at 20 fps). One property
-    stops the pose and starts the clip on the same frame. Returns {species: {clip: [index, seconds]}} for main.js."""
+    stops the pose and starts the clip on the same frame. Returns {species: {clip: [index, seconds]}} for main.js.
+
+    The client times the clip itself (v.primary, from v.primary_t against the clip's length) and goes back to the pose
+    when it has run, rather than waiting for the script to clear the property: a server running slow (a tablet hosting
+    its own world) cleared it a second or more after the clip ended, and the model stood in its rest pose, the T-pose,
+    until it did (issue 42, filmed with the server spending 60 ms a tick). A faint holds, so it never runs out."""
     primary = {}
+    prop = "q.property('cobblemon:primary')"
     for species, clips in anims.items():
         own = sorted({c for c in clips.values() if c in lengths})
         if not own: continue
@@ -2950,19 +2956,30 @@ def add_primary_controllers(anims, lengths, stems):
         for n, c in enumerate(own, 1): desc["animations"][f"primary_{n}"] = c
         desc["animations"]["primary_controller"] = f"controller.animation.{name}.primary"
         # after the pose, so override_previous_animation replaces whatever the pose still holds
-        animate = desc.setdefault("scripts", {}).setdefault("animate", [])
+        scripts = desc.setdefault("scripts", {})
+        animate = scripts.setdefault("animate", [])
         if "primary_controller" not in animate: animate.append("primary_controller")
+        length = "0"
+        for n, c in reversed(list(enumerate(own, 1))):
+            length = f"({prop} == {n} ? {9999 if 'faint' in c else lengths[c]} : {length})"
+        scripts["initialize"] = [line for line in scripts.get("initialize", []) if "v.primary" not in line] + ["v.primary_last = 0; v.primary_t = 0;"]
+        scripts["pre_animation"] = [line for line in scripts.get("pre_animation", []) if "v.primary" not in line] + [
+            f"v.primary_t = {prop} == v.primary_last ? v.primary_t + q.delta_time : 0;",
+            f"v.primary_last = {prop};",
+            f"v.primary = {prop} > 0 && v.primary_t < {length};"]
         with open(path, "w") as file: file.write(json.dumps(client, indent=4))
-        is_clip = lambda n: f"q.property('cobblemon:primary') == {n}"
+        is_clip = lambda n: f"v.primary && {prop} == {n}"
         states = {"off": {"transitions": [{f"clip_{n}": is_clip(n)} for n in range(1, len(own) + 1)]}}
         for n in range(1, len(own) + 1):
             states[f"clip_{n}"] = {"animations": [f"primary_{n}"], "blend_transition": 0.2,
-                                   "transitions": [{"off": "q.property('cobblemon:primary') == 0"}] +
-                                                  [{f"clip_{m}": is_clip(m)} for m in range(1, len(own) + 1) if m != n]}
+                                   "transitions": [{f"clip_{m}": is_clip(m)} for m in range(1, len(own) + 1) if m != n] +
+                                                  [{"off": "!v.primary"}]}
         path = f"{animationControllersBedrock}/{stem}.animation_controllers.json"
         controllers = {"format_version": "1.10.0", "animation_controllers": {}}
         if os.path.exists(path):
             with open(path, encoding="utf-8") as file: controllers = json.load(file)
+        # the pose's clips stop while the clip runs on the client, not while the property is set
+        controllers = json.loads(json.dumps(controllers).replace(f"!{prop}", "!v.primary"))
         controllers["animation_controllers"][f"controller.animation.{name}.primary"] = {"initial_state": "off", "states": states}
         with open(path, "w") as file: file.write(json.dumps(controllers, indent=4))
         path = f"{entitiesBedrock}/{stem}.behavior.json"
@@ -3030,8 +3047,15 @@ def create_move_fx():
     for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
         with open(path, encoding="utf-8") as file: text = file.read()
         if "override_previous_animation" not in text: continue
+        held = text
         for aid, anim in json.loads(text).get("animations", {}).items():
             if aid in wanted and anim.get("override_previous_animation"): lengths[aid] = round(float(anim.get("animation_length", 1.0)), 3)
+            # a faint holds its last frame, as Cobblemon's does: one that played once and stopped stood the Pokemon
+            # back up in its rest pose (Greninja, after the smoke) until the script took it away
+            if aid in lengths and "faint" in aid and "loop" not in anim:
+                held = re.sub(rf'("{re.escape(aid)}"\s*:\s*\{{)(\s*)', r'\1\2"loop": "hold_on_last_frame",\2', held, count=1)
+        if held != text:
+            with open(path, "w", encoding="utf-8") as file: file.write(held)
     primary = add_primary_controllers(anims, lengths, stems)
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
@@ -5270,15 +5294,18 @@ def create_trainer_association():
     """cobblemon:trainer_association, RCT's Trainer Association (TrainerAssociation.java, a WanderingTrader drawn by
     WanderingTraderRenderer in RCT's own texture): the villager model in rct_trainers/trainer_association.png, 0.6 by
     1.95, 20 health, walking about at 0.5. It follows the player it was sent to (RCT's player target), here by being
-    tamed to them; scripts/main.js spawns it, says what it offers and takes it away again."""
+    tamed to them; scripts/main.js spawns it, says what it offers and takes it away again. It is sent from up to 70
+    blocks off on each axis, so follow_owner's max_distance and the follow range reach 128: on their defaults (60
+    and 16) one spawned 70 blocks away stood there for minutes and never came."""
     os.makedirs(f"{texturesEntityBedrock}/rct", exist_ok=True)
     shutil.copyfile(f"{pwd}/rct_trainers/trainer_association.png", f"{texturesEntityBedrock}/rct/trainer_association.png")
     behavior = {"format_version": "1.21.0", "minecraft:entity": {
         "description": {"identifier": "cobblemon:trainer_association", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
         "component_groups": {"cobblemon:following": {
-            "minecraft:behavior.follow_owner": {"priority": 2, "speed_multiplier": 1.0, "start_distance": 8, "stop_distance": 3, "can_teleport": False}}},
+            "minecraft:behavior.follow_owner": {"priority": 2, "speed_multiplier": 1.0, "start_distance": 8, "stop_distance": 3, "can_teleport": False, "max_distance": 128}}},
         "components": {
             "minecraft:type_family": {"family": ["npc", "trainer_association", "cobblemon_npc"]},
+            "minecraft:follow_range": {"value": 128, "max": 128},
             "minecraft:nameable": {"always_show": True, "allow_name_tag_renaming": False},
             "minecraft:collision_box": {"width": 0.6, "height": 1.95},
             "minecraft:health": {"value": 20, "max": 20},

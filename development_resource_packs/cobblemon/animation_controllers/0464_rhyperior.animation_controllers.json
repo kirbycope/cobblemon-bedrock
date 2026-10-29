@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!q.property('cobblemon:primary')"
+                            "battle_idle": "!v.primary"
                         },
                         {
-                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                            "pose_battle_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -35,13 +35,13 @@
                 "jump": {
                     "animations": [
                         {
-                            "ride_jump": "!q.property('cobblemon:primary')"
+                            "ride_jump": "!v.primary"
                         },
                         {
-                            "ride_ground_run": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_ground_run": "(q.has_rider) && !v.primary"
                         },
                         {
-                            "pose_jump": "!q.property('cobblemon:primary')"
+                            "pose_jump": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -66,13 +66,13 @@
                 "running": {
                     "animations": [
                         {
-                            "ground_run": "!q.property('cobblemon:primary')"
+                            "ground_run": "!v.primary"
                         },
                         {
-                            "ride_ground_run": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_ground_run": "(q.has_rider) && !v.primary"
                         },
                         {
-                            "pose_running": "!q.property('cobblemon:primary')"
+                            "pose_running": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -97,10 +97,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!q.property('cobblemon:primary')"
+                            "ground_idle": "!v.primary"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -125,13 +125,13 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!q.property('cobblemon:primary')"
+                            "ground_walk": "!v.primary"
                         },
                         {
-                            "ride_ground_walk": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_ground_walk": "(q.has_rider) && !v.primary"
                         },
                         {
-                            "pose_walking": "!q.property('cobblemon:primary')"
+                            "pose_walking": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -156,7 +156,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!q.property('cobblemon:primary')"
+                            "sleep": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -230,16 +230,16 @@
                 "off": {
                     "transitions": [
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         },
                         {
-                            "clip_2": "q.property('cobblemon:primary') == 2"
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
                         },
                         {
-                            "clip_3": "q.property('cobblemon:primary') == 3"
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
                         },
                         {
-                            "clip_4": "q.property('cobblemon:primary') == 4"
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
                         }
                     ]
                 },
@@ -250,16 +250,16 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
                         },
                         {
-                            "clip_2": "q.property('cobblemon:primary') == 2"
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
                         },
                         {
-                            "clip_3": "q.property('cobblemon:primary') == 3"
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
                         },
                         {
-                            "clip_4": "q.property('cobblemon:primary') == 4"
+                            "off": "!v.primary"
                         }
                     ]
                 },
@@ -270,16 +270,16 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         },
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
                         },
                         {
-                            "clip_3": "q.property('cobblemon:primary') == 3"
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
                         },
                         {
-                            "clip_4": "q.property('cobblemon:primary') == 4"
+                            "off": "!v.primary"
                         }
                     ]
                 },
@@ -290,16 +290,16 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         },
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
                         },
                         {
-                            "clip_2": "q.property('cobblemon:primary') == 2"
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
                         },
                         {
-                            "clip_4": "q.property('cobblemon:primary') == 4"
+                            "off": "!v.primary"
                         }
                     ]
                 },
@@ -310,16 +310,16 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         },
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
                         },
                         {
-                            "clip_2": "q.property('cobblemon:primary') == 2"
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
                         },
                         {
-                            "clip_3": "q.property('cobblemon:primary') == 3"
+                            "off": "!v.primary"
                         }
                     ]
                 }

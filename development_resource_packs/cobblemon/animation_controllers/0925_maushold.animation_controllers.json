@@ -7,10 +7,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "maushold_four__ground_idle": "!q.property('cobblemon:primary')"
+                            "maushold_four__ground_idle": "!v.primary"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -32,10 +32,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "maushold_four__ground_walk": "!q.property('cobblemon:primary')"
+                            "maushold_four__ground_walk": "!v.primary"
                         },
                         {
-                            "pose_walking": "!q.property('cobblemon:primary')"
+                            "pose_walking": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -57,7 +57,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "maushold_four__sleep": "!q.property('cobblemon:primary')"
+                            "maushold_four__sleep": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -79,10 +79,10 @@
                 "shoulder_left": {
                     "animations": [
                         {
-                            "maushold_four__shoulder_left": "!q.property('cobblemon:primary')"
+                            "maushold_four__shoulder_left": "!v.primary"
                         },
                         {
-                            "pose_shoulder_left": "!q.property('cobblemon:primary')"
+                            "pose_shoulder_left": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -104,10 +104,10 @@
                 "shoulder_right": {
                     "animations": [
                         {
-                            "maushold_four__shoulder_right": "!q.property('cobblemon:primary')"
+                            "maushold_four__shoulder_right": "!v.primary"
                         },
                         {
-                            "pose_shoulder_right": "!q.property('cobblemon:primary')"
+                            "pose_shoulder_right": "!v.primary"
                         }
                     ],
                     "transitions": [
@@ -153,7 +153,7 @@
                 "off": {
                     "transitions": [
                         {
-                            "clip_1": "q.property('cobblemon:primary') == 1"
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
                         }
                     ]
                 },
@@ -164,7 +164,7 @@
                     "blend_transition": 0.2,
                     "transitions": [
                         {
-                            "off": "q.property('cobblemon:primary') == 0"
+                            "off": "!v.primary"
                         }
                     ]
                 }
