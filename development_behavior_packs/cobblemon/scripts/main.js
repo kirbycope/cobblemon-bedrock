@@ -3491,6 +3491,20 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     } else if (event.id === "cobblemon:battle_pose") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:battle_pose [off]" freezes it in its battle poses
         freeze(source, event.message.trim() !== "off");
+    } else if (event.id === "cobblemon:move_fx") {
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:move_fx <move>" plays that move's effect (its clips,
+        // particles and sounds) from the Pokemon at the nearest other Pokemon within 16 blocks, as a hit in battle would
+        const id = event.message.trim(), move = MOVES[id];
+        if (!POKEMON[source.typeId] || !move) { console.warn(`[cobblemon] move_fx: no Pokemon or no move ${id}`); return; }
+        const foe = source.dimension.getEntities({ families: ["pokemon"], location: source.location, maxDistance: 16 }).filter((e) => e.id !== source.id)[0];
+        if (!foe) { console.warn("[cobblemon] move_fx: no Pokemon within 16 blocks to aim at"); return; }
+        playMoveFx({}, { entity: source }, { entity: foe }, { id, ...move }, { used: true, missed: false });
+    } else if (event.id === "cobblemon:lag") {
+        // testing: "/scriptevent cobblemon:lag <ms>" spends that long in every tick, a slow host's server; 0 stops it
+        if (globalThis.lagRun !== undefined) system.clearRun(globalThis.lagRun);
+        const ms = Number(event.message) || 0;
+        globalThis.lagRun = ms > 0 ? system.runInterval(() => { const end = Date.now() + ms; while (Date.now() < end) { } }, 1) : undefined;
+        console.warn(`[cobblemon] lag ${ms} ms a tick`);
     } else if (event.id === "cobblemon:play_clip") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:play_clip <name>" plays the clip a move's effect
         // names (physical, special, status, cry, faint...), as playMoveFx would; with no name it logs the names it has
