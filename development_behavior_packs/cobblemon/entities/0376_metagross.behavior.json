@@ -442,6 +442,110 @@
                     "value": 0.21818
                 }
             },
+            "cobblemon:seat_air": {
+                "minecraft:rideable": {
+                    "seat_count": 4,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                0.0,
+                                2.68,
+                                0.49
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                -0.49,
+                                2.68,
+                                -0.0
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                0.49,
+                                2.68,
+                                -0.0
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                0.0,
+                                2.68,
+                                -0.49
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        }
+                    ],
+                    "on_rider_enter_event": "cobblemon:ride_air_on",
+                    "on_rider_exit_event": "cobblemon:ride_air_off"
+                }
+            },
+            "cobblemon:seat_land": {
+                "minecraft:rideable": {
+                    "seat_count": 4,
+                    "family_types": [
+                        "player"
+                    ],
+                    "interact_text": "action.interact.ride.horse",
+                    "controlling_seat": 0,
+                    "crouching_skip_interact": true,
+                    "pull_in_entities": false,
+                    "seats": [
+                        {
+                            "position": [
+                                -0.04,
+                                1.88,
+                                0.5
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                -0.53,
+                                1.88,
+                                0.02
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                0.44,
+                                1.89,
+                                0.01
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        },
+                        {
+                            "position": [
+                                -0.05,
+                                1.9,
+                                -0.47
+                            ],
+                            "min_rider_count": 0,
+                            "max_rider_count": 4
+                        }
+                    ],
+                    "on_rider_enter_event": "cobblemon:ride_air_on",
+                    "on_rider_exit_event": "cobblemon:ride_air_off"
+                }
+            },
             "cobblemon:battling": {
                 "minecraft:behavior.nearest_attackable_target": {
                     "priority": 1,
@@ -1303,6 +1407,30 @@
                     "component_groups": [
                         "cobblemon:ridden_air",
                         "cobblemon:fly_0"
+                    ]
+                }
+            },
+            "cobblemon:seat_air": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_air"
+                    ]
+                }
+            },
+            "cobblemon:seat_land": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:seat_air"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:seat_land"
                     ]
                 }
             },

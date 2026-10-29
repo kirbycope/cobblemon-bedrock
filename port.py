@@ -991,7 +991,11 @@ def fix_models():
                 geometry["bones"] = [bn for bn in geometry.get("bones", []) if bn["name"] not in ("rightItem", "leftItem")]
                 changed |= len(geometry["bones"]) != before
             base = [g for g in geometries if not g["description"]["identifier"].endswith(".held")]
-            held = [h for h in (held_geometry(g) for g in base) if h]
+            # made once a copy, as the layers are: a variant model's item locators go once a run has copied the models
+            # (dedupe_variant_locators: the base model's win) and separate_model_layers nudges the quads, so a --fix
+            # run keeps the held geometry it finds rather than dropping or un-nudging it; a change here needs a full run
+            had = {g["description"]["identifier"]: g for g in geometries if g["description"]["identifier"].endswith(".held")}
+            held = [h for h in (had.get(g["description"]["identifier"] + ".held") or held_geometry(g) for g in base) if h]
             if base + held != geometries: data["minecraft:geometry"] = base + held; changed = True
             if changed:
                 count += 1
@@ -1106,7 +1110,7 @@ def pose_plan(pokemon, pokemonName):
         flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
         plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
                                 ambient_particles(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}),
-                                seat_shift=lambda pose: seat_shift(pokemon, pose))
+                                seat_shift=lambda pose: ride_poses.setdefault(pokemon, []).append(pose) or seat_shift(pokemon, pose))
         plan["source"] = found["source"]
     pose_plans[pokemon] = plan
     return plan
@@ -1676,8 +1680,12 @@ def create_animation_controllers():
             generated = f"{animationsBedrock}/{pokemon}/poses.animation.json"
             if plan["animations"]:
                 os.makedirs(f"{animationsBedrock}/{pokemon}", exist_ok=True)
-                with open(generated, "w", encoding="utf-8") as file:
-                    file.write(json.dumps({"format_version": "1.8.0", "animations": plan["animations"]}, indent=1))
+                content = json.loads(json.dumps({"format_version": "1.8.0", "animations": plan["animations"]}))
+                # left alone when nothing changed: a full run's separate_model_layers rewrites it in its own layout, and
+                # a --fix run, where that pass skips the models it spread before, would otherwise put it back
+                same = os.path.exists(generated) and json.load(open(generated, encoding="utf-8")) == content
+                if not same:
+                    with open(generated, "w", encoding="utf-8") as file: file.write(json.dumps(content, indent=1))
             elif os.path.exists(generated): os.remove(generated)   # Bedrock rejects an empty animations list
             report[pokemon] = {"source": plan["source"], "poses": plan["names"], "issues": plan["report"]}
             add_quirk_controllers(controllers, pokemonName, names)
@@ -2254,6 +2262,16 @@ def clear_cubes(geo, skins):
                 if seen: break
             if not seen: clear.add(id(c))
     return clear
+
+
+def copied_afresh(folder):
+    """A models folder written from Cobblemon's files on every run, --fix too (the balls, NPCs, fossils, gilded
+    chest), is unlayered again, so separate_model_layers, which takes a folder once a copy, takes it again."""
+    done_path = f"{modelsBedrock}/layered.txt"
+    if not os.path.exists(done_path): return
+    with open(done_path) as file: done = json.load(file)
+    if folder in done:
+        with open(done_path, "w") as file: file.write(json.dumps([f for f in done if f != folder]))
 
 
 def separate_model_layers():
@@ -3897,21 +3915,30 @@ def seat_shift(pokemon, pose):
     on the fixed seat (the locator at rest), in animation units; None when it is ridden on the ground, not ridden, or
     moves the locator less than a pixel. Flying with the rest pose's seat, a rider sat inside Charizard's back."""
     if not ride_behaviours(species_for(pokemon) or {}): return None
-    # in the air only: in water the ride clips sink the body, and lifting the model to its rider took it out of the water
+    # in the air only: in water the ride clips sink the body, and lifting the model to its rider took it out of the
+    # water; on land and in water the seat moves to the locator instead (ride_seats)
     cond = pose["condition"]
     off = "(!q.is_on_ground && !q.is_in_water)"
     airborne = pose["types"] & {"HOVER", "FLY"} or (off in cond and f"!{off}" not in cond and f"!({off}" not in cond)
     if not airborne or "!q.has_rider" in cond or "cobblemon:battle')" in cond.replace("!q.property('cobblemon:battle')", ""): return None
+    seats = posed_seats(pokemon, pose)
+    if not seats or not seats[0]: return None
+    moved = seats[0][1] - seats[0][0]
+    if numpy.linalg.norm(moved) < 1: return None
+    # Blockbench space has x mirrored against an animation's x
+    return [round(moved[0], 2), round(-moved[1], 2), round(-moved[2], 2)]
+
+
+def posed_seats(pokemon, pose, parts=False):
+    """Each seat locator at rest and where a pose's ridden clips put it at their start, as [(rest, posed)] in
+    Blockbench units with x mirrored, as an animation has it, None for a seat the model has no locator for
+    (Tyrantrum's second); None without a model or clips. With parts, the pose's transformed parts move it too
+    (Gyarados' body sits 9 pixels lower at the water's surface)."""
     name = pokemon[pokemon.index("_")+1:]
     geometry = geometry_for(pokemon, name)[len("geometry."):]
     path = f"{modelsBedrock}/{pokemon}/{geometry}.geo.json"
     if not os.path.exists(path): return None
     with open(path, encoding="utf-8") as file: geo = json.load(file)["minecraft:geometry"][0]
-    locator = ((species_for(pokemon).get("riding") or {}).get("seats") or [{}])[0].get("locator", "seat_1")
-    owner = next((b for b in geo["bones"] if locator in b.get("locators", {})), None)
-    point = owner and owner["locators"][locator]
-    if isinstance(point, dict): point = point.get("offset")
-    if not isinstance(point, list): return None
     sys.path.insert(0, os.path.join(pwd, "tools"))
     import render_portraits as rp
     if pokemon not in seat_clips:
@@ -3927,12 +3954,79 @@ def seat_shift(pokemon, pose):
                 v = rp.channel_at_zero(chans[k]) if k in chans else None
                 if v is None: continue
                 e[k] = [x * y for x, y in zip(e.get(k, [1, 1, 1]), v)] if k == "scale" else [x + y for x, y in zip(e.get(k, [0, 0, 0]), v)]
+    for t in pose["parts"] if parts else []:   # as poses.static_parts writes them, Java's y running down
+        e = anim.setdefault(t["part"].lower(), {})
+        e["position"] = [a + b for a, b in zip(e.get("position", [0, 0, 0]), [t["position"][0], -t["position"][1], t["position"][2]])]
+        e["rotation"] = [a + b for a, b in zip(e.get("rotation", [0, 0, 0]), t["rotation"])]
     if not anim: return None
-    at = numpy.append(rp.bbp(point), 1.0)
-    moved = rp.bone_matrices(geo["bones"], anim)[owner["name"]] @ at - rp.bone_matrices(geo["bones"], {})[owner["name"]] @ at
-    if numpy.linalg.norm(moved[:3]) < 1: return None
-    # Blockbench space has x mirrored against an animation's x
-    return [round(moved[0], 2), round(-moved[1], 2), round(-moved[2], 2)]
+    rest, posed, out = rp.bone_matrices(geo["bones"], {}), rp.bone_matrices(geo["bones"], anim), []
+    for seat in (species_for(pokemon).get("riding") or {}).get("seats") or [{"locator": "seat_1"}]:
+        locator = seat.get("locator", "seat_1")
+        owner = next((b for b in geo["bones"] if locator in b.get("locators", {})), None)
+        point = owner and owner["locators"][locator]
+        if isinstance(point, dict): point = point.get("offset")
+        if not isinstance(point, list): out.append(None); continue
+        at = numpy.append(rp.bbp(point), 1.0)
+        out.append(((rest[owner["name"]] @ at)[:3], (posed[owner["name"]] @ at)[:3]))
+    return out
+
+
+# the ridden situations a seat follows, as the client's pose choice sees them (poses.pose_type_molang): the pose type
+# it gives a mount ridden walking on land and swimming in water, and the queries a pose's condition reads there
+RIDE_SCENES = {"land": ("WALK", {"q.has_rider": 1, "q.is_on_ground": 1, "q.ground_speed": 4}),
+               "liquid": ("SWIM", {"q.has_rider": 1, "q.is_in_water": 1, "q.ground_speed": 4})}
+
+
+def scene_holds(condition, values):
+    """Whether a pose's Molang condition holds with these query values, every other query and property 0 (no battle,
+    at the surface); None for a condition past plain comparisons and logic, which this reader leaves alone."""
+    text = re.sub(r"q\.property\('[^']*'\)", "0", condition)
+    text = re.sub(r"\b[qv]\.[a-z_]+", lambda m: str(values.get(m.group(0), 0)), text)
+    text = re.sub(r"!(?!=)", " not ", text.replace("&&", " and ").replace("||", " or "))
+    if not re.fullmatch(r"[\d\s().<>=!+\-*/]*", re.sub(r"\b(and|or|not)\b", " ", text)): return None
+    try: return bool(eval(text, {"__builtins__": {}}, {}))
+    except Exception: return None
+
+
+ride_poses = {}
+
+
+def rest_seats(pokemon):
+    """A mount's seat positions where its rest pose has the seat locators; a model faces -Z and an entity's seat
+    space faces +Z, so the locator's depth flips."""
+    seats = species_for(pokemon)["riding"].get("seats") or [{"locator": "seat_1"}]
+    return [[x, y, round(-z, 2)] for x, y, z in (locator_offset(pokemon, pokemon[pokemon.index("_")+1:], seat.get("locator", "seat_1")) for seat in seats)]
+
+
+def ride_seats(pokemon):
+    """A mount's seats for each style it is ridden in ({"land": positions, ...}), where Cobblemon's rider would sit:
+    at the seat locators as the pose the client plays in that style (ridden walking on land, swimming in water) has
+    them at its clips' start. In the air the rest pose's seats stand, since the model is drawn to them (seat_shift).
+    None when no style's seats are a pixel from the rest pose's. Cobblemon carries its rider with the locator while
+    a Bedrock seat stays put, so walking, Gyarados' head, its seat, was half a block from the rider."""
+    if pokemon in ride_seat_styles: return ride_seat_styles[pokemon]
+    species = species_for(pokemon) or {}
+    kinds = ride_behaviours(species)
+    if not kinds: return None
+    name = pokemon[pokemon.index("_")+1:]
+    pose_plan(pokemon, name)   # which records the poses in the order the client tries them
+    scale, rest = species.get("baseScale", 1.0), rest_seats(pokemon)
+    out, moved = {}, False
+    for kind in sorted(kinds):
+        style, seats = kind.lower(), rest
+        scene = RIDE_SCENES.get(style)
+        pose = scene and next((p for p in ride_poses.get(pokemon, []) if scene[0] in p["types"] and scene_holds(p["condition"], scene[1])), None)
+        found = pose and posed_seats(pokemon, pose, parts=True)
+        if found:
+            seats = [[round(float(at[0]) / 16 * scale, 2), round(float(at[1]) / 16 * scale, 2), round(-float(at[2]) / 16 * scale, 2)] if pair else home
+                     for pair, home in zip(found, rest) for at in [pair and pair[1]]]
+            moved |= any(abs(a - b) >= 1 / 16 for seat, home in zip(seats, rest) for a, b in zip(seat, home))
+        out[style] = seats
+    ride_seat_styles[pokemon] = out if moved else None
+    return ride_seat_styles[pokemon]
+
+
+ride_seat_styles = {}
 
 
 seat_clips = {}
@@ -3944,8 +4038,7 @@ def add_riding(entity, species, pokemon):
     if not kinds: return
     owned = entity["minecraft:entity"]["component_groups"]["cobblemon:owned"]
     seats = species["riding"].get("seats") or [{"locator": "seat_1"}]
-    # a model faces -Z and an entity's seat space faces +Z, so the locator's depth flips
-    positions = [[x, y, round(-z, 2)] for x, y, z in (locator_offset(pokemon, pokemon[pokemon.index("_")+1:], seat.get("locator", "seat_1")) for seat in seats)]
+    positions = rest_seats(pokemon)
     owned["minecraft:rideable"] = {
         "seat_count": len(seats), "family_types": ["player"], "interact_text": "action.interact.ride.horse",
         "controlling_seat": 0, "crouching_skip_interact": True, "pull_in_entities": False,
@@ -3980,6 +4073,21 @@ def add_riding(entity, species, pokemon):
         events.setdefault(event, {}).setdefault("add", {}).setdefault("component_groups", []).append("cobblemon:gravity")
     owned["minecraft:rideable"]["on_rider_enter_event"] = "cobblemon:ride_air_on"
     owned["minecraft:rideable"]["on_rider_exit_event"] = "cobblemon:ride_air_off"
+
+
+def add_ride_seats(entity, pokemon):
+    """A mount whose seats move with its style (ride_seats) takes a rideable a style, in groups scripts/main.js swaps
+    as the style changes: one event takes the other styles' groups away and adds its own. A group taken away takes its
+    rideable with it, which throws the rider off, so a ridden mount always has one of them on."""
+    styles = ride_seats(pokemon)
+    if not styles: return
+    minecraft = entity["minecraft:entity"]
+    groups, events = minecraft["component_groups"], minecraft["events"]
+    rideable = groups["cobblemon:owned"]["minecraft:rideable"]
+    names = {style: f"cobblemon:seat_{style}" for style in styles}
+    for style, positions in styles.items():
+        groups[names[style]] = {"minecraft:rideable": dict(rideable, seats=[dict(seat, position=position) for seat, position in zip(rideable["seats"], positions)])}
+        events[names[style]] = {"remove": {"component_groups": [n for s, n in names.items() if s != style]}, "add": {"component_groups": [names[style]]}}
 
 
 def add_water_flight(entity, species, kind):
@@ -4064,6 +4172,7 @@ def add_capture(entity, species, pokemon, kind):
     events["cobblemon:follow"] = {"add": {"component_groups": ["cobblemon:following"]}}
     events["cobblemon:vanish"] = {"add": {"component_groups": ["cobblemon:gone"]}}
     add_riding(entity, species, pokemon)   # after the events above, which it adds to
+    add_ride_seats(entity, pokemon)   # after the riding, whose rideable it copies
     level = max(5, spawn_level_by_name.get(species_key(species), 5))
 
 
@@ -4128,6 +4237,7 @@ def create_poke_ball_entity():
         geo["minecraft:geometry"][0]["description"]["identifier"] = f"geometry.{model}"
         with open(f"{modelsBedrock}/poke_ball/{model}.geo.json", "w") as file: file.write(json.dumps(geo, indent="\t"))
         shutil.copyfile(f"{pokeBallsMain}/animations/{model}.animation.json", f"{animationsBedrock}/poke_ball/{model}.animation.json")
+    copied_afresh("poke_ball")
     with open(f"{renderControllersBedrock}/poke_ball.render_controllers.json", "w") as file:
         file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.poke_ball": {"geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Texture.default"]}}}, indent=4))
     for info in poke_balls():
@@ -4396,6 +4506,7 @@ def create_npcs():
         geo["minecraft:geometry"][0]["description"]["identifier"] = f"geometry.{npc}"
         os.makedirs(f"{modelsBedrock}/{npc}", exist_ok=True)
         with open(f"{modelsBedrock}/{npc}/{npc}.geo.json", "w") as file: file.write(json.dumps(geo, indent="\t"))
+        copied_afresh(npc)
         os.makedirs(f"{texturesEntityBedrock}/npcs/{npc}", exist_ok=True)
         shutil.copyfile(f"{cobblemon}/textures/npcs/{info['texture']}.png", f"{texturesEntityBedrock}/npcs/{npc}/{npc}.png")
         behavior = {"format_version": "1.16.0", "minecraft:entity": {
@@ -4769,17 +4880,23 @@ behaviorAnimationsBedrock = f"{behaviorPack}/animations"
 
 
 def locator_offset(pokemon, pokemonName, locator):
-    """A locator's position in blocks, relative to the entity, from its geometry (model units are 1/16 block)."""
+    """A locator's position in blocks, relative to the entity, from its geometry (model units are 1/16 block), where
+    the rest pose's bone rotations put it: a locator turns with the bones it hangs from. Read as written, Corviknight's
+    seat, on a chest tilted back on a tilted torso, was 1.6 blocks forward of where the model draws it, in its head."""
     geometry = geometry_for(pokemon, pokemonName)[len("geometry."):]
     path = f"{modelsBedrock}/{pokemon}/{geometry}.geo.json"
     scale = (species_for(pokemon) or {}).get("baseScale", 1.0)
     if os.path.exists(path):
         with open(path, encoding="utf-8") as file: data = json.load(file)
+        sys.path.insert(0, os.path.join(pwd, "tools"))
+        import render_portraits as rp
         for geo in data.get("minecraft:geometry", []):
             for bone in geo.get("bones", []):
                 point = bone.get("locators", {}).get(locator)
                 if isinstance(point, dict): point = point.get("offset")
-                if isinstance(point, list) and len(point) >= 3: return [round(-point[0] / 16 * scale, 2), round(point[1] / 16 * scale, 2), round(point[2] / 16 * scale, 2)]
+                if isinstance(point, list) and len(point) >= 3:
+                    at = rp.bone_matrices(geo["bones"], {})[bone["name"]] @ numpy.append(rp.bbp(point), 1.0)
+                    return [round(float(v) / 16 * scale, 2) for v in at[:3]]
     height = (species_for(pokemon) or {}).get("hitbox", {}).get("height", 1.0) * scale
     return [0, round(height / 2, 2), 0]
 
@@ -6208,6 +6325,7 @@ def create_fossil_display():
     events = {f"cobblemon:growth_{g}": {"remove": {"component_groups": [f"cobblemon:growth_{h}" for h in range(5) if h != g]}, "add": {"component_groups": [f"cobblemon:growth_{g}"]}} for g in range(5)}
     for n, stage in enumerate(stages):
         shutil.copyfile(f"{fossilModelsMain}/models/{stage}.geo.json", f"{modelsBedrock}/fossils/{stage}.geo.json")
+        copied_afresh("fossils")
         with open(f"{fossilModelsMain}/variations/{stage}.json", encoding="utf-8") as file: variation = json.load(file)["variations"][0]
         texture = os.path.basename(variation["texture"])[:-len(".png")]
         shutil.copyfile(f"{cobblemon}/textures/fossils/{texture}.png", f"{texturesEntityBedrock}/fossils/{texture}.png")
@@ -7739,6 +7857,7 @@ def create_gilded_chests():
     src = f"{cobblemon}/bedrock/block_entities"
     os.makedirs(f"{resourcePack}/models/entity/gilded_chest", exist_ok=True)
     shutil.copyfile(f"{src}/models/gilded_chest.geo.json", f"{resourcePack}/models/entity/gilded_chest/gilded_chest.geo.json")
+    copied_afresh("gilded_chest")
     os.makedirs(f"{animationsBedrock}/gilded_chest", exist_ok=True)
     shutil.copyfile(f"{src}/animations/gilded_chest.animation.json", f"{animationsBedrock}/gilded_chest/gilded_chest.animation.json")
     os.makedirs(f"{resourcePack}/textures/entity/gilded_chest", exist_ok=True)
@@ -8117,7 +8236,9 @@ def create_summary_ui():
             species = species_for(pokemon) or {}
             walk = float(((species.get("behaviour") or {}).get("moving") or {}).get("walk", {}).get("walkSpeed", 0.35))
             flag = lambda key: str(b.get(key, "true")).strip().lower() not in ("false", "0", "0.0")
-            out.append([style.lower(), icon, ranges, {"walk": walk, "jump": flag("canJump"), "sprint": flag("canSprint")}])
+            # and whether its seat moves with the style (port.py's add_ride_seats), which scripts/main.js swaps
+            seat = {"seat": True} if ride_seats(pokemon) else {}
+            out.append([style.lower(), icon, ranges, {"walk": walk, "jump": flag("canJump"), "sprint": flag("canSprint"), **seat}])
         if out: rides[entity_id(pokemon)] = out
     with open(f"{scriptsBedrock}/rides.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: each rideable species' riding behaviours (style, icon index, stat ranges), for the Summary's Ride page\n")
@@ -8679,9 +8800,13 @@ def pokemon_icons():
     for path in glob.glob(f"{entitiesBedrock}/[0-9]*.behavior.json"):
         with open(path, encoding="utf-8") as file: events = json.load(file)["minecraft:entity"].get("events", {})
         variants[os.path.basename(path)[:-len(".behavior.json")]] = max(1, sum(1 for key in events if key.startswith("cobblemon:set_variant_")))
-    for old in glob.glob(f"{folder}/i[0-9]*.png"): os.remove(old)
-    failures = render_portraits.render_all(folder, lambda name, v: f"{portrait_code(int(name.split('_', 1)[0]), v)}.png", variants=variants)
-    for name, error in failures: print(f"  no portrait for {name}: {error}")
+    # rendered from the models as a full run copies them; a --fix run finds them spread already (separate_model_layers),
+    # which framed every portrait a pixel or two off, so it keeps the portraits it has and fills in only missing ones
+    existing = glob.glob(f"{folder}/i[0-9]*.png")
+    if not (fix_only and existing):
+        for old in existing: os.remove(old)
+        failures = render_portraits.render_all(folder, lambda name, v: f"{portrait_code(int(name.split('_', 1)[0]), v)}.png", variants=variants)
+        for name, error in failures: print(f"  no portrait for {name}: {error}")
     for name, count in variants.items():
         number = int(name.split("_", 1)[0]); base = f"{folder}/{portrait_code(number, 0)}.png"
         if not os.path.exists(base):
@@ -11431,8 +11556,11 @@ def check_structure_blocks():
     print(f"Structure block check: {sum(len(set(v)) for v in found.values())} entries in {len(found)} structures would load as '?'.")
 
 
+fix_only = False   # python port.py --fix: the fixes and the generated files only, nothing copied or downloaded afresh
+
+
 def main():
-    global pokemons
+    global pokemons, fix_only
     fix_only = "--fix" in sys.argv
     get_cobblemon()
     if not fix_only:

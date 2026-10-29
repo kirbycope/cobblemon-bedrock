@@ -676,6 +676,10 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
         # "root" is the model's root part: the poser's rootBone
         if "root" in bones and "root" not in model_bones and found.get("root") in model_bones:
             bones[found["root"]] = bones.pop("root")
+        # where the forms disagree on the body bone's pivot it is body_ (port.py's rename_clashing_body_bones), which a
+        # --fix run finds already done to the models it reads
+        if "body" in bones and "body" not in model_bones and "body_" in model_bones:
+            bones["body_"] = bones.pop("body")
         missing = [b for b in bones if b not in model_bones]
         for b in missing:
             report.append(f"{pose['name']}: no bone {b}"); del bones[b]
