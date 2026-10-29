@@ -5294,15 +5294,18 @@ def create_trainer_association():
     """cobblemon:trainer_association, RCT's Trainer Association (TrainerAssociation.java, a WanderingTrader drawn by
     WanderingTraderRenderer in RCT's own texture): the villager model in rct_trainers/trainer_association.png, 0.6 by
     1.95, 20 health, walking about at 0.5. It follows the player it was sent to (RCT's player target), here by being
-    tamed to them; scripts/main.js spawns it, says what it offers and takes it away again."""
+    tamed to them; scripts/main.js spawns it, says what it offers and takes it away again. It is sent from up to 70
+    blocks off on each axis, so follow_owner's max_distance and the follow range reach 128: on their defaults (60
+    and 16) one spawned 70 blocks away stood there for minutes and never came."""
     os.makedirs(f"{texturesEntityBedrock}/rct", exist_ok=True)
     shutil.copyfile(f"{pwd}/rct_trainers/trainer_association.png", f"{texturesEntityBedrock}/rct/trainer_association.png")
     behavior = {"format_version": "1.21.0", "minecraft:entity": {
         "description": {"identifier": "cobblemon:trainer_association", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
         "component_groups": {"cobblemon:following": {
-            "minecraft:behavior.follow_owner": {"priority": 2, "speed_multiplier": 1.0, "start_distance": 8, "stop_distance": 3, "can_teleport": False}}},
+            "minecraft:behavior.follow_owner": {"priority": 2, "speed_multiplier": 1.0, "start_distance": 8, "stop_distance": 3, "can_teleport": False, "max_distance": 128}}},
         "components": {
             "minecraft:type_family": {"family": ["npc", "trainer_association", "cobblemon_npc"]},
+            "minecraft:follow_range": {"value": 128, "max": 128},
             "minecraft:nameable": {"always_show": True, "allow_name_tag_renaming": False},
             "minecraft:collision_box": {"width": 0.6, "height": 1.95},
             "minecraft:health": {"value": 20, "max": 20},
