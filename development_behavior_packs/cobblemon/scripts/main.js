@@ -4671,31 +4671,36 @@ function openPasture(block, player, state) {
             for (const e of here) if (prop(e, OWNER) === player.id) recall(player, e, block);
             again(14); return;
         }
+        // choosing a Pokemon in a box sends it out at once, as PasturePCGUIConfiguration's selectOverride does: picked and
+        // then sent to a row, the first one never went, since an empty pasture has no row to press with a controller
+        let send = sel;
         if (pick < 30) {
             const rec = contents[pick];
-            state.sel = rec && !rec.p && !(sel && sel.box === state.box && sel.slot === pick) ? { box: state.box, slot: pick } : null;
-            if (rec?.p) player.sendMessage("§7That Pokemon is already out in a pasture.");
-            again(); return;
+            if (!rec) { again(); return; }
+            if (rec.p) { player.sendMessage("§7That Pokemon is already out in a pasture."); again(); return; }
+            if (rec.f) { player.sendMessage("§7A fainted Pokemon cannot go out to pasture."); again(); return; }
+            send = { box: state.box, slot: pick };
+        } else {
+            const row = pick >= 34 && pick < 34 + PASTURE_LIMIT ? shown[pick - 34] : undefined;
+            if (row) {
+                if (prop(row, OWNER) === player.id) { recall(player, row, block); again(14); }
+                else { player.sendMessage("§7That Pokemon isn't yours."); again(); }
+                return;
+            }
         }
-        const row = pick >= 34 && pick < 34 + PASTURE_LIMIT ? shown[pick - 34] : undefined;
-        if (row) {
-            if (prop(row, OWNER) === player.id) { recall(player, row, block); again(14); }
-            else { player.sendMessage("§7That Pokemon isn't yours."); again(); }
-            return;
-        }
-        if (!sel) { again(); return; }
+        if (!send) { again(); return; }
         if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); again(); return; }
-        const pcBox = box(player, sel.box), rec = pcBox[sel.slot];
+        const pcBox = box(player, send.box), rec = pcBox[send.slot];
         state.sel = null;
         if (!rec || rec.p) { again(); return; }
         const at = { x: block.location.x + 0.5 + (Math.random() * 4 - 2), y: block.location.y, z: block.location.z + 0.5 + (Math.random() * 4 - 2) };
         let entity;
         try { entity = spawnStored(player, rec, at); } catch (e) { player.sendMessage("§cThat Pokemon could not come out here."); again(); return; }
         system.run(() => {
-            try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${sel.box}:${sel.slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
+            try { entity.triggerEvent("cobblemon:pasture"); setProp(entity, PASTURE_SLOT, `${send.box}:${send.slot}`); setProp(entity, PASTURE_AT, key); } catch (e) { }
             setProp(entity, OWNER_NAME, player.name);   // PokemonPastureBlockEntity's playerName, for the list while they are away
         });
-        rec.p = key; saveBox(player, sel.box, pcBox);
+        rec.p = key; saveBox(player, send.box, pcBox);
         setPastureLamp(block, true);
         again(14);
     }).catch(() => { });
