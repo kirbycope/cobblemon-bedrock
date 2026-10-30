@@ -1585,7 +1585,7 @@ def create_cosmetics():
 
 def add_variants(entity, species, pokemon):
     """One component group per look (minecraft:variant n), an event to set each, and a spawn roll:
-    gender by the species' maleRatio, shiny at 1 in 4096, regional forms only through their event."""
+    gender by the species' maleRatio, shiny at 1 in SHINY_ODDS (8192), regional forms only through their event."""
     variations = resolver_variations(pokemon)
     if len(variations) < 2: return
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
@@ -10851,6 +10851,12 @@ def create_scan_hud():
     parts = {"lines": load("overlay_scanlines"), "top": load("overlay_border_top"), "bottom": load("overlay_border_bottom"),
              "left": load("overlay_border_left"), "right": load("overlay_border_right"), "notch": load("overlay_notch"),
              "tl": corners.crop((0, 0, 4, 4)), "tr": corners.crop((4, 0, 8, 4)), "bl": corners.crop((0, 4, 4, 8)), "br": corners.crop((4, 4, 8, 8))}
+    # the scanlines (1 by 4) are tiled across the screen: as one 64 by 64 tile of them, about 70 tiles fill it rather
+    # than tens of thousands, the same picture (lag on a tablet while scanning, issues 35 and 44)
+    lines = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+    for x in range(0, 64, parts["lines"].width):
+        for y in range(0, 64, parts["lines"].height): lines.paste(parts["lines"], (x, y))
+    parts["lines"] = lines
     for name, image in parts.items(): image.save(f"{out}/{name}_on.png"); blank.save(f"{out}/{name}_of.png")
     # the outer and inner rings, turned anticlockwise in 15 degree steps; the script picks the frame for the angle
     # renderScanRings has reached (the outer half a degree an update, the inner one idle and ten on a Pokemon)
@@ -10930,10 +10936,14 @@ def create_scan_hud():
             text_x = x + (((120 - 28) / 2 + (0 if side == "l" else 28)) if inner else 92 / 2)
             text_y = y + {0: 5, 1: 4, 2: 8, 3: 42}[k]
             controls.append(text(f"text{k}{side}", field(f"t{k}{side}"), (text_x, text_y + 5)))
-    # every part draws only while the kept title is a scan record: the title can be kept from another layer's record
+    # every part draws only while the kept title is an open scan's record. The title can be kept from another layer's
+    # record, and the closing record ("of") stays kept after the scan: while that kept the layer drawn, the scanlines'
+    # blank, a 1 by 1 tile, covered the screen pixel by pixel every frame until the world was left (issue 44's lag
+    # after scanning)
+    open_scan = f"(('%.{len(SCAN_MARKER) + 2}s' * #preserved_text) = '{SCAN_MARKER}on')"
     for control in controls[1:]:
         body = next(iter(control.values()))
-        body["bindings"] = body.get("bindings", []) + [from_data(f"(not ((#preserved_text - '{SCAN_MARKER}') = #preserved_text))", "#visible")]
+        body["bindings"] = body.get("bindings", []) + [from_data(open_scan, "#visible")]
     return {"cobblemon_scan": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 
