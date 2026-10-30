@@ -2970,8 +2970,11 @@ def add_primary_controllers(anims, lengths, stems):
         with open(path, "w") as file: file.write(json.dumps(client, indent=4))
         is_clip = lambda n: f"v.primary && {prop} == {n}"
         states = {"off": {"transitions": [{f"clip_{n}": is_clip(n)} for n in range(1, len(own) + 1)]}}
+        # no blend in or out: the pose's clips stop and start on the frame v.primary changes, so a clip fading in over
+        # them (0.2 s) left each bone part way to its rest pose meanwhile, a twitch at the start and end of every move
+        # (issue 46: Greninja, Blaziken and Mimikyu "still tweak a little")
         for n in range(1, len(own) + 1):
-            states[f"clip_{n}"] = {"animations": [f"primary_{n}"], "blend_transition": 0.2,
+            states[f"clip_{n}"] = {"animations": [f"primary_{n}"],
                                    "transitions": [{f"clip_{m}": is_clip(m)} for m in range(1, len(own) + 1) if m != n] +
                                                   [{"off": "!v.primary"}]}
         path = f"{animationControllersBedrock}/{stem}.animation_controllers.json"

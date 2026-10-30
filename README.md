@@ -76,7 +76,9 @@ Radical Cobblemon Trainers with a full team to beat:
   or, with no series started or your series finished, at the nearest Trainer Association.
   Each gym remembers where its trainer stands once a player has been within about 64 blocks of it (Bedrock only
   sees that far), so the arrow points at the nearest such gym before anyone has called its trainer out; a gym nobody
-  has been near cannot be found.
+  has been near cannot be found. A gym is noticed on a random tick of its marker, which can take minutes, so while the
+  card is held in a series with no gym known it also searches the blocks within 32 of you every five seconds: walk up
+  to a gym with the card in hand and the arrow comes within a few seconds.
 - **Calling a trainer back.** The button under a gym's sign calls its trainer back for one type gem from your
   inventory, the gem the sign names (a Rock Gem for Brock).
 

@@ -2687,6 +2687,22 @@ function noteGymSite(trainer, dimension, at) {
     sites[id] = [here, ...old.filter((s) => s[0] !== here[0] || Math.hypot(s[1] - here[1], s[3] - here[3]) > 64)].slice(0, SITES_PER_TRAINER);
     try { world.setDynamicProperty(GYM_SITES, JSON.stringify(sites)); } catch (e) { console.warn(`[cobblemon] gym sites: ${e}`); }
 }
+// a gym's spot marker is remembered on its random tick, which can take minutes: the FTUE stood two minutes at Pewter's
+// door with the card saying no gym was found. While a card held in a series has nothing to point at, the blocks around
+// the player are searched for spot markers instead, every five seconds, 32 blocks out and 12 up and down
+const gymScanAt = new Map();   // player id -> tick of their last search
+function scanForGyms(player) {
+    if (system.currentTick - (gymScanAt.get(player.id) ?? -Infinity) < 100) return;
+    gymScanAt.set(player.id, system.currentTick);
+    const dim = player.dimension, x = Math.floor(player.location.x), y = Math.floor(player.location.y), z = Math.floor(player.location.z);
+    try {
+        const found = dim.getBlocks(new BlockVolume({ x: x - 32, y: y - 12, z: z - 32 }, { x: x + 32, y: y + 12, z: z + 32 }), { includeTypes: ["cobblemon:gym_marker"] }, true);
+        for (const at of found.getBlockLocationIterator()) {
+            const m = gymMarker(dim.getBlock(at));
+            if (m?.role === "spot") noteGymSite(m.trainer, dim, at);
+        }
+    } catch (e) { }
+}
 const ARROWS = ["\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196"];
 const rctOrder = () => [...RCT_TRAINER_IDS].sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name));
 const REGIONAL = { alolan: "Alolan ", galarian: "Galarian ", hisuian: "Hisuian ", paldean: "Paldean " };   // as the battle names them
@@ -2920,7 +2936,8 @@ system.runInterval(() => {
         const target = cardTarget(player);
         if (!target) {
             // nothing to point at yet: no Association about for a player in no series, or no gym with a trainer to
-            // battle near a player in one
+            // battle near a player in one, who may be standing at a gym whose spot marker has not had its random tick yet
+            if (rctSeries(player) && !rctSeriesDone(player)) scanForGyms(player);
             const line = rctSeries(player) && !rctSeriesDone(player) ? "§7No gym found yet. Explore: the card points to the next one you pass near."
                 : "§7A Trainer Association will find you soon: keep the card on you.";
             try { player.onScreenDisplay.setActionBar(line); } catch (e) { }
