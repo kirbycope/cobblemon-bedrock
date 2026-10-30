@@ -12,7 +12,9 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import time
+import urllib.error
 import urllib.request
 
 import pyautogui
@@ -32,7 +34,13 @@ def download(t):
         shutil.copyfile(os.environ["FTUE_ADDON"], path)
         t.note(f"local build {os.environ['FTUE_ADDON']}, not the release")
     else:
-        urllib.request.urlretrieve(RELEASE, path)
+        try:
+            urllib.request.urlretrieve(RELEASE, path)
+        except urllib.error.URLError as error:
+            # Python's own certificates can fall behind the system's ("unable to get issuer certificate" in October
+            # 2026); Windows' curl checks against the system store
+            t.note(f"urllib could not fetch the release ({error.reason}); fetched it with curl")
+            subprocess.run(["curl", "-sSfL", "-o", path, RELEASE], check=True)
     t.data["addon"] = path
     t.data["packs"] = t.store.manifests_in_addon(path)
     check(len(t.data["packs"]) == 2, f"expected a behavior and a resource pack in the .mcaddon, found {t.data['packs']}")
@@ -103,7 +111,14 @@ def starter_screen(t):
     # repair your elytra" was taken for one of "starter", "choose", "kanto")
     while time.time() - began < 900 and c.find("loading", timeout=0):
         time.sleep(3)
-    found = c.wait("starter selection", "i choose you", "kanto", "content log", timeout=max(60, 900 - (time.time() - began)), why="the starter screen on first join")
+    # and a match is taken only with no Loading dialog on screen: the screen before it ("Generating world") has no
+    # "loading", the wait began early, and a later tip on the dialog ("Use phantom membranes to repair your elytra")
+    # passed for "i choose you" again
+    while True:
+        found = c.wait("starter selection", "i choose you", "kanto", "content log", timeout=max(60, 900 - (time.time() - began)), why="the starter screen on first join")
+        if not c.find("loading", timeout=0): break
+        check(time.time() - began < 900, "still on the Loading screen after 15 minutes")
+        time.sleep(3)
     if time.time() - began > 120:
         t.finding(f"The first load of the new world took {(time.time() - began) / 60:.1f} minutes on the Loading screen.")
     if "content log" in found[2].lower():
@@ -283,8 +298,11 @@ def focused_label(c, labels):
     path = c.shot("focus_tile")
     image = numpy.asarray(Image.open(path).convert("HSV")).astype(int)
     scores = {}
+    import difflib
     for x, y, w, h, text in c.ocr(path):
-        name = next((l for l in labels if matches(l, text)), None)
+        # white on the focused tile's red reads worst ("Fiaht"), and the font folding takes that further from "fight",
+        # so the focused tile went unscored and two runs reported no focus over a red Fight: a plain near match too
+        name = next((l for l in labels if matches(l, text) or difflib.SequenceMatcher(None, l, text.lower()).ratio() >= 0.75), None)
         if not name: continue
         patch = image[max(0, y - 6):y + h + 6, max(0, x - 20):x + w + 20]
         scores[name] = float(patch[:, :, 1].mean())   # saturation
@@ -494,6 +512,24 @@ def eat(t):
     return True
 
 
+BLOCK_USE = re.compile(r"bucket|flint_and_steel|bone_meal|_hoe$|_shovel$|_axe$|fire_charge|_seeds$|_sapling$")
+
+
+def free_hand(t, tries=10):
+    """A hand that uses a block rather than an item: empty if a slot is, else a plain vanilla item, as a player with a
+    full hotbar would just use the crafting table with whatever is in hand. A battle's drops (a Bunnelby's Raw Rabbit
+    and Rabbit Hide) once filled the last slots and the step gave up for want of an empty one."""
+    if hold(t, None): return True
+    pad = t.connect_pad()
+    for _ in range(tries):
+        held = held_item(t) or ""
+        if held.startswith("minecraft:") and not BLOCK_USE.search(held):
+            t.note(f"no empty hotbar slot; used it with {held} in hand")
+            return True
+        pad.press("rb", gap=0.15)
+    return False
+
+
 def held_item(t):
     """What the player holds, from the add-on's cobblemon:held test hook in the server log, or None where the build
     has no such hook (reading the item's name off the screen missed the Trainer Card in some worlds)."""
@@ -600,14 +636,14 @@ def card_craft(t):
     # try. The slot is found by its contents through the bridge: the item name over the hotbar fades after a moment,
     # so reading the screen cannot tell an empty slot from a held book
     in_world(t)   # any screen a stray press opened
-    check(hold(t, None), "no empty hotbar slot to free the hand")
+    check(free_hand(t), "no empty hotbar slot or plain item to use the table with")
     # right up beside it, then the top face from above: from two blocks off at its side, the Raticate just battled
     # wandered in between and took the use ("Press Use to battle")
     navigator(t).go((x + 0.5, y, z + 0.5), within=1.8, timeout=20)
     for attempt in range(6):
         # aimed afresh each try, the empty hand checked again: the aim drifted off the table and a slot change put
         # an ingredient in hand, and the table never opened (two runs in a row)
-        if attempt: hold(t, None)
+        if attempt: free_hand(t)
         # on the table by the probe's word where it runs, else by the angles
         if not navigator(t).look_at((x + 0.5 + 0.15 * (attempt % 2), y + 0.97, z + 0.5 - 0.15 * (attempt % 3 == 2)),
                                     block=(x, y, z) if navigator(t).probe else None, timeout=6):
