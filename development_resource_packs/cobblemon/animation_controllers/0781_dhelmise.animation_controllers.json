@@ -7,10 +7,10 @@
                 "jump": {
                     "animations": [
                         {
-                            "water_swim": "!v.primary"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_jump": "!v.primary"
+                            "pose_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -41,7 +41,7 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -72,7 +72,7 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -103,7 +103,7 @@
                 "surface_floating": {
                     "animations": [
                         {
-                            "water_idle": "!v.primary"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -134,7 +134,7 @@
                 "surface_swimming": {
                     "animations": [
                         {
-                            "water_swim": "!v.primary"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -165,7 +165,7 @@
                 "floating": {
                     "animations": [
                         {
-                            "water_idle": "!v.primary"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -196,7 +196,7 @@
                 "swimming": {
                     "animations": [
                         {
-                            "water_swim": "!v.primary"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -227,7 +227,7 @@
                 "sleeping": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -297,7 +297,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

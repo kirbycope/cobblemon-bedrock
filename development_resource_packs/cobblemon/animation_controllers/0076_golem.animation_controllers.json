@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!q.property('cobblemon:primary')"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -32,10 +32,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!q.property('cobblemon:primary')"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -57,10 +57,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!q.property('cobblemon:primary')"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walking": "!q.property('cobblemon:primary')"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -82,7 +82,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!q.property('cobblemon:primary')"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -104,13 +104,13 @@
                 "wild_sleep": {
                     "animations": [
                         {
-                            "wild_sleep3": "(v.clip_roll >= 0.0000 && v.clip_roll < 0.4000) && !q.property('cobblemon:primary')"
+                            "wild_sleep3": "(v.clip_roll >= 0.0000 && v.clip_roll < 0.4000) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "wild_sleep2": "(v.clip_roll >= 0.4000 && v.clip_roll < 0.7000) && !q.property('cobblemon:primary')"
+                            "wild_sleep2": "(v.clip_roll >= 0.4000 && v.clip_roll < 0.7000) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "wild_sleep1": "(v.clip_roll >= 0.7000 && v.clip_roll < 1.0000) && !q.property('cobblemon:primary')"
+                            "wild_sleep1": "(v.clip_roll >= 0.7000 && v.clip_roll < 1.0000) * (1 - (v.primary_w ?? 0))"
                         }
                     ],
                     "transitions": [

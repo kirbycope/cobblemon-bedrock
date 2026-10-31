@@ -7,13 +7,13 @@
                 "hover": {
                     "animations": [
                         {
-                            "air_idle": "!v.primary"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_fly": "(q.has_rider) && !v.primary"
+                            "ride_air_fly": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_hover": "!v.primary"
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -29,13 +29,13 @@
                 "fly": {
                     "animations": [
                         {
-                            "air_fly": "!v.primary"
+                            "air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_fly": "(q.has_rider) && !v.primary"
+                            "ride_air_fly": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_fly": "!v.primary"
+                            "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -51,7 +51,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -113,7 +113,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

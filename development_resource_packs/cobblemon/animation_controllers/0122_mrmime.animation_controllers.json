@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "mr_mime__battle_idle": "!v.primary"
+                            "mr_mime__battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!v.primary"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -41,10 +41,10 @@
                 "jump": {
                     "animations": [
                         {
-                            "mr_mime__ride_jump": "!v.primary"
+                            "mr_mime__ride_jump": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_jump": "!v.primary"
+                            "pose_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -75,10 +75,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "mr_mime__ground_idle": "!v.primary"
+                            "mr_mime__ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -109,10 +109,10 @@
                 "mount_standing": {
                     "animations": [
                         {
-                            "mr_mime__mount_idle": "!v.primary"
+                            "mr_mime__mount_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_standing": "!v.primary"
+                            "pose_mount_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -143,10 +143,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "mr_mime__ground_walk": "!v.primary"
+                            "mr_mime__ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walking": "!v.primary"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -177,13 +177,13 @@
                 "mount_walking": {
                     "animations": [
                         {
-                            "mr_mime__mount_run": "!v.primary"
+                            "mr_mime__mount_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "mr_mime__ride_mount_run": "!v.primary"
+                            "mr_mime__ride_mount_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_walking": "!v.primary"
+                            "pose_mount_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -214,10 +214,10 @@
                 "running": {
                     "animations": [
                         {
-                            "mr_mime__ground_run": "!v.primary"
+                            "mr_mime__ground_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_running": "!v.primary"
+                            "pose_running": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -366,7 +366,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

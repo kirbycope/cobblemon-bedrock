@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!v.primary"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!v.primary"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -38,10 +38,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -69,10 +69,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walking": "!v.primary"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -100,7 +100,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -128,10 +128,10 @@
                 "hover": {
                     "animations": [
                         {
-                            "air_idle": "!v.primary"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_hover": "!v.primary"
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -159,13 +159,13 @@
                 "fly": {
                     "animations": [
                         {
-                            "air_fly": "!v.primary"
+                            "air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_fly": "(q.has_rider) && !v.primary"
+                            "ride_air_fly": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_fly": "!v.primary"
+                            "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -193,16 +193,16 @@
                 "glide": {
                     "animations": [
                         {
-                            "air_glide": "!v.primary"
+                            "air_glide": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_dive": "!v.primary"
+                            "ride_dive": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_fly": "(q.has_rider) && !v.primary"
+                            "ride_air_fly": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_glide": "!v.primary"
+                            "pose_glide": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -331,7 +331,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -350,7 +352,9 @@
                 },
                 "clip_2": {
                     "animations": [
-                        "primary_2"
+                        {
+                            "primary_2": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -369,7 +373,9 @@
                 },
                 "clip_3": {
                     "animations": [
-                        "primary_3"
+                        {
+                            "primary_3": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -388,7 +394,9 @@
                 },
                 "clip_4": {
                     "animations": [
-                        "primary_4"
+                        {
+                            "primary_4": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

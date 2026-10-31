@@ -2017,7 +2017,11 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
                 return False
         gap = f[1] - g[1]
         is_detail = id(f[4]) in detail_cubes
-        if gap < 0 or (gap > 0 and not (seen_faces[n] or (id(f[4]), f[6], f[7]) in shown)): return False
+        # a body face a hair in front (an inflate's breadth) counts where it shows turned toward the middle, as a level one
+        # does: Arbok's hood pattern faces its middle, which the long tail puts ahead of the reared hood, and stayed 0.01
+        # out (issue 48)
+        hair = not is_detail and gap <= 0.03 and open_faces[n]
+        if gap < 0 or (gap > 0 and not (seen_faces[n] or (id(f[4]), f[6], f[7]) in shown or hair)): return False
         if is_detail:
             # level face details are spare expressions, one shown at a time (stacking their sides slid Greninja's
             # aside); but a ghost its nudge brought level, out along the face, is a lid closing exactly onto the eye
@@ -2026,7 +2030,10 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
             return gap <= 1.0
         if gap == 0 and (area(f[2]), -n) >= (area(g[2]), -m): return False
         if gap >= LAYER_NEAR or twin(f[4], g[4]): return False
-        if area(f[2]) <= area(g[2]) + 1e-6 and shared(f[2], g[2]) >= 0.999: return True
+        # smaller before its inflate: Arbok's hood patterns, boxes flush with the hood's and 0.01 inflated, were a hair
+        # larger than the face under them and stayed 0.01 out of it, flickering in and out at a distance (issue 48)
+        inf = 2 * f[4].get("inflate", 0)
+        if (f[2][1] - f[2][0] - inf) * (f[2][3] - f[2][2] - inf) <= area(g[2]) * 1.0001 + 1e-6 and shared(f[2], g[2]) >= 0.999: return True
         # a face already lifted carries what lay on it in front, small as the overlap is (Raichu's nose plane, 0.01 in
         # front of the nose box: both went up off the muzzle to one depth and fought)
         return m in lifted and shared(f[2], g[2]) >= 0.25
@@ -2942,7 +2949,7 @@ def add_primary_controllers(anims, lengths, stems):
     when it has run, rather than waiting for the script to clear the property: a server running slow (a tablet hosting
     its own world) cleared it a second or more after the clip ended, and the model stood in its rest pose, the T-pose,
     until it did (issue 42, filmed with the server spending 60 ms a tick). A faint holds, so it never runs out."""
-    primary = {}
+    primary, weighed = {}, set()
     prop = "q.property('cobblemon:primary')"
     for species, clips in anims.items():
         own = sorted({c for c in clips.values() if c in lengths})
@@ -2959,38 +2966,52 @@ def add_primary_controllers(anims, lengths, stems):
         scripts = desc.setdefault("scripts", {})
         animate = scripts.setdefault("animate", [])
         if "primary_controller" not in animate: animate.append("primary_controller")
-        length = "0"
+        length, fade = "0", "0"
         for n, c in reversed(list(enumerate(own, 1))):
             length = f"({prop} == {n} ? {9999 if 'faint' in c else lengths[c]} : {length})"
+            fade = f"({prop} == {n} ? {round(max(lengths[c] * 0.1, 0.05), 3)} : {fade})"
         scripts["initialize"] = [line for line in scripts.get("initialize", []) if "v.primary" not in line] + ["v.primary_last = 0; v.primary_t = 0;"]
+        # v.primary_w, the clip's weight and one less the pose's: up over the clip's first tenth, as Cobblemon's
+        # PrimaryAnimation curve has it, and down over its last tenth, where Cobblemon cuts straight back to the pose;
+        # a faint, which holds, never comes down
         scripts["pre_animation"] = [line for line in scripts.get("pre_animation", []) if "v.primary" not in line] + [
             f"v.primary_t = {prop} == v.primary_last ? v.primary_t + q.delta_time : 0;",
             f"v.primary_last = {prop};",
-            f"v.primary = {prop} > 0 && v.primary_t < {length};"]
+            f"v.primary_len = {length}; v.primary_fade = {fade};",
+            "v.primary = q.property('cobblemon:primary') > 0 && v.primary_t < v.primary_len;",
+            "v.primary_w = v.primary ? math.clamp(math.min(v.primary_t, v.primary_len - v.primary_t) / v.primary_fade, 0, 1) : 0;"]
         with open(path, "w") as file: file.write(json.dumps(client, indent=4))
         is_clip = lambda n: f"v.primary && {prop} == {n}"
         states = {"off": {"transitions": [{f"clip_{n}": is_clip(n)} for n in range(1, len(own) + 1)]}}
-        # no blend in or out: the pose's clips stop and start on the frame v.primary changes, so a clip fading in over
-        # them (0.2 s) left each bone part way to its rest pose meanwhile, a twitch at the start and end of every move
-        # (issue 46: Greninja, Blaziken and Mimikyu "still tweak a little")
+        # the clip and the pose cross-fade by weight (poses.py gives the pose's clips 1 - v.primary_w), adding together
+        # as Cobblemon's two intensities do: a blend_transition faded from no animation, the rest pose, and a twitch at
+        # the start of every move (issue 46); none cut from the stance to the clip's first frame and from its last back
+        # (issue 48, filmed at 60 fps on Greninja's Hydro Pump)
         for n in range(1, len(own) + 1):
-            states[f"clip_{n}"] = {"animations": [f"primary_{n}"],
+            states[f"clip_{n}"] = {"animations": [{f"primary_{n}": "v.primary_w"}],
                                    "transitions": [{f"clip_{m}": is_clip(m)} for m in range(1, len(own) + 1) if m != n] +
                                                   [{"off": "!v.primary"}]}
         path = f"{animationControllersBedrock}/{stem}.animation_controllers.json"
         controllers = {"format_version": "1.10.0", "animation_controllers": {}}
         if os.path.exists(path):
             with open(path, encoding="utf-8") as file: controllers = json.load(file)
-        # the pose's clips stop while the clip runs on the client, not while the property is set
-        controllers = json.loads(json.dumps(controllers).replace(f"!{prop}", "!v.primary"))
         controllers["animation_controllers"][f"controller.animation.{name}.primary"] = {"initial_state": "off", "states": states}
         with open(path, "w") as file: file.write(json.dumps(controllers, indent=4))
+        weighed.update(own)
         path = f"{entitiesBedrock}/{stem}.behavior.json"
         if not os.path.exists(path): continue
         with open(path, encoding="utf-8") as file: behavior = json.load(file)
         behavior["minecraft:entity"]["description"]["properties"]["cobblemon:primary"] = {
             "type": "int", "range": [0, len(own)], "default": 0, "client_sync": True}
         with open(path, "w") as file: file.write(json.dumps(behavior, indent=4))
+    # override_previous_animation (mark_primary_animations) ignores a clip's weight and replaces the pose outright, so
+    # the clips a primary controller weighs add instead: the pose's weight going to 0 is what clears it, and the bones it
+    # moves and the clip does not key are keyed at rest in the clip already
+    for path in glob.glob(f"{animationsBedrock}/**/*.animation.json", recursive=True):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        dropped = [a for a, anim in data.get("animations", {}).items() if a in weighed and anim.pop("override_previous_animation", None)]
+        if dropped:
+            with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
     return primary
 
 

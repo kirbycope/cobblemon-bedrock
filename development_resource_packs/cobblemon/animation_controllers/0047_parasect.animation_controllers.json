@@ -7,7 +7,7 @@
                 "stand": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -29,10 +29,10 @@
                 "in_air": {
                     "animations": [
                         {
-                            "ride_jump": "!v.primary"
+                            "ride_jump": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_run": "!v.primary"
+                            "ride_ground_run": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -54,10 +54,10 @@
                 "walk": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_run": "(q.has_rider && 1) && !v.primary"
+                            "ride_ground_run": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         }
                     ],
                     "transitions": [
@@ -79,10 +79,10 @@
                 "run": {
                     "animations": [
                         {
-                            "ground_run": "!v.primary"
+                            "ground_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_run": "(q.has_rider && 1) && !v.primary"
+                            "ride_ground_run": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         }
                     ],
                     "transitions": [
@@ -104,7 +104,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -156,7 +156,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

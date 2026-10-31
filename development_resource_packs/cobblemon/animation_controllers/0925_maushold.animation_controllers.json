@@ -7,10 +7,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "maushold_four__ground_idle": "!v.primary"
+                            "maushold_four__ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -32,10 +32,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "maushold_four__ground_walk": "!v.primary"
+                            "maushold_four__ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walking": "!v.primary"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -57,7 +57,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "maushold_four__sleep": "!v.primary"
+                            "maushold_four__sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -79,10 +79,10 @@
                 "shoulder_left": {
                     "animations": [
                         {
-                            "maushold_four__shoulder_left": "!v.primary"
+                            "maushold_four__shoulder_left": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_shoulder_left": "!v.primary"
+                            "pose_shoulder_left": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -104,10 +104,10 @@
                 "shoulder_right": {
                     "animations": [
                         {
-                            "maushold_four__shoulder_right": "!v.primary"
+                            "maushold_four__shoulder_right": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_shoulder_right": "!v.primary"
+                            "pose_shoulder_right": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -159,7 +159,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

@@ -7,10 +7,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -29,10 +29,10 @@
                 "walk": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walk": "!v.primary"
+                            "pose_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -51,10 +51,10 @@
                 "shoulder_left": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_shoulder_left": "!v.primary"
+                            "pose_shoulder_left": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -73,10 +73,10 @@
                 "shoulder_right": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_shoulder_right": "!v.primary"
+                            "pose_shoulder_right": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -144,7 +144,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

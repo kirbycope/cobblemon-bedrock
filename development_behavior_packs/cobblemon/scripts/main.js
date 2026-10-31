@@ -220,10 +220,10 @@ function fxLocator(entity, name, toward) {
 function fxFill(text, move) {
     return text.replace("$name", move.id).replace("$type", move.type ?? "normal").replace("$cat", (move.category ?? "status").toLowerCase());
 }
-// A move's or a faint's clip. A primary one (FX_PRIMARY: the species' clip number and its length in seconds) replaces
-// the pose while it plays, as Cobblemon's PrimaryAnimation fades the pose out. It is not played from here: setting
-// cobblemon:primary to its number stops the pose's clips and starts it in the species' primary controller on the same
-// frame, where a clip played from a script reached the client after the property and left the model in its rest pose
+// A move's or a faint's clip. A primary one (FX_PRIMARY: the species' clip number and its length in seconds) takes over
+// from the pose while it plays, as Cobblemon's PrimaryAnimation fades the pose out. It is not played from here: setting
+// cobblemon:primary to its number starts it in the species' primary controller, which cross-fades it with the pose's
+// clips on the client, where a clip played from a script reached the client after the property and left the model in its rest pose
 // in between (issue 32), and ran before the controller, out of override_previous_animation's reach. A faint holds,
 // so it stays on. A later clip on the same Pokemon takes over the timer.
 const primaryUntil = new Map();
