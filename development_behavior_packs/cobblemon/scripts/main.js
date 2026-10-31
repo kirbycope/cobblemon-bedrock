@@ -36,7 +36,7 @@ import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EG
 import { HERDS } from "./herds.js";
 import { SILK_SELF } from "./silk.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
-import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
+import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
@@ -654,8 +654,13 @@ function faceEachOther(battle) {
 
 function gainFriendship(entity, amount, cap = 255) {
     if (amount <= 0) return;
-    const boost = prop(entity, "cobblemon:caught_ball") === "cobblemon:luxury_ball" ? 2 : 1;
+    // the Luxury Ball's bonus, then a Soothe Bell's half again on top (held/is_friendship_booster, Cobblemon.kt)
+    const boost = (prop(entity, "cobblemon:caught_ball") === "cobblemon:luxury_ball" ? 2 : 1) * (heldItem(entity) === "cobblemon:soothe_bell" ? 1.5 : 1);
     setProp(entity, "cobblemon:friendship", Math.min(cap, friendshipOf(entity) + Math.round(amount * boost)));
+}
+// friendship lost: one on fainting (Pokemon.currentHealth), five to fifteen for the bitter medicines (remedies.json)
+function loseFriendship(entity, amount) {
+    if (amount > 0) setProp(entity, "cobblemon:friendship", Math.max(0, friendshipOf(entity) - amount));
 }
 
 // Friendship, as PlayerPartyStore does it: every two minutes a Pokemon out in the world gains one, up to 160
@@ -793,7 +798,7 @@ system.runInterval(() => {
                         if (h.currentValue >= h.effectiveMax) { setProp(e, STATUS, undefined); continue; }
                     } else if (h.currentValue - amount <= 0) {
                         // as currentHealth reaching 0 does: it faints
-                        setProp(e, FAINTED, true); setProp(e, STATUS, undefined); h.setCurrentValue(1);
+                        setProp(e, FAINTED, true); loseFriendship(e, 1); setProp(e, STATUS, undefined); h.setCurrentValue(1);
                         player.sendMessage(`§c${name} fainted!`); continue;
                     } else h.setCurrentValue(h.currentValue - amount);
                 } catch (err) { }
@@ -2402,7 +2407,7 @@ function faint(battle, fainted) {
         return;
     }
     say(battle, `§c${battle.ally.info.name} fainted!`);
-    setProp(battle.ally.entity, FAINTED, true);
+    setProp(battle.ally.entity, FAINTED, true); loseFriendship(battle.ally.entity, 1);
     freeze(battle.ally.entity, false);
     try { battle.ally.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
     chooseSwitch(battle, true).then((entity) => {
@@ -3232,7 +3237,7 @@ function pvpAfterTurn(battle) {
         const f = v.ally;
         say(battle, `§c${f.info.name} fainted!`);
         battle.down.add(memberKey(f.entity));
-        if (!f.clone) setProp(f.entity, FAINTED, true);
+        if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); }
         freeze(f.entity, false);
         try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
         const w = v.mirror;
@@ -3531,6 +3536,13 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             snackTick(block);
             console.warn(`[cobblemon] poke_snack at ${key}: bites ${block.isValid && block.typeId === "cobblemon:poke_snack" ? block.permutation.getState("cobblemon:bites") : "gone"}`);
         }
+    } else if (event.id === "cobblemon:faint") {
+        // testing: "/execute as <player> run scriptevent cobblemon:faint <slot>" faints that party slot (from 0), recalled
+        const slot = partyOf(source.id)[Number(event.message) || 0];
+        if (!slot) { console.warn("[cobblemon] faint: no such slot"); return; }
+        if (memberEntity(slot)) { console.warn("[cobblemon] faint: call it back first"); return; }
+        slot.rec.f = true; slot.rec.hp = 0; saveParty(source.id);
+        console.warn(`[cobblemon] faint: ${slot.rec.t} fainted`);
     } else if (event.id === "cobblemon:place_feature") {
         // testing: "/execute as <player> run scriptevent cobblemon:place_feature <feature or rule id>" places that
         // feature (or runs that feature rule) at the block the player stands on, and logs whether it placed
@@ -6022,14 +6034,15 @@ function applyMedicine(entity, effect) {
     if (cures) setProp(entity, STATUS, undefined);
     if (cures && !(effect.heal && health && health.currentValue < health.effectiveMax)) return `${name} ${STATUS_CURED[st]}.`;
     if (effect.heal) {
-        if (!health || health.currentValue >= health.effectiveMax) return effect.cure ? `${name} is already healthy.` : undefined;
+        // StatusCureItem and PotionItem fail, and are not used, when they would change nothing
+        if (!health || health.currentValue >= health.effectiveMax) return undefined;
         // world health is a share of battle HP; scale the amount by the Pokemon's battle HP at its level
         const f = fighter(entity), per = health.effectiveMax / Math.max(1, f.stats.hp);
-        const amount = effect.heal === "max" ? health.effectiveMax : effect.heal === "quarter" ? health.effectiveMax / 4 : effect.heal * per;
+        const amount = effect.heal === "max" ? health.effectiveMax : effect.heal === "third" ? Math.floor(f.stats.hp * 0.33) * per : effect.heal * per;
         health.setCurrentValue(Math.min(health.effectiveMax, health.currentValue + Math.max(1, Math.round(amount))));
         return `${name} regained health.`;
     }
-    return effect.cure || effect.pp ? `${name} is already in good shape.` : undefined;
+    return undefined;
 }
 
 function applyCandy(player, entity, candy) {
@@ -6064,8 +6077,8 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             return;
         }
     }
-    const battleItem = BATTLE_ITEMS[id];
-    if (!medicine && !battleItem && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash) return;
+    const battleItem = BATTLE_ITEMS[id], trains = MOCHIS[id] || HYPER_CANDIES[id] || id === FRESH_START;
+    if (!medicine && !battleItem && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash && !trains) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
     // StashHandler.interactMob comes first: the item goes into the stash rather than being held
@@ -6092,53 +6105,109 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             if (battle.pvp) pvpChoose(battle, { kind: "item" }); else foeTurn(battle);
             return;
         }
-        const name = POKEMON[target.typeId].name;
-        if (POKE_FOOD.includes(id) && fullnessOf(target) >= maxFullness(target.typeId)) { player.sendMessage("§7It won't have any effect."); return; }
-        // the foods' feedPokemon: five for the portion berries, one for the other berries and Berry Juice
-        const feeds = id === "cobblemon:berry_juice" || id.endsWith("_berry") ? (PORTION_BERRIES.has(id) ? 5 : 1) : 0;
-        const fed = () => { if (feeds) feedPokemon(target, feeds); };
-        if (evItem) {
-            // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
-            const [stat, amount, back] = evItem;
-            if (!addEvs(target, stat, amount)) { player.sendMessage("§7It won't have any effect."); return; }
-            consumeHand(player); playItemUse(target, id); if (back && player.getGameMode?.() !== "Creative") giveOrDrop(player, back);
-            player.sendMessage(`§a${name}'s ${STAT_NAMES[stat]} base points rose.`);
-            refreshHealth(target);
-        } else if (mint) {
-            // MintItem: the stats follow the mint's nature from now on; the Pokemon keeps its own
-            if (effectiveNature(target) === mint) { player.sendMessage(`§7${name} already has the ${natureName(mint)} nature's effect.`); return; }
-            setProp(target, "cobblemon:mint", mint); consumeHand(player); playItemUse(target, id);
-            player.sendMessage(`§a${name}'s stats may have changed due to the effects of the ${itemName(id)}!`);
-            refreshHealth(target);
-        } else if (evBerry) {
-            // FriendshipRaisingBerryItem: 10 EVs off, friendship up by 10, 5 or 1 as it is lower or higher
-            const lowered = addEvs(target, evBerry, -10);
-            const before = friendshipOf(target), raised = Math.min(255, before + (before < 100 ? 10 : before < 200 ? 5 : 1)) - before;
-            if (!lowered && !raised) { player.sendMessage("§7It won't have any effect."); return; }
-            setProp(target, "cobblemon:friendship", before + raised); consumeHand(player); fed();
-            player.sendMessage(`§a${name} ${raised ? "became more friendly" : "ate the berry"}${lowered ? `, and its ${STAT_NAMES[evBerry]} base points fell` : ""}.`);
-            refreshHealth(target);
-        } else if (changer) {
-            // Ability Capsule swaps between the two normal abilities; Ability Patch gives the hidden one
-            const info = POKEMON[target.typeId], current = fighter(target).ability;
-            const hidden = (info.hidden ?? []).includes(current);
-            const choices = id === "cobblemon:ability_patch" ? (hidden ? [] : info.hidden ?? []) : (hidden ? [] : (info.abilities ?? []).filter((a) => a !== current));
-            if (!choices.length) { player.sendMessage("§7It won't have any effect."); return; }
-            setProp(target, "cobblemon:ability", choices[0]); consumeHand(player);
-            player.sendMessage(`§a${info.name}'s ability became ${abilityName(choices[0])}!`);
-        } else if (medicine) {
-            const message = applyMedicine(target, medicine);
-            if (!message) { player.sendMessage("§7It won't have any effect."); return; }
-            consumeHand(player); playItemUse(target, id); fed(); player.sendMessage(`§a${message}`);
-        } else if (candy !== undefined) {
-            if (applyCandy(player, target, candy)) { consumeHand(player); playItemUse(target, id); } else player.sendMessage("§7It won't have any effect.");
-        } else {
-            const old = heldItem(target);
-            setProp(target, HELD, id); consumeHand(player);
-            if (old) giveOrDrop(player, old);
-            player.sendMessage(`§a${POKEMON[target.typeId].name} is now holding the ${itemName(id)}.`);
-        }
+        useItemOn(player, target, id, itemStack);
     });
+});
+// What an item does to one of the player's Pokemon out of battle, in the world or in its ball (ballProxy):
+// PokemonSelectingItem.applyToPokemon. Right-clicking the Pokemon uses it; using the item in the air picks a party member
+const FRESH_START = "cobblemon:fresh_start_mochi";
+function useItemOn(player, target, id, itemStack) {
+    if (!target?.isValid) return;
+    const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
+    const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
+    const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id], mochi = MOCHIS[id], hyper = HYPER_CANDIES[id];
+    const name = nicknameOf(target) || POKEMON[target.typeId].name;
+    if (POKE_FOOD.includes(id) && fullnessOf(target) >= maxFullness(target.typeId)) { player.sendMessage("§7It won't have any effect."); return; }
+    // the foods' feedPokemon: five for the portion berries, one for the other berries and Berry Juice
+    const feeds = id === "cobblemon:berry_juice" || id.endsWith("_berry") ? (PORTION_BERRIES.has(id) ? 5 : 1) : 0;
+    const fed = () => { if (feeds) feedPokemon(target, feeds); };
+    if (mochi) {
+        // MochiItem: 4 EVs in its stat, and it is a meal
+        if (!addEvs(target, mochi, 4)) { player.sendMessage("§7It won't have any effect."); return; }
+        feedPokemon(target, 1); consumeHand(player); playItemUse(target, id);
+        player.sendMessage(`§a${name}'s ${STAT_NAMES[mochi]} base points rose.`);
+        refreshHealth(target);
+    } else if (id === FRESH_START) {
+        // FreshStartMochiItem: every EV back to 0
+        const evs = evsOf(target);
+        if (!Object.values(evs).some((v) => v > 0)) { player.sendMessage("§7It won't have any effect."); return; }
+        setProp(target, "cobblemon:evs", JSON.stringify(Object.fromEntries(Object.keys(evs).map((k) => [k, 0]))));
+        feedPokemon(target, 1); consumeHand(player); playItemUse(target, id);
+        player.sendMessage(`§a${name}'s base points were all reset.`);
+        refreshHealth(target);
+    } else if (hyper) {
+        // HyperTrainingItem: one IV up or down by one, within 0 to 31
+        const [stat, change] = hyper, ivs = ivsOf(target), next = (ivs[stat] ?? 0) + change;
+        if (next < 0 || next > 31) { player.sendMessage("§7It won't have any effect."); return; }
+        ivs[stat] = next; setProp(target, "cobblemon:ivs", JSON.stringify(ivs));
+        consumeHand(player); playItemUse(target, id);
+        player.sendMessage(`§a${name}'s ${STAT_NAMES[stat]} ${change > 0 ? "rose" : "fell"}.`);
+        refreshHealth(target);
+    } else if (evItem) {
+        // a vitamin gives 10 EVs and hands back its bottle, a feather 1 (VitaminItem, FeatherItem)
+        const [stat, amount, back] = evItem;
+        if (!addEvs(target, stat, amount)) { player.sendMessage("§7It won't have any effect."); return; }
+        consumeHand(player); playItemUse(target, id); if (back && player.getGameMode?.() !== "Creative") giveOrDrop(player, back);
+        player.sendMessage(`§a${name}'s ${STAT_NAMES[stat]} base points rose.`);
+        refreshHealth(target);
+    } else if (mint) {
+        // MintItem: the stats follow the mint's nature from now on; the Pokemon keeps its own
+        if (effectiveNature(target) === mint) { player.sendMessage(`§7${name} already has the ${natureName(mint)} nature's effect.`); return; }
+        setProp(target, "cobblemon:mint", mint); consumeHand(player); playItemUse(target, id);
+        player.sendMessage(`§a${name}'s stats may have changed due to the effects of the ${itemName(id)}!`);
+        refreshHealth(target);
+    } else if (evBerry) {
+        // FriendshipRaisingBerryItem: 10 EVs off, friendship up by 10, 5 or 1 as it is lower or higher
+        const lowered = addEvs(target, evBerry, -10);
+        const before = friendshipOf(target), raised = Math.min(255, before + (before < 100 ? 10 : before < 200 ? 5 : 1)) - before;
+        if (!lowered && !raised) { player.sendMessage("§7It won't have any effect."); return; }
+        setProp(target, "cobblemon:friendship", before + raised); consumeHand(player); fed();
+        player.sendMessage(`§a${name} ${raised ? "became more friendly" : "ate the berry"}${lowered ? `, and its ${STAT_NAMES[evBerry]} base points fell` : ""}.`);
+        refreshHealth(target);
+    } else if (changer) {
+        // Ability Capsule swaps between the two normal abilities; Ability Patch gives the hidden one
+        const info = POKEMON[target.typeId], current = fighter(target).ability;
+        const hidden = (info.hidden ?? []).includes(current);
+        const choices = id === "cobblemon:ability_patch" ? (hidden ? [] : info.hidden ?? []) : (hidden ? [] : (info.abilities ?? []).filter((a) => a !== current));
+        if (!choices.length) { player.sendMessage("§7It won't have any effect."); return; }
+        setProp(target, "cobblemon:ability", choices[0]); consumeHand(player);
+        player.sendMessage(`§a${info.name}'s ability became ${abilityName(choices[0])}!`);
+    } else if (medicine) {
+        const message = applyMedicine(target, medicine);
+        if (!message) { player.sendMessage("§7It won't have any effect."); return; }
+        if (medicine.friendship < 0) loseFriendship(target, -medicine.friendship);
+        consumeHand(player); playItemUse(target, id); fed(); player.sendMessage(`§a${message}`);
+    } else if (candy !== undefined) {
+        if (applyCandy(player, target, candy)) { consumeHand(player); playItemUse(target, id); } else player.sendMessage("§7It won't have any effect.");
+    } else {
+        const old = heldItem(target);
+        setProp(target, HELD, id); consumeHand(player);
+        if (old) giveOrDrop(player, old);
+        player.sendMessage(`§a${POKEMON[target.typeId].name} is now holding the ${itemName(id)}.`);
+    }
+}
+
+// PartySelectGUI: an item a Pokemon takes, used in the air out of battle, asks which party member it is for, those in
+// their balls (a fainted one for a Revive) included
+const PARTY_ITEMS_USABLE = (id) => !!(MEDICINE[id] || CANDIES[id] !== undefined || EV_ITEMS[id] || MINTS[id] || EV_BERRIES[id] || MOCHIS[id] || HYPER_CANDIES[id]
+    || id === FRESH_START || id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch");
+world.afterEvents.itemUse.subscribe(({ source: player, itemStack }) => {
+    const id = itemStack?.typeId;
+    if (player?.typeId !== "minecraft:player" || !id || !PARTY_ITEMS_USABLE(id) || battles.has(player.id)) return;
+    const slots = partyOf(player.id);
+    if (!slots.length) { player.sendMessage("§7You have no Pokemon to use it on."); return; }
+    const form = new ActionFormData().title(itemName(id)).body("§7Use it on which Pokemon?");
+    for (const slot of slots) {
+        const rec = slot.rec;
+        form.button(`${rec.n || POKEMON[rec.t]?.name || "Pokemon"} §8Lv ${rec.lv}
+${rec.f ? "§cFainted" : `§7HP ${Math.round((rec.hp ?? 1) * 100)}%`}`);
+    }
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === undefined || !player.isValid) return;
+        const slot = partyOf(player.id)[r.selection], held = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+        if (!slot || held?.typeId !== id) return;
+        useItemOn(player, partyMember(player, slot), id, held);
+    }).catch(() => { });
 });
 
 function itemName(id) { return id.slice(id.indexOf(":") + 1).split("_").map(cap).join(" "); }
@@ -7245,7 +7314,7 @@ function useBagItem(battle, id) {
     if (item?.focus && !f.focusEnergy) { f.focusEnergy = true; say(battle, `§a${f.info.name} is getting pumped!`); used = true; }
     if (item?.mist && !(battle.mist?.ally > 0)) { (battle.mist ??= {}).ally = 5; say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
     if (effect.heal && f.hp < f.stats.hp) {
-        const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "quarter" ? Math.floor(f.stats.hp / 4) : effect.heal;
+        const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "third" ? Math.floor(f.stats.hp * 0.33) : effect.heal;
         const before = f.hp; f.hp = Math.min(f.stats.hp, f.hp + amount); syncHealth(f);
         say(battle, `§a${f.info.name} regained ${f.hp - before} HP.`); used = true;
     }

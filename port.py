@@ -6958,6 +6958,31 @@ def spawn_baits():
     return baits
 
 
+def add_party_select_use():
+    """PokemonSelectingItem: an item used in the air picks a party member to use it on (main.js, the party's Pokemon in
+    their balls included). Bedrock reports a use in the air only for an item with a use, so each of these gets a short
+    one: the medicine, candies, vitamins and feathers, mints, EV berries, ability changers, mochis, hyper training
+    candies, PP Up and PP Max, Poke Puffs. Food keeps its own (eating it is its use)."""
+    with open(f"{scriptsBedrock}/items.js", encoding="utf-8") as file: text = file.read()
+    usable = set()
+    for const in ("MEDICINE", "CANDIES", "EV_ITEMS", "MINTS", "EV_BERRIES", "HYPER_CANDIES", "MOCHIS"):
+        m = re.search(rf"export const {const} = (\{{.*?\}});", text)
+        if m: usable.update(json.loads(m.group(1)))
+    usable.update({"cobblemon:ability_capsule", "cobblemon:ability_patch", "cobblemon:fresh_start_mochi", "cobblemon:pp_up", "cobblemon:pp_max", "cobblemon:poke_puff"})
+    done = 0
+    for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: item = json.load(file)
+        body = item.get("minecraft:item", {})
+        if body.get("description", {}).get("identifier") not in usable: continue
+        components = body.setdefault("components", {})
+        if "minecraft:food" in components or "minecraft:use_modifiers" in components: continue
+        components["minecraft:use_modifiers"] = {"use_duration": 0.05, "movement_modifier": 1.0}
+        components["minecraft:use_animation"] = "none"
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=4))
+        done += 1
+    print(f"  party select: {done} items used in the air pick a party member")
+
+
 def add_bait_offhand():
     """PokerodItem.use takes bait from the off hand; Bedrock lets an item into the off hand only with allow_off_hand, so
     the pack's own bait items (berries, Poke Bait) get it. Vanilla baits (apples, sweet and glow berries) cannot."""
@@ -7535,10 +7560,13 @@ FLAT_PARENTS = {"minecraft:item/generated", "item/generated", "minecraft:item/ha
 MEDICINE = {"potion": {"heal": "potionRestoreAmount"}, "super_potion": {"heal": "superPotionRestoreAmount"}, "hyper_potion": {"heal": "hyperPotionRestoreAmount"},
             "max_potion": {"heal": "max"}, "full_restore": {"heal": "max", "cure": True}, "full_heal": {"cure": True},
             "antidote": {"cure": ["psn", "tox"]}, "burn_heal": {"cure": ["brn"]}, "ice_heal": {"cure": ["frz"]}, "paralyze_heal": {"cure": ["par"]}, "awakening": {"cure": ["slp"]},
-            "revive": {"revive": 0.5}, "max_revive": {"revive": 1.0}, "revival_herb": {"revive": 1.0},
+            "revive": {"revive": 0.5}, "max_revive": {"revive": 1.0}, "revival_herb": {"revive": 0.25, "friendship": "revival_herb"},
             "ether": {"pp": 10}, "max_ether": {"pp": 999}, "elixir": {"pp": 10, "all": True}, "max_elixir": {"pp": 999, "all": True},
-            "remedy": {"heal": "normal"}, "fine_remedy": {"heal": "fine"}, "superb_remedy": {"heal": "superb"}, "energy_root": {"heal": "root"},
-            "heal_powder": {"cure": True}, "berry_juice": {"heal": 20}, "oran_berry": {"heal": 10}, "sitrus_berry": {"heal": "quarter"},
+            "remedy": {"heal": "normal", "friendship": "normal"}, "fine_remedy": {"heal": "fine", "friendship": "fine"},
+            "superb_remedy": {"heal": "superb", "friendship": "superb"}, "energy_root": {"heal": "root", "friendship": "root"},
+            "heal_powder": {"cure": True, "friendship": "heal_powder"}, "berry_juice": {"heal": 20}, "oran_berry": {"heal": 10}, "sitrus_berry": {"heal": "third"},
+            # PortionHealingBerryItem: a third of max HP (berries.json portionHealRatio), as Sitrus does
+            **{f"{b}_berry": {"heal": "third"} for b in ("figy", "wiki", "mago", "aguav", "iapapa")},
             "lum_berry": {"cure": True}, "cheri_berry": {"cure": ["par"]}, "chesto_berry": {"cure": ["slp"]}, "pecha_berry": {"cure": ["psn", "tox"]},
             "rawst_berry": {"cure": ["brn"]}, "aspear_berry": {"cure": ["frz"]}, "leppa_berry": {"pp": 10}}
 CANDIES = {"exp_candy_xs": 100, "exp_candy_s": 800, "exp_candy_m": 3000, "exp_candy_l": 10000, "exp_candy_xl": 30000, "rare_candy": "level"}
@@ -7665,6 +7693,8 @@ def create_general_items():
         heal = effect.get("heal")
         if heal in mechanics["potions"]: effect["heal"] = int(mechanics["potions"][heal])
         elif heal in mechanics["remedies"]["remedies"]: effect["heal"] = int(mechanics["remedies"]["remedies"][heal]["healingAmount"])
+        # the bitter medicines' friendshipDrop (remedies.json): the Pokemon likes its trainer less for them
+        if effect.get("friendship") in mechanics["remedies"]["remedies"]: effect["friendship"] = -int(mechanics["remedies"]["remedies"][effect["friendship"]]["friendshipDrop"])
         medicine[f"cobblemon:{name}"] = effect
     held = held_item_ids(defined)
     with open(f"{scriptsBedrock}/items.js", "w", encoding="utf-8") as file:
@@ -7677,6 +7707,13 @@ def create_general_items():
         file.write("export const MINTS = " + json.dumps({k: v for k, v in mints.items() if k in defined}) + ";" + chr(10))
         file.write("export const EV_BERRIES = " + json.dumps({k: v for k, v in ev_berries.items() if k in defined}) + ";" + chr(10))
         file.write("export const CANDIES = " + json.dumps({f"cobblemon:{k}": v for k, v in CANDIES.items() if f"cobblemon:{k}" in defined}) + ";" + chr(10))
+        # HyperTrainingItem (CobblemonItems.kt hyperTrainingItem): [stat, IV change]; MochiItem: its stat, 4 EVs
+        with open(f"{kotlinMain}/CobblemonItems.kt", encoding="utf-8") as kt: kotlin = kt.read()
+        stat_of = {"HP": "hp", "ATTACK": "atk", "DEFENCE": "def", "SPECIAL_ATTACK": "spa", "SPECIAL_DEFENCE": "spd", "SPEED": "spe"}
+        hyper = {f"cobblemon:{n}": [stat_of[st], int(a)] for n, a, st in re.findall(r'hyperTrainingItem\("(\w+)",\s*(-?\d+),\s*setOf\(Stats\.(\w+)\)', kotlin) if f"cobblemon:{n}" in defined}
+        mochis = {f"cobblemon:{n}": stat_of[st] for n, st in re.findall(r'create\("(\w+_mochi)",\s*MochiItem\(Stats\.(\w+)\)\)', kotlin) if f"cobblemon:{n}" in defined}
+        file.write("export const HYPER_CANDIES = " + json.dumps(hyper) + ";" + chr(10))
+        file.write("export const MOCHIS = " + json.dumps(mochis) + ";" + chr(10))
         # the Poke food (tags/item/poke_food), which a full Pokemon will not take
         file.write("export const POKE_FOOD = " + json.dumps(sorted(item_tag("poke_food"))) + ";" + chr(10))
         # CobblemonTooltipGenerator: the gray lines under an item's name, its ".tooltip" key then "_1", "_2" and on,
@@ -12033,6 +12070,7 @@ def main():
     create_ride_glyphs()
     create_party_item()
     add_bait_offhand()   # after every item is written
+    add_party_select_use()   # after every item is written, and items.js
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
