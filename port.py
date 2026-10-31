@@ -3956,7 +3956,18 @@ def add_pokemon_interactions(entity, species, pokemon):
         item = INTERACTION_ITEMS.get(held, held)
         if not (isinstance(item, str) and item.startswith("minecraft:")): continue
         effects = interaction.get("effects", [])
-        entry = {"on_interact": {"filters": {"all_of": [{"test": "has_equipment", "subject": "other", "domain": "hand", "value": item}]}}, "swing": True,
+        # an interaction for one form only ("rotom form=frost"): the variants of that form, by the species' form aspects;
+        # one that needs a property Bedrock cannot test (a gender) is left out
+        only = [r.get("target", "") for r in interaction.get("requirements", []) if r.get("variant") == "properties"]
+        variant_filter = None
+        if only:
+            m = re.search(r"form=(\S+)", only[0])
+            if not m or re.search(r"(gender|nature|shiny)=", only[0]): continue
+            aspects = {a for f in species.get("forms", []) if f.get("name", "").lower() == m.group(1).lower() for a in f.get("aspects", [])}
+            indices = [n for n, v in enumerate(resolver_variations(pokemon)) if v["form"] in aspects]
+            if not indices: continue
+            variant_filter = {"any_of": [{"test": "is_variant", "subject": "self", "value": n} for n in indices]}
+        entry = {"on_interact": {"filters": {"all_of": [{"test": "has_equipment", "subject": "other", "domain": "hand", "value": item}] + ([variant_filter] if variant_filter else [])}}, "swing": True,
                  "interact_text": "action.interact.use", "cooldown": round(int(interaction.get("cooldown", 0) or 0) / 20, 1)}
         give = next((e["item"] for e in effects if e.get("variant") == "give_item"), None)
         if give and (give.startswith("minecraft:") or interaction_item_texture(give.split(":")[1])): entry["transform_to_item"] = give
@@ -4867,6 +4878,35 @@ def time_ranges():
     return out
 
 
+def result_aspect(result):
+    """The form an evolution's result names ("torterra tree=oak", "lycanroc wolf_form=midnight"), as the aspect the
+    species' variants are keyed by: its species feature's aspectFormat ("{{choice}}-form") with the choice, or None."""
+    for word in str(result).split(" ")[1:]:
+        key, _, value = word.partition("=")
+        for path in glob.glob(f"{cobblemonData}/species_features/*.json"):
+            with open(path, encoding="utf-8") as file: feature = json.load(file)
+            if key not in feature.get("keys", []) or not feature.get("isAspect", True): continue
+            if feature.get("type") == "choice" and value: return feature.get("aspectFormat", "{{choice}}").replace("{{choice}}", value)
+            if feature.get("type") == "flag" and value in ("", "true"): return feature.get("aspectFormat", key)
+    return None
+
+
+def evolution_extras(evolution):
+    """What else Evolution.evolve does: the result's form, the moves it learns, a held item it keeps (consumeHeldItem
+    false), its drops (Shed Shell, the Turtle Scute) and its shedder (Nincada's Shedinja)."""
+    extra = {}
+    form = result_aspect(evolution.get("result", ""))
+    if form: extra["form"] = form
+    moves = [re.sub(r"[^a-z0-9]", "", str(m).lower()) for m in evolution.get("learnableMoves", [])]
+    if moves: extra["moves"] = moves
+    if evolution.get("consumeHeldItem") is False: extra["keep"] = True
+    drops = [[e.get("item"), e.get("percentage", 100.0)] for e in (evolution.get("drops") or {}).get("entries", []) if e.get("item")]
+    if drops: extra["drops"] = drops
+    shed = pokemon_for_species_name(str(evolution.get("shedder") or "").split(" ")[0]) if evolution.get("shedder") else None
+    if shed: extra["shed"] = entity_id(shed)
+    return extra
+
+
 def level_evolutions(species):
     """A species' level-up evolutions with their requirements, as the script checks them when it levels up:
     [{"to": entity id, "event": transformation event, "req": [...]}]. A requirement the port cannot check keeps the
@@ -4900,7 +4940,7 @@ def level_evolutions(species):
                 elif stash: req.append({"t": "feature", "key": stash.group(1), "value": int(stash.group(2))})
                 else: req.append({"t": "never", "why": target})
             else: req.append({"t": "never", "why": v})
-        out.append({"to": entity_id(result), "event": f"cobblemon:evolve_to_{result}", "req": req})
+        out.append({"to": entity_id(result), "event": f"cobblemon:evolve_to_{result}", "req": req, **evolution_extras(evolution)})
     return out
 
 

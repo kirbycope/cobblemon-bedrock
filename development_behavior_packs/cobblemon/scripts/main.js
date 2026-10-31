@@ -4122,10 +4122,12 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
                 const wear = kept?.[COSMETIC] && COSMETICS[entity.typeId]?.items[kept[COSMETIC]];
                 const dressed = wear ? looks.findIndex(([lf, lg, ls]) => lf === wear && lg === female && ls === shiny) : -1;
                 if (dressed >= 0) n = dressed;
+                const evolvedForm = kept?.[EVO_FORM] ? find(kept[EVO_FORM]) : -1;
+                if (evolvedForm >= 0) n = evolvedForm;
                 if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
             }
             // level, experience, moves, IVs, EVs, nature, friendship and held item carry over; the ability keeps its slot
-            for (const [key, value] of Object.entries(kept ?? {})) { try { entity.setDynamicProperty(key, value); } catch (e) { } }
+            for (const [key, value] of Object.entries(kept ?? {})) { if (key !== EVO_FORM) try { entity.setDynamicProperty(key, value); } catch (e) { } }
             const before = POKEMON[from], after = POKEMON[entity.typeId], ability = kept?.["cobblemon:ability"];
             if (before && after && ability) {
                 const hidden = (before.hidden ?? []).indexOf(ability), slot = (before.abilities ?? []).indexOf(ability);
@@ -4143,7 +4145,7 @@ world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
 });
 
 // The fossil machine: a Restoration Tank (two blocks) with a Fossil Analyzer beside it, and a Monitor within two
-// blocks for the progress. Using any part: a fossil goes into the analyzer (up to three), a natural material into
+// blocks for the progress. Using any part: a fossil goes into the analyzer (up to two, maxInsertedFossilItems), a natural material into
 // the tank until it holds 128, an empty hand takes the last fossil back. With a matching set of fossils and a full
 // tank, the Pokemon grows for twelve minutes inside the tank; a Poke Ball used on the machine then takes it out as
 // the player's own. Machines are kept in a world dynamic property, keyed by the tank's lower block.
@@ -4721,7 +4723,7 @@ function pcRelease(player, state, party, then) {
     const rec = sel.kind === "box" ? box(player, sel.box)[sel.slot] : null, slot = sel.kind === "party" ? partyOf(player.id)[sel.slot] : null;
     if (!rec && !slot) { state.sel = null; then(); return; }
     if (rec?.p) { player.sendMessage("§7That Pokemon is out in a pasture. Bring it back there first."); then(); return; }
-    if (slot && partyOf(player.id).length === 1) { player.sendMessage("§cYou cannot release your last Pokemon."); then(); return; }
+    // preventCompletePartyDeposit is false in Cobblemon's config: the last party Pokemon can be released too
     const label = describe(rec ?? slot.rec);
     new MessageFormData().title("Release").body(`Release ${label}? It will be gone for good.`).button1("Keep").button2("Release")
         .show(player).then((r) => {
@@ -5465,6 +5467,24 @@ world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
         try { if (entity.isValid && !isSlimeChunk(entity.location.x, entity.location.z)) entity.remove(); } catch (e) { }
     });
 });
+// PokeSnackBlock.playerEat: a Poke Cake (not a lure) is eaten a bite at a time like a cake, by a player who is hungry,
+// two hunger a bite (saturation for a tick gives it), gone after its ninth
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (event.block.typeId !== "cobblemon:poke_cake" || !event.isFirstEvent || event.itemStack?.typeId?.endsWith("candle")) return;
+    const { block, player } = event;
+    let hunger = 0;
+    try { hunger = player.getComponent("minecraft:player.hunger")?.currentValue ?? 0; } catch (e) { }
+    if (hunger >= 20 && player.getGameMode?.() !== "Creative") return;
+    event.cancel = true;
+    system.run(() => {
+        try {
+            player.addEffect("saturation", 1, { amplifier: 1, showParticles: false });
+            block.dimension.playSound("random.eat", block.location);
+            const bites = block.permutation.getState("cobblemon:bites") + 1;
+            if (bites > SNACK_BITES) block.setType("minecraft:air"); else block.setPermutation(block.permutation.withState("cobblemon:bites", bites));
+        } catch (e) { }
+    });
+});
 // setPlacedBy: the snack keeps the bait of the stack it was placed from
 function placeSnack(player, block) {
     let item;
@@ -6132,6 +6152,37 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const block = event.block;
     system.run(() => chestFromBlock(block));
 });
+// GildedChestBlock Type.FAKE: the Gimmighoul chest a structure hides is a Gimmighoul. Opening or breaking it brings one
+// out (level 5 to 30, in its chest form) where the chest stood, facing as it did, and it battles the player at once;
+// in Creative it only reveals itself
+function revealGimmighoul(block, player) {
+    const dim = block.dimension, at = { x: block.location.x + 0.5, y: block.location.y, z: block.location.z + 0.5 };
+    let facing = "south";
+    try { facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south"; } catch (e) { }
+    block.setType("minecraft:air");
+    let e;
+    try { e = dim.spawnEntity("cobblemon:p0999_gimmighoul", at); } catch (err) { return; }
+    system.run(() => {
+        try {
+            setProp(e, LEVEL, 5 + Math.floor(Math.random() * 26));
+            e.setRotation({ x: 0, y: { north: 180, south: 0, east: -90, west: 90 }[facing] ?? 0 });
+            dim.playSound("cobblemon.pokemon.gimmighoul.reveal", at);
+        } catch (err) { }
+    });
+    if (player.getGameMode?.() !== "Creative") system.runTimeout(() => { if (e.isValid && player.isValid && !battles.has(player.id)) startBattle(player, e); }, 2);
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (event.block.typeId !== "cobblemon:gimmighoul_chest" || !event.isFirstEvent) return;
+    event.cancel = true;
+    const { block, player } = event;
+    system.run(() => revealGimmighoul(block, player));
+});
+world.beforeEvents.playerBreakBlock.subscribe((event) => {
+    if (event.block.typeId !== "cobblemon:gimmighoul_chest") return;
+    event.cancel = true;
+    const { block, player } = event;
+    system.run(() => revealGimmighoul(block, player));
+});
 world.afterEvents.playerInteractWithEntity.subscribe(({ target }) => {
     if (!target.typeId.endsWith("gilded_chest_entity")) return;
     try { if (!target.getProperty("cobblemon:open")) { target.setProperty("cobblemon:open", true); target.dimension.playSound("cobblemon.block.gilded_chest.open", target.location); } } catch (e) { }
@@ -6319,9 +6370,87 @@ function applyCandy(player, entity, candy) {
     return true;
 }
 
+// PokemonEntity.mobInteract, on the owner's own Pokemon or a wild one: shears take Mareep's, Wooloo's and Dubwool's wool
+// (two to four of its colour; it grows back when the Pokemon eats grass, EatGrassTask) and a Slowpoke's tail (a Tasty
+// Tail, grown back after slowpoke_tails.json's 1200 seconds); a dye colours Wooloo, Dubwool and Conkeldurr (the color
+// feature) and a water bucket washes it off
+const SHEARABLE = new Set(["cobblemon:p0179_mareep", "cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool"]), SLOWPOKE = "cobblemon:p0079_slowpoke";
+const COLOURABLE = new Set(["cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool", "cobblemon:p0534_conkeldurr"]), SHEARED = "cobblemon:sheared", TAIL_CUT = "cobblemon:tail_cut";
+function dyeOf(entity) { const form = VARIANT_LOOKS[entity.typeId]?.[variantOf(entity)]?.[0]; return form?.startsWith("color-") ? form.slice(6) : null; }
+function setColour(entity, colour) {
+    const looks = VARIANT_LOOKS[entity.typeId], [, female, shiny] = looks?.[variantOf(entity)] ?? [null, 0, 0];
+    const n = looks?.findIndex(([f, g, sh]) => f === (colour ? `color-${colour}` : null) && g === female && sh === shiny) ?? -1;
+    if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
+    return n >= 0;
+}
+function interactTool(player, target, id) {
+    const owner = prop(target, OWNER);
+    if (owner !== undefined && owner !== player.id) return false;
+    if (id === "minecraft:shears") {
+        if (prop(target, FAINTED) || battles.has(player.id)) return false;
+        if (target.typeId === SLOWPOKE && variantOf(target) < 2) {
+            if (system.currentTick - (prop(target, TAIL_CUT) ?? -1e9) < 1200 * 20) return false;
+            setProp(target, TAIL_CUT, system.currentTick);
+            target.dimension.spawnItem(new ItemStack("cobblemon:tasty_tail", 1), target.location);
+        } else if (SHEARABLE.has(target.typeId)) {
+            if (prop(target, SHEARED)) return false;
+            setProp(target, SHEARED, true);
+            const wool = `minecraft:${dyeOf(target) ?? "white"}_wool`;
+            for (let n = 2 + Math.floor(Math.random() * 3); n > 0; n--) target.dimension.spawnItem(new ItemStack(wool, 1), target.location);
+        } else return false;
+        try { target.dimension.playSound("mob.sheep.shear", target.location); } catch (e) { }
+        damageHeld(player);
+        return true;
+    }
+    if (COLOURABLE.has(target.typeId) && /^minecraft:\w+_dye$/.test(id)) {
+        const colour = id.slice(10, -4);
+        if (dyeOf(target) === colour || !setColour(target, colour)) return false;
+        consumeHand(player);
+        return true;
+    }
+    if (COLOURABLE.has(target.typeId) && id === "minecraft:water_bucket" && dyeOf(target)) {
+        setColour(target, null);
+        if (player.getGameMode?.() !== "Creative") {
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            inv?.setItem(player.selectedSlotIndex, new ItemStack("minecraft:bucket", 1));
+        }
+        return true;
+    }
+    return false;
+}
+// a tool in the main hand takes a point of wear
+function damageHeld(player) {
+    if (player.getGameMode?.() === "Creative") return;
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
+    const dur = item?.getComponent("minecraft:durability");
+    if (!dur) return;
+    if (dur.damage + 1 >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += 1; inv.setItem(slot, item); }
+}
+// a sheared Pokemon standing on grass eats it now and then, and its wool grows back
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let list = [];
+        try { list = world.getDimension(dim).getEntities({ families: ["pokemon"] }).filter((e) => SHEARABLE.has(e.typeId) && prop(e, SHEARED)); } catch (e) { continue; }
+        for (const e of list) {
+            if (Math.random() >= 1 / 40) continue;
+            let below;
+            try { below = e.dimension.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) }); } catch (err) { continue; }
+            if (below?.typeId !== "minecraft:grass_block") continue;
+            try { below.setType("minecraft:dirt"); } catch (err) { }
+            setProp(e, SHEARED, undefined);
+        }
+    }
+}, 20);
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target, itemStack } = event, id = itemStack?.typeId;
     if (!id || !POKEMON[target.typeId] || player.isSneaking) return;   // sneaking opens the wheel instead
+    if (id === "minecraft:shears" || /_dye$/.test(id) || id === "minecraft:water_bucket") {
+        if ((id === "minecraft:shears" && (SHEARABLE.has(target.typeId) || target.typeId === SLOWPOKE)) || COLOURABLE.has(target.typeId)) {
+            event.cancel = true;
+            system.run(() => { if (target.isValid) interactTool(player, target, id); });
+        }
+        return;
+    }
     const medicine = MEDICINE[id], candy = CANDIES[id], held = HELD_SET.has(id);
     const changer = id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch";
     const evItem = EV_ITEMS[id], mint = MINTS[id], evBerry = EV_BERRIES[id];
@@ -6605,8 +6734,9 @@ function meets(entity, f, r, player) {
 function readyEvolutions(entity, player) {
     const f = fighter(entity), info = POKEMON[entity.typeId];
     if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
-    const seen = new Set();
-    return info.evolutions.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
+    // of two evolutions into one species, the one asking more (Grotle holding a sapling: the tree's Torterra) comes first
+    const seen = new Set(), ordered = [...info.evolutions].sort((a, b) => b.req.length - a.req.length);
+    return ordered.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
 // Evolution.forceEvolve's effect: the Pokemon stops where it is (navigation.stop, here the battle group's movement 0),
 // a second later its evolution animation starts (port.py's add_evolution_animation, played while cobblemon:evolving is
@@ -6614,10 +6744,39 @@ function readyEvolutions(entity, player) {
 // godrays, then the implosion and burst; the Pokemon spinning, shrinking, rising and glowing inside it; and
 // evolution.full), and at 11.2 seconds it becomes its evolution, which cries
 const evolvingNow = new Set();
+// Evolution.evolve's side effects, as the Pokemon becomes its evolution: the result's form (the variant the new entity
+// takes, EVO_FORM), the moves it learns (into a free slot, or relearnable later), its drops (a Shed Shell, a Turtle
+// Scute), and a shedder's second Pokemon (Nincada's Shedinja: into the party if there is room and a Poke Ball to use)
+const EVO_FORM = "cobblemon:evo_form";
+function evolutionEffects(entity, evolution) {
+    if (evolution.form) setProp(entity, EVO_FORM, evolution.form);
+    const ids = (() => { try { return JSON.parse(prop(entity, MOVESET) ?? "null"); } catch (e) { return null; } })() ?? fighter(entity)?.moves.map((m) => m.id) ?? [];
+    const learned = [];
+    for (const id of evolution.moves ?? []) if (MOVES[id] && !ids.includes(id) && ids.length < 4) { ids.push(id); learned.push(MOVES[id].name); }
+    if (learned.length) setProp(entity, MOVESET, JSON.stringify(ids));
+    const owner = world.getPlayers().find((p) => p.id === prop(entity, OWNER)), name = nicknameOf(entity) || POKEMON[entity.typeId]?.name;
+    for (const move of learned) owner?.sendMessage(`§b${name} learned ${move}!`);
+    for (const [item, chance] of evolution.drops ?? []) {
+        if (Math.random() * 100 >= chance) continue;
+        try { (owner ?? entity).dimension.spawnItem(new ItemStack(item, 1), (owner ?? entity).location); } catch (e) { }
+    }
+    if (evolution.shed && owner && partyOf(owner.id).length < PARTY_SIZE) {
+        const inv = owner.getComponent(EntityComponentTypes.Inventory)?.container;
+        let ball = -1;
+        for (let i = 0; inv && i < inv.size; i++) if (/^cobblemon:\w*_ball$/.test(inv.getItem(i)?.typeId ?? "")) { ball = i; break; }
+        if (ball >= 0 || owner.getGameMode?.() === "Creative") {
+            const rec = JSON.parse(JSON.stringify(entity.isProxy ? entity.slot.rec : partySnapshot(entity)));
+            rec.t = evolution.shed; rec.v = 0; rec.n = null; if (rec.k) delete rec.k["cobblemon:held"];
+            if (ball >= 0 && owner.getGameMode?.() !== "Creative") { const st = inv.getItem(ball); if (st.amount > 1) { st.amount--; inv.setItem(ball, st); } else inv.setItem(ball, undefined); }
+            addRecord(owner, rec); register(owner, evolution.shed, 2, 0);
+            owner.sendMessage(`§a${POKEMON[evolution.shed]?.name ?? "A Pokemon"} appeared in your party!`);
+        }
+    }
+}
 function evolve(entity, evolution) {
     if (!entity.isValid || evolvingNow.has(entity.id)) return;
-    // an evolution that needs a held item uses it up
-    if (evolution.req.some((q) => q.t === "held")) setProp(entity, "cobblemon:held", undefined);
+    // an evolution that needs a held item uses it up, unless it keeps it (consumeHeldItem false)
+    if (evolution.req.some((q) => q.t === "held") && !evolution.keep) setProp(entity, "cobblemon:held", undefined);
     setProp(entity, EVO_NOTE, undefined);
     evolvingNow.add(entity.id);
     try { entity.triggerEvent("cobblemon:battle_start"); } catch (e) { }
@@ -6632,6 +6791,7 @@ function evolve(entity, evolution) {
         evolvingNow.delete(entity.id);
         if (!entity.isValid) return;
         try { entity.setProperty("cobblemon:evolving", false); entity.triggerEvent("cobblemon:battle_end"); } catch (e) { }
+        evolutionEffects(entity, evolution);
         entity.triggerEvent(evolution.event);
     }, 224);
 }
@@ -7057,7 +7217,10 @@ function ballProxy(player, slot) {
             if (v) { slot.rec.v = Number(v[1]); saveParty(playerId); return; }
             const m = /^cobblemon:evolve(?:_to)?_(\d{4}_\w+)$/.exec(event), to = m && `cobblemon:p${m[1]}`;
             if (!to || !POKEMON[to]) return;
-            const from = slot.rec.t, n = evolvedVariant(from, slot.rec.v ?? 0, to, slot.rec.k?.[COSMETIC]);
+            const from = slot.rec.t, form = slot.rec.k?.[EVO_FORM], looks = VARIANT_LOOKS[to], [, female, shiny] = VARIANT_LOOKS[from]?.[slot.rec.v ?? 0] ?? [null, 0, 0];
+            const formed = form && looks ? looks.findIndex(([lf, lg, ls]) => lf === form && lg === female && ls === shiny) : -1;
+            const n = formed >= 0 ? formed : evolvedVariant(from, slot.rec.v ?? 0, to, slot.rec.k?.[COSMETIC]);
+            if (slot.rec.k) delete slot.rec.k[EVO_FORM];
             const ability = evolvedAbility(from, to, slot.rec.k?.["cobblemon:ability"]);
             slot.rec.t = to; slot.rec.v = Math.max(0, n);
             if (ability) (slot.rec.k ??= {})["cobblemon:ability"] = ability;
@@ -7159,6 +7322,13 @@ function usePartyItem(player, target) {
     partyUsed.set(player.id, system.currentTick);
     const slots = partyOf(player.id);
     if (!slots.length) { player.onScreenDisplay.setActionBar("§7You have no Pokemon with you."); return; }
+    // SummaryBinding (Cobblemon's M key): sneaking and looking straight up opens the selected Pokemon's Summary, in its
+    // ball or out, where it can be renamed, evolved, relearn moves and hold items
+    if (player.isSneaking && player.getRotation().x < -60 && !battles.has(player.id)) {
+        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        system.run(() => showSummary(partyMember(player, slots[selIndex(player)]), "i", player, selIndex(player)));
+        return;
+    }
     if (player.isSneaking) {
         const next = (selIndex(player) + 1) % slots.length;
         player.setDynamicProperty(PARTY_SEL, next);
@@ -7194,7 +7364,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
 // crafts another: a player found without one when they spawn (it was dropped before it was kept) is given it again
 function partyItem() {
     const item = new ItemStack(PARTY_ITEM, 1);
-    item.setLore(["§7Use: send out or call back", "§7the selected Pokemon", "§7Use on a wild Pokemon: battle", "§7Sneak and use: next Pokemon"]);
+    item.setLore(["§7Use: send out or call back", "§7the selected Pokemon", "§7Use on a wild Pokemon: battle", "§7Sneak and use: next Pokemon", "§7Sneak, look up and use: Summary"]);
     item.keepOnDeath = true;
     return item;
 }
