@@ -4821,6 +4821,22 @@ def showdown_moves():
             if boosts(text): effect["boosts"] = boosts(text); effect["self"] = "self: {" in text
             if re.search(r"volatileStatus: ['\"]flinch['\"]", text): effect["flinch"] = True
             if len(effect) > 1: move["secondary"] = effect
+            # Tri Attack and Dire Claw roll their status in code: one of three, at the secondary's chance
+            if match.group(1) == "triattack": move["secondary"] = {"chance": effect["chance"], "status": ["brn", "par", "frz"]}
+            if match.group(1) == "direclaw": move["secondary"] = {"chance": effect["chance"], "status": ["psn", "par", "slp"]}
+        # several chances on hit (the Fangs: a status and a flinch, each on its own roll)
+        listed = re.search(r"^    secondaries: \[(.*?)^    \],?", body, re.S | re.M)
+        if listed:
+            effects = []
+            for text in re.findall(r"\{(.*?)\}", listed.group(1), re.S):
+                chance = re.search(r"chance: (\d+)", text)
+                effect = {"chance": int(chance.group(1)) if chance else 100}
+                status = re.search(r'status: "(\w+)"', text)
+                if status: effect["status"] = status.group(1)
+                if re.search(r"volatileStatus: ['\"]flinch['\"]", text): effect["flinch"] = True
+                if boosts(text): effect["boosts"] = boosts(text); effect["self"] = False
+                if len(effect) > 1: effects.append(effect)
+            if effects: move["secondaries"] = effects
         moves[match.group(1)] = move
     return moves
 

@@ -67,7 +67,19 @@ const CRIT_ITEMS = { scope_lens: [null, 1], razor_claw: [null, 1], leek: [["farf
 const HIT_BOOSTS = { absorb_bulb: ["water", { spa: 1 }], cell_battery: ["electric", { atk: 1 }], luminous_moss: ["water", { spd: 1 }], snowball: ["ice", { atk: 1 }] };
 const POWER_ITEMS = { power_weight: "hp", power_bracer: "atk", power_belt: "def", power_lens: "spa", power_band: "spd", power_anklet: "spe" };
 function holds(f, item, speciesList) { return held(f) === item && (!speciesList || speciesList.some((n) => f.info.name.toLowerCase().replace(/[^a-z]/g, "").startsWith(n))); }
-function useUp(battle, f, text) { if (text) say(battle, text); f.held = null; setProp(f.entity, "cobblemon:held", undefined); }
+// an item used in battle is gone for the rest of it; afterwards only what Cobblemon's held/consumed_in_*_battle tags name
+// stays gone (berries, type gems, terrain seeds, and in a battle with no other player the herbs and snowballs); the
+// rest (an Air Balloon, a Weakness Policy, an Eject Button) is the holder's again
+const HERBS = new Set(["white_herb", "mental_herb", "power_herb", "mirror_herb", "revival_herb"]);
+function consumedFor(battle, item) {
+    return item.endsWith("_berry") || item.endsWith("_gem") || /^(electric|grassy|misty|psychic)_seed$/.test(item) || (!battle.pvp && (HERBS.has(item) || item === "snowball"));
+}
+function useUp(battle, f, text) {
+    if (text) say(battle, text);
+    const item = f.held;
+    f.held = null;
+    if (item && consumedFor(battle, item)) setProp(f.entity, "cobblemon:held", undefined);
+}
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
 
 function statAt(base, level, iv = 31, ev = 0, nature = 1) { return Math.floor((Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5) * nature); }
@@ -157,7 +169,12 @@ function fighter(entity) {
         const health = entity.getComponent(EntityComponentTypes.Health);
         if (health) hp = Math.max(1, Math.round((stats.hp * health.currentValue) / health.effectiveMax));
     } catch (e) { }
-    const moves = ids.filter((id) => MOVES[id]).map((id) => ({ id, ...MOVES[id], left: MOVES[id].pp }));
+    // PP is kept between battles until healed (Move.currentPp), and PP Up raises a move's maximum (Move.maxPp)
+    const ppLeft = storedObject(entity, PP_LEFT, () => ({})), ups = storedObject(entity, PP_UPS, () => ({}));
+    const moves = ids.filter((id) => MOVES[id]).map((id) => {
+        const pp = maxPp(id, ups[id]);
+        return { id, ...MOVES[id], pp, left: Math.min(pp, ppLeft[id] ?? pp) };
+    });
     let rolled = prop(entity, "cobblemon:ability");
     if (!rolled || !([...(info.abilities ?? []), ...(info.hidden ?? [])]).includes(rolled)) {
         const list = info.abilities?.length ? info.abilities : [info.ability];
@@ -189,11 +206,114 @@ function setWeather(battle, kind, setter) {
     say(battle, `§b${WEATHER_TEXT[kind][0]}`);
     return true;
 }
+// which goes first by speed: the faster, a tie either way, and under Trick Room the slower
+function fasterOf(a, b, battle) {
+    if (battle && realBattle(battle).trickRoom > 0) [a, b] = [b, a];
+    return a === b ? Math.random() < 0.5 : a > b;
+}
+// each side's conditions (Showdown's side conditions), kept on the battle both players' views share: screens, Safeguard,
+// Mist, Tailwind and the entry hazards
+function sideOf(battle, f) {
+    const real = realBattle(battle);
+    real.sides ??= { a: {}, b: {} };
+    return real.sides[f === real.ally ? "a" : "b"];
+}
+const SIDE_MOVES = { reflect: "Reflect", lightscreen: "Light Screen", auroraveil: "Aurora Veil", safeguard: "Safeguard", mist: "Mist", tailwind: "Tailwind" };
+const HAZARDS = { stealthrock: 1, spikes: 3, toxicspikes: 2, stickyweb: 1 };
+// the side and field moves, and the status moves that act on HP, stats or types outright: true when the move was one
+function fieldMove(battle, a, d, move) {
+    const name = a.info.name, used = () => say(battle, `§e${name} used ${move.name}!`), fail = () => say(battle, "§7But it failed!");
+    if (SIDE_MOVES[move.id]) {
+        const side = sideOf(battle, a);
+        used();
+        if (side[move.id] > 0 || (move.id === "auroraveil" && weatherOf(battle) !== "snow")) { fail(); return true; }
+        side[move.id] = move.id === "tailwind" ? 4 : ["reflect", "lightscreen", "auroraveil"].includes(move.id) && held(a) === "light_clay" ? 8 : 5;
+        say(battle, `§a${SIDE_MOVES[move.id]} protects ${name}'s team.`);
+        return true;
+    }
+    if (HAZARDS[move.id]) {
+        const side = sideOf(battle, d);
+        used();
+        if ((side[move.id] ?? 0) >= HAZARDS[move.id]) { fail(); return true; }
+        side[move.id] = (side[move.id] ?? 0) + 1;
+        say(battle, `§7${move.name} was scattered around ${d.info.name}'s team!`);
+        return true;
+    }
+    switch (move.id) {
+        case "trickroom": {
+            const real = realBattle(battle);
+            used();
+            real.trickRoom = real.trickRoom > 0 ? 0 : 5;
+            say(battle, real.trickRoom ? `§d${name} twisted the dimensions!` : "§7The twisted dimensions returned to normal!");
+            return true;
+        }
+        case "defog":
+            used();
+            for (const k of Object.keys(HAZARDS)) { delete sideOf(battle, a)[k]; delete sideOf(battle, d)[k]; }
+            for (const k of ["reflect", "lightscreen", "auroraveil", "safeguard", "mist"]) delete sideOf(battle, d)[k];
+            boost(battle, d, { evasion: -1 }, a);
+            return true;
+        case "haze":
+            used();
+            for (const f of [a, d]) for (const k of Object.keys(f.stages)) f.stages[k] = 0;
+            say(battle, "§7All stat changes were eliminated!");
+            return true;
+        case "bellydrum":
+            used();
+            if (a.hp <= a.stats.hp / 2 || a.stages.atk >= 6) { fail(); return true; }
+            a.hp -= Math.floor(a.stats.hp / 2); syncHealth(a); a.stages.atk = 6;
+            say(battle, `§7${name} cut its own HP and maximized its Attack!`);
+            return true;
+        case "painsplit": {
+            used();
+            const avg = Math.floor((a.hp + d.hp) / 2);
+            a.hp = Math.min(a.stats.hp, avg); d.hp = Math.min(d.stats.hp, avg); syncHealth(a); syncHealth(d);
+            say(battle, "§7The battlers shared their pain!");
+            return true;
+        }
+        case "healbell": case "aromatherapy": {
+            used();
+            a.status = null; a.sleep = 0;
+            for (const k of Object.values(realBattle(battle).kept ?? {})) if (k) k.status = null;
+            say(battle, `§a${name}'s team was cured of its status conditions!`);
+            return true;
+        }
+        case "focusenergy":
+            used();
+            if (a.focusEnergy) { fail(); return true; }
+            a.focusEnergy = true; say(battle, `§7${name} is getting pumped!`);
+            return true;
+        case "soak":
+            used();
+            if (d.info.types.length === 1 && d.info.types[0] === "water") { fail(); return true; }
+            d.info = { ...d.info, types: ["water"] }; say(battle, `§7${d.info.name} transformed into the Water type!`);
+            return true;
+        case "roar": case "whirlwind":
+            // Showdown's forceSwitch, with nothing on the bench to bring in, fails, as it does on a lone wild Pokemon
+            used(); fail();
+            return true;
+    }
+    return false;
+}
+// entry hazards on a Pokemon coming in: Stealth Rock by its Rock weakness, Spikes and Toxic Spikes and Sticky Web if
+// it is on the ground
+function entryHazards(battle, f) {
+    const side = sideOf(battle, f), grounded = !f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon";
+    if (held(f) === "heavy_duty_boots") return;
+    if (side.stealthrock) hurt(battle, f, (f.stats.hp / 8) * effectiveness("rock", f.info.types), `Pointed stones dug into ${f.info.name}!`);
+    if (side.spikes && grounded) hurt(battle, f, f.stats.hp / [8, 6, 4][side.spikes - 1], `${f.info.name} is hurt by the spikes!`);
+    if (side.toxicspikes && grounded) {
+        if (f.info.types.includes("poison")) { delete side.toxicspikes; say(battle, `§7The poison spikes disappeared from around ${f.info.name}'s team!`); }
+        else inflict(battle, f, side.toxicspikes >= 2 ? "tox" : "psn", false);
+    }
+    if (side.stickyweb && grounded) { say(battle, `§7${f.info.name} was caught in a sticky web!`); boost(battle, f, { spe: -1 }); }
+}
 function speedOf(f, battle) {
     let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
+    if (battle && sideOf(battle, f).tailwind > 0) spe *= 2;
     return spe;
 }
 
@@ -318,7 +438,7 @@ function boost(battle, target, boosts, source) {
     const guard = source && source !== target ? STAT_GUARD[target.ability] : undefined;
     let lowered = false;
     for (const [stat, amount] of Object.entries(boosts ?? {})) {
-        if (amount < 0 && source && source !== target && battle.mist?.ally > 0 && target === battle.ally) {
+        if (amount < 0 && source && source !== target && sideOf(battle, target).mist > 0) {
             say(battle, `§7${target.info.name} is protected by the mist!`); continue;
         }
         if (amount < 0 && source && source !== target && held(target) === "clear_amulet") {
@@ -346,6 +466,7 @@ function boost(battle, target, boosts, source) {
 }
 
 function inflict(battle, target, status, announceFailure, source) {
+    if (source && source !== target && sideOf(battle, target).safeguard > 0) { if (announceFailure) say(battle, `§7${target.info.name} is protected by Safeguard!`); return; }
     const guard = STATUS_GUARD[ability(target, source)] ?? [];
     if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
         if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
@@ -413,6 +534,55 @@ function hurt(battle, f, amount, text) {
     f.hp = Math.max(0, f.hp - Math.max(1, Math.floor(amount))); say(battle, `§7${text}`); syncHealth(f);
 }
 
+// Showdown's basePowerCallback: the moves whose power the battle decides (their listed power is 0, or the one they start at)
+const WEATHER_BALL = { rain: "water", sun: "fire", sand: "rock", snow: "ice" };
+function movePower(battle, a, d, move) {
+    const kg = (f) => (f.info.weight ?? 100) / 10, spe = (f) => speedOf(f, battle);
+    const raised = (f) => Object.values(f.stages).reduce((n, v) => n + Math.max(0, v), 0);
+    switch (move.id) {
+        case "lowkick": case "grassknot": { const w = kg(d); return w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20; }
+        case "heavyslam": case "heatcrash": { const r = kg(a) / Math.max(0.1, kg(d)); return r >= 5 ? 120 : r >= 4 ? 100 : r >= 3 ? 80 : r >= 2 ? 60 : 40; }
+        case "gyroball": return Math.min(150, Math.floor((25 * spe(d)) / Math.max(1, spe(a))) + 1);
+        case "electroball": { const r = spe(a) / Math.max(1, spe(d)); return r >= 4 ? 150 : r >= 3 ? 120 : r >= 2 ? 80 : r >= 1 ? 60 : 40; }
+        case "flail": case "reversal": { const r = Math.floor((48 * a.hp) / a.stats.hp); return r <= 1 ? 200 : r <= 4 ? 150 : r <= 9 ? 100 : r <= 16 ? 80 : r <= 32 ? 40 : 20; }
+        case "return": return Math.max(1, Math.floor((friendshipOf(a.entity) * 10) / 25));
+        case "frustration": return Math.max(1, Math.floor(((255 - friendshipOf(a.entity)) * 10) / 25));
+        case "eruption": case "waterspout": case "dragonenergy": return Math.max(1, Math.floor((150 * a.hp) / a.stats.hp));
+        case "crushgrip": case "wringout": return Math.max(1, Math.floor((120 * d.hp) / d.stats.hp));
+        case "hardpress": return Math.max(1, Math.floor((100 * d.hp) / d.stats.hp));
+        case "storedpower": case "powertrip": return 20 + 20 * raised(a);
+        case "punishment": return Math.min(200, 60 + 20 * raised(d));
+        case "hex": case "infernalparade": case "bittermalice": return d.status ? move.power * 2 : move.power;
+        case "venoshock": case "barbbarrage": return d.status === "psn" || d.status === "tox" ? move.power * 2 : move.power;
+        case "facade": return a.status ? move.power * 2 : move.power;
+        case "brine": return d.hp * 2 <= d.stats.hp ? move.power * 2 : move.power;
+        case "knockoff": return held(d) ? move.power * 1.5 : move.power;
+        case "acrobatics": return held(a) ? move.power : move.power * 2;
+        case "payback": return battle.movedFirst === d ? move.power * 2 : move.power;
+        case "boltbeak": case "fishiousrend": return battle.movedFirst !== d ? move.power * 2 : move.power;
+        case "magnitude": { const r = Math.random() * 100; return r < 5 ? 10 : r < 15 ? 30 : r < 35 ? 50 : r < 65 ? 70 : r < 85 ? 90 : r < 95 ? 110 : 150; }
+        default: return move.power;
+    }
+}
+// Showdown's damageCallback: the moves that deal a set amount, not by stats; 0 when the move fails. Counter, Mirror
+// Coat and Metal Burst answer the hit taken this turn
+function fixedDamage(battle, a, d, move) {
+    switch (move.id) {
+        case "seismictoss": case "nightshade": return a.level;
+        case "superfang": case "naturesmadness": case "ruination": return Math.max(1, Math.floor(d.hp / 2));
+        case "dragonrage": return 40;
+        case "sonicboom": return 20;
+        case "psywave": return Math.max(1, Math.floor((a.level * (50 + Math.floor(Math.random() * 101))) / 100));
+        case "endeavor": return d.hp > a.hp ? d.hp - a.hp : 0;
+        case "finalgambit": return a.hp;
+        case "counter": case "mirrorcoat": case "metalburst": {
+            const hit = a.lastHit;
+            if (!hit || hit.tick !== system.currentTick || (move.id === "counter" && !hit.physical) || (move.id === "mirrorcoat" && hit.physical)) return 0;
+            return Math.max(1, Math.floor(hit.dmg * (move.id === "metalburst" ? 1.5 : 2)));
+        }
+    }
+    return undefined;
+}
 function useMove(battle, attacker, defender, move, called = false) {
     const outer = battle.curFx, outcome = { used: false, missed: false };
     battle.curFx = outcome;
@@ -424,6 +594,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (!called && !canAct(battle, attacker, move)) return;
     if (battle.curFx) battle.curFx.used = true;
     if (!called && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
+    if (move.id === "weatherball" && WEATHER_BALL[weatherOf(battle)]) move = { ...move, type: WEATHER_BALL[weatherOf(battle)] };
     // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
     if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
     if (move.id === "sleeptalk") {
@@ -455,7 +626,13 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (!setWeather(battle, move.weather, attacker)) say(battle, "§7But it failed!");
         return;
     }
+    if (fieldMove(battle, attacker, defender, move)) return;
     if (self) { say(battle, `§e${name} used ${move.name}!`); if (!healMove(battle, attacker, move)) boost(battle, attacker, move.boosts, attacker); return; }
+    if ((move.id === "thunderwave" && effectiveness(move.type, defender.info.types) === 0)
+        || (move.flags?.includes("powder") && (defender.info.types.includes("grass") || defAb === "overcoat"))
+        || (move.ohko && (effectiveness(move.type, defender.info.types) === 0 || (move.id === "sheercold" && defender.info.types.includes("ice"))))) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return;
+    }
     if (move.flags?.includes("powder") && held(defender) === "safety_goggles") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by its Safety Goggles!`); return; }
     if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !battle.gravity) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Air Balloon)`); return;
@@ -477,8 +654,20 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §cIt's a one-hit KO!`); defender.hp = 0; syncHealth(defender); return;
     }
     let dealt = 0, note = "";
-    const sheer = atkAb === "sheerforce" && (move.secondary || move.selfBoosts);
-    if (move.power) {
+    // Sheer Force drops a move's added effects (its secondaries), not what the move does to its user
+    const sheer = atkAb === "sheerforce" && !!(move.secondary || move.secondaries);
+    const fixed = fixedDamage(battle, attacker, defender, move);
+    if (fixed !== undefined) {
+        if (effectiveness(move.type, defender.info.types) === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
+        if (!fixed) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
+        dealt = Math.min(fixed, defender.hp); defender.hp -= dealt;
+        defender.lastHit = { dmg: dealt, physical: move.category === "Physical", tick: system.currentTick };
+        say(battle, `§e${name} used ${move.name}!§r ${dealt} damage.`); syncHealth(defender);
+        if (move.id === "finalgambit") { attacker.hp = 0; syncHealth(attacker); }
+        return;
+    }
+    const power0 = movePower(battle, attacker, defender, move);
+    if (power0) {
         let types = defender.info.types;
         let eff = move.type === "???" ? 1 : effectiveness(move.type, types);
         if (eff === 0 && atkAb === "scrappy" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
@@ -511,7 +700,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (holds(defender, item, who) && stats.includes(physical ? "def" : "spd")) d *= 2;
         }
         if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
-        let power = move.power;
+        let power = power0;
         if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
         if (atkAb === "technician" && power <= 60) power *= 1.5;
         if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
@@ -531,7 +720,15 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
         if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
         dmg = Math.floor(dmg * eff);
-        if (physical && attacker.status === "brn" && atkAb !== "guts") dmg = Math.floor(dmg / 2);
+        const resist = RESIST_BERRIES[held(defender)];
+        if (resist === move.type && (eff > 1 || resist === "normal")) {
+            dmg = Math.floor(dmg / 2);
+            say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
+            defender.held = null; setProp(defender.entity, "cobblemon:held", undefined);
+        }
+        const screens = sideOf(battle, defender);
+        if (!crit && atkAb !== "infiltrator" && ((physical && (screens.reflect > 0 || screens.auroraveil > 0)) || (!physical && (screens.lightscreen > 0 || screens.auroraveil > 0)))) dmg = Math.floor(dmg / 2);
+        if (physical && attacker.status === "brn" && atkAb !== "guts" && move.id !== "facade") dmg = Math.floor(dmg / 2);
         if (eff < 1 && atkAb === "tintedlens") dmg *= 2;
         if (eff > 1 && (defAb === "filter" || defAb === "solidrock" || defAb === "prismarmor")) dmg = Math.floor(dmg * 0.75);
         if (defAb === "thickfat" && (move.type === "fire" || move.type === "ice")) dmg = Math.floor(dmg / 2);
@@ -551,6 +748,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         }
         if (dealt >= defender.hp && held(defender) === "focus_band" && Math.random() < 0.1) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} hung on using its Focus Band!`); }
         defender.hp -= dealt;
+        defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
         if (crit) note += " A critical hit!";
         if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective...";
         say(battle, `§e${name} used ${move.name}!§r ${dmg} damage.${note}`);
@@ -564,6 +762,14 @@ function runMove(battle, attacker, defender, move, called = false) {
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + Math.max(1, Math.floor(dealt / 8))); say(battle, `§a${name} restored a little HP using its Shell Bell!`); syncHealth(attacker);
         }
         if (dealt && held(defender) === "air_balloon") useUp(battle, defender, `§7${defender.info.name}'s Air Balloon popped!`);
+        const hitBerry = held(defender);
+        if (dealt && defender.hp > 0 && hitBerry === "enigma_berry" && eff > 1) {
+            useUp(battle, defender, `§a${defender.info.name} ate its Enigma Berry!`); defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
+        } else if (dealt && ((hitBerry === "jaboca_berry" && physical) || (hitBerry === "rowap_berry" && !physical))) {
+            useUp(battle, defender, `§a${defender.info.name} ate its ${itemName(hitBerry)}!`); hurt(battle, attacker, attacker.stats.hp / 8, `${name} was hurt by the ${itemName(hitBerry)}!`);
+        } else if (dealt && defender.hp > 0 && ((hitBerry === "kee_berry" && physical) || (hitBerry === "maranga_berry" && !physical))) {
+            useUp(battle, defender, `§a${defender.info.name} ate its ${itemName(hitBerry)}!`); boost(battle, defender, { [physical ? "def" : "spd"]: 1 });
+        }
         if (dealt && defender.hp > 0 && eff > 1 && held(defender) === "weakness_policy") { useUp(battle, defender, `§7${defender.info.name}'s Weakness Policy!`); boost(battle, defender, { atk: 2, spa: 2 }); }
         const hitBoost = HIT_BOOSTS[held(defender)];
         if (dealt && defender.hp > 0 && hitBoost && hitBoost[0] === move.type) { useUp(battle, defender, `§7${defender.info.name}'s ${itemName(defender.held)}!`); boost(battle, defender, hitBoost[1]); }
@@ -572,13 +778,15 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (move.status) inflict(battle, defender, move.status, true, attacker);
     if (move.boosts && defender.hp > 0) boost(battle, defender, move.boosts, attacker);
     const contact = move.contact && held(attacker) !== "protective_pads" && !(held(attacker) === "punching_glove" && move.flags?.includes("punch"));
-    if (move.secondary && !sheer && defAb !== "shielddust" && !(held(defender) === "covert_cloak" && !move.secondary.self) && Math.random() * 100 < move.secondary.chance * (atkAb === "serenegrace" ? 2 : 1)) {
-        if (move.secondary.status && defender.hp > 0) inflict(battle, defender, move.secondary.status, false, attacker);
-        if (move.secondary.flinch && defender.hp > 0 && battle.movedFirst === attacker && defender.ability !== "innerfocus") defender.flinched = true;
-        if (move.secondary.boosts) boost(battle, move.secondary.self ? attacker : defender, move.secondary.boosts, attacker);
+    for (const sec of [move.secondary, ...(move.secondaries ?? [])]) {
+        if (!sec || sheer || defAb === "shielddust" || (held(defender) === "covert_cloak" && !sec.self) || Math.random() * 100 >= sec.chance * (atkAb === "serenegrace" ? 2 : 1)) continue;
+        const status = Array.isArray(sec.status) ? sec.status[Math.floor(Math.random() * sec.status.length)] : sec.status;
+        if (status && defender.hp > 0) inflict(battle, defender, status, false, attacker);
+        if (sec.flinch && defender.hp > 0 && battle.movedFirst === attacker && defender.ability !== "innerfocus") defender.flinched = true;
+        if (sec.boosts) boost(battle, sec.self ? attacker : defender, sec.boosts, attacker);
     }
     if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
-    if (dealt && defender.hp > 0 && !move.secondary?.flinch && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang")
+    if (dealt && defender.hp > 0 && !move.secondary?.flinch && !move.secondaries?.some((x) => x.flinch) && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang")
         && defender.ability !== "innerfocus" && Math.random() < 0.1) defender.flinched = true;
     // Eject Button sends its holder back when it is hit; Red Card sends back the Pokemon that hit its holder
     if (dealt && defender.hp > 0 && attacker.hp > 0) {
@@ -631,8 +839,23 @@ function heldBerry(battle, f) {
         const empty = f.moves.find((m) => m.left === 0);
         if (empty) { empty.left = Math.min(empty.pp, 10); used = true; }
     }
+    // the portion berries heal a third at a quarter of HP or less (PortionHealingBerryItem, potion_by_portion); the stat
+    // berries raise a stat by one there (Starf two, of one at random), and Lansat gives Focus Energy
+    else if (PORTION_BERRIES.has(`cobblemon:${item}`) && f.hp <= f.stats.hp / 4) {
+        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33)); used = true; syncHealth(f);
+    } else if (PINCH_BERRIES[item] && f.hp <= f.stats.hp / 4) {
+        const stat = PINCH_BERRIES[item] === "random" ? ["atk", "def", "spa", "spd", "spe"][Math.floor(Math.random() * 5)] : PINCH_BERRIES[item];
+        say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined);
+        if (stat === "focus") { f.focusEnergy = true; say(battle, `§7${f.info.name} is getting pumped!`); } else boost(battle, f, { [stat]: item === "starf_berry" ? 2 : 1 });
+        return;
+    }
     if (used) { say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); }
 }
+const PINCH_BERRIES = { liechi_berry: "atk", ganlon_berry: "def", petaya_berry: "spa", apicot_berry: "spd", salac_berry: "spe", starf_berry: "random", lansat_berry: "focus" };
+// the type berries halve a super effective hit of their type (Chilan any Normal hit) and are eaten
+const RESIST_BERRIES = { occa_berry: "fire", passho_berry: "water", wacan_berry: "electric", rindo_berry: "grass", yache_berry: "ice", chople_berry: "fighting",
+    kebia_berry: "poison", shuca_berry: "ground", coba_berry: "flying", payapa_berry: "psychic", tanga_berry: "bug", charti_berry: "rock", kasib_berry: "ghost",
+    haban_berry: "dragon", colbur_berry: "dark", babiri_berry: "steel", chilan_berry: "normal", roseli_berry: "fairy" };
 
 function freeze(entity, on) {
     try {
@@ -732,10 +955,10 @@ function endBattle(battle, text) {
         for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
     }
     const sides = battle.pvp ? [battle.ally, battle.foe] : [battle.ally];
-    for (const f of sides) if (f?.entity && !f.clone) keepStatus(f.entity, f.hp > 0 ? f.status : null);
+    for (const f of sides) if (f?.entity && !f.clone) { keepStatus(f.entity, f.hp > 0 ? f.status : null); if (!(battle.adjustLevel > 0)) keepPp(f.entity, f.moves); }
     for (const [id, k] of Object.entries(battle.kept ?? {})) {
         if (battle.adjustLevel > 0 || sides.some((f) => f?.entity && id === memberKey(f.entity))) continue;
-        try { keepStatus(memberByKey(id, [battle.player, battle.opponent]), k.status); } catch (e) { }
+        try { const e = memberByKey(id, [battle.player, battle.opponent]); keepStatus(e, k.status); keepPp(e, k.moves); } catch (e) { }
     }
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     if (battle.pvp && battle.opponent.isValid) system.runTimeout(() => offerLevelEvolutions(battle.opponent), 40);
@@ -755,6 +978,7 @@ function endBattle(battle, text) {
 
 // on entering battle: Intimidate
 function enter(battle, f, other) {
+    entryHazards(battle, f);
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
@@ -772,6 +996,13 @@ const STATUS_CURED = { psn: "was cured of its poisoning", tox: "was cured of its
                        frz: "thawed out", slp: "woke up" };
 function statusOf(e) {
     try { const st = JSON.parse(prop(e, STATUS) ?? "null"); return st && st.left > 0 ? st.s : undefined; } catch (err) { return undefined; }
+}
+// a move's PP, its maximum raised a fifth of its base for each PP Up stage (Move.maxPp), and the PP a Pokemon keeps
+const PP_LEFT = "cobblemon:pp", PP_UPS = "cobblemon:pp_ups";
+function maxPp(id, stages = 0) { const base = MOVES[id]?.pp ?? 0; return base + Math.floor((stages * base) / 5); }
+function keepPp(e, moves) {
+    if (!e?.isValid || !POKEMON[e.typeId] || prop(e, OWNER) === undefined || !moves) return;
+    setProp(e, PP_LEFT, JSON.stringify(Object.fromEntries(moves.filter((m) => m.id).map((m) => [m.id, m.left]))));
 }
 function keepStatus(e, status) {
     if (!e?.isValid || !POKEMON[e.typeId]) return;
@@ -1921,6 +2152,7 @@ function sendOut(battle, entity, spot) {
     try { entity.teleport(spot, { facingLocation: battle.foe.entity.location }); } catch (e) { }
     sendOutEffect(battle.player, entity);
     battle.ally = f;
+    (battle.faced ??= new Set()).add(memberKey(f.entity));
     const sent = titled(f.entity, nicknameOf(f.entity) || f.info.name);
     sayEach(battle, `§6Go! ${sent}! §7(Lv ${f.level})`, `§6${battle.player.name} sent out ${sent}! §7(Lv ${f.level})`);   // battle.switch.self and .other
     enter(battle, f, battle.foe);
@@ -2063,8 +2295,17 @@ function turn(battle) {
         if (!battles.has(battle.player.id)) return;
         if (!choice) { minimise(battle); return; }
         if (choice.kind === "catch") { minimise(battle, "§7Throw a Poke Ball at your opponent to capture it."); return; }
-        if (choice.kind === "forfeit") { endBattle(battle, "§7You forfeited the battle."); return; }
-        if (choice.kind === "run") { endBattle(battle, "§7Got away safely."); return; }
+        if (choice.kind === "forfeit") {
+            // ForfeitConfirmationSelection: asked first, as one press would end a gym or League battle
+            new MessageFormData().title("Forfeit").body("Are you sure you want to forfeit the battle?").button1("Forfeit").button2("Keep battling").show(battle.player).then((r) => {
+                if (!battles.has(battle.player.id)) return;
+                if (r.selection === 0) endBattle(battle, "§7You forfeited the battle."); else { battle.turn--; turn(battle); }
+            }).catch(() => { });
+            return;
+        }
+        // FleeAttemptActionResponse: Run only says to get away; the battle ends once the player is 32 blocks from the
+        // wild Pokemon (PokemonBattle.checkFlee, defaultFleeDistance)
+        if (choice.kind === "run") { battle.fleeing = true; minimise(battle, "§7Run away from the opposing Pokemon to flee."); return; }
         if (choice.kind === "switch") {
             chooseSwitch(battle, false).then((entity) => {
                 if (!battles.has(battle.player.id)) return;
@@ -2085,7 +2326,7 @@ function turn(battle) {
         if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
         const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : speedOf(ally, battle) >= speedOf(foe, battle)));
+            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
         battle.movedFirst = allyFirst ? ally : foe;
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, m] of order) {
@@ -2128,6 +2369,15 @@ function battleBody(battle) {
 // The battle screen minimised (ClientBattle.minimised), as Catch and closing the screen leave it: the player can throw a
 // ball at the foe or use medicine on their own Pokemon, either taking the turn, and sneaking brings the screen back,
 // where Cobblemon's R key does
+system.runInterval(() => {
+    for (const battle of new Set(battles.values())) {
+        if (!battle.fleeing || battle.pvp || battle.trainer) continue;
+        try {
+            const p = battle.player.location, f = battle.foe.entity.location;
+            if (Math.hypot(p.x - f.x, p.y - f.y, p.z - f.z) > 32) endBattle(battle, "§7Got away safely.");
+        } catch (e) { }
+    }
+}, 10);
 function minimise(battle, prompt) {
     battle.minimised = true;
     if (prompt) battle.player.sendMessage(prompt);
@@ -2259,7 +2509,9 @@ function endOfTurn(battle) {
         if ((f.status === "psn" || f.status === "tox") && f.ability === "poisonheal") {
             if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / 8)); say(battle, `§a${f.info.name} is healed by its Poison Heal!`); syncHealth(f); }
         } else if (["brn", "psn", "tox"].includes(f.status)) {
-            hurt(battle, f, f.stats.hp / (f.status === "brn" ? (f.ability === "heatproof" ? 32 : 16) : 8), `${f.info.name} is hurt by its ${f.status === "brn" ? "burn" : "poison"}!`);
+            if (f.status === "tox") f.toxic = Math.min(15, (f.toxic ?? 0) + 1);
+            const share = f.status === "brn" ? 1 / (f.ability === "heatproof" ? 32 : 16) : f.status === "tox" ? f.toxic / 16 : 1 / 8;
+            hurt(battle, f, f.stats.hp * share, `${f.info.name} is hurt by its ${f.status === "brn" ? "burn" : "poison"}!`);
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
@@ -2287,7 +2539,13 @@ function endOfTurn(battle) {
         heldBerry(battle, f);
     }
     for (const f of [battle.ally, battle.foe]) f.flinched = false;
-    if (battle.mist?.ally > 0 && --battle.mist.ally === 0) say(battle, `§7The mist around ${battle.ally.info.name}'s team faded.`);
+    // the side conditions and Trick Room run down
+    const real = realBattle(battle);
+    for (const [key, f] of [["a", real.ally], ["b", real.foe]]) {
+        const side = (real.sides ??= { a: {}, b: {} })[key];
+        for (const k of Object.keys(SIDE_MOVES)) if (side[k] > 0 && --side[k] === 0) say(battle, `§7${f.info.name}'s team's ${SIDE_MOVES[k]} wore off.`);
+    }
+    if (real.trickRoom > 0 && --real.trickRoom === 0) say(battle, "§7The twisted dimensions returned to normal!");
     afterFx(battle, () => { if (battles.has(battle.player.id)) afterTurn(battle); });
 }
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
@@ -2330,13 +2588,22 @@ function offerLevelEvolutions(player) {
     if (ready) try { player.playSound("cobblemon.evolution.notification"); } catch (e) { }
 }
 
+// StandardExperienceCalculator: (base x foe level / 5) x participation x ((2 foe level + 10) / (foe level + level + 10))^2.5
+// + 1, then 1.5 for a Pokemon from another trainer, the Lucky Egg's 1.5, 1.2 with a level evolution ready, 1.2 at 220
+// friendship or more, and experienceMultiplier's 2. Participation is 1 for a Pokemon that faced the foe and the Exp.
+// Share's 0.5 for one that did not
+function battleExperience(battle, f, foe, participation = 1) {
+    const L = foe.level, term = ((foe.info.baseExp || 50) * L) / 5 * participation * Math.pow((2 * L + 10) / (L + f.level + 10), 2.5) + 1;
+    const ot = prop(f.entity, OT), nonOt = ot && ot !== battle.player.name ? 1.5 : 1, egg = held(f) === "lucky_egg" ? 1.5 : 1;
+    let evo = 1;
+    try { if (readyEvolutions(f.entity, battle.player).some((e) => e.req.some((r) => r.t === "level"))) evo = 1.2; } catch (e) { }
+    return Math.max(1, Math.round(term * nonOt * egg * evo * (friendshipOf(f.entity) >= 220 ? 1.2 : 1) * 2));
+}
 function gainExperience(battle, f, foe, amount) {
-    // Cobblemon's config: a Lucky Egg gives 1.5 times the experience
-    const gain = amount ?? Math.max(1, Math.floor(((foe.info.baseExp || 50) * foe.level * (battle.trainer ? 1.5 : 1)) / 7 * (held(f) === "lucky_egg" ? 1.5 : 1)));
+    const gain = amount ?? battleExperience(battle, f, foe);
     if (foe) {
-        // the foe's EV yield, doubled by Macho Brace; a power item adds 8 to its own stat
-        const brace = held(f) === "macho_brace" ? 2 : 1;
-        for (const [stat, n] of Object.entries(foe.info.evYield ?? {})) addEvs(f.entity, stat, n * brace);
+        // the foe's EV yield (Generation8EvCalculator); a power item adds 8 to its own stat
+        for (const [stat, n] of Object.entries(foe.info.evYield ?? {})) addEvs(f.entity, stat, n);
         if (POWER_ITEMS[held(f)]) addEvs(f.entity, POWER_ITEMS[held(f)], 8);
     }
     const group = f.info.expGroup;
@@ -2364,15 +2631,9 @@ function gainExperience(battle, f, foe, amount) {
         for (const [at, id] of f.info.learnset ?? []) {
             if (at !== level || ids.includes(id) || !MOVES[id]) continue;
             note.move = true;
+            // Pokemon.addExperience: a new move goes into a free slot; with four known it waits to be relearned
             if (ids.length < 4) { ids.push(id); say(battle, `§b${f.info.name} learned ${MOVES[id].name}!`); }
-            else {
-                // the oldest move of the same kind makes way: an attack for an attack, a status move for a status move
-                const attack = !!MOVES[id].power;
-                let slot = ids.findIndex((m) => !!MOVES[m]?.power === attack);
-                if (slot < 0) slot = 0;
-                const old = ids[slot]; ids.splice(slot, 1); ids.push(id);
-                say(battle, `§b${f.info.name} forgot ${MOVES[old]?.name ?? old} and learned ${MOVES[id].name}!`);
-            }
+            else say(battle, `§7${f.info.name} can learn ${MOVES[id].name}, but already knows four moves. It can be learned later from the Summary.`);
         }
     }
     setProp(f.entity, EXP, exp); setProp(f.entity, LEVEL, level); setProp(f.entity, MOVESET, JSON.stringify(ids));
@@ -2393,12 +2654,15 @@ function faint(battle, fainted) {
         if (!battle.trainer) wildDrops(gone, true);
         try { if (clip) playClip(gone, clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
-        gainExperience(battle, battle.ally, battle.foe);
-        // an Exp. Share holder elsewhere in the party gets Cobblemon's half share
+        // PokemonBattle.end: each party Pokemon that faced the foe gets all of its experience and EVs, and an Exp. Share
+        // holder that did not, half the experience and the EVs; a fainted one gets none
+        const faced = battle.faced ?? new Set(), allyKey = memberKey(battle.ally.entity);
+        faced.add(allyKey);
         for (const e of findParty(battle.player)) {
-            if (e.id === battle.ally.entity.id || prop(e, "cobblemon:held") !== "cobblemon:exp_share") continue;
-            const sharer = fighter(e);
-            if (sharer) gainExperience(battle, sharer, null, Math.max(1, Math.floor(((battle.foe.info.baseExp || 50) * battle.foe.level * (battle.trainer ? 1.5 : 1)) / 7 * 0.5)));
+            const key = memberKey(e), isAlly = key === allyKey || e.id === battle.ally.entity.id;
+            const share = isAlly || faced.has(key) ? 1 : prop(e, "cobblemon:held") === "cobblemon:exp_share" ? 0.5 : 0;
+            const f = !share ? null : isAlly ? battle.ally : fighter(e);
+            if (f) gainExperience(battle, f, battle.foe, battleExperience(battle, f, battle.foe, share));
         }
         if (battle.gym && gymNextPokemon(battle)) return;
         if (battle.gym) gymWon(battle);
@@ -2610,7 +2874,7 @@ function gymNextPokemon(battle) {
         if (!battles.has(battle.player.id) || !entity.isValid) { try { entity.remove(); } catch (e) { } return; }
         const f = fighter(entity);
         freeze(entity, true);
-        battle.foe = f;
+        battle.foe = f; battle.faced = new Set([memberKey(battle.ally.entity)]);
         say(battle, `§6${RCT_TRAINERS[g.id].name} sent out ${f.info.name}! §7(Lv ${f.level})`);
         register(battle.player, entity.typeId, 1, variantOf(entity));
         enter(battle, f, battle.ally);
@@ -3220,7 +3484,7 @@ function pvpResolve(battle) {
         if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
         const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : speedOf(ally, battle) >= speedOf(foe, battle)));
+            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
         battle.movedFirst = allyFirst ? ally : foe;
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, mv] of order) if (a.hp > 0 && d.hp > 0) useMove(battle, a, d, mv);
@@ -3359,7 +3623,7 @@ function healAround(dimension, location, player) {
     let healed = 0;
     for (const e of summaryParty(player)) {
         try { e.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (err) { }
-        setProp(e, FAINTED, undefined);
+        setProp(e, FAINTED, undefined); setProp(e, PP_LEFT, undefined);
         if (!e.isProxy) { try { e.dimension.spawnParticle("minecraft:heart_particle", { x: e.location.x, y: e.location.y + 1, z: e.location.z }); } catch (err) { } }
         healed++;
     }
@@ -6077,7 +6341,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
             return;
         }
     }
-    const battleItem = BATTLE_ITEMS[id], trains = MOCHIS[id] || HYPER_CANDIES[id] || id === FRESH_START;
+    const battleItem = BATTLE_ITEMS[id], trains = MOCHIS[id] || HYPER_CANDIES[id] || id === FRESH_START || PP_RAISE[id];
     if (!medicine && !battleItem && candy === undefined && !held && !changer && !evItem && !mint && !evBerry && !stash && !trains) return;
     if (prop(target, OWNER) !== player.id) return;   // on a wild Pokemon the item does nothing, and its panel opens
     event.cancel = true;
@@ -6172,6 +6436,8 @@ function useItemOn(player, target, id, itemStack) {
         if (!choices.length) { player.sendMessage("§7It won't have any effect."); return; }
         setProp(target, "cobblemon:ability", choices[0]); consumeHand(player);
         player.sendMessage(`§a${info.name}'s ability became ${abilityName(choices[0])}!`);
+    } else if (medicine?.pp || PP_RAISE[id]) {
+        usePpItem(player, target, id, medicine);
     } else if (medicine) {
         const message = applyMedicine(target, medicine);
         if (!message) { player.sendMessage("§7It won't have any effect."); return; }
@@ -6187,9 +6453,47 @@ function useItemOn(player, target, id, itemStack) {
     }
 }
 
+// PP out of battle (PokemonAndMoveSelectingItem): an Ether, a Leppa Berry or a PP Up asks which move (MoveSelectGUI); an
+// Elixir restores every move. PP Up raises a move's maximum a stage (PP Max to the third), keeping its share of PP, and
+// hands back the bottle. None is used up when it would change nothing
+const PP_RAISE = { "cobblemon:pp_up": 1, "cobblemon:pp_max": 3 };
+function usePpItem(player, target, id, medicine) {
+    const f = fighter(target), name = nicknameOf(target) || POKEMON[target.typeId].name;
+    if (!f || prop(target, FAINTED) && !PP_RAISE[id]) { player.sendMessage("§7It won't have any effect."); return; }
+    const ups = storedObject(target, PP_UPS, () => ({}));
+    const fits = (m) => (PP_RAISE[id] ? (ups[m.id] ?? 0) < 3 : m.left < m.pp);
+    const apply = (moves) => {
+        const left = Object.fromEntries(f.moves.map((m) => [m.id, m.left]));
+        for (const m of moves) {
+            if (PP_RAISE[id]) {
+                const share = m.left / Math.max(1, m.pp);
+                ups[m.id] = Math.min(3, (ups[m.id] ?? 0) + PP_RAISE[id]);
+                left[m.id] = Math.ceil(share * maxPp(m.id, ups[m.id]));
+            } else left[m.id] = Math.min(m.pp, m.left + medicine.pp);
+        }
+        if (PP_RAISE[id]) setProp(target, PP_UPS, JSON.stringify(ups));
+        setProp(target, PP_LEFT, JSON.stringify(left));
+        consumeHand(player); playItemUse(target, id);
+        if (PP_RAISE[id] && player.getGameMode?.() !== "Creative") giveOrDrop(player, "minecraft:glass_bottle");
+        if (id.endsWith("_berry")) feedPokemon(target, 1);
+        player.sendMessage(`§a${PP_RAISE[id] ? `${name}'s ${moves[0].name} PP rose.` : `${name}'s PP was restored.`}`);
+    };
+    const candidates = f.moves.filter(fits);
+    if (!candidates.length) { player.sendMessage("§7It won't have any effect."); return; }
+    if (medicine?.all) { apply(candidates); return; }
+    const form = new ActionFormData().title(itemName(id)).body(`§7Use it on which of ${name}'s moves?`);
+    for (const m of candidates) form.button(`${m.name}\n§7PP ${m.left}/${m.pp}`);
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === undefined || !player.isValid || !target.isValid) return;
+        const hand = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+        if (hand?.typeId !== id) return;
+        apply([candidates[r.selection]]);
+    }).catch(() => { });
+}
+
 // PartySelectGUI: an item a Pokemon takes, used in the air out of battle, asks which party member it is for, those in
 // their balls (a fainted one for a Revive) included
-const PARTY_ITEMS_USABLE = (id) => !!(MEDICINE[id] || CANDIES[id] !== undefined || EV_ITEMS[id] || MINTS[id] || EV_BERRIES[id] || MOCHIS[id] || HYPER_CANDIES[id]
+const PARTY_ITEMS_USABLE = (id) => !!(MEDICINE[id] || CANDIES[id] !== undefined || EV_ITEMS[id] || MINTS[id] || EV_BERRIES[id] || MOCHIS[id] || HYPER_CANDIES[id] || PP_RAISE[id]
     || id === FRESH_START || id === "cobblemon:ability_capsule" || id === "cobblemon:ability_patch");
 world.afterEvents.itemUse.subscribe(({ source: player, itemStack }) => {
     const id = itemStack?.typeId;
@@ -7312,7 +7616,7 @@ function useBagItem(battle, id) {
         boost(battle, f, { [item.boost]: 2 }, f); gainFriendship(f.entity, 1); used = true;
     }
     if (item?.focus && !f.focusEnergy) { f.focusEnergy = true; say(battle, `§a${f.info.name} is getting pumped!`); used = true; }
-    if (item?.mist && !(battle.mist?.ally > 0)) { (battle.mist ??= {}).ally = 5; say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
+    if (item?.mist && !(sideOf(battle, f).mist > 0)) { sideOf(battle, f).mist = 5; say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
     if (effect.heal && f.hp < f.stats.hp) {
         const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "third" ? Math.floor(f.stats.hp * 0.33) : effect.heal;
         const before = f.hp; f.hp = Math.min(f.stats.hp, f.hp + amount); syncHealth(f);
