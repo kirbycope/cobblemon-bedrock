@@ -11,21 +11,57 @@
                     "default": 13
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "mountains"
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mountains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "extreme_hills"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "extreme_hills"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "meadow"
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "any_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "mesa"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "desert"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "savanna"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "taiga"
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },

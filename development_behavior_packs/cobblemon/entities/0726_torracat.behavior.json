@@ -749,6 +749,23 @@
                     ]
                 }
             },
+            "cobblemon:spawn_weather_clear": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:herd_seed": {},
             "cobblemon:conflict_on": {
                 "add": {

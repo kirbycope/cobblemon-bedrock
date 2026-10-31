@@ -11,21 +11,43 @@
                     "default": 44
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "plains"
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "plains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "savanna"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "meadow"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "savanna"
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "roofed"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "pale_garden"
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -45,9 +67,50 @@
                     "default": 44
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "overworld"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "deep_dark"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "caves"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "monster"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "overworld"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "sulfur_caves"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
@@ -69,9 +132,50 @@
                     "default": 55
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "overworld"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "deep_dark"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "caves"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "monster"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "overworld"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "sulfur_caves"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_underground": {},
                 "minecraft:brightness_filter": {
@@ -110,7 +214,7 @@
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },
@@ -126,21 +230,43 @@
                     "default": 22
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "plains"
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "plains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "savanna"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "meadow"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "savanna"
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "roofed"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "pale_garden"
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -162,9 +288,50 @@
                     "default": 22
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "overworld"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "deep_dark"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "caves"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "monster"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "overworld"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "sulfur_caves"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {

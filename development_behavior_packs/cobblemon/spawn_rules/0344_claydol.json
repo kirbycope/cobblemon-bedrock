@@ -11,16 +11,29 @@
                     "default": 2
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "mesa"
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mesa"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "desert"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "desert"
+                            "none_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "deep_dark"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -63,16 +76,29 @@
                     "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "mesa"
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mesa"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "desert"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "desert"
+                            "none_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "deep_dark"
+                                }
+                            ]
                         }
                     ]
                 },

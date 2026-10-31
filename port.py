@@ -3334,6 +3334,9 @@ def spawn_condition(spawn, species, kind):
     if not set(spawn.get("presets", ["natural"])) & SURFACE_PRESETS and spawn.get("presets"): return None
     biome_filter = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
     if biome_filter is None: return None
+    # its anticondition's biomes are left out (Clefairy's spooky ones); its other anticonditions are not carried
+    anti = biome_filter_for((spawn.get("anticondition") or {}).get("biomes", []))
+    if anti: biome_filter = _all(biome_filter, {"none_of": [anti]})
     position = spawn.get("spawnablePositionType", "grounded")
     # the raw Cobblemon score; normalise_weights rescales a species' conditions into Bedrock's band
     weight = spawn.get("weight", 10) * BUCKET_WEIGHTS.get(spawn.get("bucket", "common"), 1.0)
@@ -3352,7 +3355,10 @@ def spawn_condition(spawn, species, kind):
     if "minSkyLight" in condition or "maxSkyLight" in condition or "timeRange" in condition:
         low = condition.get("minSkyLight", 0); high = condition.get("maxSkyLight", 15)
         time_range = condition.get("timeRange", "")
-        if time_range in ("night", "midnight", "dusk"): high = min(high, 7)
+        # Cobblemon's minSkyLight is the open sky over the spot, which night does not dim; Bedrock's brightness is the
+        # light there now, so a night spawn keeps only its darkness (the surface standing for the open sky): minSkyLight
+        # 8 under a cap of 7 was a filter no spot passes, and 37 species never spawned (Abra, Hoothoot, Zorua...)
+        if time_range in ("night", "midnight", "dusk"): high = min(high, 7); low = min(low, high)
         if time_range in ("day", "morning", "afternoon", "noon"): low = max(low, 8)
         rule["minecraft:brightness_filter"] = {"min": low, "max": high, "adjust_for_weather": time_range in ("night", "midnight", "dusk", "day", "morning", "afternoon", "noon")}
     if "minY" in condition or "maxY" in condition:
@@ -3412,7 +3418,7 @@ def create_spawn_rules():
         if not pokemon: continue
         pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
         legendary += 1
-    weather_events = {}
+    weather_events, slime_events = {}, set()
     # A herd (PokemonHerdSpawnDetail) starts with one member, a leader where the herd has one and otherwise a follower,
     # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
     # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
@@ -3456,8 +3462,14 @@ def create_spawn_rules():
                 continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
             # Bedrock's spawn rules have no weather filter, so a spawn that needs one (Zapdos in a thunderstorm) fires an
-            # event on spawning that tests the weather where it stands and takes it away again in the wrong weather
-            weather = spawn.get("condition", {}).get("weather")
+            # event on spawning that tests the weather where it stands and takes it away again in the wrong weather;
+            # Cobblemon's own isThundering and isRaining (rain counting thunder, as its condition does) the same way
+            cond = spawn.get("condition", {})
+            weather = cond.get("weather") or ("thunder" if cond.get("isThundering") else "rain" if cond.get("isRaining") is True else "clear" if cond.get("isRaining") is False else None)
+            # a slime chunk spawn (Ditto's, the Goomy line's) fires an event the script answers, taking it away outside one
+            if rule and cond.get("isSlimeChunk") and not form:
+                rule["minecraft:herd"]["event"] = "cobblemon:spawn_slime_chunk"; rule["minecraft:herd"]["event_skip_count"] = 0
+                slime_events.add(pokemon); weather = None
             if rule and weather and not form:
                 rule["minecraft:herd"]["event"] = f"cobblemon:spawn_weather_{weather}"; rule["minecraft:herd"]["event_skip_count"] = 0
                 weather_events.setdefault(pokemon, set()).add(weather)
@@ -3493,6 +3505,12 @@ def create_spawn_rules():
             wanted = {"thunder": "thunderstorm", "rain": "precipitation", "clear": "clear"}[weather]
             events[f"cobblemon:spawn_weather_{weather}"] = {"sequence": [{"filters": {"test": "weather_at_position", "subject": "self", "operator": "!=", "value": wanted},
                                                                            "add": {"component_groups": ["cobblemon:gone"]}}]}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    for pokemon in slime_events:
+        path = f"{entitiesBedrock}/{pokemon}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); data["minecraft:entity"].setdefault("events", {})["cobblemon:spawn_slime_chunk"] = {}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     for pokemon, forms in seed_events.items():
@@ -6183,6 +6201,115 @@ def create_revival_herb():
     print("  revival herbs: a crop of 9 ages, planted on farmland and found in lush caves; Pep-Up Flower item")
 
 
+# Cobblemon's own worldgen beside the trees and groves (CobblemonOrePlacedFeatures, CobblemonPlacedFeatures): the evolution
+# stone ores, Medicinal Leek on still water, wild mints high up, big roots under the ground and Galarica bushes on beaches.
+# Each Java placed feature becomes a Bedrock feature and feature rule with its count, rarity, height and biomes.
+STONE_REPLACEABLES = ["minecraft:stone", "minecraft:granite", "minecraft:diorite", "minecraft:andesite"]
+DEEPSLATE_REPLACEABLES = ["minecraft:deepslate", "minecraft:tuff"]
+TERRACOTTA = ["minecraft:hardened_clay"] + [f"minecraft:{c}_terracotta" for c in ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+                                                                              "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")]
+REPLACEABLE_TAGS = {"minecraft:stone_ore_replaceables": STONE_REPLACEABLES, "minecraft:deepslate_ore_replaceables": DEEPSLATE_REPLACEABLES,
+                    "cobblemon:dripstone_replaceables": ["minecraft:dripstone_block"], "minecraft:terracotta": TERRACOTTA}
+WILD_GROUND = ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]
+
+
+def feature_rule(name, places, biome_filter, iterations, y, chance=1, placement="surface_pass", spread=(0, 15)):
+    rule = {"description": {"identifier": f"cobblemon:{name}_rule", "places_feature": places},
+            "conditions": {"placement_pass": placement, "minecraft:biome_filter": biome_filter},
+            "distribution": {"iterations": iterations, "x": {"distribution": "uniform", "extent": list(spread)}, "y": y,
+                             "z": {"distribution": "uniform", "extent": list(spread)}}}
+    if chance > 1: rule["distribution"]["scatter_chance"] = {"numerator": 1, "denominator": chance}
+    with open(f"{featureRulesBedrock}/{name}_rule.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": rule}, indent=2))
+
+
+def write_feature(name, kind, body):
+    with open(f"{featuresBedrock}/{name}.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", kind: {"description": {"identifier": f"cobblemon:{name}"}, **body}}, indent=2))
+
+
+def height_distribution(height):
+    """A Java height provider (uniform or trapezoid, absolute or from the top or bottom) as a Bedrock y distribution."""
+    def at(anchor):
+        if "absolute" in anchor: return anchor["absolute"]
+        if "above_bottom" in anchor: return -64 + anchor["above_bottom"]
+        return 320 - anchor.get("below_top", 0)
+    low, high = at(height.get("min_inclusive", {"absolute": -64})), at(height.get("max_inclusive", {"absolute": 320}))
+    return {"distribution": "triangle" if height.get("type") == "minecraft:trapezoid" else "uniform", "extent": [low, high]}
+
+
+def create_wild_features():
+    world = f"{cobblemonData}/worldgen"
+    def tag_filter(tag):
+        with open(f"{cobblemonData}/tags/worldgen/biome/{tag}.json", encoding="utf-8") as file: return biome_filter_for(json.load(file)["values"])
+    ores = 0
+    for path in sorted(glob.glob(f"{world}/placed_feature/ore/*.json")):
+        name = os.path.basename(path)[:-5]
+        with open(path, encoding="utf-8") as file: placed = json.load(file)
+        feature = placed["feature"].split(":", 1)[1]
+        with open(f"{world}/configured_feature/{feature}.json", encoding="utf-8") as file: config = json.load(file)["config"]
+        rules = [{"places_block": t["state"]["Name"], "may_replace": REPLACEABLE_TAGS.get(t["target"].get("tag"), [t["target"].get("block", "minecraft:stone")])}
+                 for t in config["targets"]]
+        write_feature(f"ore_{name}", "minecraft:ore_feature", {"count": config.get("size", 3), "replace_rules": rules})
+        # CobblemonOrePlacedFeatures: <stone>_upper and _lower in has_ore/ore_<stone>_normal, the _rare pair in _rare,
+        # and the Nether fire stone and dripstone moon stone in their own tags
+        stone = re.sub(r"_(upper|lower)(_rare)?$|_(nether|dripstone)$", "", name)
+        kind = "rare" if name.endswith("_rare") else "nether" if name.endswith("_nether") else "dripstone" if name.endswith("_dripstone") else "normal"
+        biomes = tag_filter(f"has_ore/ore_{stone}_{kind}")
+        if not biomes: continue
+        count = next((p["count"] for p in placed["placement"] if p["type"] == "minecraft:count"), 1)
+        height = next((p["height"] for p in placed["placement"] if p["type"] == "minecraft:height_range"), {})
+        y = height_distribution(height)
+        if kind == "nether": y = {"distribution": "uniform", "extent": [10, 117]}   # the Nether is 0 to 127 high
+        feature_rule(f"ore_{name}", f"cobblemon:ore_{name}", biomes, count, y, placement="underground_pass")
+        ores += 1
+    overworld = biome_filter_for(["#cobblemon:is_overworld"])
+    surface = "query.heightmap(variable.worldx, variable.worldz)"
+    # Medicinal Leek: a patch of twenty tries 4 across on still water, outside freezing, coast and ocean biomes, two
+    # tries a chunk one chunk in four
+    write_feature("medicinal_leek_wild", "minecraft:single_block_feature", {
+        "places_block": {"name": "cobblemon:medicinal_leek_block", "states": {"cobblemon:age": 2}},
+        "enforce_placement_rules": False, "enforce_survivability_rules": False,
+        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:water"]}, "may_replace": ["minecraft:air"]})
+    write_feature("medicinal_leek_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:medicinal_leek_wild", "iterations": 20,
+        "x": {"distribution": "uniform", "extent": [-4, 4]}, "y": 0, "z": {"distribution": "uniform", "extent": [-4, 4]}})
+    leek_biomes = _all(overworld, {"none_of": [biome_filter_for(["#cobblemon:is_freezing", "#cobblemon:is_coast", "#cobblemon:is_ocean"])]})
+    feature_rule("medicinal_leek", "cobblemon:medicinal_leek_patch", leek_biomes, 2, surface, chance=4)
+    # mints (MintFeature, the colours at random, wild and grown): on dirt 70 up, rarer the lower: one chunk in 88 from
+    # 70, 77 from 80, 55 from 90, 33 from 100, 22 from 110 and 12 from 120. A rule's height is that of the chunk's middle
+    colours = ["red", "blue", "cyan", "pink", "green", "white"]
+    for c in colours:
+        write_feature(f"mint_{c}_wild", "minecraft:single_block_feature", {
+            "places_block": {"name": f"cobblemon:{c}_mint", "states": {"cobblemon:age": 7}},
+            "enforce_placement_rules": False, "enforce_survivability_rules": False,
+            "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:moss_block", "minecraft:mycelium", "minecraft:dirt_with_roots"]},
+            "may_replace": WILD_GROUND})
+    write_feature("mint_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:mint_{c}_wild", 1] for c in colours]})
+    for low, high, chance in ((70, 79, 88), (80, 89, 77), (90, 99, 55), (100, 109, 33), (110, 119, 22), (120, 400, 12)):
+        h = "query.heightmap(variable.originx + 8, variable.originz + 8)"
+        feature_rule(f"mint_{low}", "cobblemon:mint_wild", overworld, f"({h} >= {low} && {h} <= {high}) ? 1 : 0", surface, chance=chance)
+    # big roots: two tries a chunk one chunk in two, hanging under the ground (beneath the surface, within 32), a patch of three
+    write_feature("big_root_wild", "minecraft:single_block_feature", {
+        "places_block": "cobblemon:big_root", "enforce_placement_rules": False, "enforce_survivability_rules": False,
+        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "top": ["minecraft:dirt", "minecraft:grass_block", "minecraft:coarse_dirt", "minecraft:dirt_with_roots", "minecraft:podzol", "minecraft:mud", "minecraft:moss_block"]},
+        "may_replace": ["minecraft:air", "minecraft:cave_air"]})
+    write_feature("big_root_snap", "minecraft:snap_to_surface_feature", {"feature_to_snap": "cobblemon:big_root_wild", "vertical_search_range": 12, "surface": "ceiling"})
+    write_feature("big_root_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:big_root_snap", "iterations": 3,
+        "x": {"distribution": "uniform", "extent": [-1, 1]}, "y": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]}})
+    feature_rule("big_root", "cobblemon:big_root_patch", overworld, 2, f"{surface} - math.random_integer(4, 32)", chance=2, placement="underground_pass")
+    # Galarica nut bushes: a patch of twenty tries 5 across on beaches, one chunk in six
+    write_feature("galarica_bush_wild", "minecraft:single_block_feature", {
+        "places_block": "cobblemon:galarica_nut_bush", "enforce_placement_rules": False, "enforce_survivability_rules": False,
+        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:gravel"]},
+        "may_replace": WILD_GROUND})
+    write_feature("galarica_bush_snap", "minecraft:snap_to_surface_feature", {"feature_to_snap": "cobblemon:galarica_bush_wild", "vertical_search_range": 5, "surface": "floor"})
+    write_feature("galarica_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:galarica_bush_snap", "iterations": 20,
+        "x": {"distribution": "uniform", "extent": [-5, 5]}, "y": 0, "z": {"distribution": "uniform", "extent": [-5, 5]}})
+    beach = biome_filter_for(["#cobblemon:is_beach"])
+    if beach: feature_rule("galarica_nuts", "cobblemon:galarica_patch", beach, 1, surface, chance=6)
+    print(f"  wild features: {ores} evolution stone ore placements, Medicinal Leek, mints, big roots, Galarica bushes")
+
+
 def create_blocks():
     print("Creating blocks...")
     for folder in (blocksBedrock, blockModelsBedrock, texturesBlocksBedrock, lootBlocksBedrock, f"{behaviorPack}/recipes",
@@ -6202,8 +6329,10 @@ def create_blocks():
                 if fruit_key: cubes = cubes + fruit; instances["fruit"] = fruit_key
             geometry = f"geometry.cobblemon_{berry}_{stage}"
             write_block_geometry(geometry, cubes)
+            # BerryBlock: broken, a bush just planted gives its berry back and one in fruit its harvest; one growing, nothing
             permutations.append({"condition": f"q.block_state('cobblemon:stage') == {stage}", "components": {
-                "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances)}})
+                "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances),
+                "minecraft:loot": f"loot_tables/blocks/{berry}_bush.json" if stage in (0, 3) else "loot_tables/empty.json"}})
         with open(f"{lootBlocksBedrock}/{berry}_bush.json", "w") as file:
             file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{berry}"}]}]}, indent=4))
         definition = {"format_version": "1.21.90", "minecraft:block": {
@@ -6567,23 +6696,103 @@ def defined_items():
     return ids
 
 
-def convert_loot_table(data, items):
-    """A Java loot table as a Bedrock one: item entries and simple counts; items the pack lacks are left out."""
+def loot_number(value, default=1):
+    """A Java number provider (a constant, uniform, binomial) as a Bedrock count: a number or {min, max}."""
+    if isinstance(value, (int, float)): return int(value)
+    if isinstance(value, dict):
+        if "min" in value and "max" in value: return {"min": int(value["min"]), "max": int(value["max"])}
+        if value.get("type", "").endswith("binomial"): return {"min": 0, "max": int(value.get("n", 1))}
+        if "value" in value: return int(value["value"])
+    return default
+
+
+SILK_SELF = set()   # blocks whose Cobblemon loot drops the block itself under Silk Touch (scripts/blocks.js, main.js breaks them)
+converted_sets = set()
+
+
+def loot_condition(cond, state, silk):
+    """Whether a Java loot condition holds for a block in these states, broken with or without Silk Touch; None for a
+    condition left to Bedrock (a random chance), and True for those the port does not test (explosions, location)."""
+    kind = cond.get("condition", "").split(":")[-1]
+    if kind == "block_state_property":
+        return all(str((state or {}).get(k, "")) == str(v) for k, v in cond.get("properties", {}).items()) if state is not None else True
+    if kind == "match_tool":
+        enchants = json.dumps(cond.get("predicate", {}))
+        return silk if "silk_touch" in enchants else False
+    if kind == "inverted":
+        inner = loot_condition(cond.get("term", {}), state, silk)
+        return True if inner is None else not inner
+    if kind == "any_of":
+        results = [loot_condition(t, state, silk) for t in cond.get("terms", [])]
+        return any(r is not False for r in results)
+    if kind in ("random_chance", "table_bonus"): return None
+    return True
+
+
+def bedrock_conditions(conds, state, silk):
+    """The conditions a pool or entry keeps on Bedrock, or False when one of them already fails here."""
+    out = []
+    for cond in conds:
+        held = loot_condition(cond, state, silk)
+        if held is False: return False
+        kind = cond.get("condition", "").split(":")[-1]
+        if held is None and kind == "random_chance": out.append({"condition": "random_chance", "chance": cond.get("chance", 1)})
+        elif held is None and kind == "table_bonus": out.append({"condition": "random_chance", "chance": (cond.get("chances") or [1])[0]})
+    return out
+
+
+def convert_loot_table(data, items, state=None, silk=False):
+    """A Java loot table as a Bedrock one, decided for a block in these states broken with or without Silk Touch: items
+    with their counts and random enchanting, a TM's move as its own item, nested tables (sets/...) converted beside it,
+    alternatives as their first child that holds, ranged rolls; items the pack lacks are left out. Fortune bonuses and
+    explosion decay are not carried."""
+    def entry_out(entry):
+        kind = entry.get("type", "").split(":")[-1]
+        conds = bedrock_conditions(entry.get("conditions", []), state, silk)
+        if conds is False: return []
+        if kind == "alternatives":
+            for child in entry.get("children", []):
+                if bedrock_conditions(child.get("conditions", []), state, silk) is not False: return entry_out(child)
+            return []
+        if kind == "group": return [e for child in entry.get("children", []) for e in entry_out(child)]
+        if kind == "empty": return [{"type": "empty", "weight": entry.get("weight", 1)}]
+        if kind == "loot_table":
+            ref = entry.get("value") or entry.get("name") or ""
+            if not isinstance(ref, str) or not ref.startswith("cobblemon:"): return []
+            rel = ref.split(":", 1)[1]
+            src = f"{cobblemonData}/loot_table/{rel}.json"
+            if not os.path.exists(src): return []
+            if rel not in converted_sets:
+                converted_sets.add(rel)
+                with open(src, encoding="utf-8") as file: nested = convert_loot_table(json.load(file), items)
+                os.makedirs(os.path.dirname(f"{behaviorPack}/loot_tables/{rel}.json"), exist_ok=True)
+                with open(f"{behaviorPack}/loot_tables/{rel}.json", "w") as file: file.write(json.dumps(nested, indent=2))
+            out = {"type": "loot_table", "name": f"loot_tables/{rel}.json", "weight": entry.get("weight", 1)}
+            if conds: out["conditions"] = conds
+            return [out]
+        if kind != "item": return []
+        name = entry.get("name", "")
+        functions = []
+        for function in entry.get("functions", []):
+            fn = function.get("function", "").split(":")[-1]
+            if fn == "set_count": functions.append({"function": "set_count", "count": loot_number(function.get("count"))})
+            elif fn == "enchant_randomly": functions.append({"function": "enchant_randomly"})
+            elif fn == "set_components" and "cobblemon:tm_move" in function.get("components", {}):
+                name = f"cobblemon:tm_{function['components']['cobblemon:tm_move'].get('move', '')}"
+        if name.startswith("cobblemon:") and name not in items: return []
+        out = {"type": "item", "name": name, "weight": entry.get("weight", 1)}
+        if functions: out["functions"] = functions
+        if conds: out["conditions"] = conds
+        return [out]
     pools = []
     for pool in data.get("pools", []):
-        entries = []
-        for entry in pool.get("entries", []):
-            name = entry.get("name", "")
-            if entry.get("type") != "minecraft:item" or (name.startswith("cobblemon:") and name not in items): continue
-            converted = {"type": "item", "name": name, "weight": entry.get("weight", 1)}
-            for function in entry.get("functions", []):
-                count = function.get("count")
-                if function.get("function") == "minecraft:set_count" and isinstance(count, dict) and "min" in count:
-                    converted.setdefault("functions", []).append({"function": "set_count", "count": {"min": count["min"], "max": count["max"]}})
-                elif function.get("function") == "minecraft:set_count" and isinstance(count, (int, float)):
-                    converted.setdefault("functions", []).append({"function": "set_count", "count": count})
-            entries.append(converted)
-        if entries: pools.append({"rolls": pool.get("rolls", 1) if isinstance(pool.get("rolls", 1), (int, float)) else 1, "entries": entries})
+        conds = bedrock_conditions(pool.get("conditions", []), state, silk)
+        if conds is False: continue
+        entries = [e for entry in pool.get("entries", []) for e in entry_out(entry)]
+        if not any(e["type"] != "empty" for e in entries): continue
+        out = {"rolls": loot_number(pool.get("rolls", 1)), "entries": entries}
+        if conds: out["conditions"] = conds
+        pools.append(out)
     return {"pools": pools}
 
 
@@ -7515,17 +7724,38 @@ def block_model_of(name):
     return parent, textures
 
 
-def block_loot(name):
-    """A Bedrock loot table path for the block: Cobblemon's, converted, or the block itself."""
+def loot_by_state(name):
+    """The block states Cobblemon's loot table for the block tests (a crop's age, a cluster's size), or an empty set."""
+    path = f"{cobblemonData}/loot_table/blocks/{name}.json"
+    if not os.path.exists(path): return set()
+    keys = set()
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("condition", "").endswith("block_state_property"): keys.update(node.get("properties", {}))
+            for v in node.values(): walk(v)
+        elif isinstance(node, list):
+            for v in node: walk(v)
+    with open(path, encoding="utf-8") as file: walk(json.load(file))
+    return keys
+
+
+def block_loot(name, state=None):
+    """A Bedrock loot table path for the block in these states: Cobblemon's, converted (a table a state, named for its
+    values, where the drops depend on them), or the block itself. A block Silk Touch keeps whole goes in SILK_SELF."""
     path = f"{cobblemonData}/loot_table/blocks/{name}.json"
     table = None
+    items = defined_items() | {f"cobblemon:{name}"}
     if os.path.exists(path):
         with open(path, encoding="utf-8") as file: data = json.load(file)
-        table = convert_loot_table(data, defined_items() | {f"cobblemon:{name}"})
-        if not table["pools"]: table = None
+        table = convert_loot_table(data, items, state)
+        silky = convert_loot_table(data, items, state, silk=True)
+        if silky != table and any(e.get("name") == f"cobblemon:{name}" for p in silky["pools"] for e in p["entries"]): SILK_SELF.add(f"cobblemon:{name}")
+        if not table["pools"]: table = {"pools": []} if "block_state_property" in json.dumps(data) or silky != table else None
     if table is None: table = {"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{name}"}]}]}
-    with open(f"{lootBlocksBedrock}/{name}.json", "w") as file: file.write(json.dumps(table))
-    return f"loot_tables/blocks/{name}.json"
+    keys = loot_by_state(name)
+    suffix = "".join(f"_{state[k]}" for k in sorted(keys) if k in state) if state and keys else ""
+    with open(f"{lootBlocksBedrock}/{name}{suffix}.json", "w") as file: file.write(json.dumps(table))
+    return f"loot_tables/blocks/{name}{suffix}.json"
 
 
 # ---------------------------------------------------------------------------
@@ -7940,6 +8170,9 @@ def model_block(name, identifier, items, category="items"):
                       "minecraft:transformation": {"rotation": [-rx % 360, -ry % 360, 0]}}
         if "amount" in props_v:
             components["minecraft:loot"] = block_loot_count(name, int(props_v["amount"]), items)
+        elif loot_by_state(name):
+            # its drops go with its state (Cobblemon's block_state_property): a crop gives its harvest only grown
+            components["minecraft:loot"] = block_loot(name, props_v)
         if base is None: base = components
         permutations.append({"condition": " && ".join(conds) or "1", "components": components})
     if not permutations: return False
@@ -11365,7 +11598,10 @@ def create_model_blocks():
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         for chest in chests:
             file.write(f"entity.cobblemon:{chest}_entity.name={lang.get('block.cobblemon.' + chest, chest.replace('_', ' ').title())}" + chr(10))
-    print(f"Create model blocks complete: {len(made)} blocks, {placers} items that place theirs, {len(chests)} gilded chests.")
+    with open(f"{scriptsBedrock}/silk.js", "w", encoding="utf-8", newline=chr(10)) as file:
+        file.write("// generated by port.py (block_loot): the blocks Cobblemon's loot tables keep whole under Silk Touch" + chr(10))
+        file.write("export const SILK_SELF = " + json.dumps(sorted(SILK_SELF)) + ";" + chr(10))
+    print(f"Create model blocks complete: {len(made)} blocks, {placers} items that place theirs, {len(chests)} gilded chests, {len(SILK_SELF)} kept whole by Silk Touch.")
     return made
 
 
@@ -11773,6 +12009,7 @@ def main():
     create_pokedex()
     general_items = create_general_items()
     create_revival_herb()   # after the items, whose Revival Herb it makes plantable
+    create_wild_features()   # after the blocks it places
     create_tms()
     create_held_display()
     write_item_names(general_items)

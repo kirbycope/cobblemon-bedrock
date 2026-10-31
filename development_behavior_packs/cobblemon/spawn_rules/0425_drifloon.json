@@ -11,13 +11,86 @@
                     "default": 13
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "overworld"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "any_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "mesa"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "desert"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "savanna"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "any_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "frozen"
+                                                },
+                                                {
+                                                    "all_of": [
+                                                        {
+                                                            "test": "has_biome_tag",
+                                                            "operator": "==",
+                                                            "value": "beach"
+                                                        },
+                                                        {
+                                                            "test": "has_biome_tag",
+                                                            "operator": "==",
+                                                            "value": "cold"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "all_of": [
+                                                        {
+                                                            "test": "has_biome_tag",
+                                                            "operator": "==",
+                                                            "value": "taiga"
+                                                        },
+                                                        {
+                                                            "test": "has_biome_tag",
+                                                            "operator": "==",
+                                                            "value": "cold"
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "grove"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },

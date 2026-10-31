@@ -31,9 +31,59 @@
                     "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "river"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "river"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "frozen"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "beach"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "taiga"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "grove"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
@@ -73,9 +123,59 @@
                     "default": 3
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "river"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "river"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "frozen"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "beach"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "taiga"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "grove"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {

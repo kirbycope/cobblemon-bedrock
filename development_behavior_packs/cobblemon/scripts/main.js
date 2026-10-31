@@ -34,6 +34,7 @@ import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS } from "./fishing.js";
 import { HERDS } from "./herds.js";
+import { SILK_SELF } from "./silk.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
@@ -3530,6 +3531,13 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
             snackTick(block);
             console.warn(`[cobblemon] poke_snack at ${key}: bites ${block.isValid && block.typeId === "cobblemon:poke_snack" ? block.permutation.getState("cobblemon:bites") : "gone"}`);
         }
+    } else if (event.id === "cobblemon:place_feature") {
+        // testing: "/execute as <player> run scriptevent cobblemon:place_feature <feature or rule id>" places that
+        // feature (or runs that feature rule) at the block the player stands on, and logs whether it placed
+        const id = event.message.trim(), at = { x: Math.floor(source.location.x), y: Math.floor(source.location.y), z: Math.floor(source.location.z) };
+        let placed;
+        try { placed = id.endsWith("_rule") ? source.dimension.placeFeatureRule(id, at) : source.dimension.placeFeature(id, at, true); } catch (e) { placed = `${e}`; }
+        console.warn(`[cobblemon] place_feature ${id} at ${at.x} ${at.y} ${at.z}: ${placed}`);
     } else if (event.id === "cobblemon:lag") {
         // testing: "/scriptevent cobblemon:lag <ms>" spends that long in every tick, a slow host's server; 0 stops it
         if (globalThis.lagRun !== undefined) system.clearRun(globalThis.lagRun);
@@ -5162,8 +5170,24 @@ function fillHerd(seed, eventId) {
         system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); } catch (err) { } });
     }
 }
+// Bedrock's slime chunks: the first number of a Mersenne Twister seeded with chunk x times 0x1f1f1f1f xor chunk z is a
+// multiple of 10. A spawn that needs one (SpawningCondition.isSlimeChunk: Ditto's, the Goomy line's) fires
+// cobblemon:spawn_slime_chunk, and outside one it is taken away
+function isSlimeChunk(x, z) {
+    const mt = new Uint32Array(624);
+    mt[0] = (Math.imul(Math.floor(x / 16), 0x1f1f1f1f) ^ Math.floor(z / 16)) >>> 0;
+    for (let i = 1; i < 624; i++) mt[i] = (Math.imul(1812433253, mt[i - 1] ^ (mt[i - 1] >>> 30)) + i) >>> 0;
+    // the first output needs only mt[0], mt[1] and mt[397] after one twist
+    let y = (mt[0] & 0x80000000) | (mt[1] & 0x7fffffff);
+    let v = (mt[397] ^ (y >>> 1) ^ (y & 1 ? 0x9908b0df : 0)) >>> 0;
+    v ^= v >>> 11; v = (v ^ ((v << 7) & 0x9d2c5680)) >>> 0; v = (v ^ ((v << 15) & 0xefc60000)) >>> 0; v ^= v >>> 18;
+    return (v >>> 0) % 10 === 0;
+}
 world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
     if (eventId.startsWith("cobblemon:herd_seed")) system.run(() => fillHerd(entity, eventId));
+    else if (eventId === "cobblemon:spawn_slime_chunk") system.run(() => {
+        try { if (entity.isValid && !isSlimeChunk(entity.location.x, entity.location.z)) entity.remove(); } catch (e) { }
+    });
 });
 // setPlacedBy: the snack keeps the bait of the stack it was placed from
 function placeSnack(player, block) {
@@ -5688,22 +5712,24 @@ function toggleOpen(block, sound) {
     return open;
 }
 
-// Shears or Silk Touch keep Cobblemon's leaves as the leaves block, as its loot tables say; Bedrock loot cannot
-// tell those tools from the rest, so the break is taken over here
+// Shears or Silk Touch keep Cobblemon's leaves as the leaves block, and Silk Touch its ores, gem clusters and the rest
+// of SILK_SELF (port.py's block_loot), as its loot tables say; Bedrock loot cannot tell those tools from the rest, so
+// the break is taken over here
+const SILK_BLOCKS = new Set(SILK_SELF);
 function silkTouch(item) {
     try { return (item?.getComponent("minecraft:enchantable")?.getEnchantment("silk_touch")?.level ?? 0) > 0; } catch (e) { return false; }
 }
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
     const { block, player, itemStack } = event, id = block.typeId;
-    if (!id.startsWith("cobblemon:") || !id.endsWith("_leaves")) return;
-    if (itemStack?.typeId !== "minecraft:shears" && !silkTouch(itemStack)) return;
+    if (!id.startsWith("cobblemon:")) return;
+    if (id.endsWith("_leaves") ? itemStack?.typeId !== "minecraft:shears" && !silkTouch(itemStack) : !SILK_BLOCKS.has(id) || !silkTouch(itemStack)) return;
     event.cancel = true;
     const where = block.location, dim = block.dimension;
     system.run(() => {
         const b = dim.getBlock(where);
         if (b?.typeId !== id) return;
         b.setType("minecraft:air");
-        try { dim.playSound("dig.grass", where); } catch (e) { }
+        try { dim.playSound(id.endsWith("_leaves") ? "dig.grass" : "dig.stone", where); } catch (e) { }
         if (player.getGameMode?.() !== "Creative") dim.spawnItem(new ItemStack(id, 1), { x: where.x + 0.5, y: where.y + 0.5, z: where.z + 0.5 });
     });
 });

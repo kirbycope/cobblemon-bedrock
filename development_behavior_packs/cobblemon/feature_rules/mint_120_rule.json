@@ -1,0 +1,39 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:mint_120_rule",
+      "places_feature": "cobblemon:mint_wild"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "test": "has_biome_tag",
+        "operator": "==",
+        "value": "overworld"
+      }
+    },
+    "distribution": {
+      "iterations": "(query.heightmap(variable.originx + 8, variable.originz + 8) >= 120 && query.heightmap(variable.originx + 8, variable.originz + 8) <= 400) ? 1 : 0",
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 12
+      }
+    }
+  }
+}

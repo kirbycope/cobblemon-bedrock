@@ -11,50 +11,81 @@
                     "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "all_of": [
+                            "any_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "extreme_hills"
+                                        }
+                                    ]
+                                },
                                 {
                                     "test": "has_biome_tag",
                                     "operator": "==",
-                                    "value": "forest"
+                                    "value": "flower_forest"
                                 },
                                 {
                                     "test": "has_biome_tag",
-                                    "operator": "!=",
-                                    "value": "taiga"
+                                    "operator": "==",
+                                    "value": "cherry_grove"
                                 },
                                 {
                                     "test": "has_biome_tag",
-                                    "operator": "!=",
-                                    "value": "extreme_hills"
+                                    "operator": "==",
+                                    "value": "grove"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "plains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
                                 }
                             ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "flower_forest"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "cherry_grove"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "grove"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "plains"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "meadow"
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "any_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "roofed"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "pale_garden"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },
@@ -86,7 +117,9 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:spawn_weather_clear",
+                    "event_skip_count": 0
                 }
             },
             {
@@ -109,50 +142,72 @@
                     "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
+                    "all_of": [
                         {
-                            "all_of": [
+                            "any_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "extreme_hills"
+                                        }
+                                    ]
+                                },
                                 {
                                     "test": "has_biome_tag",
                                     "operator": "==",
-                                    "value": "forest"
+                                    "value": "flower_forest"
                                 },
                                 {
                                     "test": "has_biome_tag",
-                                    "operator": "!=",
-                                    "value": "taiga"
+                                    "operator": "==",
+                                    "value": "cherry_grove"
                                 },
                                 {
                                     "test": "has_biome_tag",
-                                    "operator": "!=",
-                                    "value": "extreme_hills"
+                                    "operator": "==",
+                                    "value": "grove"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "plains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
                                 }
                             ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "flower_forest"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "cherry_grove"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "grove"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "plains"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "meadow"
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "roofed"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "pale_garden"
+                                        }
+                                    ]
+                                }
+                            ]
                         }
                     ]
                 },

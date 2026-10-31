@@ -36,9 +36,22 @@
                     "default": 29
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "overworld"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "lush_caves"
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_underwater": {},
                 "minecraft:spawns_on_surface": {},

@@ -11,13 +11,35 @@
                     "default": 3
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "roofed"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "roofed"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "roofed"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "pale_garden"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },
@@ -51,13 +73,35 @@
                     "default": 2
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "roofed"
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "roofed"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "roofed"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "pale_garden"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },
@@ -124,7 +168,7 @@
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },

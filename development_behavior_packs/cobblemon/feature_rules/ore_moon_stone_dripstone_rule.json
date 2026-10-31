@@ -1,0 +1,41 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:ore_moon_stone_dripstone_rule",
+      "places_feature": "cobblemon:ore_moon_stone_dripstone"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "test": "has_biome_tag",
+        "operator": "==",
+        "value": "dripstone_caves"
+      }
+    },
+    "distribution": {
+      "iterations": 256,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "triangle",
+        "extent": [
+          -64,
+          256
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}
