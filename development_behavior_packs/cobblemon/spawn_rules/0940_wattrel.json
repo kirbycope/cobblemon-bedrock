@@ -8,7 +8,36 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 60
+                    "default": 53
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "beach"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "shore"
+                        }
+                    ]
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 7,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 47
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -32,12 +61,14 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 60
+                    "default": 47
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -56,12 +87,14 @@
                 "minecraft:spawns_on_surface": {},
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 60
+                    "default": 47
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -85,12 +118,14 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 60
+                    "default": 47
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -114,7 +149,9 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]

@@ -32,7 +32,8 @@ import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
-import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS } from "./fishing.js";
+import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS } from "./fishing.js";
+import { HERDS } from "./herds.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
@@ -3516,6 +3517,19 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const foe = source.dimension.getEntities({ families: ["pokemon"], location: source.location, maxDistance: 16 }).filter((e) => e.id !== source.id)[0];
         if (!foe) { console.warn("[cobblemon] move_fx: no Pokemon within 16 blocks to aim at"); return; }
         playMoveFx({}, { entity: source }, { entity: foe }, { id, ...move }, { used: true, missed: false });
+    } else if (event.id === "cobblemon:poke_snack") {
+        // testing: "/execute as <player> run scriptevent cobblemon:poke_snack" gives each Poke Snack within 16 blocks the
+        // random tick that draws its next Pokemon, rather than waiting minutes for it
+        const c = source.location, dim = source.dimension;
+        for (let x = -16; x <= 16; x++) for (let y = -6; y <= 6; y++) for (let z = -16; z <= 16; z++) {
+            let block;
+            try { block = dim.getBlock({ x: Math.floor(c.x) + x, y: Math.floor(c.y) + y, z: Math.floor(c.z) + z }); } catch (e) { continue; }
+            if (block?.typeId !== "cobblemon:poke_snack") continue;
+            const key = snackKey(dim, block.location);
+            const all = snackRecords(); all[key] = { ...(all[key] ?? { s: [] }), t: 1 }; saveSnackRecords(all);
+            snackTick(block);
+            console.warn(`[cobblemon] poke_snack at ${key}: bites ${block.isValid && block.typeId === "cobblemon:poke_snack" ? block.permutation.getState("cobblemon:bites") : "gone"}`);
+        }
     } else if (event.id === "cobblemon:lag") {
         // testing: "/scriptevent cobblemon:lag <ms>" spends that long in every tick, a slow host's server; 0 stops it
         if (globalThis.lagRun !== undefined) system.clearRun(globalThis.lagRun);
@@ -4969,6 +4983,11 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     if (spawn.maxLureLevel !== undefined && cast.lure > spawn.maxLureLevel) return false;
     if (spawn.minY !== undefined && at.y < spawn.minY) return false;
     if (spawn.maxY !== undefined && at.y > spawn.maxY) return false;
+    if (spawn.minSkyLight !== undefined || spawn.maxSkyLight !== undefined) {
+        let sky;
+        try { sky = bobber.dimension.getSkyLightLevel(at); } catch (e) { }
+        if (sky !== undefined && (sky < (spawn.minSkyLight ?? 0) || sky > (spawn.maxSkyLight ?? 15))) return false;
+    }
     if (spawn.bait && cast.bait?.id !== spawn.bait && cast.bait?.id !== `cobblemon:${spawn.bait}`) return false;
     if (spawn.rodType && ![].concat(spawn.rodType).some((r) => cast.rod === r || cast.rod === `cobblemon:${r}`)) return false;
     if (spawn.isRaining !== undefined) {
@@ -5011,22 +5030,153 @@ function baitWeight(cast, spawn) {
     return weight;
 }
 
-// the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight
-function planSpawn(cast, bobber) {
+// the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight; a Poke Snack draws from
+// its own pool and buckets the same way
+function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
     let tags = [];
     try { tags = BIOME_TAGS[bobber.dimension.getBiome(bobber.location).id] ?? []; } catch (e) { }
-    const allowed = FISHING_SPAWNS.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
+    const allowed = pool.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
     if (!allowed.length) return undefined;
     // BucketNormalizingInfluence: the bait's rarity_bucket values and Luck of the Sea even the buckets out, each weight to
     // the power 1 / (1.29 + 0.2 (tier - 1))
     const tier = cast.effects.filter((e) => e.t === "rarity_bucket").reduce((t, e) => t + e.value, 0) + cast.luck;
     const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
-    const present = Object.entries(BUCKETS).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
+    const present = Object.entries(buckets).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
     const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp)]).filter(([, w]) => w > 0);
     if (!inBucket.length) return undefined;
-    return { spawn: pick(inBucket)[0], bucketWeight: BUCKETS[bucket] };
+    return { spawn: pick(inBucket)[0], bucketWeight: buckets[bucket] };
 }
+
+// A placed Poke Snack (PokeSnackBlockEntity, a lure): every second of Cobblemon's random ticks (fewer with a bite_time
+// bait), with a player within maximumSpawningZoneDistanceFromPlayer (64), it draws one wild Pokemon from the world pool
+// (SNACK_SPAWNS, pokeSnackBuckets) to the ground within 8 blocks, rolled and changed by the bait its seasonings carry as
+// a Poke Rod's bait is, and loses a bite; after its ninth it is gone. With two wild Pokemon about it already
+// (pokeSnackPokemonPerChunk) it waits. Each snack's seasonings and ticks to go live in a world property by place
+const SNACKS = "cobblemon:poke_snacks", SNACK_RADIUS = 8, SNACK_TICKS = 2, SNACK_BITES = 8;
+const snackKey = (dim, at) => `${dim.id}|${at.x},${at.y},${at.z}`;
+function snackRecords() { try { return JSON.parse(world.getDynamicProperty(SNACKS) ?? "{}"); } catch (e) { return {}; } }
+function saveSnackRecords(all) { try { world.setDynamicProperty(SNACKS, JSON.stringify(all)); } catch (e) { } }
+// getRandomTicksBetweenSpawns: a bite_time effect, when its chance comes up, cuts the wait by its value
+function snackTicks(effects) {
+    const bites = effects.filter((e) => e.t === "bite_time"), e = bites[Math.floor(Math.random() * bites.length)];
+    return Math.max(1, SNACK_TICKS * (e && Math.random() <= e.chance ? 1 - e.value : 1));
+}
+const SPOT_CLEAR = /short_grass|tall_grass|fern|flower|tulip|daisy|poppy|dandelion|orchid|allium|bluet|cornflower|lily_of_the_valley|snow_layer|leaf_litter/;
+// a spot within the radius of a block position for a spawnablePositionType: grounded, solid footing with room to stand;
+// submerged, surface and seafloor, water
+function spawnSpot(dim, c, radius, pos = "grounded") {
+    const clear = (b) => b.isAir || SPOT_CLEAR.test(b.typeId), water = (b) => b.isLiquid && /water/.test(b.typeId);
+    for (let n = 0; n < 12; n++) {
+        const x = c.x + ri(-radius, radius), z = c.z + ri(-radius, radius);
+        if (x === c.x && z === c.z) continue;
+        for (let y = c.y + radius; y >= c.y - radius; y--) {
+            let ground, feet, head;
+            try { ground = dim.getBlock({ x, y, z }); feet = dim.getBlock({ x, y: y + 1, z }); head = dim.getBlock({ x, y: y + 2, z }); } catch (e) { break; }
+            if (!ground || !feet || !head) break;
+            if (pos !== "grounded" ? water(feet) && (water(head) || head.isAir) : !clear(ground) && !ground.isLiquid && clear(feet) && clear(head)) return { x: x + 0.5, y: y + 1, z: z + 0.5 };
+        }
+    }
+}
+const snackSpot = (block) => spawnSpot(block.dimension, block.location, SNACK_RADIUS);
+function eatSnack(block) {
+    const dim = block.dimension, at = block.location, bites = block.permutation.getState("cobblemon:bites") + 1;
+    try { dim.playSound("random.eat", at); } catch (e) { }
+    if (bites <= SNACK_BITES) { block.setPermutation(block.permutation.withState("cobblemon:bites", bites)); return; }
+    block.setType("minecraft:air");
+    const all = snackRecords(); delete all[snackKey(dim, at)]; saveSnackRecords(all);
+}
+function snackTick(block) {
+    const dim = block.dimension, at = block.location, key = snackKey(dim, at), all = snackRecords(), rec = all[key] ?? { s: [] };
+    const effects = baitEffects({ id: null, s: rec.s });
+    rec.t = (rec.t ?? snackTicks(effects)) - 1;
+    if (rec.t > 0) { all[key] = rec; saveSnackRecords(all); return; }
+    rec.t = snackTicks(effects); all[key] = rec; saveSnackRecords(all);
+    const centre = { x: at.x + 0.5, y: at.y + 0.5, z: at.z + 0.5 };
+    if (!dim.getPlayers({ location: centre, maxDistance: 64 }).length) return;
+    let wild = [];
+    try { wild = dim.getEntities({ families: ["pokemon"], location: centre, maxDistance: SNACK_RADIUS + 4 }).filter((e) => prop(e, OWNER) === undefined); } catch (e) { }
+    if (wild.length >= 2) return;
+    const spot = snackSpot(block);
+    if (!spot) return;
+    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, SNACK_SPAWNS, SNACK_BUCKETS);
+    if (!plan) return;
+    let pokemon;
+    try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return; }
+    const level = ri(plan.spawn.level[0], plan.spawn.level[1]);
+    system.run(() => {
+        try {
+            if (plan.spawn.event) pokemon.triggerEvent(plan.spawn.event);
+            setProp(pokemon, LEVEL, level);
+            applyBait(pokemon, cast);
+        } catch (e) { }
+    });
+    eatSnack(block);
+}
+// Herds (PokemonHerdSpawnDetail): a herd's first member spawns naturally and fires cobblemon:herd_seed (port.py's
+// create_spawn_rules); the pass then fills the herd to its size (at most maximumSpawnsPerPass, 8). One herd level is
+// rolled in the herd's range; while the herd has a leader to give and none yet, the next is a leader, otherwise a
+// follower, by weight, none more often than its maxTimes; each member's level is the herd's clamped to its own range and
+// moved by its offset. A member with no room about the first is left out, as Cobblemon's EmptySpawnAction is
+const HERD_RADIUS = 6;
+function herdMemberLevel(m, level) {
+    let l = m.level ? Math.min(Math.max(level, m.level[0]), m.level[1]) : level;
+    if (m.off) l = ri(l + m.off[0], l + m.off[1]);
+    return Math.min(100, Math.max(1, l));
+}
+const herdFirsts = (h) => h.members.filter((m) => (h.members.some((x) => x.leader) ? m.leader : m.follower));
+function fillHerd(seed, eventId) {
+    if (!seed?.isValid) return;
+    const dim = seed.dimension, at = seed.location;
+    // the spawner's cap, checked before the pass as Cobblemon's is: over it, the first member goes too (entitySpawn)
+    try {
+        const cx = Math.floor(at.x / 16) * 16, cz = Math.floor(at.z / 16) * 16;
+        const near = dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } });
+        if (near.filter((e) => e.id !== seed.id).length >= POKEMON_PER_AREA) return;
+    } catch (e) { return; }
+    const form = eventId === "cobblemon:herd_seed" ? null : `cobblemon:spawn_form_${eventId.slice("cobblemon:herd_seed_".length)}`;
+    let tags = [];
+    try { tags = BIOME_TAGS[dim.getBiome(at).id] ?? []; } catch (e) { }
+    const fits = (h) => herdFirsts(h).filter((m) => m.entity === seed.typeId && (m.event ?? null) === form);
+    const share = (h, ms) => h.weight * ms.reduce((a, m) => a + m.w, 0) / (herdFirsts(h).reduce((a, m) => a + m.w, 0) || 1);
+    let options = HERDS.filter((h) => fits(h).length);
+    const here = options.filter((h) => spawnAllowed(h, { effects: [], luck: 0, lure: 0 }, seed, tags));
+    if (here.length) options = here;
+    if (!options.length) return;
+    const herd = pick(options.map((h) => [h, share(h, fits(h))]))[0], first = pick(fits(herd).map((m) => [m, m.w]))[0];
+    const level = ri(herd.level[0], herd.level[1]), counts = new Map([[first, 1]]);
+    setProp(seed, LEVEL, herdMemberLevel(first, level));
+    const centre = { x: Math.floor(at.x), y: Math.floor(at.y) - 1, z: Math.floor(at.z) };
+    for (let n = 1; n < herd.size; n++) {
+        const valid = herd.members.filter((m) => (counts.get(m) ?? 0) < m.max);
+        const needLeader = valid.some((m) => m.leader) && ![...counts.keys()].some((m) => m.leader);
+        const role = valid.filter((m) => (needLeader ? m.leader : m.follower));
+        if (!role.length) break;
+        const m = pick(role.map((x) => [x, x.w]))[0];
+        counts.set(m, (counts.get(m) ?? 0) + 1);
+        const spot = spawnSpot(dim, centre, HERD_RADIUS, herd.pos);
+        if (!spot) continue;
+        let e;
+        try { e = dim.spawnEntity(m.entity, spot); } catch (err) { continue; }
+        const lv = herdMemberLevel(m, level);
+        system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); } catch (err) { } });
+    }
+}
+world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
+    if (eventId.startsWith("cobblemon:herd_seed")) system.run(() => fillHerd(entity, eventId));
+});
+// setPlacedBy: the snack keeps the bait of the stack it was placed from
+function placeSnack(player, block) {
+    let item;
+    try { item = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex); } catch (e) { }
+    const s = item?.typeId === "cobblemon:poke_snack" ? stackSlot(item)?.[2]?.bait ?? [] : [], dim = block.dimension, at = { ...block.location };
+    system.run(() => { const all = snackRecords(); all[snackKey(dim, at)] = { s, t: snackTicks(baitEffects({ id: null, s })) }; saveSnackRecords(all); });
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation.type.id !== "cobblemon:poke_snack") return;
+    const all = snackRecords(), key = snackKey(block.dimension, block.location);
+    if (key in all) { delete all[key]; saveSnackRecords(all); }
+});
 
 function castRod(player, item) {
     const eye = player.getHeadLocation(), d = player.getViewDirection();
@@ -7097,6 +7247,10 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
+    blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
+        beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },
+        onTick({ block }) { snackTick(block); }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");

@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 22
+                    "default": 19
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -45,6 +45,16 @@
                             "test": "has_biome_tag",
                             "operator": "==",
                             "value": "grove"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "plains"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "meadow"
                         }
                     ]
                 },
@@ -60,12 +70,14 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 88
+                    "default": 121
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -84,12 +96,14 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 37
+                    "default": 32
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -147,7 +161,9 @@
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]

@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 240
+                    "default": 196
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -66,6 +66,70 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 44
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "forest"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "extreme_hills"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "flower_forest"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "cherry_grove"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "grove"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "taiga"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]

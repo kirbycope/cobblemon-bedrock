@@ -3329,6 +3329,8 @@ def spawn_condition(spawn, species, kind):
     """One Bedrock spawn condition from one Cobblemon spawn entry, or None if it cannot be expressed."""
     condition = spawn.get("condition", {})
     if condition.get("structures") or condition.get("neededNearbyBlocks") or spawn.get("spawnablePositionType") == "fishing": return None
+    # a spawn only a Poke Snack draws (SpawningCondition.isPokeSnack) comes from snack_spawns, never naturally
+    if condition.get("isPokeSnack"): return None
     if not set(spawn.get("presets", ["natural"])) & SURFACE_PRESETS and spawn.get("presets"): return None
     biome_filter = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
     if biome_filter is None: return None
@@ -3361,6 +3363,39 @@ def spawn_condition(spawn, species, kind):
     return rule
 
 
+def int_range(text, default=None):
+    """One of Cobblemon's IntRange strings ("4-22", "-3-3", "5") as [low, high]."""
+    if text is None: return default
+    m = re.fullmatch(r"\s*(-?\d+)\s*(?:-\s*(-?\d+))?\s*", str(text))
+    return [int(m.group(1)), int(m.group(2) or m.group(1))] if m else default
+
+
+HERD_PASS = 8   # CobblemonConfig.maximumSpawnsPerPass: a spawning pass, and so a herd, makes at most this many
+
+
+def herd_spawns():
+    """Cobblemon's herd spawns (spawn_pool_world/herds, PokemonHerdSpawnDetail) but the alphas' (bucket boss, which the
+    port does not carry), each with its members resolved to the pack's entities and form events."""
+    herds = []
+    for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/herds/*.json")):
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        for spawn in pool.get("spawns", []):
+            if spawn.get("type") != "pokemon-herd" or spawn.get("bucket") == "boss": continue
+            members = []
+            for m in spawn.get("herdablePokemon", []):
+                words = m.get("pokemon", "").split(" ")
+                folder = pokemon_for_species_name(words[0])
+                if not folder: continue
+                behavior = f"{entitiesBedrock}/{folder}.behavior.json"
+                events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
+                form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events), None)
+                members.append({"folder": folder, "pokemon": m["pokemon"], "form": form, "weight": m.get("weight", 1.0),
+                                "level": int_range(m.get("levelRange")), "offset": int_range(m.get("levelRangeOffset")),
+                                "max": m.get("maxTimes", 10), "leader": bool(m.get("isLeader")), "follower": m.get("isFollower", True)})
+            if members: herds.append((spawn, members))
+    return herds
+
+
 def create_spawn_rules():
     print("Creating spawn rules...")
     fresh(spawnRulesBedrock)
@@ -3378,21 +3413,47 @@ def create_spawn_rules():
         pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
         legendary += 1
     weather_events = {}
+    # A herd (PokemonHerdSpawnDetail) starts with one member, a leader where the herd has one and otherwise a follower,
+    # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
+    # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
+    # on which scripts/main.js rolls the rest of the herd about it from scripts/herds.js
     written = 0; skipped = 0
+    herds, seeds, seed_events, herd_table = herd_spawns(), {}, {}, []
+    for herd, members in herds:
+        first = [m for m in members if m["leader"]] or [m for m in members if m["follower"]]
+        total = sum(m["weight"] for m in first) or 1
+        for m in first:
+            seeds.setdefault(m["folder"], []).append(({**herd, "pokemon": m["pokemon"], "weight": herd.get("weight", 1.0) * m["weight"] / total}, m))
+        condition, anti = herd.get("condition", {}) or {}, herd.get("anticondition", {}) or {}
+        biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
+        if not biome: continue
+        entry = {"id": herd["id"], "pos": herd.get("spawnablePositionType", "grounded"), "size": min(herd.get("maxHerdSize", 10), HERD_PASS),
+                 "level": int_range(herd.get("levelRange"), [1, 100]), "weight": herd.get("weight", 1.0), "biome": biome,
+                 "members": [{"entity": entity_id(m["folder"]), "event": f"cobblemon:spawn_form_{m['form']}" if m["form"] else None, "w": m["weight"],
+                              "level": m["level"], "off": m["offset"], "max": m["max"], "leader": m["leader"], "follower": m["follower"]} for m in members]}
+        if anti.get("biomes") and biome_filter_for(anti["biomes"]): entry["notBiome"] = biome_filter_for(anti["biomes"])
+        for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
+            if key in condition: entry[key] = condition[key]
+        herd_table.append(entry)
     for pokemon in pokemons:
         species = species_for(pokemon)
-        pool = pools.get(pokemon)
-        if not species or not pool: continue
+        pool = pools.get(pokemon, {"spawns": []})
+        if not species or not (pool["spawns"] or seeds.get(pokemon)): continue
         kind = movement_kind(species)
         conditions = []
         form_events = set(json.load(open(f"{entitiesBedrock}/{pokemon}.behavior.json", encoding="utf-8"))["minecraft:entity"].get("events", {}))             if os.path.exists(f"{entitiesBedrock}/{pokemon}.behavior.json") else set()
-        for spawn in pool.get("spawns", []):
+        for spawn, member in [(s, None) for s in pool.get("spawns", [])] + seeds.get(pokemon, []):
             words = spawn.get("pokemon", "").split(" ")
             if words[0] != species_key(species): continue
             # a form's entry ("rattata alolan", "region_bias=alola") spawns that form through its herd event; a shiny
             # or another property spawns as the species, rolled as usual
             form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
             rule = spawn_condition(spawn, species, kind)
+            if rule and member:
+                rule["minecraft:herd"]["event"] = f"cobblemon:herd_seed_{form}" if form else "cobblemon:herd_seed"; rule["minecraft:herd"]["event_skip_count"] = 0
+                seed_events.setdefault(pokemon, set()).add(form)
+                if rule: conditions.append((rule, spawn))
+                continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
             # Bedrock's spawn rules have no weather filter, so a spawn that needs one (Zapdos in a thunderstorm) fires an
             # event on spawning that tests the weather where it stands and takes it away again in the wrong weather
@@ -3434,6 +3495,19 @@ def create_spawn_rules():
                                                                            "add": {"component_groups": ["cobblemon:gone"]}}]}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    for pokemon, forms in seed_events.items():
+        path = f"{entitiesBedrock}/{pokemon}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
+        # nothing of its own: the script hears it (dataDrivenEntityTrigger); a form's seed sets the form as its event would
+        for form in forms:
+            events[f"cobblemon:herd_seed_{form}" if form else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    with open(f"{scriptsBedrock}/herds.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// generated by port.py (create_spawn_rules): Cobblemon's herd spawns but the alphas', each member's entity, form event, weight, levels and most\n")
+        file.write("export const HERDS = " + json.dumps(herd_table, separators=(",", ":")) + ";\n")
+    print(f"Herds: {len(herd_table)} herd spawns, {sum(len(v) for v in seeds.values())} first members spawning naturally across {len(seeds)} species.")
     print(f"Create spawn rules complete: {written} Pokemon spawn naturally ({legendary} legendary and mythical from Legendary Encounters), {skipped} spawn entries not expressible (structures, nearby blocks, fishing, modded biomes).")
 
 
@@ -6633,6 +6707,37 @@ def fishing_spawns():
     return spawns
 
 
+def snack_spawns():
+    """What a Poke Snack can draw (PokeSnackSpawnerFactory: the world spawn pool, non-herd Pokemon): Cobblemon's grounded
+    spawns, those only a snack draws (isPokeSnack) among them and those it never does left out, in fishing_spawns' form
+    with the sky light range and the herd event that spawns a form ("rattata alolan")."""
+    spawns = []
+    for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        for spawn in pool.get("spawns", []):
+            if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+            condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
+            if condition.get("isPokeSnack") is False or condition.get("structures") or condition.get("neededNearbyBlocks") or condition.get("isSlimeChunk"): continue
+            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: continue
+            words = spawn.get("pokemon", "").split(" ")
+            pokemon = pokemon_for_species_name(words[0])
+            biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
+            if not pokemon or not biome: continue
+            not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
+            low, _, high = str(spawn.get("level", "5-30")).partition("-")
+            entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
+                     "level": [int(low), int(high or low)], "biome": biome}
+            if not_biome: entry["notBiome"] = not_biome
+            for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
+                if key in condition: entry[key] = condition[key]
+            behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
+            events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
+            form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events), None)
+            if form: entry["event"] = f"cobblemon:spawn_form_{form}"
+            spawns.append(entry)
+    return spawns
+
+
 def spawn_baits():
     """SpawnBaitEffects: each bait item's effects (data/spawn_bait_effects), as [type, subcategory, chance, value] without
     their namespaces, a tag's items each."""
@@ -6736,8 +6841,13 @@ def create_fishing():
     # without their namespaces, a tag's items each; and the egg groups of the species a rod can catch, for the
     # egg group baits (SpawnBaitInfluence.affectWeight)
     baits = spawn_baits()
+    snacks = snack_spawns()
+    # BestSpawnerConfig.pokeSnackBuckets, the rarity buckets a Poke Snack's spawner rolls
+    with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/api/spawning/preset/BestSpawnerConfig.kt", encoding="utf-8") as file:
+        block = re.search(r"pokeSnackBuckets\s*=\s*mutableMapOf\((.*?)\)", file.read(), re.S).group(1)
+    snack_buckets = {k: float(v) for k, v in re.findall(r'"([\w-]+)"\s+to\s+([\d.]+)F', block)}
     egg_groups = {}
-    for spawn in spawns:
+    for spawn in spawns + snacks:
         species = species_for(spawn["entity"].split(":p", 1)[1]) or {}
         egg_groups[spawn["entity"]] = [g.lower() for g in species.get("eggGroups", [])]
     with open(f"{scriptsBedrock}/fishing.js", "w", encoding="utf-8") as file:
@@ -6749,7 +6859,9 @@ def create_fishing():
         file.write("export const ROD_TREASURE = " + json.dumps(treasure) + ";" + chr(10))
         file.write("export const BAITS = " + json.dumps(baits, separators=(",", ":")) + ";" + chr(10))
         file.write("export const FISH_EGG_GROUPS = " + json.dumps(egg_groups, separators=(",", ":")) + ";" + chr(10))
-    print(f"Create fishing complete: {len(rods)} rods, {len(spawns)} fishing spawns, {len(baits)} baits.")
+        file.write("export const SNACK_SPAWNS = " + json.dumps(snacks, separators=(",", ":")) + ";" + chr(10))
+        file.write("export const SNACK_BUCKETS = " + json.dumps(snack_buckets) + ";" + chr(10))
+    print(f"Create fishing complete: {len(rods)} rods, {len(spawns)} fishing spawns, {len(snacks)} Poke Snack spawns, {len(baits)} baits.")
 
 
 # ---------------------------------------------------------------------------
@@ -7838,6 +7950,12 @@ def model_block(name, identifier, items, category="items"):
     if "amount" in props: extra["cobblemon:stackable"] = {}
     if "age" in props: extra["cobblemon:grows"] = {}
     if "open" in props: extra["cobblemon:openable"] = {}
+    # PokeSnackBlock with isLure: its random ticks draw wild Pokemon (scripts/main.js). Bedrock's randomtickspeed is 1
+    # where Java's is 3, so a tick as often as one of Java's random ticks (3 a tick in a 4096 block section: every 1365
+    # ticks on average) counts them instead
+    if name == "poke_snack":
+        extra["cobblemon:poke_snack"] = {}
+        extra["minecraft:tick"] = {"interval_range": [683, 2048], "looping": True}
     definition = {"format_version": "1.21.90", "minecraft:block": {
         "description": {"identifier": identifier, "menu_category": {"category": category}, "states": states, **({"traits": traits} if traits else {})},
         "components": {**{k: v for k, v in base.items() if k != "minecraft:transformation"},

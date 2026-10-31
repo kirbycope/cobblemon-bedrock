@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 48
+                    "default": 24
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -61,7 +61,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 144
+                    "default": 72
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -81,7 +81,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 48
+                    "default": 24
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -97,6 +97,105 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 24
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "forest"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "taiga"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "extreme_hills"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "flower_forest"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "cherry_grove"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "grove"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 7,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 72
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "jungle"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 7,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 24
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "lush_caves"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]
