@@ -81,6 +81,27 @@ function useUp(battle, f, text) {
     f.held = null;
     if (item && consumedFor(battle, item)) setProp(f.entity, "cobblemon:held", undefined);
 }
+// two-turn moves: what each says as it charges (Showdown's prepare messages), the stat it raises then, where it hides
+// the user, and the moves that still reach a Pokemon hidden there (Showdown's onInvulnerability)
+const CHARGE_TEXT = {
+    solarbeam: "absorbed light!", solarblade: "absorbed light!", fly: "flew up high!", bounce: "sprang up!", dig: "burrowed its way under the ground!",
+    dive: "hid underwater!", phantomforce: "vanished instantly!", shadowforce: "vanished instantly!", skullbash: "tucked in its head!",
+    skyattack: "became cloaked in a harsh light!", razorwind: "whipped up a whirlwind!", meteorbeam: "is overflowing with space power!",
+    freezeshock: "became cloaked in a freezing light!", iceburn: "became cloaked in freezing air!", geomancy: "is absorbing power!",
+    electroshot: "absorbed electricity!"
+};
+const CHARGE_BOOST = { skullbash: { def: 1 }, meteorbeam: { spa: 1 }, electroshot: { spa: 1 } };
+const SEMI_INVULNERABLE = { fly: "air", bounce: "air", dig: "ground", dive: "water", phantomforce: "gone", shadowforce: "gone" };
+const REACHES_HIDDEN = {
+    air: ["gust", "twister", "thunder", "hurricane", "skyuppercut", "smackdown", "thousandarrows"],
+    ground: ["earthquake", "magnitude", "fissure"], water: ["surf", "whirlpool"], gone: []
+};
+const RECHARGE = { id: "recharge", name: "Recharge", type: "normal", power: 0, accuracy: true, category: "Status", priority: 0, pp: 1, target: "self" };
+// the move a Pokemon is held to this turn: its recharge after Hyper Beam, or the second turn of the move it charged
+function forcedMove(f) {
+    if (f.mustRecharge) return RECHARGE;
+    return f.charging ? f.moves.find((m) => m.id === f.charging) ?? null : null;
+}
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
 
 function statAt(base, level, iv = 31, ev = 0, nature = 1) { return Math.floor((Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5) * nature); }
@@ -569,7 +590,10 @@ function movePower(battle, a, d, move) {
         case "acrobatics": return held(a) ? move.power : move.power * 2;
         case "payback": return battle.movedFirst === d ? move.power * 2 : move.power;
         case "boltbeak": case "fishiousrend": return battle.movedFirst !== d ? move.power * 2 : move.power;
-        case "magnitude": { const r = Math.random() * 100; return r < 5 ? 10 : r < 15 ? 30 : r < 35 ? 50 : r < 65 ? 70 : r < 85 ? 90 : r < 95 ? 110 : 150; }
+        case "magnitude": { const r = Math.random() * 100; const p = r < 5 ? 10 : r < 15 ? 30 : r < 35 ? 50 : r < 65 ? 70 : r < 85 ? 90 : r < 95 ? 110 : 150; return d.hiding === "ground" ? p * 2 : p; }
+        case "earthquake": return d.hiding === "ground" ? move.power * 2 : move.power;
+        case "surf": case "whirlpool": return d.hiding === "water" ? move.power * 2 : move.power;
+        case "gust": case "twister": return d.hiding === "air" ? move.power * 2 : move.power;
         default: return move.power;
     }
 }
@@ -601,6 +625,7 @@ function useMove(battle, attacker, defender, move, called = false) {
     // to have failed or missed
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
     const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
+    if (worked && move.flags?.includes("recharge") && !battle.pvp) attacker.mustRecharge = true;
     if (!worked || battle.pvp || battle.swap) return;
     if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
     else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
@@ -648,9 +673,22 @@ function pivot(battle, swap, then) {
 }
 function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
-    if (!called && !canAct(battle, attacker, move)) return;
+    const second = !!move.id && attacker.charging === move.id;   // a two-turn move's second turn, which uses no PP
+    if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; return; }
     if (battle.curFx) battle.curFx.used = true;
-    if (!called && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
+    if (!called && !second && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
+    // Showdown's charge flag: the first turn readies the move (Solar Beam and Solar Blade not in sun, Electro Shot not in
+    // rain, none with a Power Herb, which is used up), Fly, Dig, Dive and the Force moves taking the user out of reach;
+    // the second turn uses it. Skull Bash, Meteor Beam and Electro Shot raise a stat as they charge
+    attacker.hiding = null;
+    if (move.flags?.includes("charge") && !second && !battle.pvp) {
+        const w = weatherOf(battle), skip = ((move.id === "solarbeam" || move.id === "solarblade") && w === "sun") || (move.id === "electroshot" && w === "rain");
+        say(battle, `§e${name} ${CHARGE_TEXT[move.id] ?? "is charging up!"}`);
+        if (CHARGE_BOOST[move.id]) boost(battle, attacker, CHARGE_BOOST[move.id], attacker);
+        if (!skip && held(attacker) === "power_herb") useUp(battle, attacker, `§7${name} became fully charged due to its Power Herb!`);
+        else if (!skip) { attacker.charging = move.id; attacker.hiding = SEMI_INVULNERABLE[move.id] ?? null; return; }
+    }
+    attacker.charging = null;
     if (move.id === "weatherball" && WEATHER_BALL[weatherOf(battle)]) move = { ...move, type: WEATHER_BALL[weatherOf(battle)] };
     // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
     if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
@@ -662,6 +700,11 @@ function runMove(battle, attacker, defender, move, called = false) {
         return;
     }
     const self = move.target === "self" || move.target === "adjacentAllyOrSelf" || move.target === "allies";
+    if (!self && defender.hiding && !REACHES_HIDDEN[defender.hiding]?.includes(move.id) && atkAb !== "noguard" && defAb !== "noguard") {
+        if (battle.curFx) battle.curFx.missed = true;
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} avoided the attack!`);
+        return;
+    }
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
         let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
         if (atkAb === "compoundeyes") chance *= 1.3;
@@ -2290,6 +2333,7 @@ function switchTo(battle, entity) {
     const old = battle.ally.entity;
     battle.kept = battle.kept ?? {};
     const leaving = battle.ally;
+    leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
@@ -2360,7 +2404,8 @@ function turn(battle) {
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
         for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
     }
-    pickAction(battle, options).then((choice) => {
+    const lockedIn = forcedMove(ally);
+    (lockedIn ? Promise.resolve({ kind: "move", move: lockedIn }) : pickAction(battle, options)).then((choice) => {
         if (!battles.has(battle.player.id)) return;
         if (!choice) { minimise(battle); return; }
         if (choice.kind === "catch") { minimise(battle, "§7Throw a Poke Ball at your opponent to capture it."); return; }
@@ -2386,9 +2431,9 @@ function turn(battle) {
         }
         if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
         const move = choice.move;
-        if (held(ally)?.startsWith("choice_") && move !== STRUGGLE) battle.choiceLock = battle.choiceLock ?? move.id;
-        if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
-        const foeMove = battle.gym ? gymFoeAction(battle) : pickFoeMove(foe);
+        if (held(ally)?.startsWith("choice_") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
+        if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
+        const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
         const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
         const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
         const allyClaw = claw(ally), foeClaw = claw(foe);
@@ -2405,6 +2450,7 @@ function turn(battle) {
             const mine = order[i], a = mine ? battle.ally : battle.foe, d = mine ? battle.foe : battle.ally, m = mine ? move : foeMove;
             // one switched in during the turn does not use the move the one before it chose
             if (a !== (mine ? ally : foe) || a.hp <= 0 || d.hp <= 0 || m === GYM_ITEM) { step(i + 1); return; }
+            if (m === RECHARGE) { a.mustRecharge = false; say(battle, `§7${a.info.name} must recharge!`); step(i + 1); return; }
             useMove(battle, a, d, m);
             const swap = battle.swap;
             battle.swap = null;
