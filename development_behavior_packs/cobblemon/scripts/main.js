@@ -103,6 +103,7 @@ function forcedMove(f) {
     if (f.locked) return f.moves.find((m) => m.id === f.locked.id) ?? null;
     return f.charging ? f.moves.find((m) => m.id === f.charging) ?? null : null;
 }
+const PROTECTING = new Set(["protect", "detect", "spikyshield", "kingsshield", "banefulbunker", "silktrap", "obstruct", "burningbulwark", "endure"]);
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
 
 function statAt(base, level, iv = 31, ev = 0, nature = 1) { return Math.floor((Math.floor(((2 * base + iv + Math.floor(ev / 4)) * level) / 100) + 5) * nature); }
@@ -310,6 +311,56 @@ function fieldMove(battle, a, d, move) {
             used();
             if (d.info.types.length === 1 && d.info.types[0] === "water") { fail(); return true; }
             d.info = { ...d.info, types: ["water"] }; say(battle, `§7${d.info.name} transformed into the Water type!`);
+            return true;
+        // Showdown's protecting moves: the user is safe from moves with the protect flag this turn, failing when it moves
+        // last or, used again in a row, two times in three, then eight in nine; the shields answer contact as well
+        case "protect": case "detect": case "spikyshield": case "kingsshield": case "banefulbunker": case "silktrap": case "obstruct": case "burningbulwark":
+        case "endure":
+            used();
+            if (battle.movedFirst !== a || Math.random() >= 1 / Math.pow(3, a.protectChain ?? 0)) { a.protectChain = 0; fail(); return true; }
+            a.protectChain = (a.protectChain ?? 0) + 1;
+            if (move.id === "endure") { a.enduring = battle.turn; say(battle, `§7${name} braced itself!`); }
+            else { a.protected = { turn: battle.turn, kind: move.id }; say(battle, `§7${name} protected itself!`); }
+            return true;
+        case "substitute":
+            used();
+            if (a.sub > 0) { say(battle, `§7${name} already has a substitute!`); return true; }
+            if (a.hp <= Math.floor(a.stats.hp / 4)) { say(battle, "§7But it does not have enough HP left to make a substitute!"); return true; }
+            a.hp -= Math.floor(a.stats.hp / 4); syncHealth(a); a.sub = Math.floor(a.stats.hp / 4);
+            say(battle, `§7${name} put in a substitute!`);
+            return true;
+        case "leechseed":
+            used();
+            if (d.info.types.includes("grass")) { say(battle, `§7It doesn't affect ${d.info.name}...`); return true; }
+            if (d.seeded) { fail(); return true; }
+            d.seeded = true; say(battle, `§a${d.info.name} was seeded!`);
+            return true;
+        case "taunt":
+            used();
+            if (d.taunt > 0 || d.ability === "oblivious") { fail(); return true; }
+            d.taunt = 3; say(battle, `§7${d.info.name} fell for the taunt!`);
+            return true;
+        case "yawn":
+            used();
+            if (d.status || d.yawn || sideOf(battle, d).safeguard > 0 || ["insomnia", "vitalspirit", "sweetveil"].includes(d.ability)) { fail(); return true; }
+            d.yawn = 2; say(battle, `§7${name} made ${d.info.name} drowsy!`);
+            return true;
+        case "wish": {
+            used();
+            const side = sideOf(battle, a);
+            if (side.wish) { fail(); return true; }
+            side.wish = { turns: 2, hp: Math.floor(a.stats.hp / 2), from: name };
+            return true;
+        }
+        case "perishsong":
+            used();
+            for (const f of [a, d]) if (!f.perish && f.ability !== "soundproof") f.perish = 4;
+            say(battle, "§7All Pokemon that heard the song will faint in three turns!");
+            return true;
+        case "destinybond":
+            used();
+            if (a.lastMove === "destinybond") { fail(); return true; }
+            a.destinyBond = true; say(battle, `§7${name} is hoping to take its attacker down with it!`);
             return true;
         case "partingshot":
             // its drops are in Showdown's onHit, not its data; the user then goes back (useMove's pivot)
@@ -649,6 +700,12 @@ function useMove(battle, attacker, defender, move, called = false) {
     battle.curFx = outcome; battle.said = said;
     try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
     if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
+    if (outcome.used && move.id) attacker.lastMove = move.id;
+    if (!PROTECTING.has(move.id)) attacker.protectChain = 0;
+    if (defender.hp <= 0 && defender.destinyBond && attacker !== defender && attacker.hp > 0) {
+        attacker.hp = 0; syncHealth(attacker);
+        say(battle, `§c${defender.info.name} took its attacker down with it!`);
+    }
     // Showdown's selfSwitch and forceSwitch, once the move has worked: a damaging one has to have hit, a status one not
     // to have failed or missed
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
@@ -706,6 +763,8 @@ function pivot(battle, swap, then) {
 }
 function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
+    attacker.destinyBond = false;   // it holds only until the user moves again
+    if (attacker.taunt > 0 && move.category === "Status" && move.id) { say(battle, `§7${name} can't use ${move.name} after the taunt!`); return; }
     // a two-turn move's second turn, or a locked-in move's later ones, which use no PP
     const second = !!move.id && (attacker.charging === move.id || attacker.locked?.id === move.id);
     if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; attacker.locked = null; return; }
@@ -737,6 +796,25 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (!self && defender.hiding && !REACHES_HIDDEN[defender.hiding]?.includes(move.id) && atkAb !== "noguard" && defAb !== "noguard") {
         if (battle.curFx) battle.curFx.missed = true;
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} avoided the attack!`);
+        return;
+    }
+    if (!self && defender.protected?.turn === battle.turn && move.flags?.includes("protect")
+        && !(["kingsshield", "silktrap", "obstruct"].includes(defender.protected.kind) && move.category === "Status")) {
+        if (battle.curFx) battle.curFx.missed = true;
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} protected itself!`);
+        if (move.contact && held(attacker) !== "protective_pads") {
+            const kind = defender.protected.kind;
+            if (kind === "spikyshield") hurt(battle, attacker, attacker.stats.hp / 8, `${name} was hurt by the Spiky Shield!`);
+            else if (kind === "kingsshield") boost(battle, attacker, { atk: -1 }, defender);
+            else if (kind === "silktrap") boost(battle, attacker, { spe: -1 }, defender);
+            else if (kind === "obstruct") boost(battle, attacker, { def: -2 }, defender);
+            else if (kind === "banefulbunker") inflict(battle, attacker, "psn", false, defender);
+            else if (kind === "burningbulwark") inflict(battle, attacker, "brn", false, defender);
+        }
+        return;
+    }
+    if (!self && defender.sub > 0 && move.category === "Status" && move.target !== "all" && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub")) {
+        say(battle, `§e${name} used ${move.name}!§r §7But it failed!`);
         return;
     }
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
@@ -787,7 +865,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (defAb === "sturdy") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} endured it with Sturdy!`); return; }
         say(battle, `§e${name} used ${move.name}!§r §cIt's a one-hit KO!`); defender.hp = 0; syncHealth(defender); return;
     }
-    let dealt = 0, note = "";
+    let dealt = 0, note = "", shielded = false;   // shielded: a substitute took the hit, so its effects do not reach the target
     // Sheer Force drops a move's added effects (its secondaries), not what the move does to its user
     const sheer = atkAb === "sheerforce" && !!(move.secondary || move.secondaries);
     const fixed = fixedDamage(battle, attacker, defender, move);
@@ -816,6 +894,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         // berries) answers the total
         const hits = multiHits(move, attacker);
         let total = 0, landed = 0;
+        shielded = false;
         for (let h = 0; h < hits && defender.hp > 0; h++) {
             note = "";
             const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
@@ -882,7 +961,17 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
             if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
             dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
+            if (defender.sub > 0 && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub") && atkAb !== "infiltrator") {
+                const took = Math.min(dmg, defender.sub);
+                defender.sub -= took; shielded = true;
+                say(battle, h === 0 ? `§e${name} used ${move.name}!§r §7The substitute took damage for ${defender.info.name}!` : `§7Hit ${h + 1}! The substitute took damage!`);
+                if (defender.sub <= 0) { defender.sub = 0; say(battle, `§7${defender.info.name}'s substitute faded!`); }
+                landed++;
+                if (defender.sub <= 0) break;
+                continue;
+            }
             dealt = Math.min(dmg, defender.hp);
+            if (dealt >= defender.hp && defender.enduring === battle.turn) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit!`); }
             if (dealt >= defender.hp && defender.hp === defender.stats.hp) {
                 if (defAb === "sturdy") { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit with Sturdy!`); }
                 else if (held(defender) === "focus_sash") { dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`); }
@@ -921,12 +1010,12 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (dealt && defender.hp > 0 && hitBoost && hitBoost[0] === move.type) { useUp(battle, defender, `§7${defender.info.name}'s ${itemName(defender.held)}!`); boost(battle, defender, hitBoost[1]); }
     } else say(battle, `§e${name} used ${move.name}!`);
     if (move.flags?.includes("sound") && held(attacker) === "throat_spray" && attacker.hp > 0) { useUp(battle, attacker, `§7${name}'s Throat Spray!`); boost(battle, attacker, { spa: 1 }); }
-    if (move.status) inflict(battle, defender, move.status, true, attacker);
-    if (move.boosts && defender.hp > 0) boost(battle, defender, move.boosts, attacker);
-    if (move.confuse && defender.hp > 0) confuse(battle, defender);
+    if (move.status && !shielded) inflict(battle, defender, move.status, true, attacker);
+    if (move.boosts && defender.hp > 0 && !shielded) boost(battle, defender, move.boosts, attacker);
+    if (move.confuse && defender.hp > 0 && !shielded) confuse(battle, defender);
     const contact = move.contact && held(attacker) !== "protective_pads" && !(held(attacker) === "punching_glove" && move.flags?.includes("punch"));
     for (const sec of [move.secondary, ...(move.secondaries ?? [])]) {
-        if (!sec || sheer || defAb === "shielddust" || (held(defender) === "covert_cloak" && !sec.self) || Math.random() * 100 >= sec.chance * (atkAb === "serenegrace" ? 2 : 1)) continue;
+        if (!sec || sheer || (shielded && !sec.self) || defAb === "shielddust" || (held(defender) === "covert_cloak" && !sec.self) || Math.random() * 100 >= sec.chance * (atkAb === "serenegrace" ? 2 : 1)) continue;
         const status = Array.isArray(sec.status) ? sec.status[Math.floor(Math.random() * sec.status.length)] : sec.status;
         if (status && defender.hp > 0) inflict(battle, defender, status, false, attacker);
         if (sec.flinch && defender.hp > 0 && battle.movedFirst === attacker && defender.ability !== "innerfocus") defender.flinched = true;
@@ -2370,6 +2459,7 @@ function switchTo(battle, entity) {
     battle.kept = battle.kept ?? {};
     const leaving = battle.ally;
     leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
+    leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
@@ -2651,14 +2741,18 @@ system.runInterval(() => {
 }, 10);
 
 function pickFoeMove(foe) {
-    const usable = foe.moves.filter((m) => m.left > 0);
+    const usable = foe.moves.filter((m) => m.left > 0 && !(foe.taunt > 0 && m.category === "Status"));
     return usable.length ? usable[Math.floor(Math.random() * usable.length)] : STRUGGLE;
 }
 
 function foeTurn(battle) {
     const { ally, foe } = battle;
     battle.movedFirst = null;   // the player used an item or switched; the foe's move can make nobody flinch
-    if (foe.hp > 0 && ally.hp > 0) { const m = battle.gym ? gymFoeAction(battle) : pickFoeMove(foe); if (m !== GYM_ITEM) useMove(battle, foe, ally, m); }
+    if (foe.hp > 0 && ally.hp > 0) {
+        const m = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
+        if (m === RECHARGE) { foe.mustRecharge = false; say(battle, `§7${foe.info.name} must recharge!`); }
+        else if (m !== GYM_ITEM) useMove(battle, foe, ally, m);
+    }
     endOfTurn(battle);
 }
 
@@ -2697,6 +2791,29 @@ function endOfTurn(battle) {
             f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Leftovers!`); syncHealth(f);
         }
         heldBerry(battle, f);
+    }
+    for (const f of [battle.ally, battle.foe]) {
+        const other = f === battle.ally ? battle.foe : battle.ally;
+        if (f.seeded && f.hp > 0 && other.hp > 0) {
+            const before = f.hp;
+            hurt(battle, f, f.stats.hp / 8, `${f.info.name}'s health is sapped by Leech Seed!`);
+            if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
+        }
+        if (f.yawn && --f.yawn === 0 && f.hp > 0 && !f.status) inflict(battle, f, "slp", false);
+        if (f.taunt > 0 && --f.taunt === 0) say(battle, `§7${f.info.name} shook off the taunt!`);
+        if (f.perish && f.hp > 0) {
+            f.perish--;
+            say(battle, `§7${f.info.name}'s perish count fell to ${f.perish}.`);
+            if (f.perish <= 0) { f.hp = 0; syncHealth(f); }
+        }
+    }
+    const realSides = realBattle(battle).sides ?? {};
+    for (const [key, f] of [["a", realBattle(battle).ally], ["b", realBattle(battle).foe]]) {
+        const wish = realSides[key]?.wish;
+        if (wish && --wish.turns <= 0) {
+            delete realSides[key].wish;
+            if (f.hp > 0 && f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + wish.hp); say(battle, `§a${wish.from}'s wish came true!`); syncHealth(f); }
+        }
     }
     for (const f of [battle.ally, battle.foe]) f.flinched = false;
     // the side conditions and Trick Room run down
