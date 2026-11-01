@@ -1,0 +1,170 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:saccharine_tree_dense_rule",
+      "places_feature": "cobblemon:saccharine_tree_wild"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "all_of": [
+          {
+            "any_of": [
+              {
+                "any_of": [
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "cherry_grove"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "flower_forest"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "meadow"
+                  },
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "plains"
+                      },
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "mutated"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "roofed"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "taiga"
+              }
+            ]
+          },
+          {
+            "any_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "mesa"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "desert"
+              },
+              {
+                "any_of": [
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "forest"
+                      },
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "!=",
+                        "value": "taiga"
+                      },
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "!=",
+                        "value": "extreme_hills"
+                      }
+                    ]
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "flower_forest"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "cherry_grove"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "grove"
+                  }
+                ]
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "jungle"
+              },
+              {
+                "any_of": [
+                  {
+                    "all_of": [
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "taiga"
+                      },
+                      {
+                        "test": "has_biome_tag",
+                        "operator": "==",
+                        "value": "cold"
+                      }
+                    ]
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "grove"
+                  }
+                ]
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "taiga"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 51
+      }
+    }
+  }
+}

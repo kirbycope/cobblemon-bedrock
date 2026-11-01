@@ -35,6 +35,7 @@ import { CHEST_LOOT } from "./chest_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF } from "./silk.js";
+import { SACCHARINE_TREES } from "./saccharine.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
@@ -5964,6 +5965,14 @@ function growTree(block, kind = "grown") {
     catch (e) { console.warn(`[cobblemon] apricorn tree: ${e}`); block.setType(`cobblemon:${colour}_apricorn_sapling`); }
 }
 
+function growSaccharine(block) {
+    if (!block.isValid || block.typeId !== "cobblemon:saccharine_sapling") return;
+    const name = `saccharine_tree_${Math.floor(Math.random() * SACCHARINE_TREES.variants)}`, [ox, oy, oz] = SACCHARINE_TREES.origins[name];
+    const { x, y, z } = block.location;
+    block.setType("minecraft:air");
+    try { world.structureManager.place(`cobblemon:${name}`, block.dimension, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
+    catch (e) { block.setType("cobblemon:saccharine_sapling"); }
+}
 function useBoneMeal(player) {
     if (player.getGameMode?.() === "Creative") return;
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
@@ -7816,6 +7825,40 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
+    // NutBushBlock: grows one random tick in eight where the light above is 9 or more, bone meal a stage; used fully
+    // grown it gives one or two Galarica Nuts and goes back to age 1
+    // SaccharineSaplingBlock: grows into one of the tree structures one random tick in seven where the light is 9 or
+    // more, or at once from bone meal 45 times in 100, as a sapling does
+    blockComponentRegistry.registerCustomComponent("cobblemon:saccharine_sapling", {
+        onRandomTick({ block }) { if (Math.random() < 1 / 7) growSaccharine(block); },
+        onPlayerInteract({ block, player }) {
+            const hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand?.typeId !== "minecraft:bone_meal") return;
+            consumeHand(player);
+            try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+            if (Math.random() < 0.45) growSaccharine(block);
+        }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:nut_bush", {
+        onRandomTick({ block }) {
+            const age = block.permutation.getState("cobblemon:age");
+            let light = 15;
+            try { light = block.dimension.getSkyLightLevel(block.above().location); } catch (e) { }
+            if (age < 3 && light >= 9 && Math.random() < 1 / 8) block.setPermutation(block.permutation.withState("cobblemon:age", age + 1));
+        },
+        onPlayerInteract({ block, player }) {
+            const age = block.permutation.getState("cobblemon:age"), hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand?.typeId === "minecraft:bone_meal" && age < 3) {
+                block.setPermutation(block.permutation.withState("cobblemon:age", age + 1)); consumeHand(player);
+                try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+                return;
+            }
+            if (age < 3) return;
+            block.dimension.spawnItem(new ItemStack("cobblemon:galarica_nuts", 1 + Math.floor(Math.random() * 2)), block.center());
+            try { block.dimension.playSound("block.sweet_berry_bush.pick", block.location); } catch (e) { }
+            block.setPermutation(block.permutation.withState("cobblemon:age", 1));
+        }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
         beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },
         onTick({ block }) { snackTick(block); }

@@ -1,0 +1,45 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:type_gems_rule",
+      "places_feature": "cobblemon:gem_cluster_snap"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "test": "has_biome_tag",
+        "operator": "==",
+        "value": "overworld"
+      }
+    },
+    "distribution": {
+      "iterations": 2,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "triangle",
+        "extent": [
+          -64,
+          0
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 3
+      }
+    }
+  }
+}

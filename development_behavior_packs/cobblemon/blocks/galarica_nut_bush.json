@@ -5,6 +5,14 @@
       "identifier": "cobblemon:galarica_nut_bush",
       "menu_category": {
         "category": "nature"
+      },
+      "states": {
+        "cobblemon:age": [
+          0,
+          1,
+          2,
+          3
+        ]
       }
     },
     "components": {
@@ -34,7 +42,83 @@
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 0.5
       },
-      "minecraft:loot": "loot_tables/blocks/galarica_nut_bush.json"
-    }
+      "minecraft:loot": "loot_tables/blocks/galarica_nut_bush.json",
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ],
+            "block_filter": [
+              "minecraft:grass_block",
+              "minecraft:dirt",
+              "minecraft:podzol",
+              "minecraft:coarse_dirt",
+              "minecraft:farmland",
+              "minecraft:sand"
+            ]
+          }
+        ]
+      },
+      "cobblemon:nut_bush": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:age') == 0",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_crops_galarica_nut_bush_stage0",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/galarica_nut_bush_0.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_crops_galarica_nut_bush_stage1",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/galarica_nut_bush_1.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_crops_galarica_nut_bush_stage2",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/galarica_nut_bush_2.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 3",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_crops_galarica_nut_bush_stage3",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/galarica_nut_bush_3.json"
+        }
+      }
+    ]
   }
 }

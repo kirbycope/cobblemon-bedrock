@@ -6294,6 +6294,42 @@ def height_distribution(height):
     return {"distribution": "triangle" if height.get("type") == "minecraft:trapezoid" else "uniform", "extent": [low, high]}
 
 
+def saccharine_tree(rng):
+    """{(x, y, z): (block, states)} for one tree as SaccharineTreeFeature builds it: a trunk of one or two logs, the top
+    trunk, the leaf start, then big and small leaf layers round a log column, the small layers' corners a leaf, air or
+    (at the very top) a leaf, one in four each."""
+    log, leaves = ("cobblemon:saccharine_log", {"minecraft:block_face": "up"}), ("cobblemon:saccharine_leaves", {})
+    blocks = {}
+    def put(pos, block, force=False):
+        if force or pos not in blocks: blocks[pos] = block
+    def big(y):
+        for dx, dz in [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -2), (1, -2), (-1, 2), (1, 2), (-2, -1), (-2, 1), (2, -1), (2, 1),
+                       (-1, -1), (1, 1), (-1, 1), (1, -1), (1, 0), (-1, 0), (0, 1), (0, -1)]: put((dx, y, dz), leaves)
+        put((0, y, 0), log, True)
+    def small(y, centre, corner):
+        for dx, dz in [(-1, 0), (1, 0), (0, -1), (0, 1)]: put((dx, y, dz), leaves)
+        for dx, dz in [(-1, -1), (1, 1), (-1, 1), (1, -1)]:
+            if rng.random() < 0.25: continue          # the special block: air
+            if corner: put((dx, y, dz), corner)
+        put((0, y, 0), centre, True)
+    trunk = 1 if rng.random() < 0.5 else 2
+    for y in range(trunk): put((0, y, 0), log, True)
+    y = trunk
+    put((0, y, 0), log, True); y += 1                 # top trunk
+    for dx, dz in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
+        if rng.random() >= 0.25: put((dx, y, dz), leaves)
+    put((0, y, 0), log, True); y += 1                 # leaf start
+    big(y); y += 1
+    small(y, log, leaves); y += 1
+    big(y); y += 1
+    if rng.random() < 0.5: small(y, leaves, leaves)
+    else:
+        small(y, log, leaves); y += 1
+        big(y); y += 1
+        small(y, leaves, leaves)
+    return blocks
+
+
 def create_wild_features():
     world = f"{cobblemonData}/worldgen"
     def tag_filter(tag):
@@ -6355,7 +6391,7 @@ def create_wild_features():
     feature_rule("big_root", "cobblemon:big_root_patch", overworld, 2, f"{surface} - math.random_integer(4, 32)", chance=2, placement="underground_pass")
     # Galarica nut bushes: a patch of twenty tries 5 across on beaches, one chunk in six
     write_feature("galarica_bush_wild", "minecraft:single_block_feature", {
-        "places_block": "cobblemon:galarica_nut_bush", "enforce_placement_rules": False, "enforce_survivability_rules": False,
+        "places_block": {"name": "cobblemon:galarica_nut_bush", "states": {"cobblemon:age": 3}}, "enforce_placement_rules": False, "enforce_survivability_rules": False,
         "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:gravel"]},
         "may_replace": WILD_GROUND})
     write_feature("galarica_bush_snap", "minecraft:snap_to_surface_feature", {"feature_to_snap": "cobblemon:galarica_bush_wild", "vertical_search_range": 5, "surface": "floor"})
@@ -6363,6 +6399,47 @@ def create_wild_features():
         "x": {"distribution": "uniform", "extent": [-5, 5]}, "y": 0, "z": {"distribution": "uniform", "extent": [-5, 5]}})
     beach = biome_filter_for(["#cobblemon:is_beach"])
     if beach: feature_rule("galarica_nuts", "cobblemon:galarica_patch", beach, 1, surface, chance=6)
+    # type gems (TypeGemFeature): two tries a chunk one chunk in three, from -64 to 0, a gem cluster of a type at random
+    # on the deepslate of a cave; the core and the clusters' growth are not carried, so a cluster here is a grown one
+    gems = [os.path.basename(f)[:-len("_gem_cluster.json")] for f in glob.glob(f"{blocksBedrock}/*_gem_cluster.json")]
+    for gem in gems:
+        write_feature(f"gem_cluster_{gem}_wild", "minecraft:single_block_feature", {
+            "places_block": f"cobblemon:{gem}_gem_cluster", "enforce_placement_rules": False, "enforce_survivability_rules": False,
+            "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": DEEPSLATE_REPLACEABLES}, "may_replace": ["minecraft:air", "minecraft:cave_air"]})
+    if gems:
+        write_feature("gem_cluster_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:gem_cluster_{g}_wild", 1] for g in gems]})
+        write_feature("gem_cluster_snap", "minecraft:snap_to_surface_feature", {"feature_to_snap": "cobblemon:gem_cluster_wild", "vertical_search_range": 12, "surface": "floor"})
+        feature_rule("type_gems", "cobblemon:gem_cluster_snap", overworld, 2, {"distribution": "triangle", "extent": [-64, 0]}, chance=3, placement="underground_pass")
+    # saccharine trees (SaccharineTreeFeature): one chunk in 51 in the saccharine biomes, then the apricorn density's
+    # multiplier times baseApricornTreeGenerationChance (0.1), on dirt; six variants as structures, which a sapling also
+    # grows into (scripts/saccharine.js, cobblemon:saccharine_sapling: a random tick in seven)
+    import random
+    rng, origins = random.Random(51), {}
+    for n in range(TREE_VARIANTS):
+        name = f"saccharine_tree_{n}"
+        origins[name] = write_tree(f"{structuresBedrock}/{name}.mcstructure", saccharine_tree(rng))
+        write_feature(f"{name}_wild", "minecraft:structure_template_feature", {"structure_name": f"cobblemon:{name}", "adjustment_radius": 1,
+            "facing_direction": "random", "constraints": {"grounded": {}, "unburied": {}, "block_intersection": {"block_allowlist": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]}}})
+    write_feature("saccharine_tree_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:saccharine_tree_{n}_wild", 1] for n in range(TREE_VARIANTS)]})
+    sacch = tag_filter("has_feature/saccharine_tree")
+    for density, multiplier in (("sparse", 0.1), ("normal", 1.0), ("dense", 10.0)):
+        dens = tag_filter(f"has_feature/apricorns_{density}")
+        if not sacch or not dens: continue
+        feature_rule(f"saccharine_tree_{density}", "cobblemon:saccharine_tree_wild", _all(sacch, dens), 1, surface, chance=max(1, round(51 / min(1.0, multiplier * 0.1))))
+    with open(f"{scriptsBedrock}/saccharine.js", "w", encoding="utf-8", newline=chr(10)) as file:
+        file.write("// generated by port.py (create_wild_features): the saccharine tree structures and where each one's sapling stands" + chr(10))
+        file.write("export const SACCHARINE_TREES = " + json.dumps({"variants": TREE_VARIANTS, "origins": origins}) + ";" + chr(10))
+    sapling = f"{blocksBedrock}/saccharine_sapling.json"
+    if os.path.exists(sapling):
+        with open(sapling, encoding="utf-8") as file: block = json.load(file)
+        block["minecraft:block"]["components"]["cobblemon:saccharine_sapling"] = {}
+        with open(sapling, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
+    # Galarica Nuts plant the bush (an ItemNameBlockItem), written after the items
+    item_path = f"{itemsBedrock}/general/galarica_nuts.json"
+    if os.path.exists(item_path):
+        with open(item_path, encoding="utf-8") as file: item = json.load(file)
+        item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": "cobblemon:galarica_nut_bush", "use_on": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:farmland", "minecraft:sand"]}
+        with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
     print(f"  wild features: {ores} evolution stone ore placements, Medicinal Leek, mints, big roots, Galarica bushes")
 
 
@@ -6831,7 +6908,8 @@ def convert_loot_table(data, items, state=None, silk=False):
         functions = []
         for function in entry.get("functions", []):
             fn = function.get("function", "").split(":")[-1]
-            if fn == "set_count": functions.append({"function": "set_count", "count": loot_number(function.get("count"))})
+            # an added count (Fortune's bonus, add true) is not carried; the base count is
+            if fn == "set_count" and not function.get("add"): functions.append({"function": "set_count", "count": loot_number(function.get("count"))})
             elif fn == "enchant_randomly": functions.append({"function": "enchant_randomly"})
             elif fn == "set_components" and "cobblemon:tm_move" in function.get("components", {}):
                 name = f"cobblemon:tm_{function['components']['cobblemon:tm_move'].get('move', '')}"
@@ -7832,9 +7910,20 @@ def loot_by_state(name):
     return keys
 
 
-def block_loot(name, state=None):
+BLOCK_LOOT_CALLS = []   # every block_loot made, written again by refresh_block_loot once every item exists
+
+
+def refresh_block_loot():
+    """Block loot is first written while the blocks are made, before the general items (the gems, the evolution stones)
+    exist, which the conversion leaves out as unknown; once every item is written, each table is converted again."""
+    for name, state in list(BLOCK_LOOT_CALLS): block_loot(name, state, record=False)
+    print(f"  block loot: {len(BLOCK_LOOT_CALLS)} tables converted again with every item known")
+
+
+def block_loot(name, state=None, record=True):
     """A Bedrock loot table path for the block in these states: Cobblemon's, converted (a table a state, named for its
     values, where the drops depend on them), or the block itself. A block Silk Touch keeps whole goes in SILK_SELF."""
+    if record: BLOCK_LOOT_CALLS.append((name, dict(state) if state else None))
     path = f"{cobblemonData}/loot_table/blocks/{name}.json"
     table = None
     items = defined_items() | {f"cobblemon:{name}"}
@@ -11951,6 +12040,28 @@ def create_building_blocks():
                 full_block(identifier, {"*": tex["all"]}, extra=base, render=render)
             elif parent in ("block/cube_column", "block/cube_column_horizontal") and "side" in tex and "end" in tex:
                 full_block(identifier, {"*": tex["side"], "up": tex["end"], "down": tex["end"]}, extra=base)
+            elif parent == "block/cross" and "cross" in tex and name == "galarica_nut_bush":
+                # NutBushBlock: four ages, each its own cross texture and its own drops; a random tick grows it one
+                # time in eight, using it fully grown picks one or two Galarica Nuts and takes it back to age 1
+                # (scripts/main.js, cobblemon:nut_bush), and Galarica Nuts plant it on dirt
+                with open(f"{cobblemon}/blockstates/{name}.json", encoding="utf-8") as file: variants = json.load(file)["variants"]
+                ages = sorted(int(k.split("=")[1]) for k in variants)
+                permutations = []
+                for age in ages:
+                    model = java_model(variants[f"age={age}"]["model"]) or {}
+                    texture = (model.get("textures") or {}).get("cross", tex["cross"])
+                    permutations.append({"condition": f"q.block_state('cobblemon:age') == {age}", "components": {
+                        "minecraft:material_instances": {"*": {"texture": java_texture(texture), "render_method": "alpha_test", "face_dimming": False, "ambient_occlusion": False}},
+                        "minecraft:loot": block_loot(name, {"age": str(age)})}})
+                with open(f"{blocksBedrock}/{name}.json", "w") as file:
+                    file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                        "description": {"identifier": identifier, "menu_category": {"category": "nature"}, "states": {"cobblemon:age": ages}},
+                        "components": {"minecraft:geometry": "minecraft:geometry.cross", **{k: v for k, v in permutations[0]["components"].items() if k != "minecraft:loot"},
+                                       "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 13, 12]},
+                                       "minecraft:light_dampening": 0, **base, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5},
+                                       "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:farmland", "minecraft:sand"]}]},
+                                       "cobblemon:nut_bush": {}},
+                        "permutations": permutations}}, indent=2))
             elif parent == "block/cross" and "cross" in tex:
                 with open(f"{blocksBedrock}/{name}.json", "w") as file:
                     file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
@@ -12127,6 +12238,7 @@ def main():
     create_party_item()
     add_bait_offhand()   # after every item is written
     add_party_select_use()   # after every item is written, and items.js
+    refresh_block_loot()   # after every item is written
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
