@@ -4831,6 +4831,8 @@ def showdown_moves():
         if re.search(r"^    sleepUsable: true", body, re.M): move["sleepUsable"] = True
         weather = re.search(r'^    weather: "(\w+)"', body, re.M)
         if weather: move["weather"] = {"raindance": "rain", "sunnyday": "sun", "sandstorm": "sand", "hail": "snow", "snow": "snow"}[weather.group(1).lower()]
+        terrain = re.search(r'^    terrain: "(\w+)terrain"', body, re.M)
+        if terrain: move["terrain"] = terrain.group(1)
         crit = re.search(r"^    critRatio: (\d+)", body, re.M)
         if crit: move["critRatio"] = int(crit.group(1))
         # a chance of a status or stat change on hit

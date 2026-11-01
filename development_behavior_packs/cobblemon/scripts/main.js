@@ -255,6 +255,36 @@ function setWeather(battle, kind, setter) {
     say(battle, `§b${WEATHER_TEXT[kind][0]}`);
     return true;
 }
+// Battle terrain, as Showdown's: Electric, Grassy, Misty and Psychic Terrain for five turns (eight with a Terrain
+// Extender), from a move or a Surge ability on entry, acting on the Pokemon on the ground. Electric, Grassy and Psychic
+// moves from one on the ground are 1.3 times stronger; Electric Terrain keeps it from sleep and Misty Terrain from any
+// status or confusion, Misty halves Dragon moves at it, Grassy heals it a sixteenth each turn and halves Earthquake at
+// it, and Psychic Terrain keeps priority moves off it. A terrain seed raises its holder's Defense (Electric, Grassy) or
+// Sp. Def (Misty, Psychic) once its terrain is up
+const TERRAIN_TEXT = {
+    electric: ["An electric current ran across the battlefield!", "The electricity disappeared from the battlefield."],
+    grassy: ["Grass grew to cover the battlefield!", "The grass disappeared from the battlefield."],
+    misty: ["Mist swirled around the battlefield!", "The mist disappeared from the battlefield."],
+    psychic: ["The battlefield got weird!", "The weirdness disappeared from the battlefield."]
+};
+const TERRAIN_ABILITIES = { electricsurge: "electric", hadronengine: "electric", grassysurge: "grassy", mistysurge: "misty", psychicsurge: "psychic" };
+const TERRAIN_SEEDS = { electric: { def: 1 }, grassy: { def: 1 }, misty: { spd: 1 }, psychic: { spd: 1 } };
+const TERRAIN_PULSE = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
+function terrainOf(battle) { return realBattle(battle)?.terrain?.kind ?? null; }
+function onGround(battle, f) { return !!battle?.gravity || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
+function setTerrain(battle, kind, setter) {
+    if (terrainOf(battle) === kind) return false;
+    realBattle(battle).terrain = { kind, turns: held(setter) === "terrain_extender" ? 8 : 5 };
+    say(battle, `§a${TERRAIN_TEXT[kind][0]}`);
+    for (const f of [battle.ally, battle.foe]) terrainSeed(battle, f);
+    return true;
+}
+function terrainSeed(battle, f) {
+    const kind = terrainOf(battle);
+    if (!kind || f.hp <= 0 || held(f) !== `${kind}_seed`) return;
+    useUp(battle, f, `§7${f.info.name}'s ${itemName(f.held)}!`);
+    boost(battle, f, TERRAIN_SEEDS[kind]);
+}
 // which goes first by speed: the faster, a tie either way, and under Trick Room the slower
 function fasterOf(a, b, battle) {
     if (battle && realBattle(battle).trickRoom > 0) [a, b] = [b, a];
@@ -437,6 +467,7 @@ function speedOf(f, battle) {
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
+    if (f.ability === "surgesurfer" && terrainOf(battle) === "electric") spe *= 2;
     if (battle && sideOf(battle, f).tailwind > 0) spe *= 2;
     return spe;
 }
@@ -592,6 +623,11 @@ function boost(battle, target, boosts, source) {
 
 function inflict(battle, target, status, announceFailure, source) {
     if (source && source !== target && sideOf(battle, target).safeguard > 0) { if (announceFailure) say(battle, `§7${target.info.name} is protected by Safeguard!`); return; }
+    const terrain = terrainOf(battle);
+    if (!target.status && onGround(battle, target) && (terrain === "misty" || (terrain === "electric" && status === "slp"))) {
+        if (announceFailure) say(battle, `§7${target.info.name} surrounds itself with ${terrain === "misty" ? "a protective mist" : "electrified terrain"}!`);
+        return;
+    }
     const guard = STATUS_GUARD[ability(target, source)] ?? [];
     if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
         if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
@@ -640,6 +676,7 @@ function confuse(battle, f, quiet = false, fatigue = false) {
     if (f.confused) { if (!quiet) say(battle, `§7${f.info.name} is already confused!`); return false; }
     if (f.ability === "owntempo") { if (!quiet) say(battle, `§7${f.info.name}'s Own Tempo prevents confusion!`); return false; }
     if (!fatigue && sideOf(battle, f).safeguard > 0) { if (!quiet) say(battle, `§7${f.info.name} is protected by Safeguard!`); return false; }
+    if (!fatigue && terrainOf(battle) === "misty" && onGround(battle, f)) { if (!quiet) say(battle, `§7${f.info.name} surrounds itself with a protective mist!`); return false; }
     f.confused = 2 + Math.floor(Math.random() * 4);
     say(battle, `§7${f.info.name} became confused${fatigue ? " due to fatigue" : ""}!`);
     if (held(f) === "persim_berry" || held(f) === "lum_berry") { f.confused = 0; useUp(battle, f, `§a${f.info.name}'s ${itemName(f.held)} snapped it out of its confusion!`); }
@@ -714,6 +751,10 @@ function movePower(battle, a, d, move) {
         case "boltbeak": case "fishiousrend": return battle.movedFirst !== d ? move.power * 2 : move.power;
         case "magnitude": { const r = Math.random() * 100; const p = r < 5 ? 10 : r < 15 ? 30 : r < 35 ? 50 : r < 65 ? 70 : r < 85 ? 90 : r < 95 ? 110 : 150; return d.hiding === "ground" ? p * 2 : p; }
         case "earthquake": return d.hiding === "ground" ? move.power * 2 : move.power;
+        case "terrainpulse": return terrainOf(battle) && onGround(battle, a) ? move.power * 2 : move.power;
+        case "risingvoltage": return terrainOf(battle) === "electric" && onGround(battle, d) ? move.power * 2 : move.power;
+        case "expandingforce": return terrainOf(battle) === "psychic" && onGround(battle, a) ? move.power * 1.5 : move.power;
+        case "mistyexplosion": return terrainOf(battle) === "misty" && onGround(battle, a) ? move.power * 1.5 : move.power;
         case "rollout": case "iceball": return move.power * 2 ** (a.rolling?.hit ?? 0) * (a.curled ? 2 : 1);
         case "furycutter": { const fc = a.furyCutter; return Math.min(160, move.power * (fc?.turn === battle.turn - 1 ? Math.min(4, fc.mult * 2) : 1)); }
         case "surf": case "whirlpool": return d.hiding === "water" ? move.power * 2 : move.power;
@@ -767,6 +808,8 @@ function useMove(battle, attacker, defender, move, called = false) {
         attacker.disabled = { id: move.id, turns: 4 };
         say(battle, `§7${name}'s ${move.name} was disabled by ${defender.info.name}'s Cursed Body!`);
     }
+    if (worked && move.id === "steelroller" && terrainOf(battle)) { say(battle, `§7${TERRAIN_TEXT[terrainOf(battle)][1]}`); realBattle(battle).terrain = null; }
+    if (worked && move.category !== "Status" && defender.ability === "seedsower" && attacker !== defender) { say(battle, `§7${defender.info.name}'s Seed Sower!`); setTerrain(battle, "grassy", defender); }
     if (worked && (move.id === "rapidspin" || move.id === "mortalspin") && attacker.hp > 0) {
         attacker.bound = null; attacker.seeded = false;
         for (const k of Object.keys(HAZARDS)) delete sideOf(battle, attacker)[k];
@@ -857,6 +900,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         return;
     }
     if (move.id === "weatherball" && WEATHER_BALL[weatherOf(battle)]) move = { ...move, type: WEATHER_BALL[weatherOf(battle)] };
+    if (move.id === "terrainpulse" && terrainOf(battle) && onGround(battle, attacker)) move = { ...move, type: TERRAIN_PULSE[terrainOf(battle)] };
     // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
     if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
     if (move.id === "sleeptalk") {
@@ -912,6 +956,16 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (!setWeather(battle, move.weather, attacker)) say(battle, "§7But it failed!");
         return;
     }
+    if (move.terrain) {
+        say(battle, `§e${name} used ${move.name}!`);
+        if (!setTerrain(battle, move.terrain, attacker)) say(battle, "§7But it failed!");
+        return;
+    }
+    if (!self && (move.priority ?? 0) > 0 && terrainOf(battle) === "psychic" && onGround(battle, defender)) {
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by the Psychic Terrain!`);
+        return;
+    }
+    if (move.id === "steelroller" && !terrainOf(battle)) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
     if (fieldMove(battle, attacker, defender, move)) return;
     if (move.id === "defensecurl") attacker.curled = true;   // Rollout and Ice Ball hit twice as hard after it
     if (self) { say(battle, `§e${name} used ${move.name}!`); if (!healMove(battle, attacker, move)) boost(battle, attacker, move.boosts, attacker); return; }
@@ -988,6 +1042,8 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
             if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
             if (!physical && w === "sun" && atkAb === "solarpower") a *= 1.5;
+            if (!physical && atkAb === "hadronengine" && terrainOf(battle) === "electric") a *= 4 / 3;
+            if (physical && defAb === "grasspelt" && terrainOf(battle) === "grassy") d *= 1.5;
             if (physical && defAb === "marvelscale" && defender.status) d *= 1.5;
             if (held(defender) === "assault_vest" && !physical) d *= 1.5;
             for (const [item, [who, stats]] of Object.entries(SPECIES_ITEMS)) {
@@ -1011,6 +1067,10 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (w === "rain" && !umbrella) power *= move.type === "water" ? 1.5 : move.type === "fire" ? 0.5 : 1;
             if (w === "sun" && !umbrella) power *= move.type === "fire" ? 1.5 : move.type === "water" ? 0.5 : 1;
             if (atkAb === "flashfire" && attacker.flashFire && move.type === "fire") power *= 1.5;
+            const terrain = terrainOf(battle);
+            if (terrain && TERRAIN_PULSE[terrain] === move.type && terrain !== "misty" && onGround(battle, attacker)) power *= 1.3;
+            if (terrain === "misty" && move.type === "dragon" && onGround(battle, defender)) power *= 0.5;
+            if (terrain === "grassy" && ["earthquake", "bulldoze", "magnitude"].includes(move.id) && onGround(battle, defender)) power *= 0.5;
             let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
             if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
             if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
@@ -1296,6 +1356,8 @@ function endBattle(battle, text) {
 function enter(battle, f, other) {
     entryHazards(battle, f);
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
+    if (TERRAIN_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setTerrain(battle, TERRAIN_ABILITIES[f.ability], f); }
+    terrainSeed(battle, f);
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
         if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
@@ -2866,6 +2928,13 @@ function endOfTurn(battle) {
         if (w === "sun" && (f.ability === "dryskin" || f.ability === "solarpower")) hurt(battle, f, f.stats.hp / 8, `${f.info.name} is hurt by the sunlight!`);
     }
     if (battle.weather && --battle.weather.turns <= 0) { say(battle, `§b${WEATHER_TEXT[battle.weather.kind][1]}`); battle.weather = null; }
+    if (terrainOf(battle) === "grassy") {
+        for (const f of [battle.ally, battle.foe]) {
+            if (f.hp > 0 && f.hp < f.stats.hp && onGround(battle, f)) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name}'s HP was restored by the Grassy Terrain.`); syncHealth(f); }
+        }
+    }
+    const field = realBattle(battle);
+    if (field.terrain && --field.terrain.turns <= 0) { say(battle, `§a${TERRAIN_TEXT[field.terrain.kind][1]}`); field.terrain = null; }
     for (const f of [battle.ally, battle.foe]) {
         if (f.hp > 0 && held(f) === "black_sludge") {
             if (f.info.types.includes("poison")) { if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Black Sludge!`); syncHealth(f); } }
