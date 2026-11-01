@@ -4802,6 +4802,9 @@ def showdown_moves():
         if boosts(top): move["boosts"] = boosts(top)
         status = re.search(r'^    status: "(\w+)"', top, re.M)
         if status: move["status"] = status.group(1)
+        # confusion as the move's own effect (Confuse Ray, Swagger), and the moves that lock their user in (Outrage)
+        if re.search(r'^    volatileStatus: "confusion"', top, re.M): move["confuse"] = True
+        if re.search(r'^    self: \{\s*volatileStatus: "lockedmove"', body, re.M): move["lock"] = True
         flags = re.search(r"flags: \{([^}]*)\}", body)
         if flags:
             names = re.findall(r"(\w+): 1", flags.group(1))
@@ -4839,6 +4842,7 @@ def showdown_moves():
             if status: effect["status"] = status.group(1)
             if boosts(text): effect["boosts"] = boosts(text); effect["self"] = "self: {" in text
             if re.search(r"volatileStatus: ['\"]flinch['\"]", text): effect["flinch"] = True
+            if re.search(r"volatileStatus: ['\"]confusion['\"]", text): effect["confuse"] = True
             if len(effect) > 1: move["secondary"] = effect
             # Tri Attack and Dire Claw roll their status in code: one of three, at the secondary's chance
             if match.group(1) == "triattack": move["secondary"] = {"chance": effect["chance"], "status": ["brn", "par", "frz"]}

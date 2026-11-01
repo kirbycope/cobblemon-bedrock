@@ -100,6 +100,7 @@ const RECHARGE = { id: "recharge", name: "Recharge", type: "normal", power: 0, a
 // the move a Pokemon is held to this turn: its recharge after Hyper Beam, or the second turn of the move it charged
 function forcedMove(f) {
     if (f.mustRecharge) return RECHARGE;
+    if (f.locked) return f.moves.find((m) => m.id === f.locked.id) ?? null;
     return f.charging ? f.moves.find((m) => m.id === f.charging) ?? null : null;
 }
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
@@ -527,8 +528,35 @@ function canAct(battle, f, move) {
         if (Math.random() < 0.2) { f.status = null; say(battle, `§7${f.info.name} thawed out!`); }
         else { say(battle, `§7${f.info.name} is frozen solid!`); return false; }
     }
+    if (f.confused) {
+        if (--f.confused <= 0) { f.confused = 0; say(battle, `§7${f.info.name} snapped out of its confusion!`); }
+        else {
+            say(battle, `§7${f.info.name} is confused!`);
+            if (Math.random() < 1 / 3) { confusionHit(battle, f); return false; }
+        }
+    }
     if (f.status === "par" && Math.random() < 0.25) { say(battle, `§7${f.info.name} is paralyzed! It can't move!`); return false; }
     return true;
+}
+// Showdown's confusion: two to five turns, and each turn one time in three the Pokemon hits itself instead of moving,
+// a typeless 40 power physical hit on its own Attack and Defense with no critical hit. Own Tempo and Safeguard keep it
+// off, a Persim or Lum Berry cures it at once, and switching out ends it. True when it took hold
+function confuse(battle, f, quiet = false, fatigue = false) {
+    if (f.hp <= 0) return false;
+    if (f.confused) { if (!quiet) say(battle, `§7${f.info.name} is already confused!`); return false; }
+    if (f.ability === "owntempo") { if (!quiet) say(battle, `§7${f.info.name}'s Own Tempo prevents confusion!`); return false; }
+    if (!fatigue && sideOf(battle, f).safeguard > 0) { if (!quiet) say(battle, `§7${f.info.name} is protected by Safeguard!`); return false; }
+    f.confused = 2 + Math.floor(Math.random() * 4);
+    say(battle, `§7${f.info.name} became confused${fatigue ? " due to fatigue" : ""}!`);
+    if (held(f) === "persim_berry" || held(f) === "lum_berry") { f.confused = 0; useUp(battle, f, `§a${f.info.name}'s ${itemName(f.held)} snapped it out of its confusion!`); }
+    return true;
+}
+function confusionHit(battle, f) {
+    const a = f.stats.atk * stage(f.stages.atk), d = f.stats.def * stage(f.stages.def);
+    const dmg = Math.max(1, Math.floor((Math.floor(Math.floor((Math.floor((2 * f.level) / 5 + 2) * 40 * a) / d) / 50) + 2) * (0.85 + Math.random() * 0.15)));
+    f.hp = Math.max(0, f.hp - dmg);
+    say(battle, `§c${f.info.name} hurt itself in its confusion! ${dmg} damage.`);
+    syncHealth(f);
 }
 
 // Healing moves as Showdown has them: a heal share of the user's maximum HP (Recover, Soft-Boiled, Slack Off, Roost,
@@ -626,6 +654,11 @@ function useMove(battle, attacker, defender, move, called = false) {
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
     const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
     if (worked && move.flags?.includes("recharge") && !battle.pvp) attacker.mustRecharge = true;
+    if (move.lock && !battle.pvp && outcome.used) {
+        if (!worked) attacker.locked = null;
+        else if (!attacker.locked) attacker.locked = { id: move.id, left: 1 + Math.floor(Math.random() * 2) };
+        else if (--attacker.locked.left <= 0) { attacker.locked = null; confuse(battle, attacker, true, true); }
+    }
     if (!worked || battle.pvp || battle.swap) return;
     if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
     else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
@@ -673,8 +706,9 @@ function pivot(battle, swap, then) {
 }
 function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
-    const second = !!move.id && attacker.charging === move.id;   // a two-turn move's second turn, which uses no PP
-    if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; return; }
+    // a two-turn move's second turn, or a locked-in move's later ones, which use no PP
+    const second = !!move.id && (attacker.charging === move.id || attacker.locked?.id === move.id);
+    if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; attacker.locked = null; return; }
     if (battle.curFx) battle.curFx.used = true;
     if (!called && !second && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
     // Showdown's charge flag: the first turn readies the move (Solar Beam and Solar Blade not in sun, Electro Shot not in
@@ -889,12 +923,14 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (move.flags?.includes("sound") && held(attacker) === "throat_spray" && attacker.hp > 0) { useUp(battle, attacker, `§7${name}'s Throat Spray!`); boost(battle, attacker, { spa: 1 }); }
     if (move.status) inflict(battle, defender, move.status, true, attacker);
     if (move.boosts && defender.hp > 0) boost(battle, defender, move.boosts, attacker);
+    if (move.confuse && defender.hp > 0) confuse(battle, defender);
     const contact = move.contact && held(attacker) !== "protective_pads" && !(held(attacker) === "punching_glove" && move.flags?.includes("punch"));
     for (const sec of [move.secondary, ...(move.secondaries ?? [])]) {
         if (!sec || sheer || defAb === "shielddust" || (held(defender) === "covert_cloak" && !sec.self) || Math.random() * 100 >= sec.chance * (atkAb === "serenegrace" ? 2 : 1)) continue;
         const status = Array.isArray(sec.status) ? sec.status[Math.floor(Math.random() * sec.status.length)] : sec.status;
         if (status && defender.hp > 0) inflict(battle, defender, status, false, attacker);
         if (sec.flinch && defender.hp > 0 && battle.movedFirst === attacker && defender.ability !== "innerfocus") defender.flinched = true;
+        if (sec.confuse && defender.hp > 0) confuse(battle, defender, true);
         if (sec.boosts) boost(battle, sec.self ? attacker : defender, sec.boosts, attacker);
     }
     if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
@@ -2333,7 +2369,7 @@ function switchTo(battle, entity) {
     const old = battle.ally.entity;
     battle.kept = battle.kept ?? {};
     const leaving = battle.ally;
-    leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false;
+    leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
