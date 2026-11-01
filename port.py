@@ -1399,27 +1399,27 @@ def create_variant_index():
     print(f"Variant index: {len(shinies)} species with shinies.")
 
 
-def item_tag_values(tag, seen=None):
-    """The items in an item tag ('#minecraft:oak_logs'), from Cobblemon's data or the Java client's jar, nested tags
-    followed."""
+def item_tag_values(tag, seen=None, kind="item"):
+    """The items in an item tag ('#minecraft:oak_logs'), or with kind "block" the blocks in a block tag, from Cobblemon's
+    data or the Java client's jar, nested tags followed."""
     import zipfile
     seen = seen or set()
     if tag in seen: return []
     seen.add(tag)
     space, name = tag.lstrip("#").split(":")
     data = None
-    local = f"{cobblemonResources}/data/{space}/tags/item/{name}.json"
+    local = f"{cobblemonResources}/data/{space}/tags/{kind}/{name}.json"
     if os.path.exists(local):
         with open(local, encoding="utf-8") as file: data = json.load(file)
     else:
         for jar in reversed(sorted(glob.glob(os.path.join(os.environ.get("APPDATA", ""), ".minecraft", "versions", "*", "*.jar")), key=os.path.getmtime)):
             try:
-                with zipfile.ZipFile(jar) as z: data = json.loads(z.read(f"data/{space}/tags/item/{name}.json")); break
+                with zipfile.ZipFile(jar) as z: data = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")); break
             except (KeyError, zipfile.BadZipFile, OSError): continue
     out = []
     for value in (data or {}).get("values", []):
         value = value.get("id") if isinstance(value, dict) else value
-        out += item_tag_values(value, seen) if value.startswith("#") else [value]
+        out += item_tag_values(value, seen, kind) if value.startswith("#") else [value]
     return out
 
 
@@ -3254,7 +3254,8 @@ def create_block_sounds():
 # tags its biome definitions carry (forest, taiga, mesa, mountains, ...). BIOME_FILTERS says how each
 # Cobblemon tag reads in Bedrock tags. Tags with no vanilla member (is_volcanic, is_sky, mod biomes)
 # resolve to nothing and are dropped; a spawn entry with no resolvable biome, or one that needs a
-# structure, a nearby block or fishing, is not ported.
+# structure, a nearby block or fishing, is not written here: special_spawns gives scripts/main.js's spawner those
+# that need nearby blocks or a village, and fishing_spawns the Poke Rods theirs.
 # ---------------------------------------------------------------------------
 
 def _tag(name, present=True):
@@ -7265,6 +7266,117 @@ def snack_spawns():
     return spawns
 
 
+# Spawns that need blocks nearby or a village, which Bedrock's spawn rules cannot test, for scripts/main.js's spawner:
+# AreaSpawningCondition.neededNearbyBlocks (within maxNearbyBlocksHorizontalRange 4 and maxNearbyBlocksVerticalRange 2
+# of the spot), neededBaseBlocks (the block it stands on) and structures #minecraft:village, from a spawn's own
+# condition or its presets' (redstone, urban, saccharine_tree, stronghold, the pyramids). Any other structure (the
+# ruins, the shipwreck coves, the vanilla structures) is left out: the script API cannot tell what structure a block is
+# in without the Beta APIs experiment. The spawner draws from these together with the natural pool they compete in.
+NEARBY_BLOCK_EXTRAS = {"kelp_plant": ["kelp"], "redstone_ore": ["redstone_ore", "lit_redstone_ore"],
+                       "deepslate_redstone_ore": ["deepslate_redstone_ore", "lit_deepslate_redstone_ore"]}
+VILLAGE_STRUCTURE = "#minecraft:village"
+
+
+def bedrock_blocks(names):
+    """Java block ids and block tags as the Bedrock blocks the game or the pack has, other mods' left out; None when there
+    are none."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import nbt_to_mcstructure
+    nbt_to_mcstructure.PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
+    vanilla = None
+    path = os.path.join(pwd, "java", "bedrock-samples", "blocks.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as file: vanilla = set(json.loads(re.sub(r"//.*", "", file.read())))
+    out = set()
+    for name in names or []:
+        for java in (item_tag_values(name, kind="block") if name.startswith("#") else [name]):
+            if not java.startswith(("minecraft:", "cobblemon:")): continue
+            bedrock = nbt_to_mcstructure.bedrock_name(java)
+            if not bedrock or bedrock in ("stone", "deepslate") and not java.endswith(("stone", "deepslate")): continue
+            for b in ([bedrock] if ":" in bedrock else NEARBY_BLOCK_EXTRAS.get(bedrock, [bedrock])):
+                if ":" in b: out.add(b)
+                elif vanilla is None or b in vanilla: out.add(f"minecraft:{b}")
+    return sorted(out) or None
+
+
+def merged_spawn_conditions(spawn, presets):
+    """A spawn's condition and anticondition with its presets' merged in (SpawningCondition.copyFrom): their block and
+    structure lists joined, any other value the spawn's own where it sets one."""
+    lists = ("neededNearbyBlocks", "neededBaseBlocks", "structures", "biomes")
+    cond, anti = {}, {}
+    for source in [presets.get(p, {}) for p in spawn.get("presets", [])] + [spawn]:
+        for part, into in (("condition", cond), ("anticondition", anti)):
+            for key, value in (source.get(part) or {}).items():
+                into[key] = into.get(key, []) + value if key in lists and isinstance(value, list) else value
+    return cond, anti
+
+
+def special_spawns():
+    """(world, special): the grounded spawns Bedrock's spawn rules carry, as the competition at a spot (bucket, weight and
+    conditions only), and those that need nearby blocks, a base block or a village, in snack_spawns' form with "near",
+    "base" (Bedrock block lists), "village" and "notVillage", "herd" for a herd's first member, whose spawn fills its
+    herd as a natural one does."""
+    presets = {}
+    for path in glob.glob(f"{cobblemonData}/spawn_detail_presets/*.json"):
+        with open(path, encoding="utf-8") as file: presets[os.path.basename(path)[:-len(".json")]] = json.load(file)
+    world, special, events_of = [], [], {}
+    def entry_for(pokemon, words, spawn, cond, anti, level):
+        biome = biome_filter_for(cond.get("biomes", ["#cobblemon:is_overworld"]))
+        if not pokemon or not biome: return None
+        entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1), "level": level, "biome": biome}
+        not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
+        if not_biome: entry["notBiome"] = not_biome
+        for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
+            if key in cond: entry[key] = cond[key]
+        if pokemon not in events_of:
+            behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
+            events_of[pokemon] = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
+        form = next((w.split("=")[-1] for w in words if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events_of[pokemon]), None)
+        if form: entry["event"] = f"cobblemon:spawn_form_{form}"
+        return entry
+    def place(spawn, entries):
+        """Into world or special by what the spawn needs; nothing when it needs what the spawner cannot test."""
+        # the surface presets' own conditions (natural's base blocks, foliage's leaves) the spawn rules leave aside, and so
+        # does this
+        cond, anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
+        if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or cond.get("fluid") or spawn.get("bucket") == "boss": return
+        structures = set(cond.get("structures") or [])
+        if structures - {VILLAGE_STRUCTURE}: return
+        needs = cond.get("neededNearbyBlocks") or cond.get("neededBaseBlocks") or structures
+        if not needs:
+            # the natural pool, as spawn_condition carries it: a surface preset, or none
+            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: return
+            for words, level, weight in entries:
+                e = entry_for(pokemon_for_species_name(words[0]), words[1:], {**spawn, "weight": weight}, cond, anti, level)
+                if e: world.append({k: v for k, v in e.items() if k not in ("entity", "level", "event")})
+            return
+        near = bedrock_blocks(cond.get("neededNearbyBlocks")) if cond.get("neededNearbyBlocks") else None
+        base = bedrock_blocks(cond.get("neededBaseBlocks")) if cond.get("neededBaseBlocks") else None
+        if (cond.get("neededNearbyBlocks") and not near) or (cond.get("neededBaseBlocks") and not base): return
+        for words, level, weight in entries:
+            e = entry_for(pokemon_for_species_name(words[0]), words[1:], {**spawn, "weight": weight}, cond, anti, level)
+            if not e: continue
+            if near: e["near"] = near
+            if base: e["base"] = base
+            if VILLAGE_STRUCTURE in structures: e["village"] = True
+            if VILLAGE_STRUCTURE in (anti.get("structures") or []): e["notVillage"] = True
+            if spawn.get("type") == "pokemon-herd": e["herd"] = True
+            special.append(e)
+    for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        for spawn in pool.get("spawns", []):
+            if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+            low, _, high = str(spawn.get("level", "5-30")).partition("-")
+            place(spawn, [(spawn.get("pokemon", "").split(" "), [int(low), int(high or low)], spawn.get("weight", 1))])
+    # a herd competes with its weight shared between its first members, as create_spawn_rules seeds it
+    for spawn, members in herd_spawns():
+        if spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+        first = [m for m in members if m["leader"]] or [m for m in members if m["follower"]]
+        total = sum(m["weight"] for m in first) or 1
+        place(spawn, [(m["pokemon"].split(" "), list(int_range(spawn.get("levelRange")) or m["level"] or [5, 30]), spawn.get("weight", 1) * m["weight"] / total) for m in first])
+    return world, special
+
+
 def spawn_baits():
     """SpawnBaitEffects: each bait item's effects (data/spawn_bait_effects), as [type, subcategory, chance, value] without
     their namespaces, a tag's items each."""
@@ -7394,6 +7506,7 @@ def create_fishing():
     # egg group baits (SpawnBaitInfluence.affectWeight)
     baits = spawn_baits()
     snacks = snack_spawns()
+    world, special = special_spawns()
     # BestSpawnerConfig.pokeSnackBuckets, the rarity buckets a Poke Snack's spawner rolls
     with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/api/spawning/preset/BestSpawnerConfig.kt", encoding="utf-8") as file:
         block = re.search(r"pokeSnackBuckets\s*=\s*mutableMapOf\((.*?)\)", file.read(), re.S).group(1)
@@ -7413,7 +7526,10 @@ def create_fishing():
         file.write("export const FISH_EGG_GROUPS = " + json.dumps(egg_groups, separators=(",", ":")) + ";" + chr(10))
         file.write("export const SNACK_SPAWNS = " + json.dumps(snacks, separators=(",", ":")) + ";" + chr(10))
         file.write("export const SNACK_BUCKETS = " + json.dumps(snack_buckets) + ";" + chr(10))
-    print(f"Create fishing complete: {len(rods)} rods, {len(spawns)} fishing spawns, {len(snacks)} Poke Snack spawns, {len(baits)} baits.")
+        file.write("export const WORLD_SPAWNS = " + json.dumps(world, separators=(",", ":")) + ";" + chr(10))
+        file.write("export const SPECIAL_SPAWNS = " + json.dumps(special, separators=(",", ":")) + ";" + chr(10))
+    print(f"Create fishing complete: {len(rods)} rods, {len(spawns)} fishing spawns, {len(snacks)} Poke Snack spawns, {len(baits)} baits, "
+          f"{len(special)} nearby-block and village spawns against {len(world)} natural ones.")
 
 
 # ---------------------------------------------------------------------------
