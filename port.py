@@ -4986,6 +4986,8 @@ def create_battle_data():
             match = re.match(r"(\d+):(\w+)$", entry)
             if match and match.group(2) in moves and [int(match.group(1)), match.group(2)] not in learnset: learnset.append([int(match.group(1)), match.group(2)])
         learnset.sort(key=lambda e: e[0])
+        # its egg moves, for the Pokedex's learnset (MovesLearnsetWidget's EGG entries)
+        egg = sorted({m[4:] for m in species.get("moves", []) if m.startswith("egg:") and m[4:] in moves})
         learned = []
         for at, move in learnset:
             if at <= level and move not in learned: learned.append(move)
@@ -4995,7 +4997,7 @@ def create_battle_data():
             damaging = [m for m in learned if moves[m]["power"]]
             known = (known[1:] + damaging[-1:]) if damaging else known
         learned = known or ["tackle"]
-        used.update(learned); used.update(m for _, m in learnset)
+        used.update(learned); used.update(m for _, m in learnset); used.update(egg)
         abilities = [a for a in species.get("abilities", []) if not a.startswith("h:")]
         stats = species.get("baseStats", {})
         table[entity_id(pokemon)] = {
@@ -5005,7 +5007,7 @@ def create_battle_data():
             "moves": learned,
             "weight": species.get("weight", 0), "ultraBeast": "ultra_beast" in species.get("labels", []), "legendary": "legendary" in species.get("labels", []), "mythical": "mythical" in species.get("labels", []),
             "ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in species.get("abilities", []) if a.startswith("h:")], "canEvolve": bool(species.get("evolutions")), "baseExp": species.get("baseExperienceYield", 50),
-            "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset,
+            "expGroup": species.get("experienceGroup", "medium_fast"), "learnset": learnset, **({"egg": egg} if egg else {}),
             "rest": rest_data(species),
             "evYield": {STAT_KEYS[k]: v for k, v in species.get("evYield", {}).items() if v and k in STAT_KEYS},
             "friendship": species.get("baseFriendship", 50), "height": species.get("height", 0),

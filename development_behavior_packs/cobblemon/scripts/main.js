@@ -5775,6 +5775,7 @@ function registerKept(player) {
             if (POKEMON[e.typeId] && prop(e, OWNER) === player.id) { if (dexStatus(player, e.typeId) < 2) register(player, e.typeId, 2); noteVariant(player, e.typeId, variantOf(e)); }
     } catch (e) { }
 }
+const DEX_MOVE_ROWS = 14;   // the moves tab's rows a page, under its heading
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
     if (!state.kept) { registerKept(player); state.kept = true; }
     const s = dexString(player), region = REGIONS[state.region];
@@ -5830,11 +5831,22 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         // SizeWidget's height and weight (decimetres and hectograms in the species files)
         if (st === "2" && state.tab === "z") { v.line1 = `Height: ${(info.h ?? 0) / 10}m`; v.line2 = `Weight: ${(info.w ?? 0) / 10}kg`; }
         if (st === "2" && state.tab === "d") v.desc = info.dr?.length ? num(info.dr.join("\n").replace(/%/g, "%%")) : "No drops available.";   // a leading digit reads as a number
-        // MovesLearnsetWidget's level-up moves, as many as the box holds
+        // MovesLearnsetWidget's learnset: the level-up moves by level, then the TMs it can learn and its egg moves by
+        // name, each move once; a TM the player has not unlocked (and is not a default one) shows as ???. The box holds a
+        // heading and seven rows of two, and the Moves tab, pressed again, turns the page, where Cobblemon's list scrolls
         if (st === "2" && state.tab === "m") {
-            const seen = new Set(), rows = [];
-            for (const [at, id] of species.learnset ?? []) if (MOVES[id] && !seen.has(id)) { seen.add(id); rows.push(`Lv. ${at} ${MOVES[id].name}`); }
-            v.desc = rows.length ? rows.slice(0, 16).reduce((out, r, i) => out + (i % 2 ? `   ${r}\n` : r), "") : "";
+            const seen = new Set(), rows = [], unlocked = learnedTms(player), byName = (a, b) => MOVES[a].name.localeCompare(MOVES[b].name);
+            const add = (move, row) => { if (MOVES[move] && !seen.has(move)) { seen.add(move); rows.push(row(MOVES[move].name)); } };
+            for (const [at, move] of species.learnset ?? []) add(move, (n) => `Lv. ${at} ${n}`);
+            const tms = (TM_SPECIES[id] ?? []).map((k) => TMS[k]).filter((tm) => MOVES[tm[0]]).sort((a, b) => byName(a[0], b[0]));
+            for (const [move, , how] of tms) add(move, (n) => `TM ${how === "default" || unlocked.has(move) ? n : "???"}`);
+            for (const move of (species.egg ?? []).filter((m) => MOVES[m]).sort(byName)) add(move, (n) => `Egg ${n}`);
+            const pages = Math.max(1, Math.ceil(rows.length / DEX_MOVE_ROWS));
+            state.movePage = (state.movePage ?? 0) % pages;
+            const page = rows.slice(state.movePage * DEX_MOVE_ROWS, (state.movePage + 1) * DEX_MOVE_ROWS);
+            const pairs = [];
+            for (let i = 0; i < page.length; i += 2) pairs.push(page.slice(i, i + 2).join("   "));
+            v.desc = rows.length ? [`Moves ${state.movePage + 1}/${pages}${pages > 1 ? " - press Moves again for more" : ""}`, ...pairs].join("\n") : "";
         }
         if (st !== "2") v.line1 = st === "0" ? "Not yet seen." : "Seen, not yet caught.";
     } else { Object.assign(v, { caughtmark: "n", type1: "t--", type2: "t--", portrait: "i----", platform: "p--", tab: "x" }); }
@@ -5856,12 +5868,16 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.show(player).then((r) => {
         if (r.canceled) return;
         const pick = r.selection, again = () => openDex(player, colour, state);
-        if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; } }
+        if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; } }
         else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
         else if (pick === 28) state.page = (state.page + 1) % pages;
         else if (pick <= 31) state.tab = "ias"[pick - 29];
-        else if (pick >= 36 && pick <= 38) state.tab = "zdm"[pick - 36];
+        else if (pick >= 36 && pick <= 38) {
+            const tab = "zdm"[pick - 36];
+            state.movePage = tab === "m" && state.tab === "m" ? (state.movePage ?? 0) + 1 : 0;
+            state.tab = tab;
+        }
         else if (pick === 39 || pick === 40 || (pick >= 41 && pick <= 45)) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }
         else if (pick === 33) { state.filter = (state.filter + 1) % DEX_FILTERS.length; state.page = 0; }
