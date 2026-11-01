@@ -3121,6 +3121,23 @@ def create_move_fx():
     print(f"Move effects: {len(effects)} timelines, {len(anims)} species with battle clips.")
 
 
+# Java's vanilla SoundTypes and the vanilla blocks Cobblemon copies, as the block_sounds names Bedrock knows
+VANILLA_SOUND_TYPES = {
+    "STONE": "stone", "WOOD": "wood", "GRASS": "grass", "CROP": "grass", "METAL": "metal", "GLASS": "glass", "WOOL": "cloth",
+    "SAND": "sand", "GRAVEL": "gravel", "SNOW": "snow", "CANDLE": "candle", "DEEPSLATE": "deepslate", "DECORATED_POT": "decorated_pot",
+    "COPPER": "copper", "AZALEA_LEAVES": "azalea_leaves", "CHERRY_LEAVES": "cherry_leaves", "SWEET_BERRY_BUSH": "sweet_berry_bush",
+    "NETHER_ORE": "nether_gold_ore", "MOSS": "moss_block", "MOSS_CARPET": "moss_carpet", "DRIPSTONE_BLOCK": "dripstone_block",
+    "POINTED_DRIPSTONE": "pointed_dripstone", "AMETHYST": "amethyst_block", "AMETHYST_CLUSTER": "amethyst_cluster", "LANTERN": "lantern",
+    "CHAIN": "chain", "TUFF": "tuff", "CALCITE": "calcite", "MUD": "mud", "ROOTS": "roots", "HANGING_ROOTS": "hanging_roots",
+    "ROOTED_DIRT": "dirt_with_roots", "VINE": "vines", "CAVE_VINES": "cave_vines", "SPORE_BLOSSOM": "spore_blossom", "AZALEA": "azalea",
+    "FLOWERING_AZALEA": "azalea", "PINK_PETALS": "pink_petals", "BAMBOO_WOOD": "bamboo_wood", "CHERRY_WOOD": "cherry_wood",
+    "NETHER_WOOD": "nether_wood", "STEM": "stem", "BONE_BLOCK": "bone_block", "SCAFFOLDING": "scaffolding", "LADDER": "ladder",
+    "LILY_PAD": "grass", "HANGING_SIGN": "hanging_sign", "SCULK": "sculk", "HONEY_BLOCK": "honey_block", "SLIME_BLOCK": "slime",
+}
+VANILLA_BLOCK_SOUNDS = {"IRON_ORE": "stone", "DEEPSLATE_IRON_ORE": "deepslate", "CHEST": "wood", "OAK_SIGN": "wood",
+                        "OAK_HANGING_SIGN": "hanging_sign", "WHEAT": "grass", "FLOWER_POT": "stone", "STONE": "stone"}
+
+
 # Cobblemon's block sound types (CobblemonSounds.kt's SoundType values: tumblestone, gems, evolution stone blocks,
 # tatami, berry bushes, roots, mints, grains, coin sacks, gilded chests, display cases, campfire pots, paper item
 # blocks), read from the Kotlin source, and the blocks CobblemonBlocks.kt gives each (".sound(CobblemonSounds.X)")
@@ -3142,13 +3159,55 @@ def cobblemon_block_sound_types():
         parts = [event(x.strip()) for x in body.split(",") if x.strip()]
         if len(parts) != 5 or None in parts: continue
         types[name] = (float(volume), float(pitch), dict(zip(("break", "step", "place", "hit", "fall"), parts)))
+    # the helpers, each with the body that gives its blocks their properties
+    helpers = {}
+    for m in re.finditer(r"private fun (?:<\w+> )?(\w+)\(name: String", blocks_kt):
+        nxt = re.search(r"\n    (?:private )?fun |\n    @JvmField", blocks_kt[m.end():])
+        helpers[m.group(1)] = blocks_kt[m.end():m.end() + (nxt.start() if nxt else len(blocks_kt))]
+    names = {v: k for v, k in re.findall(r'val (\w+)\s*=\s*(?:this\.)?create\("([a-z0-9_]+)"', blocks_kt)}
+    # the properties several blocks share (PLANT_PROPERTIES)
+    shared = {m.group(1): blocks_kt[m.end():].split("\n", 1)[0] for m in re.finditer(r"val (\w+_PROPERTIES)\s*=", blocks_kt)}
+    names.update({v: k for v, h, k in re.findall(r'val (\w+)\s*=\s*(\w+)\("([a-z0-9_]+)"', blocks_kt) if h in helpers})
+    def sound_of(text):
+        """A sound type name ("TUMBLESTONE_SOUNDS"), a Bedrock sound name ("wood"), ("copy", VAL) or None."""
+        m = re.search(r"\.sound\(CobblemonSounds\.(\w+_SOUNDS)\)", text)
+        if m and m.group(1) in types: return m.group(1)
+        m = re.search(r"SoundType\.([A-Z_]+)", text)
+        if m: return VANILLA_SOUND_TYPES.get(m.group(1))
+        m = re.search(r"of(?:Full|Legacy)Copy\((?:Blocks\.)?(\w+)\)", text)
+        if m: return VANILLA_BLOCK_SOUNDS.get(m.group(1)) if "Blocks." + m.group(1) in text else ("copy", m.group(1))
+        for prop, body in shared.items():
+            if prop in text: return sound_of(body)
+        for maker, sound in (("createLogBlock", "wood"), ("createWoodenButtonBlock", "wood"), ("createWoodenPressurePlate", "wood"),
+                             ("createFlowerPotBlock", "stone"), ("createLeavesBlock", "grass")):
+            if maker in text: return sound
+        return None
     uses = {}
-    calls = list(re.finditer(r'create\("([a-z0-9_]+)"', blocks_kt))
-    for n, call in enumerate(calls):
-        end = calls[n + 1].start() if n + 1 < len(calls) else len(blocks_kt)
-        m = re.search(r"\.sound\(CobblemonSounds\.(\w+_SOUNDS)\)", blocks_kt[call.end():end])
-        if m and m.group(1) in types: uses[call.group(1)] = m.group(1)
-    return types, uses
+    calls = [(m.start(), m.end(), m.group(1), None) for m in re.finditer(r'create\("([a-z0-9_]+)"', blocks_kt)]
+    calls += [(m.start(), m.end(), m.group(2), m.group(1)) for m in re.finditer(r'\b(\w+)\("([a-z0-9_]+)"', blocks_kt) if m.group(1) in helpers]
+    calls.sort()
+    for n, (start, end, block, helper) in enumerate(calls):
+        chunk = blocks_kt[end:calls[n + 1][0] if n + 1 < len(calls) else len(blocks_kt)]
+        uses[block] = sound_of(chunk) or (sound_of(helpers[helper]) if helper else None)
+    # a copy of another Cobblemon block sounds as that one does
+    for _ in range(3):
+        for block, sound in uses.items():
+            if isinstance(sound, tuple): uses[block] = uses.get(names.get(sound[1]))
+    return types, {block: sound for block, sound in uses.items() if isinstance(sound, str)}
+
+
+# Cobblefurnies' furniture (CFBlocks.java): each block's Properties (WOOD, WOOL, MARBLE, CONCRETE ...) and the
+# SoundType each of those sets, LAMP being WOOD with a light
+def furniture_block_sounds():
+    path = f"{furniRepo}/common/src/main/java/com/lunazstudios/cobblefurnies/registry/CFBlocks.java"
+    if not os.path.exists(path): return {}
+    java = open(path, encoding="utf-8").read()
+    props = {}
+    for name, body in re.findall(r"Properties (\w+) = (.*?);", java, re.S):
+        m = re.search(r"SoundType\.([A-Z_]+)", body)
+        base = re.match(r"\s*(\w+)\s*\.", body)
+        props[name] = VANILLA_SOUND_TYPES.get(m.group(1)) if m else props.get(base.group(1)) if base else None
+    return {block: props.get(prop) for block, prop in re.findall(r'registerBlock(?:Only)?\("([a-z0-9_]+)".*?Properties\.(\w+)', java) if props.get(prop)}
 
 
 def create_block_sounds():
@@ -3156,14 +3215,22 @@ def create_block_sounds():
     interactive_sounds (step, fall) play Cobblemon's events for it, at its SoundType's volume and pitch."""
     types, uses = cobblemon_block_sound_types()
     present = {f[:-5] for f in os.listdir(blocksBedrock) if f.endswith(".json")}
+    # the decorative item blocks are "<item>_block" here (soft_sand_block for Java's soft_sand)
+    # and the campfire pots are campfire_<colour> (campfire_black for Java's campfire_pot_black)
+    uses = {(block if block in present else re.sub(r"^campfire_pot_", "campfire_", block) if block.startswith("campfire_pot_") else f"{block}_block"): kind
+            for block, kind in uses.items()}
     uses = {block: kind for block, kind in uses.items() if block in present}
+    # the furniture's blocks are cobblefurnies:<name>
+    furniture = {f[:-5] for f in os.listdir(blocksBedrock) if f.endswith(".json") and '"cobblefurnies:' in open(f"{blocksBedrock}/{f}", encoding="utf-8").read()}
+    for block, kind in furniture_block_sounds().items():
+        if block in furniture: uses[block] = kind
     # the berries are made in a loop under their berry's name (registerBerries, BERRY_BUSH_SOUNDS); here they are bushes
     for block in present:
         if (block.endswith("_berry_bush") or block == "galarica_nut_bush") and "BERRY_BUSH_SOUNDS" in types: uses[block] = "BERRY_BUSH_SOUNDS"
     sounds_path = f"{resourcePack}/sounds.json"
     sounds = json.load(open(sounds_path, encoding="utf-8")) if os.path.exists(sounds_path) else {}
     block_sounds, interactive = {}, {}
-    for kind in sorted(set(uses.values())):
+    for kind in sorted(k for k in set(uses.values()) if k in types):
         volume, pitch, ev = types[kind]
         name = f"cobblemon_{kind[:-len('_SOUNDS')].lower()}"
         block_sounds[name] = {"volume": volume, "pitch": pitch, "events": {e: ev[e] for e in ("break", "place", "hit")}}
@@ -3173,9 +3240,9 @@ def create_block_sounds():
     with open(sounds_path, "w", encoding="utf-8") as file: file.write(json.dumps(sounds, indent=4))
     blocks = {"format_version": [1, 1, 0]}
     for block, kind in sorted(uses.items()):
-        blocks[f"cobblemon:{block}"] = {"sound": f"cobblemon_{kind[:-len('_SOUNDS')].lower()}"}
+        blocks[f"{'cobblefurnies' if block in furniture else 'cobblemon'}:{block}"] = {"sound": f"cobblemon_{kind[:-len('_SOUNDS')].lower()}" if kind in types else kind}
     with open(f"{resourcePack}/blocks.json", "w", encoding="utf-8") as file: file.write(json.dumps(blocks, indent=4))
-    print(f"Block sounds: {len(uses)} blocks, {len(block_sounds)} sound types.")
+    print(f"Block sounds: {len(uses)} blocks, {len(block_sounds)} Cobblemon sound types, {len(present) - len(uses)} blocks with the stone default.")
 
 
 # ---------------------------------------------------------------------------
@@ -3992,7 +4059,7 @@ def add_pokemon_interactions(entity, species, pokemon):
         variant_filter = None
         if only:
             m = re.search(r"form=(\S+)", only[0])
-            if not m or re.search(r"(gender|nature|shiny)=", only[0]): continue
+            if not m or re.search(r"\b(gender|nature|shiny)=", only[0]): continue
             aspects = {a for f in species.get("forms", []) if f.get("name", "").lower() == m.group(1).lower() for a in f.get("aspects", [])}
             indices = [n for n, v in enumerate(resolver_variations(pokemon)) if v["form"] in aspects]
             if not indices: continue
