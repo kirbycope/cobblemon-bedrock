@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -4447,6 +4447,13 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // for testing: "/execute as <player> run scriptevent cobblemon:readme" gives the README and Getting Started books
         // again, as a first join does
         if (source.typeId === "minecraft:player") { for (const book of BOOKS) source.setDynamicProperty(book.given, undefined); giveBooks(source); }
+    } else if (event.id === "cobblemon:pokecenter") {
+        // testing: "/execute as <player> run scriptevent cobblemon:pokecenter [plains|desert|savanna|snowy|taiga]" places the
+        // village Pokemon Center for the bell nearest the player now, as a village's villagers loading would
+        // "nurse" instead adds a Nurse to the center the player stands by
+        const kind = POKECENTER_DOOR_Y[event.message.trim()] !== undefined ? event.message.trim() : "plains", at = source.location;
+        if (event.message.trim() === "nurse") console.warn(`[cobblemon] pokecenter nurse: ${!!pokecenterNurse(source.dimension, { x: at.x - 16, y: at.y - 8, z: at.z - 16 }, { x: at.x + 16, y: at.y + 8, z: at.z + 16 })}`);
+        else console.warn(`[cobblemon] pokecenter test: ${placePokecenter(source.dimension, at, kind)}`);
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -9124,21 +9131,23 @@ const POKE_MART = [["cobblemon:poke_ball", 2, 1], ["cobblemon:great_ball", 1, 1]
     ["cobblemon:super_potion", 1, 2], ["cobblemon:hyper_potion", 1, 4], ["cobblemon:max_potion", 1, 8], ["cobblemon:revive", 1, 6],
     ["cobblemon:antidote", 1, 1], ["cobblemon:paralyze_heal", 1, 1], ["cobblemon:awakening", 1, 1], ["cobblemon:burn_heal", 1, 1],
     ["cobblemon:ice_heal", 1, 1], ["cobblemon:full_heal", 1, 1], ["cobblemon:poke_rod", 1, 5]];
-function emeraldsOf(player) {
+function countOf(player, id) {
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     let n = 0;
-    for (let i = 0; i < (inv?.size ?? 0); i++) { const it = inv.getItem(i); if (it?.typeId === "minecraft:emerald") n += it.amount; }
+    for (let i = 0; i < (inv?.size ?? 0); i++) { const it = inv.getItem(i); if (it?.typeId === id) n += it.amount; }
     return n;
 }
-function takeEmeralds(player, count) {
+function takeOf(player, id, count) {
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     for (let i = 0; i < inv.size && count > 0; i++) {
         const it = inv.getItem(i);
-        if (it?.typeId !== "minecraft:emerald") continue;
+        if (it?.typeId !== id) continue;
         const take = Math.min(count, it.amount); count -= take;
         if (take === it.amount) inv.setItem(i, undefined); else { it.amount -= take; inv.setItem(i, it); }
     }
 }
+function emeraldsOf(player) { return countOf(player, "minecraft:emerald"); }
+function takeEmeralds(player, count) { takeOf(player, "minecraft:emerald", count); }
 function openMart(player) {
     const have = emeraldsOf(player);
     const form = new ActionFormData().title("Poke Mart").body(`§7Welcome! You have §a${have} emerald${have === 1 ? "" : "s"}§7.`);
@@ -9156,10 +9165,175 @@ function openMart(player) {
     }).catch(() => { });
 }
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
-    if (event.target?.typeId !== "cobblemon:poke_mart_clerk") return;
+    const type = event.target?.typeId;
+    if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse") return;
     event.cancel = true;
-    system.run(() => openMart(event.player));
+    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player) : openMart(event.player));
 });
+
+// The Nurse's trades (CobblemonTradeOffers, all five levels at once, since an NPC does not level): what she wants for
+// what she gives, an emerald and a glass bottle for a medicine, Medicinal Leeks and Mulch Base bought for emeralds
+const EMERALD = "minecraft:emerald";
+const NURSE_TRADES = [
+    [[[EMERALD, 4]], ["cobblemon:oran_berry", 1]], [[[EMERALD, 4]], ["cobblemon:persim_berry", 1]], [[[EMERALD, 4]], ["cobblemon:energy_root", 1]],
+    [[["cobblemon:medicinal_leek", 24]], [EMERALD, 1]],
+    [[[EMERALD, 8], ["minecraft:glass_bottle", 1]], ["cobblemon:medicinal_brew", 1]],
+    ...["blue", "cyan", "green", "pink", "red", "white"].map((c) => [[[EMERALD, 2]], [`cobblemon:${c}_mint_leaf`, 1]]),
+    [[["cobblemon:mulch_base", 4]], [EMERALD, 2]], [[[EMERALD, 1]], ["minecraft:glass_bottle", 1]],
+    [[[EMERALD, 8]], ["cobblemon:revival_herb", 1]], [[[EMERALD, 24]], ["cobblemon:vivichoke_seeds", 1]],
+    ...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1]]),
+    [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1]]
+];
+function openNurse(player) {
+    const form = new ActionFormData().title("Nurse").body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.`);
+    const label = ([id, n]) => id === EMERALD ? `${n} emerald${n === 1 ? "" : "s"}` : `${n > 1 ? `${n} ` : ""}${itemName(id)}`;
+    for (const [wants, gives] of NURSE_TRADES) {
+        const can = wants.every(([id, n]) => countOf(player, id) >= n);
+        form.button(`${label(gives)}\n${can ? "§2" : "§c"}for ${wants.map(label).join(" + ")}`, potIcon(gives[0] === EMERALD ? wants[0][0] : gives[0]));
+    }
+    form.show(player).then((r) => {
+        if (r.canceled || r.selection === undefined) return;
+        const [wants, gives] = NURSE_TRADES[r.selection];
+        if (!wants.every(([id, n]) => countOf(player, id) >= n)) { player.sendMessage(`§cYou need ${wants.map(label).join(" + ")}.`); return openNurse(player); }
+        for (const [id, n] of wants) takeOf(player, id, n);
+        for (let i = 0; i < gives[1]; i++) giveOrDrop(player, gives[0]);
+        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        openNurse(player);
+    }).catch(() => { });
+}
+
+// Village Pokemon Centers. Cobblemon adds village_<type>_pokecenter to each village's houses pool; Bedrock's villages
+// take no new pieces, so when a village's villagers first load (near a bell) the script puts
+// one on the flattest open ground 14 to 38 blocks from the bell, its door facing the bell and a block above the ground,
+// filled beneath, with the Nurse beside its healing machine. A village gets one, kept in the world's
+// cobblemon:pokecenters, a village from before this pack included
+const POKECENTERS = "cobblemon:pokecenters";
+const POKECENTER_KIND = ["plains", "desert", "plains", "savanna", "snowy", "plains", "taiga"];   // by the villager's mark_variant
+const POKECENTER_DOOR_Y = { plains: 2, desert: 1, savanna: 2, snowy: 2, taiga: 2 };   // the door's lower half in each piece
+// the ground a center may stand on: natural blocks, never a path, a field, a floor or a roof
+const OPEN_GROUND = new Set(["minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:podzol", "minecraft:sand", "minecraft:red_sand",
+    "minecraft:snow", "minecraft:gravel", "minecraft:stone", "minecraft:sandstone", "minecraft:terracotta", "minecraft:mud", "minecraft:moss_block"]);
+const GROUND_COVER = /grass|fern|flower|tulip|poppy|dandelion|orchid|allium|bluet|daisy|cornflower|lily_of|bush|snow_layer|dead|sapling|rose|peony|lilac|sunflower|leaf_litter|cactus|leaves|_log$|vine|bee_nest/;   // trees too, which the piece replaces as Java's do
+const villagesPending = new Set(), villagesSeen = new Set(), pokecenterAreas = new Map();   // the ticking areas held open for a center, and the reads tried in each   // 64-block cells being looked at, and looked at already
+function pokecenterSites() { try { return JSON.parse(world.getDynamicProperty(POKECENTERS) ?? "[]"); } catch (e) { return []; } }
+// the ground's top at a column, under grass, flowers and snow; null where it is not open ground, undefined where the
+// chunk is not loaded and ticking
+function openGround(dim, x, z) {
+    try {
+        let block = dim.getTopmostBlock({ x, z });
+        for (let i = 0; i < 24 && block && GROUND_COVER.test(block.typeId); i++) block = block.below();
+        return block && OPEN_GROUND.has(block.typeId) ? block : null;
+    } catch (e) { return undefined; }
+}
+// a village's villagers are generated in chunks beyond the tick distance and come in as loaded, so either starts it
+world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => { if (cause === EntityInitializationCause.Spawned) noteVillager(entity); });
+world.afterEvents.entityLoad.subscribe(({ entity }) => noteVillager(entity));
+function noteVillager(entity) {
+    if (entity?.typeId !== "minecraft:villager_v2") return;
+    const at = entity.location, key = `${Math.floor(at.x / 64)},${Math.floor(at.z / 64)}`;
+    if (villagesPending.has(key) || villagesSeen.has(key)) return;
+    villagesPending.add(key);
+    let kind = "plains";
+    try { kind = POKECENTER_KIND[entity.getComponent("minecraft:mark_variant")?.value ?? 0] ?? "plains"; } catch (e) { }
+    const dim = entity.dimension;
+    // the village finishes generating before the bell is looked for; a ticking area around the bell then keeps the
+    // ground loaded while it is read, as the League's tiles are placed, and a village whose chunks never came in is
+    // looked at again the next time its villagers load
+    const attempt = (n) => system.runTimeout(() => {
+        const outcome = placePokecenter(dim, at, kind);
+        if (outcome === "retry" && n < 4) { attempt(n + 1); return; }
+        villagesPending.delete(key);
+        if (outcome !== "retry") villagesSeen.add(key);
+    }, n ? 100 : 200);
+    attempt(0);
+}
+// the Nurse, standing on a spot beside a healing machine in the box (a carpet or a torch is no obstacle), facing it
+const NURSE_ROOM = /^minecraft:air$|carpet|torch|button|pressure_plate|flower_pot/;
+function pokecenterNurse(dim, from, to) {
+    try {
+        for (const m of dim.getBlocks(new BlockVolume(from, to), { includeTypes: ["cobblemon:healing_machine"] }, true).getBlockLocationIterator()) {
+            const spot = [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]].map(([sx, sz]) => ({ x: m.x + sx, y: m.y, z: m.z + sz }))
+                .find((p) => NURSE_ROOM.test(dim.getBlock(p)?.typeId ?? "") && dim.getBlock({ ...p, y: p.y + 1 })?.isAir && !dim.getBlock({ ...p, y: p.y - 1 })?.isAir);
+            if (!spot) continue;
+            const nurse = dim.spawnEntity("cobblemon:nurse", { x: spot.x + 0.5, y: spot.y, z: spot.z + 0.5 });
+            nurse.nameTag = "Nurse";
+            return nurse;
+        }
+    } catch (e) { console.warn(`[cobblemon] pokecenter nurse: ${e}`); }
+    return undefined;
+}
+// "retry" while the village's chunks are not all there yet
+function placePokecenter(dim, near, kind) {
+    let bell;
+    try {
+        const volume = new BlockVolume({ x: near.x - 48, y: near.y - 16, z: near.z - 48 }, { x: near.x + 48, y: near.y + 16, z: near.z + 48 });
+        for (const at of dim.getBlocks(volume, { includeTypes: ["minecraft:bell"] }, true).getBlockLocationIterator()) { bell = at; break; }
+    } catch (e) { return "retry"; }
+    if (!bell) return "none";
+    const sites = pokecenterSites();
+    console.warn(`[cobblemon] village bell at ${bell.x} ${bell.y} ${bell.z} (${kind})`);
+    if (sites.some(([x, z]) => Math.hypot(x - bell.x, z - bell.z) < 96)) return "done";
+    const id = `cobblemon:village_${kind}_pokecenter`, size = world.structureManager.get(id)?.size;
+    if (!size) return "none";
+    const area = `cbm_pc_${bell.x}_${bell.z}`.replace(/-/g, "m");
+    if (!pokecenterAreas.has(area)) {
+        pokecenterAreas.set(area, 0);
+        try { dim.runCommand(`tickingarea add circle ${bell.x} ${bell.y} ${bell.z} 4 ${area}`); } catch (e) { }
+        return "retry";
+    }
+    const done = (outcome) => { pokecenterAreas.delete(area); try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { } return outcome; };
+    let best = null, unloaded = false;
+    for (const r of [14, 20, 26, 32, 38]) {
+        for (let a = 0; a < 16; a++) {
+            const angle = (a / 16) * Math.PI * 2, cx = bell.x + Math.round(Math.cos(angle) * r), cz = bell.z + Math.round(Math.sin(angle) * r);
+            // the door (the piece's west side) turned toward the bell: west, north, east, south are 0, 90, 180, 270 clockwise
+            const dx = bell.x - cx, dz = bell.z - cz;
+            const turn = Math.abs(dx) >= Math.abs(dz) ? (dx < 0 ? 0 : 2) : (dz < 0 ? 1 : 3);
+            const w = turn % 2 ? size.z : size.x, d = turn % 2 ? size.x : size.z;
+            const ox = cx - Math.floor(w / 2), oz = cz - Math.floor(d / 2);
+            let lo = Infinity, hi = -Infinity, ok = true;
+            for (let x = ox - 1; x <= ox + w && ok; x += 2) {
+                for (let z = oz - 1; z <= oz + d && ok; z += 2) {
+                    const g = openGround(dim, x, z);
+                    if (!g) { ok = false; if (g === undefined) unloaded = true; break; }
+                    lo = Math.min(lo, g.location.y); hi = Math.max(hi, g.location.y);
+                }
+            }
+            if (!ok || hi - lo > 2) continue;
+            if (!best || hi - lo < best.spread) best = { ox, oz, w, d, turn, ground: hi, spread: hi - lo };
+        }
+        if (best) break;
+    }
+    if (!best) {
+        console.warn(`[cobblemon] no open ground for a pokecenter by the bell at ${bell.x} ${bell.z}${unloaded ? ", not loaded yet" : ""}`);
+        if (!unloaded) return done("none");
+        pokecenterAreas.set(area, pokecenterAreas.get(area) + 1);
+        return pokecenterAreas.get(area) >= 3 ? done("retry") : "retry";
+    }
+    const rotation = [StructureRotation.None, StructureRotation.Rotate90, StructureRotation.Rotate180, StructureRotation.Rotate270][best.turn];
+    const oy = best.ground + 1 - POKECENTER_DOOR_Y[kind];
+    try {
+        // the ground under each column, read before the piece covers it
+        const under = [];
+        for (let x = best.ox; x < best.ox + best.w; x++) for (let z = best.oz; z < best.oz + best.d; z++) under.push([x, z, openGround(dim, x, z)]);
+        world.structureManager.place(id, dim, { x: best.ox, y: oy, z: best.oz }, { rotation, includeEntities: false });
+        // filled up to its floor, as a village's own houses stand, and the trees it cut through cleared: leaves and vines
+        // anywhere over its footprint (no center has any), logs only above it (the taiga one is built of them)
+        for (const [x, z, g] of under) {
+            for (let y = oy; y < oy + size.y + 16; y++) {
+                const block = dim.getBlock({ x, y, z });
+                if (block && (/leaves|vine/.test(block.typeId) || (y >= oy + size.y && /_log$/.test(block.typeId)))) block.setType("minecraft:air");
+            }
+            const top = g ? g.location.y : oy - 4;
+            if (top < oy - 1) dim.fillBlocks(new BlockVolume({ x, y: top + 1, z }, { x, y: oy - 1, z }), g?.typeId === "minecraft:grass_block" ? "minecraft:dirt" : (g?.typeId ?? "minecraft:dirt"));
+        }
+    } catch (e) { console.warn(`[cobblemon] pokecenter at ${best.ox} ${oy} ${best.oz}: ${e}`); return done("none"); }
+    sites.push([bell.x, bell.z]);
+    world.setDynamicProperty(POKECENTERS, JSON.stringify(sites.slice(-500)));
+    pokecenterNurse(dim, { x: best.ox, y: oy, z: best.oz }, { x: best.ox + best.w - 1, y: oy + size.y - 1, z: best.oz + best.d - 1 });
+    console.warn(`[cobblemon] ${kind} pokecenter at ${best.ox} ${oy} ${best.oz} for the bell at ${bell.x} ${bell.y} ${bell.z}`);
+    return done("done");
+}
 
 // The books signed by Kirbycope: README (loot_tables/readme_book.json), every control, in the first hotbar slot, and
 // Getting Started (getting_started_book.json), a first-steps guide, in the second, each given once, on the first join

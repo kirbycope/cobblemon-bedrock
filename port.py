@@ -78,6 +78,7 @@ SPARSE_PATHS = [
     "common/src/main/resources/assets/cobblemon/lang",
     "common/src/main/resources/assets/cobblemon/sounds",
     "common/src/main/resources/assets/cobblemon/textures/pokemon",
+    "common/src/main/resources/assets/cobblemon/textures/entity/villager",
 ]
 
 
@@ -113,6 +114,8 @@ def fresh(folder):
 def get_cobblemon():
     """A partial clone with only the folders the port reads; the whole repository is several GB."""
     if os.path.isdir(cobblemonRepo):
+        if not all(os.path.isdir(f"{cobblemonRepo}/{path}") for path in SPARSE_PATHS):
+            os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
         return
     print("Cloning Cobblemon (sparse)...")
     os.system(f'git clone --depth 1 --filter=blob:none --sparse https://gitlab.com/cable-mc/cobblemon.git "{cobblemonRepo}"')
@@ -1545,6 +1548,33 @@ POKE_MART_CLERK_CLIENT = json.loads(r'''{"format_version": "1.8.0", "minecraft:c
 def create_poke_mart_clerk():
     with open(f"{entitiesBedrock}/poke_mart_clerk.behavior.json", "w", encoding="utf-8") as file: file.write(json.dumps(POKE_MART_CLERK, indent=4))
     with open(f"{entityBedrock}/poke_mart_clerk.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(POKE_MART_CLERK_CLIENT, indent=4))
+
+
+# The village Pokemon Centers (CobblemonStructures adds village_<type>_pokecenter to each village's houses pool at
+# weight 35). Bedrock's villages take no new pieces, so the five are written as structures that scripts/main.js places
+# beside a newly generated village, and the Nurse (CobblemonVillagerProfessions.NURSE, a villager working the healing
+# machine) is an NPC like the Poke Mart clerk, wearing Cobblemon's nurse profession texture over the plains villager
+POKECENTER_TYPES = ("plains", "desert", "savanna", "snowy", "taiga")
+
+
+def create_pokecenters():
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import nbt_to_mcstructure
+    nbt_to_mcstructure.PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
+    invalid = nbt_to_mcstructure.load_invalid()
+    os.makedirs(structuresBedrock, exist_ok=True)
+    for kind in POKECENTER_TYPES:
+        nbt_to_mcstructure.convert(f"{cobblemonData}/structure/village_{kind}/village_{kind}_pokecenter.nbt", f"{structuresBedrock}/village_{kind}_pokecenter.mcstructure", invalid)
+    nurse = json.loads(json.dumps(POKE_MART_CLERK).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse").replace('"poke_mart_clerk"', '"nurse"'))
+    client = json.loads(json.dumps(POKE_MART_CLERK_CLIENT).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse"))
+    textures = client["minecraft:client_entity"]["description"]["textures"]
+    for key in ("armorer", "butcher", "cartographer", "cleric", "farmer", "fisherman", "fletcher", "leatherworker", "librarian", "shepherd",
+                "tool_smith", "weapon_smith", "stonemason", "nitwit", "unskilled"):
+        textures[key] = "textures/entity/villager/nurse"
+    with open(f"{entitiesBedrock}/nurse.behavior.json", "w", encoding="utf-8") as file: file.write(json.dumps(nurse, indent=4))
+    with open(f"{entityBedrock}/nurse.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(client, indent=4))
+    os.makedirs(f"{resourcePack}/textures/entity/villager", exist_ok=True)
+    shutil.copy(f"{cobblemonRepo}/common/src/main/resources/assets/cobblemon/textures/entity/villager/profession/nurse.png", f"{resourcePack}/textures/entity/villager/nurse.png")
 
 
 def create_cosmetics():
@@ -12327,6 +12357,7 @@ def main():
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
+    create_pokecenters()   # after the blocks it places and the entity folders
     create_loot_injections()
     create_trade_injections()
     create_gyms()   # after the furniture and the structures' folders
