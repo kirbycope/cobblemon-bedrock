@@ -101,7 +101,32 @@ const RECHARGE = { id: "recharge", name: "Recharge", type: "normal", power: 0, a
 function forcedMove(f) {
     if (f.mustRecharge) return RECHARGE;
     if (f.locked) return f.moves.find((m) => m.id === f.locked.id) ?? null;
+    if (f.rolling) return f.moves.find((m) => m.id === f.rolling.id) ?? null;
+    if (f.bide) return f.moves.find((m) => m.id === "bide") ?? null;
     return f.charging ? f.moves.find((m) => m.id === f.charging) ?? null : null;
+}
+// why a Pokemon cannot pick a move this turn: Disable, an Encore on another of its moves, a Taunt on a status move
+function blockedWhy(f, m) {
+    if (f.disabled?.id === m.id) return `${f.info.name}'s ${m.name} is disabled!`;
+    if (f.encore && f.encore.id !== m.id) return `${f.info.name} can only use ${MOVES[f.encore.id]?.name ?? m.name} after the encore!`;
+    if (f.taunt > 0 && m.category === "Status") return `${f.info.name} can't use ${m.name} after the taunt!`;
+    return null;
+}
+function canPick(f, m) { return m.left > 0 && !blockedWhy(f, m); }
+// Showdown's trapping: a bound Pokemon (Wrap, Fire Spin and the rest) loses an eighth of its HP (a sixth to a Binding
+// Band) at each turn's end for four or five turns (seven to a Grip Claw); Mean Look, Block and the rest hold it for as
+// long as the trapper stays in. Either keeps it from switching out or running; a Ghost type and a Shed Shell slip free
+function trap(battle, f, by, move) {
+    if (move.trap === "partial") {
+        if (f.bound) return;
+        f.bound = { by, name: move.name, turns: held(by) === "grip_claw" ? 7 : 4 + Math.floor(Math.random() * 2), share: held(by) === "binding_band" ? 6 : 8 };
+        say(battle, `§7${f.info.name} was trapped by ${move.name}!`);
+    } else if (!f.trappedBy) { f.trappedBy = by; say(battle, `§7${f.info.name} can no longer escape!`); }
+}
+function trappedIn(battle, f) {
+    if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
+    const other = f === battle.ally ? battle.foe : battle.ally;
+    return (!!f.bound && f.bound.by === other) || (!!f.trappedBy && f.trappedBy === other);
 }
 const PROTECTING = new Set(["protect", "detect", "spikyshield", "kingsshield", "banefulbunker", "silktrap", "obstruct", "burningbulwark", "endure"]);
 const STRUGGLE = { name: "Struggle", type: "???", power: 50, accuracy: true, category: "Physical", priority: 0, pp: 1, target: "normal", contact: true };
@@ -362,6 +387,24 @@ function fieldMove(battle, a, d, move) {
             if (a.lastMove === "destinybond") { fail(); return true; }
             a.destinyBond = true; say(battle, `§7${name} is hoping to take its attacker down with it!`);
             return true;
+        // Showdown's Encore: the target's last move, for three turns (four when it has already moved this turn), its
+        // other moves off; and Disable: that move off for four turns (five when it has already moved)
+        case "encore": {
+            used();
+            const m = d.moves.find((x) => x.id === d.lastMove);
+            if (!m || d.encore || m.left <= 0 || m.flags?.includes("failencore")) { fail(); return true; }
+            d.encore = { id: m.id, turns: battle.movedFirst === a ? 3 : 4 };
+            say(battle, `§7${d.info.name} received an encore!`);
+            return true;
+        }
+        case "disable": {
+            used();
+            const m = d.moves.find((x) => x.id === d.lastMove);
+            if (!m || d.disabled || m.left <= 0) { fail(); return true; }
+            d.disabled = { id: m.id, turns: battle.movedFirst === a ? 4 : 5 };
+            say(battle, `§7${d.info.name}'s ${m.name} was disabled!`);
+            return true;
+        }
         case "partingshot":
             // its drops are in Showdown's onHit, not its data; the user then goes back (useMove's pivot)
             used(); boost(battle, d, { atk: -1, spa: -1 }, a);
@@ -671,6 +714,8 @@ function movePower(battle, a, d, move) {
         case "boltbeak": case "fishiousrend": return battle.movedFirst !== d ? move.power * 2 : move.power;
         case "magnitude": { const r = Math.random() * 100; const p = r < 5 ? 10 : r < 15 ? 30 : r < 35 ? 50 : r < 65 ? 70 : r < 85 ? 90 : r < 95 ? 110 : 150; return d.hiding === "ground" ? p * 2 : p; }
         case "earthquake": return d.hiding === "ground" ? move.power * 2 : move.power;
+        case "rollout": case "iceball": return move.power * 2 ** (a.rolling?.hit ?? 0) * (a.curled ? 2 : 1);
+        case "furycutter": { const fc = a.furyCutter; return Math.min(160, move.power * (fc?.turn === battle.turn - 1 ? Math.min(4, fc.mult * 2) : 1)); }
         case "surf": case "whirlpool": return d.hiding === "water" ? move.power * 2 : move.power;
         case "gust": case "twister": return d.hiding === "air" ? move.power * 2 : move.power;
         default: return move.power;
@@ -696,7 +741,7 @@ function fixedDamage(battle, a, d, move) {
     return undefined;
 }
 function useMove(battle, attacker, defender, move, called = false) {
-    const outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
+    const name = attacker.info.name, outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
     battle.curFx = outcome; battle.said = said;
     try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
     if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
@@ -711,6 +756,21 @@ function useMove(battle, attacker, defender, move, called = false) {
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
     const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
     if (worked && move.flags?.includes("recharge") && !battle.pvp) attacker.mustRecharge = true;
+    if (defender.bide && attacker !== defender && defender.hp < before) defender.bide.dmg += before - defender.hp;
+    if ((move.id === "rollout" || move.id === "iceball") && !battle.pvp && outcome.used) {
+        const n = (attacker.rolling?.hit ?? 0) + 1;
+        attacker.rolling = worked && n < 5 ? { id: move.id, hit: n } : null;
+    }
+    if (move.id === "furycutter") attacker.furyCutter = worked ? { mult: attacker.furyCutter?.turn === battle.turn - 1 ? Math.min(4, attacker.furyCutter.mult * 2) : 1, turn: battle.turn } : null;
+    if (worked && move.category !== "Status" && defender.ability === "cursedbody" && attacker !== defender && attacker.hp > 0 && !attacker.disabled
+        && attacker.moves.some((m) => m.id === move.id) && Math.random() < 0.3) {
+        attacker.disabled = { id: move.id, turns: 4 };
+        say(battle, `§7${name}'s ${move.name} was disabled by ${defender.info.name}'s Cursed Body!`);
+    }
+    if (worked && (move.id === "rapidspin" || move.id === "mortalspin") && attacker.hp > 0) {
+        attacker.bound = null; attacker.seeded = false;
+        for (const k of Object.keys(HAZARDS)) delete sideOf(battle, attacker)[k];
+    }
     if (move.lock && !battle.pvp && outcome.used) {
         if (!worked) attacker.locked = null;
         else if (!attacker.locked) attacker.locked = { id: move.id, left: 1 + Math.floor(Math.random() * 2) };
@@ -758,16 +818,17 @@ function pivot(battle, swap, then) {
                 if (swap.drag) say(battle, `§7${battle.ally.info.name} was dragged out!`);
             }
             then();
-        }).catch(() => endBattle(battle));
+        }).catch((e) => battleFailed(battle, e));
     });
 }
 function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
     attacker.destinyBond = false;   // it holds only until the user moves again
     if (attacker.taunt > 0 && move.category === "Status" && move.id) { say(battle, `§7${name} can't use ${move.name} after the taunt!`); return; }
+    if (!called && attacker.disabled?.id === move.id) { say(battle, `§7${name}'s ${move.name} is disabled!`); return; }
     // a two-turn move's second turn, or a locked-in move's later ones, which use no PP
-    const second = !!move.id && (attacker.charging === move.id || attacker.locked?.id === move.id);
-    if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; attacker.locked = null; return; }
+    const second = !!move.id && (attacker.charging === move.id || attacker.locked?.id === move.id || attacker.rolling?.id === move.id || (move.id === "bide" && !!attacker.bide));
+    if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; attacker.locked = null; attacker.rolling = null; attacker.bide = null; return; }
     if (battle.curFx) battle.curFx.used = true;
     if (!called && !second && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
     // Showdown's charge flag: the first turn readies the move (Solar Beam and Solar Blade not in sun, Electro Shot not in
@@ -782,6 +843,19 @@ function runMove(battle, attacker, defender, move, called = false) {
         else if (!skip) { attacker.charging = move.id; attacker.hiding = SEMI_INVULNERABLE[move.id] ?? null; return; }
     }
     attacker.charging = null;
+    // Showdown's Bide: two turns storing the damage the user takes, then twice that back at the foe, whatever its type
+    if (move.id === "bide" && !battle.pvp) {
+        if (!attacker.bide) { attacker.bide = { turns: 2, dmg: 0 }; say(battle, `§e${name} used Bide!§r §7${name} is storing energy!`); return; }
+        if (--attacker.bide.turns > 0) { say(battle, `§7${name} is storing energy!`); return; }
+        const stored = attacker.bide.dmg;
+        attacker.bide = null;
+        say(battle, `§e${name} unleashed its energy!`);
+        if (!stored) { say(battle, "§7But it failed!"); return; }
+        const dealt = Math.min(stored * 2, defender.hp);
+        defender.hp -= dealt; defender.lastHit = { dmg: dealt, physical: true, tick: system.currentTick };
+        say(battle, `§7${dealt} damage.`); syncHealth(defender);
+        return;
+    }
     if (move.id === "weatherball" && WEATHER_BALL[weatherOf(battle)]) move = { ...move, type: WEATHER_BALL[weatherOf(battle)] };
     // Sleep Talk and Snore work only while the user sleeps; Sleep Talk uses another of its moves at random, without PP
     if (move.sleepUsable && attacker.status !== "slp") { say(battle, `§e${name} used ${move.name}!§r §7But it failed.`); return; }
@@ -839,6 +913,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         return;
     }
     if (fieldMove(battle, attacker, defender, move)) return;
+    if (move.id === "defensecurl") attacker.curled = true;   // Rollout and Ice Ball hit twice as hard after it
     if (self) { say(battle, `§e${name} used ${move.name}!`); if (!healMove(battle, attacker, move)) boost(battle, attacker, move.boosts, attacker); return; }
     if ((move.id === "thunderwave" && effectiveness(move.type, defender.info.types) === 0)
         || (move.flags?.includes("powder") && (defender.info.types.includes("grass") || defAb === "overcoat"))
@@ -1013,6 +1088,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (move.status && !shielded) inflict(battle, defender, move.status, true, attacker);
     if (move.boosts && defender.hp > 0 && !shielded) boost(battle, defender, move.boosts, attacker);
     if (move.confuse && defender.hp > 0 && !shielded) confuse(battle, defender);
+    if (move.trap && defender.hp > 0 && !shielded && !battle.pvp) trap(battle, defender, attacker, move);
     const contact = move.contact && held(attacker) !== "protective_pads" && !(held(attacker) === "punching_glove" && move.flags?.includes("punch"));
     for (const sec of [move.secondary, ...(move.secondaries ?? [])]) {
         if (!sec || sheer || (shielded && !sec.self) || defAb === "shielddust" || (held(defender) === "covert_cloak" && !sec.self) || Math.random() * 100 >= sec.chance * (atkAb === "serenegrace" ? 2 : 1)) continue;
@@ -1182,6 +1258,9 @@ function battleMusic(player, kind) {
     try { player.playMusic(`cobblemon.battle.${kind}.default`, { loop: true, fade: 1, volume: 0.6 }); } catch (e) { }
 }
 function endBattleMusic(player) { try { if (player?.isValid) player.stopMusic(); } catch (e) { } }
+// a battle whose turn threw ends, with the error in the content log rather than lost
+function battleFailed(battle, e) { console.warn(`[cobblemon] battle error: ${e}
+${e?.stack ?? ""}`); endBattle(battle); }
 function endBattle(battle, text) {
     if (battle.side === 1) battle = battle.mirror;   // a battle between players, ended from the second player's side
     battles.delete(battle.player.id);
@@ -2460,6 +2539,8 @@ function switchTo(battle, entity) {
     const leaving = battle.ally;
     leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
+    leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
+    leaving.bound = null; leaving.trappedBy = null;
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
@@ -2522,11 +2603,11 @@ function turn(battle) {
     if (!ally.entity.isValid || !foe.entity.isValid) { endBattle(battle, "§7The battle ended."); return; }
     faceEachOther(battle);
     battle.turn++;
-    const usable = ally.moves.filter((m) => m.left > 0);
-    const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
-    const canSwitch = findParty(battle.player).some((e) => e.id !== ally.entity.id);
-    if (canSwitch) options.push({ kind: "switch" });
-    options.push({ kind: "run" });
+    const usable = ally.moves.filter((m) => canPick(ally, m));
+    const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m, blocked: blockedWhy(ally, m) })) : [{ kind: "move", move: STRUGGLE }];
+    const canSwitch = findParty(battle.player).some((e) => e.id !== ally.entity.id), stuck = trappedIn(battle, ally);
+    if (canSwitch) options.push({ kind: "switch", stuck });
+    options.push({ kind: "run", stuck });
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
         for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
     }
@@ -2545,6 +2626,7 @@ function turn(battle) {
         }
         // FleeAttemptActionResponse: Run only says to get away; the battle ends once the player is 32 blocks from the
         // wild Pokemon (PokemonBattle.checkFlee, defaultFleeDistance)
+        if (choice.stuck) { say(battle, `§7${ally.info.name} can't escape!`); battle.turn--; turn(battle); return; }
         if (choice.kind === "run") { battle.fleeing = true; minimise(battle, "§7Run away from the opposing Pokemon to flee."); return; }
         if (choice.kind === "switch") {
             chooseSwitch(battle, false).then((entity) => {
@@ -2552,10 +2634,11 @@ function turn(battle) {
                 if (!entity) { battle.turn--; turn(battle); return; }
                 switchTo(battle, entity);
                 foeTurn(battle);
-            }).catch(() => endBattle(battle));
+            }).catch((e) => battleFailed(battle, e));
             return;
         }
         if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
+        if (choice.blocked) { say(battle, `§7${choice.blocked}`); battle.turn--; turn(battle); return; }
         const move = choice.move;
         if (held(ally)?.startsWith("choice_") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
@@ -2573,10 +2656,12 @@ function turn(battle) {
         const step = (i) => {
             if (!battles.has(battle.player.id)) return;
             if (i >= order.length) { endOfTurn(battle); return; }
-            const mine = order[i], a = mine ? battle.ally : battle.foe, d = mine ? battle.foe : battle.ally, m = mine ? move : foeMove;
+            const mine = order[i], a = mine ? battle.ally : battle.foe, d = mine ? battle.foe : battle.ally;
+            let m = mine ? move : foeMove;
             // one switched in during the turn does not use the move the one before it chose
             if (a !== (mine ? ally : foe) || a.hp <= 0 || d.hp <= 0 || m === GYM_ITEM) { step(i + 1); return; }
             if (m === RECHARGE) { a.mustRecharge = false; say(battle, `§7${a.info.name} must recharge!`); step(i + 1); return; }
+            if (a.encore && m.id !== a.encore.id && !a.charging && !a.locked && !a.rolling && !a.bide) m = a.moves.find((x) => x.id === a.encore.id && x.left > 0) ?? m;
             useMove(battle, a, d, m);
             const swap = battle.swap;
             battle.swap = null;
@@ -2584,7 +2669,7 @@ function turn(battle) {
             pivot(battle, swap, () => step(i + 1));
         };
         step(0);
-    }).catch(() => endBattle(battle));
+    }).catch((e) => battleFailed(battle, e));
 }
 
 // The battle screen, laid out by the resource pack's ui/server_form.json on Cobblemon's battle textures: the form's
@@ -2622,6 +2707,8 @@ function battleBody(battle) {
 system.runInterval(() => {
     for (const battle of new Set(battles.values())) {
         if (!battle.fleeing || battle.pvp || battle.trainer) continue;
+        // a foe that is gone (unloaded behind the player, or removed) has been got away from too
+        if (!battle.foe.entity?.isValid) { endBattle(battle, "§7Got away safely."); continue; }
         try {
             const p = battle.player.location, f = battle.foe.entity.location;
             if (Math.hypot(p.x - f.x, p.y - f.y, p.z - f.z) > 32) endBattle(battle, "§7Got away safely.");
@@ -2665,7 +2752,7 @@ function pickAction(battle, options) {
         const showMoves = () => {
         const form = new ActionFormData().title("cbm:battle_moves").body(battleBody(battle));
         for (const o of moves) {
-            const m = o.move, off = o.locked || (m !== STRUGGLE && m.left <= 0);
+            const m = o.move, off = o.locked || o.blocked || (m !== STRUGGLE && m.left <= 0);
             const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
             form.button(pad(m.name, 16) + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
@@ -2741,7 +2828,7 @@ system.runInterval(() => {
 }, 10);
 
 function pickFoeMove(foe) {
-    const usable = foe.moves.filter((m) => m.left > 0 && !(foe.taunt > 0 && m.category === "Status"));
+    const usable = foe.moves.filter((m) => canPick(foe, m));
     return usable.length ? usable[Math.floor(Math.random() * usable.length)] : STRUGGLE;
 }
 
@@ -2801,6 +2888,13 @@ function endOfTurn(battle) {
         }
         if (f.yawn && --f.yawn === 0 && f.hp > 0 && !f.status) inflict(battle, f, "slp", false);
         if (f.taunt > 0 && --f.taunt === 0) say(battle, `§7${f.info.name} shook off the taunt!`);
+        if (f.bound) {
+            if (f.bound.by !== other) f.bound = null;
+            else if (f.bound.turns-- <= 0) { say(battle, `§7${f.info.name} was freed from ${f.bound.name}!`); f.bound = null; }
+            else if (f.hp > 0) hurt(battle, f, f.stats.hp / f.bound.share, `${f.info.name} is hurt by ${f.bound.name}!`);
+        }
+        if (f.encore && (--f.encore.turns <= 0 || !(f.moves.find((m) => m.id === f.encore.id)?.left > 0))) { f.encore = null; say(battle, `§7${f.info.name}'s encore ended!`); }
+        if (f.disabled && --f.disabled.turns <= 0) { f.disabled = null; say(battle, `§7${f.info.name}'s move is no longer disabled!`); }
         if (f.perish && f.hp > 0) {
             f.perish--;
             say(battle, `§7${f.info.name}'s perish count fell to ${f.perish}.`);
@@ -2837,7 +2931,7 @@ function afterTurn(battle) {
             if (!battles.has(battle.player.id)) return;
             if (entity) switchTo(battle, entity);
             system.runTimeout(() => turn(battle), 20);
-        }).catch(() => endBattle(battle));
+        }).catch((e) => battleFailed(battle, e));
         return;
     }
     system.runTimeout(() => turn(battle), 30);
@@ -2956,7 +3050,7 @@ function faint(battle, fainted) {
         if (!entity) { endBattle(battle, "§cYou have no more Pokemon that can fight!"); return; }
         switchTo(battle, entity);
         system.runTimeout(() => turn(battle), 20);
-    }).catch(() => endBattle(battle));
+    }).catch((e) => battleFailed(battle, e));
 }
 
 // Gyms: Radical Gyms & Structures by JayOnline (MIT) and its key trainers from Radical Cobblemon Trainers by
@@ -3108,7 +3202,7 @@ function gymMoveValue(battle, foe, ally, move, maxMargin) {
 function gymFoeAction(battle) {
     const g = battle.gym, foe = battle.foe, ally = battle.ally;
     g.turns++;
-    const usable = foe.moves.filter((m) => m.left > 0);
+    const usable = foe.moves.filter((m) => canPick(foe, m));
     const options = (usable.length ? usable : [STRUGGLE]).map((move) => ({ move, e: gymMoveValue(battle, foe, ally, move, g.margin) }));
     if (g.itemsLeft > 0 && foe.hp < foe.stats.hp) {
         for (const slot of g.bag) {
@@ -3801,7 +3895,7 @@ function pvpAfterTurn(battle) {
     battle.replacing = new Set(forced.map((v) => v.side));
     Promise.all(forced.map((v) => chooseSwitch(v, true).then((entity) => { if (entity && pvpLive(battle)) switchTo(v, entity); battle.replacing.delete(v.side); }))).then(() => {
         if (pvpLive(battle)) system.runTimeout(() => pvpTurn(battle), 20);
-    }).catch(() => endBattle(battle));
+    }).catch((e) => battleFailed(battle, e));
 }
 // "Waiting for ..." over the hotbar while a side has chosen and the other has not, or while the other picks a
 // replacement; an action bar line fades after a few seconds, so it is sent again each second for as long as that lasts

@@ -4805,11 +4805,14 @@ def showdown_moves():
         # confusion as the move's own effect (Confuse Ray, Swagger), and the moves that lock their user in (Outrage)
         if re.search(r'^    volatileStatus: "confusion"', top, re.M): move["confuse"] = True
         if re.search(r'^    self: \{\s*volatileStatus: "lockedmove"', body, re.M): move["lock"] = True
+        # the moves that bind their target for a few turns (Wrap, Fire Spin) and those that keep it from leaving (Mean Look)
+        if re.search(r'^    volatileStatus: "partiallytrapped"', top, re.M): move["trap"] = "partial"
+        elif 'addVolatile("trapped"' in body: move["trap"] = True
         flags = re.search(r"flags: \{([^}]*)\}", body)
         if flags:
             names = re.findall(r"(\w+): 1", flags.group(1))
             if "contact" in names: move["contact"] = True
-            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet", "powder", "charge", "recharge", "protect", "bypasssub")]
+            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet", "powder", "charge", "recharge", "protect", "bypasssub", "failencore")]
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
