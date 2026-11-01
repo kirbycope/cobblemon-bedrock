@@ -4454,6 +4454,19 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const kind = POKECENTER_DOOR_Y[event.message.trim()] !== undefined ? event.message.trim() : "plains", at = source.location;
         if (event.message.trim() === "nurse") console.warn(`[cobblemon] pokecenter nurse: ${!!pokecenterNurse(source.dimension, { x: at.x - 16, y: at.y - 8, z: at.z - 16 }, { x: at.x + 16, y: at.y + 8, z: at.z + 16 })}`);
         else console.warn(`[cobblemon] pokecenter test: ${placePokecenter(source.dimension, at, kind)}`);
+    } else if (event.id === "cobblemon:berry_farm") {
+        // testing: "/execute as <player> run scriptevent cobblemon:berry_farm [plains|desert|savanna|snowy|taiga] [count]"
+        // places that many village berry farms (one when none) by the bell nearest the player, whatever the roll, and logs
+        // how many farms the village has
+        const [type, count] = event.message.trim().split(/\s+/), at = source.location;
+        const kind = VILLAGE_FARM_WEIGHT[type] !== undefined ? type : "plains";
+        let bell;
+        try {
+            const volume = new BlockVolume({ x: at.x - 48, y: at.y - 16, z: at.z - 48 }, { x: at.x + 48, y: at.y + 16, z: at.z + 48 });
+            for (const b of source.dimension.getBlocks(volume, { includeTypes: ["minecraft:bell"] }, true).getBlockLocationIterator()) { bell = b; break; }
+        } catch (e) { }
+        if (!bell) { console.warn("[cobblemon] berry farm: no bell within 48 blocks"); return; }
+        placeBerryFarms(source.dimension, bell, kind, villageFarms(source.dimension, bell), Math.max(1, Number(count) || 1));
     } else if (event.id === "cobblemon:heal") {
         const player = nearestPlayer(source);
         if (player) healAround(source.dimension, player.location, player);
@@ -9262,6 +9275,66 @@ function pokecenterNurse(dim, from, to) {
     } catch (e) { console.warn(`[cobblemon] pokecenter nurse: ${e}`); }
     return undefined;
 }
+// the flattest open ground 14 to 38 blocks from the bell for a piece of this size, turned so its west side (a center's
+// door) faces the bell, clear of the sites in taken (a farm's apricorn log border reads as a tree over open ground); null
+// where there is none, "unloaded" where the ground is not all loaded yet
+function villageSite(dim, bell, size, taken = []) {
+    let best = null, unloaded = false;
+    for (const r of [14, 20, 26, 32, 38]) {
+        for (let a = 0; a < 16; a++) {
+            const angle = (a / 16) * Math.PI * 2, cx = bell.x + Math.round(Math.cos(angle) * r), cz = bell.z + Math.round(Math.sin(angle) * r);
+            // the west side turned toward the bell: west, north, east, south are 0, 90, 180, 270 clockwise
+            const dx = bell.x - cx, dz = bell.z - cz;
+            const turn = Math.abs(dx) >= Math.abs(dz) ? (dx < 0 ? 0 : 2) : (dz < 0 ? 1 : 3);
+            const w = turn % 2 ? size.z : size.x, d = turn % 2 ? size.x : size.z;
+            const ox = cx - Math.floor(w / 2), oz = cz - Math.floor(d / 2);
+            if (taken.some((t) => ox <= t.ox + t.w && t.ox <= ox + w && oz <= t.oz + t.d && t.oz <= oz + d)) continue;
+            let lo = Infinity, hi = -Infinity, ok = true;
+            for (let x = ox - 1; x <= ox + w && ok; x += 2) {
+                for (let z = oz - 1; z <= oz + d && ok; z += 2) {
+                    const g = openGround(dim, x, z);
+                    if (!g) { ok = false; if (g === undefined) unloaded = true; break; }
+                    lo = Math.min(lo, g.location.y); hi = Math.max(hi, g.location.y);
+                }
+            }
+            if (!ok || hi - lo > 2) continue;
+            if (!best || hi - lo < best.spread) best = { ox, oz, w, d, turn, ground: hi, spread: hi - lo };
+        }
+        if (best) break;
+    }
+    return best ?? (unloaded ? "unloaded" : null);
+}
+// places a village piece on its site with its layer groundY at the ground, filled up to it beneath and the ground about it
+// brought up to it, as a village's own houses stand, and the trees it cut through cleared: leaves and vines anywhere over its footprint (no piece has any),
+// logs only above it (the taiga center is built of them); the piece's volume, or undefined when it failed
+function placeVillagePiece(dim, id, size, site, groundY) {
+    const rotation = [StructureRotation.None, StructureRotation.Rotate90, StructureRotation.Rotate180, StructureRotation.Rotate270][site.turn];
+    const oy = site.ground - groundY;
+    try {
+        // the ground under each column, read before the piece covers it
+        const under = [];
+        for (let x = site.ox; x < site.ox + site.w; x++) for (let z = site.oz; z < site.oz + site.d; z++) under.push([x, z, openGround(dim, x, z)]);
+        world.structureManager.place(id, dim, { x: site.ox, y: oy, z: site.oz }, { rotation, includeEntities: false });
+        for (const [x, z, g] of under) {
+            for (let y = oy; y < oy + size.y + 16; y++) {
+                const block = dim.getBlock({ x, y, z });
+                if (block && (/leaves|vine/.test(block.typeId) || (y >= oy + size.y && /_log$/.test(block.typeId)))) block.setType("minecraft:air");
+            }
+            const top = g ? g.location.y : oy - 4;
+            if (top < oy - 1) dim.fillBlocks(new BlockVolume({ x, y: top + 1, z }, { x, y: oy - 1, z }), g?.typeId === "minecraft:grass_block" ? "minecraft:dirt" : (g?.typeId ?? "minecraft:dirt"));
+        }
+        // the ground about it raised to its own where it stands lower, so nothing in it (a farm's water) runs out over the edge
+        for (let x = site.ox - 1; x <= site.ox + site.w; x++) for (let z = site.oz - 1; z <= site.oz + site.d; z++) {
+            if (x >= site.ox && x < site.ox + site.w && z >= site.oz && z < site.oz + site.d) continue;
+            const g = openGround(dim, x, z);
+            if (!g || g.location.y >= site.ground) continue;
+            const kind = g.typeId;
+            dim.fillBlocks(new BlockVolume({ x, y: g.location.y, z }, { x, y: site.ground - 1, z }), kind === "minecraft:grass_block" ? "minecraft:dirt" : kind);
+            dim.getBlock({ x, y: site.ground, z })?.setType(kind);
+        }
+    } catch (e) { console.warn(`[cobblemon] ${id} at ${site.ox} ${oy} ${site.oz}: ${e}`); return undefined; }
+    return new BlockVolume({ x: site.ox, y: oy, z: site.oz }, { x: site.ox + site.w - 1, y: oy + size.y - 1, z: site.oz + site.d - 1 });
+}
 // "retry" while the village's chunks are not all there yet
 function placePokecenter(dim, near, kind) {
     let bell;
@@ -9282,57 +9355,73 @@ function placePokecenter(dim, near, kind) {
         return "retry";
     }
     const done = (outcome) => { pokecenterAreas.delete(area); try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { } return outcome; };
-    let best = null, unloaded = false;
-    for (const r of [14, 20, 26, 32, 38]) {
-        for (let a = 0; a < 16; a++) {
-            const angle = (a / 16) * Math.PI * 2, cx = bell.x + Math.round(Math.cos(angle) * r), cz = bell.z + Math.round(Math.sin(angle) * r);
-            // the door (the piece's west side) turned toward the bell: west, north, east, south are 0, 90, 180, 270 clockwise
-            const dx = bell.x - cx, dz = bell.z - cz;
-            const turn = Math.abs(dx) >= Math.abs(dz) ? (dx < 0 ? 0 : 2) : (dz < 0 ? 1 : 3);
-            const w = turn % 2 ? size.z : size.x, d = turn % 2 ? size.x : size.z;
-            const ox = cx - Math.floor(w / 2), oz = cz - Math.floor(d / 2);
-            let lo = Infinity, hi = -Infinity, ok = true;
-            for (let x = ox - 1; x <= ox + w && ok; x += 2) {
-                for (let z = oz - 1; z <= oz + d && ok; z += 2) {
-                    const g = openGround(dim, x, z);
-                    if (!g) { ok = false; if (g === undefined) unloaded = true; break; }
-                    lo = Math.min(lo, g.location.y); hi = Math.max(hi, g.location.y);
-                }
-            }
-            if (!ok || hi - lo > 2) continue;
-            if (!best || hi - lo < best.spread) best = { ox, oz, w, d, turn, ground: hi, spread: hi - lo };
-        }
-        if (best) break;
-    }
-    if (!best) {
-        console.warn(`[cobblemon] no open ground for a pokecenter by the bell at ${bell.x} ${bell.z}${unloaded ? ", not loaded yet" : ""}`);
-        if (!unloaded) return done("none");
+    const site = villageSite(dim, bell, size);
+    if (!site || site === "unloaded") {
+        console.warn(`[cobblemon] no open ground for a pokecenter by the bell at ${bell.x} ${bell.z}${site ? ", not loaded yet" : ""}`);
+        if (!site) return done("none");
         pokecenterAreas.set(area, pokecenterAreas.get(area) + 1);
         return pokecenterAreas.get(area) >= 3 ? done("retry") : "retry";
     }
-    const rotation = [StructureRotation.None, StructureRotation.Rotate90, StructureRotation.Rotate180, StructureRotation.Rotate270][best.turn];
-    const oy = best.ground + 1 - POKECENTER_DOOR_Y[kind];
-    try {
-        // the ground under each column, read before the piece covers it
-        const under = [];
-        for (let x = best.ox; x < best.ox + best.w; x++) for (let z = best.oz; z < best.oz + best.d; z++) under.push([x, z, openGround(dim, x, z)]);
-        world.structureManager.place(id, dim, { x: best.ox, y: oy, z: best.oz }, { rotation, includeEntities: false });
-        // filled up to its floor, as a village's own houses stand, and the trees it cut through cleared: leaves and vines
-        // anywhere over its footprint (no center has any), logs only above it (the taiga one is built of them)
-        for (const [x, z, g] of under) {
-            for (let y = oy; y < oy + size.y + 16; y++) {
-                const block = dim.getBlock({ x, y, z });
-                if (block && (/leaves|vine/.test(block.typeId) || (y >= oy + size.y && /_log$/.test(block.typeId)))) block.setType("minecraft:air");
-            }
-            const top = g ? g.location.y : oy - 4;
-            if (top < oy - 1) dim.fillBlocks(new BlockVolume({ x, y: top + 1, z }, { x, y: oy - 1, z }), g?.typeId === "minecraft:grass_block" ? "minecraft:dirt" : (g?.typeId ?? "minecraft:dirt"));
-        }
-    } catch (e) { console.warn(`[cobblemon] pokecenter at ${best.ox} ${oy} ${best.oz}: ${e}`); return done("none"); }
+    // the village's own farms, counted before anything of this pack's stands among them
+    const farms = villageFarms(dim, bell);
+    const volume = placeVillagePiece(dim, id, size, site, POKECENTER_DOOR_Y[kind] - 1);
+    if (!volume) return done("none");
     sites.push([bell.x, bell.z]);
     world.setDynamicProperty(POKECENTERS, JSON.stringify(sites.slice(-500)));
-    pokecenterNurse(dim, { x: best.ox, y: oy, z: best.oz }, { x: best.ox + best.w - 1, y: oy + size.y - 1, z: best.oz + best.d - 1 });
-    console.warn(`[cobblemon] ${kind} pokecenter at ${best.ox} ${oy} ${best.oz} for the bell at ${bell.x} ${bell.y} ${bell.z}`);
+    pokecenterNurse(dim, volume.from, volume.to);
+    console.warn(`[cobblemon] ${kind} pokecenter at ${site.ox} ${volume.from.y} ${site.oz} for the bell at ${bell.x} ${bell.y} ${bell.z}`);
+    placeBerryFarms(dim, bell, kind, farms, 0, [site]);
     return done("done");
+}
+// Village berry farms (<type>_berry_small and _large, weight 1 each in the houses pool, at most two to a village by
+// StructurePoolGeneratorMixin). A village's houses are drawn from one pool, so its berry farms come about as often
+// against its own vanilla farms as their weights stand: 2 to the small and large farms' weight in Java's
+// village/<type>/houses, a roll for each farm the village has. The crops in a farm become berries by crop_to_berry
+// (RandomizedStructureMappedBlockStatePairProcessor): one pair to a farm, each crop either berry of it, at an age of 1 to
+// 3 (planted, sprout, mature: the bush's stages 0 to 2)
+const VILLAGE_FARM_WEIGHT = { plains: 8, desert: 19, savanna: 14, snowy: 6, taiga: 13 }, BERRY_FARMS_MAX = 2;
+const BERRY_FARM_GROUND_Y = { snowy_large: 0 };   // the farmland's layer in each piece, 1 in the rest
+const BERRY_FARM_PAIRS = [["oran", "cheri"], ["oran", "chesto"], ["oran", "pecha"], ["oran", "rawst"], ["oran", "aspear"], ["oran", "razz"],
+    ["oran", "bluk"], ["oran", "nanab"], ["oran", "wepear"], ["oran", "pinap"], ["persim", "cheri"], ["persim", "chesto"], ["persim", "pecha"],
+    ["persim", "rawst"], ["persim", "aspear"]];
+// the village's farms: its farmland within 40 blocks of the bell in patches, farmland within 3 blocks of other farmland one
+// patch, which bridges a farm's water channels and the grass where trampled farmland has gone back to dirt, while two
+// farms' log borders and the ground between keep them apart
+function villageFarms(dim, bell) {
+    let spots = [];
+    try {
+        const volume = new BlockVolume({ x: bell.x - 40, y: bell.y - 12, z: bell.z - 40 }, { x: bell.x + 40, y: bell.y + 12, z: bell.z + 40 });
+        spots = [...dim.getBlocks(volume, { includeTypes: ["minecraft:farmland"] }, true).getBlockLocationIterator()];
+    } catch (e) { return 0; }
+    const patch = spots.map((_, i) => i), root = (i) => (patch[i] === i ? i : (patch[i] = root(patch[i])));
+    for (let i = 0; i < spots.length; i++) for (let j = i + 1; j < spots.length; j++) {
+        const a = spots[i], b = spots[j];
+        if (Math.abs(a.x - b.x) <= 3 && Math.abs(a.z - b.z) <= 3 && Math.abs(a.y - b.y) <= 1) patch[root(i)] = root(j);
+    }
+    return new Set(spots.map((_, i) => root(i))).size;
+}
+// farms is how many the village has; the scriptevent passes force, a number of berry farms to place whatever the roll;
+// taken, the sites placed by the village already
+function placeBerryFarms(dim, bell, kind, farms, force = 0, taken = []) {
+    let count = force;
+    for (let i = 0; !force && i < farms && count < BERRY_FARMS_MAX; i++) if (Math.random() < 2 / VILLAGE_FARM_WEIGHT[kind]) count++;
+    console.warn(`[cobblemon] ${kind} village by the bell at ${bell.x} ${bell.z}: ${farms} farms, ${count} berry farms`);
+    for (let n = 0; n < count; n++) {
+        const piece = Math.random() < 0.5 ? "small" : "large", id = `cobblemon:village_${kind}_berry_${piece}`;
+        const size = world.structureManager.get(id)?.size, site = size && villageSite(dim, bell, size, taken);
+        if (!site || site === "unloaded") continue;
+        taken.push(site);
+        const volume = placeVillagePiece(dim, id, size, site, BERRY_FARM_GROUND_Y[`${kind}_${piece}`] ?? 1);
+        if (!volume) continue;
+        const pair = BERRY_FARM_PAIRS[Math.floor(Math.random() * BERRY_FARM_PAIRS.length)];
+        try {
+            for (const at of dim.getBlocks(volume, { includeTypes: ["minecraft:wheat"] }, true).getBlockLocationIterator()) {
+                const berry = pair[Math.floor(Math.random() * 2)];
+                dim.getBlock(at)?.setPermutation(BlockPermutation.resolve(`cobblemon:${berry}_berry_bush`, { "cobblemon:stage": ri(0, 2) }));
+            }
+        } catch (e) { console.warn(`[cobblemon] ${id}: ${e}`); }
+        console.warn(`[cobblemon] ${id} at ${site.ox} ${volume.from.y} ${site.oz} with ${pair.join(" and ")} berries`);
+    }
 }
 
 // The books signed by Kirbycope: README (loot_tables/readme_book.json), every control, in the first hotbar slot, and

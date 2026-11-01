@@ -1550,9 +1550,9 @@ def create_poke_mart_clerk():
     with open(f"{entityBedrock}/poke_mart_clerk.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(POKE_MART_CLERK_CLIENT, indent=4))
 
 
-# The village Pokemon Centers (CobblemonStructures adds village_<type>_pokecenter to each village's houses pool at
-# weight 35). Bedrock's villages take no new pieces, so the five are written as structures that scripts/main.js places
-# beside a newly generated village, and the Nurse (CobblemonVillagerProfessions.NURSE, a villager working the healing
+# The village Pokemon Centers and berry farms (CobblemonStructures adds village_<type>_pokecenter to each village's
+# houses pool at weight 35, and <type>_berry_small and _large at weight 1 each). Bedrock's villages take no new pieces, so
+# they are written as structures that scripts/main.js places beside a newly generated village, and the Nurse (CobblemonVillagerProfessions.NURSE, a villager working the healing
 # machine) is an NPC like the Poke Mart clerk, wearing Cobblemon's nurse profession texture over the plains villager
 POKECENTER_TYPES = ("plains", "desert", "savanna", "snowy", "taiga")
 
@@ -1565,6 +1565,8 @@ def create_pokecenters():
     os.makedirs(structuresBedrock, exist_ok=True)
     for kind in POKECENTER_TYPES:
         nbt_to_mcstructure.convert(f"{cobblemonData}/structure/village_{kind}/village_{kind}_pokecenter.nbt", f"{structuresBedrock}/village_{kind}_pokecenter.mcstructure", invalid)
+        for size in ("small", "large"):
+            nbt_to_mcstructure.convert(f"{cobblemonData}/structure/village_{kind}/{kind}_berry_{size}.nbt", f"{structuresBedrock}/village_{kind}_berry_{size}.mcstructure", invalid)
     nurse = json.loads(json.dumps(POKE_MART_CLERK).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse").replace('"poke_mart_clerk"', '"nurse"'))
     client = json.loads(json.dumps(POKE_MART_CLERK_CLIENT).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse"))
     textures = client["minecraft:client_entity"]["description"]["textures"]
