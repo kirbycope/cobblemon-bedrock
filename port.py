@@ -4810,6 +4810,9 @@ def showdown_moves():
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
+        # multi-hit moves: a fixed number of hits (Double Kick 2) or a range (Bullet Seed 2 to 5)
+        hits = re.search(r"^    multihit: (?:\[(\d+), ?(\d+)\]|(\d+))", body, re.M)
+        if hits: move["multihit"] = int(hits.group(3)) if hits.group(3) else [int(hits.group(1)), int(hits.group(2))]
         # switching moves: the user goes back for another (U-turn, Volt Switch, Parting Shot; Baton Pass passing its
         # stat stages on, "copyvolatile"), or the target is dragged out for one at random (Roar, Dragon Tail)
         switch = re.search(r'^    selfSwitch: (true|"(\w+)")', body, re.M)

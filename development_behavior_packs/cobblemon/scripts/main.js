@@ -605,6 +605,17 @@ function useMove(battle, attacker, defender, move, called = false) {
     if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
     else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
 }
+// how many times a multi-hit move hits: its fixed count, or 2 to 5 at 35, 35, 15 and 15 in 100 (Skill Link all 5, Loaded
+// Dice 4 or 5), as Showdown's sim/battle-actions.ts rolls it
+function multiHits(move, attacker) {
+    const m = move.multihit;
+    if (!m) return 1;
+    if (typeof m === "number") return m;
+    if (attacker.ability === "skilllink") return m[1];
+    if (held(attacker) === "loaded_dice" && m[1] - m[0] >= 2) return m[1] - 1 + Math.floor(Math.random() * 2);
+    if (m[0] === 2 && m[1] === 5) return [2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5][Math.floor(Math.random() * 20)];
+    return m[0] + Math.floor(Math.random() * (m[1] - m[0] + 1));
+}
 // the Pokemon that would come in on a side: the player's able party members, or a gym trainer's that are left
 function benchOf(battle, side) {
     if (side === "ally") return findParty(battle.player).filter((e) => e.id !== battle.ally.entity.id);
@@ -723,82 +734,94 @@ function runMove(battle, attacker, defender, move, called = false) {
         const noCrit = defAb === "shellarmor" || defAb === "battlearmor";
         let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0);
         for (const [item, [who, n]] of Object.entries(CRIT_ITEMS)) if (holds(attacker, item, who)) critStage += n;
-        const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
-        // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
-        let atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
-        if (defAb === "unaware") atkStage = 0;
-        if (atkAb === "unaware") defStage = 0;
-        let a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
-        let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
-        if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
-        if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
-        if (physical && atkAb === "hustle") a *= 1.5;
-        if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
-        if (physical && defAb === "furcoat") d *= 2;
-        const w = weatherOf(battle);
-        if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
-        if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
-        if (!physical && w === "sun" && atkAb === "solarpower") a *= 1.5;
-        if (physical && defAb === "marvelscale" && defender.status) d *= 1.5;
-        if (held(defender) === "assault_vest" && !physical) d *= 1.5;
-        for (const [item, [who, stats]] of Object.entries(SPECIES_ITEMS)) {
-            if (holds(attacker, item, who) && stats.includes(physical ? "atk" : "spa")) a *= 2;
-            if (holds(defender, item, who) && stats.includes(physical ? "def" : "spd")) d *= 2;
+        // Showdown's multihit: each hit rolls its own critical hit and damage, a gem or a resist berry is used on the
+        // first, Sturdy and Focus Sash hold only against the first, and what follows the hit (drain, recoil, the
+        // berries) answers the total
+        const hits = multiHits(move, attacker);
+        let total = 0, landed = 0;
+        for (let h = 0; h < hits && defender.hp > 0; h++) {
+            note = "";
+            const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
+            // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
+            let atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
+            if (defAb === "unaware") atkStage = 0;
+            if (atkAb === "unaware") defStage = 0;
+            let a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
+            let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
+            if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
+            if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
+            if (physical && atkAb === "hustle") a *= 1.5;
+            if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
+            if (physical && defAb === "furcoat") d *= 2;
+            const w = weatherOf(battle);
+            if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
+            if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
+            if (!physical && w === "sun" && atkAb === "solarpower") a *= 1.5;
+            if (physical && defAb === "marvelscale" && defender.status) d *= 1.5;
+            if (held(defender) === "assault_vest" && !physical) d *= 1.5;
+            for (const [item, [who, stats]] of Object.entries(SPECIES_ITEMS)) {
+                if (holds(attacker, item, who) && stats.includes(physical ? "atk" : "spa")) a *= 2;
+                if (holds(defender, item, who) && stats.includes(physical ? "def" : "spd")) d *= 2;
+            }
+            if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
+            let power = power0;
+            if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
+            if (atkAb === "technician" && power <= 60) power *= 1.5;
+            if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
+            if (atkAb === "ironfist" && move.flags?.includes("punch")) power *= 1.2;
+            if (atkAb === "megalauncher" && move.flags?.includes("pulse")) power *= 1.5;
+            if (atkAb === "sharpness" && move.flags?.includes("slicing")) power *= 1.5;
+            if (atkAb === "toughclaws" && move.contact) power *= 1.3;
+            if (atkAb === "reckless" && move.recoil) power *= 1.2;
+            if (sheer) power *= 1.3;
+            if (held(attacker) === `${move.type}_gem`) { power *= 1.3; useUp(battle, attacker, `§7The ${cap(move.type)} Gem strengthened ${name}'s power!`); }
+            if (held(attacker) === "punching_glove" && move.flags?.includes("punch")) power *= 1.1;
+            const umbrella = held(attacker) === "utility_umbrella" || held(defender) === "utility_umbrella";
+            if (w === "rain" && !umbrella) power *= move.type === "water" ? 1.5 : move.type === "fire" ? 0.5 : 1;
+            if (w === "sun" && !umbrella) power *= move.type === "fire" ? 1.5 : move.type === "water" ? 0.5 : 1;
+            if (atkAb === "flashfire" && attacker.flashFire && move.type === "fire") power *= 1.5;
+            let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
+            if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
+            if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
+            dmg = Math.floor(dmg * eff);
+            const resist = RESIST_BERRIES[held(defender)];
+            if (resist === move.type && (eff > 1 || resist === "normal")) {
+                dmg = Math.floor(dmg / 2);
+                say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
+                defender.held = null; setProp(defender.entity, "cobblemon:held", undefined);
+            }
+            const screens = sideOf(battle, defender);
+            if (!crit && atkAb !== "infiltrator" && ((physical && (screens.reflect > 0 || screens.auroraveil > 0)) || (!physical && (screens.lightscreen > 0 || screens.auroraveil > 0)))) dmg = Math.floor(dmg / 2);
+            if (physical && attacker.status === "brn" && atkAb !== "guts" && move.id !== "facade") dmg = Math.floor(dmg / 2);
+            if (eff < 1 && atkAb === "tintedlens") dmg *= 2;
+            if (eff > 1 && (defAb === "filter" || defAb === "solidrock" || defAb === "prismarmor")) dmg = Math.floor(dmg * 0.75);
+            if (defAb === "thickfat" && (move.type === "fire" || move.type === "ice")) dmg = Math.floor(dmg / 2);
+            if (defAb === "heatproof" && move.type === "fire") dmg = Math.floor(dmg / 2);
+            if (defAb === "dryskin" && move.type === "fire") dmg = Math.floor(dmg * 1.25);
+            if ((defAb === "multiscale" || defAb === "shadowshield") && defender.hp === defender.stats.hp) dmg = Math.floor(dmg / 2);
+            const item = held(attacker);
+            if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
+            if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
+            if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
+            if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
+            dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
+            dealt = Math.min(dmg, defender.hp);
+            if (dealt >= defender.hp && defender.hp === defender.stats.hp) {
+                if (defAb === "sturdy") { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit with Sturdy!`); }
+                else if (held(defender) === "focus_sash") { dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`); }
+            }
+            if (dealt >= defender.hp && held(defender) === "focus_band" && Math.random() < 0.1) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} hung on using its Focus Band!`); }
+            defender.hp -= dealt;
+            defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
+            if (crit) note += " A critical hit!";
+            if (h === 0) { if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective..."; }
+            say(battle, h === 0 ? `§e${name} used ${move.name}!§r ${dmg} damage.${note}` : `§7Hit ${h + 1}! ${dmg} damage.${note}`);
+            syncHealth(defender);
+            total += dealt; landed++;
         }
-        if (held(defender) === "eviolite" && defender.info.canEvolve) d *= 1.5;
-        let power = power0;
-        if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
-        if (atkAb === "technician" && power <= 60) power *= 1.5;
-        if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
-        if (atkAb === "ironfist" && move.flags?.includes("punch")) power *= 1.2;
-        if (atkAb === "megalauncher" && move.flags?.includes("pulse")) power *= 1.5;
-        if (atkAb === "sharpness" && move.flags?.includes("slicing")) power *= 1.5;
-        if (atkAb === "toughclaws" && move.contact) power *= 1.3;
-        if (atkAb === "reckless" && move.recoil) power *= 1.2;
-        if (sheer) power *= 1.3;
-        if (held(attacker) === `${move.type}_gem`) { power *= 1.3; useUp(battle, attacker, `§7The ${cap(move.type)} Gem strengthened ${name}'s power!`); }
-        if (held(attacker) === "punching_glove" && move.flags?.includes("punch")) power *= 1.1;
-        const umbrella = held(attacker) === "utility_umbrella" || held(defender) === "utility_umbrella";
-        if (w === "rain" && !umbrella) power *= move.type === "water" ? 1.5 : move.type === "fire" ? 0.5 : 1;
-        if (w === "sun" && !umbrella) power *= move.type === "fire" ? 1.5 : move.type === "water" ? 0.5 : 1;
-        if (atkAb === "flashfire" && attacker.flashFire && move.type === "fire") power *= 1.5;
-        let dmg = Math.floor(Math.floor((Math.floor((2 * attacker.level) / 5 + 2) * power * a) / d) / 50) + 2;
-        if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
-        if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
-        dmg = Math.floor(dmg * eff);
-        const resist = RESIST_BERRIES[held(defender)];
-        if (resist === move.type && (eff > 1 || resist === "normal")) {
-            dmg = Math.floor(dmg / 2);
-            say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
-            defender.held = null; setProp(defender.entity, "cobblemon:held", undefined);
-        }
-        const screens = sideOf(battle, defender);
-        if (!crit && atkAb !== "infiltrator" && ((physical && (screens.reflect > 0 || screens.auroraveil > 0)) || (!physical && (screens.lightscreen > 0 || screens.auroraveil > 0)))) dmg = Math.floor(dmg / 2);
-        if (physical && attacker.status === "brn" && atkAb !== "guts" && move.id !== "facade") dmg = Math.floor(dmg / 2);
-        if (eff < 1 && atkAb === "tintedlens") dmg *= 2;
-        if (eff > 1 && (defAb === "filter" || defAb === "solidrock" || defAb === "prismarmor")) dmg = Math.floor(dmg * 0.75);
-        if (defAb === "thickfat" && (move.type === "fire" || move.type === "ice")) dmg = Math.floor(dmg / 2);
-        if (defAb === "heatproof" && move.type === "fire") dmg = Math.floor(dmg / 2);
-        if (defAb === "dryskin" && move.type === "fire") dmg = Math.floor(dmg * 1.25);
-        if ((defAb === "multiscale" || defAb === "shadowshield") && defender.hp === defender.stats.hp) dmg = Math.floor(dmg / 2);
-        const item = held(attacker);
-        if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
-        if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
-        if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
-        if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
-        dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
-        dealt = Math.min(dmg, defender.hp);
-        if (dealt >= defender.hp && defender.hp === defender.stats.hp) {
-            if (defAb === "sturdy") { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit with Sturdy!`); }
-            else if (held(defender) === "focus_sash") { dealt = defender.hp - 1; defender.held = null; say(battle, `§7${defender.info.name} hung on using its Focus Sash!`); }
-        }
-        if (dealt >= defender.hp && held(defender) === "focus_band" && Math.random() < 0.1) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} hung on using its Focus Band!`); }
-        defender.hp -= dealt;
+        dealt = total;
         defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
-        if (crit) note += " A critical hit!";
-        if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective...";
-        say(battle, `§e${name} used ${move.name}!§r ${dmg} damage.${note}`);
-        syncHealth(defender);
+        if (hits > 1) say(battle, `§7Hit ${landed} time${landed === 1 ? "" : "s"}!`);
         if (move.drain && attacker.hp < attacker.stats.hp) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
