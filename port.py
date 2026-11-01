@@ -5260,14 +5260,13 @@ LOOT_INJECTIONS = {
 }
 
 
-def newest_vanilla_table(path):
-    """The vanilla loot table at a path, from the newest versioned vanilla pack that has it."""
+def newest_vanilla_file(rel):
+    """A vanilla behavior pack file (loot_tables/chests/igloo_chest.json), from the newest versioned pack that has it."""
     found = []
-    for folder in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/loot_tables/{path}.json"):
-        pack = folder.replace(os.sep, "/").split("/loot_tables/")[0].rsplit("/", 1)[-1]   # vanilla, vanilla_1.21.30
-        version = tuple(int(n) for n in re.findall(r"\d+", pack))
-        found.append((version, folder))
-    if not found: raise FileNotFoundError(f"no vanilla loot table {path} under {vanillaBehaviorPacks}")
+    for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/{rel}"):
+        pack = os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0]   # vanilla, vanilla_1.21.30
+        found.append((tuple(int(n) for n in re.findall(r"\d+", pack)), path))
+    if not found: raise FileNotFoundError(f"no vanilla {rel} under {vanillaBehaviorPacks}")
     with open(max(found)[1], encoding="utf-8") as file: return json.load(file)
 
 
@@ -5277,11 +5276,36 @@ def create_loot_injections():
     for source, targets in LOOT_INJECTIONS.items():
         with open(f"{cobblemonData}/loot_table/injection/{source}.json", encoding="utf-8") as file: pools = convert_loot_table(json.load(file), items)["pools"]
         for target in targets:
-            table = newest_vanilla_table(target)
+            table = newest_vanilla_file(f"loot_tables/{target}.json")
             table["pools"] = table.get("pools", []) + pools
             os.makedirs(os.path.dirname(f"{behaviorPack}/loot_tables/{target}.json"), exist_ok=True)
             with open(f"{behaviorPack}/loot_tables/{target}.json", "w") as file: file.write(json.dumps(table, indent=2))
     print("Create loot injections complete.")
+
+
+# CobblemonTradeOffers: a master Fisherman may sell the Poke Rod smithing template, and the Wandering Trader's common
+# wares take in Vivichoke seeds, the saccharine sapling, Hearty Grains and the two Sinistcha vessels. Java picks a level's
+# trades from its list, so the template joins the Fisherman's master trades and that tier picks as many as it had;
+# ItemsForEmeralds(item, emeralds, count, maxUses, xp) with Java's 0.05 price multiplier
+def items_for_emeralds(item, emeralds, count, max_uses, xp):
+    return {"wants": [{"item": "minecraft:emerald", "quantity": emeralds, "price_multiplier": 0.05}],
+            "gives": [{"item": item, "quantity": count}], "trader_exp": xp, "max_uses": max_uses, "reward_exp": True}
+
+
+def create_trade_injections():
+    print("Creating trade injections...")
+    fisherman = newest_vanilla_file("trading/economy_trades/fisherman_trades.json")
+    master = fisherman["tiers"][-1]["groups"][-1]
+    master.setdefault("num_to_select", len(master["trades"]))
+    master["trades"].append(items_for_emeralds("cobblemon:pokerod_smithing_template", 12, 1, 3, 30))
+    wanderer = newest_vanilla_file("trading/economy_trades/wandering_trader_trades.json")
+    common = max((g for g in wanderer["tiers"][0]["groups"] if g["trades"][0]["wants"][0]["item"] == "minecraft:emerald"), key=lambda g: len(g["trades"]))
+    common["trades"] += [items_for_emeralds(f"cobblemon:{item}", emeralds, 1, uses, xp) for item, emeralds, uses, xp in
+                         (("vivichoke_seeds", 6, 1, 6), ("saccharine_sapling", 5, 4, 1), ("hearty_grains", 1, 12, 1), ("chipped_pot", 5, 1, 2), ("masterpiece_teacup", 5, 1, 2))]
+    os.makedirs(f"{behaviorPack}/trading/economy_trades", exist_ok=True)
+    for name, table in (("fisherman_trades", fisherman), ("wandering_trader_trades", wanderer)):
+        with open(f"{behaviorPack}/trading/economy_trades/{name}.json", "w") as file: file.write(json.dumps(table, indent=2))
+    print("Create trade injections complete.")
 
 
 def create_structures():
@@ -12304,6 +12328,7 @@ def main():
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
     create_loot_injections()
+    create_trade_injections()
     create_gyms()   # after the furniture and the structures' folders
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
