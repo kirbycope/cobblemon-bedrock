@@ -4810,6 +4810,11 @@ def showdown_moves():
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
         if "ohko:" in body: move["ohko"] = True
+        # switching moves: the user goes back for another (U-turn, Volt Switch, Parting Shot; Baton Pass passing its
+        # stat stages on, "copyvolatile"), or the target is dragged out for one at random (Roar, Dragon Tail)
+        switch = re.search(r'^    selfSwitch: (true|"(\w+)")', body, re.M)
+        if switch: move["selfSwitch"] = switch.group(2) or True
+        if re.search(r"^    forceSwitch: true", body, re.M): move["forceSwitch"] = True
         # healing moves: the share of the user's maximum HP they restore (Recover, Soft-Boiled, Roost), and moves that
         # work only while the user sleeps (Sleep Talk, Snore)
         heal = re.search(r"^    heal: \[(\d+), (\d+)\]", body, re.M)

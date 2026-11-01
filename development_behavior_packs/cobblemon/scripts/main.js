@@ -289,9 +289,16 @@ function fieldMove(battle, a, d, move) {
             if (d.info.types.length === 1 && d.info.types[0] === "water") { fail(); return true; }
             d.info = { ...d.info, types: ["water"] }; say(battle, `§7${d.info.name} transformed into the Water type!`);
             return true;
+        case "partingshot":
+            // its drops are in Showdown's onHit, not its data; the user then goes back (useMove's pivot)
+            used(); boost(battle, d, { atk: -1, spa: -1 }, a);
+            return true;
         case "roar": case "whirlwind":
-            // Showdown's forceSwitch, with nothing on the bench to bring in, fails, as it does on a lone wild Pokemon
-            used(); fail();
+            // Showdown's forceSwitch: the target is dragged out for another of its side at random (useMove's pivot), and
+            // with nothing on the bench to bring in, as against a lone wild Pokemon, it fails
+            used();
+            if (battle.pvp || !benchOf(battle, d === battle.ally ? "ally" : "foe").length) fail();
+            else battle.swap = { side: d === battle.ally ? "ally" : "foe", drag: true };
             return true;
     }
     return false;
@@ -407,6 +414,7 @@ function playMoveFx(battle, user, target, move, outcome) {
 }
 // a line for each side of a battle between players (the other side's own form of it), each into that side's log
 function sayEach(battle, own, other) {
+    battle.said?.push(own);   // what the move being used said, for useMove to tell whether it worked
     const wait = fxWait(battle);
     if (wait > 0) { system.runTimeout(() => sayNow(battle, own, other), wait); return; }
     sayNow(battle, own, other);
@@ -585,10 +593,47 @@ function fixedDamage(battle, a, d, move) {
     return undefined;
 }
 function useMove(battle, attacker, defender, move, called = false) {
-    const outer = battle.curFx, outcome = { used: false, missed: false };
-    battle.curFx = outcome;
-    try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; }
+    const outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
+    battle.curFx = outcome; battle.said = said;
+    try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
     if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
+    // Showdown's selfSwitch and forceSwitch, once the move has worked: a damaging one has to have hit, a status one not
+    // to have failed or missed
+    const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
+    const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
+    if (!worked || battle.pvp || battle.swap) return;
+    if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
+    else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
+}
+// the Pokemon that would come in on a side: the player's able party members, or a gym trainer's that are left
+function benchOf(battle, side) {
+    if (side === "ally") return findParty(battle.player).filter((e) => e.id !== battle.ally.entity.id);
+    const g = battle.gym;
+    return g ? g.party.filter((p, i) => !p.down && i !== g.at) : [];
+}
+// a switch made in the middle of a turn: the user of a selfSwitch move goes back for one its trainer picks (a gym
+// trainer, the best matchup), and one dragged out by Roar or Dragon Tail for one at random; Baton Pass hands its stat
+// stages and Focus Energy to the one coming in. A wild Pokemon has no one to switch to, so nothing happens on its side
+function pivot(battle, swap, then) {
+    afterFx(battle, () => {
+        if (!battles.has(battle.player.id)) return;
+        const bench = benchOf(battle, swap.side), leaving = swap.side === "ally" ? battle.ally : battle.foe;
+        if (!bench.length) { then(); return; }
+        const pass = (f) => { if (swap.pass) { f.stages = { ...leaving.stages }; f.focusEnergy = leaving.focusEnergy; } };
+        if (swap.side === "foe") {
+            if (!gymNextPokemon(battle, { random: swap.drag, then: () => { pass(battle.foe); if (swap.drag) say(battle, `§7${battle.foe.info.name} was dragged out!`); then(); } })) then();
+            return;
+        }
+        const chosen = swap.drag ? Promise.resolve(bench[Math.floor(Math.random() * bench.length)]) : chooseSwitch(battle, true);
+        chosen.then((entity) => {
+            if (!battles.has(battle.player.id)) return;
+            if (entity) {
+                switchTo(battle, entity); pass(battle.ally);
+                if (swap.drag) say(battle, `§7${battle.ally.info.name} was dragged out!`);
+            }
+            then();
+        }).catch(() => endBattle(battle));
+    });
 }
 function runMove(battle, attacker, defender, move, called = false) {
     const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
@@ -2329,12 +2374,21 @@ function turn(battle) {
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
             allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
         battle.movedFirst = allyFirst ? ally : foe;
-        const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
-        for (const [a, d, m] of order) {
-            if (a.hp <= 0 || d.hp <= 0 || m === GYM_ITEM) continue;
+        battle.swap = null;
+        const order = allyFirst ? [true, false] : [false, true];
+        const step = (i) => {
+            if (!battles.has(battle.player.id)) return;
+            if (i >= order.length) { endOfTurn(battle); return; }
+            const mine = order[i], a = mine ? battle.ally : battle.foe, d = mine ? battle.foe : battle.ally, m = mine ? move : foeMove;
+            // one switched in during the turn does not use the move the one before it chose
+            if (a !== (mine ? ally : foe) || a.hp <= 0 || d.hp <= 0 || m === GYM_ITEM) { step(i + 1); return; }
             useMove(battle, a, d, m);
-        }
-        endOfTurn(battle);
+            const swap = battle.swap;
+            battle.swap = null;
+            if (!swap || battle.ally.hp <= 0 || battle.foe.hp <= 0) { step(i + 1); return; }
+            pivot(battle, swap, () => step(i + 1));
+        };
+        step(0);
     }).catch(() => endBattle(battle));
 }
 
@@ -2855,10 +2909,11 @@ function gymFoeAction(battle) {
 }
 // after a faint, the Pokemon left whose types and moves stand up best to the player's (the matchup term of
 // RCTBattleAI's switch rating, its heaviest)
-function gymNextPokemon(battle) {
-    const g = battle.gym, ally = battle.ally;
-    g.party[g.at].down = true;
-    const left = g.party.map((p, i) => [p, i]).filter(([p]) => !p.down);
+function gymNextPokemon(battle, swap) {
+    const g = battle.gym, ally = battle.ally, leaving = battle.foe;
+    if (swap) g.party[g.at].kept = { hp: leaving.hp, status: leaving.status, sleep: leaving.sleep, toxic: leaving.toxic, moves: leaving.moves };
+    else g.party[g.at].down = true;
+    const left = g.party.map((p, i) => [p, i]).filter(([p, i]) => !p.down && i !== g.at);
     if (!left.length) return false;
     const typesOf = (spec) => { const info = POKEMON[spec.t]; const v = VARIANT_LOOKS[spec.t]?.findIndex((l) => l[0] === spec.form); return (v > 0 && info.variants?.[v]?.types) || info.types; };
     const score = ([p]) => {
@@ -2867,19 +2922,26 @@ function gymNextPokemon(battle) {
         const defence = Math.max(...ally.info.types.map((t) => effectiveness(t, types)));
         return offence - defence;
     };
-    const [next, index] = left.reduce((best, c) => (score(c) > score(best) ? c : best));
-    g.at = index; g.turns = 0;
+    const [next, index] = swap?.random ? left[Math.floor(Math.random() * left.length)] : left.reduce((best, c) => (score(c) > score(best) ? c : best));
     const entity = spawnGymPokemon(g.npc.isValid ? g.npc : battle.foe.entity, next.spec, battle.player);
     if (!entity) return false;
+    g.at = index; g.turns = 0;
+    if (swap) {
+        const old = leaving.entity;
+        say(battle, `§7${RCT_TRAINERS[g.id].name} withdrew ${leaving.info.name}!`);
+        freeze(old, false);
+        beamIn(old, () => (g.npc.isValid ? g.npc.getHeadLocation() : old.location), false, () => { try { if (old.isValid) old.remove(); } catch (e) { } });
+    }
     system.runTimeout(() => {
         if (!battles.has(battle.player.id) || !entity.isValid) { try { entity.remove(); } catch (e) { } return; }
         const f = fighter(entity);
+        if (next.kept) { Object.assign(f, next.kept); next.kept = null; syncHealth(f); }
         freeze(entity, true);
         battle.foe = f; battle.faced = new Set([memberKey(battle.ally.entity)]);
         say(battle, `§6${RCT_TRAINERS[g.id].name} sent out ${f.info.name}! §7(Lv ${f.level})`);
         register(battle.player, entity.typeId, 1, variantOf(entity));
         enter(battle, f, battle.ally);
-        system.runTimeout(() => turn(battle), 20);
+        if (swap?.then) swap.then(); else system.runTimeout(() => turn(battle), 20);
     }, 30);
     return true;
 }
