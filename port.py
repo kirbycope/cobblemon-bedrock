@@ -5242,6 +5242,48 @@ def structure_spacing():
     return odds
 
 
+# LootInjector: Cobblemon adds a pool from loot_table/injection to vanilla chest loot (village houses share
+# village_house) and to fishing treasure. A behavior pack's table at a vanilla path replaces the vanilla one, so each is
+# the newest vanilla table from the Bedrock Dedicated Server's versioned packs with the converted pool added.
+vanillaBehaviorPacks = "C:/GitHub/bedrock-server/behavior_packs"
+LOOT_INJECTIONS = {
+    "chests/abandoned_mineshaft": ["chests/abandoned_mineshaft"], "chests/ancient_city": ["chests/ancient_city"],
+    "chests/bastion_bridge": ["chests/bastion_bridge"], "chests/bastion_hoglin_stable": ["chests/bastion_hoglin_stable"],
+    "chests/bastion_other": ["chests/bastion_other"], "chests/bastion_treasure": ["chests/bastion_treasure"],
+    "chests/end_city_treasure": ["chests/end_city_treasure"], "chests/igloo_chest": ["chests/igloo_chest"],
+    "chests/jungle_temple": ["chests/jungle_temple"], "chests/nether_bridge": ["chests/nether_bridge"],
+    "chests/pillager_outpost": ["chests/pillager_outpost"], "chests/shipwreck_supply": ["chests/shipwrecksupply"],
+    "chests/simple_dungeon": ["chests/simple_dungeon"], "chests/spawn_bonus_chest": ["chests/spawn_bonus_chest"],
+    "chests/stronghold_corridor": ["chests/stronghold_corridor"], "chests/woodland_mansion": ["chests/woodland_mansion"],
+    "chests/village_house": [f"chests/village/village_{b}_house" for b in ("desert", "plains", "savanna", "snowy", "taiga")],
+    "gameplay/fishing/treasure": ["gameplay/fishing/treasure"],
+}
+
+
+def newest_vanilla_table(path):
+    """The vanilla loot table at a path, from the newest versioned vanilla pack that has it."""
+    found = []
+    for folder in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/loot_tables/{path}.json"):
+        pack = folder.replace(os.sep, "/").split("/loot_tables/")[0].rsplit("/", 1)[-1]   # vanilla, vanilla_1.21.30
+        version = tuple(int(n) for n in re.findall(r"\d+", pack))
+        found.append((version, folder))
+    if not found: raise FileNotFoundError(f"no vanilla loot table {path} under {vanillaBehaviorPacks}")
+    with open(max(found)[1], encoding="utf-8") as file: return json.load(file)
+
+
+def create_loot_injections():
+    print("Creating loot injections...")
+    items = defined_items()
+    for source, targets in LOOT_INJECTIONS.items():
+        with open(f"{cobblemonData}/loot_table/injection/{source}.json", encoding="utf-8") as file: pools = convert_loot_table(json.load(file), items)["pools"]
+        for target in targets:
+            table = newest_vanilla_table(target)
+            table["pools"] = table.get("pools", []) + pools
+            os.makedirs(os.path.dirname(f"{behaviorPack}/loot_tables/{target}.json"), exist_ok=True)
+            with open(f"{behaviorPack}/loot_tables/{target}.json", "w") as file: file.write(json.dumps(table, indent=2))
+    print("Create loot injections complete.")
+
+
 def create_structures():
     """Convert the start pieces and write a feature and feature rule per worldgen structure."""
     print("Creating structures...")
@@ -12261,6 +12303,7 @@ def main():
     create_recipes()
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
+    create_loot_injections()
     create_gyms()   # after the furniture and the structures' folders
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
