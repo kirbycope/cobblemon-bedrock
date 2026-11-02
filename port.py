@@ -2345,7 +2345,8 @@ def separate_model_layers():
     done_path = f"{modelsBedrock}/layered.txt"   # not .json: fix_models reads every .json there as a model
     done = set(json.load(open(done_path))) if os.path.exists(done_path) else set()
     for folder in sorted(os.listdir(modelsBedrock)):
-        if folder in done or not os.path.isdir(f"{modelsBedrock}/{folder}"): continue
+        # the wearables' geometry is made whole on every run (create_wearables), not copied from Cobblemon's models
+        if folder in done or folder == "wearable" or not os.path.isdir(f"{modelsBedrock}/{folder}"): continue
         done.add(folder)
         anim_paths = glob.glob(f"{animationsBedrock}/{folder}/*.animation.json")
         anim_files = {}
@@ -4143,12 +4144,15 @@ def create_evolution_items():
     with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
     os.makedirs(f"{itemsBedrock}/evolution", exist_ok=True)
     names = sorted(f[:-len(".png")] for f in os.listdir(evolutionItemsMain) if f.endswith(".png"))
+    wearables = set(wearable_names())
     for name in names:
         shutil.copyfile(f"{evolutionItemsMain}/{name}.png", f"{texturesItemsBedrock}/{name}.png")
         itemTextureData["texture_data"][name] = {"textures": [f"textures/items/{name}"]}
         item = {"format_version": "1.20.50", "minecraft:item": {
             "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": "items"}},
             "components": {"minecraft:icon": name, "minecraft:display_name": {"value": f"item.cobblemon:{name}.name"}, "minecraft:max_stack_size": 64}}}
+        # the Shell Helmet is worn too (create_wearables draws it)
+        if name in wearables: item["minecraft:item"]["components"]["minecraft:wearable"] = {"slot": "slot.armor.head"}
         with open(f"{itemsBedrock}/evolution/{name}.json", "w") as file: file.write(json.dumps(item, indent=4))
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     return names
@@ -8125,6 +8129,96 @@ def create_tms():
     print(f"Create TMs complete: {len(tms)} TMs, {len(learnable)} species.")
 
 
+# WearableHatItem: the hats, glasses and bands a player wears (an Equipable for the head slot), drawn on the head by
+# CustomHeadLayer with Java's head transform: the item model about its centre, through its own "head" display
+# (translation and scale), at 0.625 of that, 4 pixels above the neck. Each is an attachable whose "head" bone follows
+# the player's head, shown when worn; in a hand the same model is drawn smaller on a bound bone, as the Poke Balls are.
+# The block wearables (King's Rock, Never-Melt Ice, the Galarica Wreath and the tags) stay blocks that place
+WEARABLE_HELD_SCALE = 0.5
+
+
+def wearable_names():
+    """CobblemonItems.kt's wearableItem names (the WearableHatItems)."""
+    with open(f"{kotlinMain}/CobblemonItems.kt", encoding="utf-8") as file: return re.findall(r'wearableItem\("(\w+)"', file.read())
+
+
+def create_wearables():
+    """The wearable hat items' attachables, geometry and textures; the item names, for their wearable component."""
+    names = wearable_names()
+    from PIL import Image
+    folders = {k: f"{root}/wearable" for k, root in (("models", modelsBedrock), ("animations", animationsBedrock), ("textures", texturesEntityBedrock))}
+    for folder in folders.values(): fresh(folder)
+    made = []
+    for name in names:
+        path = f"{cobblemon}/models/item/wearable/{name}.json"
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: own = json.load(file)
+        model, display = java_model(f"cobblemon:item/wearable/{name}"), own.get("display", {}).get("head")
+        parent = own.get("parent", "")
+        while not display and parent.startswith("cobblemon:"):
+            with open(f"{cobblemon}/models/{parent.split(':', 1)[1]}.json", encoding="utf-8") as file: base = json.load(file)
+            display, parent = base.get("display", {}).get("head"), base.get("parent", "")
+        refs = [v for k, v in (model or {}).get("textures", {}).items() if k != "particle" and not str(v).startswith("#")]
+        if not model or not model.get("elements") or not refs or not display: continue
+        texture = f"{cobblemon}/textures/{refs[0].split(':', 1)[1]}.png"
+        if not os.path.exists(texture): continue
+        image = Image.open(texture)
+        frames = image.height // image.width if os.path.exists(texture + ".mcmeta") and image.height > image.width else 1
+        image.save(f"{folders['textures']}/{name}.png")
+        (tx, ty, tz), scale = display.get("translation", [0, 0, 0]), display.get("scale", [1, 1, 1])[0]
+        # Java's item space (pixels from the model's centre, x as the block converter mirrors it) to the head bone's
+        worn = lambda x, y, z: [0.625 * (-tx + scale * x), 24 + 4 + 0.625 * (ty + scale * y), 0.625 * (tz + scale * z)]
+        held = lambda x, y, z: [WEARABLE_HELD_SCALE * x, 24 + WEARABLE_HELD_SCALE * y, WEARABLE_HELD_SCALE * z]
+        def cubes(place, k):
+            out = []
+            for element in model["elements"]:
+                (x1, y1, z1), (x2, y2, z2) = element["from"], element["to"]
+                cube = {"origin": place(8 - x2, y1 - 8, z1 - 8), "size": [k * (x2 - x1), k * (y2 - y1), k * (z2 - z1)], "uv": {}}
+                rotation = element.get("rotation")
+                if rotation and rotation.get("angle"):
+                    axis, angle = rotation.get("axis", "y"), rotation["angle"]
+                    cube["rotation"] = [angle if axis == "x" else 0, -angle if axis == "y" else 0, -angle if axis == "z" else 0]
+                    ox, oy, oz = rotation.get("origin", [8, 8, 8])
+                    cube["pivot"] = place(8 - ox, oy - 8, oz - 8)
+                for face, info in element.get("faces", {}).items():
+                    default = {"north": [x1, 16 - y2, x2, 16 - y1], "south": [x1, 16 - y2, x2, 16 - y1], "east": [z1, 16 - y2, z2, 16 - y1],
+                               "west": [z1, 16 - y2, z2, 16 - y1], "up": [x1, z1, x2, z2], "down": [x1, z1, x2, z2]}[face]
+                    u1, v1, u2, v2 = info.get("uv", default)
+                    cube["uv"][face] = {"uv": [u1, v1], "uv_size": [u2 - u1, v2 - v1]}
+                out.append(cube)
+            return out
+        geometry = {"format_version": "1.16.0", "minecraft:geometry": [{
+            "description": {"identifier": f"geometry.cobblemon_wearable_{name}", "texture_width": 16, "texture_height": 16 * frames,
+                            "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1.5, 0]},
+            "bones": [{"name": "head", "pivot": [0, 24, 0], "cubes": cubes(worn, 0.625 * scale)},
+                      {"name": "held", "pivot": [0, 24, 0], "binding": "q.item_slot_to_bone_name(c.item_slot)", "cubes": cubes(held, WEARABLE_HELD_SCALE)}]}]}
+        with open(f"{folders['models']}/{name}.geo.json", "w") as file: file.write(json.dumps(geometry, indent="\t"))
+        attachable = {"format_version": "1.10.0", "minecraft:attachable": {"description": {
+            "identifier": f"cobblemon:{name}",
+            "materials": {"default": "entity_alphatest", "enchanted": "entity_alphatest_glint"},
+            "textures": {"default": f"textures/entity/wearable/{name}", "enchanted": "textures/misc/enchanted_item_glint"},
+            "geometry": {"default": f"geometry.cobblemon_wearable_{name}"},
+            "animations": {"first": "animation.cobblemon_wearable.held_first_person", "third": "animation.cobblemon_wearable.held_third_person",
+                           "worn": "animation.cobblemon_wearable.worn", "slot": "controller.animation.cobblemon_wearable.slot"},
+            "scripts": {"animate": ["slot"]},
+            "render_controllers": ["controller.render.item_default"]}}}
+        with open(f"{resourcePack}/attachables/wearable_{name}.json", "w") as file: file.write(json.dumps(attachable, indent=2))
+        made.append(name)
+    with open(f"{folders['animations']}/wearable_held.animation.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.8.0", "animations": {
+            "animation.cobblemon_wearable.held_first_person": {"loop": True, "bones": {"held": {**HELD_FIRST_PERSON, "scale": 1}, "head": {"scale": 0}}},
+            "animation.cobblemon_wearable.held_third_person": {"loop": True, "bones": {"held": {**HELD_THIRD_PERSON, "scale": 1}, "head": {"scale": 0}}},
+            "animation.cobblemon_wearable.worn": {"loop": True, "bones": {"held": {"scale": 0}}}}}, indent=2))
+    # worn or in a hand: c.item_slot is known to an attachable's animation controllers, not its render controllers
+    with open(f"{animationControllersBedrock}/wearable.animation_controllers.json", "w") as file:
+        to = lambda here: [{k: v} for k, v in (("worn", "c.item_slot == 'head'"), ("first", "c.item_slot != 'head' && c.is_first_person"),
+                                               ("third", "c.item_slot != 'head' && !c.is_first_person")) if k != here]
+        file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": {"controller.animation.cobblemon_wearable.slot": {
+            "initial_state": "worn", "states": {k: {"animations": [k], "transitions": to(k)} for k in ("worn", "first", "third")}}}}, indent=2))
+    print(f"  wearables: {len(made)} hats, glasses and bands worn on the head")
+    return set(made)
+
+
 def create_general_items():
     print("Creating items...")
     registry = item_registry()
@@ -8132,6 +8226,7 @@ def create_general_items():
     itemTexturePath = f"{resourcePack}/textures/item_texture.json"
     with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
     os.makedirs(f"{itemsBedrock}/general", exist_ok=True)
+    wearables = create_wearables()
     made = []
     for path in sorted(glob.glob(f"{cobblemon}/models/item/*.json")):
         name = os.path.basename(path)[:-len(".json")]
@@ -8149,6 +8244,7 @@ def create_general_items():
             components["minecraft:use_modifiers"] = {"use_duration": 1.6, "movement_modifier": 0.35}
             components["minecraft:use_animation"] = "eat"
         category = "equipment" if "eldItem" in info.get("factory", "") or name in MEDICINE else "items"
+        if name in wearables: components["minecraft:wearable"] = {"slot": "slot.armor.head"}
         with open(f"{itemsBedrock}/general/{name}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
                 "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": category}}, "components": components}}, indent=2))
