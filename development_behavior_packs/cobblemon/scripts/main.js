@@ -37,6 +37,7 @@ import { HERDS } from "./herds.js";
 import { SILK_SELF } from "./silk.js";
 import { SACCHARINE_TREES } from "./saccharine.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
+import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
@@ -6270,6 +6271,60 @@ function registerKept(player) {
     } catch (e) { }
 }
 const DEX_MOVE_ROWS = 14;   // the moves tab's rows a page, under its heading
+// EvolutionTreeWidget: the chosen species' tree (its form's own, else the species'), each node in a cell of the five
+// stage columns (one, two or three stages centred) and the rows from the tree's middle less the panning, its slot by
+// what the register holds; the edge into each child (s from its parent, f from a fork), the stub out of a parent to its
+// fork and the fork's vertical; and the buttons over the slots (tooltip the name, or ??? unknown) and the requirement
+// icons (the item, tooltip the requirements). Expanded, PokemonInfoWidget hides; the panning stands in for dragging.
+function dexEvolution(v, s, id, aspect, state) {
+    const tree = DEX_EVO_TREES[DEX_EVO_OF[`${id}|${aspect}`] ?? DEX_EVO_OF[id]];
+    const expanded = !!state.evoExpanded;
+    v.evomode = expanded ? "x" : "m";
+    if (expanded) Object.assign(v, { num: "", name: "", caughtmark: "n", type1: "t--", type2: "t--", portrait: "i----", platform: "p--" });
+    // every cell empty (o) first: a texture field left blank would name a texture that is not there, and one of "-"
+    // alone the layout reads as a number
+    for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 5; c++) Object.assign(v, { [`v${c}${r}s`]: "o", [`v${c}${r}i`]: "i----" });
+        for (let c = 2; c < 5; c++) v[`v${c}${r}e`] = "o";
+        for (let c = 0; c < 3; c++) v[`v${c}${r}k`] = "o";
+    }
+    for (let r = 0; r < 10; r++) for (let c = 0; c < 3; c++) v[`g${c}${r}`] = "o";
+    const evo = { expanded, nodes: [], edges: [], up: false, down: false };
+    if (!tree) return evo;
+    const [stages, nodes, edges] = tree;
+    const rows = nodes.map((nd) => nd[3] / 2), seen = expanded ? 3 : 0;
+    const low = Math.min(0, Math.min(...rows) + seen), high = Math.max(0, Math.max(...rows) - seen);
+    state.evoPan = Math.max(low, Math.min(high, state.evoPan ?? 0));
+    evo.up = state.evoPan > low; evo.down = state.evoPan < high;
+    const col = (nd) => 2 * nd[2] + 3 - stages, row = (nd) => nd[3] / 2 - state.evoPan;
+    const inView = (r) => r >= -4 && r <= 4;
+    const kids = nodes.map(() => []);
+    nodes.forEach((nd, n) => { if (nd[5] !== null) kids[nd[5]].push(n); });
+    nodes.forEach((nd, n) => {
+        const c = col(nd), r = row(nd);
+        if (!inView(r)) return;
+        const at = DEX_INDEX.get(nd[0]), st = at === undefined ? "0" : s[at];
+        Object.assign(v, {
+            [`v${c}${r + 4}s`]: st === "0" ? "u" : st === "2" ? "c" : "s", [`v${c}${r + 4}i`]: st === "0" ? "i----" : iconOf(nd[0], nd[1]),
+            [`v${c}${r + 4}n`]: num(String(DEX_INFO[nd[0]]?.n ?? "").padStart(4, "0")),
+        });
+        if (kids[n].length > 1) v[`v${c}${r + 4}k`] = "y";
+        if (r >= -3 && r <= 3) evo.nodes[(r + 3) * 5 + c] = st === "0" ? "???" : nd[4];
+    });
+    nodes.forEach((nd, n) => {
+        if (kids[n].length < 2) return;
+        const c = col(nd), first = row(nodes[kids[n][0]]), last = row(nodes[kids[n][kids[n].length - 1]]);
+        for (let r = Math.max(first, -5); r < Math.min(last, 5); r++) v[`g${c}${r + 5}`] = "y";
+    });
+    for (const [child, icon, tip] of edges) {
+        const nd = nodes[child], c = col(nd), r = row(nd);
+        if (!inView(r)) continue;
+        v[`v${c}${r + 4}e`] = kids[nd[5]].length > 1 ? "f" : "s";
+        if (r >= -3 && r <= 3) evo.edges[(r + 3) * 3 + c - 2] = [icon, tip];
+    }
+    return evo;
+}
+
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
     if (!state.kept) { registerKept(player); state.kept = true; }
     const s = dexString(player), region = REGIONS[state.region];
@@ -6301,6 +6356,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
         });
     }
     const chosen = state.chosen;
+    let evo = null;   // the evolution tab's buttons, while it shows a tree
     if (chosen !== null) {
         const id = NATIONAL[chosen], st = s[chosen], info = DEX_INFO[id] ?? {}, species = POKEMON[id];
         v.num = num(String(info.n ?? chosen + 1).padStart(4, "0"));
@@ -6342,6 +6398,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
             for (let i = 0; i < page.length; i += 2) pairs.push(page.slice(i, i + 2).join("   "));
             v.desc = rows.length ? [`Moves ${state.movePage + 1}/${pages}${pages > 1 ? " - press Moves again for more" : ""}`, ...pairs].join("\n") : "";
         }
+        if (st === "2" && state.tab === "e") evo = dexEvolution(v, s, id, VARIANT_FORMS[id]?.[variant] ?? "", state);
         if (st !== "2") v.line1 = st === "0" ? "Not yet seen." : "Seen, not yet caught.";
     } else { Object.assign(v, { caughtmark: "n", type1: "t--", type2: "t--", portrait: "i----", platform: "p--", tab: "x" }); }
     const body = DEX_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
@@ -6350,30 +6407,39 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.button("up", `${PC_UI}/pokedex/arrow_up`).button("down", `${PC_UI}/pokedex/arrow_down`);
     form.button("page up", `${PC_UI}/pokedex/arrow_up`).button("page down", `${PC_UI}/pokedex/arrow_down`);
     for (const [letter, name] of [["i", "info"], ["a", "abilities"], ["s", "stats"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
-    form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" ? "cry" : "none"}`);
+    form.button("cry", `${PC_UI}/pokedex/${chosen !== null && s[chosen] !== "0" && !evo?.expanded ? "cry" : "none"}`);
     form.button("filter", `${PC_UI}/pokedex/filter`);
     form.button("search", `${PC_UI}/pokedex/filter`).button(`Search by ${DEX_SEARCH[state.by][1]}`, `${PC_UI}/pokedex/by_${DEX_SEARCH[state.by][0]}`);   // its text is the tooltip
     for (const [letter, name] of [["z", "size"], ["d", "drops"], ["m", "moves"]]) form.button(name, `${PC_UI}/pokedex/tab_${name}${state.tab === letter ? "_on" : ""}`);
-    const arrows = chosen !== null && (state.forms ?? 1) > 1;
+    const arrows = chosen !== null && (state.forms ?? 1) > 1 && !evo?.expanded;
     const varying = chosen !== null && s[chosen] !== "0" ? DEX_VARIATIONS[DEX_INFO[NATIONAL[chosen]]?.n ?? chosen + 1] ?? [] : [];
     form.button("form left", `${PC_UI}/pokedex/${arrows ? "forms_arrow_left" : "none"}`).button("form right", `${PC_UI}/pokedex/${arrows ? "forms_arrow_right" : "none"}`);
     // PokemonInfoWidget's variation buttons (the port's variants carry their looks, so each steps them as the form arrows do)
-    for (let k = 0; k < 5; k++) form.button(varying[k]?.[1] ?? "", `${PC_UI}/pokedex/${varying[k] ? `var_${varying[k][0]}` : "none"}`);
+    for (let k = 0; k < 5; k++) form.button(varying[k]?.[1] ?? "", `${PC_UI}/pokedex/${evo?.expanded || !varying[k] ? "none" : `var_${varying[k][0]}`}`);
+    form.button("evolution", `${PC_UI}/pokedex/tab_evolution_tree${state.tab === "e" ? "_on" : ""}`);
+    form.button(evo?.expanded ? "minimize" : "expand", `${PC_UI}/pokedex/${evo ? (evo.expanded ? "evo_minimize" : "evo_expand") : "none"}`);
+    form.button("up", `${PC_UI}/pokedex/${evo?.up ? "arrow_up" : "none"}`).button("down", `${PC_UI}/pokedex/${evo?.down ? "arrow_down" : "none"}`);
+    for (let n = 0; n < 35; n++) form.button(evo?.nodes[n] ?? "", `${PC_UI}/pokedex/${evo?.nodes[n] !== undefined ? "evo_node" : "none"}`);
+    for (let n = 0; n < 21; n++) form.button(evo?.edges[n]?.[1] ?? "", evo?.edges[n]?.[0] || `${PC_UI}/pokedex/none`);
     form.show(player).then((r) => {
         // PokedexGUI's sounds: close as it shuts, click on an entry (EntriesScrollingWidget), click_short on every other
         // button (ScaledButton)
         if (r.canceled) { scanSound(player, "close"); return; }
         const pick = r.selection, again = () => openDex(player, colour, state);
-        scanSound(player, pick < 25 ? "click" : "click_short");
-        if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; } }
+        if (pick < 50) scanSound(player, pick < 25 ? "click" : "click_short");   // the tree's slots and icons are not buttons on Java
+        if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; state.evoPan = 0; } }
+        else if (pick === 46) { if (state.tab !== "e") { state.tab = "e"; state.evoPan = 0; } }
+        else if (pick === 47) { state.evoExpanded = !state.evoExpanded; state.evoPan = 0; }   // updatePositioning resets the panning
+        else if (pick === 48 || pick === 49) state.evoPan = (state.evoPan ?? 0) + (pick === 48 ? -1 : 1);
+        else if (pick >= 50) { }
         else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
         else if (pick === 28) state.page = (state.page + 1) % pages;
-        else if (pick <= 31) state.tab = "ias"[pick - 29];
+        else if (pick <= 31) { state.tab = "ias"[pick - 29]; state.evoExpanded = false; }
         else if (pick >= 36 && pick <= 38) {
             const tab = "zdm"[pick - 36];
             state.movePage = tab === "m" && state.tab === "m" ? (state.movePage ?? 0) + 1 : 0;
-            state.tab = tab;
+            state.tab = tab; state.evoExpanded = false;
         }
         else if (pick === 39 || pick === 40 || (pick >= 41 && pick <= 45)) { if ((state.forms ?? 1) > 1) state.form = ((state.form ?? 0) + (pick === 40 ? 1 : state.forms - 1)) % state.forms; }
         else if (pick === 32 && chosen !== null) { const cry = POKEMON[NATIONAL[chosen]]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } }

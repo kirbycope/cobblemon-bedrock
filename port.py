@@ -10155,15 +10155,342 @@ def create_pc_ui():
     return {"cobblemon_pc": pc, "cobblemon_pasture": pasture, "cobblemon_pc_wallpapers": wall_content, "cobblemon_pasture_list": pasture_list}
 
 
+# PokedexGUI's evolution tab (EvolutionTreeWidget): DexEntries.computeEvolutionDisplays' displays, one an evolution,
+# each with its requirements' icons and tooltips as DexEvolutionDisplay.kt builds them, and each species' tree from its
+# root (findPreEvolution) laid out by TreeDrawingUtils' createDrawingTree. Written to scripts/dex_evolution.js.
+DEX_EQUIVALENT_FORMS = {"galar": ["region-bias-galar", "bias-galar", "galar-bias", "galarian", "galar"],
+                        "alola": ["region-bias-alola", "bias-alola", "alola-bias", "alolan", "alola"],
+                        "hisui": ["region-bias-hisui", "bias-hisui", "hisui-bias", "hisuian", "hisui"],
+                        "paldea": ["region-bias-paldea", "bias-paldea", "paldea-bias", "paldean", "paldea"]}
+DEX_TIME_RANGES = {"0-23999": "any", "23460-23999,0-12541": "day", "12542-23459": "night", "23000-23999,0-4999": "morning", "5000-6999": "noon",
+                   "7000-12999": "afternoon", "13000-16999": "evening", "17000-18999": "midnight", "19000-22999": "predawn",
+                   "22300-23999,0-166": "dawn", "11834-13701": "dusk", "11834-13701,22300-23999,0-166": "twilight"}
+DEX_STAT_MOCHI = {"hp": "health_mochi", "evasion": "health_mochi", "accuracy": "health_mochi", "attack": "muscle_mochi", "defence": "resist_mochi",
+                  "special_attack": "genius_mochi", "special_defence": "clever_mochi", "speed": "swift_mochi"}
+
+
+def dex_form_equivalents(name):
+    name = name.lower()
+    return next((forms for forms in DEX_EQUIVALENT_FORMS.values() if name in forms), [name])
+
+
+def dex_evolution_displays():
+    """DexEntries.computeEvolutionDisplays: [{from, from_form, to, to_form, to_aspects, requirements: [(icon item, tooltip)]}],
+    with the lang (Cobblemon's over Minecraft's) the tooltips were written from."""
+    import zipfile
+    names = dict(lang)
+    for jar in java_client_jars()[:1]:
+        with zipfile.ZipFile(jar) as z: names = {**json.loads(z.read("assets/minecraft/lang/en_us.json")), **names}
+    features = {}   # the integer species features' displays (Gimmighoul's stashes), by key
+    for path in glob.glob(f"{cobblemonData}/species_features/*.json"):
+        with open(path, encoding="utf-8") as file: feature = json.load(file)
+        if feature.get("type") == "integer":
+            for key in feature.get("keys", []): features[key] = {**(feature.get("display") or {}), "itemPoints": feature.get("itemPoints") or {}}
+    by_key = {species_key(sp): sp for sp in species_by_number.values()}
+    green = lambda text: f"§a{text}§r"
+    def tr(key, *args):
+        text = names.get(f"cobblemon.{key}", key)
+        for n, arg in enumerate(args, 1): text = text.replace(f"%{n}$s", str(arg))
+        return text.replace("%s", str(args[0]) if args else "")
+    def item_name(item):
+        space, path = item.split(":") if ":" in item else ("minecraft", item)
+        return names.get(f"item.{space}.{path}") or names.get(f"block.{space}.{path}") or path.replace("_", " ").title()
+    def prettify(path):
+        return " ".join(part.capitalize() for part in path.rsplit("/", 1)[-1].removeprefix("is_").split("_"))
+    def tag_name(registry, tag):
+        space, path = tag.lstrip("#").split(":")
+        return names.get(f"tag.{registry}.{space}.{path.replace('/', '.')}", prettify(path))
+    def first_item(condition):
+        return (item_tag_values(condition) or [None])[0] if condition.startswith("#") else condition
+    def key_of(name):
+        return re.sub(r"[^a-z0-9]", "", str(name).split(":")[-1].lower())
+    def species_name(name):
+        sp = by_key.get(key_of(name))
+        return display_name(sp) if sp else str(name).split(":")[-1].title()
+    def parse(properties):
+        words = str(properties).split()
+        species = words[0] if words and "=" not in words[0] and key_of(words[0]) in by_key else None
+        pairs = dict(w.split("=", 1) for w in words if "=" in w)
+        flags = [w for w in words[1 if species else 0:] if "=" not in w]
+        return species, pairs, flags
+    def describe(target):
+        """EvolutionPokemonDescriptor.describePokemonProperties, or None for a property it does not describe."""
+        species, pairs, _ = parse(target)
+        said, held = [], None
+        if species: said.append(green(species_name(species)))
+        for key, value in pairs.items():
+            if key == "gender": said.append(green(tr(f"gender.{value.lower()}")))
+            elif key == "nickname": said.append(tr("ui.pokedex.requirement.properties.nickname", green(value)))
+            elif key == "type": said.append(tr("ui.pokedex.requirement.properties.type", green(tr(f"type.{value}"))))
+            elif key == "nature": said.append(tr("ui.pokedex.requirement.properties.nature", green(tr(f"nature.{value.split(':')[-1]}"))))
+            elif key in ("held_item", "helditem"): held = tr("ui.pokedex.requirement.properties.held_item", green(item_name(value.split("[")[0])))
+            elif f"cobblemon.ui.pokedex.requirement.properties.custom.{key}" in names:
+                said.append(tr(f"ui.pokedex.requirement.properties.custom.{key}", green(species_name(value) if key_of(value) in by_key else value)))
+            elif (features.get(key) or {}).get("name"):
+                said.append(tr("ui.pokedex.requirement.properties.int_feature", green(value), green(names.get(features[key]["name"], key))))
+            else: return None
+        if not said and not held: return None
+        main = said[0] if len(said) == 1 else tr("ui.pokedex.requirement.properties.and", ", ".join(said[:-1]), said[-1]) if said else None
+        return f"{main} {held}" if main and held else main or held
+    def biome(req, negated=False):
+        condition, anti = req.get("biomeCondition"), req.get("biomeAnticondition")
+        if negated:
+            if condition and anti: return None
+            condition, anti = anti, condition
+        if not condition and not anti: return None
+        def name(c):
+            if c.startswith("#"): return tag_name("worldgen.biome", c)
+            space, path = c.split(":")
+            return names.get(f"biome.{space}.{path}")
+        # isDisplayable: a biome named by id shows only when the game has its name (not one from a mod not installed)
+        if any(c and not c.startswith("#") and name(c) is None for c in (condition, anti)): return None
+        if condition and anti: text = tr("ui.pokedex.requirement.biome.both.tooltip", green(name(condition)), green(name(anti)))
+        elif condition: text = tr("ui.pokedex.requirement.biome.tooltip", green(name(condition)))
+        else: text = tr("ui.pokedex.requirement.biome.anticondition.tooltip", green(name(anti)))
+        return ("minecraft:compass", text)
+    def structure(req, negated=False):
+        condition, anti = req.get("structureCondition"), req.get("structureAnticondition")
+        if negated:
+            if condition and anti: return None
+            condition, anti = anti, condition
+        if not condition and not anti: return None
+        name = lambda c: tag_name("worldgen.structure", c) if c.startswith("#") else prettify(c.split(":")[-1])
+        if condition and anti: text = tr("ui.pokedex.requirement.structure.both.tooltip", green(name(condition)), green(name(anti)))
+        elif condition: text = tr("ui.pokedex.requirement.structure.tooltip", green(name(condition)))
+        else: text = tr("ui.pokedex.requirement.structure.anticondition.tooltip", green(name(anti)))
+        return ("minecraft:filled_map", text)
+    def requirement(req):
+        """resolveRequirementData: (icon item, tooltip), or None for one the Pokedex does not show."""
+        if req.get("pokedexIcon") and req.get("pokedexTooltip"): return (req["pokedexIcon"], names.get(req["pokedexTooltip"], req["pokedexTooltip"]))
+        kind = req.get("variant")
+        amount = lambda: green(req.get("amount"))
+        if kind == "advancement":
+            space, path = req["requiredAdvancement"].split(":")
+            return ("minecraft:book", tr("ui.pokedex.requirement.advancement.tooltip", green(names.get(f"advancements.{space}.{path.rsplit('/', 1)[-1]}", prettify(path)))))
+        if kind == "battle_critical_hits": return ("cobblemon:medicinal_leek", tr("ui.pokedex.requirement.battle_critical_hits.tooltip", amount()))
+        if kind == "biome": return biome(req)
+        if kind == "blocks_traveled": return ("minecraft:leather_boots", tr("ui.pokedex.requirement.blocks_traveled.tooltip", amount()))
+        if kind == "damage_taken": return ("cobblemon:punching_glove", tr("ui.pokedex.requirement.damage_taken.tooltip", amount()))
+        if kind == "defeat":
+            said = describe(req.get("target", ""))
+            return ("cobblemon:punching_glove", tr("ui.pokedex.requirement.defeat.tooltip", f"{green(req.get('amount', 1))} {said}")) if said else None
+        if kind == "friendship": return ("cobblemon:soothe_bell", tr("ui.pokedex.requirement.friendship.tooltip", amount()))
+        if kind == "held_item":
+            condition = req.get("itemCondition", "")
+            item = first_item(condition)
+            if not item: return None
+            shown = tag_name("item", condition) if condition.startswith("#") else item_name(item)
+            return (item, tr("ui.pokedex.requirement.held_item.tooltip", green(shown)))
+        if kind == "level":
+            low, high = req.get("minLevel", 1), req.get("maxLevel", 2147483647)
+            if low == high or high == 2147483647: return ("cobblemon:rare_candy", tr("ui.pokedex.requirement.level.tooltip.min", green(low)))
+            return ("cobblemon:rare_candy", tr("ui.pokedex.requirement.level.tooltip.between", green(low), green(high)))
+        if kind == "moon_phase": return ("minecraft:clock", tr("ui.pokedex.requirement.moon_phase.tooltip", green(tr(f"ui.moon_phase.{str(req.get('moonPhase')).lower()}"))))
+        if kind == "has_move": return ("cobblemon:technical_machine", tr("ui.pokedex.requirement.has_move.tooltip", green(tr(f"move.{req.get('move')}"))))
+        if kind == "has_move_type": return (f"cobblemon:{req.get('type', 'normal')}_gem", tr("ui.pokedex.requirement.has_move_type.tooltip", green(tr(f"type.{req.get('type')}"))))
+        if kind == "negate":
+            inner = req.get("inner") or {}
+            found = biome(inner, True) if inner.get("variant") == "biome" else structure(inner, True) if inner.get("variant") == "structure" else None
+            if found: return found
+            found = requirement(inner)
+            return (found[0], tr("ui.pokedex.requirement.negate.tooltip", found[1])) if found else None
+        if kind == "owner_held_item":
+            item = first_item(req.get("itemCondition", ""))
+            return (item, tr("ui.pokedex.requirement.owner_held_item.tooltip", green(item_name(item)))) if item else None
+        if kind == "party_member":
+            said = describe(req.get("target", ""))
+            if not said: return None
+            return ("cobblemon:poke_ball", tr("ui.pokedex.requirement.party_member.tooltip" if req.get("contains", True) else "ui.pokedex.requirement.party_member.anticondition.tooltip", said))
+        if kind == "properties":
+            said = describe(req.get("target", ""))
+            return ("minecraft:name_tag", tr("ui.pokedex.requirement.pokemon_properties.tooltip", said)) if said else None
+        if kind == "property_range":
+            display = features.get(req.get("feature")) or {}
+            if not display.get("name"): return None
+            low, _, high = str(req.get("range", "")).partition("-")
+            icon = next(iter(display["itemPoints"]), "minecraft:name_tag")
+            return (icon, tr("ui.pokedex.requirement.property_range.tooltip", green(names.get(display["name"], display["name"])), green(low), green(high or low)))
+        if kind == "recoil": return ("cobblemon:life_orb", tr("ui.pokedex.requirement.recoil.tooltip", amount()))
+        if kind == "stat_compare":
+            high, low = req.get("highStat", "").lower(), req.get("lowStat", "").lower()
+            return (f"cobblemon:{DEX_STAT_MOCHI.get(high, 'health_mochi')}", tr("ui.pokedex.requirement.stat_compare.tooltip", green(tr(f"stat.{high}.name")), green(tr(f"stat.{low}.name"))))
+        if kind == "stat_equal":
+            one, two = req.get("statOne", "").lower(), req.get("statTwo", "").lower()
+            return ("cobblemon:fresh_start_mochi", tr("ui.pokedex.requirement.stat_equal.tooltip", green(tr(f"stat.{one}.name")), green(tr(f"stat.{two}.name"))))
+        if kind == "structure": return structure(req)
+        if kind == "time_range":
+            spec = str(req.get("range", ""))
+            key = spec if f"cobblemon.ui.time_range.{spec}" in names else DEX_TIME_RANGES.get(spec.replace(" ", ""))
+            return ("minecraft:clock", tr("ui.pokedex.requirement.time_range.tooltip", green(tr(f"ui.time_range.{key}")))) if key else None
+        if kind == "use_move": return ("cobblemon:choice_band", tr("ui.pokedex.requirement.use_move.tooltip", green(tr(f"move.{req.get('move')}"))))
+        if kind == "weather":
+            if req.get("isThundering"): return ("minecraft:lightning_rod", tr("ui.pokedex.requirement.weather.tooltip.thundering"))
+            return ("minecraft:water_bucket", tr("ui.pokedex.requirement.weather.tooltip.raining"))
+        return None
+    def species_form(sp, aspects):
+        """Species.getForm: the form all of whose aspects are given, else the standard form (None)."""
+        return next((f for f in sp.get("forms", []) if f.get("aspects") and all(a in aspects for a in f["aspects"])), None)
+    displays = []
+    for sp in species_by_number.values():
+        if not sp.get("implemented", True): continue
+        for form in [None] + list(sp.get("forms", [])):
+            # FormData.ownEvolutions ?: evolutions: a form without its own list takes the species'
+            evolutions = sp.get("evolutions", []) if form is None or "evolutions" not in form else form["evolutions"]
+            aspects = (form or {}).get("aspects", [])
+            for evolution in evolutions or []:
+                header = []
+                if evolution.get("variant") == "item_interact" and evolution.get("requiredContext"):
+                    item = first_item(evolution["requiredContext"])
+                    if item: header.append((item, tr("ui.pokedex.evolution.item_interact.tooltip", green(item_name(item)))))
+                if evolution.get("variant") == "trade":
+                    partner = evolution.get("requiredContext")
+                    header.append(("cobblemon:link_cable", tr("ui.pokedex.evolution.trade.tooltip.with_species", green(species_name(partner))) if partner
+                                   else tr("ui.pokedex.evolution.trade.tooltip.with_any_species")))
+                requirements = header + [r for r in (requirement(req) for req in evolution.get("requirements", [])) if r]
+                for result, shed in ((evolution.get("result"), False), (evolution.get("shedder"), True)):
+                    if not result: continue
+                    target, _, flags = parse(result)
+                    to = by_key.get(key_of(target or ""))
+                    if not to: continue
+                    to_form = species_form(to, set(aspects) | set(flags))
+                    displays.append({"from": species_key(sp), "from_form": (form or {}).get("name", "Normal"), "to": species_key(to),
+                                     "to_form": (to_form or {}).get("name", "Normal"), "to_aspects": sorted(set(flags) | set((to_form or {}).get("aspects", []))),
+                                     "requirements": requirements + ([("cobblemon:poke_ball", tr("ui.pokedex.evolution.shedder.tooltip"))] if shed else [])})
+    return displays, by_key, names
+
+
+def dex_combine_tooltips(alternatives, names):
+    """EvolutionTreeWidget.combineAlternativeTooltips: the lines every alternative shares, then what differs."""
+    groups = [g for g in alternatives if g]
+    if len(groups) <= 1: return groups[0] if groups else []
+    shared_set = set(groups[0]).intersection(*map(set, groups[1:]))
+    shared = list(dict.fromkeys(line for line in groups[0] if line in shared_set))
+    remainders = []
+    for g in groups:
+        rest = [line for line in g if line not in shared_set]
+        if rest not in remainders: remainders.append(rest)
+    if any(not r for r in remainders): return shared
+    if len(remainders) == 1: return shared + remainders[0]
+    if len(remainders) >= 3 and all(len(r) == 1 for r in remainders):
+        return shared + ["§l" + names.get("cobblemon.ui.pokedex.evolution.one_of", "One of:") + "§r"] + [r[0] for r in remainders]
+    unique, out = [], []
+    for g in groups:
+        if g not in unique: unique.append(g)
+    for n, g in enumerate(unique): out += ([] if n == 0 else ["§l" + names.get("cobblemon.ui.pokedex.evolution.or", "OR") + "§r"]) + g
+    return out
+
+
+def create_dex_evolution():
+    """scripts/dex_evolution.js: DEX_EVO_TREES, each [stages, nodes, edges]: a node is [entity id, variant, depth, half rows from
+    the tree's middle, name, parent node], an edge [child node, icon path, tooltip]; and DEX_EVO_OF, each species' tree by
+    entity id, or entity id|form aspect for a form with a tree of its own (Alolan Rattata)."""
+    displays, by_key, names = dex_evolution_displays()
+    icons = item_icons()
+    number_of = {species_key(sp): n for n, sp in species_by_number.items()}
+    folder_of = {int(p.split("_")[0]): p for p in pokemons}
+    def variant_for(key, aspects):
+        """The entity's minecraft:variant for a form: the first look carrying one of its aspects, not shiny, else 0."""
+        pokemon = folder_of.get(number_of.get(key))
+        if not pokemon: return 0
+        for n, look in enumerate(resolver_variations(pokemon)):
+            if look.get("form") in aspects and not look.get("shiny") and not look.get("female"): return n
+        return 0
+    def form_label(key, form):
+        if form.lower() == "normal": return ""
+        found = names.get(f"cobblemon.ui.pokedex.info.form.{key}-{form.lower().replace('-', '')}")
+        return f" ({found})" if found else ""
+    def pre_evolution(key, form):
+        """findPreEvolution: the evolution leading to the form; the standard form falls back to any form of the species."""
+        return next((d for d in displays if d["to"] == key and d["to_form"] == form), None) \
+            or (next((d for d in displays if d["to"] == key), None) if form.lower() == "normal" else None)
+    def build(key, form, aspects, seen):
+        """buildEvolutionTree with mergeEquivalentChildren: evolutions to the same species, form and aspects are one child."""
+        children = []
+        for d in (d for d in displays if d["from"] == key and d["from_form"].lower() in dex_form_equivalents(form)):
+            if (d["to"], d["to_form"]) in seen: continue
+            child = build(d["to"], d["to_form"], d["to_aspects"], seen | {(key, form)})
+            same = next((c for c in children if (c["key"], c["form"].lower(), c["aspects"]) == (child["key"], child["form"].lower(), child["aspects"])), None)
+            if same: same["via"].append(d)
+            else: child["via"] = [d]; children.append(child)
+        return {"key": key, "form": form, "aspects": tuple(aspects), "children": children}
+    def layout(tree):
+        """TreeDrawingUtils.createDrawingTree: depth across, x down."""
+        nexts, offset = [], []
+        def setup(node, depth):
+            kids = [setup(c, depth + 1) for c in node["children"]]
+            while len(nexts) <= depth: nexts.append(0)
+            while len(offset) <= depth: offset.append(0)
+            place = nexts[depth] if not kids else kids[0]["x"] if len(kids) == 1 else int((kids[0]["x"] + kids[-1]["x"]) / 2)
+            offset[depth] = max(offset[depth], nexts[depth] - place)
+            node["x"] = place if not kids else place + offset[depth]
+            nexts[depth] += 2
+            node["offset"], node["depth"] = offset[depth], depth
+            return node
+        def mods(node, total):
+            node["x"] += total
+            for c in node["children"]: mods(c, total + node["offset"])
+        mods(setup(tree, 0), 0)
+    trees, tree_of, index = [], {}, {}
+    for key, sp in by_key.items():
+        if number_of.get(key) not in folder_of or not sp.get("implemented", True): continue
+        for form in [{"name": "Normal", "aspects": []}] + [f for f in sp.get("forms", []) if f.get("aspects")]:
+            root, root_form, guard = key, form["name"], set()
+            found = pre_evolution(root, root_form)
+            while found and (found["from"], found["from_form"]) not in guard:
+                guard.add((found["from"], found["from_form"]))
+                root, root_form = found["from"], found["from_form"]
+                found = pre_evolution(root, root_form)
+            tree = build(root, root_form, [], set())
+            if form["aspects"] and not tree["children"]: continue
+            layout(tree)
+            nodes, edges = [], []
+            def walk(node, parent):
+                n = len(nodes)
+                entity = f"cobblemon:p{folder_of[number_of[node['key']]]}" if number_of.get(node["key"]) in folder_of else ""
+                nodes.append([entity, variant_for(node["key"], set(node["aspects"]) | set(dex_form_equivalents(node["form"]))), node["depth"], node["x"],
+                              display_name(by_key[node["key"]]) + form_label(node["key"], node["form"]), parent])
+                if parent is not None:
+                    # drawEvolutionInfo: the alternatives' icons (the first, where Cobblemon cycles them a second each) and tooltips
+                    items = list(dict.fromkeys(item for d in node["via"] for item, _ in d["requirements"]))
+                    icon = next((f"textures/{icons[i]}" for i in items if i in icons), "") if items else ""
+                    edges.append([n, icon, "\n".join(dex_combine_tooltips([[text for _, text in d["requirements"]] for d in node["via"]], names))])
+                for c in node["children"]: walk(c, n)
+            walk(tree, None)
+            xs = [nd[3] for nd in nodes]
+            centre = (min(xs) + max(xs)) / 2
+            # rows from the tree's middle (getDrawingCoordinates' xCenter), counted in half rows
+            for nd in nodes: nd[3] = int(round((nd[3] - centre) * 2))
+            body = json.dumps([max(nd[2] for nd in nodes) + 1, nodes, edges], separators=(",", ":"), ensure_ascii=False)
+            if body not in index: index[body] = len(trees); trees.append(json.loads(body))
+            aspect = form["aspects"][0] if form["aspects"] else ""
+            tree_of[f"cobblemon:p{folder_of[number_of[key]]}" + (f"|{aspect}" if aspect else "")] = index[body]
+    with open(f"{scriptsBedrock}/dex_evolution.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the Pokedex's evolution trees, [stages, nodes [entity, variant, depth, half rows from the middle, name,\n")
+        file.write("// parent], edges [node, icon, tooltip]], and each species' tree by entity id, or entity id|form aspect for a form's own\n")
+        file.write("export const DEX_EVO_TREES = " + json.dumps(trees, separators=(",", ":"), ensure_ascii=False) + ";\n")
+        file.write("export const DEX_EVO_OF = " + json.dumps(tree_of, separators=(",", ":")) + ";\n")
+    print(f"Pokedex evolution trees: {len(trees)} for {len(tree_of)} species and forms.")
+    return trees
+
+
 # The Pokedex, after PokedexGUI: the dex's own coloured base under the screen, the region with its arrows, seen and
 # caught counts, a page of 25 entry slots (EntriesScrollingWidget's rows of five) with page arrows, and the chosen
 # entry's PokemonInfoWidget: number, name, caught icon, types, the portrait over the platform, the cry button, and the
 # Info, Abilities and Stats tabs below it. Entries show the species' box icon where Cobblemon draws its model.
-DEX_TABS = "iazsdm"   # PokedexGUI's tabs: info, abilities, size, stats, drops, moves
+DEX_TABS = "iazsdme"   # PokedexGUI's tabs: info, abilities, size, stats, drops, moves, evolution tree
+# PokedexGUI's tab icons: ICONS_PADDING_AROUND (18.5) in from the middle of BASE_WIDTH, then ICONS_PADDING_BETWEEN apart
+DEX_TAB_X = [345 // 2 + 18.5 + n * ((345 // 2 - 18.5 * 2) / len(DEX_TABS)) for n in range(len(DEX_TABS))]
+# EvolutionTreeWidget's tree: the depths' columns (5, so 1, 2 and 3 stages each sit centred) and the rows from the
+# middle a view shows, each cell's slot (state, box icon, number), the edge into it, the fork stub out of it, and the
+# fork's vertical between two rows
+DEX_EVO_ROWS = range(-4, 5)
 DEX_LAYOUT = [("colour", 1), ("region", 12), ("seen", 8), ("caught", 8), ("filter", 22), ("search", 30)] \
     + [(f"e{n}{k}", w) for n in range(25) for k, w in (("icon", 5), ("num", 7), ("state", 1), ("sel", 1))] \
     + [("num", 7), ("name", 16), ("caughtmark", 1), ("type1", 3), ("type2", 3), ("portrait", 5), ("platform", 3), ("tab", 1),
-       ("line1", 40), ("line2", 40)] + [(f"stat{k}", 14) for k in ("hp", "atk", "def", "spa", "spd", "spe")] + [("desc", 0)]
+       ("line1", 40), ("line2", 40)] + [(f"stat{k}", 14) for k in ("hp", "atk", "def", "spa", "spd", "spe")] \
+    + [("evomode", 1)] + [(f"v{c}{r + 4}{k}", w) for r in DEX_EVO_ROWS for c in range(5) for k, w in (("s", 1), ("i", 5), ("n", 7))] \
+    + [(f"v{c}{r + 4}e", 1) for r in DEX_EVO_ROWS for c in range(2, 5)] + [(f"v{c}{r + 4}k", 1) for r in DEX_EVO_ROWS for c in range(3)] \
+    + [(f"g{c}{r + 5}", 1) for r in range(-5, 5) for c in range(3)] + [("desc", 0)]
 
 
 def create_pokedex_ui():
@@ -10192,7 +10519,7 @@ def create_pokedex_ui():
     blank25 = Image.new("RGBA", (25, 25), (0, 0, 0, 0))
     blank25.save(f"{D}/slot.png"); select.crop((0, 25, 25, 50)).save(f"{D}/slot_hover.png")
     select.crop((0, 0, 25, 25)).save(f"{D}/slot_on.png"); select.crop((0, 0, 25, 25)).save(f"{D}/slot_on_hover.png")
-    for name in ("info", "abilities", "size", "stats", "drops", "moves"):
+    for name in ("info", "abilities", "size", "stats", "drops", "moves", "evolution_tree"):
         normal = Image.open(f"{src}/tab_{name}.png").convert("RGBA")
         normal.crop((0, 0, 16, 16)).save(f"{D}/tab_{name}.png"); normal.crop((0, 16, 16, 32)).save(f"{D}/tab_{name}_hover.png")
         normal.crop((0, 16, 16, 32)).save(f"{D}/tab_{name}_on.png"); normal.crop((0, 16, 16, 32)).save(f"{D}/tab_{name}_on_hover.png")
@@ -10202,6 +10529,34 @@ def create_pokedex_ui():
     sound = Image.open(f"{src}/button_sound.png").convert("RGBA")
     sound.save(f"{D}/cry.png"); focus_frame(sound).save(f"{D}/cry_hover.png")
     blank.save(f"{D}/none.png"); blank.save(f"{D}/none_hover.png")
+    # EvolutionTreeWidget: its expand and minimize buttons (ScaledButton sheets, the hover under), the expanded overlay,
+    # a slot's states (o for no node: the slot, the unknown mark and the small caught ball by state, as PokemonSlotWidget
+    # draws them), and the line pieces in LINE_COLOR: an edge into a child, drawn from its left (single: from the parent's
+    # right edge; f: from the fork, 4 further on) with the requirement slot (pokedex_slot at 12) on it, 19 left of the child
+    # for both (Cobblemon puts a fork's 2 to the right, which would need the icon button to move by kind), the 5 pixel stub
+    # out of a parent to its fork, and the fork's vertical
+    for name in ("expand", "minimize"):
+        sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
+        sheet.crop((0, 0, 16, 16)).save(f"{D}/evo_{name}.png"); sheet.crop((0, 16, 16, 32)).save(f"{D}/evo_{name}_hover.png")
+    shutil.copyfile(f"{src}/pokedex_screen_info_overlay_expanded.png", f"{D}/screen_info_overlay_expanded.png")
+    slot_image = Image.open(f"{src}/pokedex_slot.png").convert("RGBA")
+    for state in "usc": slot_image.save(f"{D}/ns_{state}.png")
+    for name in ("ns_o", "q_o", "c_o", "ek_o", "eg_o", "el_o"): blank.save(f"{D}/{name}.png")   # o, not -: a field of "-" alone reads as a number
+    line = (0x1D, 0x6B, 0x85, 255)
+    Image.new("RGBA", (1, 1), line).save(f"{D}/ek_y.png"); Image.new("RGBA", (1, 1), line).save(f"{D}/eg_y.png")
+    small_slot = slot_image.resize((12, 12), Image.NEAREST)
+    for kind, start, icon in (("s", 0, 6), ("f", 4, 6)):
+        # 26 wide from 25 left of the child's slot, 12 high from 6 above the line: the line to the icon slot and on to the child
+        edge = Image.new("RGBA", (26, 12), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(edge)
+        draw.line((start, 6, icon - 1, 6), fill=line); draw.line((icon + 12, 6, 25, 6), fill=line)
+        edge.alpha_composite(small_slot, (icon, 0))
+        edge.save(f"{D}/el_{kind}.png")
+    tip_box = Image.new("RGBA", (3, 11))
+    tip_box.paste(Image.open(f"{src}/tooltip_edge.png").convert("RGBA"), (0, 0)); tip_box.paste(Image.open(f"{src}/tooltip_background.png").convert("RGBA"), (1, 0))
+    tip_box.paste(Image.open(f"{src}/tooltip_edge.png").convert("RGBA"), (2, 0)); tip_box.save(f"{D}/evo_tooltip.png")
+    node_hover = Image.open(f"{src}/slot_select.png").convert("RGBA").crop((0, 25, 25, 50))
+    blank25.save(f"{D}/evo_node.png"); node_hover.save(f"{D}/evo_node_hover.png")
     for letter in DEX_TABS:
         for tab in DEX_TABS + "x": (Image.open(f"{src}/select_arrow.png").convert("RGBA") if tab == letter else blank).save(f"{D}/t{letter}_{tab}.png")
     # PokemonInfoWidget's form arrows, a normal frame over a hover one
@@ -10289,7 +10644,39 @@ def create_pokedex_ui():
         controls.append(label(f"stat{key}", field(f"stat{key}"), (ix + 7 + 62 * (n % 2), iy + 109 + 8 * (n // 2)), 0.5, size=(60, 5), shadow=False, layer=7, color=GREY))
     # the select arrow over the chosen tab: one picture a tab, the arrow in the one whose letter matches
     for n, letter in enumerate(DEX_TABS):
-        controls.append(picture(f"tab_arrow{n}", f"pokedex/t{letter}_", field("tab"), (191.5 + 22 * n, 177), (6, 3), 6))
+        controls.append(picture(f"tab_arrow{n}", f"pokedex/t{letter}_", field("tab"), (DEX_TAB_X[n] + 1, 177), (6, 3), 6))
+    # EvolutionTreeWidget at 180: expanded 53 down and 125 high, over the info widget (PokemonInfoWidget hides and the
+    # overlay is the expanded one), minimized 135 down and 42 high; its title 9 in and 10 above. The tree is drawn
+    # clipped to it as its scissor does, each node at getDrawingCoordinates' place: the middle of the view less half a
+    # slot, then each stage 50.5 across and each row 14.5 down, truncated
+    def shown(source, value):
+        return bound(f"({source} = '{value}')", "#visible")
+    controls.append({"evo_overlay": {**image("evo_overlay", "pokedex/screen_info_overlay_expanded", (ix, iy), (139, 163), 7)["evo_overlay"],
+                                     "bindings": shown(field("evomode"), "x")}})
+    for mode, top, height, rows in (("x", 53, 125, DEX_EVO_ROWS), ("m", 135, 42, range(-1, 2))):
+        middle = int(height / 2 - 12.5)
+        cells = []
+        for r in rows:
+            y = middle + int(r * 14.5)
+            for c in range(5):
+                x = 7 + 25 * c
+                cell = f"v{c}{r + 4}"
+                cells += [picture(f"{mode}{cell}_slot", "pokedex/ns_", field(f"{cell}s"), (x, y), (25, 25), 1),
+                          picture(f"{mode}{cell}_icon", "icons/", field(f"{cell}i"), (x + 1, y + 2), (23, 21), 2, True),
+                          picture(f"{mode}{cell}_unknown", "pokedex/q_", field(f"{cell}s"), (x + 8.5, y + 9), (8, 10), 2),
+                          picture(f"{mode}{cell}_caught", "pokedex/c_", field(f"{cell}s"), (x + 18, y + 1.5), (5.5, 5.5), 3),
+                          label(f"{mode}{cell}_num", field(f"{cell}n"), (x + 1.5, y + 2.5), 0.5, size=(20, 5), layer=3)]
+                if c >= 2: cells.append(picture(f"{mode}{cell}_edge", "pokedex/el_", field(f"{cell}e"), (x - 25, y + 6), (26, 12), 1))
+                if c <= 2: cells.append(picture(f"{mode}{cell}_stub", "pokedex/ek_", field(f"{cell}k"), (x + 25, y + 12), (5, 1), 1))
+        for r in range(rows[0] - 1, rows[-1] + 1):
+            y, below = middle + int(r * 14.5) + 12, middle + int((r + 1) * 14.5) + 12
+            for c in range(3):
+                cells.append(picture(f"{mode}g{c}{r + 5}", "pokedex/eg_", field(f"g{c}{r + 5}"), (7 + 25 * c + 29, y), (1, below - y + 1), 1))
+        controls.append({f"evo_{mode}": {"type": "panel", "size": [139, height], "offset": [ix, top], "anchor_from": "top_left", "anchor_to": "top_left",
+                                         "layer": 8, "clips_children": True, "bindings": shown(field("evomode"), mode), "controls": cells}})
+        controls.append({f"evo_title_{mode}": {"type": "label", "text": "§lEvolution Tree", "offset": [ix + 9, top - 10], "size": [110, 10], "layer": 9,
+                                               "anchor_from": "top_left", "anchor_to": "top_left", "shadow": True, "color": [1, 1, 1],
+                                               "bindings": shown(field("evomode"), mode)}})
     def face(state):
         return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
                 "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
@@ -10318,10 +10705,10 @@ def create_pokedex_ui():
     buttons = [button(n, (x, y), (25, 25)) for n, (x, y) in enumerate(slots)]
     buttons += [button(25, (95, 14.5), (4, 6)), button(26, (95, 19.5), (4, 6)),        # region up and down
                 button(27, (160, 44), (4, 6)), button(28, (160, 170), (4, 6)),          # page up and down
-                button(29, (190.5, 181.5), (8, 8)), button(30, (212.5, 181.5), (8, 8)), button(31, (256.5, 181.5), (8, 8)),   # info, abilities, stats
+                button(29, (DEX_TAB_X[0], 181.5), (8, 8)), button(30, (DEX_TAB_X[1], 181.5), (8, 8)), button(31, (DEX_TAB_X[3], 181.5), (8, 8)),   # info, abilities, stats
                 button(32, (ix + 114, iy + 81), (22, 10)), button(33, (26, 180), (139, 11)),
                 button(34, (26, 28), (126, 11)), dex_tooltip(button(35, (154.5, 29.5), (8, 8)), -14),        # the search bar, and search by
-                button(36, (234.5, 181.5), (8, 8)), button(37, (278.5, 181.5), (8, 8)), button(38, (300.5, 181.5), (8, 8)),   # size, drops, moves
+                button(36, (DEX_TAB_X[2], 181.5), (8, 8)), button(37, (DEX_TAB_X[4], 181.5), (8, 8)), button(38, (DEX_TAB_X[5], 181.5), (8, 8)),   # size, drops, moves
                 button(39, (ix + 18, iy + 55.5), (5, 8)), button(40, (ix + 116, iy + 55.5), (5, 8))]                         # the form arrows
     # PokemonInfoWidget's variation buttons, 12 apart leftwards from (126, 27), 20 square at half scale; each one's text
     # is its name, the tooltip, and it steps the shown variant as the form arrows do
@@ -10329,10 +10716,57 @@ def create_pokedex_ui():
         b = button(41 + k, (ix + 126 - 12 * k, iy + 27), (10, 10))
         dex_tooltip(b, 10)
         buttons.append(b)
+    # the evolution tab; the tree's expand button (127 across and 10.5 above the view, 20 at half scale); up and down in
+    # place of dragging the tree; then a button over each slot (its tooltip the species, or ??? unknown) and over each
+    # requirement icon (its face the item, its tooltip the requirements, several lines), on the rows a view shows whole.
+    # Each mode has its own copy, the minimized one on the middle row (its edges on the rows beside, whose icons it shows)
+    def evo_tooltip(b):
+        # EvolutionTreeWidget's renderTooltip: the background around the lines, above the button
+        tip_text = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        # one nine-sliced image (edge, background, edge, caps a pixel each) holding only the label: edges sized by the
+        # box while the box sizes to its children would be circular, and the box would come out empty
+        tip = {"tooltip": {"type": "image", "texture": f"{T}/pokedex/evo_tooltip", "nineslice_size": 1, "size": ["100%c + 8px", "100%c + 2px"], "offset": [0, -2],
+                           "anchor_from": "top_middle", "anchor_to": "bottom_middle", "layer": 40, "keep_ratio": False, "controls": [
+            {"text": {"type": "label", "text": "#form_button_text", "size": ["default", "default"], "max_size": [160, 300], "offset": [0, 1], "shadow": True,
+                      "color": [1, 1, 1], "layer": 2, "bindings": [tip_text]}}]}}
+        body = next(iter(b.values()))
+        for state in body["controls"]:
+            key = next(iter(state))
+            if key != "default": state[key] = {**state[key], "controls": state[key].get("controls", []) + [tip]}
+        return b
+    def evo_edge(index, offset, mode):
+        # the requirement slot, its face the item's own icon (8 at 2 in), the hover a frame round it
+        tex = {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+        def edge_face(hover):
+            icon = {"type": "image", "size": [8, 8], "offset": [2, 2], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 2,
+                    "bindings": [tex, {"binding_type": "view", "source_property_name": "#form_button_texture", "target_property_name": "#texture"}]}
+            frame = {"type": "image", "texture": f"{T}/pokedex/evo_node_hover", "size": [12, 12], "layer": 3, "keep_ratio": False}
+            return {"type": "panel", "size": ["100%", "100%"], "controls": [{"icon": icon}] + ([{"frame": frame}] if hover else [])}
+        b = button(index, offset, (12, 12))
+        b[f"button_{index}"]["controls"] = [{"default": edge_face(False)}, {"hover": edge_face(True)}, {"pressed": edge_face(True)}]
+        return {f"{mode}_edge_{index}": next(iter(evo_tooltip(b).values()))}
+    evo_buttons = {}
+    for mode, top, height, rows, edge_rows in (("x", 53, 125, range(-3, 4), range(-3, 4)), ("m", 135, 42, range(0, 1), range(-1, 2))):
+        middle = int(height / 2 - 12.5)
+        controls_mode = [button(47, (ix + 127, top - 10.5), (10, 10)), button(48, (ix + 131, top + 2), (4, 6)), button(49, (ix + 131, top + height - 8), (4, 6))]
+        for r in rows:
+            for c in range(5):
+                n = 50 + (r + 3) * 5 + c
+                b = evo_tooltip(button(n, (ix + 7 + 25 * c, top + middle + int(r * 14.5)), (25, 25)))
+                controls_mode.append({f"{mode}_node_{n}": next(iter(b.values()))})
+        for r in edge_rows:
+            for c in range(2, 5):
+                n = 85 + (r + 3) * 3 + (c - 2)
+                x, y = ix + 7 + 25 * c, top + middle + int(r * 14.5) + 12 - 6
+                controls_mode.append(evo_edge(n, (x - 19, y), mode))
+        evo_buttons[mode] = {f"evo_buttons_{mode}": {"type": "collection_panel", "size": [345, 207], "collection_name": "form_buttons", "layer": 9,
+                                                     "bindings": shown(field("evomode"), mode), "controls": controls_mode}}
+    buttons.append(button(46, (DEX_TAB_X[6], 181.5), (8, 8)))
     dex = {"type": "panel", "size": [345, 207], "anchor_from": "center", "anchor_to": "center",
            "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                         "source_property_name": "(not ((#title_text - 'cbm:pokedex') = #title_text))", "target_property_name": "#visible"}],
-           "controls": controls + [{"buttons": {"type": "collection_panel", "size": [345, 207], "collection_name": "form_buttons", "controls": buttons}}]}
+           "controls": controls + [{"buttons": {"type": "collection_panel", "size": [345, 207], "collection_name": "form_buttons", "controls": buttons}},
+                                   evo_buttons["x"], evo_buttons["m"]]}
     with open(f"{scriptsBedrock}/dex_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the Pokedex form's body, field by field, and each field's width in bytes\n")
         file.write("export const DEX_LAYOUT = " + json.dumps(DEX_LAYOUT) + ";\n")
@@ -12833,6 +13267,7 @@ def main():
     create_campfire_blocks()
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
+    create_dex_evolution()   # after every item is written, whose icons its requirements show
     create_book_glyphs()
     create_ride_glyphs()
     create_party_item()
