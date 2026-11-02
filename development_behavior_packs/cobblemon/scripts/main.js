@@ -6360,8 +6360,11 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     // PokemonInfoWidget's variation buttons (the port's variants carry their looks, so each steps them as the form arrows do)
     for (let k = 0; k < 5; k++) form.button(varying[k]?.[1] ?? "", `${PC_UI}/pokedex/${varying[k] ? `var_${varying[k][0]}` : "none"}`);
     form.show(player).then((r) => {
-        if (r.canceled) return;
+        // PokedexGUI's sounds: close as it shuts, click on an entry (EntriesScrollingWidget), click_short on every other
+        // button (ScaledButton)
+        if (r.canceled) { scanSound(player, "close"); return; }
         const pick = r.selection, again = () => openDex(player, colour, state);
+        scanSound(player, pick < 25 ? "click" : "click_short");
         if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; } }
         else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
