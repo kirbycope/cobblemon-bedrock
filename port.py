@@ -7275,6 +7275,10 @@ def snack_spawns():
 NEARBY_BLOCK_EXTRAS = {"kelp_plant": ["kelp"], "redstone_ore": ["redstone_ore", "lit_redstone_ore"],
                        "deepslate_redstone_ore": ["deepslate_redstone_ore", "lit_deepslate_redstone_ore"]}
 VILLAGE_STRUCTURE = "#minecraft:village"
+# the water positions the spawner takes as well as the ground: a solid block under water, water with water above and
+# below, water with air above (Seafloor, Submerged and SurfaceSpawnablePositionCalculator); lava's are left out
+WATER_POSITIONS = {"seafloor", "submerged", "surface"}
+WATER_FLUIDS = {"#minecraft:water", "minecraft:water"}
 
 
 def bedrock_blocks(names):
@@ -7315,11 +7319,12 @@ def special_spawns():
     """(world, special): the grounded spawns Bedrock's spawn rules carry, as the competition at a spot (bucket, weight and
     conditions only), and those that need nearby blocks, a base block or a village, in snack_spawns' form with "near",
     "base" (Bedrock block lists), "village" and "notVillage", "herd" for a herd's first member, whose spawn fills its
-    herd as a natural one does."""
+    herd as a natural one does. The water positions' spawns come too, each with its "pos", and with them the natural
+    water spawns of the species the spawn rules keep only on land."""
     presets = {}
     for path in glob.glob(f"{cobblemonData}/spawn_detail_presets/*.json"):
         with open(path, encoding="utf-8") as file: presets[os.path.basename(path)[:-len(".json")]] = json.load(file)
-    world, special, events_of = [], [], {}
+    world, special, events_of, on_land, in_water = [], [], {}, set(), []
     def entry_for(pokemon, words, spawn, cond, anti, level):
         biome = biome_filter_for(cond.get("biomes", ["#cobblemon:is_overworld"]))
         if not pokemon or not biome: return None
@@ -7339,7 +7344,9 @@ def special_spawns():
         # the surface presets' own conditions (natural's base blocks, foliage's leaves) the spawn rules leave aside, and so
         # does this
         cond, anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
-        if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or cond.get("fluid") or spawn.get("bucket") == "boss": return
+        pos = spawn.get("spawnablePositionType", "grounded")
+        if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or spawn.get("bucket") == "boss": return
+        if cond.get("fluid") and not (pos in WATER_POSITIONS and cond["fluid"] in WATER_FLUIDS): return
         structures = set(cond.get("structures") or [])
         if structures - {VILLAGE_STRUCTURE}: return
         needs = cond.get("neededNearbyBlocks") or cond.get("neededBaseBlocks") or structures
@@ -7348,7 +7355,10 @@ def special_spawns():
             if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: return
             for words, level, weight in entries:
                 e = entry_for(pokemon_for_species_name(words[0]), words[1:], {**spawn, "weight": weight}, cond, anti, level)
-                if e: world.append({k: v for k, v in e.items() if k not in ("entity", "level", "event")})
+                if not e: continue
+                world.append({**{k: v for k, v in e.items() if k not in ("entity", "level", "event")}, **({"pos": pos} if pos != "grounded" else {})})
+                if pos == "grounded": on_land.add(e["entity"])
+                else: in_water.append({**e, "pos": pos, **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
             return
         near = bedrock_blocks(cond.get("neededNearbyBlocks")) if cond.get("neededNearbyBlocks") else None
         base = bedrock_blocks(cond.get("neededBaseBlocks")) if cond.get("neededBaseBlocks") else None
@@ -7361,19 +7371,23 @@ def special_spawns():
             if VILLAGE_STRUCTURE in structures: e["village"] = True
             if VILLAGE_STRUCTURE in (anti.get("structures") or []): e["notVillage"] = True
             if spawn.get("type") == "pokemon-herd": e["herd"] = True
+            if pos != "grounded": e["pos"] = pos
             special.append(e)
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
-            if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+            if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") not in WATER_POSITIONS | {"grounded"}: continue
             low, _, high = str(spawn.get("level", "5-30")).partition("-")
             place(spawn, [(spawn.get("pokemon", "").split(" "), [int(low), int(high or low)], spawn.get("weight", 1))])
     # a herd competes with its weight shared between its first members, as create_spawn_rules seeds it
     for spawn, members in herd_spawns():
-        if spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+        if spawn.get("spawnablePositionType", "grounded") not in WATER_POSITIONS | {"grounded"}: continue
         first = [m for m in members if m["leader"]] or [m for m in members if m["follower"]]
         total = sum(m["weight"] for m in first) or 1
         place(spawn, [(m["pokemon"].split(" "), list(int_range(spawn.get("levelRange")) or m["level"] or [5, 30]), spawn.get("weight", 1) * m["weight"] / total) for m in first])
+    # create_spawn_rules keeps only the land spawns of a species that spawns on land and in water (Psyduck, Krabby,
+    # Staryu, Lotad), so its water spawns come from the spawner too
+    special += [e for e in in_water if e["entity"] in on_land]
     return world, special
 
 

@@ -5753,8 +5753,8 @@ function spawnAllowed(spawn, cast, bobber, tags) {
         if (raining !== spawn.isRaining) return false;
     }
     if (spawn.canSeeSky !== undefined) {
-        let sky = true;
-        try { const top = bobber.dimension.getTopmostBlock({ x: at.x, z: at.z }); sky = !top || top.location.y <= at.y + 1; } catch (e) { }
+        let sky = bobber.sky ?? true;
+        if (bobber.sky === undefined) try { const top = bobber.dimension.getTopmostBlock({ x: at.x, z: at.z }); sky = !top || top.location.y <= at.y + 1; } catch (e) { }
         if (sky !== spawn.canSeeSky) return false;
     }
     if (spawn.timeRange) {
@@ -5939,28 +5939,59 @@ world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
     });
 });
 // Spawns that need blocks nearby, a block beneath or a village (port.py's special_spawns: Aron by iron ore, Bidoof by
-// water, Applin by oak leaves, Audino in a village), which Bedrock's spawn rules cannot test. Once a second
+// water, Applin by oak leaves, Audino in a village), which Bedrock's spawn rules cannot test, and the water spawns of a
+// species that also spawns on land (Psyduck, Krabby), which the spawn rules leave out. Once a second
 // (ticksBetweenSpawnAttempts) for each player in the overworld the spawner takes a spot on the ground 16 to 64 blocks
-// away (minimum and maximumSpawningZoneDistanceFromPlayer) and draws there as Cobblemon's spawner does, a rarity bucket
-// and then a spawn by weight, from every grounded spawn that may come there: the natural ones (WORLD_SPAWNS) and these,
-// whose blocks are looked for within 4 blocks across and 2 up or down of the ground (maxNearbyBlocksHorizontalRange,
-// maxNearbyBlocksVerticalRange). A natural draw is left to the spawn rules, which spawn those themselves; a draw of one of
+// away (minimum and maximumSpawningZoneDistanceFromPlayer), or in water a seafloor, submerged or surface position (Poliwag
+// and Lotad by lily pads, Corsola by coral), and draws there as Cobblemon's spawner does, a rarity bucket and then a
+// spawn by weight, from every spawn of that position type that may come there: the natural ones (WORLD_SPAWNS) and
+// these, whose blocks are looked for within 4 blocks across and 2 up or down of the position
+// (maxNearbyBlocksHorizontalRange, maxNearbyBlocksVerticalRange). A natural draw is left to the spawn rules, which spawn those themselves; a draw of one of
 // these spawns it, and a herd's first member has its herd filled about it, unless the 3 by 3 chunks round the spot hold
 // nine Pokemon already. A village is the ground within 48 blocks of a village bell the Pokemon Centers have recorded
 const SPECIAL_RANGE = [16, 64], NEAR_ACROSS = 4, NEAR_UP = 2, VILLAGE_RADIUS = 48;
 let specialLog = false;   // the cobblemon:special_spawns scriptevent logs each spawn this makes
+const isWater = (b) => !!b && (b.typeId === "minecraft:water" || b.typeId === "minecraft:flowing_water" || b.isWaterlogged);
+// where the spawner tries: in a column under water, one of its positions at random, a seafloor (a solid block under
+// water), submerged (water with water above and below) or the surface (water under air), so each type comes as often as
+// the column has positions of it, as Cobblemon's selector weighs them; otherwise the ground. The spot to spawn at, the
+// block the position is (whose surroundings and base are checked), its type, and whether it sees the sky: water does
+// not hide it (canSeeSkyFromBelowWater), nor does it count for getTopmostBlock, which gives the block under it
+function spawnerSpot(dim, c) {
+    let surface, floor, below;
+    try {
+        const top = dim.getTopmostBlock({ x: c.x, z: c.z });
+        if (!top) return;
+        if (isWater(top.above())) {
+            surface = top.location.y + 1;
+            while (isWater(dim.getBlock({ x: c.x, y: surface + 1, z: c.z }))) surface++;
+        }
+        // the ground where the column is dry, or its water lies far above or below the player (a cave under the sea)
+        if (surface === undefined || Math.abs(surface - c.y) > 32) {
+            const spot = spawnSpot(dim, c, 8);
+            return spot && { spot, ground: { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, pos: "grounded" };
+        }
+        floor = surface - 1;
+        while (floor > surface - 64 && isWater(below = dim.getBlock({ x: c.x, y: floor, z: c.z }))) floor--;
+    } catch (e) { return; }
+    const solid = below && !below.isAir && !below.isLiquid && !isWater(below), deep = Math.max(0, surface - floor - 2);
+    const k = ri(solid ? 0 : 1, deep + 1);
+    const [pos, y] = k === 0 ? ["seafloor", floor] : k > deep ? ["surface", surface] : ["submerged", floor + 1 + k];
+    return { spot: { x: c.x + 0.5, y: pos === "seafloor" ? floor + 1 : y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos, sky: true };
+}
 function specialSpawn(player) {
     const dim = player.dimension;
     if (dim.id !== "minecraft:overworld") return;
     const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
-    const spot = spawnSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) }, 8);
-    if (!spot) return;
+    const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+    if (!where) return;
+    const { spot, ground, pos } = where;
     let tags = [];
     try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { return; }
-    const at = { dimension: dim, location: spot }, cast = { effects: [], luck: 0, lure: 0 };
-    const special = SPECIAL_SPAWNS.filter((sp) => spawnAllowed(sp, cast, at, tags));
+    const at = { dimension: dim, location: spot, sky: where.sky }, cast = { effects: [], luck: 0, lure: 0 };
+    const allowed = (sp) => (sp.pos ?? "grounded") === pos && spawnAllowed(sp, cast, at, tags);
+    const special = SPECIAL_SPAWNS.filter(allowed);
     if (!special.length) return;
-    const ground = { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) };
     const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
     const found = new Map();
     const near = (blocks) => {
@@ -5973,7 +6004,7 @@ function specialSpawn(player) {
     const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
     const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village) && (!sp.near || near(sp.near)));
     if (!fits.length) return;
-    const pool = WORLD_SPAWNS.filter((sp) => spawnAllowed(sp, cast, at, tags)).concat(fits);
+    const pool = WORLD_SPAWNS.filter(allowed).concat(fits);
     const bucket = pick(Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b)))[0];
     const drawn = pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]))[0];
     if (!fits.includes(drawn)) return;
@@ -5981,7 +6012,7 @@ function specialSpawn(player) {
         const cx = Math.floor(spot.x / 16) * 16, cz = Math.floor(spot.z / 16) * 16;
         if (dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } }).length >= POKEMON_PER_AREA) return;
         const pokemon = dim.spawnEntity(drawn.entity, spot);
-        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z}: ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
+        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
         system.run(() => {
             try {
                 if (drawn.event) pokemon.triggerEvent(drawn.event);
