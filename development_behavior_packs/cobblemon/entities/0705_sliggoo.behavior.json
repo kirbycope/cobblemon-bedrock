@@ -910,6 +910,41 @@
                     }
                 ]
             },
+            "cobblemon:spawn_weather_rain": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "precipitation"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_weather_clear": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_slime_chunk": {},
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [

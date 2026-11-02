@@ -7,13 +7,13 @@
                 "hover": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_mount_run": "((q.has_rider)) && !v.primary"
+                            "ride_mount_run": "((q.has_rider)) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_hover": "!v.primary"
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -38,7 +38,7 @@
                 "battle_hover": {
                     "animations": [
                         {
-                            "battle_idle": "!v.primary"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -63,7 +63,7 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -88,7 +88,7 @@
                 "running": {
                     "animations": [
                         {
-                            "ground_run": "!v.primary"
+                            "ground_run": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -113,13 +113,13 @@
                 "mount_walking": {
                     "animations": [
                         {
-                            "mount_run": "!v.primary"
+                            "mount_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_mount_run": "!v.primary"
+                            "ride_mount_run": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_walking": "!v.primary"
+                            "pose_mount_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -144,7 +144,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -255,7 +255,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

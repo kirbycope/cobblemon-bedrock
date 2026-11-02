@@ -1,0 +1,49 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.cobblemon_wearable.slot": {
+      "initial_state": "worn",
+      "states": {
+        "worn": {
+          "animations": [
+            "worn"
+          ],
+          "transitions": [
+            {
+              "first": "c.item_slot != 'head' && c.is_first_person"
+            },
+            {
+              "third": "c.item_slot != 'head' && !c.is_first_person"
+            }
+          ]
+        },
+        "first": {
+          "animations": [
+            "first"
+          ],
+          "transitions": [
+            {
+              "worn": "c.item_slot == 'head'"
+            },
+            {
+              "third": "c.item_slot != 'head' && !c.is_first_person"
+            }
+          ]
+        },
+        "third": {
+          "animations": [
+            "third"
+          ],
+          "transitions": [
+            {
+              "worn": "c.item_slot == 'head'"
+            },
+            {
+              "first": "c.item_slot != 'head' && c.is_first_person"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

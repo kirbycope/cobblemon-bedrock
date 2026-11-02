@@ -7,7 +7,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -23,7 +23,7 @@
                 "hover": {
                     "animations": [
                         {
-                            "air_idle": "!v.primary"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -39,7 +39,7 @@
                 "fly": {
                     "animations": [
                         {
-                            "air_fly": "!v.primary"
+                            "air_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -101,7 +101,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

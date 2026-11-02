@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 28
+                    "default": 21
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -51,7 +51,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 28
+                    "default": 21
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -83,7 +83,7 @@
                 },
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
-                    "min": 8,
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },
@@ -94,7 +94,95 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 108
+                    "default": 83
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mountains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "extreme_hills"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "taiga"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 7,
+                    "max": 7,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 34
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mountains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "extreme_hills"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "taiga"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 7,
+                    "max": 7,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 5
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -127,12 +215,59 @@
                 "minecraft:spawns_on_surface": {},
                 "minecraft:brightness_filter": {
                     "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": true
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 5
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mountains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "extreme_hills"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "meadow"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "taiga"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 7,
                     "max": 7,
                     "adjust_for_weather": true
                 },
                 "minecraft:herd": {
                     "min_size": 1,
-                    "max_size": 1
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]

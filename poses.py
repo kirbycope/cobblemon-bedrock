@@ -41,7 +41,6 @@ BATTLE = "q.property('cobblemon:battle')"
 SUBMERGED = "q.property('cobblemon:submerged')"
 IN_WATER = "q.is_in_water"
 HOLDING = "q.property('cobblemon:holding')"
-PRIMARY = "q.property('cobblemon:primary')"
 SHOULDER = "q.property('cobblemon:shoulder')"   # 1 on the left shoulder, 2 the right, set by the script
 SAND = "q.property('cobblemon:on_sand')"   # 1 sand, 2 red sand within two blocks below, set by the script
 # the queries the translated Molang may use; anything else Cobblemon asks is unknown to Bedrock and reads as false
@@ -689,8 +688,9 @@ def to_bedrock(pokemon, found, animation_ids, model_bones, flier, has_look, ambi
             keys[f"pose_{state}"] = gid
             clips.append(f"pose_{state}")
         # while a primary clip plays (an attack, a faint: cobblemon:primary, set by scripts/main.js) the pose's own clips
-        # stop, as Cobblemon's PrimaryAnimation fades the pose out
-        clips = [{c: f"!{PRIMARY}"} if isinstance(c, str) else {k: f"({v}) && !{PRIMARY}" for k, v in c.items()} for c in clips]
+        # fade out as it fades in, the two weights summing to one as Cobblemon's PrimaryAnimation has them (v.primary_w,
+        # port.py's add_primary_controllers; 0 for a species with no primary clips)
+        clips = [{c: "1 - (v.primary_w ?? 0)"} if isinstance(c, str) else {k: f"({v}) * (1 - (v.primary_w ?? 0))" for k, v in c.items()} for c in clips]
         others = [{other: f"v.pose == {j}"} for j, other in enumerate(names) if other != state]
         # a pose whose clips Cobblemon lacks plays nothing; Bedrock wants no animations key rather than an empty one
         states[state] = {**({"animations": clips} if clips else {}), "transitions": others, "blend_transition": round(min(pose.get("blend", 0.5), 1.0), 2)}

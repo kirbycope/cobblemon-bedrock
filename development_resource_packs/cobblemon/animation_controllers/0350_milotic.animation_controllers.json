@@ -7,10 +7,10 @@
                 "jump": {
                     "animations": [
                         {
-                            "water_swim": "!q.property('cobblemon:primary')"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_water_swim": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_water_swim": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         }
                     ],
                     "transitions": [
@@ -38,10 +38,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!q.property('cobblemon:primary')"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -69,10 +69,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!q.property('cobblemon:primary')"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -100,10 +100,10 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!q.property('cobblemon:primary')"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walking": "!q.property('cobblemon:primary')"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -131,13 +131,13 @@
                 "float": {
                     "animations": [
                         {
-                            "water_idle": "!q.property('cobblemon:primary')"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_water_swim": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_water_swim": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_float": "!q.property('cobblemon:primary')"
+                            "pose_float": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -165,13 +165,13 @@
                 "swim": {
                     "animations": [
                         {
-                            "water_swim": "!q.property('cobblemon:primary')"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_water_swim": "(q.has_rider) && !q.property('cobblemon:primary')"
+                            "ride_water_swim": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_swim": "!q.property('cobblemon:primary')"
+                            "pose_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -199,7 +199,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep_male": "!q.property('cobblemon:primary')"
+                            "sleep_male": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [

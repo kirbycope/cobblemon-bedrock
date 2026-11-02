@@ -7,7 +7,7 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -20,7 +20,7 @@
                 "sleeping": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -57,7 +57,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -70,7 +72,9 @@
                 },
                 "clip_2": {
                     "animations": [
-                        "primary_2"
+                        {
+                            "primary_2": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

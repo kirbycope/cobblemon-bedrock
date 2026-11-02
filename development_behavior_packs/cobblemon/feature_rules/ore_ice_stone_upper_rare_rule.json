@@ -1,0 +1,78 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:ore_ice_stone_upper_rare_rule",
+      "places_feature": "cobblemon:ore_ice_stone_upper_rare"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "frozen"
+          },
+          {
+            "all_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "beach"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "cold"
+              }
+            ]
+          },
+          {
+            "all_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "taiga"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "cold"
+              }
+            ]
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "grove"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 4,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "triangle",
+        "extent": [
+          64,
+          320
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

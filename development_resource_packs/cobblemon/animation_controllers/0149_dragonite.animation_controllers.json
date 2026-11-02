@@ -7,10 +7,10 @@
                 "ground_jump": {
                     "animations": [
                         {
-                            "gyarados__air_fly": "!q.property('cobblemon:primary')"
+                            "gyarados__air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_ground_jump": "!q.property('cobblemon:primary')"
+                            "pose_ground_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -56,10 +56,10 @@
                 "water_jump": {
                     "animations": [
                         {
-                            "water_swim": "!q.property('cobblemon:primary')"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_water_jump": "!q.property('cobblemon:primary')"
+                            "pose_water_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -105,7 +105,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!q.property('cobblemon:primary')"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -151,13 +151,13 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!q.property('cobblemon:primary')"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_walk": "(q.has_rider && 1) && !q.property('cobblemon:primary')"
+                            "ride_ground_walk": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_standing": "!q.property('cobblemon:primary')"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -203,13 +203,13 @@
                 "walk": {
                     "animations": [
                         {
-                            "ground_walk": "!q.property('cobblemon:primary')"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_walk": "(q.has_rider && 1) && !q.property('cobblemon:primary')"
+                            "ride_ground_walk": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_walk": "!q.property('cobblemon:primary')"
+                            "pose_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -255,10 +255,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!q.property('cobblemon:primary')"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!q.property('cobblemon:primary')"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -304,10 +304,10 @@
                 "hover": {
                     "animations": [
                         {
-                            "air_idle": "!q.property('cobblemon:primary')"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_hover": "!q.property('cobblemon:primary')"
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -353,13 +353,13 @@
                 "fly": {
                     "animations": [
                         {
-                            "air_glide": "!q.property('cobblemon:primary')"
+                            "air_glide": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_fly": "(q.has_rider && 1) && !q.property('cobblemon:primary')"
+                            "ride_air_fly": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_fly": "!q.property('cobblemon:primary')"
+                            "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -405,16 +405,16 @@
                 "glide": {
                     "animations": [
                         {
-                            "air_glide": "!q.property('cobblemon:primary')"
+                            "air_glide": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_dive": "!q.property('cobblemon:primary')"
+                            "ride_air_dive": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_glide": "(q.has_rider && 1) && !q.property('cobblemon:primary')"
+                            "ride_air_glide": "(q.has_rider && 1) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_glide": "!q.property('cobblemon:primary')"
+                            "pose_glide": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -460,10 +460,10 @@
                 "float": {
                     "animations": [
                         {
-                            "water_idle": "!q.property('cobblemon:primary')"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_float": "!q.property('cobblemon:primary')"
+                            "pose_float": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -509,10 +509,10 @@
                 "swim": {
                     "animations": [
                         {
-                            "water_swim": "!q.property('cobblemon:primary')"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_swim": "!q.property('cobblemon:primary')"
+                            "pose_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -558,10 +558,10 @@
                 "surface_idle": {
                     "animations": [
                         {
-                            "surfacewater_idle": "!q.property('cobblemon:primary')"
+                            "surfacewater_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_surface_idle": "!q.property('cobblemon:primary')"
+                            "pose_surface_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -607,10 +607,10 @@
                 "surface_swim": {
                     "animations": [
                         {
-                            "surfacewater_swim": "!q.property('cobblemon:primary')"
+                            "surfacewater_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_surface_swim": "!q.property('cobblemon:primary')"
+                            "pose_surface_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [

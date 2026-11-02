@@ -7,10 +7,10 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -56,10 +56,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "battle_idle": "!v.primary"
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!v.primary"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -105,10 +105,10 @@
                 "walk": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walk": "!v.primary"
+                            "pose_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -154,10 +154,10 @@
                 "hover": {
                     "animations": [
                         {
-                            "air_idle": "!v.primary"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_hover": "!v.primary"
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -203,10 +203,10 @@
                 "fly": {
                     "animations": [
                         {
-                            "air_fly": "!v.primary"
+                            "air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_fly": "!v.primary"
+                            "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -252,10 +252,10 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_sleep": "!v.primary"
+                            "pose_sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -301,10 +301,10 @@
                 "air_sleep": {
                     "animations": [
                         {
-                            "air_sleep": "!v.primary"
+                            "air_sleep": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_air_sleep": "!v.primary"
+                            "pose_air_sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -350,10 +350,10 @@
                 "battle_sleep": {
                     "animations": [
                         {
-                            "battle_sleep": "!v.primary"
+                            "battle_sleep": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_sleep": "!v.primary"
+                            "pose_battle_sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -399,10 +399,10 @@
                 "mount_idle": {
                     "animations": [
                         {
-                            "mount_ground_idle": "!v.primary"
+                            "mount_ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_idle": "!v.primary"
+                            "pose_mount_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -448,13 +448,13 @@
                 "mount_walk": {
                     "animations": [
                         {
-                            "ride_ground_walk": "!v.primary"
+                            "ride_ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "mount_ground_walk": "!v.primary"
+                            "mount_ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_walk": "!v.primary"
+                            "pose_mount_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -500,13 +500,13 @@
                 "mount_hovering": {
                     "animations": [
                         {
-                            "ride_air_idle": "!v.primary"
+                            "ride_air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "mount_air_idle": "!v.primary"
+                            "mount_air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_hovering": "!v.primary"
+                            "pose_mount_hovering": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -552,13 +552,13 @@
                 "mount_fly": {
                     "animations": [
                         {
-                            "ride_air_fly": "!v.primary"
+                            "ride_air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "mount_air_fly": "!v.primary"
+                            "mount_air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_mount_fly": "!v.primary"
+                            "pose_mount_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -604,16 +604,16 @@
                 "glide": {
                     "animations": [
                         {
-                            "air_glide": "!v.primary"
+                            "air_glide": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_air_glide": "(q.has_rider) && !v.primary"
+                            "ride_air_glide": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "ride_dive": "(q.has_rider) && !v.primary"
+                            "ride_dive": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_glide": "!v.primary"
+                            "pose_glide": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -735,7 +735,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

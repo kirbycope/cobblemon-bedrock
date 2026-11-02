@@ -115,7 +115,16 @@ def join() -> None:
     by its name with OCR, never by its position, and after the join the bridge must see the player on the
     server; if it does not, the client leaves at once. The Servers tab's Local BDS entry (127.0.0.1) fails with
     a NetherNet error on this build, which is why the LAN route is used. Call this from the main menu only."""
-    click(950, 535); time.sleep(4)      # Play
+    # Play, only from the main menu: on the Worlds list that spot is a world's tile, and a click there once opened a
+    # local survival world that a zombie then killed the idle player in (November 2026)
+    back = find_text(["back to menu"])   # a server restart leaves the client on "Disconnected from host"
+    if back: click(back[0], back[1]); time.sleep(4)
+    if not find_text(["create new world"]):
+        if not find_text(["realms", "marketplace"]) or find_text(["resume game", "save & quit"]):
+            sys.exit("not on the main menu or the Worlds list; touching nothing")
+        click(950, 535); time.sleep(4)
+        if not find_text(["create new world"]):
+            sys.exit("Play did not open the Worlds list; touching nothing")
     click(340, 172); time.sleep(3)      # Worlds tab
     spot = None
     for _ in range(30):
@@ -133,11 +142,14 @@ def join() -> None:
         time.sleep(2)
         if find_text(["would you like to download"]):
             click(960, 654); break
-    time.sleep(40)
+    # a pack version the client has not seen is downloaded again first, which takes a minute and a half or more
     try:
         sys.path.insert(0, os.path.dirname(__file__))
         from bridge import Bridge, PLAYER
-        if PLAYER not in Bridge().tool("mc_player_list"):
+        for _ in range(36):   # a new pack version can take over three minutes to download and load
+            time.sleep(10)
+            if PLAYER in str(Bridge().tool("mc_player_list")): break
+        else:
             leave()
             sys.exit(f"joined something that is not the server (clicked '{spot[2]}'); left it")
     except SystemExit: raise

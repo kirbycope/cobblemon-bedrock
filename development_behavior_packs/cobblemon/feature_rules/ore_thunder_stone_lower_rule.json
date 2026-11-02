@@ -1,0 +1,59 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:ore_thunder_stone_lower_rule",
+      "places_feature": "cobblemon:ore_thunder_stone_lower"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "meadow"
+          },
+          {
+            "any_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "extreme_hills"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "meadow"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 8,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "triangle",
+        "extent": [
+          -64,
+          192
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

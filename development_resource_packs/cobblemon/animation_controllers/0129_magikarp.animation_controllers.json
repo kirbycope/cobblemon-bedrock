@@ -7,7 +7,7 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -38,7 +38,7 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -69,7 +69,7 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -100,10 +100,10 @@
                 "float": {
                     "animations": [
                         {
-                            "water_idle": "!v.primary"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_float": "!v.primary"
+                            "pose_float": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -134,10 +134,10 @@
                 "swim": {
                     "animations": [
                         {
-                            "water_swim": "!v.primary"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_swim": "!v.primary"
+                            "pose_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -168,7 +168,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -199,10 +199,10 @@
                 "surface_idle": {
                     "animations": [
                         {
-                            "surfacewater_idle": "!v.primary"
+                            "surfacewater_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_surface_idle": "!v.primary"
+                            "pose_surface_idle": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -233,10 +233,10 @@
                 "surface_swim": {
                     "animations": [
                         {
-                            "surfacewater_swim": "!v.primary"
+                            "surfacewater_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_surface_swim": "!v.primary"
+                            "pose_surface_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -359,7 +359,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

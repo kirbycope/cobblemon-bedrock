@@ -1,0 +1,78 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:ore_moon_stone_upper_rule",
+      "places_feature": "cobblemon:ore_moon_stone_upper"
+    },
+    "conditions": {
+      "placement_pass": "underground_pass",
+      "minecraft:biome_filter": {
+        "any_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "dripstone_caves"
+          },
+          {
+            "any_of": [
+              {
+                "all_of": [
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "taiga"
+                  },
+                  {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "cold"
+                  }
+                ]
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "grove"
+              }
+            ]
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "taiga"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "mooshroom_island"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 8,
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "triangle",
+        "extent": [
+          64,
+          320
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

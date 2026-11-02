@@ -7,10 +7,10 @@
                 "battle_standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_battle_standing": "!v.primary"
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -59,10 +59,10 @@
                 "surfacewater_battle_standing": {
                     "animations": [
                         {
-                            "surfacewater_idle": "!v.primary"
+                            "surfacewater_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_surfacewater_battle_standing": "!v.primary"
+                            "pose_surfacewater_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -111,10 +111,10 @@
                 "underwater_battle_standing": {
                     "animations": [
                         {
-                            "water_idle": "!v.primary"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_underwater_battle_standing": "!v.primary"
+                            "pose_underwater_battle_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -163,13 +163,13 @@
                 "standing": {
                     "animations": [
                         {
-                            "ground_idle": "!v.primary"
+                            "ground_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_walk": "(q.has_rider) && !v.primary"
+                            "ride_ground_walk": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_standing": "!v.primary"
+                            "pose_standing": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -218,13 +218,13 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_walk": "!v.primary"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_ground_walk": "(q.has_rider) && !v.primary"
+                            "ride_ground_walk": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_walking": "!v.primary"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -273,10 +273,10 @@
                 "water_jump": {
                     "animations": [
                         {
-                            "ride_surfacewater_jump": "!v.primary"
+                            "ride_surfacewater_jump": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_water_jump": "!v.primary"
+                            "pose_water_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -325,10 +325,10 @@
                 "land_jump": {
                     "animations": [
                         {
-                            "ride_ground_jump": "!v.primary"
+                            "ride_ground_jump": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_land_jump": "!v.primary"
+                            "pose_land_jump": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -377,13 +377,13 @@
                 "surfacewater_float": {
                     "animations": [
                         {
-                            "surfacewater_idle": "!v.primary"
+                            "surfacewater_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_surfacewater_swim": "(q.has_rider) && !v.primary"
+                            "ride_surfacewater_swim": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_surfacewater_float": "!v.primary"
+                            "pose_surfacewater_float": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -432,10 +432,10 @@
                 "float": {
                     "animations": [
                         {
-                            "water_idle": "!v.primary"
+                            "water_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_float": "!v.primary"
+                            "pose_float": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -484,13 +484,13 @@
                 "surfacewater_swim": {
                     "animations": [
                         {
-                            "surfacewater_swim": "!v.primary"
+                            "surfacewater_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "ride_surfacewater_swim": "(q.has_rider) && !v.primary"
+                            "ride_surfacewater_swim": "(q.has_rider) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "pose_surfacewater_swim": "!v.primary"
+                            "pose_surfacewater_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -539,10 +539,10 @@
                 "swim": {
                     "animations": [
                         {
-                            "water_swim": "!v.primary"
+                            "water_swim": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_swim": "!v.primary"
+                            "pose_swim": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -591,7 +591,7 @@
                 "sleep": {
                     "animations": [
                         {
-                            "sleep": "!v.primary"
+                            "sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -640,7 +640,7 @@
                 "water_sleep": {
                     "animations": [
                         {
-                            "water_sleep": "!v.primary"
+                            "water_sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -689,7 +689,7 @@
                 "surfacewater_sleep": {
                     "animations": [
                         {
-                            "surfacewater_sleep": "!v.primary"
+                            "surfacewater_sleep": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -869,7 +869,9 @@
                 },
                 "clip_1": {
                     "animations": [
-                        "primary_1"
+                        {
+                            "primary_1": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -894,7 +896,9 @@
                 },
                 "clip_2": {
                     "animations": [
-                        "primary_2"
+                        {
+                            "primary_2": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -919,7 +923,9 @@
                 },
                 "clip_3": {
                     "animations": [
-                        "primary_3"
+                        {
+                            "primary_3": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -944,7 +950,9 @@
                 },
                 "clip_4": {
                     "animations": [
-                        "primary_4"
+                        {
+                            "primary_4": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -969,7 +977,9 @@
                 },
                 "clip_5": {
                     "animations": [
-                        "primary_5"
+                        {
+                            "primary_5": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {
@@ -994,7 +1004,9 @@
                 },
                 "clip_6": {
                     "animations": [
-                        "primary_6"
+                        {
+                            "primary_6": "v.primary_w"
+                        }
                     ],
                     "transitions": [
                         {

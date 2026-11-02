@@ -11,57 +11,70 @@
                     "default": 2
                 },
                 "minecraft:biome_filter": {
-                    "any_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "jungle"
-                        },
+                    "all_of": [
                         {
                             "any_of": [
                                 {
                                     "test": "has_biome_tag",
                                     "operator": "==",
-                                    "value": "frozen_peaks"
+                                    "value": "jungle"
                                 },
                                 {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "jagged_peaks"
-                                },
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "snowy_slopes"
-                                },
-                                {
-                                    "all_of": [
+                                    "any_of": [
                                         {
                                             "test": "has_biome_tag",
                                             "operator": "==",
-                                            "value": "mountains"
+                                            "value": "frozen_peaks"
                                         },
                                         {
                                             "test": "has_biome_tag",
-                                            "operator": "!=",
-                                            "value": "frozen"
+                                            "operator": "==",
+                                            "value": "jagged_peaks"
                                         },
                                         {
                                             "test": "has_biome_tag",
-                                            "operator": "!=",
-                                            "value": "meadow"
+                                            "operator": "==",
+                                            "value": "snowy_slopes"
                                         },
                                         {
-                                            "test": "has_biome_tag",
-                                            "operator": "!=",
-                                            "value": "cherry_grove"
-                                        },
-                                        {
-                                            "test": "has_biome_tag",
-                                            "operator": "!=",
-                                            "value": "grove"
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "mountains"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "frozen"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "meadow"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "cherry_grove"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "grove"
+                                                }
+                                            ]
                                         }
                                     ]
+                                }
+                            ]
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "deep_dark"
                                 }
                             ]
                         }
@@ -84,7 +97,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 236
+                    "default": 189
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -99,6 +112,118 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "all_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "jungle"
+                                },
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "frozen_peaks"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "jagged_peaks"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "snowy_slopes"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "mountains"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "frozen"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "meadow"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "cherry_grove"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "!=",
+                                                    "value": "grove"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "deep_dark"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:height_filter": {
+                    "min": 0,
+                    "max": 320
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 47
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "overworld"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:height_filter": {
+                    "min": 48,
+                    "max": 320
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
                 }
             }
         ]
