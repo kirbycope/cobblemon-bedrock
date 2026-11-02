@@ -6034,7 +6034,8 @@ def java_model_cubes(model):
         rotation = element.get("rotation")
         if rotation and rotation.get("angle"):
             axis = rotation.get("axis", "y"); angle = rotation["angle"]
-            cube["rotation"] = [angle if axis == "x" else 0, -angle if axis == "y" else 0, -angle if axis == "z" else 0]
+            # Bedrock turns about x the other way from Java (the lectern's slope, the bottles' necks stood the wrong way)
+            cube["rotation"] = [-angle if axis == "x" else 0, -angle if axis == "y" else 0, -angle if axis == "z" else 0]
             ox, oy, oz = rotation.get("origin", [8, 8, 8])
             cube["pivot"] = [8 - ox, oy, oz - 8]
         for face, info in element.get("faces", {}).items():
@@ -6048,6 +6049,7 @@ def java_model_cubes(model):
                        "west": [z1, 16 - y2, z2, 16 - y1], "up": [x1, z1, x2, z2], "down": [x1, z1, x2, z2]}[face]
             u1, v1, u2, v2 = info.get("uv", default)
             cube["uv"][face] = {"uv": [u1, v1], "uv_size": [u2 - u1, v2 - v1], "material_instance": instances[texture][0]}
+            if info.get("rotation"): cube["uv"][face]["uv_rotation"] = info["rotation"] % 360
         if cube["uv"]: cubes.append(cube)
     spread_flush_planes(cubes)
     return cubes, {name: key for name, key in instances.values()}
@@ -6303,7 +6305,8 @@ def write_block_geometry(identifier, cubes):
     cubes = fit_block(cubes)
     os.makedirs(blockModelsBedrock, exist_ok=True)
     with open(f"{blockModelsBedrock}/{identifier.split('.', 1)[1]}.geo.json", "w") as file:
-        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+        # 1.21.0 for the faces' uv_rotation
+        file.write(json.dumps({"format_version": "1.21.0", "minecraft:geometry": [{
             "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
                             "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1, 0]},
             "bones": [{"name": "block", "pivot": [0, 0, 0], "cubes": cubes}]}]}, indent=1))
