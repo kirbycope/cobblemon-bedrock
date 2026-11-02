@@ -759,6 +759,7 @@ def create_texts():
             file.write(f"tile.cobblemon:{name}.name={lang.get('block.cobblemon.' + name, title)}\n")
         for n in range(3 + len(fossil_recipes())): file.write(f"entity.cobblemon:fossil_display_{n}.name=Fossil\n")
         file.write("tile.cobblemon:healing_machine.name=Healing Machine\n")
+        file.write(f"tile.cobblemon:lectern.name={lang.get('block.cobblemon.lectern', 'Lectern')}\n")
         for rod, _ in poke_rods(): file.write(f"item.cobblemon:{rod}.name={lang.get('item.cobblemon.' + rod, rod.replace('_', ' ').title())}\n")
         file.write(f"item.cobblemon:pokerod_smithing_template.name={lang.get('item.cobblemon.pokerod_smithing_template', 'Poke Rod Smithing Template')}\n")
         file.write("entity.cobblemon:poke_bobber.name=Bobber\n")
@@ -12236,6 +12237,111 @@ def create_model_blocks():
     return made
 
 
+# LecternBlock: a Pokedex used on an empty lectern (LecternBlockMixin) turns it into Cobblemon's lectern holding that
+# Pokedex, the vanilla lectern's model with the Pokedex's flat model lying on its top as LecternBlockEntityRenderer draws
+# it (at 1.17 blocks up, tilted 22.5 degrees, 0.13 along it, in its GROUND display, screen off). scripts/main.js opens
+# the Pokedex on use and hands it back to a sneaking empty hand. The vanilla lectern's model is read from the Java
+# 1.21.1 client (java_client_jars), drawn with Bedrock's own lectern textures
+
+
+def java_cubes(elements, textures, instances):
+    """Cubes for Java model elements, as java_model_cubes makes them, but whole above and below the block and with each
+    face's texture rotation (uv_rotation, geometry 1.21.0)."""
+    def resolve(ref, depth=0):
+        while isinstance(ref, str) and ref.startswith("#") and depth < 5: ref = textures.get(ref[1:]); depth += 1
+        return ref
+    cubes = []
+    for element in elements:
+        (x1, y1, z1), (x2, y2, z2) = element["from"], element["to"]
+        cube = {"origin": [8 - x2, y1, z1 - 8], "size": [x2 - x1, y2 - y1, z2 - z1], "uv": {}}
+        rotation = element.get("rotation")
+        if rotation and rotation.get("angle"):
+            axis = rotation.get("axis", "y"); angle = rotation["angle"]
+            # Bedrock turns about x the other way from Java: the lectern's slope stood the wrong way round
+            cube["rotation"] = [-angle if axis == "x" else 0, -angle if axis == "y" else 0, -angle if axis == "z" else 0]
+            ox, oy, oz = rotation.get("origin", [8, 8, 8])
+            cube["pivot"] = [8 - ox, oy, oz - 8]
+        for face, info in element.get("faces", {}).items():
+            texture = resolve(info.get("texture"))
+            if not texture: continue
+            if texture not in instances:
+                key = java_texture(texture)
+                if not key: continue
+                instances[texture] = (f"t{len(instances)}", key)
+            default = {"north": [x1, 16 - y2, x2, 16 - y1], "south": [x1, 16 - y2, x2, 16 - y1], "east": [z1, 16 - y2, z2, 16 - y1],
+                       "west": [z1, 16 - y2, z2, 16 - y1], "up": [x1, z1, x2, z2], "down": [x1, z1, x2, z2]}[face]
+            u1, v1, u2, v2 = info.get("uv", default)
+            cube["uv"][face] = {"uv": [u1, v1], "uv_size": [u2 - u1, v2 - v1], "material_instance": instances[texture][0]}
+            if info.get("rotation"): cube["uv"][face]["uv_rotation"] = info["rotation"] % 360
+        if cube["uv"]: cubes.append(cube)
+    return cubes
+
+
+def create_lectern():
+    import zipfile
+    jar = next((j for j in java_client_jars() if "1.21.1" in os.path.basename(j)), None)
+    if not jar: print("  lectern: no Java 1.21.1 client to read the lectern's model from"); return
+    with zipfile.ZipFile(jar) as z: lectern = json.loads(z.read("assets/minecraft/models/block/lectern.json"))
+    instances = {}
+    cubes = java_cubes(lectern["elements"], lectern["textures"], instances)
+    # the Pokedex for a lectern facing north (the model's own way): its flat model about its centre through the GROUND
+    # display, 0.13 blocks along, turned about y by the renderer's -yRot (180 for north, so x and z change sides and north
+    # and south faces swap) and then tilted 22.5 degrees about x, about the point 1.17 blocks over the block's centre
+    with open(f"{cobblemon}/models/item/pokedex_red_model_flat.json", encoding="utf-8") as file: dex = json.load(file)
+    (gx, gy, gz), (sx, sy, sz) = [0, 3, 0], [0.75, 0.6, 0.75]
+    gx, gy, gz = (dex.get("display", {}).get("ground", {}).get("translation") or [gx, gy, gz])
+    sx, sy, sz = (dex.get("display", {}).get("ground", {}).get("scale") or [sx, sy, sz])
+    centre_y, along = 1.17 * 16, 0.13 * 16
+    swap = {"north": "south", "south": "north", "east": "west", "west": "east", "up": "up", "down": "down"}
+    turned = []
+    for element in dex["elements"]:
+        (x1, y1, z1), (x2, y2, z2) = element["from"], element["to"]
+        m = lambda x, y, z: ((x - 8) * sx + gx, (y - 8) * sy + gy, (z - 8) * sz + gz + along)
+        (ax, ay, az), (bx, by, bz) = m(x1, y1, z1), m(x2, y2, z2)
+        turned.append({"from": [8 - bx, centre_y + ay, 8 - bz], "to": [8 - ax, centre_y + by, 8 - az],
+                       "rotation": {"angle": -22.5, "axis": "x", "origin": [8, centre_y, 8]},
+                       "faces": {swap[f]: info for f, info in element["faces"].items()}})
+    dex_textures = {"all": "cobblemon:item/pokedexes/models/pokedex_red", "screen": "cobblemon:item/pokedexes/models/pokedex_screen_off"}
+    cubes += java_cubes(turned, dex_textures, instances)
+    body = instances["cobblemon:item/pokedexes/models/pokedex_red"][0]
+    with open(f"{blockModelsBedrock}/cobblemon_lectern.geo.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.0", "minecraft:geometry": [{
+            "description": {"identifier": "geometry.cobblemon_lectern", "texture_width": 16, "texture_height": 16,
+                            "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1, 0]},
+            "bones": [{"name": "block", "pivot": [0, 0, 0], "cubes": cubes}]}]}, indent=1))
+    materials = material_instances({name: key for name, key in instances.values()})
+    permutations = [{"condition": f"q.block_state('cobblemon:pokedex') == '{colour}'",
+                     "components": {"minecraft:material_instances": {**materials, body: {**materials[body], "texture": java_texture(f"cobblemon:item/pokedexes/models/pokedex_{colour}")}},
+                                    "minecraft:loot": block_loot_pokedex(colour)}}
+                    for colour in POKEDEX_COLOURS]
+    # Java's variants turn the north model by y 90, 180 and 270 for east, south and west, clockwise from above
+    permutations += [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}'",
+                      "components": {"minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}}
+                     for d, ry in (("north", 0), ("east", 90), ("south", 180), ("west", 270))]
+    definition = {"format_version": "1.21.90", "minecraft:block": {
+        "description": {"identifier": "cobblemon:lectern", "menu_category": {"category": "none"},
+                        "states": {"cobblemon:pokedex": POKEDEX_COLOURS},
+                        "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
+        "components": {"minecraft:geometry": "geometry.cobblemon_lectern", "minecraft:material_instances": materials,
+                       # MinecraftLecternBlock.SHAPE_COLLISION (the base and the post) and its outline, the whole of it
+                       "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]},
+                       "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 16, 16]},
+                       "minecraft:destructible_by_mining": {"seconds_to_destroy": 2.5}, "minecraft:destructible_by_explosion": {"explosion_resistance": 2.5},
+                       "minecraft:flammable": {"catch_chance_modifier": 30, "destroy_chance_modifier": 20},
+                       "minecraft:light_dampening": 0, "minecraft:loot": block_loot_pokedex("red")},
+        "permutations": permutations}}
+    with open(f"{blocksBedrock}/lectern.json", "w") as file: file.write(json.dumps(definition, indent=2))
+    print(f"  lectern: the vanilla lectern's model with a Pokedex on it, {len(POKEDEX_COLOURS)} colours")
+
+
+def block_loot_pokedex(colour):
+    """A lectern holding a Pokedex gives the Pokedex up when it breaks; the lectern and what it held before come back
+    through the script, which keeps the lectern as it was (scripts/main.js)."""
+    table = {"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:pokedex_{colour}"}]}]}
+    with open(f"{lootBlocksBedrock}/lectern_{colour}.json", "w") as file: file.write(json.dumps(table))
+    return f"loot_tables/blocks/lectern_{colour}.json"
+
+
 # ---------------------------------------------------------------------------
 # Furniture: the CobbleFurnies blocks (by LunazStudios, credited in README.md and in the behavior pack's
 # COBBLEFURNIES_CREDITS.txt) that the Radical Gyms buildings are furnished with, and only those. Each is drawn from
@@ -12667,6 +12773,7 @@ def main():
     create_held_display()
     write_item_names(general_items)
     create_furniture()   # before create_model_blocks, which writes the terrain textures
+    create_lectern()   # the same
     create_model_blocks()
     create_variant_index()
     add_intrinsic_scale()

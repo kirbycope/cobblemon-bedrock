@@ -6,7 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
-import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation } from "@minecraft/server";
+import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
@@ -6420,6 +6420,61 @@ world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState 
 function scanTitle(player, text) {
     try { player.onScreenDisplay.setTitle(SCAN_MARKER + text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
 }
+// LecternBlockMixin: a Pokedex used on a lectern turns it into Cobblemon's lectern holding that Pokedex (port.py's
+// create_lectern), facing as it did. Bedrock's lectern keeps no state for a book, so the lectern as it stood, book and
+// all, is saved as a structure first and put back when the Pokedex comes off. LecternBlock: using it opens the Pokedex,
+// sneaking with an empty hand takes the Pokedex into it, and breaking it drops the Pokedex (its loot table) and leaves
+// the lectern as it was: Java's drops the lectern too, but a lectern a script breaks (setblock destroy) drops no book, so
+// one put back and broken would lose the book it held
+const LECTERN = "cobblemon:lectern";
+const lecternId = (dim, at) => `cobblemon:lectern_${dim.id.split(":")[1]}_${at.x}_${at.y}_${at.z}`.replace(/-/g, "m");
+function pokedexOnLectern(block, player, colour) {
+    const dim = block.dimension, at = block.location, id = lecternId(dim, at);
+    let facing = "north";
+    try { facing = block.permutation.getState("minecraft:cardinal_direction") ?? "north"; } catch (e) { }
+    try {
+        try { world.structureManager.delete(id); } catch (e) { }
+        world.structureManager.createFromWorld(id, dim, at, at, { includeEntities: false, saveMode: StructureSaveMode.World });
+        block.setPermutation(BlockPermutation.resolve(LECTERN, { "cobblemon:pokedex": colour, "minecraft:cardinal_direction": facing }));
+    } catch (e) { console.warn(`[cobblemon] lectern at ${at.x} ${at.y} ${at.z}: ${e}`); return; }
+    consumeHand(player);
+    try { dim.playSound("cobblemon.item.pokedex.close", block.center(), { volume: 0.5, pitch: 1.25 }); } catch (e) { }
+}
+// the lectern as it stood before the Pokedex, or a plain one facing the same way where none was saved
+function restoreLectern(block) {
+    const dim = block.dimension, at = block.location, id = lecternId(dim, at);
+    let facing = "north";
+    try { facing = block.permutation.getState("minecraft:cardinal_direction") ?? "north"; } catch (e) { }
+    try { world.structureManager.place(id, dim, at, { includeEntities: false }); }
+    catch (e) { try { block.setPermutation(BlockPermutation.resolve("minecraft:lectern", { "minecraft:cardinal_direction": facing })); } catch (err) { } }
+    try { world.structureManager.delete(id); } catch (e) { }
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { block, player, itemStack } = event;
+    if (block.typeId === "minecraft:lectern" && itemStack?.typeId.startsWith("cobblemon:pokedex_")) {
+        event.cancel = true;
+        if (event.isFirstEvent) system.run(() => pokedexOnLectern(block, player, itemStack.typeId.slice("cobblemon:pokedex_".length)));
+    } else if (block.typeId === LECTERN) {
+        event.cancel = true;
+        if (!event.isFirstEvent) return;
+        system.run(() => {
+            const colour = block.permutation.getState("cobblemon:pokedex");
+            if (!player.isSneaking) {
+                try { block.dimension.playSound("cobblemon.item.pokedex.open", block.center(), { volume: 0.25 }); } catch (e) { }
+                openDex(player, colour);
+                return;
+            }
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;
+            if (!inv || inv.getItem(slot)) return;
+            inv.setItem(slot, new ItemStack(`cobblemon:pokedex_${colour}`, 1));
+            restoreLectern(block);
+            try { block.dimension.playSound("random.pop", block.center(), { volume: 0.7 }); } catch (e) { }
+        });
+    }
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation.type.id === LECTERN) restoreLectern(block);
+});
 function scanSound(player, name) { try { player.playSound(`cobblemon.item.pokedex.${name}`); } catch (e) { } }
 function scanRecord(st) {
     if (!st.open) return "of" + "of" + "of" + "of" + "xxxx" + " ".repeat(160) + "nn";
