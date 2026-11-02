@@ -8988,7 +8988,7 @@ def depletable_red_green(ratio):
 SUMMARY_LAYOUT = [("tab", 1), ("size", 1), ("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("status", 3),
                   ("dex", 7), ("species", 16), ("types", 20), ("ot", 16), ("nature", 18), ("ability", 20), ("exp", 12), ("tonext", 12), ("expbar", 3),
                   ("friendship", 6)] \
-    + [(f"m{n}{k}", w) for n in range(4) for k, w in (("name", 16), ("type", 3), ("pp", 9), ("sel", 1))] \
+    + [(f"m{n}{k}", w) for n in range(4) for k, w in (("name", 16), ("type", 3), ("cat", 3), ("pp", 9), ("sel", 1))] \
     + [("mpower", 8), ("macc", 8), ("meff", 8), ("mdesc", 160)] \
     + [(f"s{k}{v}", w) for k in ("hp", "atk", "def", "spa", "spd", "spe") for v, w in (("val", 6), ("iv", 5), ("ev", 6), ("mark", 1))] \
     + [(f"p{n}{k}", w) for n in range(6) for k, w in (("name", 12), ("level", 7), ("hp", 3), ("gender", 1), ("state", 1), ("icon", 5))] \
@@ -9379,6 +9379,9 @@ def create_summary_ui():
     for status in ("brn", "par", "psn", "tox", "slp", "frz", "fnt"):
         Image.open(f"{guiMain}/battle/battle_status_{status}.png").crop((35, 0, 74, 7)).save(f"{S}/st{status}.png")
     blank.save(f"{S}/stnon.png")   # no status
+    categories = Image.open(f"{guiMain}/categories.png").convert("RGBA")
+    for n, code in enumerate(("cph", "csp", "cst")): categories.crop((0, n * 16, 24, n * 16 + 16)).save(f"{S}/{code}.png")
+    blank.save(f"{S}/c--.png")
 
     T = "textures/ui/cobblemon/summary"
     offsets = summary_offsets()
@@ -9424,6 +9427,8 @@ def create_summary_ui():
         y = 6 + 25 * n
         moves += [picture(f"tile{n}", field(f"m{n}type"), (13, y), (108, 22), 3, "move_"),
                   picture(f"type{n}", field(f"m{n}type"), (15, y + 2), (18, 18), 4),
+                  # MoveCategoryIcon at 66, 13.5 on the tile: cph, csp, cst (c-- with no move)
+                  picture(f"cat{n}", field(f"m{n}cat"), (13 + 66, y + 13.5), (12, 8), 5),
                   label(f"name{n}", field(f"m{n}name"), (41, y + 3), 0.75, size=(80, 10)),
                   label(f"pp{n}", field(f"m{n}pp"), (13 + 60, y + 13), 0.5, size=(45, 5), align="right")]
     for n, (key, text) in enumerate((("power", "Power"), ("acc", "Accuracy"), ("eff", "Effect"))):
@@ -11532,6 +11537,11 @@ def create_interact_ui():
     return {"cobblemon_interact": wheel}
 
 
+# DamageCategories in order (their textureXMultiplier), and the letter each puts after a battle move button's name
+MOVE_CATEGORIES = ["physical", "special", "status"]
+MOVE_CATEGORY_CODES = ["p", "s", "x"]
+
+
 def create_battle_ui():
     for folder in ("battle", "types"): os.makedirs(f"{uiTextures}/{folder}", exist_ok=True)
     def frames(name, height):
@@ -11545,6 +11555,11 @@ def create_battle_ui():
     # BattleMoveSelection: the move tile tinted by its type's hue, the overlay over it, half opacity when it cannot be picked
     tile, tile_hover = frames("battle_move", 24)
     overlay = Image.open(f"{guiMain}/battle/battle_move_overlay.png").convert("RGBA")
+    # MoveCategoryIcon: categories.png's rows, physical, special and status, each 24 by 16 drawn at half size
+    os.makedirs(f"{uiTextures}/categories", exist_ok=True)
+    categories = Image.open(f"{guiMain}/categories.png").convert("RGBA")
+    for n, code in enumerate(MOVE_CATEGORY_CODES):
+        categories.crop((0, n * 16, 24, n * 16 + 16)).save(f"{uiTextures}/categories/{code}.png")
     small = Image.open(f"{guiMain}/types_small.png").convert("RGBA")
     for n, (type_name, hue) in enumerate(TYPE_HUES):
         rgb = ((hue >> 16) & 255, (hue >> 8) & 255, hue & 255)
@@ -11688,10 +11703,17 @@ def create_battle_ui():
     menu_item = {"type": "panel", "size": [93, 29], **TILE_DEFAULTS, "bindings": [text_binding, shown],
                  "controls": [{"tile": {**button([90, 26], [button_label("label", "#form_button_text", [6, 8])]), "anchor_from": "top_left", "anchor_to": "top_left",
                                         **TILE_FOCUS}}]}
-    # BattleMoveTile: 92 by 24, the type icon 9 out to the left, the name 17 in, the PP at the right; Back below
+    # BattleMoveTile: 92 by 24, the type icon 9 out to the left, the name 17 in, the PP at the right, the category icon
+    # (MoveCategoryIcon, 12 by 8) at 48, 14.5; Back below. The text is the name in 16, the category's code
+    # (MOVE_CATEGORY_CODES; a bracket there was a JSON UI parse failure), then the PP
+    category_code = "(('%.17s' * #form_button_text) - ('%.16s' * #form_button_text))"
     move_labels = [button_label("name", "('%.16s' * #form_button_text)", [17, 3]),
                    # the PP, centred at 75 across and 14 down, gold at half or less and red when out (its colour code leads the text)
-                   button_label("pp", "(#form_button_text - ('%.16s' * #form_button_text))", [75 - 20, 14], size=(40, 10), align="center"),
+                   button_label("pp", "(#form_button_text - ('%.17s' * #form_button_text))", [75 - 20, 14], size=(40, 10), align="center"),
+                   # the icon named by the code, as the type icon is by the texture (three images each shown by its code
+                   # were a JSON UI parse failure)
+                   {"category_icon": {"type": "image", "size": [12, 8], "offset": [48, 14.5], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                                      "bindings": [text_binding, {"binding_type": "view", "source_property_name": f"('{T}/categories/' + {category_code})", "target_property_name": "#texture"}]}},
                    {"type_icon": {"type": "image", "size": [18, 18], "offset": [-9, 3], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
                                   "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                                {"binding_type": "view", "source_property_name": f"('{T}/types/' + ((#form_button_texture - '{T}/battle/move_') - '_off'))", "target_property_name": "#texture"}]}}]

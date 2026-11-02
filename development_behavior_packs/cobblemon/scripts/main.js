@@ -2816,7 +2816,9 @@ function pickAction(battle, options) {
         for (const o of moves) {
             const m = o.move, off = o.locked || o.blocked || (m !== STRUGGLE && m.left <= 0);
             const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
-            form.button(pad(m.name, 16) + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
+            // the category's code after the name (port.py's MOVE_CATEGORY_CODES), for MoveCategoryIcon
+            const category = { Physical: "p", Special: "s", Status: "x" }[m.category ?? MOVES[m.id]?.category] ?? "p";
+            form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
         form.button("Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
         return form.show(battle.player).then((m) => {
@@ -8158,8 +8160,11 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const span = Math.max(1, expFor(group, f.level + 1) - expFor(group, f.level));
     v.exp = num(exp); v.tonext = num(f.level >= 100 ? 0 : expFor(group, f.level + 1) - exp);
     v.expbar = `x${String(Math.round(Math.min(1, (exp - expFor(group, f.level)) / span) * 55)).padStart(2, "0")}`;
-    f.moves.slice(0, 4).forEach((mv, n) => { v[`m${n}name`] = mv.name; v[`m${n}type`] = typeCode(mv.type); v[`m${n}pp`] = num(`${mv.left}/${mv.pp}`); });
-    for (let n = f.moves.length; n < 4; n++) { v[`m${n}type`] = "t--"; }
+    f.moves.slice(0, 4).forEach((mv, n) => {
+        v[`m${n}name`] = mv.name; v[`m${n}type`] = typeCode(mv.type); v[`m${n}pp`] = num(`${mv.left}/${mv.pp}`);
+        v[`m${n}cat`] = { Physical: "cph", Special: "csp", Status: "cst" }[mv.category ?? MOVES[mv.id]?.category] ?? "c--";
+    });
+    for (let n = f.moves.length; n < 4; n++) { v[`m${n}type`] = "t--"; v[`m${n}cat`] = "c--"; }
     for (let n = 0; n < 4; n++) v[`m${n}sel`] = n === selected && f.moves[n] ? "y" : "n";
     const chosen = f.moves[selected];
     if (chosen) {
