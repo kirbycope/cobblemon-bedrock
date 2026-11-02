@@ -117,6 +117,8 @@ def join() -> None:
     a NetherNet error on this build, which is why the LAN route is used. Call this from the main menu only."""
     # Play, only from the main menu: on the Worlds list that spot is a world's tile, and a click there once opened a
     # local survival world that a zombie then killed the idle player in (November 2026)
+    back = find_text(["back to menu"])   # a server restart leaves the client on "Disconnected from host"
+    if back: click(back[0], back[1]); time.sleep(4)
     if not find_text(["create new world"]):
         if not find_text(["realms", "marketplace"]) or find_text(["resume game", "save & quit"]):
             sys.exit("not on the main menu or the Worlds list; touching nothing")

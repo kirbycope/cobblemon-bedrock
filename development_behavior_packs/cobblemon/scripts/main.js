@@ -4003,10 +4003,11 @@ function openChallenge(player, target) {
     const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + "Single Battle";
     const T = `${UI}/request`, none = `${UI}/request/none`;
     const form = new ActionFormData().title("cbm:challenge").body(body);
-    form.button(pending ? "accept" : "Challenge", pending ? `${T}/accept` : `${T}/battle`);
+    form.button(pending ? "" : "Challenge", pending ? none : `${T}/battle`);
     form.button(pending ? "decline" : "", pending ? `${T}/decline` : none);   // in a challenge, the Challenge button's right half
     form.button("", pending ? none : `${T}/arrow_left`).button("", pending ? none : `${T}/arrow_right`);
     form.button("", pending ? none : `${T}/label_arrow_left`).button("", pending ? none : `${T}/label_arrow_right`);
+    form.button(pending ? "accept" : "", pending ? `${T}/accept` : none);   // Accept beside Decline, its own button for a controller
     form.show(player).then((r) => {
         if (r.canceled || !target.isValid) return;
         const pick = r.selection;
@@ -4014,7 +4015,7 @@ function openChallenge(player, target) {
         if (pending) {
             const i = challenges.indexOf(pending);
             if (i < 0) { player.sendMessage("§7That request has already expired!"); return; }
-            if (pick === 0) { challenges.splice(i, 1); acceptChallenge(pending); }
+            if (pick === 6 || pick === 0) { challenges.splice(i, 1); acceptChallenge(pending); }
             else if (pick === 1) {
                 challenges.splice(i, 1);
                 target.sendMessage(`§b${player.name}§7 declined your challenge...`); player.sendMessage(`§7You declined §b${target.name}§7's challenge.`);
@@ -4043,6 +4044,7 @@ function acceptChallenge(c) {
     if (pvpDistance(c.from, c.to) > PVP_RANGE) { c.to.sendMessage("§cTarget is too far away!"); return; }
     c.from.sendMessage(`§b${c.to.name}§a accepted the challenge!`);
     c.to.sendMessage(`§aYou accepted §b${c.from.name}§a's challenge!`);
+    if (c.test) return;   // cobblemon:challenge_test's stand-in has no Pokemon to battle
     startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
 }
 system.runInterval(() => {
@@ -4242,15 +4244,19 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // testing: "/execute as <player> run scriptevent cobblemon:poke_snack" gives each Poke Snack within 16 blocks the
         // random tick that draws its next Pokemon, rather than waiting minutes for it
         const c = source.location, dim = source.dimension;
+        let found = 0;
         for (let x = -16; x <= 16; x++) for (let y = -6; y <= 6; y++) for (let z = -16; z <= 16; z++) {
             let block;
             try { block = dim.getBlock({ x: Math.floor(c.x) + x, y: Math.floor(c.y) + y, z: Math.floor(c.z) + z }); } catch (e) { continue; }
             if (block?.typeId !== "cobblemon:poke_snack") continue;
             const key = snackKey(dim, block.location);
             const all = snackRecords(); all[key] = { ...(all[key] ?? { s: [] }), t: 1 }; saveSnackRecords(all);
-            snackTick(block);
-            console.warn(`[cobblemon] poke_snack at ${key}: bites ${block.isValid && block.typeId === "cobblemon:poke_snack" ? block.permutation.getState("cobblemon:bites") : "gone"}`);
+            found++;
+            let result;
+            try { result = snackTick(block); } catch (e) { result = `error: ${e}`; }
+            console.warn(`[cobblemon] poke_snack at ${key}: ${result}; bites ${block.isValid && block.typeId === "cobblemon:poke_snack" ? block.permutation.getState("cobblemon:bites") : "gone"}`);
         }
+        if (!found) console.warn("[cobblemon] poke_snack: no Poke Snack within 16 blocks");
     } else if (event.id === "cobblemon:faint") {
         // testing: "/execute as <player> run scriptevent cobblemon:faint <slot>" faints that party slot (from 0), recalled
         const slot = partyOf(source.id)[Number(event.message) || 0];
@@ -4516,6 +4522,13 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const i = challenges.findIndex((c) => c.to.id === source.id);
         if (i < 0) { console.warn(`[cobblemon] no challenge for ${source.name ?? source.typeId}`); return; }
         acceptChallenge(challenges.splice(i, 1)[0]);
+    } else if (event.id === "cobblemon:challenge_test" && source.typeId === "minecraft:player") {
+        // for testing: "/execute as <player> run scriptevent cobblemon:challenge_test" opens a Battle Request received from
+        // a stand-in challenger, to try Accept and Decline (with a controller too) with one player; Accept says so and
+        // stops there, as there is no one to battle
+        const stand = { id: "challenge_test", name: "Tester", isValid: true, location: source.location, dimension: source.dimension, sendMessage() { } };
+        challenges.push({ from: stand, to: source, level: 0, at: system.currentTick, test: true });
+        openChallenge(source, stand);
     } else if (event.id === "cobblemon:wheel") {
         // for testing: "/execute as <pokemon> run scriptevent cobblemon:wheel" opens its interact wheel for its owner,
         // as a sneaking right-click on it does, with whatever the owner holds
@@ -5850,19 +5863,19 @@ function snackTick(block) {
     const dim = block.dimension, at = block.location, key = snackKey(dim, at), all = snackRecords(), rec = all[key] ?? { s: [] };
     const effects = baitEffects({ id: null, s: rec.s });
     rec.t = (rec.t ?? snackTicks(effects)) - 1;
-    if (rec.t > 0) { all[key] = rec; saveSnackRecords(all); return; }
+    if (rec.t > 0) { all[key] = rec; saveSnackRecords(all); return `waiting ${rec.t}`; }
     rec.t = snackTicks(effects); all[key] = rec; saveSnackRecords(all);
     const centre = { x: at.x + 0.5, y: at.y + 0.5, z: at.z + 0.5 };
-    if (!dim.getPlayers({ location: centre, maxDistance: 64 }).length) return;
+    if (!dim.getPlayers({ location: centre, maxDistance: 64 }).length) return "no player within 64";
     let wild = [];
     try { wild = dim.getEntities({ families: ["pokemon"], location: centre, maxDistance: SNACK_RADIUS + 4 }).filter((e) => prop(e, OWNER) === undefined); } catch (e) { }
-    if (wild.length >= 2) return;
+    if (wild.length >= 2) return "two wild Pokemon about it already";
     const spot = snackSpot(block);
-    if (!spot) return;
+    if (!spot) return "no spot to spawn on";
     const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, SNACK_SPAWNS, SNACK_BUCKETS);
-    if (!plan) return;
+    if (!plan) return "nothing in the pool can spawn here";
     let pokemon;
-    try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return; }
+    try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return `spawning ${plan.spawn.entity} failed: ${e}`; }
     const level = ri(plan.spawn.level[0], plan.spawn.level[1]);
     system.run(() => {
         try {
@@ -5872,6 +5885,7 @@ function snackTick(block) {
         } catch (e) { }
     });
     eatSnack(block);
+    return `drew ${plan.spawn.entity}`;
 }
 // Herds (PokemonHerdSpawnDetail): a herd's first member spawns naturally and fires cobblemon:herd_seed (port.py's
 // create_spawn_rules); the pass then fills the herd to its size (at most maximumSpawnsPerPass, 8). One herd level is

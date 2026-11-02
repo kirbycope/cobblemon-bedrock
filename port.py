@@ -11444,7 +11444,7 @@ def create_challenge_ui():
     tile at half size with the overlay blinking over it (blinkRate 35), the level rule between its label arrows, the
     target's name, the coloured arrows (battle_request_arrows tinted SIDE_1_BATTLE_COLOUR), and the Challenge button, or
     Accept and Decline with their icons for a challenge received; the battle type arrows down the sides. Buttons: 0
-    Challenge or Accept, 1 Decline, 2 and 3 the battle type arrows, 4 and 5 the level rule arrows."""
+    Challenge, 1 Decline, 2 and 3 the battle type arrows, 4 and 5 the level rule arrows, 6 Accept."""
     src = f"{guiMain}/interact/request"
     D = f"{uiTextures}/request"
     os.makedirs(D, exist_ok=True)
@@ -11510,36 +11510,35 @@ def create_challenge_ui():
                               "layer": 1, "keep_ratio": False,
                               "bindings": [texture, view(f"(#form_button_texture + '{'_hover' if hover else ''}')", "#texture")]}}]
         return {"type": "panel", "size": ["100%", "100%"], "controls": controls + (extra or [])}
-    # a collection's buttons must be its own children, so what differs between a challenge and a challenge received
-    # is drawn inside the faces, from the button's text: button 0 is Challenge (69 wide, its text bold at 35, 5) or Accept
-    # (34 wide, its icon at 12, 3.5); button 1 is Decline, or nothing; the arrows are drawn for a challenge only
+    # a collection's buttons must be its own children, so what differs between a challenge and a challenge received is
+    # which buttons main.js gives a face: button 0 is Challenge (69 wide, its text bold at 35, 5), switched off ("none",
+    # so a controller skips it) for a challenge received; 6 Accept and 1 Decline are 34 wide side by side with their
+    # icons at 12, 3.5. Accept once shared button 0, whose 69 wide area lay over Decline, and a controller could not
+    # step from Decline onto it (Planet Minecraft, November 2026); the arrows are drawn for a challenge only
     def challenge_faces(hover):
         suffix = "_hover" if hover else ""
-        def part(name, size, condition, extra):
-            return {name: {"type": "panel", **place((0, 0), size), "bindings": [text, view(condition, "#visible")], "controls": extra}}
         tex = [texture, view(f"(#form_button_texture + '{suffix}')", "#texture")]
-        challenge = part("challenge", (69, 19), "(not (#form_button_text = 'accept'))", [
+        return {"type": "panel", "size": ["100%", "100%"], "controls": [
             {"face": {"type": "image", "layer": 1, "keep_ratio": False, **place((0, 0), (69, 19)), "bindings": tex}},
             {"label": {"type": "label", "text": "#value", "layer": 2, "text_alignment": "center", "shadow": True, **place((0, 5), (69, 10)),
-                       "bindings": [text, view("('\u00a7l' + #form_button_text)", "#value")]}}])
-        accept = part("accept", (34, 19), "(#form_button_text = 'accept')", [
-            {"face": {"type": "image", "layer": 1, "keep_ratio": False, **place((0, 0), (34, 19)), "bindings": tex}},
-            {"icon": {"type": "image", "texture": f"{T}/icon_accept", "layer": 2, "keep_ratio": False, **place((12, 3.5), (10.5, 13))}}])
-        return {"type": "panel", "size": ["100%", "100%"], "controls": [challenge, accept]}
-    def decline_faces(hover):
-        return {"type": "panel", "size": ["100%", "100%"], "controls": [{"decline": {"type": "panel", "size": ["100%", "100%"],
-            "bindings": [text, view("(#form_button_text = 'decline')", "#visible")], "controls": [
-                {"face": {"type": "image", "layer": 1, "keep_ratio": False, "size": ["100%", "100%"],
-                          "bindings": [texture, view(f"(#form_button_texture + '{'_hover' if hover else ''}')", "#texture")]}},
-                {"icon": {"type": "image", "texture": f"{T}/icon_decline", "layer": 2, "keep_ratio": False, **place((12, 3.5), (10.5, 13))}}]}}]}
+                       "bindings": [text, view("('\u00a7l' + #form_button_text)", "#value")]}}]}
+    def answer_faces(name):
+        def faces(hover):
+            return {"type": "panel", "size": ["100%", "100%"], "controls": [{name: {"type": "panel", "size": ["100%", "100%"],
+                "bindings": [text, view(f"(#form_button_text = '{name}')", "#visible")], "controls": [
+                    {"face": {"type": "image", "layer": 1, "keep_ratio": False, "size": ["100%", "100%"],
+                              "bindings": [texture, view(f"(#form_button_texture + '{'_hover' if hover else ''}')", "#texture")]}},
+                    {"icon": {"type": "image", "texture": f"{T}/icon_{name}", "layer": 2, "keep_ratio": False, **place((12, 3.5), (10.5, 13))}}]}}]}
+        return faces
     # BattleRequestNavigationButton at half size: the battle type arrows click 48 high with their icon 20 down
     def arrow_faces(icon_offset):
         return lambda hover: face(hover, image_offset=icon_offset, image_size=(4.5, 8))
-    # Accept sits where Challenge does but is 34 wide; Decline, after it, takes the clicks on the right half when shown,
-    # and main.js reads a click on button 1 in a challenge as Challenge
-    buttons = [button(0, (22, 99), (69, 19), challenge_faces), button(1, (56, 99), (34, 19), decline_faces),
+    # Accept sits where Challenge does but is 34 wide, Decline after it; in a challenge button 1 is a faceless part of
+    # Challenge's right half, which main.js reads as Challenge
+    buttons = [button(0, (22, 99), (69, 19), challenge_faces), button(1, (56, 99), (34, 19), answer_faces("decline")),
                button(2, (2, 30), (4.5, 48), arrow_faces((0, 20))), button(3, (106, 30), (4.5, 48), arrow_faces((0, 20))),
-               button(4, (15, 76), (4.5, 8), arrow_faces((0, 0))), button(5, (94, 76), (4.5, 8), arrow_faces((0, 0)))]
+               button(4, (15, 76), (4.5, 8), arrow_faces((0, 0))), button(5, (94, 76), (4.5, 8), arrow_faces((0, 0))),
+               button(6, (22, 99), (34, 19), answer_faces("accept"))]
     panel = {"type": "panel", "size": [113, 126], "anchor_from": "center", "anchor_to": "center",
              "bindings": [{"binding_name": "#title_text"}, view("(not ((#title_text - 'cbm:challenge') = #title_text))", "#visible")],
              "controls": controls + [{"buttons": {"type": "collection_panel", "size": [113, 126], "collection_name": "form_buttons", "controls": buttons}}]}
