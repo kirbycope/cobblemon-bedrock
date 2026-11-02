@@ -7005,6 +7005,36 @@ function damageHeld(player) {
     if (!dur) return;
     if (dur.damage + 1 >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += 1; inv.setItem(slot, item); }
 }
+// RootBlock: a big or an energy root (cobblemon:root) on a random tick, in light under 11 (MAX_PROPAGATING_LIGHT_LEVEL)
+// and with fewer than 9 roots (maxRootsInArea) within 4 blocks across and 1 up or down, spreads to a side that is free
+// with dirt or stone over it (#cobblemon:roots_spreadable), an energy root one time in four (energyRootChance), else a
+// big root. Java spreads on half its random ticks (bigRootPropagationChance), and Bedrock's come a third as often, so
+// every one of Bedrock's spreads. Bone meal spreads it at once; shears cut a big root to hanging roots and String, and
+// an energy root to a big root and an Energy Root
+const ROOTS = ["cobblemon:big_root", "cobblemon:energy_root_block"], ROOT_MAX_LIGHT = 11, ROOTS_IN_AREA = 9, ENERGY_ROOT_CHANCE = 0.25;
+const ROOT_CEILINGS = new Set(["andesite", "coarse_dirt", "cobbled_deepslate", "cobblestone", "deepslate", "diorite", "dirt", "dirt_with_roots",
+    "granite", "grass_block", "infested_cobblestone", "infested_deepslate", "infested_stone", "moss_block", "mossy_cobblestone", "mud",
+    "muddy_mangrove_roots", "mycelium", "podzol", "stone", "tuff"].map((b) => `minecraft:${b}`));
+function rootsCrowded(block) {
+    const { x, y, z } = block.location;
+    try {
+        const near = block.dimension.getBlocks(new BlockVolume({ x: x - 4, y: y - 1, z: z - 4 }, { x: x + 4, y: y + 1, z: z + 4 }), { includeTypes: ROOTS }, true);
+        return [...near.getBlockLocationIterator()].length >= ROOTS_IN_AREA;
+    } catch (e) { return true; }
+}
+// true when it spread
+function spreadRoot(block) {
+    const sides = [[1, 0], [-1, 0], [0, 1], [0, -1]].sort(() => Math.random() - 0.5);
+    for (const [dx, dz] of sides) {
+        const at = { x: block.location.x + dx, y: block.location.y, z: block.location.z + dz };
+        let target, ceiling;
+        try { target = block.dimension.getBlock(at); ceiling = block.dimension.getBlock({ x: at.x, y: at.y + 1, z: at.z }); } catch (e) { continue; }
+        if (!target || !ceiling || !(target.isAir || SPOT_CLEAR.test(target.typeId)) || !ROOT_CEILINGS.has(ceiling.typeId)) continue;
+        try { target.setType(Math.random() < ENERGY_ROOT_CHANCE ? "cobblemon:energy_root_block" : "cobblemon:big_root"); } catch (e) { continue; }
+        return true;
+    }
+    return false;
+}
 // a sheared Pokemon standing on grass eats it now and then, and its wool grows back
 system.runInterval(() => {
     for (const dim of ["overworld", "nether", "the_end"]) {
@@ -8427,6 +8457,27 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             block.dimension.spawnItem(new ItemStack("cobblemon:galarica_nuts", 1 + Math.floor(Math.random() * 2)), block.center());
             try { block.dimension.playSound("block.sweet_berry_bush.pick", block.location); } catch (e) { }
             block.setPermutation(block.permutation.withState("cobblemon:age", 1));
+        }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:root", {
+        onRandomTick({ block }) {
+            let light = 0;
+            try { light = block.dimension.getLightLevel(block.location); } catch (e) { }
+            if (light < ROOT_MAX_LIGHT && !rootsCrowded(block)) spreadRoot(block);
+        },
+        onPlayerInteract({ block, player }) {
+            const hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand?.typeId === "minecraft:bone_meal") {
+                if (!spreadRoot(block)) return;
+                consumeHand(player);
+                try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+            } else if (hand?.typeId === "minecraft:shears") {
+                const energy = block.typeId === "cobblemon:energy_root_block";
+                block.setType(energy ? "cobblemon:big_root" : "minecraft:hanging_roots");
+                block.dimension.spawnItem(new ItemStack(energy ? "cobblemon:energy_root" : "minecraft:string", 1), block.center());
+                try { block.dimension.playSound("mob.sheep.shear", block.center()); } catch (e) { }
+                damageHeld(player);
+            }
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {

@@ -1399,9 +1399,32 @@ def create_variant_index():
     print(f"Variant index: {len(shinies)} species with shinies.")
 
 
+def java_client_jars():
+    """The Java client jars to read the game's own tags from, the release Cobblemon is built for (gradle.properties'
+    mc_version, 1.21.1) first: fetched from Mojang into java/minecraft/ when it is missing, since a later release's
+    tags differ (26.1's #minecraft:dirt has no grass or podzol). Any installed jar after it, newest first."""
+    import urllib.request, hashlib
+    mc = "1.21.1"
+    props = f"{cobblemonRepo}/gradle.properties"
+    if os.path.exists(props):
+        with open(props, encoding="utf-8") as file: mc = (re.search(r"^mc_version\s*=\s*(\S+)", file.read(), re.M) or [None, mc])[1]
+    own = f"{cobblemonRepo}/minecraft/{mc}.jar"
+    if not os.path.exists(own):
+        try:
+            manifest = json.load(urllib.request.urlopen("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
+            client = json.load(urllib.request.urlopen(next(v for v in manifest["versions"] if v["id"] == mc)["url"]))["downloads"]["client"]
+            data = urllib.request.urlopen(client["url"]).read()
+            if hashlib.sha1(data).hexdigest() == client["sha1"]:
+                os.makedirs(os.path.dirname(own), exist_ok=True)
+                with open(own, "wb") as file: file.write(data)
+        except Exception as e: print(f"Could not fetch the Java {mc} client for its tags: {e}")
+    installed = sorted(glob.glob(os.path.join(os.environ.get("APPDATA", ""), ".minecraft", "versions", "*", "*.jar")), key=os.path.getmtime, reverse=True)
+    return [j for j in [own] if os.path.exists(j)] + installed
+
+
 def item_tag_values(tag, seen=None, kind="item"):
     """The items in an item tag ('#minecraft:oak_logs'), or with kind "block" the blocks in a block tag, from Cobblemon's
-    data or the Java client's jar, nested tags followed."""
+    data or the Java client's jar (java_client_jars), nested tags followed."""
     import zipfile
     seen = seen or set()
     if tag in seen: return []
@@ -1412,7 +1435,9 @@ def item_tag_values(tag, seen=None, kind="item"):
     if os.path.exists(local):
         with open(local, encoding="utf-8") as file: data = json.load(file)
     else:
-        for jar in reversed(sorted(glob.glob(os.path.join(os.environ.get("APPDATA", ""), ".minecraft", "versions", "*", "*.jar")), key=os.path.getmtime)):
+        global _client_jars
+        if "_client_jars" not in globals(): _client_jars = java_client_jars()
+        for jar in _client_jars:
             try:
                 with zipfile.ZipFile(jar) as z: data = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")); break
             except (KeyError, zipfile.BadZipFile, OSError): continue
@@ -7287,10 +7312,10 @@ def bedrock_blocks(names):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
     import nbt_to_mcstructure
     nbt_to_mcstructure.PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
-    vanilla = None
-    path = os.path.join(pwd, "java", "bedrock-samples", "blocks.json")
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as file: vanilla = set(json.loads(re.sub(r"//.*", "", file.read())))
+    # Mojang's own block list (tools/check_structures.py fetches it): the resource pack's blocks.json still calls
+    # grass "grass"
+    import check_structures
+    vanilla = {name.split(":", 1)[1] for name in check_structures.known_blocks() if name.startswith("minecraft:")}
     out = set()
     for name in names or []:
         for java in (item_tag_values(name, kind="block") if name.startswith("#") else [name]):
@@ -8682,6 +8707,12 @@ def model_block(name, identifier, items, category="items"):
     # PokeSnackBlock with isLure: its random ticks draw wild Pokemon (scripts/main.js). Bedrock's randomtickspeed is 1
     # where Java's is 3, so a tick as often as one of Java's random ticks (3 a tick in a 4096 block section: every 1365
     # ticks on average) counts them instead
+    # RootBlock: a big root or an energy root hangs from the block above it and goes with it, has no collision
+    # (noCollission), breaks at once (instabreak), and spreads on its random ticks (scripts/main.js); its selection is
+    # its shape (BigRootBlock and EnergyRootBlock's AABB)
+    if name in ROOT_SHAPES:
+        extra["cobblemon:root"] = {}
+        extra["minecraft:placement_filter"] = {"conditions": [{"allowed_faces": ["down"]}]}
     if name == "poke_snack":
         extra["cobblemon:poke_snack"] = {}
         extra["minecraft:tick"] = {"interval_range": [683, 2048], "looping": True}
@@ -8692,8 +8723,16 @@ def model_block(name, identifier, items, category="items"):
                        "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, "minecraft:light_dampening": 0,
                        "minecraft:loot": block_loot(name) if "amount" not in props else base["minecraft:loot"], **extra},
         "permutations": [pm for pm in permutations if pm["condition"] != "1"] or permutations}}
+    if name in ROOT_SHAPES:
+        low, high = ROOT_SHAPES[name]
+        definition["minecraft:block"]["components"].update({"minecraft:collision_box": False, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0},
+                                                            "minecraft:selection_box": {"origin": [-4.8, low, -4.8], "size": [9.6, high - low, 9.6]}})
     with open(f"{blocksBedrock}/{identifier.split(':', 1)[1]}.json", "w") as file: file.write(json.dumps(definition, indent=2))
     return True
+
+
+# the roots' shapes, from y to y in pixels: Shapes.box(0.2, 0.3 and 0.1, 0.2, 0.8, 1.0, 0.8)
+ROOT_SHAPES = {"big_root": (4.8, 16), "energy_root": (1.6, 16)}
 
 
 def block_loot_count(name, count, items):

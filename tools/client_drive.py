@@ -133,11 +133,14 @@ def join() -> None:
         time.sleep(2)
         if find_text(["would you like to download"]):
             click(960, 654); break
-    time.sleep(40)
+    # a pack version the client has not seen is downloaded again first, which takes a minute and a half or more
     try:
         sys.path.insert(0, os.path.dirname(__file__))
         from bridge import Bridge, PLAYER
-        if PLAYER not in Bridge().tool("mc_player_list"):
+        for _ in range(18):
+            time.sleep(10)
+            if PLAYER in str(Bridge().tool("mc_player_list")): break
+        else:
             leave()
             sys.exit(f"joined something that is not the server (clicked '{spot[2]}'); left it")
     except SystemExit: raise
