@@ -9307,6 +9307,17 @@ def create_summary_ui():
     for state, name in (("n", "summary_party_slot"), ("x", "summary_party_slot_fainted"), ("e", "summary_party_slot_empty")):
         normal, hover = two(Image.open(f"{src}/{name}.png").convert("RGBA"))
         normal.save(f"{S}/pslot_{state}.png"); hover.save(f"{S}/pslot_{state}_hover.png")
+        # the slot picked to swap from (PartyWidget's swapSource) stays in its hovered look
+        if state == "n": hover.save(f"{S}/pslot_s.png"); hover.save(f"{S}/pslot_s_hover.png")
+    # PartyWidget's swap button (SummaryButton, 26 by 14, its hovered half under it; the active one while swapping) with
+    # its icon (12 by 17 at half size, 10 across and 3 down), drawn at twice the size for the icon's half pixels
+    swap_icon = Image.open(f"{src}/summary_party_swap_icon.png").convert("RGBA")
+    for key, name in (("", "summary_party_swap"), ("_on", "summary_party_swap_active")):
+        sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
+        for state, top in (("", 0), ("_hover", 14)):
+            big = sheet.crop((0, top, 26, top + 14)).resize((52, 28), Image.NEAREST)
+            big.alpha_composite(swap_icon, (20, 6))
+            big.save(f"{S}/pswap{key}{state}.png")
     normal, hover = two(Image.open(f"{guiMain}/common/back_button.png").convert("RGBA"))
     icon = Image.open(f"{guiMain}/common/back_button_icon.png").convert("RGBA").resize((10, 5))
     for frame, name in ((normal, "exit"), (hover, "exit_hover")):
@@ -9688,6 +9699,8 @@ def create_summary_ui():
     stat_tab_buttons.append(size_area)
     # the held and cosmetic item toggle (Summary's SummaryButton at 67, 113, 12 square at half size)
     stat_tab_buttons.append(button(83 + SWAP_SLOTS, (67, 113), (6, 6)))
+    # PartyWidget's swap button, 80 across and 9 up from the party (216, 24)
+    stat_tab_buttons.append(button(84 + SWAP_SLOTS, (216 + 80, 24 - 9), (26, 14)))
     for b in buttons + stat_tab_buttons:
         name, body = next(iter(b.items()))
         index = body["collection_index"]
@@ -9744,7 +9757,10 @@ def create_summary_ui():
             {"ia": {"type": "image", "texture": f"{T}/icon_acc", "size": [5, 5], "offset": [30, 11], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left"}},
             {"ie": {"type": "image", "texture": f"{T}/icon_eff", "size": [5, 5], "offset": [53.5, 11], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left"}},
             tlabel("power", part(16, 23), 16.5, 12), tlabel("acc", part(23, 32), 37, 12), tlabel("eff", part(32, 41), 60.5, 12),
-            tlabel("pp", f"(#form_button_text - ('%.41s' * #form_button_text))", 76, 12, 20)]}}
+            tlabel("pp", f"(#form_button_text - ('%.44s' * #form_button_text))", 76, 12, 20),
+            # MoveSwapScreen's MoveCategoryIcon at 77, 1.5
+            {"category_icon": {"type": "image", "size": [12, 8], "offset": [77, 1.5], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                               "bindings": [text, {"binding_type": "view", "source_property_name": f"('{T}/' + {part(41, 44)})", "target_property_name": "#texture"}]}}]}}
         return {"type": "image", "size": ["100%", "100%"], "layer": 2, "keep_ratio": False,
                 "bindings": [tex, {"binding_type": "view", "source_property_name": f"(#form_button_texture + '{state}')", "target_property_name": "#texture"}],
                 "controls": [stats]}
@@ -11415,7 +11431,10 @@ def create_tm_ui():
     move_labels = [{"name": {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.75, "size": [80, 8], "offset": [28, 4], "layer": 3,
                              "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": part(3, 19), "target_property_name": "#value"}]}},
                    {"pp": {"type": "label", "text": "#value", "shadow": True, "font_scale_factor": 0.5, "size": [40, 5], "offset": [62, 14], "layer": 3, "text_alignment": "right",
-                           "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": f"(#form_button_text - ('%.19s' * #form_button_text))", "target_property_name": "#value"}]}},
+                           "anchor_from": "top_left", "anchor_to": "top_left", "bindings": [text, {"binding_type": "view", "source_property_name": f"(#form_button_text - ('%.22s' * #form_button_text))", "target_property_name": "#value"}]}},
+                   # MovesScrollingWidget's MoveCategoryIcon at 66, 13.5: the Summary's cph, csp and cst, after the name
+                   {"category_icon": {"type": "image", "size": [12, 8], "offset": [66, 13.5], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
+                                      "bindings": [text, {"binding_type": "view", "source_property_name": f"('textures/ui/cobblemon/summary/' + {part(19, 22)})", "target_property_name": "#texture"}]}},
                    {"type_icon": {"type": "image", "size": [18, 18], "offset": [3, 2], "layer": 3, "anchor_from": "top_left", "anchor_to": "top_left",
                                   # the button's text leads with the move's type code, t and two digits, the Summary's type icon
                                   "bindings": [text, {"binding_type": "view", "source_property_name": "('textures/ui/cobblemon/summary/' + ('%.3s' * #form_button_text))", "target_property_name": "#texture"}]}}]

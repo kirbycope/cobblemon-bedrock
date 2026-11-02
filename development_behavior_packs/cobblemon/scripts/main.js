@@ -1619,7 +1619,7 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
         const k = list[n];
         if (state.mode !== "m" || k === undefined) { form.button("", `${UI}/tm/none`); continue; }
         const move = MOVES[TMS[k][0]], code = String(Math.max(0, TYPE_ORDER.indexOf(TMS[k][1]))).padStart(2, "0");
-        form.button(`t${code}` + padBytes(move.name, 16) + num(`${move.pp}PP`), `${UI}/tm/mv${code}${learned.has(TMS[k][0]) ? "" : "_off"}`);
+        form.button(`t${code}` + padBytes(move.name, 16) + categoryCode(move) + num(`${move.pp}PP`), `${UI}/tm/mv${code}${learned.has(TMS[k][0]) ? "" : "_off"}`);
     }
     const busy = burning.has(tmKey(block));
     form.button("back", `${UI}/tm/${state.mode === "t" ? "none" : "back"}`);
@@ -7769,6 +7769,9 @@ function padBytes(value, width) {
     return out + " ".repeat(width - used);
 }
 const num = (n) => `\u00a7r${n}`;   // a colour code first, so the layout never reads the field as a number
+// MoveCategoryIcon's texture in the Summary's folder (cph, csp, cst; c-- for none), for the Summary, its swap list and
+// the TM Machine
+const categoryCode = (mv) => ({ Physical: "cph", Special: "csp", Status: "cst" })[mv?.category ?? MOVES[mv?.id]?.category] ?? "c--";
 const typeCode = (type) => { const i = TYPE_ORDER.indexOf(type); return i < 0 ? "t--" : `t${String(i).padStart(2, "0")}`; };
 // The party (PlayerPartyStore): six slots per player, kept on the world as one dynamic property each, in order with no
 // gaps. A slot holds its Pokemon's record (the PC's, with every property the Pokemon carries) while it is in its ball,
@@ -8114,6 +8117,17 @@ world.afterEvents.playerLeave.subscribe(({ playerId }) => {
 // not know), and Forget when it knows more than one, for the move whose swap button was pressed; an add button on an
 // empty slot offers the same moves without Forget
 const summarySwap = new Map(), SWAP_ROWS = 20;
+// PartyWidget's swap mode, player id -> { from: the slot picked first, or null }; Summary.swapPartySlot moves a party
+// member to another place, the selected slot following its Pokemon
+const partySwap = new Map();
+function swapPartySlots(player, a, b) {
+    const slots = partyOf(player.id);
+    if (!slots[a] || !slots[b] || battles.has(player.id)) return;
+    [slots[a], slots[b]] = [slots[b], slots[a]];
+    saveParty(player.id);
+    const sel = selIndex(player);
+    if (sel === a || sel === b) player.setDynamicProperty(PARTY_SEL, sel === a ? b : a);
+}
 // lang ui.ride_style.<style>.<kind>, by the Ride page's icon code (RIDE_ICONS in port.py)
 const RIDE_STYLE_NAMES = { i0: "Bird", i1: "Hover", i2: "Jet", i3: "Rocket", i4: "Standard", i5: "Cart", i6: "Boat", i7: "Dolphin", i8: "Submarine" };
 // StatWidget's pages (Stat, IVs, EVs, Other), by player; the polygon's vertices in drawStatPolygon's order
@@ -8162,7 +8176,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     v.expbar = `x${String(Math.round(Math.min(1, (exp - expFor(group, f.level)) / span) * 55)).padStart(2, "0")}`;
     f.moves.slice(0, 4).forEach((mv, n) => {
         v[`m${n}name`] = mv.name; v[`m${n}type`] = typeCode(mv.type); v[`m${n}pp`] = num(`${mv.left}/${mv.pp}`);
-        v[`m${n}cat`] = { Physical: "cph", Special: "csp", Status: "cst" }[mv.category ?? MOVES[mv.id]?.category] ?? "c--";
+        v[`m${n}cat`] = categoryCode(mv);
     });
     for (let n = f.moves.length; n < 4; n++) { v[`m${n}type`] = "t--"; v[`m${n}cat`] = "c--"; }
     for (let n = 0; n < 4; n++) v[`m${n}sel`] = n === selected && f.moves[n] ? "y" : "n";
@@ -8264,7 +8278,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     for (const [key, name] of [["i", "info"], ["m", "moves"], ["s", "stats"]]) form.button(name, `${SUMMARY_UI}/tab_${name}${tab === key ? "_on" : ""}`);
     // the party slots are switched off while the evolution or switch list covers them, or a controller's focus lands
     // on them under the list and never reaches the list's own buttons
-    for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", side !== "p" ? `${SUMMARY_UI}/none` : `${SUMMARY_UI}/pslot_${!party[n] ? "e" : prop(party[n], FAINTED) ? "x" : "n"}`);
+    const swapping = partySwap.get(player.id);
+    for (let n = 0; n < 6; n++) form.button(party[n] ? "" : " ", side !== "p" ? `${SUMMARY_UI}/none` : `${SUMMARY_UI}/pslot_${!party[n] ? "e" : swapping?.from === n ? "s" : prop(party[n], FAINTED) ? "x" : "n"}`);
     form.button(v.itemName, `${SUMMARY_UI}/item`);   // its text is the hovered tooltip
     form.button("exit", `${SUMMARY_UI}/exit`);
     for (let n = 0; n < 4; n++) form.button("move", `${SUMMARY_UI}/${tab === "m" && f.moves[n] ? "item" : "none"}`);
@@ -8290,7 +8305,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
         if (!mv) { form.button("forget", `${SUMMARY_UI}/swap_forget`); continue; }
         const text = padBytes(mv.name, 16) + padBytes(num(mv.power > 0 ? mv.power : "-"), 7)
             + padBytes(num(mv.accuracy === true || !mv.accuracy ? "-" : `${mv.accuracy}%%`), 9)
-            + padBytes(num(mv.secondary?.chance ? `${mv.secondary.chance}%%` : "-"), 9) + num(`${mv.pp}PP`);
+            + padBytes(num(mv.secondary?.chance ? `${mv.secondary.chance}%%` : "-"), 9) + categoryCode(mv) + num(`${mv.pp}PP`);
         form.button(text, `${SUMMARY_UI}/swap_${typeCode(mv.type)}`);
     }
     // StatWidget's page tabs, after the switch list's rows
@@ -8314,6 +8329,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button(rideCentre, rideCentre && rides.length > 1 ? HIT : `${SUMMARY_UI}/none`);
     form.button(tab === "i" ? `Size: ${sizeCategory(source)}` : "", `${SUMMARY_UI}/none`);   // the size icon's tooltip
     form.button("item toggle", `${SUMMARY_UI}/itog_${v.imode === "c" ? "h" : "c"}`);
+    form.button("party swap", side === "p" && party.length > 1 ? `${SUMMARY_UI}/pswap${swapping ? "_on" : ""}` : `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
@@ -8401,6 +8417,22 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
                     if (source.isValid) showSummary(source, tab, player, selected);
                 }).catch(() => { });
             return;
+        }
+        if (pick === 84 + SWAP_ROWS) {
+            // PartyWidget's swap button: on, a slot and then another swap places; off again, nothing is held
+            if (side === "p" && party.length > 1) {
+                if (swapping) partySwap.delete(player.id); else partySwap.set(player.id, { from: null });
+                try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            }
+            showSummary(source, tab, player, selected, side); return;
+        }
+        if (pick <= 8 && swapping && side === "p") {
+            const n = pick - 3;
+            if (party[n] && swapping.from === null) swapping.from = n;
+            else if (party[n] && swapping.from !== n) { swapPartySlots(player, swapping.from, n); swapping.from = null; }
+            else swapping.from = null;
+            try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+            showSummary(source, tab, player, selected, side); return;
         }
         if (pick <= 8) { const e = party[pick - 3]; showSummary(e && e.isValid ? e : source, tab, player, 0, e ? "p" : side); return; }
         if (pick === 83 + SWAP_ROWS) {
