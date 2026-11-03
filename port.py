@@ -3894,7 +3894,7 @@ def animation_effects(pokemon, pokemonName):
                 effect = entry.get("effect") if isinstance(entry, dict) else None
                 match = re.match(r"pokemon\.(\w+)\.(cry|ambient)$", effect or "")
                 if match and os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/{match.group(2)}.ogg"): sounds[effect] = f"cobblemon.{match.group(1)}.{match.group(2)}"
-                elif effect and re.match(r"animation\.", effect): sounds[effect] = f"cobblemon.{effect}"   # the wing flaps (a timeline's q.sound)
+                elif effect and not effect.startswith("pokemon."): sounds[effect] = f"cobblemon.{effect}"   # a timeline's q.sound: the wing flaps, Cinderace's ball
     return particles, sounds
 
 

@@ -3452,6 +3452,9 @@ system.runInterval(() => {
         }
         potProgress.set(key, progress);
         if (before !== progress > 0) setState(block, "cobblemon:cooking", progress > 0);
+        // CampfireBlockEntity's loops: with something in it, the running sound while it cooks, the ambient one while it
+        // waits; an empty pot is quiet (replayed every three seconds)
+        if (system.currentTick % 60 === 0 && data.s.slice(1).some(Boolean)) playAt(block, progress > 0 ? "cobblemon.block.campfire_pot.active" : "cobblemon.block.campfire_pot.ambient");
         // while it cooks the broth bubbles once a second (particleCooldown 20), in the bubble colour
         if (progress > 0 && system.currentTick % 20 === 0) {
             try {
@@ -5988,6 +5991,20 @@ world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
 });
 world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
     if (brokenBlockPermutation?.type?.id === "cobblemon:monitor") machineSound(block, "cobblemon.block.monitor.break");
+});
+// an NPC's voice (entity.npc.gibber): one of its speech sounds as a player talks to it, as Cobblemon's dialogue plays a
+// line's gibber; Bedrock's dialogue screen has no lines to time them to
+const GIBBER = ["cobblemon.entity.npc.gibber.speech_type_1_1", "cobblemon.entity.npc.gibber.speech_type_1_2", "cobblemon.entity.npc.gibber.speech_type_1_3", "cobblemon.entity.npc.gibber.generic"];
+world.afterEvents.playerInteractWithEntity.subscribe(({ target }) => {
+    if (!target?.typeId?.startsWith("cobblemon:npc")) return;
+    try { target.dimension.playSound(GIBBER[Math.floor(Math.random() * GIBBER.length)], target.location); } catch (e) { }
+});
+// Hearty Grains' own place and break sounds (HeartyGrainsBlock's sound type), which a Bedrock custom block's sound cannot be
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
+    if (block.typeId.startsWith("cobblemon:hearty_grains")) machineSound(block, "cobblemon.block.hearty_grains.place");
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id?.startsWith("cobblemon:hearty_grains")) machineSound(block, "cobblemon.block.hearty_grains.break");
 });
 // FossilMultiblockEntity's sounds, at the block they belong to
 function machineSound(block, id) { try { block?.dimension.playSound(id, block.location); } catch (e) { } }
@@ -11074,6 +11091,7 @@ function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
     else { freeze(pokemon, true); try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { } }
     register(player, pokemon.typeId, 1, variantOf(pokemon));
     let ball;
+    try { dim.playSound("cobblemon.poke_ball.hit", hit); } catch (e) { }   // EmptyPokeBallEntity.attemptCatch
     try { ball = captureBall(dim, ballId, hit); } catch (e) { capturing.delete(pokemon.id); freeze(pokemon, false); dropBall(dim, ballId, hit, player); return; }
     ballState(ball, "hover");
     // bounce back off the Pokemon: a third of a block a tick up, a tenth back and to one side, under gravity
