@@ -51,7 +51,7 @@ const STATUS_TEXT = { brn: "was burned", par: "is paralyzed! It may be unable to
 const STATUS_TAG = { brn: "§6BRN§r", par: "§ePAR§r", psn: "§5PSN§r", tox: "§5TOX§r", slp: "§7SLP§r", frz: "§bFRZ§r" };
 const STATUS_IMMUNE = { brn: ["fire"], par: ["electric"], psn: ["poison", "steel"], tox: ["poison", "steel"], frz: ["ice"] };
 // abilities that make a move type miss, and the ones that power up a type in a pinch
-const ABILITY_IMMUNE = { levitate: "ground", flashfire: "fire", voltabsorb: "electric", lightningrod: "electric", motordrive: "electric", waterabsorb: "water", stormdrain: "water", dryskin: "water", sapsipper: "grass" };
+const ABILITY_IMMUNE = { levitate: "ground", eartheater: "ground", wellbakedbody: "fire", flashfire: "fire", voltabsorb: "electric", lightningrod: "electric", motordrive: "electric", waterabsorb: "water", stormdrain: "water", dryskin: "water", sapsipper: "grass" };
 const ABILITY_PINCH = { blaze: "fire", torrent: "water", overgrow: "grass", swarm: "bug" };
 const ABILITY_CONTACT = { static: "par", flamebody: "brn", poisonpoint: "psn" };
 // held items in battle, as Showdown's item scripts: type boosts 1.2x, Choice items 1.5x a stat and lock the move,
@@ -325,6 +325,8 @@ function fieldMove(battle, a, d, move) {
         if (side[move.id] > 0 || (move.id === "auroraveil" && weatherOf(battle) !== "snow")) { fail(); return true; }
         side[move.id] = move.id === "tailwind" ? 4 : ["reflect", "lightscreen", "auroraveil"].includes(move.id) && held(a) === "light_clay" ? 8 : 5;
         say(battle, `§a${SIDE_MOVES[move.id]} protects ${name}'s team.`);
+        if (move.id === "tailwind" && a.ability === "windpower") { a.charged = true; say(battle, `§7Being hit by the wind charged ${name} with power!`); }
+        if (move.id === "tailwind" && a.ability === "windrider") boost(battle, a, { atk: 1 });
         return true;
     }
     if (HAZARDS[move.id]) {
@@ -375,6 +377,11 @@ function fieldMove(battle, a, d, move) {
             say(battle, `§a${name}'s team was cured of its status conditions!`);
             return true;
         }
+        case "charge":
+            used();
+            a.charged = true; say(battle, `§e${name} began charging power!`);
+            boost(battle, a, { spd: 1 }, a);
+            return true;
         case "focusenergy":
             used();
             if (a.focusEnergy) { fail(); return true; }
@@ -1033,12 +1040,13 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Air Balloon)`); return;
     }
     if ((ABILITY_IMMUNE[defAb] === move.type && move.category !== "Status") || (defAb === "soundproof" && move.flags?.includes("sound"))
-        || (defAb === "bulletproof" && move.flags?.includes("bullet"))) {
+        || (defAb === "bulletproof" && move.flags?.includes("bullet")) || (defAb === "windrider" && move.flags?.includes("wind"))) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (${abilityName(defender.ability)})`);
-        if (["voltabsorb", "waterabsorb", "dryskin"].includes(defAb) && defender.hp < defender.stats.hp) {
+        if (["voltabsorb", "waterabsorb", "dryskin", "eartheater"].includes(defAb) && defender.hp < defender.stats.hp) {
             defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
         }
-        if (defAb === "sapsipper") boost(battle, defender, { atk: 1 });
+        if (defAb === "sapsipper" || defAb === "windrider") boost(battle, defender, { atk: 1 });
+        if (defAb === "wellbakedbody") boost(battle, defender, { def: 2 });
         if (defAb === "motordrive") boost(battle, defender, { spe: 1 });
         if (defAb === "lightningrod" || defAb === "stormdrain") boost(battle, defender, { spa: 1 });
         if (defAb === "flashfire") defender.flashFire = true;
@@ -1049,6 +1057,8 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §cIt's a one-hit KO!`); defender.hp = 0; syncHealth(defender); return;
     }
     let dealt = 0, note = "", shielded = false;   // shielded: a substitute took the hit, so its effects do not reach the target
+    let critTaken = false;
+    const hpBefore = defender.hp;
     // Sheer Force drops a move's added effects (its secondaries), not what the move does to its user
     const sheer = atkAb === "sheerforce" && !!(move.secondary || move.secondaries);
     const fixed = fixedDamage(battle, attacker, defender, move);
@@ -1118,6 +1128,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
             if (atkAb === "technician" && power <= 60) power *= 1.5;
             if (move.typeBoosted) power *= 1.2;
+            if (attacker.charged && move.type === "electric") power *= 2;
             if (atkAb === "analytic" && battle.movedFirst === defender) power *= 1.3;
             if (atkAb === "flareboost" && attacker.status === "brn" && !physical) power *= 1.5;
             if (atkAb === "toxicboost" && (attacker.status === "psn" || attacker.status === "tox") && physical) power *= 1.5;
@@ -1191,16 +1202,18 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (dealt >= defender.hp && held(defender) === "focus_band" && Math.random() < 0.1) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} hung on using its Focus Band!`); }
             defender.hp -= dealt;
             defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
-            if (crit) note += " A critical hit!";
+            if (crit) { note += " A critical hit!"; critTaken = true; }
             if (h === 0) { if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective..."; }
             say(battle, h === 0 ? `§e${name} used ${move.name}!§r ${dmg} damage.${note}` : `§7Hit ${h + 1}! ${dmg} damage.${note}`);
             syncHealth(defender);
             total += dealt; landed++;
         }
         dealt = total;
+        if (move.type === "electric") attacker.charged = false;
         defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
         if (hits > 1) say(battle, `§7Hit ${landed} time${landed === 1 ? "" : "s"}!`);
-        if (move.drain && attacker.hp < attacker.stats.hp) {
+        if (move.drain && defender.ability === "liquidooze") hurt(battle, attacker, Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1])), `${name} sucked up the liquid ooze!`);
+        else if (move.drain && attacker.hp < attacker.stats.hp) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
         }
@@ -1264,6 +1277,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (defAb === "effectspore") status = ["psn", "par", "slp"][Math.floor(Math.random() * 3)];
         if (status && Math.random() < 0.3) { say(battle, `§7${defender.info.name}'s ${abilityName(defender.ability)}!`); inflict(battle, attacker, status, false); }
     }
+    if (dealt) abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBefore, sheer });
     if (dealt && defAb === "stamina" && defender.hp > 0) boost(battle, defender, { def: 1 });
     if (dealt && defAb === "weakarmor" && move.category === "Physical" && defender.hp > 0) boost(battle, defender, { def: -1, spe: 2 });
     if (dealt && defAb === "justified" && move.type === "dark" && defender.hp > 0) boost(battle, defender, { atk: 1 });
@@ -1274,6 +1288,63 @@ function runMove(battle, attacker, defender, move, called = false) {
         const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
         boost(battle, attacker, { [best]: 1 });
     }
+}
+
+// the abilities that answer a damaging hit, as Showdown's onDamagingHit, onAfterMoveSecondary and onSourceDamagingHit do:
+// on the one hit (defender) and on the one hitting (attacker). These are not ones Mold Breaker gets past
+const CANT_SUPPRESS = new Set(["asone", "battlebond", "comatose", "disguise", "gulpmissile", "iceface", "multitype", "powerconstruct",
+    "rkssystem", "schooling", "shieldsdown", "stancechange", "zerotohero", "commander", "terashift", "mummy", "lingeringaroma"]);
+const NO_SWAP = new Set([...CANT_SUPPRESS, "wonderguard", "illusion", "hungerswitch", "neutralizinggas", "imposter", "receiver",
+    "powerofalchemy", "trace", "wanderingspirit", "protosynthesis", "quarkdrive", "poisonpuppeteer"]);
+function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBefore, sheer }) {
+    const name = attacker.info.name, dName = defender.info.name, ab = defender.ability, says = (t) => say(battle, `§7${t}`);
+    const alive = defender.hp > 0, fainted = !alive;
+    if (fainted && contact && ab === "aftermath" && attacker.ability !== "damp") hurt(battle, attacker, attacker.stats.hp / 4, `${name} was caught in the aftermath!`);
+    if (fainted && ab === "innardsout") hurt(battle, attacker, hpBefore, `${name} was hurt by ${dName}'s Innards Out!`);
+    if (ab === "cottondown" && attacker.hp > 0) { says(`${dName}'s Cotton Down!`); boost(battle, attacker, { spe: -1 }, defender); }
+    if (contact && (ab === "gooey" || ab === "tanglinghair") && attacker.hp > 0) { says(`${dName}'s ${abilityName(ab)}!`); boost(battle, attacker, { spe: -1 }, defender); }
+    if (contact && ab === "perishbody" && !attacker.perish) {
+        attacker.perish = 4; if (!defender.perish && alive) defender.perish = 4;
+        says("Both Pokemon will faint in three turns!");
+    }
+    if (ab === "sandspit" && setWeather(battle, "sand", defender)) says(`${dName}'s Sand Spit whipped up a sandstorm!`);
+    if (alive && ab === "steamengine" && (move.type === "water" || move.type === "fire")) boost(battle, defender, { spe: 6 });
+    if (alive && ab === "watercompaction" && move.type === "water") boost(battle, defender, { def: 2 });
+    if (alive && ab === "angerpoint" && critTaken && defender.stages.atk < 6) { defender.stages.atk = 6; says(`${dName} maxed its Attack!`); }
+    if (alive && ab === "electromorphosis") { defender.charged = true; says(`Being hit by ${move.name} charged ${dName} with power!`); }
+    if (alive && ab === "windpower" && move.flags?.includes("wind")) { defender.charged = true; says(`Being hit by ${move.name} charged ${dName} with power!`); }
+    if (move.category === "Physical" && ab === "toxicdebris") {
+        const side = sideOf(battle, attacker);
+        if ((side.toxicspikes ?? 0) < 2) { side.toxicspikes = (side.toxicspikes ?? 0) + 1; says(`Poison spikes were scattered around ${name}'s team!`); }
+    }
+    // Anger Shell and Berserk: a hit that takes its holder from above half its HP to half or below
+    const halved = alive && hpBefore > defender.stats.hp / 2 && defender.hp <= defender.stats.hp / 2 && !sheer;
+    if (halved && ab === "angershell") boost(battle, defender, { atk: 1, spa: 1, spe: 1, def: -1, spd: -1 });
+    if (halved && ab === "berserk") boost(battle, defender, { spa: 1 });
+    if (alive && ab === "colorchange" && move.type !== "???" && !defender.info.types.includes(move.type)) {
+        defender.info = { ...defender.info, types: [move.type] }; says(`${dName}'s Color Change made it the ${cap(move.type)} type!`);
+    }
+    // the ability takers: Mummy and Lingering Aroma spread themselves to the Pokemon touching them; Wandering Spirit trades
+    if (contact && attacker.hp > 0 && (ab === "mummy" || ab === "lingeringaroma") && attacker.ability !== ab && !CANT_SUPPRESS.has(attacker.ability)) {
+        attacker.baseAbility ??= attacker.ability; attacker.ability = ab; says(`${name}'s ability became ${abilityName(ab)}!`);
+    }
+    if (contact && attacker.hp > 0 && alive && ab === "wanderingspirit" && !NO_SWAP.has(attacker.ability)) {
+        attacker.baseAbility ??= attacker.ability; defender.baseAbility ??= ab;
+        [attacker.ability, defender.ability] = [ab, attacker.ability];
+        says(`${dName} swapped abilities with ${name}!`);
+    }
+    // item takers: Pickpocket takes the item of the Pokemon that touched it, Magician that of the one it hit; for the
+    // battle only, as nothing saves the change, so each item is back with its owner afterwards
+    if (contact && alive && ab === "pickpocket" && !defender.held && attacker.held && attacker.ability !== "stickyhold") {
+        defender.held = attacker.held; attacker.held = null; says(`${dName} stole ${name}'s ${itemName(defender.held)}!`);
+    }
+    if (attacker.ability === "magician" && attacker.hp > 0 && !attacker.held && defender.held && defender.ability !== "stickyhold") {
+        attacker.held = defender.held; defender.held = null; says(`${name} stole ${dName}'s ${itemName(attacker.held)}!`);
+    }
+    // the attacker's: Poison Touch poisons on contact, Toxic Chain badly poisons on any hit, three times in ten
+    const cloaked = defender.ability === "shielddust" || held(defender) === "covert_cloak";
+    if (alive && !cloaked && contact && attacker.ability === "poisontouch" && Math.random() < 0.3) inflict(battle, defender, "psn", false, attacker);
+    if (alive && !cloaked && attacker.ability === "toxicchain" && Math.random() < 0.3) inflict(battle, defender, "tox", false, attacker);
 }
 
 // berries eaten when they apply: Oran and Sitrus below half HP, the status berries on their status, Leppa on an empty move
@@ -2685,7 +2756,8 @@ function switchTo(battle, entity) {
     leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
-    leaving.bound = null; leaving.trappedBy = null;
+    leaving.bound = null; leaving.trappedBy = null; leaving.charged = false;
+    if (leaving.baseAbility) { leaving.ability = leaving.baseAbility; leaving.baseAbility = null; }
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
@@ -3037,7 +3109,8 @@ function endOfTurn(battle) {
         if (f.seeded && f.hp > 0 && other.hp > 0) {
             const before = f.hp;
             hurt(battle, f, f.stats.hp / 8, `${f.info.name}'s health is sapped by Leech Seed!`);
-            if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
+            if (f.ability === "liquidooze" && f.hp < before) hurt(battle, other, before - f.hp, `${other.info.name} sucked up the liquid ooze!`);
+            else if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
         }
         if (f.yawn && --f.yawn === 0 && f.hp > 0 && !f.status) inflict(battle, f, "slp", false);
         if (f.taunt > 0 && --f.taunt === 0) say(battle, `§7${f.info.name} shook off the taunt!`);
