@@ -24,9 +24,10 @@ export const system = new Proxy({
     afterEvents: anything(),
     beforeEvents: anything(),
 }, handler);
+const worldProps = new Map();   // the world's dynamic properties, kept for a test to read back
 export const world = new Proxy({
-    getDynamicProperty() { return undefined; },
-    setDynamicProperty() { },
+    getDynamicProperty(k) { return worldProps.get(k); },
+    setDynamicProperty(k, v) { if (v === undefined) worldProps.delete(k); else worldProps.set(k, v); },
     getPlayers() { return []; },
     getAllPlayers() { return []; },
     afterEvents: anything(),

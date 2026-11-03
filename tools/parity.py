@@ -168,14 +168,17 @@ def items_blocks_entities():
 def sounds():
     events = json.loads(read(f"{RES}/assets/cobblemon/sounds.json"))
     defined = json.loads(read(f"{RP}/sounds/sound_definitions.json")).get("sound_definitions", {})
-    used = battle_js + read(f"{RP}/sounds.json") + "".join(read(p) for p in glob.glob(f"{RP}/**/*.json", recursive=True)
+    used = battle_js + read(f"{SCRIPTS}/move_fx.js") + read(f"{RP}/sounds.json") + "".join(read(p) for p in glob.glob(f"{RP}/**/*.json", recursive=True)
                                                            if "sound_definitions" not in p and os.path.getsize(p) < 3_000_000)
+    # a sound named by a template the script fills at run time (cobblemon.impact.$type)
+    hole = lambda t: re.escape(re.sub(r"\$\{\w+\}|\$[a-z]+", "@@", t)).replace("@@", "[a-z0-9_]+")
+    templates = [re.compile(hole(t)) for t in set(re.findall(r"cobblemon\.[a-z0-9_.]*\$(?:\{\w+\}|[a-z]+)[a-z0-9_.${}]*", used))]
     for event in sorted(events):
         if event.startswith("pokemon.") and event.endswith(".cry"): continue   # one row per species, under species
         ident = f"cobblemon.{event}"
         if ident not in defined and event.startswith("pokemon."): ident = f"cobblemon.{event[len('pokemon.'):]}"
         if ident not in defined: row("sound", event, "sounds.json", "", "missing"); continue
-        if ident in used or event in used: row("sound", event, "sounds.json", ident, "done")
+        if ident in used or event in used or any(t.fullmatch(ident) for t in templates): row("sound", event, "sounds.json", ident, "done")
         else: row("sound", event, "sounds.json", ident, "partial", "defined but nothing plays it")
 
 
@@ -367,11 +370,32 @@ def commands():
 
 
 # ---------------------------------------------------------------------------- data, config
+# data folders the port answers without reading them: carried in the scripts, or for things a Bedrock add-on has not
+DATA_VERDICTS = {
+    "arts_and_crafts": ("", "n/a", "loads only with the Arts and Crafts mod"),
+    "hourglass_dusts": ("", "n/a", "loads only with the Supplementaries mod"),
+    "moonlight": ("", "n/a", "loads only with the Moonlight library mod"),
+    "painting_variant": ("", "n/a", "a Bedrock add-on cannot add paintings"),
+    "trim_pattern": ("", "n/a", "a Bedrock add-on cannot add armour trim patterns"),
+    "dex_additions": ("", "n/a", "holds only a README, for other data packs"),
+    "dex_entry_additions": ("", "n/a", "holds only a README, for other data packs"),
+    "showdown.json": ("", "n/a", "the Showdown version Cobblemon bundles; the battle script stands in for Showdown"),
+    "molang": ("", "n/a", "NPC and behaviour scripts for Cobblemon's behaviour system, which the entities here do in their own components"),
+    "bag_items": ("scripts/main.js useBagItem", "done", "the medicine, X items, Dire Hit and Guard Spec act in battle by the script"),
+    "held_items": ("scripts/main.js heldBerry", "done", "the Eggant Berry, Cobblemon's one held item script"),
+    "callbacks": ("scripts/main.js", "done", "Burmy's cloak, alpha drops, marks, the partner mark, wallpaper unlocks and removed aspects; NPC battle-end scripts need Cobblemon's NPC classes, not carried"),
+    "moveset_builders": ("scripts/main.js movesAt, alphaMoves", "done", "wild Pokemon their last level-up moves with one damaging, alphas their strongest damaging moves"),
+    "move_weights.json": ("scripts/main.js alphaMoves", "done", "the alpha builder picks by power here, so Focus Blast's and Tera Blast's weights need no table"),
+    "habitat_pools": ("port.py create_habitat_pools, scripts/habitats.js", "done", "the Habitat Block spawns from one, chosen and set in a form standing in for its editor"),
+}
+
+
 def data_folders():
     text = read(f"{REPO}/port.py")
     for path in sorted(glob.glob(f"{RES}/data/cobblemon/*")):
         name = os.path.basename(path)
         if name in ("species",): continue
+        if name in DATA_VERDICTS: row("data", name, f"data/cobblemon/{name}", *DATA_VERDICTS[name]); continue
         used = re.search(rf"[/\"']{re.escape(name)}[/\"']", text) or re.search(rf"\b{re.escape(name)}\b", text)
         row("data", name, f"data/cobblemon/{name}", "port.py" if used else "", "done" if used else "missing")
     for path in sorted(glob.glob(f"{RES}/data/cobblemon/mechanics/*.json")):

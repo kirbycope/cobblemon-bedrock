@@ -18,3 +18,9 @@ check("an alpha is larger, the more so the smaller the Pokemon", M.alphaScale("c
     const moves = M.alphaMoves(M.fighter(mon("Charizard").entity).info, 50);
     check("an alpha's moves start with its strongest damaging ones", moves.length === 4, JSON.stringify(moves));
 }
+{
+    const player = { getDynamicProperty: () => "2".repeat(700) }, none = { getDynamicProperty: () => "2".repeat(10) };
+    const random = Math.random; Math.random = () => 0;
+    try { check("a critical capture needs a Pokedex past 30 caught", M.criticalCapture(player, 100) === true && M.criticalCapture(none, 100) === false); }
+    finally { Math.random = random; }
+}

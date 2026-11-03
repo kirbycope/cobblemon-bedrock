@@ -17,6 +17,8 @@ import { NPC_SCENES } from "./npc_dialogue.js";
 import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
+import { HABITAT_POOLS } from "./habitats.js";
+import { BERRY_CARE } from "./berry_care.js";
 import { TMS, TM_SPECIES } from "./tms.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
@@ -1066,6 +1068,7 @@ function boost(battle, target, boosts, source) {
         if (!change) say(battle, `§7${target.info.name}'s ${name} won't go any ${amount > 0 ? "higher" : "lower"}!`);
         else say(battle, `§7${target.info.name}'s ${name} ${change > 0 ? "rose" : "fell"}${Math.abs(change) >= 2 ? " sharply" : ""}!`);
         if (change < 0) { lowered = true; target.loweredTurn = battle.turn; }
+        if (change) fighterSound(target, change > 0 ? "up" : "down");
     }
     if (lowered && held(target) === "eject_pack" && target.hp > 0 && (target === battle.ally || battle.pvp)) {
         useUp(battle, target, `§7${target.info.name} is switched out by the Eject Pack!`);
@@ -1101,6 +1104,7 @@ function inflict(battle, target, status, announceFailure, source) {
         return;
     }
     target.status = status;
+    fighterSound(target, status);
     if (status === "slp") target.sleep = 1 + Math.floor(Math.random() * 3);
     say(battle, `§d${target.info.name} ${STATUS_TEXT[status] ?? "was afflicted"}!`);
     if (source?.ability === "poisonpuppeteer" && source !== target && (status === "psn" || status === "tox")) confuse(battle, target);
@@ -1165,6 +1169,7 @@ function confuse(battle, f, quiet = false, fatigue = false) {
     if (!fatigue && sideOf(battle, f).safeguard > 0) { if (!quiet) say(battle, `§7${f.info.name} is protected by Safeguard!`); return false; }
     if (!fatigue && terrainOf(battle) === "misty" && onGround(battle, f)) { if (!quiet) say(battle, `§7${f.info.name} surrounds itself with a protective mist!`); return false; }
     f.confused = 2 + Math.floor(Math.random() * 4);
+    fighterSound(f, "confusion");
     say(battle, `§7${f.info.name} became confused${fatigue ? " due to fatigue" : ""}!`);
     if (held(f) === "persim_berry" || held(f) === "lum_berry") { f.confused = 0; useUp(battle, f, `§a${f.info.name}'s ${itemName(f.held)} snapped it out of its confusion!`); }
     return true;
@@ -1281,6 +1286,14 @@ function spentStockpile(battle, f) {
 }
 // High Jump Kick and the rest: half the user's HP when the move does not land
 function crash(battle, f, move) { if (move.crash) hurt(battle, f, f.stats.hp / 2, `${f.info.name} kept going and crashed!`); }
+// Cobblemon's status sounds, on the Pokemon they happen to
+const STATUS_SOUNDS = { brn: "cobblemon.status.nonvolatile.burn.actor", par: "cobblemon.status.nonvolatile.paralysis.actor",
+    psn: "cobblemon.status.nonvolatile.poison.actor", tox: "cobblemon.status.nonvolatile.toxpoison.actor",
+    confusion: "cobblemon.status.volatile.confusion.actor", up: "cobblemon.status.up.actor", down: "cobblemon.status.down.actor" };
+function fighterSound(f, kind) {
+    if (!STATUS_SOUNDS[kind] || f?.clone) return;
+    try { f.entity.dimension.playSound(STATUS_SOUNDS[kind], f.entity.location); } catch (e) { }
+}
 // indirect damage (status, recoil, items): Magic Guard ignores it
 function hurt(battle, f, amount, text) {
     if (f.ability === "magicguard" || f.hp <= 0) return;
@@ -1581,6 +1594,12 @@ function runMove(battle, attacker, defender, move, called = false) {
     const firstAction = !attacker.acted;
     attacker.acted = true;
     if (moveFails(battle, attacker, defender, move, firstAction)) return;
+    if (move.id === "naturepower") {
+        const id = { electric: "thunderbolt", grassy: "energyball", misty: "moonblast", psychic: "psychic" }[terrainOf(battle)] ?? "triattack";
+        say(battle, `§e${name} used Nature Power!§r §7Nature Power turned into ${MOVES[id].name}!`);
+        useMove(battle, attacker, defender, { id, ...MOVES[id], pp: 1, left: 1 }, true);
+        return;
+    }
     if (move.id === "futuresight" || move.id === "doomdesire") {
         const side = sideOf(battle, defender);
         if (side.futureSight) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
@@ -2795,8 +2814,11 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
             const missing = !countIn(player, ["cobblemon:blank_tm"]) || chosen[3].some((entry) => countIn(player, recipeIds(entry)) < entry[1]);
             if (missing) player.sendMessage("§cYou need a Blank TM and the recipe's items.");
             else {
+                // the disc and the recipe go in (TMMachineBlockEntity's tm_insert and item_insert)
                 takeFrom(player, ["cobblemon:blank_tm"], 1);
+                try { block.dimension.playSound("cobblemon.block.tm_machine.tm_insert", block.location); } catch (e) { }
                 for (const entry of chosen[3]) takeFrom(player, recipeIds(entry), entry[1]);
+                try { block.dimension.playSound("cobblemon.block.tm_machine.item_insert", block.location); } catch (e) { }
                 burnTm(block, player, chosen[0]);
             }
         }
@@ -2820,6 +2842,7 @@ function burnTm(block, player, move) {
         if (left > 0) return;
         system.clearRun(loop); burning.delete(key);
         try { setState(dim.getBlock(block.location), "cobblemon:active", false); dim.playSound("cobblemon.block.tm_machine.craft", at); } catch (e) { }
+        try { dim.playSound("cobblemon.block.tm_machine.tm_retrieve", at); } catch (e) { }   // the finished disc comes out
         if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
         else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
     }, 1);
@@ -3682,6 +3705,7 @@ function startBattle(player, foeEntity, trainer) {
     battleMusic(player, trainer ? "pvn" : "pvw");
     freeze(foeEntity, true);
     say(battle, trainer ? `§6${typeof trainer === "string" ? trainer : "Trainer"} sent out ${foe.info.name}! §7(Lv ${foe.level})` : `§6A wild ${foe.info.name} appeared! §7(Lv ${foe.level})`);
+    if (!trainer) shinyRing(foe.entity);   // BattleSide.playCries: a wild shiny's ring as the battle starts
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
     // the player's Pokemon is sent out between the player and the foe, spaced by both sizes (a trainer's foe is placed
     // the same way from its trainer when spawned)
@@ -5904,6 +5928,11 @@ function useMachine(block, player) {
                 pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player);
                 pokemon.setDynamicProperty(OWNER, player.id);
                 rollAlpha(pokemon, 20);   // CobblemonConfig.fossilMachineAlphaChance
+                if (Math.floor(Math.random() * 100) === 0) {   // fossilMachineShinyChance
+                    const looks = VARIANT_LOOKS[pokemon.typeId], [form, female] = looks?.[variantOf(pokemon)] ?? [null, 0];
+                    const n = (looks ?? []).findIndex(([f, g, sh]) => f === form && g === female && sh);
+                    if (n >= 0) pokemon.triggerEvent(`cobblemon:set_variant_${n}`);
+                }
                 if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
                 register(player, st.result, 2);
             } catch (e) { }
@@ -5918,17 +5947,22 @@ function useMachine(block, player) {
     if (id && FOSSILS.fossilItems.includes(id)) {
         if (st.fossils.length >= FOSSILS.maxFossils) { player.sendMessage("§7The analyzer is full."); return; }
         st.fossils.push(id); st.owner = player.id; takeFromHand(player);
+        machineSound(m.analyzer, "cobblemon.block.fossil_machine.insert_fossil");
         const r = resultFor(st.fossils);
         player.sendMessage(r ? `§bThe analyzer reads the fossils: ${POKEMON[r.entity]?.name}.` : "§7The analyzer does not recognise these fossils together.");
+        if (!r) machineSound(m.monitor, "cobblemon.block.monitor.glitching");
     } else if (id && FOSSILS.materials[id]) {
         if (st.material >= FOSSILS.materialToStart) { player.sendMessage("§7The tank is full."); return; }
         const [worth, back] = FOSSILS.materials[id];
         st.material = Math.min(FOSSILS.materialToStart, st.material + worth); takeFromHand(player);
+        machineSound(m.tank, st.material >= FOSSILS.materialToStart ? "cobblemon.block.fossil_machine.dna_full" : worth > 1 ? "cobblemon.block.fossil_machine.insert_dna" : "cobblemon.block.fossil_machine.insert_dna_small");
+        machineSound(m.monitor, "cobblemon.block.monitor.insert");
         if (back) { try { inv.addItem(new ItemStack(back, 1)); } catch (e) { } }
         player.sendMessage(`§7Natural material ${st.material}/${FOSSILS.materialToStart}`);
     } else if (!id) {
         if (!st.fossils.length) { player.sendMessage("§7Put fossils in the analyzer and natural materials (berries, crops, seeds) in the tank."); return; }
         const last = st.fossils.pop();
+        machineSound(m.analyzer, "cobblemon.block.fossil_machine.retrieve_fossil");
         try { inv.setItem(player.selectedSlotIndex, new ItemStack(last, 1)); } catch (e) { }
     } else {
         player.sendMessage("§7That is neither a fossil nor a natural material.");
@@ -5938,11 +5972,25 @@ function useMachine(block, player) {
     const r = resultFor(st.fossils);
     if (r && st.material >= FOSSILS.materialToStart) {
         st.result = r.entity; st.left = FOSSILS.reviveSeconds; st.fossils = [];
+        machineSound(m.tank, "cobblemon.block.fossil_machine.activate"); machineSound(m.monitor, "cobblemon.block.monitor.loading");
         player.sendMessage(`§aThe machine starts reviving ${POKEMON[r.entity]?.name}. Come back in ${FOSSILS.reviveSeconds / 60} minutes.`);
     }
     saveMachines(); show(m, st);
 }
 
+// the machine's last part placed: FossilMultiblockStructure's assemble sound, once all three stand together
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
+    if (!["cobblemon:restoration_tank", "cobblemon:fossil_analyzer", "cobblemon:monitor"].includes(block.typeId)) return;
+    system.runTimeout(() => {
+        const m = findMachine(block);
+        if (m?.tank && m.analyzer && m.monitor) machineSound(m.tank, "cobblemon.block.fossil_machine.assemble");
+    }, 2);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id === "cobblemon:monitor") machineSound(block, "cobblemon.block.monitor.break");
+});
+// FossilMultiblockEntity's sounds, at the block they belong to
+function machineSound(block, id) { try { block?.dimension.playSound(id, block.location); } catch (e) { } }
 // once a second, running machines count down
 system.runInterval(() => {
     loadMachines();
@@ -5956,8 +6004,9 @@ system.runInterval(() => {
         if (block.typeId !== "cobblemon:restoration_tank") { machines.delete(key); changed = true; continue; }
         if (st.left > 0) {
             st.left--;
-            if (st.left === 0) { st.done = true; st.protect = FOSSILS.protectionSeconds; st.left = -1; }
-        } else st.protect--;
+            if (st.left % 4 === 0) machineSound(block, "cobblemon.block.fossil_machine.active_loop");
+            if (st.left === 0) { st.done = true; st.protect = FOSSILS.protectionSeconds; st.left = -1; machineSound(block, "cobblemon.block.fossil_machine.finished"); }
+        } else if (--st.protect === 0) machineSound(block, "cobblemon.block.fossil_machine.unprotected");
         changed = true;
         if (st.left % 5 === 0 || st.done) { const m = findMachine(block); if (m) show(m, st); }
     }
@@ -6205,6 +6254,85 @@ function alphaDrops(f) {
     try { e.dimension.runCommand(`loot spawn ${x} ${y + 0.5} ${z} loot "alpha/alpha_rewards_tier${tier}"`); } catch (err) { }
 }
 
+
+// Berry care (BerryBlockEntity, MulchItem, Berry.calculateYield, BerryBlock's mutations): a mulch used on a berry tree
+// stays on it. Growth Mulch grows it twice as fast for five harvests, Rich Mulch adds one or two berries to five, and
+// Surprise Mulch makes three mutations four times as likely; the rest (Coarse, Humid, Loamy, Peat, Sandy) count as the
+// tree's preferred biome for the berries that favour them. A harvest gives the berry's base yield, its preferred biome's
+// bonus where it grows in one (or has a mulch it favours), and Rich Mulch's, up to its growth points. When its fruit
+// ripens, a tree beside one of its mutation partners has one chance in eight (one in two with Surprise Mulch) of one of
+// its berries becoming the mutation. Each tree's mulch and mutation live in the world, by position
+const BERRY_CARE_KEY = "cobblemon:berry_care", MULCHES = { growth_mulch: 5, rich_mulch: 5, surprise_mulch: 3, coarse_mulch: -1, humid_mulch: -1, loamy_mulch: -1, peat_mulch: -1, sandy_mulch: -1 };
+function berryCare() { try { return JSON.parse(world.getDynamicProperty(BERRY_CARE_KEY) ?? "{}"); } catch (e) { return {}; } }
+function saveBerryCare(all) { world.setDynamicProperty(BERRY_CARE_KEY, JSON.stringify(all)); }
+const careKey = (block) => `${block.dimension.id}|${block.x}|${block.y}|${block.z}`;
+function careOf(block) { return berryCare()[careKey(block)] ?? {}; }
+function setCare(block, care) {
+    const all = berryCare(), key = careKey(block);
+    if (!care || (!care.mulch && !care.mut)) delete all[key]; else all[key] = care;
+    saveBerryCare(all);
+}
+// a mulch used up: Growth and Rich on each harvest, Surprise on each mutation roll
+function spendMulch(block, care) {
+    if (!care.mulch || care.uses < 0) return care;
+    if (--care.uses <= 0) {
+        care.mulch = null; care.uses = 0;
+        try { block.dimension.playSound("cobblemon.block.mulch.remove", block.location); } catch (e) { }
+    }
+    return care;
+}
+function applyMulch(block, player, itemId) {
+    const kind = itemId.replace("cobblemon:", "");
+    if (!(kind in MULCHES)) return false;
+    const care = careOf(block);
+    if (care.mulch) { player.onScreenDisplay.setActionBar("§7This tree already has mulch on it."); return true; }
+    setCare(block, { ...care, mulch: kind, uses: MULCHES[kind] });
+    consumeHand(player);
+    try { block.dimension.playSound("cobblemon.block.mulch.place", block.location); block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+    player.onScreenDisplay.setActionBar(`§aThe tree has ${itemName(itemId)} on it.`);
+    return true;
+}
+// when the fruit ripens: a mutation from a partner beside it
+function berryMutation(block) {
+    const own = BERRY_CARE[block.typeId];
+    if (!own) return;
+    const offers = [];
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        let other;
+        try { other = block.dimension.getBlock({ x: block.x + dx, y: block.y, z: block.z + dz }); } catch (e) { continue; }
+        const result = own.mut[other?.typeId];
+        if (result) offers.push(result);
+    }
+    if (!offers.length) return;
+    let care = careOf(block), chance = 125;
+    if (care.mulch === "surprise_mulch") { chance *= 4; care = spendMulch(block, care); }
+    if (Math.floor(Math.random() * 1000) < chance) care.mut = offers[Math.floor(Math.random() * offers.length)];
+    setCare(block, care);
+}
+// a harvest's berries: [item, count] pairs
+function berryHarvest(block) {
+    const berry = BERRIES[block.typeId], own = BERRY_CARE[block.typeId];
+    let care = careOf(block);
+    let count = berry.min + Math.floor(Math.random() * (berry.max - berry.min + 1));
+    if (own) {
+        let tags = [];
+        try { tags = BIOME_TAGS[block.dimension.getBiome(block.location).id] ?? []; } catch (e) { }
+        if ((own.biome && filterPasses(own.biome, tags)) || (care.mulch && own.fav.includes(care.mulch.replace("_mulch", "")))) count += ri(own.bonus[0], own.bonus[1]);
+        if (care.mulch === "rich_mulch") count += ri(1, 2);
+        count = Math.min(count, own.points);
+    }
+    const out = [];
+    if (care.mut && count > 0) { out.push([care.mut, 1]); count--; }
+    if (count > 0) out.push([berry.item, count]);
+    care.mut = null;
+    if (care.mulch === "rich_mulch" || care.mulch === "growth_mulch") care = spendMulch(block, care);
+    setCare(block, care);
+    return out;
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (BERRIES[brokenBlockPermutation?.type?.id] && berryCare()[careKey(block)]) setCare(block, null);
+});
+
 // Honey-slathered Saccharine logs (SaccharineLogBlock, SaccharineLogSlatheredInfluence): a honey bottle used on a
 // Saccharine log slathers it, giving back the bottle. The next wild Pokemon to spawn within 32 blocks comes to it: it is
 // moved in front of the log, has one chance in 20 of its hidden ability, a shiny roll of one in 4000 and an alpha roll
@@ -6254,6 +6382,122 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     if (brokenBlockPermutation?.type?.id !== "cobblemon:saccharine_log_slathered") return;
     saveSlathered(slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z)));
 });
+
+
+// The Habitat Block (HabitatBlock, HabitatBlockEntity, ActivatedHabitatSpawning): a game master's spawner. A player in
+// creative uses it to choose one of Cobblemon's habitat pools (data/cobblemon/habitat_pools) and its settings, as the
+// HabitatEditGUI does: what sets it off (a redstone signal coming on, every second, or now and then as a random tick
+// would), the chance an activation spawns, the range it spawns in, the most of its Pokemon alive at once and per
+// activation, and a level range. A spawn takes the pool's spawns for the day's phase (the day number through the
+// pool's phases) and the time of day, picks a bucket by activatedHabitatBuckets' weights, then a spawn by weight, with
+// its form and a level in both ranges. It spawns only with a player within 64 blocks. The settings live in the world.
+const HABITATS = "cobblemon:habitats", HABITAT_BUCKETS = { common: 83.25, uncommon: 11.25, rare: 4.125, "ultra-rare": 1.375 };
+const HABITAT_TRIGGERS = ["redstone", "tick", "random_tick"];
+function habitats() { try { return JSON.parse(world.getDynamicProperty(HABITATS) ?? "{}"); } catch (e) { return {}; } }
+function saveHabitats(all) { world.setDynamicProperty(HABITATS, JSON.stringify(all)); }
+const habitatKey = (block) => `${block.dimension.id}|${block.x}|${block.y}|${block.z}`;
+const habitatSpawned = new Map();   // habitat key -> ids of its Pokemon
+world.afterEvents.playerInteractWithBlock.subscribe(({ player, block }) => {
+    if (block?.typeId !== "cobblemon:habitat_block") return;
+    let creative = false;
+    try { creative = player.getGameMode() === "Creative" || player.getGameMode() === "creative"; } catch (e) { }
+    if (!creative) return;
+    editHabitat(player, block);
+});
+function editHabitat(player, block) {
+    const key = habitatKey(block), all = habitats(), now = all[key];
+    const ids = Object.keys(HABITAT_POOLS).sort((a, b) => HABITAT_POOLS[a].name.localeCompare(HABITAT_POOLS[b].name));
+    const form = new ActionFormData().title("Habitat Block").body(now ? `Spawning from ${HABITAT_POOLS[now.pool]?.name ?? now.pool}.` : "Choose a habitat pool to spawn from.");
+    if (now) form.button("Settings").button("Turn off");
+    for (const id of ids) form.button(HABITAT_POOLS[id].name);
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        let pick = r.selection;
+        if (now && pick === 0) { habitatSettings(player, block, now.pool); return; }
+        if (now && pick === 1) { delete all[key]; saveHabitats(all); player.sendMessage("§7The Habitat Block is off."); return; }
+        if (now) pick -= 2;
+        habitatSettings(player, block, ids[pick]);
+    }).catch(() => { });
+}
+function habitatSettings(player, block, pool) {
+    const key = habitatKey(block), all = habitats(), was = all[key] ?? { trigger: "redstone", chance: 1, range: 16, max: -1, per: 1, min: 1, maxLevel: 100 };
+    new ModalFormData().title(HABITAT_POOLS[pool]?.name ?? "Habitat")
+        .dropdown("Trigger", ["A redstone signal", "Every second", "Now and then (random ticks)"], { defaultValueIndex: Math.max(0, HABITAT_TRIGGERS.indexOf(was.trigger)) })
+        .slider("Chance per activation (%)", 1, 100, { valueStep: 1, defaultValue: Math.round(was.chance * 100) })
+        .slider("Spawn range (blocks)", 2, 32, { valueStep: 1, defaultValue: was.range })
+        .slider("Most alive at once (0 is no limit)", 0, 32, { valueStep: 1, defaultValue: Math.max(0, was.max) })
+        .slider("Most per activation", 1, 8, { valueStep: 1, defaultValue: was.per })
+        .slider("Lowest level", 1, 100, { valueStep: 1, defaultValue: was.min })
+        .slider("Highest level", 1, 100, { valueStep: 1, defaultValue: was.maxLevel })
+        .show(player).then((r) => {
+            if (r.canceled || !r.formValues) return;
+            const [t, chance, range, max, per, min, maxLevel] = r.formValues;
+            const fresh = habitats();
+            fresh[key] = { pool, trigger: HABITAT_TRIGGERS[t], chance: chance / 100, range, max: max || -1, per, min: Math.min(min, maxLevel), maxLevel: Math.max(min, maxLevel), power: 0 };
+            saveHabitats(fresh);
+            player.sendMessage(`§aThe Habitat Block spawns from ${HABITAT_POOLS[pool]?.name ?? pool}.`);
+        }).catch(() => { });
+}
+// the pool's spawns for the day's phase and the time of day, a bucket by weight, then a spawn by weight
+function habitatPick(pool, day, night) {
+    const spawns = HABITAT_POOLS[pool]?.spawns ?? [];
+    const phases = Math.max(1, ...spawns.flatMap((sp) => sp[5]));
+    const phase = (day % phases) + 1;
+    const open = spawns.filter((sp) => sp[5].includes(phase) && (sp[6] === "any" || (sp[6] === "night") === night) && speciesNamed(sp[0]));
+    if (!open.length) return null;
+    const buckets = [...new Set(open.map((sp) => sp[1]))];
+    const bucketTotal = buckets.reduce((n, b) => n + (HABITAT_BUCKETS[b] ?? 1), 0);
+    let roll = Math.random() * bucketTotal, bucket = buckets[0];
+    for (const b of buckets) { roll -= HABITAT_BUCKETS[b] ?? 1; if (roll <= 0) { bucket = b; break; } }
+    const inBucket = open.filter((sp) => sp[1] === bucket), total = inBucket.reduce((n, sp) => n + sp[2], 0);
+    roll = Math.random() * total;
+    for (const sp of inBucket) { roll -= sp[2]; if (roll <= 0) return sp; }
+    return inBucket[inBucket.length - 1];
+}
+function activateHabitat(key, h, block) {
+    if (Math.random() >= h.chance) return;
+    const alive = (habitatSpawned.get(key) ?? []).filter((id) => { try { return world.getEntity(id)?.isValid; } catch (e) { return false; } });
+    habitatSpawned.set(key, alive);
+    const room = h.max > 0 ? Math.min(h.per, h.max - alive.length) : h.per;
+    const night = (world.getTimeOfDay() % 24000) >= 12000;
+    for (let n = 0; n < room; n++) {
+        const sp = habitatPick(h.pool, world.getDay(), night);
+        if (!sp) return;
+        const typeId = speciesNamed(sp[0]), spot = spawnSpot(block.dimension, block.location, h.range, sp[7] === "grounded" ? "grounded" : "water");
+        if (!typeId || !spot) continue;
+        let pokemon;
+        try { pokemon = block.dimension.spawnEntity(typeId, spot); } catch (e) { continue; }
+        alive.push(pokemon.id);
+        const lo = Math.max(sp[3], h.min), hi = Math.min(sp[4], h.maxLevel), level = lo <= hi ? ri(lo, hi) : ri(sp[3], sp[4]);
+        system.run(() => {
+            try {
+                setProp(pokemon, LEVEL, level); setProp(pokemon, EXP, expFor(POKEMON[typeId].expGroup, level));
+                setProp(pokemon, MOVESET, JSON.stringify(movesAt(POKEMON[typeId], level)));
+                if (sp[8]) applyProps(pokemon, { form: sp[8] });
+            } catch (e) { }
+        });
+    }
+}
+system.runInterval(() => {
+    const all = habitats();
+    let changed = false;
+    for (const [key, h] of Object.entries(all)) {
+        const [dimId, x, y, z] = key.split("|");
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x: Number(x), y: Number(y), z: Number(z) }); } catch (e) { continue; }   // not loaded
+        if (!block) continue;
+        if (block.typeId !== "cobblemon:habitat_block") { delete all[key]; changed = true; continue; }
+        if (!block.dimension.getPlayers({ location: block.location, maxDistance: 64 }).length) continue;
+        if (h.trigger === "redstone") {
+            let power = 0;
+            try { power = block.getRedstonePower() ?? 0; } catch (e) { }
+            const rising = power > 0 && !(h.power > 0);
+            if ((h.power ?? 0) !== power) { h.power = power; changed = true; }
+            if (rising) activateHabitat(key, h, block);
+        } else if (h.trigger === "tick" || Math.random() < 1 / 68) activateHabitat(key, h, block);
+    }
+    if (changed) saveHabitats(all);
+}, 20);
 
 // PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
 // basic one; the six Cobblemon unlocks come from wallpaper_unlocks.molang (standing in a cave, forest or ocean biome,
@@ -6466,9 +6710,11 @@ function openPc(block, player, state) {
         const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
         if (target.kind === "box" && !pcPasses(contents[target.slot], state.filter)) { again(); return; }
         const occupied = target.kind === "box" ? !!contents[target.slot] : !!party[target.slot];
-        if (!sel) { state.sel = occupied ? target : null; again(); return; }
-        if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; again(); return; }
+        // pc.grab as a Pokemon is picked up, pc.drop as it is put down (PCGUI's sounds)
+        if (!sel) { state.sel = occupied ? target : null; if (occupied) try { player.playSound("cobblemon.pc.grab"); } catch (e) { } again(); return; }
+        if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; try { player.playSound("cobblemon.pc.drop"); } catch (e) { } again(); return; }
         state.sel = null;
+        try { player.playSound("cobblemon.pc.drop"); } catch (e) { }
         pcMove(player, sel, target);
         again(2);
     }).catch(done);
@@ -10310,15 +10556,20 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");
-            if (stage < 3) block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1));
+            if (stage >= 3) return;
+            // Growth Mulch halves the growth time: a second stage on the same tick
+            const next = Math.min(3, stage + (careOf(block).mulch === "growth_mulch" ? 2 : 1));
+            block.setPermutation(block.permutation.withState("cobblemon:stage", next));
+            if (next === 3) berryMutation(block);
         },
-        onPlayerInteract({ block }) {
+        onPlayerInteract({ block, player }) {
+            const hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand && applyMulch(block, player, hand.typeId)) return;
             if (block.permutation.getState("cobblemon:stage") !== 3) return;
             const berry = BERRIES[block.typeId];
             if (!berry) return;
-            const count = berry.min + Math.floor(Math.random() * (berry.max - berry.min + 1));
             const { x, y, z } = block.location;
-            block.dimension.spawnItem(new ItemStack(berry.item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
+            for (const [item, count] of berryHarvest(block)) block.dimension.spawnItem(new ItemStack(item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
             try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
@@ -10398,6 +10649,14 @@ function timeline(ticks, fn) {
 // Wild shinies (PokemonClientDelegate.playWildShinySounds): a wild shiny within 24 blocks of a player
 // (shinyNoticeParticlesDistance) sparkles every 3.5 seconds, with its ambient chime, unless it is in battle, and the first
 // time that player comes near it, its ring and chime play for them
+// the shiny ring and its chime (shiny_ring.particle.json's particle.shiny_chime), round a shiny's middle
+function shinyRing(e) {
+    if (!e?.isValid || !isShiny(e)) return;
+    try {
+        const head = e.getHeadLocation(), mid = { x: e.location.x, y: (e.location.y + head.y) / 2, z: e.location.z };
+        e.dimension.spawnParticle("cobblemon:shiny_ring", mid); e.dimension.playSound("cobblemon.particle.shiny_chime", mid);
+    } catch (err) { }
+}
 const SHINY_NOTICE = 24, shinyNoticed = new Map();   // player id -> ids of the shinies they have had the ring for
 function isShiny(e) { return (SHINY_VARIANTS[e.typeId] ?? []).includes(variantOf(e)); }
 system.runInterval(() => {
@@ -10678,9 +10937,17 @@ function captureRoll(player, pokemon, ballId, battle) {
     const highest = Math.max(0, ...findParty(player, player.location).map((e) => fighter(e)?.level ?? 0));
     if (highest && highest < f.level && f.level - highest >= 50) rate *= 0.1;
     const chance = Math.round(65536 / Math.pow(255 / Math.max(rate, 0.0001), 0.1875));
+    // CriticalCaptureProvider: more likely the more the player has caught; a critical capture is one check, one shake
+    if (criticalCapture(player, rate)) return { shakes: 1, caught: Math.floor(Math.random() * 65537) < chance, critical: true };
     let shakes = 0;
     for (let i = 0; i < 4; i++) if (Math.floor(Math.random() * 65537) < chance) shakes++;
     return { shakes: Math.min(shakes, 3), caught: shakes === 4 };
+}
+function criticalCapture(player, rate) {
+    let caught = 0;
+    try { for (const c of dexString(player)) if (c === "2") caught++; } catch (e) { return false; }
+    const mult = caught <= 30 ? 0 : caught <= 150 ? 0.5 : caught <= 300 ? 1 : caught <= 450 ? 1.5 : caught <= 600 ? 2 : 2.5;
+    return Math.floor(Math.random() * 256) < Math.round((rate * mult) / 6);
 }
 
 // the ball's multiplier for a throw in the world: the battle rules where they read the world, Safari's 1.5 outside
@@ -10822,6 +11089,28 @@ function potentialMarks(pokemon) {
     if (prop(pokemon, "cobblemon:fished")) out.push("cobblemon:mark_fishing");
     return out.filter((id) => MARKS[id]);
 }
+// callbacks/player_tick_pre/partner_mark: every 10,000 blocks a player travels (walking, swimming, flying, riding),
+// each of their party with 200 friendship or more has the Partner Mark's own chance of it; checked every ten seconds
+const TRAVELLED = "cobblemon:travelled", lastSpot = new Map();
+system.runInterval(() => {
+    for (const player of world.getAllPlayers()) {
+        let here;
+        try { here = { ...player.location, d: player.dimension.id }; } catch (e) { continue; }
+        const last = lastSpot.get(player.id);
+        lastSpot.set(player.id, here);
+        if (!last || last.d !== here.d) continue;
+        const step = Math.hypot(here.x - last.x, here.y - last.y, here.z - last.z);
+        if (step > 200) continue;   // a teleport, not travel
+        const before = player.getDynamicProperty(TRAVELLED) ?? 0, after = before + step;
+        player.setDynamicProperty(TRAVELLED, after);
+        if (Math.floor(after / 10000) <= Math.floor(before / 10000)) continue;
+        const mark = "cobblemon:mark_partner", chance = MARKS[mark]?.[6] ?? 0.01;
+        for (const m of summaryParty(player)) {
+            if (friendshipOf(m) < 200 || marksOf(m).includes(mark) || Math.random() >= chance) continue;
+            setProp(m, MARK_LIST, JSON.stringify([...marksOf(m), mark])); saveParty(player.id);
+        }
+    }
+}, 200);
 function applyPotentialMarks(pokemon) {
     const owned = marksOf(pokemon), potentials = potentialMarks(pokemon).filter((id) => !owned.includes(id));
     const groups = new Map();
@@ -10903,6 +11192,7 @@ function brokeFree(ball, pos, pokemon, ballId, gone) {
     system.runTimeout(() => {
         ballBurst(dim, ballId, { x: pos.x, y: pos.y + 0.3, z: pos.z });
         timeline(BEAM_SHRINK, (t) => { if (pokemon.isValid) setSize(pokemon, t / BEAM_SHRINK); });
+        system.runTimeout(() => shinyRing(pokemon), 10);   // EmptyPokeBallEntity: a shiny out of the ball, half a second on
         capturing.delete(pokemon.id);
         const battle = captureBattles.get(pokemon.id);
         captureBattles.delete(pokemon.id);

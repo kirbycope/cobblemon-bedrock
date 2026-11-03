@@ -72,3 +72,9 @@ const plain = (opts = {}) => mon("Snorlax", { ability: "thickfat", ...opts });
     try { const before = d.hp; M.useMove(b, a, d, move("comeuppance")); flush(); check("Comeuppance returns half again the damage just taken", before - d.hp === 60, b.log.join(" / ")); }
     finally { Math.random = random; }
 }
+{
+    const a = plain(), d = plain({ level: 100 }), b = battle(a, d);
+    b.terrain = { kind: "electric", turns: 5 };
+    use(a, d, "naturepower", b);
+    check("Nature Power becomes the terrain's move", b.log.join(" ").includes("turned into Thunderbolt"), b.log.join(" / "));
+}

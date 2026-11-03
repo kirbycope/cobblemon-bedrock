@@ -16,6 +16,7 @@ The generated files come from Cobblemon's own data rather than from a template:
 """
 import collections
 import glob
+import itertools
 import gzip
 import importlib.util
 import json
@@ -247,7 +248,7 @@ def add_intrinsic_scale():
         with open(path, encoding="utf-8") as file: text = file.read()
         data = json.loads(text); props = data["minecraft:entity"]["description"].setdefault("properties", {})
         if "cobblemon:size" not in props or "cobblemon:intrinsic" in props: continue
-        props["cobblemon:intrinsic"] = {"type": "float", "range": [0.5, 1.5], "default": 1.0, "client_sync": True}
+        props["cobblemon:intrinsic"] = {"type": "float", "range": [0.5, 2.0], "default": 1.0, "client_sync": True}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
         added += 1
@@ -2752,8 +2753,10 @@ def create_behavior_entities():
                                    # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
                                    # Pokemon.scaleModifier, rolled between pokemonIntrinsicSizeMin and Max by the script
-                                   "cobblemon:intrinsic": {"type": "float", "range": [0.5, 1.5], "default": 1.0, "client_sync": True},
+                                   "cobblemon:intrinsic": {"type": "float", "range": [0.5, 2.0], "default": 1.0, "client_sync": True},
                                    "cobblemon:red": {"type": "float", "range": [0.0, 1.0], "default": 0.0, "client_sync": True},
+                                   # Pokemon.isAlpha, for the alpha eyes' glow (create_alpha_eyes)
+                                   "cobblemon:alpha": {"type": "bool", "default": False, "client_sync": True},
                                    # a primary clip (an attack, a faint) is playing: the pose's own clips stop meanwhile
                                    "cobblemon:primary": {"type": "bool", "default": False, "client_sync": True}},
                     "animations": {},
@@ -3074,6 +3077,42 @@ def add_primary_controllers(anims, lengths, stems):
     return primary
 
 
+PARTICLE_SOURCES = {}
+def particle_sounds(identifier):
+    """The sound events a Cobblemon particle plays, as (seconds after it starts, sound): its emitter's creation and
+    timeline events, its expiry at its active time, and its particles' creation, nested event sequences included."""
+    if not PARTICLE_SOURCES:
+        for path in glob.glob(f"{cobblemon}/bedrock/particles/**/*.json", recursive=True):
+            try: PARTICLE_SOURCES[json.load(open(path, encoding="utf-8"))["particle_effect"]["description"]["identifier"]] = path
+            except Exception: pass
+    path = PARTICLE_SOURCES.get(identifier)
+    if not path: return []
+    effect = json.load(open(path, encoding="utf-8"))["particle_effect"]
+    events, comps = effect.get("events", {}), effect.get("components", {})
+    def sounds_of(name):
+        out = []
+        def walk(node):
+            if isinstance(node, dict):
+                if "sound_effect" in node: out.append(node["sound_effect"].get("event_name"))
+                for v in node.values(): walk(v)
+            elif isinstance(node, list):
+                for v in node: walk(v)
+        for n in ([name] if isinstance(name, str) else name or []): walk(events.get(n, {}))
+        return [x for x in out if x]
+    number = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and re.fullmatch(r"[0-9.]+", v)) else 0.0
+    found = []
+    life = comps.get("minecraft:emitter_lifetime_events", {})
+    found += [(0.0, snd) for snd in sounds_of(life.get("creation_event"))]
+    for at, name in life.get("timeline", {}).items(): found += [(number(at), snd) for snd in sounds_of(name)]
+    active = number(comps.get("minecraft:emitter_lifetime_once", {}).get("active_time", 0))
+    found += [(active, snd) for snd in sounds_of(life.get("expiration_event"))]
+    found += [(0.0, snd) for snd in sounds_of(comps.get("minecraft:particle_lifetime_events", {}).get("creation_event"))]
+    seen, unique = set(), []
+    for delay, snd in found:
+        if snd not in seen: seen.add(snd); unique.append((delay, snd))   # one sound each, the first time it comes
+    return unique
+
+
 def create_move_fx():
     root = f"{cobblemonData}/action_effects/moves"
     particles = set()
@@ -3091,6 +3130,12 @@ def create_move_fx():
             end, hold = fx_flatten(timeline, 0.0, events, None, {})
             # a particle the pack lacks is dropped, unless it is a template filled at run time (impact_$type)
             events = [e for e in events if e["k"] != "p" or "$" in e["p"] or e["p"] in particles]
+            # the sounds Cobblemon's particles play from their own events (absorb_actorhealtimer's move.absorb.actor at
+            # 0.91 s), which a Bedrock particle cannot, as sound entries the script plays beside the particle
+            for e in [e for e in events if e["k"] == "p" and "$" not in e["p"]]:
+                for delay, snd in particle_sounds(e["p"]):
+                    events.append({**{k: v for k, v in e.items() if k not in ("p", "l", "aim")}, "t": round(e["t"] + delay, 2), "k": "s", "s": "cobblemon." + snd.replace("cobblemon:", "")})
+            events.sort(key=lambda e: e["t"])
             for e in events:
                 if e["k"] == "a": used.update(a for a in e["a"] if "$" not in a)
             effects[name[:-5]] = {"h": round(hold if hold is not None else end, 2), "e": events}
@@ -5590,7 +5635,8 @@ def create_structures():
     items = defined_items(); structure_loot = {}
     CHEST_LOOT[:] = gilded_chest_loot_tables()
     structure_loot_path = lambda name: f"loot_tables/{name.split(':', 1)[-1]}.json"
-    for folder in ("ruins", "shipwreck_coves", "villages"):
+    # and the alphas' rewards (loot_table/alpha), which the script spawns where a wild alpha faints in battle
+    for folder in ("ruins", "shipwreck_coves", "villages", "alpha"):
         for source in glob.glob(f"{cobblemonData}/loot_table/{folder}/**/*.json", recursive=True):
             rel = os.path.relpath(source, f"{cobblemonData}/loot_table").replace(os.sep, "/")
             with open(source, encoding="utf-8") as file: table = convert_loot_table(json.load(file), items)
@@ -6140,7 +6186,22 @@ def vanilla_template_elements(parent):
 
 def java_model(name):
     """A Java block model with its parents' elements and textures filled in, and the elements of Minecraft's own
-    template parents (orientable, crop, cross) where the model has none of its own."""
+    template parents (orientable, crop, cross) where the model has none of its own. A tuple of names (a multipart
+    state's parts) is those models in one, each part's texture keys kept apart."""
+    if isinstance(name, tuple):
+        merged = {"textures": {}, "elements": []}
+        for n, part in enumerate(name):
+            model = java_model(part)
+            if not model: continue
+            merged["textures"].update({f"p{n}_{k}": v for k, v in model.get("textures", {}).items()})
+            for element in model.get("elements", []):
+                element = json.loads(json.dumps(element))
+                for face in element.get("faces", {}).values():
+                    if str(face.get("texture", "")).startswith("#"): face["texture"] = f"#p{n}_{face['texture'][1:]}"
+                merged["elements"].append(element)
+        # a texture that points at another key (#all) points at that key of its own part
+        merged["textures"] = {k: (f"#{k.split('_', 1)[0]}_{v[1:]}" if isinstance(v, str) and v.startswith("#") else v) for k, v in merged["textures"].items()}
+        return merged if merged["elements"] else None
     ns, rel = name.split(":", 1) if ":" in name else ("cobblemon", name)
     path = f"{ASSET_ROOTS.get(ns, cobblemon)}/models/{rel}.json"
     if not os.path.exists(path): return None
@@ -8920,6 +8981,84 @@ def create_held_display():
     print(f"Create held item display complete: {len(order)} item icons on {made} Pokemon.")
 
 
+def create_berry_care():
+    """What a berry tree's yield and mutations need (data/cobblemon/berries), written to scripts/berry_care.js by bush:
+    its preferred biomes as a biome filter the script tests (PreferredBiomeGrowthFactor), the bonus that gives, its
+    favourite mulches, its mutations (the partner's bush to the berry it makes) and how many growth points it has."""
+    out = {}
+    for path in sorted(glob.glob(f"{cobblemonData}/berries/*.json")):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        berry = os.path.basename(path)[:-5]
+        bonus = [0, 0]
+        for factor in data.get("growthFactors", []):
+            if factor.get("variant") == "cobblemon:preferred_biome":
+                y = factor.get("bonusYield", {}); bonus = [y.get("min", 0), y.get("max", 0)]
+        biome = biome_filter_for([("#" + t) for t in data.get("preferredBiomeTags", [])]) if data.get("preferredBiomeTags") else None
+        out[f"cobblemon:{berry}_bush"] = {"biome": biome, "bonus": bonus, "fav": data.get("favoriteMulches", []),
+                                          "mut": {f"{k}_bush": v for k, v in data.get("mutations", {}).items()}, "points": len(data.get("growthPoints", [])) or 9}
+    with open(f"{scriptsBedrock}/berry_care.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py (create_berry_care): each berry bush's preferred biomes, favourite mulches and mutations" + chr(10))
+        file.write("export const BERRY_CARE = " + json.dumps(out) + ";" + chr(10))
+    print(f"Create berry care complete: {len(out)} berries.")
+
+
+def create_habitat_pools():
+    """Cobblemon's habitat pools (data/cobblemon/habitat_pools), for the Habitat Block: each pool's name and its spawns as
+    [species name, bucket, weight, lowest level, highest level, phases, time, position, form], written
+    to scripts/habitats.js. The script names the species by its name and the form by its aspect."""
+    with open(f"{cobblemon}/lang/en_us.json", encoding="utf-8") as file: lang = json.load(file)
+    pools = {}
+    for path in sorted(glob.glob(f"{cobblemonData}/habitat_pools/*.json")):
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        spawns = []
+        for sp in data.get("spawns", []):
+            lo, _, hi = str(sp.get("levelRange", "1-100")).partition("-")
+            phases = []   # "3", "1-7" or "1, 3"
+            for part in str(sp.get("phases", "1")).split(","):
+                a, _, b = part.strip().partition("-")
+                phases += list(range(int(a), int(b or a) + 1))
+            form = str(sp.get("modifiers", "") or "").split("=")[-1]
+            spawns.append([sp["species"], sp.get("bucket", "common"), float(sp.get("weight", 1)), int(lo), int(hi or lo), phases,
+                           sp.get("timeRange") or "any", sp.get("spawnablePositionType", "grounded"), form])
+        name = lang.get(data.get("name", ""), os.path.basename(path)[:-5].replace("_", " ").title())
+        pools[os.path.basename(path)[:-5]] = {"name": name, "spawns": spawns}
+    with open(f"{scriptsBedrock}/habitats.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: Cobblemon's habitat pools for the Habitat Block" + chr(10))
+        file.write("export const HABITAT_POOLS = " + json.dumps(pools) + ";" + chr(10))
+    print(f"Create habitat pools complete: {len(pools)} pools.")
+
+
+def create_alpha_eyes():
+    """An alpha's glowing eyes: the species' alpha_eyes layer (its resolver's emissive <name>_alpha texture, which the
+    Alpha Mark's aspect shows) as a second render pass over the same geometry, shown while cobblemon:alpha is set."""
+    made = 0
+    for path in glob.glob(f"{entityBedrock}/*.entity.json"):
+        pokemon = os.path.basename(path)[:-len(".entity.json")]
+        with open(path, encoding="utf-8") as file: entity = json.load(file)
+        desc = entity["minecraft:client_entity"]["description"]
+        rc_path = f"{renderControllersBedrock}/{pokemon}.render_controllers.json"
+        default = desc.get("textures", {}).get("default")
+        if not default or not os.path.exists(rc_path) or not desc.get("render_controllers"): continue
+        texture = default + "_alpha"
+        if not os.path.exists(f"{resourcePack}/{texture}.png"): continue
+        with open(rc_path, encoding="utf-8") as file: rc = json.load(file)
+        main_name = desc["render_controllers"][0] if isinstance(desc["render_controllers"][0], str) else next(iter(desc["render_controllers"][0]))
+        main = rc["render_controllers"].get(main_name)
+        if not main: continue
+        name = main_name + "_alpha"
+        rc["render_controllers"][name] = {"materials": [{"*": "Material.alpha_eyes"}], "geometry": main.get("geometry", "Geometry.default"),
+                                          "textures": ["Texture.alpha_eyes"],
+                                          **({"arrays": {"geometries": main["arrays"]["geometries"]}} if "geometries" in main.get("arrays", {}) else {})}
+        desc["textures"]["alpha_eyes"] = texture
+        desc["materials"]["alpha_eyes"] = "entity_emissive_alpha"
+        controllers = [c for c in desc["render_controllers"] if (c if isinstance(c, str) else next(iter(c))) != name]
+        desc["render_controllers"] = controllers + [{name: "q.property('cobblemon:alpha')"}]
+        with open(rc_path, "w", encoding="utf-8") as file: file.write(json.dumps(rc, indent=4))
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(entity, indent=4))
+        made += 1
+    print(f"Create alpha eyes complete: {made} Pokemon.")
+
+
 # ---------------------------------------------------------------------------
 # Model blocks. Every other Cobblemon block with a Java element model: placed medicine, vitamins and held items,
 # plaques, gilded chests, teacups, the display case, campfire pots, mints and the rest. Each blockstate variant
@@ -8936,12 +9075,39 @@ def blockstate_variants(name):
     path = f"{cobblemon}/blockstates/{name}.json"
     if not os.path.exists(path): return None
     with open(path, encoding="utf-8") as file: state = json.load(file)
+    if "multipart" in state: return multipart_variants(state["multipart"])
     if "variants" not in state: return None
     out = []
     for key, value in state["variants"].items():
         v = value if isinstance(value, dict) else value[0]
         props = dict(kv.split("=", 1) for kv in key.split(",") if "=" in kv)
         out.append((props, v["model"], v.get("x", 0), v.get("y", 0)))
+    return out
+
+
+def multipart_variants(parts):
+    """A multipart blockstate (Pomohana's flowers, the Galarica Wreath on a chain) as whole states: every combination
+    of the values its parts name, each with the parts that apply merged into one model (a tuple of model names, which
+    java_model joins) and the rotation of its turned part. Pomohana's flower_amount is an amount, which grows when the
+    same item is used on it, as the stackable blocks do."""
+    rename = {"flower_amount": "amount"}
+    values = {}
+    for part in parts:
+        for k, v in part.get("when", {}).items():
+            values.setdefault(rename.get(k, k), set()).update(str(v).lower().split("|"))
+    keys = sorted(values)
+    out = []
+    for combo in itertools.product(*[sorted(values[k]) for k in keys]):
+        props = dict(zip(keys, combo))
+        applied = []
+        for part in parts:
+            when = {rename.get(k, k): str(v).lower().split("|") for k, v in part.get("when", {}).items()}
+            if all(props.get(k) in vs for k, vs in when.items()):
+                a = part["apply"] if isinstance(part["apply"], dict) else part["apply"][0]
+                applied.append((a["model"], a.get("x", 0), a.get("y", 0)))
+        if not applied: continue
+        turned = max(applied, key=lambda p: (p[1] != 0 or p[2] != 0))
+        out.append((props, tuple(m for m, _, _ in applied), turned[1], turned[2]))
     return out
 
 
@@ -13476,6 +13642,9 @@ def main():
     create_wild_features()   # after the blocks it places
     create_tms()
     create_held_display()
+    create_alpha_eyes()
+    create_habitat_pools()
+    create_berry_care()
     write_item_names(general_items)
     create_furniture()   # before create_model_blocks, which writes the terrain textures
     create_lectern()   # the same
