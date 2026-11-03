@@ -1746,7 +1746,7 @@ function changeForm(battle, f, form, text) {
     if (prop(e, BATTLE_FORM) === undefined) setProp(e, BATTLE_FORM, cur);
     try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
     f.form = form;
-    f.info = { ...species, ...(species.variants?.[n] ?? {}) };
+    f.info = { ...species, ...(species.variants?.[n] ?? {}), name: f.info.name };   // it is still the same Pokemon by name
     f.stats = { ...statsOf(e, f.info, f.level), hp: f.stats.hp };
     if (text) say(battle, `§7${text}`);
     return true;

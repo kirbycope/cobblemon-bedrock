@@ -10,6 +10,7 @@ const hitWith = (a, d, id, b = battle(a, d)) => rolled(0.5, () => { const before
     f.hp = Math.floor(f.stats.hp * 0.4);
     M.battleForms(b); flush();
     check("Zen Mode turns Darmanitan Zen at half HP, with Zen's types and stats", f.form === "zen-mode" && f.info.types.join() === "fire,psychic" && f.stats.spa > spa * 2, b.log.join(" / "));
+    check("and is still called Darmanitan", f.info.name === "Darmanitan");
     check("and keeps the variant it came in as for afterwards", f.entity.getDynamicProperty("cobblemon:battle_form") === 0);
     f.hp = f.stats.hp; M.battleForms(b); flush();
     check("and back above half", f.form === null && f.stats.spa === spa);
