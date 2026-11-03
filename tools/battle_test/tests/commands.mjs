@@ -8,3 +8,8 @@ check("properties as Cobblemon's key=value", q.species === "pikachu" && q.level 
 check("species by name or id", M.speciesNamed("mr. mime") === M.speciesNamed("mrmime") && !!M.speciesNamed("pikachu"));
 const r = M.recordFor(M.speciesNamed("pikachu"), { level: 12, shiny: true });
 check("a record for a given Pokemon has its level, moves and a shiny variant", r.lv === 12 && JSON.parse(r.mv).length > 0 && r.v > 0, JSON.stringify(r));
+{
+    // Bedrock's parser takes no number alone, so "level 5" cannot be typed; "level5" can
+    const p = M.parseProps(["pikachu", "level5", "shiny"]), q = M.parseProps(["pikachu", "lvl12"]);
+    check("a level runs on from its key", p.level === 5 && p.shiny === true && q.level === 12, JSON.stringify([p, q]));
+}

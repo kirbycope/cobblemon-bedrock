@@ -1912,7 +1912,7 @@ def closed_vectors(anims, plays=None):
     return out
 
 
-def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
+def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None, posed=frozenset()):
     """Spread the near-flush faces of one geometry; returns {(bone, nudge): new nudge} for the animations. Faces are
     compared where they lie at rest in model space, so a face detail stacks on the body face it sits on though different
     bones or cubes turn the two (Venusaur's eyes against its turned head, Greninja's against its muzzle cube turned 45
@@ -1924,7 +1924,8 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
     with the rest but never moves, so the closed lid lands in the same order among the spread faces as it did in
     Cobblemon; the new nudge is the ghost's place less the cube's own shift. A cube in clear (no texel of the base texture
     on it, a box only a translucent layer draws) hides nothing behind it. plays names the animations giving each nudge
-    (closed_vectors)."""
+    (closed_vectors). posed names the bones every idle clip turns well away from their rest place (posed_bones): what
+    they hold hides no face detail outside them, nor a body face lying just over one."""
     nudges, plays = nudges or {}, plays or {}
     bones = geo.get("bones", [])
     frames = _rest_frames(bones)
@@ -1933,6 +1934,14 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
         if not name or depth > 40: return False
         return bool(DETAIL_BONES.search(name.lower())) or detail(by_name.get(name, {}).get("parent"), depth + 1)
     turned = lambda b: bool(b.get("rotation") and any(b["rotation"]))
+    # a face detail's plane turned about its own normal only still moves along that normal, which the turn leaves where
+    # it was: Mimikyu's painted eyes, tilted 2.5 degrees within the face they lie on, stayed 0.01 out of its head (issue 52)
+    def chain_of(name, depth=0):
+        return {name} | chain_of(by_name[name].get("parent"), depth + 1) if name in by_name and depth < 60 else set()
+    def posed_up(name, depth=0):
+        if not name or depth > 60: return None
+        return name if name in posed else posed_up(by_name.get(name, {}).get("parent"), depth + 1)
+    spin_axis = lambda c: next(iter(k for k in range(3) if c["rotation"][k] and c["size"][k] == 0), None) if turned(c) and sum(1 for x in c["rotation"] if x) == 1 else None
     children = {}
     for b in bones: children.setdefault(b.get("parent"), []).append(b["name"])
     # the animations that move a bone, by a nudge of its own or of a bone above it
@@ -2001,7 +2010,7 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
             frame_of[id(c)] = (Rc, tc)
             lo, hi = extent(c)
             if is_detail: detail_cubes.add(id(c))
-            if all(x > 0 for x in c["size"]) and id(c) not in clear: boxes.append((Rc, tc, lo, hi, is_detail, frame))
+            if all(x > 0 for x in c["size"]) and id(c) not in clear: boxes.append((Rc, tc, lo, hi, is_detail, frame, posed_up(b["name"])))
             add_faces(b["name"], c, Rc, tc, None, frame)
             if id(c) in fixed: continue
             # a nudge moves its bone and everything under it: ghosts for the nudges of this bone and of each face-detail
@@ -2018,20 +2027,32 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
     # an animation scales away (Froakie's bubble hoodie, which hid its whole face)
     def stack(keep):
         out = {}
-        for R, t, lo, hi, is_detail, frame in boxes:
-            if keep(is_detail): out.setdefault(frame, []).append((R.T, t, lo, hi))
+        for R, t, lo, hi, is_detail, frame, posed_at in boxes:
+            if keep(is_detail): out.setdefault((frame, posed_at), []).append((R.T, t, lo, hi))
         return {frame: tuple(numpy.array(col) for col in zip(*rows)) for frame, rows in out.items()}
     solids, volumes = stack(lambda is_detail: not is_detail), stack(lambda is_detail: True)
-    def inside(p, where, frame):
-        if frame not in where: return False
-        Rt, T, LO, HI = where[frame]
-        q = numpy.einsum("sij,sj->si", Rt, p - T)
-        return bool(numpy.any(numpy.all((q > LO) & (q < HI), axis=1)))
+    # a face detail (and a body face lying just over one, while it lifts) is hidden only by what stands where it shows,
+    # not by a part outside its own bones that every idle clip turns away from its rest place: Toxicroak's throat sac,
+    # in front of its mouth at rest and below it in every pose, hid its teeth and lips, which stayed 0.01 and 0.03 out
+    # of its head and flickered at a distance (issue 52)
+    def inside(p, where, frame, bone=None):
+        own = chain_of(bone) if bone is not None else None
+        for (fr, posed_at), (Rt, T, LO, HI) in where.items():
+            if fr != frame or (own is not None and posed_at is not None and posed_at not in own): continue
+            q = numpy.einsum("sij,sj->si", Rt, p - T)
+            if numpy.any(numpy.all((q > LO) & (q < HI), axis=1)): return True
+        return False
     overlap = lambda r, q: min(r[1], q[1]) > max(r[0], q[0]) and min(r[3], q[3]) > max(r[2], q[2])
     # the model's middle: a face that matters points away from it (the back of an eye never does)
     centres = [frame_of[id(c)][0] @ ((numpy.array(extent(c)[0]) + numpy.array(extent(c)[1])) / 2) + frame_of[id(c)][1]
                for b in bones for c in b.get("cubes", [])]
     middle = sum(centres) / len(centres) if centres else numpy.zeros(3)
+    planes = {}
+    for f in faces:
+        if id(f[4]) in detail_cubes and not f[5]: planes.setdefault(f[0], []).append(f)
+    overlays = {id(f) for f in faces if id(f[4]) not in detail_cubes and not f[5]
+                and any(0 < f[1] - g[1] <= LAYER_NEAR and overlap(f[2], g[2]) for g in planes.get(f[0], ()))}
+    lifting = set()
     def exposed(f, inward=False):
         # seen if any of five points over it (the middle and four inset corners), a little out along its normal, is
         # outside the body: a bump over the middle (Mr. Rime's torso under its belly face) does not hide the rest
@@ -2040,11 +2061,11 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
         if d - n @ middle <= 0 and not inward: return False
         for u, v in ((0.5, 0.5), (0.2, 0.2), (0.2, 0.8), (0.8, 0.2), (0.8, 0.8)):
             p = (r[0] + (r[1] - r[0]) * u) * e1 + (r[2] + (r[3] - r[2]) * v) * e2 + d * n
-            if inside(p + 0.02 * n, solids, f[8]): continue
+            if inside(p + 0.02 * n, solids, f[8], f[3] if id(f[4]) in detail_cubes or id(f) in lifting else None): continue
             if f[4]["size"][f[6]] == 0:
                 # a plane's face lying on a body (within a pixel: Blastoise's glasses float 0.45 off its head) is its
                 # front; one whose other side lies on a body is its back; one lying on nothing (a wing membrane) is seen
-                near = lambda side: any(inside(p + side * s * n, volumes, f[8]) for s in (0.3, 0.6, 1.0))
+                near = lambda side: any(inside(p + side * s * n, volumes, f[8], f[3] if id(f[4]) in detail_cubes or id(f) in lifting else None) for s in (0.3, 0.6, 1.0))
                 if not near(-1) and near(1): continue
             return True
         return False
@@ -2061,6 +2082,11 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
     shown = {(id(ghosts[id(f[4])][0]), f[6], f[7]) for k, f in enumerate(faces) if f[5] and seen_faces[k]}
     open_faces = {k: seen_faces[k] or (id(f[4]), f[6], f[7]) in shown
                      or ((id(f[4]) not in detail_cubes or f[4]["size"][f[6]] == 0) and exposed(f, inward=True)) for k, f in enumerate(faces)}
+    # an overlay such a part hides at rest lifts off what it lies on, though it still covers no face detail (Toxicroak's
+    # lips over its teeth: seen, they would tuck the teeth into its head)
+    for k, f in enumerate(faces):
+        if id(f) in overlays and not open_faces[k]:
+            lifting.add(id(f)); open_faces[k] = exposed(f); lifting.discard(id(f))
     by_plane = {}
     for k, f in enumerate(faces): by_plane.setdefault(f[0], []).append(k)
     def sits_on(n, m, lifted):
@@ -2174,7 +2200,7 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None):
         asks = {}
         for k, f in enumerate(faces):
             delta = final[k] - f[1]
-            if abs(delta) > 1e-3 and id(f[4]) not in fixed: asks.setdefault((id(f[4]), f[6]), []).append((f[7] * delta, k))
+            if abs(delta) > 1e-3 and (id(f[4]) not in fixed or (id(f[4]) in detail_cubes and spin_axis(f[4]) == f[6])): asks.setdefault((id(f[4]), f[6]), []).append((f[7] * delta, k))
         shifts, held = {}, set()   # shifts: (id(cube), axis) -> (cube, axis, shift)
         for (cid, a), wants in asks.items():
             cube = faces[wants[0][1]][4]
@@ -2344,6 +2370,24 @@ def copied_afresh(folder):
         with open(done_path, "w") as file: file.write(json.dumps([f for f in done if f != folder]))
 
 
+def posed_bones(animations):
+    """The bones every looping idle clip turns 5 degrees or more on some axis, at every keyframe: their rest place is never
+    what shows (Toxicroak's throat sac, turned 17.5 degrees down in each of them), so the layer pass does not let them hide
+    face details outside them. A bone any clip turns by MoLang is left out."""
+    def least_turn(channel):
+        values = list(channel.values()) if isinstance(channel, dict) else [channel]
+        turns = []
+        for v in values:
+            if isinstance(v, dict): v = v.get("post", v.get("pre"))
+            if not (isinstance(v, list) and all(isinstance(x, (int, float)) for x in v)): return None
+            turns.append(max(abs(x) for x in v))
+        return min(turns) if turns else None
+    idles = [a for n, a in animations.items() if n.endswith("idle") and a.get("loop")]
+    if not idles: return frozenset()
+    shared = set.intersection(*[set(a.get("bones", {})) for a in idles])
+    return frozenset(b for b in shared if all((t := least_turn(a["bones"][b].get("rotation", [0, 0, 0]))) is not None and t >= 5 for a in idles))
+
+
 def separate_model_layers():
     """Once per copy of the models: --fix does not copy them afresh, and spreading twice would spread further. A full
     run (without --fix) starts from Cobblemon's models again, so a change to this pass needs one."""
@@ -2362,6 +2406,7 @@ def separate_model_layers():
         for data in anim_files.values(): standing.update(stack_blinks(data.get("animations", {})))
         # the standing pose's clips and what each blink keys, for where a blink's ghost stacks
         every_anim = {n: a for d in anim_files.values() for n, a in d.get("animations", {}).items()}
+        posed = posed_bones(every_anim)   # the parts the idle clips turn away from their rest place
         steady = {"loops": set().union(*standing.values()) if standing else set(),
                   "blinks": {n: set(every_anim[n].get("bones", {})) for n in standing}}
         every_plays = {}
@@ -2384,7 +2429,7 @@ def separate_model_layers():
             with open(path, encoding="utf-8") as file: text = file.read()
             data = json.loads(text)
             for geo in data.get("minecraft:geometry", []):
-                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins), plays, steady).items():
+                for key, new in separate_layers(geo, nudges, clear_cubes(geo, skins), plays, steady, posed).items():
                     closed.setdefault(key, new)
                     if own: per_file.setdefault(own, {}).setdefault(key, new)
             if json.loads(text) != data:

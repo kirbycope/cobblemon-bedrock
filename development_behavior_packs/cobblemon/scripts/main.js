@@ -10403,7 +10403,8 @@ const COMMAND_PROPS = 6;
 function parseProps(words) {
     const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species", "region_bias"];
     // Bedrock's command parser takes "level=5" only in quotes, so "level 5" (the key, then its value) works too
-    const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
+    // and a number alone is no word to Bedrock's parser ("level 5" stops at the 5), so a level can run on: "level5", "lvl5"
+    const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean).map((w) => w.replace(/^(level|lvl|l)(\d+)$/i, "level=$2"));
     const joined = list.flatMap((w, i) => (KEYS.includes(w.toLowerCase()) && !w.includes("=") && list[i + 1] ? [`${w}=${list[i + 1]}`] : KEYS.includes(list[i - 1]?.toLowerCase()) && !list[i - 1].includes("=") ? [] : [w]));
     for (const word of joined) {
         const [k, ...rest] = word.split("="), v = rest.join("=").toLowerCase();
