@@ -149,6 +149,7 @@ function trap(battle, f, by, move) {
 }
 function trappedIn(battle, f) {
     if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
+    if (f.noRetreat || f.ingrain) return true;
     const other = f === battle.ally ? battle.foe : battle.ally;
     if (other?.hp > 0 && ((other.ability === "shadowtag" && f.ability !== "shadowtag") || (other.ability === "arenatrap" && onGround(battle, f))
         || (other.ability === "magnetpull" && f.info.types.includes("steel")))) return true;
@@ -301,7 +302,7 @@ const TERRAIN_ABILITIES = { electricsurge: "electric", hadronengine: "electric",
 const TERRAIN_SEEDS = { electric: { def: 1 }, grassy: { def: 1 }, misty: { spd: 1 }, psychic: { spd: 1 } };
 const TERRAIN_PULSE = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
 function terrainOf(battle) { return realBattle(battle)?.terrain?.kind ?? null; }
-function onGround(battle, f) { return !!battle?.gravity || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
+function onGround(battle, f) { return !!battle?.gravity || !!f.ingrain || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
 function setTerrain(battle, kind, setter) {
     if (terrainOf(battle) === kind) return false;
     realBattle(battle).terrain = { kind, turns: held(setter) === "terrain_extender" ? 8 : 5 };
@@ -449,6 +450,207 @@ function fieldMove(battle, a, d, move) {
             used();
             if (!attract(battle, d, a)) fail();
             return true;
+        // ---- stats: the moves that raise, copy, swap, share or turn round stat stages and stats (Showdown's onHit)
+        case "acupressure": {
+            used();
+            const open = ["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"].filter((k) => a.stages[k] < 6);
+            if (!open.length) { fail(); return true; }
+            boost(battle, a, { [open[Math.floor(Math.random() * open.length)]]: 2 }, a);
+            return true;
+        }
+        case "clangoroussoul": case "filletaway": {
+            used();
+            const cost = Math.floor(a.stats.hp / (move.id === "filletaway" ? 2 : 3));
+            if (a.hp <= cost) { fail(); return true; }
+            a.hp -= cost; syncHealth(a);
+            boost(battle, a, move.id === "filletaway" ? { atk: 2, spa: 2, spe: 2 } : { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 }, a);
+            return true;
+        }
+        case "noretreat":
+            used();
+            if (a.noRetreat) { fail(); return true; }
+            a.noRetreat = true; boost(battle, a, { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 }, a);
+            say(battle, `§7${name} can no longer escape because it used No Retreat!`);
+            return true;
+        case "curse":
+            used();
+            if (a.info.types.includes("ghost")) {
+                if (d.cursed) { fail(); return true; }
+                a.hp = Math.max(0, a.hp - Math.floor(a.stats.hp / 2)); syncHealth(a);
+                d.cursed = true; say(battle, `§7${name} cut its own HP and put a curse on ${d.info.name}!`);
+            } else boost(battle, a, { spe: -1, atk: 1, def: 1 }, a);
+            return true;
+        case "growth": { used(); const n = weatherOf(battle) === "sun" ? 2 : 1; boost(battle, a, { atk: n, spa: n }, a); return true; }
+        case "psychup": used(); a.stages = { ...d.stages }; say(battle, `§7${name} copied ${d.info.name}'s stat changes!`); return true;
+        case "guardswap": case "powerswap": case "heartswap": {
+            used();
+            const keys = { guardswap: ["def", "spd"], powerswap: ["atk", "spa"], heartswap: Object.keys(a.stages) }[move.id];
+            for (const k of keys) [a.stages[k], d.stages[k]] = [d.stages[k], a.stages[k]];
+            say(battle, `§7${name} switched stat changes with ${d.info.name}!`);
+            return true;
+        }
+        case "guardsplit": case "powersplit": {
+            used();
+            for (const k of move.id === "guardsplit" ? ["def", "spd"] : ["atk", "spa"]) { const mid = Math.floor((a.stats[k] + d.stats[k]) / 2); a.stats[k] = mid; d.stats[k] = mid; }
+            say(battle, `§7${name} shared its ${move.id === "guardsplit" ? "guard" : "power"} with ${d.info.name}!`);
+            return true;
+        }
+        case "speedswap": used(); [a.stats.spe, d.stats.spe] = [d.stats.spe, a.stats.spe]; say(battle, `§7${name} switched Speed with ${d.info.name}!`); return true;
+        case "powertrick": used(); [a.stats.atk, a.stats.def] = [a.stats.def, a.stats.atk]; say(battle, `§7${name} switched its Attack and Defense!`); return true;
+        case "topsyturvy":
+            used();
+            if (!Object.values(d.stages).some((v) => v)) { fail(); return true; }
+            for (const k of Object.keys(d.stages)) d.stages[k] = -d.stages[k];
+            say(battle, `§7${d.info.name}'s stat changes were all reversed!`);
+            return true;
+        case "venomdrench":
+            used();
+            if (d.status !== "psn" && d.status !== "tox") { fail(); return true; }
+            boost(battle, d, { atk: -1, spa: -1, spe: -1 }, a);
+            return true;
+        case "gearup": case "magneticflux":
+            used();
+            if (a.ability !== "plus" && a.ability !== "minus") { fail(); return true; }
+            boost(battle, a, move.id === "gearup" ? { atk: 1, spa: 1 } : { def: 1, spd: 1 }, a);
+            return true;
+        case "flowershield": case "rototiller": {
+            used();
+            const grass = [a, d].filter((f) => f.hp > 0 && f.info.types.includes("grass") && (move.id === "flowershield" || onGround(battle, f)));
+            if (!grass.length) { fail(); return true; }
+            for (const f of grass) boost(battle, f, move.id === "flowershield" ? { def: 1 } : { atk: 1, spa: 1 }, a);
+            return true;
+        }
+        case "strengthsap": {
+            used();
+            if (d.stages.atk <= -6) { fail(); return true; }
+            const heal = Math.floor(d.stats.atk * stage(d.stages.atk) * (held(a) === "big_root" ? 1.3 : 1));
+            boost(battle, d, { atk: -1 }, a);
+            if (d.ability === "liquidooze") hurt(battle, a, heal, `${name} sucked up the liquid ooze!`);
+            else if (!a.healBlock) { a.hp = Math.min(a.stats.hp, a.hp + heal); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        }
+        case "spite": {
+            used();
+            const last = d.moves.find((m) => m.id === d.lastMove);
+            if (!last || last.left <= 0) { fail(); return true; }
+            const cut = Math.min(4, last.left); last.left -= cut;
+            say(battle, `§7It reduced the PP of ${d.info.name}'s ${last.name} by ${cut}!`);
+            return true;
+        }
+        case "tidyup": {
+            used();
+            const real = realBattle(battle);
+            for (const side of Object.values(real.sides ?? {})) for (const k of Object.keys(HAZARDS)) delete side[k];
+            for (const f of [a, d]) f.sub = 0;
+            say(battle, "§7Tidying up complete!");
+            boost(battle, a, { atk: 1, spe: 1 }, a);
+            return true;
+        }
+        case "autotomize":
+            used();
+            boost(battle, a, { spe: 2 }, a);
+            a.info = { ...a.info, weight: Math.max(1, (a.info.weight ?? 100) - 1000) }; say(battle, `§7${name} became nimble!`);
+            return true;
+        // ---- types
+        case "conversion": {
+            used();
+            const t = MOVES[a.moves.find((m) => m.id)?.id]?.type;
+            if (!t || (a.info.types.length === 1 && a.info.types[0] === t)) { fail(); return true; }
+            a.info = { ...a.info, types: [t] }; say(battle, `§7${name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        case "conversion2": {
+            used();
+            const hit = MOVES[d.lastMove]?.type;
+            const resists = hit ? Object.keys(TYPES).filter((t) => effectiveness(hit, [t]) < 1 && !a.info.types.includes(t)) : [];
+            if (!resists.length) { fail(); return true; }
+            const t = resists[Math.floor(Math.random() * resists.length)];
+            a.info = { ...a.info, types: [t] }; say(battle, `§7${name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        case "reflecttype": used(); a.info = { ...a.info, types: [...d.info.types] }; say(battle, `§7${name}'s type became the same as ${d.info.name}'s!`); return true;
+        case "magicpowder": case "trickortreat": case "forestscurse": case "camouflage": {
+            used();
+            const t = { magicpowder: "psychic", trickortreat: "ghost", forestscurse: "grass", camouflage: { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" }[terrainOf(battle)] ?? "normal" }[move.id];
+            const f = move.id === "camouflage" ? a : d, added = move.id === "trickortreat" || move.id === "forestscurse";
+            if (f.info.types.includes(t) && (added || f.info.types.length === 1)) { fail(); return true; }
+            f.info = { ...f.info, types: added ? [...f.info.types.filter((x) => x !== "ghost" && x !== "grass").slice(0, 2), t] : [t] };
+            say(battle, added ? `§7${cap(t)} type was added to ${f.info.name}!` : `§7${f.info.name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        // ---- abilities: taken, given, swapped or suppressed for the battle; a switch out gives the own one back
+        case "skillswap": case "roleplay": case "entrainment": case "simplebeam": case "worryseed": case "gastroacid": case "doodle": {
+            used();
+            const give = (f, ab) => { f.baseAbility ??= f.ability; f.ability = ab; };
+            if (move.id === "skillswap") {
+                if (NO_SWAP.has(a.ability) || NO_SWAP.has(d.ability)) { fail(); return true; }
+                const mine = a.ability; give(a, d.ability); give(d, mine);
+                say(battle, `§7${name} swapped Abilities with its target!`);
+            } else if (move.id === "roleplay" || move.id === "doodle") {
+                if (!d.ability || NO_TRACE.has(d.ability) || a.ability === d.ability) { fail(); return true; }
+                give(a, d.ability); say(battle, `§7${name} copied ${d.info.name}'s ${abilityName(d.ability)}!`);
+            } else if (move.id === "entrainment") {
+                if (CANT_SUPPRESS.has(d.ability) || d.ability === "truant" || d.ability === a.ability || NO_TRACE.has(a.ability)) { fail(); return true; }
+                give(d, a.ability); say(battle, `§7${d.info.name} acquired ${abilityName(a.ability)}!`);
+            } else if (move.id === "gastroacid") {
+                if (!d.ability || CANT_SUPPRESS.has(d.ability)) { fail(); return true; }
+                give(d, null); say(battle, `§7${d.info.name}'s Ability was suppressed!`);
+            } else {
+                const ab = move.id === "simplebeam" ? "simple" : "insomnia";
+                if (d.ability === ab || CANT_SUPPRESS.has(d.ability) || d.ability === "truant") { fail(); return true; }
+                give(d, ab); say(battle, `§7${d.info.name} acquired ${abilityName(ab)}!`);
+                if (ab === "insomnia" && d.status === "slp") { d.status = null; say(battle, `§7${d.info.name} woke up!`); }
+            }
+            return true;
+        }
+        // ---- healing others, and the user's own cures
+        case "healpulse": case "floralhealing": {
+            used();
+            if (d.hp >= d.stats.hp || d.healBlock > 0) { fail(); return true; }
+            const share = move.id === "floralhealing" && terrainOf(battle) === "grassy" ? 2 / 3 : 1 / 2;
+            d.hp = Math.min(d.stats.hp, d.hp + Math.round(d.stats.hp * share)); syncHealth(d); say(battle, `§a${d.info.name}'s HP was restored.`);
+            return true;
+        }
+        case "purify":
+            used();
+            if (!d.status) { fail(); return true; }
+            d.status = null; say(battle, `§a${d.info.name} was purified!`);
+            if (!a.healBlock && a.hp < a.stats.hp) { a.hp = Math.min(a.stats.hp, a.hp + Math.round(a.stats.hp / 2)); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        case "junglehealing": case "refresh": {
+            used();
+            const cures = move.id === "refresh" ? ["brn", "par", "psn", "tox"] : ["brn", "par", "psn", "tox", "slp", "frz"];
+            const cured = a.status && cures.includes(a.status), heals = move.id === "junglehealing" && a.hp < a.stats.hp && !a.healBlock;
+            if (!cured && !heals) { fail(); return true; }
+            if (cured) { a.status = null; say(battle, `§a${name}'s status returned to normal!`); }
+            if (heals) { a.hp = Math.min(a.stats.hp, a.hp + Math.round(a.stats.hp / 4)); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        }
+        case "aquaring": case "ingrain":
+            used();
+            if (a[move.id]) { fail(); return true; }
+            a[move.id] = true; say(battle, move.id === "aquaring" ? `§7${name} surrounded itself with a veil of water!` : `§7${name} planted its roots!`);
+            return true;
+        case "healblock":
+            used();
+            if (d.healBlock > 0) { fail(); return true; }
+            d.healBlock = 5; say(battle, `§7${d.info.name} was prevented from healing!`);
+            return true;
+        // ---- Stockpile, Swallow (Spit Up is in movePower): up to three, each raising Defense and Sp. Def
+        case "stockpile":
+            used();
+            if ((a.stockpile ?? 0) >= 3) { fail(); return true; }
+            a.stockpile = (a.stockpile ?? 0) + 1; say(battle, `§7${name} stockpiled ${a.stockpile}!`);
+            boost(battle, a, { def: 1, spd: 1 }, a);
+            return true;
+        case "swallow": {
+            used();
+            if (!a.stockpile || a.healBlock > 0) { fail(); return true; }
+            const n = a.stockpile;
+            if (a.hp < a.stats.hp) { a.hp = Math.min(a.stats.hp, a.hp + Math.floor(a.stats.hp * [0, 0.25, 0.5, 1][n])); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            spentStockpile(battle, a);
+            return true;
+        }
         case "focusenergy":
             used();
             if (a.focusEnergy) { fail(); return true; }
@@ -827,6 +1029,7 @@ const NO_SLEEP_TALK = new Set(["assist", "beakblast", "belch", "bide", "celebrat
     "mefirst", "metronome", "mimic", "mirrormove", "naturepower", "shelltrap", "sketch", "sleeptalk", "uproar"]);
 function healMove(battle, f, move) {
     const w = weatherOf(battle);
+    if (f.healBlock > 0 && (move.heal || WEATHER_HEALS.has(move.id) || move.id === "shoreup" || move.id === "rest")) { say(battle, `§7${f.info.name} can't use ${move.name} because of Heal Block!`); return true; }
     let share = move.heal ? move.heal[0] / move.heal[1] : null;
     if (WEATHER_HEALS.has(move.id)) share = w === "sun" ? 2 / 3 : w ? 1 / 4 : 1 / 2;
     if (move.id === "shoreup") share = w === "sand" ? 2 / 3 : 1 / 2;
@@ -845,6 +1048,12 @@ function healMove(battle, f, move) {
     return true;
 }
 
+// Swallow and Spit Up spend the Stockpile, and lose the Defense and Sp. Def it raised
+function spentStockpile(battle, f) {
+    const n = f.stockpile ?? 0;
+    f.stockpile = 0;
+    if (n) boost(battle, f, { def: -n, spd: -n }, f);
+}
 // High Jump Kick and the rest: half the user's HP when the move does not land
 function crash(battle, f, move) { if (move.crash) hurt(battle, f, f.stats.hp / 2, `${f.info.name} kept going and crashed!`); }
 // indirect damage (status, recoil, items): Magic Guard ignores it
@@ -890,6 +1099,7 @@ function movePower(battle, a, d, move) {
         case "ficklebeam": if (Math.random() < 0.3) { say(battle, `§7${a.info.name} is going all out for this attack!`); return move.power * 2; } return move.power;
         case "lastrespects": return 50 + 50 * Math.min(100, faintedOf(battle, a));
         case "ragefist": return Math.min(350, 50 + 50 * (a.timesHit ?? 0));
+        case "spitup": return 100 * (a.stockpile ?? 0);
         case "trumpcard": { const left = move.left ?? 5; return left <= 0 ? 200 : left === 1 ? 80 : left === 2 ? 60 : left === 3 ? 50 : 40; }
         case "present": { const r = Math.random(); return r < 0.4 ? 40 : r < 0.7 ? 80 : r < 0.8 ? 120 : 0; }
         case "lowkick": case "grassknot": { const w = kg(d); return w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20; }
@@ -1099,6 +1309,7 @@ function moveFails(battle, a, d, move, firstAction) {
     if (move.id === "dreameater" && d.status !== "slp" && d.ability !== "comatose") return fail(`${d.info.name} wasn't affected!`);
     if (move.id === "synchronoise" && !d.info.types.some((t) => a.info.types.includes(t))) return fail(`It doesn't affect ${d.info.name}...`);
     if (move.id === "poltergeist" && !d.held) return fail();
+    if (move.id === "spitup" && !a.stockpile) return fail("But it failed to spit up a thing!");
     if (move.id === "burnup" && !a.info.types.includes("fire")) return fail();
     if (move.id === "doubleshock" && !a.info.types.includes("electric")) return fail();
     if (move.id === "lastresort") {
@@ -1467,6 +1678,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             attacker.info = { ...attacker.info, types: attacker.info.types.length > 1 ? attacker.info.types.filter((t) => t !== lost) : ["???"] };
             say(battle, `§7${name} used up all its ${move.id === "burnup" ? "fire" : "electricity"}!`);
         }
+        if (move.id === "spitup") spentStockpile(battle, attacker);
         // Spectral Thief takes the target's raised stats first
         if (move.stealsBoosts) {
             const raised = Object.fromEntries(Object.entries(defender.stages).filter(([, v]) => v > 0));
@@ -1475,7 +1687,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         }
         if (hits > 1) say(battle, `§7Hit ${landed} time${landed === 1 ? "" : "s"}!`);
         if (move.drain && defender.ability === "liquidooze") hurt(battle, attacker, Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1])), `${name} sucked up the liquid ooze!`);
-        else if (move.drain && attacker.hp < attacker.stats.hp) {
+        else if (move.drain && attacker.hp < attacker.stats.hp && !attacker.healBlock) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
         }
@@ -3189,7 +3401,8 @@ function switchTo(battle, entity) {
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
     leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
-    leaving.acted = false;
+    leaving.acted = false; leaving.noRetreat = false; leaving.ingrain = false; leaving.aquaring = false; leaving.cursed = false; leaving.healBlock = 0;
+    leaving.stockpile = 0;
     if (leaving.ability === "zerotohero" && leaving.hp > 0) (realBattle(battle).heroes ??= new Set()).add(leaving.entity.id);
     if (leaving.blade) { leaving.blade = false; leaving.info = { ...leaving.info, stats: POKEMON[leaving.entity.typeId]?.stats ?? leaving.info.stats }; leaving.stats = { ...statsOf(leaving.entity, leaving.info, leaving.level), hp: leaving.stats.hp }; }
     untransform(leaving); leaving.gulp = null; leaving.form = null;
@@ -3508,6 +3721,14 @@ function endOfTurn(battle) {
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
         endOfTurnAbility(battle, f, f === battle.ally ? battle.foe : battle.ally);
+        for (const k of ["aquaring", "ingrain"]) {
+            if (f[k] && f.hp > 0 && f.hp < f.stats.hp && !f.healBlock) {
+                f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor((f.stats.hp / 16) * (held(f) === "big_root" ? 1.3 : 1)))); syncHealth(f);
+                say(battle, `§a${k === "aquaring" ? "A veil of water restored" : `${f.info.name} absorbed nutrients with its roots and restored`} ${k === "aquaring" ? `${f.info.name}'s HP` : "HP"}!`);
+            }
+        }
+        if (f.cursed && f.hp > 0) hurt(battle, f, f.stats.hp / 4, `${f.info.name} is afflicted by the curse!`);
+        if (f.healBlock > 0 && --f.healBlock === 0) say(battle, `§7${f.info.name}'s Heal Block wore off!`);
         if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))

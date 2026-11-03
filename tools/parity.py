@@ -229,7 +229,7 @@ def moves():
         if volatile and volatile.group(1) in ("confusion", "partiallytrapped"): keys.discard("volatileStatus")
         # the code behind a field the move table carries is the battle script's (terrain and weather moves' conditions,
         # Outrage's lock-in, a switching move's), so only the rest counts against the move
-        carried = re.search(r'^    (terrain|weather|selfSwitch|forceSwitch|multihit|ohko|heal):', body, re.M) or re.search(r'volatileStatus: "lockedmove"', body)             or 'addVolatile("trapped"' in body   # Mean Look, Block and the rest: the move table's trap
+        carried = re.search(r'^    (terrain|weather|selfSwitch|forceSwitch|multihit|ohko|heal|hasCrashDamage):', body, re.M) or re.search(r'volatileStatus: "lockedmove"', body)             or 'addVolatile("trapped"' in body   # Mean Look, Block and the rest: the move table's trap
         extra = sorted(k for k in keys - MOVE_KEYS_HANDLED if not (carried and (k == "condition" or k.startswith("on"))))
         note = "" if move_id in learnable else "no species learns it; "
         if move_id not in in_table:
