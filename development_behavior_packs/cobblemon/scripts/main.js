@@ -1451,6 +1451,12 @@ function useMove(battle, attacker, defender, move, called = false) {
     if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
     if (outcome.used && move.id) attacker.lastMove = move.id;
     if (!PROTECTING.has(move.id)) attacker.protectChain = 0;
+    // damage the defender took and lived (damage_taken), and a knockout of it by the attacker (defeat)
+    if (defender !== attacker && defender.hp < before && defender.hp > 0) countProgress(defender, (p) => { p.damage = (p.damage ?? 0) + before - defender.hp; });
+    if (defender !== attacker && before > 0 && defender.hp <= 0) countProgress(attacker, (p) => {
+        const key = `${(POKEMON[defender.entity?.typeId]?.name ?? defender.info.name).toLowerCase()}|${defender.held ?? ""}`;
+        p.defeats ??= {}; p.defeats[key] = (p.defeats[key] ?? 0) + 1;
+    });
     if (defender.hp <= 0 && defender.destinyBond && attacker !== defender && attacker.hp > 0) {
         attacker.hp = 0; syncHealth(attacker);
         say(battle, `§c${defender.info.name} took its attacker down with it!`);
@@ -1460,6 +1466,7 @@ function useMove(battle, attacker, defender, move, called = false) {
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
     const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
     if (outcome.used && move.id) {
+        if (!called) countProgress(attacker, (p) => { p.used ??= {}; p.used[move.id] = (p.used[move.id] ?? 0) + 1; });
         attacker.lastFailed = !worked;
         (attacker.usedIds ??= new Set()).add(move.id);
         realBattle(battle).lastMoveUsed = { id: move.id, turn: battle.turn };
@@ -1969,7 +1976,11 @@ function runMove(battle, attacker, defender, move, called = false) {
             defender.lastHit = { dmg: dealt, physical, tick: system.currentTick, turn: battle.turn, by: attacker };
             if (dealt) { defender.hurtTurn = battle.turn; defender.timesHit = (defender.timesHit ?? 0) + 1; }
             if (defender.hp <= 0) sideOf(battle, defender).faintedTurn = battle.turn;
-            if (crit) { note += " A critical hit!"; critTaken = true; }
+            if (crit) {
+                note += " A critical hit!"; critTaken = true;
+                attacker.critsThisBattle = (attacker.critsThisBattle ?? 0) + 1;
+                countProgress(attacker, (p) => { p.crits = Math.max(p.crits ?? 0, attacker.critsThisBattle); });
+            }
             if (h === 0) { if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective..."; }
             say(battle, h === 0 ? `§e${name} used ${move.name}!§r ${dmg} damage.${note}` : `§7Hit ${h + 1}! ${dmg} damage.${note}`);
             syncHealth(defender);
@@ -2013,7 +2024,11 @@ function runMove(battle, attacker, defender, move, called = false) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
         }
-        if (move.recoil && atkAb !== "rockhead") hurt(battle, attacker, (dealt * move.recoil[0]) / move.recoil[1], `${name} is damaged by recoil!`);
+        if (move.recoil && atkAb !== "rockhead") {
+            const hpBefore = attacker.hp;
+            hurt(battle, attacker, (dealt * move.recoil[0]) / move.recoil[1], `${name} is damaged by recoil!`);
+            if (attacker.hp > 0) countProgress(attacker, (p) => { p.recoil = (p.recoil ?? 0) + hpBefore - attacker.hp; });
+        }
         if (dealt && held(attacker) === "shell_bell" && attacker.hp > 0 && attacker.hp < attacker.stats.hp) {
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + Math.max(1, Math.floor(dealt / 8))); say(battle, `§a${name} restored a little HP using its Shell Bell!`); syncHealth(attacker);
         }
@@ -4313,6 +4328,7 @@ function faint(battle, fainted) {
     }
     say(battle, `§c${battle.ally.info.name} fainted!`);
     setProp(battle.ally.entity, FAINTED, true); loseFriendship(battle.ally.entity, 1);
+    countProgress(battle.ally, (p) => { p.damage = 0; p.recoil = 0; });   // the damage and recoil it lived through start again
     freeze(battle.ally.entity, false);
     try { battle.ally.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
     chooseSwitch(battle, true).then((entity) => {
@@ -5145,7 +5161,7 @@ function pvpAfterTurn(battle) {
         const f = v.ally;
         say(battle, `§c${f.info.name} fainted!`);
         battle.down.add(memberKey(f.entity));
-        if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); }
+        if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); countProgress(f, (p) => { p.damage = 0; p.recoil = 0; }); }
         freeze(f.entity, false);
         try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
         const w = v.mirror;
@@ -6146,7 +6162,7 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -9088,6 +9104,25 @@ function inTimeRange(name) {
     return (TIME_RANGES[name] ?? [[0, 23999]]).some(([a, b]) => t >= a && t <= b);
 }
 const MOON_PHASES = ["FULL_MOON", "WANING_GIBBOUS", "LAST_QUARTER", "WANING_CRESCENT", "NEW_MOON", "WAXING_CRESCENT", "FIRST_QUARTER", "WAXING_GIBBOUS"];
+
+// Cobblemon's evolution progress (UseMoveEvolutionProgress, DefeatEvolutionProgress, LastBattleCriticalHitsEvolutionProgress,
+// DamageTakenEvolutionProgress, RecoilEvolutionProgress), kept on a player's Pokemon as cobblemon:progress: the times it
+// has used each move, the Pokemon it has knocked out (species and held item), its most critical hits in one battle, and
+// the damage and recoil it has taken without fainting (both start again when it faints)
+function progressOf(e) { try { return JSON.parse(prop(e, "cobblemon:progress") ?? "{}"); } catch (err) { return {}; } }
+function countProgress(f, change) {
+    const e = f?.entity;
+    if (!e || f.clone || prop(e, OWNER) === undefined) return;
+    try { const p = progressOf(e); change(p); setProp(e, "cobblemon:progress", JSON.stringify(p)); } catch (err) { }
+}
+// a defeat target: a species and the properties it had, as Cobblemon writes them ("bisharp held_item=cobblemon:kings_rock")
+function defeatsOf(e, target) {
+    const [species, ...props] = target.split(/\s+/), held = props.find((x) => x.startsWith("held_item="))?.slice("held_item=".length);
+    return Object.entries(progressOf(e).defeats ?? {}).filter(([k]) => {
+        const [name, item] = k.split("|");
+        return name.replace(/[^a-z0-9]/g, "") === species.replace(/[^a-z0-9]/g, "") && (!held || item === held);
+    }).reduce((n, [, c]) => n + c, 0);
+}
 function meets(entity, f, r, player) {
     switch (r.t) {
         case "level": return f.level >= r.min;
@@ -9103,6 +9138,17 @@ function meets(entity, f, r, player) {
         case "moon": { let phase = 0; try { phase = world.getMoonPhase(); } catch (e) { } return MOON_PHASES[phase] === r.phase; }
         case "stat_gt": return f.stats[r.hi] > f.stats[r.lo];
         case "stat_eq": return f.stats[r.a] === f.stats[r.b];
+        // a regional evolution: the biome it is in now, and its everywhere-else partner's biomes it must not be in
+        case "biome": {
+            let tags = [];
+            try { tags = BIOME_TAGS[entity.dimension.getBiome(entity.location).id] ?? []; } catch (e) { return false; }
+            return (!r.in || filterPasses(r.in, tags)) && (!r.out || !filterPasses(r.out, tags));
+        }
+        case "used": return (progressOf(entity).used?.[r.move] ?? 0) >= r.min;
+        case "defeats": return defeatsOf(entity, r.target) >= r.min;
+        case "crits": return (progressOf(entity).crits ?? 0) >= r.min;
+        case "damage": return (progressOf(entity).damage ?? 0) >= r.min;
+        case "recoil": return (progressOf(entity).recoil ?? 0) >= r.min;
         case "prop":
             if (r.key === "gender") return genderOf(entity) === r.value;
             if (r.key === "nature") return natureOf(entity) === r.value;

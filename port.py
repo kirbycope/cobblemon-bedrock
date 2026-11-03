@@ -3493,7 +3493,13 @@ def normalise_weights(pairs):
 def biome_filter_for(biome_ids):
     filters = []
     for biome in biome_ids:
-        if biome.startswith("#cobblemon:"): rule = BIOME_FILTERS.get(biome[len("#cobblemon:"):])
+        if biome.startswith("#cobblemon:"):
+            rule = BIOME_FILTERS.get(biome[len("#cobblemon:"):])
+            # a tag of tags (evolution/regional/...): its own members, read from its file
+            tag_file = f"{cobblemonData}/tags/worldgen/biome/{biome[len('#cobblemon:'):]}.json"
+            if rule is None and os.path.exists(tag_file):
+                with open(tag_file, encoding="utf-8") as file: members = [m if isinstance(m, str) else m.get("id", "") for m in json.load(file).get("values", [])]
+                rule = biome_filter_for(members)
         elif biome == "#minecraft:is_deep_ocean": rule = _all(_tag("deep"), _tag("ocean"))
         else: rule = BIOME_IDS.get(biome) or (bedrock_biome_filter(biome.split(":")[-1]) if biome.startswith("minecraft:") else None)
         if rule: filters.append(rule)
@@ -5259,7 +5265,19 @@ def level_evolutions(species):
             elif v == "friendship": req.append({"t": "friendship", "min": r.get("amount", 160)})
             elif v == "time_range": req.append({"t": "time", "range": r.get("range", "any")})
             elif v == "held_item" and not str(r.get("itemCondition", "")).startswith("#"): req.append({"t": "held", "item": r.get("itemCondition")})
-            elif v == "biome" and "biomeAnticondition" in r and "biomeCondition" not in r: pass
+            # a regional evolution: the biome it happens in (a Bedrock biome filter the script tests), and its
+            # everywhere-else partner, which needs any biome but those
+            elif v == "biome" and ("biomeCondition" in r or "biomeAnticondition" in r):
+                cond = biome_filter_for([r["biomeCondition"]]) if "biomeCondition" in r else None
+                anti = biome_filter_for([r["biomeAnticondition"]]) if "biomeAnticondition" in r else None
+                if ("biomeCondition" in r and not cond) or ("biomeAnticondition" in r and not anti): req.append({"t": "never", "why": "biome"})
+                else: req.append({"t": "biome", **({"in": cond} if cond else {}), **({"out": anti} if anti else {})})
+            # what the Pokemon has done (Cobblemon's evolution progress), counted by the script
+            elif v == "use_move": req.append({"t": "used", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower()), "min": r.get("amount", 1)})
+            elif v == "defeat": req.append({"t": "defeats", "target": str(r.get("target", "")).lower(), "min": r.get("amount", 1)})
+            elif v == "battle_critical_hits": req.append({"t": "crits", "min": r.get("amount", 1)})
+            elif v == "damage_taken": req.append({"t": "damage", "min": r.get("amount", 1)})
+            elif v == "recoil": req.append({"t": "recoil", "min": r.get("amount", 1)})
             elif v == "has_move": req.append({"t": "move", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower())})
             elif v == "has_move_type": req.append({"t": "move_type", "type": str(r.get("type", "")).lower()})
             elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
