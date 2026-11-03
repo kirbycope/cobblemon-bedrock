@@ -212,6 +212,16 @@ MOVE_KEYS_HANDLED = {"num", "accuracy", "basePower", "category", "name", "pp", "
                      "ignoreDefensive", "ignoreEvasion", "ignoreAbility", "breaksProtect", "stealsBoosts"}
 
 
+# moves whose own code only matters with allies on the field
+DOUBLES_MOVES = {"afteryou", "allyswitch", "followme", "helpinghand", "quash", "ragepowder", "spotlight", "aromaticmist", "coaching",
+                 "decorate", "holdhands", "instruct"}
+# moves whose own code changes nothing in a single battle, so the move table's fields are the whole move here
+SINGLES_WHOLE = {"dragondarts": "both hits land on the one target in a single battle", "snipeshot": "redirection only exists in doubles",
+                 "flameburst": "its splash only reaches an ally", "pollenpuff": "it heals only an ally", "round": "doubling needs an ally using it too",
+                 "orderup": "its raise needs a Commander Tatsugiri, a doubles pairing", "splash": "it does nothing, as it should (the battle script says so)",
+                 "snore": "sleepUsable, failing while awake, in the battle script", "watershuriken": "its 20 power is Ash-Greninja's, a form Battle Bond no longer makes"}
+
+
 def moves():
     data_js = read(f"{SCRIPTS}/data.js")
     in_table = set(re.findall(r'"(\w+)": \{"name": "[^"]*", "type": "\w+", "power"', data_js))
@@ -232,6 +242,8 @@ def moves():
         carried = re.search(r'^    (terrain|weather|selfSwitch|forceSwitch|multihit|ohko|heal|hasCrashDamage):', body, re.M) or re.search(r'volatileStatus: "lockedmove"', body)             or 'addVolatile("trapped"' in body   # Mean Look, Block and the rest: the move table's trap
         extra = sorted(k for k in keys - MOVE_KEYS_HANDLED if not (carried and (k == "condition" or k.startswith("on"))))
         note = "" if move_id in learnable else "no species learns it; "
+        if move_id in DOUBLES_MOVES: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "n/a", note + "acts on an ally or on targeting, which single battles do not have"); continue
+        if move_id in SINGLES_WHOLE: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "done", note + SINGLES_WHOLE[move_id]); continue
         if move_id not in in_table:
             row("move", name, "showdown data/moves.js", "", "n/a", "no species the port carries learns it, so it is not in the move table"); continue
         if not extra: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "done", note + "standard fields only")
