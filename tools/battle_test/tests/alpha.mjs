@@ -1,0 +1,20 @@
+// Alphas: the Wild Alpha boost, their size, moves and level matching
+import { M, mon, battle, check, flush } from "../harness.mjs";
+
+{
+    const f = mon("Snorlax", { level: 40 }), b = battle(mon("Pikachu"), f);
+    const before = { ...f.stats };
+    f.entity.setDynamicProperty("cobblemon:alpha", true);
+    M.enter(b, f, b.ally); flush();
+    const raised = ["atk", "def", "spa", "spd", "spe"].filter((k) => f.stats[k] > before[k]).length;
+    check("a wild alpha comes into battle boosted (level / 10 + 1 stat steps)", raised >= 1 && b.log.join(" ").includes("alpha"), JSON.stringify([before, f.stats]));
+    const g = mon("Snorlax", { level: 40 }), gb = battle(mon("Pikachu"), g);
+    M.enter(gb, g, gb.ally); flush();
+    check("an ordinary one is not", !g.alphaBoosted);
+}
+check("an alpha is larger, the more so the smaller the Pokemon", M.alphaScale("cobblemon:p0025_pikachu") > M.alphaScale("cobblemon:p0143_snorlax") && M.alphaScale("cobblemon:p0143_snorlax") > 1.1);
+{
+    const info = M.POKEMON ?? null;
+    const moves = M.alphaMoves(M.fighter(mon("Charizard").entity).info, 50);
+    check("an alpha's moves start with its strongest damaging ones", moves.length === 4, JSON.stringify(moves));
+}

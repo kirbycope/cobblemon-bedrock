@@ -58,3 +58,9 @@ import { M, mon, battle, move, check, flush } from "../harness.mjs";
     M.useMove(b, a, d, move("gastroacid")); flush();
     check("Ability Shield keeps its holder's ability", d.ability === "immunity" && a.ability === "thickfat", b.log.join(" / "));
 }
+{   // Eggant Berry (Cobblemon's own, data/cobblemon/held_items/eggantberry.js): eaten to get over infatuation
+    const a = mon("Snorlax", { held: "eggant_berry" }), d = mon("Snorlax"), b = battle(a, d);
+    a.attracted = d; M.heldBerry(b, a); flush();
+    check("Eggant Berry cures infatuation", !a.attracted && !a.held, b.log.join(" / "));
+    check("Burmy takes the sandy cloak in a desert, the trash cloak in snow", M.cloakFor("minecraft:desert") === "sandy-cloak" && M.cloakFor("minecraft:snowy_plains") === "trash-cloak" && M.cloakFor("minecraft:forest") === null);
+}

@@ -2184,6 +2184,8 @@ function heldBerry(battle, f, force = false) {
         f.hp = Math.min(f.stats.hp, f.hp + 20); syncHealth(f);
         useUp(battle, f, `§a${f.info.name}'s Berry Juice activated!`);
         return;
+    } else if (item === "eggant_berry" && (f.attracted || force)) {
+        f.attracted = null; used = true; say(battle, `§a${f.info.name} got over its infatuation!`);
     } else if (item === "leppa_berry") {
         const empty = f.moves.find((m) => m.left === 0);
         if (empty) { empty.left = Math.min(empty.pp, 10); used = true; }
@@ -2313,6 +2315,8 @@ function endBattle(battle, text) {
         for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
     }
     const sides = battle.pvp ? [battle.ally, battle.foe] : [battle.ally];
+    for (const f of [battle.ally, battle.foe]) if (f) untransform(f);   // its own moves' PP is what is kept, not the copy's
+    burmyCloaks(battle);
     for (const f of sides) if (f?.entity && !f.clone) { keepStatus(f.entity, f.hp > 0 ? f.status : null); if (!(battle.adjustLevel > 0)) keepPp(f.entity, f.moves); }
     for (const [id, k] of Object.entries(battle.kept ?? {})) {
         if (battle.adjustLevel > 0 || sides.some((f) => f?.entity && id === memberKey(f.entity))) continue;
@@ -2346,6 +2350,8 @@ function paradoxStat(battle, f) {
 const NO_TRACE = new Set([...NO_SWAP, "flowergift", "forecast", "zenmode", "neutralizinggas"]);
 function enter(battle, f, other) {
     f.enteredTurn = battle.turn;
+    alphaBoost(battle, f);
+    if (f.entity && prop(f.entity, OWNER) !== undefined) (realBattle(battle).faced ??= new Set()).add(memberKey(f.entity));
     f.magicRoom = realBattle(battle).magicroom > 0;
     const wish = sideOf(battle, f).healingWish;
     if (wish && f.hp > 0) {
@@ -2416,6 +2422,30 @@ function transform(battle, f, target, text) {
 function untransform(f) {
     if (!f.ownState) return;
     Object.assign(f, f.ownState); f.ownState = null; f.transformed = false;
+}
+// callbacks/battle_ended/burmy_cloak_change: after a battle, a trainer's Burmy that fought takes the cloak of the biome
+// its trainer stands in, by Cobblemon's form_change/bagworm_cloak biome tags: sandy (sand, beaches, caves), trash (the
+// deep dark, the End, snow, taiga, mushrooms, the nether's fungus), else plant
+function cloakFor(biome) {
+    if (/desert|beach|badlands|mesa|dripstone|cave|stony_shore|soul_sand/.test(biome)) return "sandy-cloak";
+    if (/deep_dark|the_end|end_|snow|frozen|ice|taiga|grove|peaks|mushroom|crimson|warped/.test(biome)) return "trash-cloak";
+    return null;
+}
+function burmyCloaks(battle) {
+    for (const player of [battle.player, battle.pvp ? battle.opponent : null]) {
+        if (!player?.isValid) continue;
+        let biome = "";
+        try { biome = player.dimension.getBiome(player.location)?.id ?? ""; } catch (e) { continue; }
+        for (const key of realBattle(battle).faced ?? []) {
+            const e = memberByKey(key, [player]);
+            if (!e?.isValid || prop(e, OWNER) !== player.id || e.typeId !== "cobblemon:p0412_burmy") continue;
+            const looks = VARIANT_LOOKS[e.typeId], cur = prop(e, BATTLE_FORM) ?? (e.isProxy ? e.slot.rec.v : variantOf(e)) ?? 0;
+            const shiny = looks[cur]?.[2] ?? 0, cloak = cloakFor(biome), n = looks.findIndex((l) => l[0] === cloak && l[2] === shiny);
+            if (n < 0 || n === cur) continue;
+            if (e.isProxy) { e.slot.rec.v = n; saveParty(player.id); } else try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+            player.sendMessage(`§7${nicknameOf(e) || "Burmy"} changed its cloak!`);
+        }
+    }
 }
 // what an ability does as its holder comes in (Showdown's onStart and onSwitchIn)
 function entryAbility(battle, f, other) {
@@ -4134,7 +4164,7 @@ function endOfTurn(battle) {
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
 function afterTurn(battle) {
     if (battle.pvp) { pvpAfterTurn(battle); return; }
-    if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
+    if (battle.foe.hp <= 0) { alphaDrops(battle.foe); faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
     if (battle.dragFoe) { battle.dragFoe = false; endBattle(battle, `§7The wild ${battle.foe.info.name} fled!`); return; }
     if (battle.ejectAlly) {
@@ -5873,6 +5903,8 @@ function useMachine(block, player) {
                 pokemon.triggerEvent("cobblemon:caught");
                 pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player);
                 pokemon.setDynamicProperty(OWNER, player.id);
+                rollAlpha(pokemon, 20);   // CobblemonConfig.fossilMachineAlphaChance
+                if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
                 register(player, st.result, 2);
             } catch (e) { }
         });
@@ -6047,7 +6079,7 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -6092,6 +6124,136 @@ function pcInfo(v, rec, entity) {
     moves.slice(0, 4).forEach((id, n) => { v[`move${n}`] = MOVES[id]?.name ?? ""; });
     v.held = kept(HELD) ?? null; v.cosmetic = kept(COSMETIC) ?? null;   // the item slot's, set by itemSlot
 }
+
+
+// Alphas (Pokemon.isAlpha): rolled one time in 100 for the Pokemon a honey-slathered Saccharine log draws, one in 20
+// from the fossil machine, and at a bait's alpha_chance. An alpha is larger (getAlphaScaleMultiplier), wears the Alpha
+// Mark as its active one, keeps an alpha's moves (moveset_builders/alpha: its strongest damaging moves), and in the
+// wild matches its level to the nearest player's strongest Pokemon (AlphaLevelMatchingSensor), answers a battle with the
+// Wild Alpha rule's boost (Showdown's alphaboost: level / 10 + 1 random stat steps, each half the stat again), and
+// drops alpha rewards by its level when it faints (callbacks/battle_fainted/pokemon_alpha_drops). Catching one
+// unlocks the Alpha PC wallpaper
+const ALPHA = "cobblemon:alpha";
+function isAlpha(e) { try { return !!prop(e, ALPHA); } catch (err) { return false; } }
+function alphaScale(typeId) {
+    const info = POKEMON[typeId], size = Math.max(0.25, Math.min(5, Math.max(info?.width ?? 1, info?.labelHeight ?? (info?.height ?? 10) / 10)));
+    return Math.min(2, 1.1 + 0.8 * Math.pow(0.5, size));
+}
+function makeAlpha(e, quiet = false) {
+    if (!e?.isValid || !POKEMON[e.typeId] || isAlpha(e)) return;
+    setProp(e, ALPHA, true);
+    const mark = "cobblemon:mark_alpha";
+    if (MARKS[mark] && !marksOf(e).includes(mark)) setProp(e, MARK_LIST, JSON.stringify([...marksOf(e), mark]));
+    setProp(e, ACTIVE_MARK, mark);
+    const info = POKEMON[e.typeId], level = prop(e, LEVEL) ?? info.level;
+    setProp(e, MOVESET, JSON.stringify(alphaMoves(info, level)));
+    showScale(e);
+    if (!quiet) try { e.dimension.spawnParticle("cobblemon:statup_actor", e.location); } catch (err) { }
+}
+// moveset_builders/alpha: the last damaging moves learnt by level first (the strongest), then the last others
+function alphaMoves(info, level) {
+    const learned = [];
+    for (const [at, id] of info.learnset ?? []) if (at <= level && MOVES[id] && !learned.includes(id)) learned.push(id);
+    const damaging = learned.filter((id) => MOVES[id].power).sort((a, b) => MOVES[b].power - MOVES[a].power).slice(0, 2);
+    const rest = learned.filter((id) => !damaging.includes(id)).slice(-(4 - damaging.length));
+    const moves = [...damaging, ...rest].slice(0, 4);
+    return moves.length ? moves : movesAt(info, level);
+}
+function rollAlpha(e, oneIn) { if (oneIn > 0 && Math.floor(Math.random() * oneIn) === 0) makeAlpha(e); }
+// the level a wild alpha takes near a player: their strongest Pokemon's, plus 4 to 20 by band
+function alphaLevelFor(player) {
+    const best = Math.max(0, ...summaryParty(player).map((m) => prop(m, LEVEL) ?? 1));
+    if (!best) return null;
+    return Math.min(100, best + (best < 21 ? 4 : best <= 30 ? 8 : best <= 45 ? 12 : best <= 65 ? 16 : 20));
+}
+const alphaMatched = new Map();   // alpha id -> the player it last matched
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (!isAlpha(e) || prop(e, OWNER) !== undefined || battleOf(e) || alphaMatched.get(e.id) === player.id) continue;
+            const level = alphaLevelFor(player);
+            if (!level) continue;
+            alphaMatched.set(e.id, player.id);
+            setProp(e, LEVEL, level); setProp(e, EXP, expFor(POKEMON[e.typeId].expGroup, level));
+            setProp(e, MOVESET, JSON.stringify(alphaMoves(POKEMON[e.typeId], level)));
+            try { e.dimension.spawnParticle("cobblemon:statup_actor", { x: e.location.x, y: e.location.y + 1, z: e.location.z }); } catch (err) { }
+            try { const cry = POKEMON[e.typeId]?.cry; if (cry) e.dimension.playSound(cry, e.location, { pitch: 0.92, volume: 1.5 }); } catch (err) { }   // AlphaCrySoundInstance
+        }
+    }
+}, 40);
+function battleOf(e) { for (const b of battles.values()) if (b.ally?.entity?.id === e.id || b.foe?.entity?.id === e.id) return b; return undefined; }
+// the Wild Alpha rule's boost, on a wild alpha coming into battle
+function alphaBoost(battle, f) {
+    if (f.alphaBoosted || battle.pvp || battle.trainer || f !== battle.foe || !isAlpha(f.entity) || prop(f.entity, OWNER) !== undefined) return;
+    f.alphaBoosted = true;
+    const stats = ["atk", "def", "spa", "spd", "spe"], boosts = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }, pool = stats.slice();
+    for (let i = 0; i < Math.floor(f.level / 10) + 1 && pool.length; i++) {
+        const n = Math.floor(Math.random() * pool.length);
+        if (++boosts[pool[n]] >= 6) pool.splice(n, 1);
+    }
+    const table = [1, 1.5, 2, 2.5, 3, 3.5, 4];
+    for (const k of stats) f.stats[k] = Math.floor(f.stats[k] * table[boosts[k]]);
+    say(battle, `§c${f.info.name} is an alpha! Its stats are boosted!`);
+}
+// callbacks/battle_fainted/pokemon_alpha_drops: a wild alpha's rewards, tier by its level
+function alphaDrops(f) {
+    const e = f.entity;
+    if (!e?.isValid || !isAlpha(e) || prop(e, OWNER) !== undefined) return;
+    const tier = f.level >= 66 ? 4 : f.level >= 51 ? 3 : f.level >= 31 ? 2 : 1, { x, y, z } = e.location;
+    try { e.dimension.runCommand(`loot spawn ${x} ${y + 0.5} ${z} loot "alpha/alpha_rewards_tier${tier}"`); } catch (err) { }
+}
+
+// Honey-slathered Saccharine logs (SaccharineLogBlock, SaccharineLogSlatheredInfluence): a honey bottle used on a
+// Saccharine log slathers it, giving back the bottle. The next wild Pokemon to spawn within 32 blocks comes to it: it is
+// moved in front of the log, has one chance in 20 of its hidden ability, a shiny roll of one in 4000 and an alpha roll
+// of one in 100, and the log, its honey eaten, is a plain log again
+const SLATHERED = "cobblemon:slathered_logs", SLATHER_RANGE = 32;
+function slatheredLogs() { try { return JSON.parse(world.getDynamicProperty(SLATHERED) ?? "[]"); } catch (e) { return []; } }
+function saveSlathered(list) { world.setDynamicProperty(SLATHERED, JSON.stringify(list)); }
+world.afterEvents.playerInteractWithBlock.subscribe(({ player, block, itemStack }) => {
+    if (block?.typeId !== "cobblemon:saccharine_log" || itemStack?.typeId !== "minecraft:honey_bottle") return;
+    const dir = ["south", "west", "north", "east"][Math.floor((((player.getRotation().y + 45) % 360) + 360) % 360 / 90)];
+    const facing = { south: "north", west: "east", north: "south", east: "west" }[dir];   // the honey faces the player
+    try {
+        block.setPermutation(BlockPermutation.resolve("cobblemon:saccharine_log_slathered", { "minecraft:cardinal_direction": facing, "cobblemon:honey_type": Math.floor(Math.random() * 6) }));
+    } catch (e) { return; }
+    consumeHand(player);
+    try { player.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack("minecraft:glass_bottle", 1)); } catch (e) { }
+    try { player.dimension.playSound("block.beehive.drip", block.location); } catch (e) { }
+    saveSlathered([...slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z)), { x: block.x, y: block.y, z: block.z, d: block.dimension.id, f: facing }]);
+});
+world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
+    if (cause !== EntityInitializationCause.Spawned || !POKEMON[entity?.typeId]) return;
+    system.runTimeout(() => {
+        if (!entity.isValid || prop(entity, OWNER) !== undefined) return;
+        const logs = slatheredLogs(), { x, y, z } = entity.location;
+        const i = logs.findIndex((l) => l.d === entity.dimension.id && Math.hypot(l.x - x, l.y - y, l.z - z) <= SLATHER_RANGE);
+        if (i < 0) return;
+        const log = logs[i];
+        logs.splice(i, 1); saveSlathered(logs);
+        let block;
+        try { block = entity.dimension.getBlock(log); } catch (e) { return; }
+        if (block?.typeId !== "cobblemon:saccharine_log_slathered") return;
+        const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[block.permutation.getState("minecraft:cardinal_direction") ?? log.f] ?? [0, 1];
+        try { entity.teleport({ x: log.x + 0.5 + step[0] * 1.5, y: log.y, z: log.z + 0.5 + step[1] * 1.5 }); } catch (e) { }
+        try { block.setPermutation(BlockPermutation.resolve("cobblemon:saccharine_log")); entity.dimension.playSound("random.burp", log); } catch (e) { }
+        setProp(entity, "cobblemon:honey_drenched", true);
+        const info = POKEMON[entity.typeId];
+        if (Math.random() < 0.05 && info.hidden?.length) setProp(entity, "cobblemon:ability", info.hidden[Math.floor(Math.random() * info.hidden.length)]);
+        const looks = VARIANT_LOOKS[entity.typeId], [form, female, shiny] = looks?.[variantOf(entity)] ?? [null, 0, 0];
+        if (!shiny && Math.floor(Math.random() * 4000) === 0) {
+            const n = (looks ?? []).findIndex(([f, g, sh]) => f === form && g === female && sh);
+            if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
+        }
+        rollAlpha(entity, 100);
+    }, 5);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id !== "cobblemon:saccharine_log_slathered") return;
+    saveSlathered(slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z)));
+});
 
 // PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
 // basic one; the six Cobblemon unlocks come from wallpaper_unlocks.molang (standing in a cave, forest or ocean biome,
@@ -6713,7 +6875,7 @@ function filterPasses(filter, tags) {
 // ev, typing and egg_group weight the spawns (a species without that EV yield cannot come; a matching type or egg group
 // is weighted by the value), and on the Pokemon caught, each at its chance with alike effects merged (chances summed to
 // at most 1, values summed): nature, iv, shiny_reroll, mark_chance, drops_reroll, gender_chance, level_raise, ha_chance,
-// friendship and size. alpha_chance does nothing, the port having no alphas.
+// friendship and size; alpha_chance makes it an alpha.
 const ROD_BAIT = "cobblemon:bait";
 function rodBait(item) {
     try { const b = JSON.parse(item?.getDynamicProperty(ROD_BAIT) ?? "null"); return b?.id && b.n > 0 ? b : null; } catch (e) { return null; }
@@ -6829,6 +6991,7 @@ function applyBait(pokemon, cast) {
                     if (n >= 0) pokemon.triggerEvent(`cobblemon:set_variant_${n}`);
                 }
             } else if (e.t === "mark_chance") setProp(pokemon, MARK_BOOST, 1 + e.value / 100);
+            else if (e.t === "alpha_chance") makeAlpha(pokemon);
             else if (e.t === "drops_reroll") setProp(pokemon, DROPS_REROLL, true);
             else if (e.t === "gender_chance") {
                 const ratio = info?.maleRatio ?? 0.5;
@@ -10367,12 +10530,17 @@ system.runInterval(() => {
 
 const SCALE = "cobblemon:scale", SIZE_MIN = 0.95, SIZE_MAX = 1.05, SIZE_CATEGORIES = ["XS", "S", "M", "L", "XL"];
 function scaleOf(e) {
+    if (isAlpha(e)) return alphaScale(e.typeId);
     let s = prop(e, SCALE);
     if (typeof s !== "number") { s = SIZE_MIN + Math.random() * (SIZE_MAX - SIZE_MIN); setProp(e, SCALE, s); }
     return s;
 }
-function showScale(e) { try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", scaleOf(e)); } catch (err) { } }
+function showScale(e) {
+    try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", Math.min(2, scaleOf(e))); } catch (err) { }
+    try { if (e.getProperty("cobblemon:alpha") !== isAlpha(e)) e.setProperty("cobblemon:alpha", isAlpha(e)); } catch (err) { }   // the alpha eyes' pass
+}
 function sizeCategory(e) {
+    if (isAlpha(e)) return "XL";
     const range = SIZE_MAX - SIZE_MIN, seg = range / SIZE_CATEGORIES.length;
     return SIZE_CATEGORIES[Math.max(0, Math.min(SIZE_CATEGORIES.length - 1, Math.floor(Math.min(range, Math.max(0, scaleOf(e) - SIZE_MIN)) / seg)))];
 }
@@ -10614,6 +10782,8 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
         if (pokemon.isValid) {
             try { pokemon.teleport(pos); } catch (e) { }
             player.sendMessage(`§aGotcha! ${name} was caught!`);
+            if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
+            setProp(pokemon, "cobblemon:honey_drenched", undefined);   // callbacks/pokemon_captured/remove_aspects
             const battle = captureBattles.get(pokemon.id);
             captureBattles.delete(pokemon.id);
             keepCaught(player, pokemon, ballId);   // first, so the battle's end does not heal it as a wild one
