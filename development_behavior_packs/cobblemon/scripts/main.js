@@ -282,6 +282,7 @@ function setWeather(battle, kind, setter) {
     if (weatherOf(battle) === kind) return false;
     battle.weather = { kind, turns: held(setter) === WEATHER_ROCKS[kind] ? 8 : 5 };
     say(battle, `§b${WEATHER_TEXT[kind][0]}`);
+    battleForms(battle);
     return true;
 }
 // Battle terrain, as Showdown's: Electric, Grassy, Misty and Psychic Terrain for five turns (eight with a Terrain
@@ -439,6 +440,10 @@ function fieldMove(battle, a, d, move) {
             used();
             a.charged = true; say(battle, `§e${name} began charging power!`);
             boost(battle, a, { spd: 1 }, a);
+            return true;
+        case "transform":
+            used();
+            if (!transform(battle, a, d)) fail();
             return true;
         case "attract":
             used();
@@ -731,7 +736,7 @@ function inflict(battle, target, status, announceFailure, source) {
         if (announceFailure) say(battle, `§7${target.info.name} surrounds itself with ${terrain === "misty" ? "a protective mist" : "electrified terrain"}!`);
         return;
     }
-    const guard = ability(target, source) === "leafguard" && weatherOf(battle) === "sun" ? ["slp", "par", "brn", "frz", "psn", "tox"] : STATUS_GUARD[ability(target, source)] ?? [];
+    const guard = (ability(target, source) === "leafguard" && weatherOf(battle) === "sun") || (target.ability === "shieldsdown" && target.form === "meteor-form") ? ["slp", "par", "brn", "frz", "psn", "tox"] : STATUS_GUARD[ability(target, source)] ?? [];
     if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
         if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
         return;
@@ -918,6 +923,7 @@ function abilityMove(attacker, move) {
     else if (ab === "normalize") { type = "normal"; boosted = true; }
     else if (ab === "liquidvoice" && move.flags?.includes("sound")) type = "water";
     const noContact = ab === "longreach" && move.contact;
+    if (move.id === "aurawheel" && attacker.form === "hangry-mode") type = "dark";
     if (!type && !noContact) return move;
     return new Proxy(move, {
         get: (t, k) => (k === "type" && type ? type : k === "typeBoosted" ? boosted : k === "contact" && noContact ? false : t[k]),
@@ -934,6 +940,16 @@ function faintedOf(battle, f) {
 }
 function useMove(battle, attacker, defender, move, called = false) {
     move = abilityMove(attacker, move);
+    // Stance Change: Blade Forme to attack, Shield Forme for King's Shield
+    if (attacker.ability === "stancechange" && !attacker.transformed && move?.id && ((move.category !== "Status") !== !!attacker.blade) && (move.category !== "Status" || move.id === "kingsshield")) {
+        attacker.blade = move.category !== "Status";
+        const st = attacker.info.stats, swapped = { ...st, atk: st.def, def: st.atk, spa: st.spd, spd: st.spa };
+        attacker.info = { ...attacker.info, stats: swapped };
+        attacker.stats = { ...statsOf(attacker.entity, attacker.info, attacker.level), hp: attacker.stats.hp };
+        say(battle, `§7${attacker.info.name} changed to ${attacker.blade ? "Blade" : "Shield"} Forme!`);
+    }
+    // Gulp Missile: Surf and Dive catch Cramorant something to spit back at the next Pokemon to hit it
+    if (attacker.ability === "gulpmissile" && (move?.id === "surf" || move?.id === "dive") && !attacker.gulp) attacker.gulp = attacker.hp > attacker.stats.hp / 2 ? "gulping" : "gorging";
     // Libero and Protean: the user becomes the type of the move it uses, once each time it comes in
     if ((attacker.ability === "libero" || attacker.ability === "protean") && !attacker.protean && move?.type && move.type !== "???"
         && !(attacker.info.types.length === 1 && attacker.info.types[0] === move.type)) {
@@ -1221,6 +1237,8 @@ function runMove(battle, attacker, defender, move, called = false) {
             if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
             if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
             if (physical && atkAb === "gorillatactics") a *= 1.5;
+            if (weatherOf(battle) === "sun" && physical && atkAb === "flowergift") a *= 1.5;
+            if (weatherOf(battle) === "sun" && !physical && defAb === "flowergift") d *= 1.5;
             if (physical && atkAb === "hustle") a *= 1.5;
             if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
             if (physical && defAb === "furcoat") d *= 2;
@@ -1311,6 +1329,13 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
             if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
             dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
+            if ((defAb === "disguise" && !defender.busted && !defender.transformed) || (defAb === "iceface" && physical && defender.form !== "noice_face" && !defender.transformed)) {
+                say(battle, h === 0 ? `§e${name} used ${move.name}!§r §7${defAb === "disguise" ? "Its disguise served it as a decoy!" : `${defender.info.name}'s Ice Face took the hit!`}` : "§7The hit was blocked!");
+                if (defAb === "disguise") { defender.busted = true; hurt(battle, defender, defender.stats.hp / 8, `${defender.info.name}'s disguise was busted!`); }
+                else changeForm(battle, defender, "noice_face");
+                landed++;
+                continue;
+            }
             if (defender.sub > 0 && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub") && atkAb !== "infiltrator") {
                 const took = Math.min(dmg, defender.sub);
                 defender.sub -= took; shielded = true;
@@ -1412,6 +1437,9 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (dealt && defAb === "rattled" && ["dark", "bug", "ghost"].includes(move.type) && defender.hp > 0) boost(battle, defender, { spe: 1 });
     if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh" || atkAb === "asoneglastrier")) boost(battle, attacker, { atk: 1 });
     if (defender.hp <= 0 && (atkAb === "grimneigh" || atkAb === "asonespectrier" || atkAb === "soulheart")) boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && atkAb === "battlebond" && !attacker.bondDone && attacker.hp > 0) {
+        attacker.bondDone = true; say(battle, `§7${name} became fully charged due to its bond with its trainer!`); boost(battle, attacker, { atk: 1, spa: 1, spe: 1 });
+    }
     if (defender.hp <= 0 && atkAb === "beastboost") {
         const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
         boost(battle, attacker, { [best]: 1 });
@@ -1434,6 +1462,11 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
     if (contact && ab === "perishbody" && !attacker.perish) {
         attacker.perish = 4; if (!defender.perish && alive) defender.perish = 4;
         says("Both Pokemon will faint in three turns!");
+    }
+    if (defender.gulp && attacker.hp > 0) {
+        const prey = defender.gulp; defender.gulp = null;
+        hurt(battle, attacker, attacker.stats.hp / 4, `${dName} spat out its ${prey === "gulping" ? "Arrokuda" : "Pikachu"} at ${name}!`);
+        if (prey === "gulping") boost(battle, attacker, { def: -1 }, defender); else inflict(battle, attacker, "par", false, defender);
     }
     if (ab === "sandspit" && setWeather(battle, "sand", defender)) says(`${dName}'s Sand Spit whipped up a sandstorm!`);
     if (alive && ab === "steamengine" && (move.type === "water" || move.type === "fire")) boost(battle, defender, { spe: 6 });
@@ -1487,6 +1520,7 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
 // the abilities that act at the end of a turn (Showdown's onResidual)
 function endOfTurnAbility(battle, f, other) {
     const name = f.info.name, says = (t) => say(battle, `§7${t}`);
+    if (f.ability === "hungerswitch" && !f.transformed) changeForm(battle, f, f.form === "hangry-mode" ? null : "hangry-mode");
     if (f.ability === "hydration" && f.status && weatherOf(battle) === "rain") { f.status = null; say(battle, `§a${name}'s Hydration cured its status!`); }
     if (f.ability === "baddreams" && other.hp > 0 && other.status === "slp") hurt(battle, other, other.stats.hp / 8, `${other.info.name} is tormented by ${name}'s Bad Dreams!`);
     if (f.ability === "moody") {
@@ -1550,6 +1584,10 @@ const RESIST_BERRIES = { occa_berry: "fire", passho_berry: "water", wacan_berry:
     haban_berry: "dragon", colbur_berry: "dark", babiri_berry: "steel", chilan_berry: "normal", roseli_berry: "fairy" };
 
 function freeze(entity, on) {
+    if (!on) {
+        const base = prop(entity, BATTLE_FORM);
+        if (base !== undefined) { setProp(entity, BATTLE_FORM, undefined); try { entity.triggerEvent(`cobblemon:set_variant_${base}`); } catch (e) { } }
+    }
     try {
         entity.triggerEvent(on ? "cobblemon:battle_start" : "cobblemon:battle_end");
         entity.setProperty("cobblemon:battle", on);   // the client's battle poses
@@ -1692,6 +1730,59 @@ function enter(battle, f, other) {
     if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability)) { f.gassed = f.ability; f.ability = null; }
     entryAbility(battle, f, other);
     mimicry(battle, f);
+    battleForms(battle);
+}
+// Battle forms (Showdown's formeChange): an ability turns its holder into another of its species' variants, with that
+// variant's model (minecraft:variant), types and stats, keeping its HP. The variant it came in as is kept on the entity
+// (BATTLE_FORM) and put back when it leaves the battle (freeze), and is what a recall stores (snapshot)
+const BATTLE_FORM = "cobblemon:battle_form";
+function changeForm(battle, f, form, text) {
+    const e = f.entity, looks = VARIANT_LOOKS[e?.typeId], species = POKEMON[e?.typeId];
+    if (!looks || !species) return false;
+    const cur = prop(e, BATTLE_FORM) ?? variantOf(e), [, female, shiny] = looks[cur] ?? [null, 0, 0];
+    const base = prop(e, BATTLE_FORM) ?? cur;
+    const n = form === null ? base : looks.findIndex((l) => l[0] === form && l[1] === female && l[2] === shiny);
+    if (n < 0 || (f.form ?? null) === form) return false;
+    if (prop(e, BATTLE_FORM) === undefined) setProp(e, BATTLE_FORM, cur);
+    try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+    f.form = form;
+    f.info = { ...species, ...(species.variants?.[n] ?? {}) };
+    f.stats = { ...statsOf(e, f.info, f.level), hp: f.stats.hp };
+    if (text) say(battle, `§7${text}`);
+    return true;
+}
+// the forms that follow HP and weather: Zen Mode at half HP, Schooling above a quarter from level 20, Shields Down's
+// Meteor Form above half, Flower Gift's Sunshine Form in sun, Ice Face's face grown back in snow
+function battleForms(battle) {
+    for (const f of [battle.ally, battle.foe]) {
+        if (!f || f.hp <= 0) continue;
+        const half = f.hp <= f.stats.hp / 2, name = f.info.name.split(" (")[0];
+        if (f.ability === "zenmode") changeForm(battle, f, half ? "zen-mode" : null, half ? `${name} triggered Zen Mode!` : `Zen Mode ended!`);
+        if (f.ability === "schooling") {
+            const school = f.level >= 20 && f.hp > f.stats.hp / 4;
+            changeForm(battle, f, school ? "school-form" : null, school ? `${name} formed a school!` : `${name} stopped schooling!`);
+        }
+        if (f.ability === "shieldsdown") changeForm(battle, f, half ? null : "meteor-form", half ? "Its shell broke!" : `${name} put up its shell!`);
+        if (f.ability === "flowergift") changeForm(battle, f, weatherOf(battle) === "sun" ? "sunshine-form" : null);
+        if (f.ability === "iceface" && f.form === "noice_face" && weatherOf(battle) === "snow") changeForm(battle, f, null, `${name}'s Ice Face was restored!`);
+    }
+}
+// Imposter and Transform: the user takes the target's types, stats but HP, stat stages, ability and moves (5 PP each),
+// keeping its own name; it gets its own back on switching out
+function transform(battle, f, target, text) {
+    if (f.transformed || target.transformed || target.hp <= 0 || target.sub > 0) return false;
+    f.ownState = { info: f.info, stats: f.stats, moves: f.moves, ability: f.ability };
+    f.info = { ...target.info, name: f.info.name };
+    f.stats = { ...target.stats, hp: f.stats.hp };
+    f.stages = { ...target.stages };
+    f.moves = target.moves.filter((m) => m.id).map((m) => ({ ...m, pp: 5, left: 5 }));
+    f.ability = target.ability; f.transformed = true;
+    say(battle, `§7${text ?? `${f.info.name} transformed into ${target.info.name}!`}`);
+    return true;
+}
+function untransform(f) {
+    if (!f.ownState) return;
+    Object.assign(f, f.ownState); f.ownState = null; f.transformed = false;
 }
 // what an ability does as its holder comes in (Showdown's onStart and onSwitchIn)
 function entryAbility(battle, f, other) {
@@ -1723,6 +1814,9 @@ function entryAbility(battle, f, other) {
         const best = (other.moves ?? []).filter((m) => m.id).reduce((x, y) => (power(y) > power(x) ? y : x), { id: null });
         if (best.id) says(`${name}'s Forewarn alerted it to ${MOVES[best.id].name}!`);
     }
+    if (f.ability === "imposter" && other.hp > 0) transform(battle, f, other, `${f.info.name} transformed into ${other.info.name}!`);
+    // Zero to Hero: a Palafin that has switched out once this battle comes back in its Hero Form
+    if (f.ability === "zerotohero" && realBattle(battle).heroes?.has(f.entity?.id)) changeForm(battle, f, "hero-form", `${f.info.name} underwent a heroic transformation!`);
     if (f.ability === "frisk" && other.held) says(`${name} frisked ${other.info.name} and found its ${itemName(other.held)}!`);
     if ((f.ability === "protosynthesis" || f.ability === "quarkdrive") && !paradoxStat(battle, f) && held(f) === "booster_energy") {
         useUp(battle, f, `§7${name} used its Booster Energy!`); f.boosterEnergy = true;
@@ -2978,6 +3072,9 @@ function switchTo(battle, entity) {
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
     leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
+    if (leaving.ability === "zerotohero" && leaving.hp > 0) (realBattle(battle).heroes ??= new Set()).add(leaving.entity.id);
+    if (leaving.blade) { leaving.blade = false; leaving.info = { ...leaving.info, stats: POKEMON[leaving.entity.typeId]?.stats ?? leaving.info.stats }; leaving.stats = { ...statsOf(leaving.entity, leaving.info, leaving.level), hp: leaving.stats.hp }; }
+    untransform(leaving); leaving.gulp = null; leaving.form = null;
     if (leaving.gassed !== undefined) { leaving.ability = leaving.gassed; delete leaving.gassed; }
     if (leaving.baseAbility) { leaving.ability = leaving.baseAbility; leaving.baseAbility = null; }
     if (leaving.ability === "naturalcure") leaving.status = null;
@@ -3303,6 +3400,7 @@ function endOfTurn(battle) {
         if (w === "sun" && (f.ability === "dryskin" || f.ability === "solarpower")) hurt(battle, f, f.stats.hp / 8, `${f.info.name} is hurt by the sunlight!`);
     }
     if (battle.weather && --battle.weather.turns <= 0) { say(battle, `§b${WEATHER_TEXT[battle.weather.kind][1]}`); battle.weather = null; }
+    battleForms(battle);
     if (terrainOf(battle) === "grassy") {
         for (const f of [battle.ally, battle.foe]) {
             if (f.hp > 0 && f.hp < f.stats.hp && onGround(battle, f)) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name}'s HP was restored by the Grassy Terrain.`); syncHealth(f); }
@@ -5270,7 +5368,7 @@ function describe(record) {
 function snapshot(entity) {
     const species = POKEMON[entity.typeId];
     let variant = 0, hp = 1;
-    try { variant = entity.getComponent("minecraft:variant")?.value ?? 0; } catch (e) { }
+    try { variant = prop(entity, BATTLE_FORM) ?? entity.getComponent("minecraft:variant")?.value ?? 0; } catch (e) { }
     try { const h = entity.getComponent(EntityComponentTypes.Health); hp = h.currentValue / h.effectiveMax; } catch (e) { }
     return { t: entity.typeId, v: variant, lv: prop(entity, LEVEL) ?? species.level, xp: prop(entity, EXP) ?? 0,
              mv: prop(entity, MOVESET) ?? null, f: !!prop(entity, FAINTED), hp,

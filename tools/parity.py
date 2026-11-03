@@ -238,14 +238,21 @@ DOUBLES_ONLY = {"battery", "powerspot", "steelyspirit", "flowerveil", "friendgua
                 "powerofalchemy", "receiver", "costar", "commander", "aromaveil", "plus", "minus", "curiousmedicine",
                 "hospitality", "propellertail", "stalwart"}
 
+# a battle here is between real entities in the world, so one Pokemon cannot pass as another
+NO_ILLUSION = {"illusion": "the Pokemon in battle are real entities in the world, so Zoroark cannot be shown as another"}
 TERA_ONLY = {"embodyaspectcornerstone", "embodyaspecthearthflame", "embodyaspectteal", "embodyaspectwellspring", "terashift",
              "terashell", "teraformzero"}
 
 
 def abilities():
     owned, battle_only = set(), set()   # battle_only: on a form Cobblemon only shows in battle (Mega, Primal), never reached here
+    in_port = set(re.findall(r'"cobblemon:p\d{4}_(\w+)"', read(f"{SCRIPTS}/data.js")))
+    absent = set()   # on species the port does not carry
     for path in glob.glob(f"{RES}/data/cobblemon/species/**/*.json", recursive=True):
         data = json.loads(read(path))
+        if os.path.basename(path)[:-5] not in in_port:
+            for form in [data] + data.get("forms", []): absent.update(a.split(":")[-1].lower() for a in form.get("abilities", []))
+            continue
         for form in [data] + data.get("forms", []):
             for ability in form.get("abilities", []): (battle_only if form.get("battleOnly") else owned).add(ability.split(":")[-1].lower())
     for ability_id, body in sorted(showdown_entries("data/abilities.js").items()):
@@ -254,6 +261,8 @@ def abilities():
         hooks = sorted(set(re.findall(r"^    (on\w+|\w+Callback)[:(]", body, re.M)))
         if not hooks: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "no battle effect")
         elif ability_id in DOUBLES_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on an ally; battles here are single")
+        elif ability_id in NO_ILLUSION: row("ability", name, "showdown data/abilities.js", "", "n/a", NO_ILLUSION[ability_id])
+        elif ability_id not in owned and ability_id in absent and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "only on species the port does not carry (see the species rows)")
         elif ability_id in TERA_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on a Terastallized Pokemon; there is no Terastallization here")
         elif ability_id not in owned and ability_id in battle_only and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "only on a battle-only form (Mega, Primal) there is no way to reach")
         elif ability_id not in owned and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "no species has it")
