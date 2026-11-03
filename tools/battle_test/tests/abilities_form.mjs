@@ -55,10 +55,10 @@ const hitWith = (a, d, id, b = battle(a, d)) => rolled(0.5, () => { const before
     check("and back again", f.form === null);
 }
 {
-    const f = mon("Palafin", { ability: "zerotohero" }), b = battle(f, mon("Snorlax"));
+    const f = rolled(0.5, () => mon("Palafin", { ability: "zerotohero" })), b = battle(f, mon("Snorlax"));
     const atk = f.stats.atk;
     b.heroes = new Set([f.entity.id]);
-    M.enter(b, f, b.foe); flush();
+    rolled(0.5, () => M.enter(b, f, b.foe)); flush();
     check("Zero to Hero comes back in as the Hero", f.form === "hero-form" && f.stats.atk > atk * 2, b.log.join(" / "));
 }
 {

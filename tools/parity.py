@@ -207,10 +207,14 @@ def quoted(word, text):
 MOVE_KEYS_HANDLED = {"num", "accuracy", "basePower", "category", "name", "pp", "priority", "flags", "target", "type", "contestType",
                      "secondary", "secondaries", "self", "boosts", "status", "drain", "recoil", "ohko", "multihit", "selfSwitch",
                      "forceSwitch", "heal", "sleepUsable", "weather", "terrain", "critRatio", "isNonstandard", "zMove", "maxMove",
-                     "desc", "shortDesc", "noPPBoosts", "multiaccuracy"}
+                     "desc", "shortDesc", "noPPBoosts", "multiaccuracy", "selfBoost", "willCrit", "thawsTarget", "selfdestruct",
+                     "hasCrashDamage", "mindBlownRecoil", "overrideDefensiveStat", "overrideOffensiveStat", "overrideOffensivePokemon",
+                     "ignoreDefensive", "ignoreEvasion", "ignoreAbility", "breaksProtect", "stealsBoosts"}
 
 
 def moves():
+    data_js = read(f"{SCRIPTS}/data.js")
+    in_table = set(re.findall(r'"(\w+)": \{"name": "[^"]*", "type": "\w+", "power"', data_js))
     learnable = set()
     for path in glob.glob(f"{RES}/data/cobblemon/species/**/*.json", recursive=True):
         data = json.loads(read(path))
@@ -228,6 +232,8 @@ def moves():
         carried = re.search(r'^    (terrain|weather|selfSwitch|forceSwitch|multihit|ohko|heal):', body, re.M) or re.search(r'volatileStatus: "lockedmove"', body)             or 'addVolatile("trapped"' in body   # Mean Look, Block and the rest: the move table's trap
         extra = sorted(k for k in keys - MOVE_KEYS_HANDLED if not (carried and (k == "condition" or k.startswith("on"))))
         note = "" if move_id in learnable else "no species learns it; "
+        if move_id not in in_table:
+            row("move", name, "showdown data/moves.js", "", "n/a", "no species the port carries learns it, so it is not in the move table"); continue
         if not extra: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "done", note + "standard fields only")
         elif quoted(move_id, battle_js): row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "done", note + "its own code, named in the battle script (heuristic): " + ", ".join(extra))
         else: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "partial", note + "deals its damage or plain effect, but its own code is not carried (heuristic): " + ", ".join(extra))

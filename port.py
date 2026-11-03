@@ -5049,7 +5049,7 @@ def showdown_moves():
             "pp": int(field("pp", "10") or 10), "target": field("target", "normal")
         }
         # the move's own effect: stat stages and a status condition, on its target or on the user for "self"
-        top = re.sub(r"^    (secondary|self): \{.*?^    \},?|^    secondaries: \[.*?^    \],?", "", body, flags=re.S | re.M)
+        top = re.sub(r"^    (secondary|self|selfBoost): \{.*?^    \},?|^    secondaries: \[.*?^    \],?", "", body, flags=re.S | re.M)
         if boosts(top): move["boosts"] = boosts(top)
         status = re.search(r'^    status: "(\w+)"', top, re.M)
         if status: move["status"] = status.group(1)
@@ -5086,9 +5086,27 @@ def showdown_moves():
         if terrain: move["terrain"] = terrain.group(1)
         crit = re.search(r"^    critRatio: (\d+)", body, re.M)
         if crit: move["critRatio"] = int(crit.group(1))
+        # Showdown's flags for how a move hits, read as they are: always a critical hit, thaws its target, the user faints
+        # (always, or if it hits), crash damage on a miss, half the user's HP as recoil, the stats it uses in place of the
+        # usual ones, stages it ignores, abilities it ignores, Protect it breaks, the target's raises it takes
+        if re.search(r"^    willCrit: true", body, re.M): move["willCrit"] = True
+        if re.search(r"^    thawsTarget: true", body, re.M): move["thaws"] = True
+        boom = re.search(r'^    selfdestruct: "(\w+)"', body, re.M)
+        if boom: move["selfdestruct"] = boom.group(1)
+        if re.search(r"^    hasCrashDamage: true", body, re.M): move["crash"] = True
+        if re.search(r"^    mindBlownRecoil: true", body, re.M): move["halfRecoil"] = True
+        over = re.search(r'^    overrideDefensiveStat: "(\w+)"', body, re.M)
+        if over: move["defStat"] = over.group(1)
+        over = re.search(r'^    overrideOffensiveStat: "(\w+)"', body, re.M)
+        if over: move["atkStat"] = over.group(1)
+        if re.search(r'^    overrideOffensivePokemon: "target"', body, re.M): move["targetAttack"] = True
+        if re.search(r"^    ignoreDefensive: true", body, re.M): move["ignoreStages"] = True
+        if re.search(r"^    ignoreAbility: true", body, re.M): move["ignoreAbility"] = True
+        if re.search(r"^    breaksProtect: true", body, re.M): move["breaksProtect"] = True
+        if re.search(r"^    stealsBoosts: true", body, re.M): move["stealsBoosts"] = True
         # a chance of a status or stat change on hit
         secondary = re.search(r"^    secondary: \{(.*?)^    \}", body, re.S | re.M)
-        own = re.search(r"^    self: \{(.*?)^    \}", body, re.S | re.M)
+        own = re.search(r"^    (?:self|selfBoost): \{(.*?)^    \}", body, re.S | re.M)   # selfBoost: once after all of a multi-hit move
         if own and boosts(own.group(1)): move["selfBoosts"] = boosts(own.group(1))
         if secondary:
             text = secondary.group(1)
