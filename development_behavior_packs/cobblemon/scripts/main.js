@@ -149,7 +149,7 @@ function canPick(f, m) { return m.left > 0 && !blockedWhy(f, m); }
 function trap(battle, f, by, move) {
     if (move.trap === "partial") {
         if (f.bound) return;
-        f.bound = { by, name: move.name, turns: held(by) === "grip_claw" ? 7 : 4 + Math.floor(Math.random() * 2), share: held(by) === "binding_band" ? 6 : 8 };
+        f.bound = { by, id: move.id, name: move.name, turns: held(by) === "grip_claw" ? 7 : 4 + Math.floor(Math.random() * 2), share: held(by) === "binding_band" ? 6 : 8 };
         say(battle, `§7${f.info.name} was trapped by ${move.name}!`);
     } else if (!f.trappedBy) { f.trappedBy = by; say(battle, `§7${f.info.name} can no longer escape!`); }
 }
@@ -1003,6 +1003,14 @@ function fxEvent(e, user, target, move, outcome) {
             entity.dimension.spawnParticle(fxFill(e.p, move), at, vars);
         }
     } catch (err) { }
+}
+// DamageInstruction's damage_<effect> (Fire Spin's flames, Infestation's swarm, Leech Seed's sapping) on the Pokemon
+// that takes residual damage from it, as its own user and target
+function playDamageFx(battle, f, id) {
+    const fx = MOVE_FX[`damage_${id}`];
+    if (!fx || !f?.entity) return;
+    const move = { id, name: id, type: "normal", category: "Status" };
+    for (const e of fx.e) system.runTimeout(() => fxEvent(e, f, f, move, { missed: false }), Math.round(e.t * 20));
 }
 function playMoveFx(battle, user, target, move, outcome) {
     const clock = fxClock(battle), now = system.currentTick, start = Math.max(now, clock.fxUntil ?? 0);
@@ -4161,6 +4169,7 @@ function endOfTurn(battle) {
         const other = f === battle.ally ? battle.foe : battle.ally;
         if (f.seeded && f.hp > 0 && other.hp > 0) {
             const before = f.hp;
+            playDamageFx(battle, f, "leechseed");
             hurt(battle, f, f.stats.hp / 8, `${f.info.name}'s health is sapped by Leech Seed!`);
             if (f.ability === "liquidooze" && f.hp < before) hurt(battle, other, before - f.hp, `${other.info.name} sucked up the liquid ooze!`);
             else if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
@@ -4170,7 +4179,7 @@ function endOfTurn(battle) {
         if (f.bound) {
             if (f.bound.by !== other) f.bound = null;
             else if (f.bound.turns-- <= 0) { say(battle, `§7${f.info.name} was freed from ${f.bound.name}!`); f.bound = null; }
-            else if (f.hp > 0) hurt(battle, f, f.stats.hp / f.bound.share, `${f.info.name} is hurt by ${f.bound.name}!`);
+            else if (f.hp > 0) { playDamageFx(battle, f, f.bound.id); hurt(battle, f, f.stats.hp / f.bound.share, `${f.info.name} is hurt by ${f.bound.name}!`); }
         }
         if (f.encore && (--f.encore.turns <= 0 || !(f.moves.find((m) => m.id === f.encore.id)?.left > 0))) { f.encore = null; say(battle, `§7${f.info.name}'s encore ended!`); }
         if (f.disabled && --f.disabled.turns <= 0) { f.disabled = null; say(battle, `§7${f.info.name}'s move is no longer disabled!`); }
@@ -4274,6 +4283,7 @@ function gainExperience(battle, f, foe, amount) {
         if (exp <= Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level))) { setProp(f.entity, EXP, exp); return; }
     }
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
+    try { battle.player.playSound("cobblemon.gui.levelup_start"); } catch (e) { }   // PartyOverlayDataControl's bar filling up
     const note = gained.get(f.entity) ?? { exp: 0, move: false };
     note.exp += gain; gained.set(f.entity, note);
     const ids = f.moves.map((m) => m.id);
@@ -10913,6 +10923,25 @@ function shinyRing(e) {
         e.dimension.spawnParticle("cobblemon:shiny_ring", mid); e.dimension.playSound("cobblemon.particle.shiny_chime", mid);
     } catch (err) { }
 }
+// A shiny a player looks at, owned or wild, sparkles with a chime, at most every 3.5 seconds (CobblemonClient's look
+// check, PokemonClientDelegate.spawnShinyParticle: ambient_shiny_sparkle, whose q.sound is played here since a
+// Bedrock particle cannot play the pack's own sounds)
+const SHINY_GLANCE_COOLDOWN = 70, shinyGlanced = new Map();   // entity id -> tick it last sparkled
+system.runInterval(() => {
+    const now = system.currentTick;
+    for (const player of world.getAllPlayers()) {
+        let hit;
+        try { hit = player.getEntitiesFromViewDirection({ maxDistance: 8 }).find((h) => POKEMON[h.entity.typeId])?.entity; } catch (e) { continue; }
+        if (!hit || !isShiny(hit) || now - (shinyGlanced.get(hit.id) ?? -SHINY_GLANCE_COOLDOWN) < SHINY_GLANCE_COOLDOWN) continue;
+        shinyGlanced.set(hit.id, now);
+        try {
+            const feet = hit.location, head = hit.getHeadLocation(), mid = { x: feet.x, y: (feet.y + head.y) / 2, z: feet.z };
+            hit.dimension.spawnParticle("cobblemon:ambient_shiny_sparkle", mid);
+            hit.dimension.playSound("cobblemon.particle.shiny_ambient_chime", mid, { pitch: 0.8 + Math.random() * 0.4 });
+        } catch (e) { }
+    }
+    if (shinyGlanced.size > 200) for (const [id, at] of shinyGlanced) if (now - at > SHINY_GLANCE_COOLDOWN) shinyGlanced.delete(id);
+}, 5);
 const SHINY_NOTICE = 24, shinyNoticed = new Map();   // player id -> ids of the shinies they have had the ring for
 function isShiny(e) { return (SHINY_VARIANTS[e.typeId] ?? []).includes(variantOf(e)); }
 system.runInterval(() => {
@@ -11158,6 +11187,8 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
         const to = { x: entity.location.x, y: entity.location.y + 0.5, z: entity.location.z };
         if (t < FLIGHT) {
             const k = t / FLIGHT;
+            // PokemonClientDelegate's poke_ball.trail, a sound that follows the ball: here from the ball as it sets off
+            if (t === 1) try { dim.playSound("cobblemon.poke_ball.trail", ball.location, { volume: 0.1 }); } catch (e) { }
             try { ball.teleport({ x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + Math.sin(k * Math.PI) * 0.8, z: from.z + (to.z - from.z) * k }, { facingLocation: to }); } catch (e) { }
         } else if (t === FLIGHT) {
             try { ball.remove(); } catch (e) { }

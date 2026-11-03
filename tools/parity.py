@@ -165,6 +165,27 @@ def items_blocks_entities():
 
 
 # ---------------------------------------------------------------------------- sounds
+PORTED = [d for d in os.listdir(f"{RP}/textures/entity") if re.match(r"\d{4}_", d)]
+
+
+_plays = None
+def cobblemon_plays():
+    """The sound events Cobblemon actually plays: named in its data and assets (animations, effects, Molang scripts),
+    not counting sounds.json and the lang files, or used through a CobblemonSounds constant in its Kotlin."""
+    global _plays
+    if _plays is not None: return _plays
+    events = set(json.loads(read(f"{RES}/assets/cobblemon/sounds.json")))
+    text = []
+    for path in glob.glob(f"{RES}/**/*", recursive=True):
+        if os.path.isdir(path) or "/lang/" in path.replace("\\", "/") or path.endswith("sounds.json") or not path.endswith((".json", ".js", ".molang", ".mcfunction")): continue
+        text.append(read(path))
+    kotlin = [read(p) for p in glob.glob(f"{KT}/**/*.kt", recursive=True) if not p.endswith("CobblemonSounds.kt")]
+    constants = dict(re.findall(r'val (\w+) = this\.create\("([^"]+)"', read(f"{KT}/CobblemonSounds.kt")))
+    blob, code = chr(10).join(text), chr(10).join(kotlin)
+    _plays = {e for e in events if e in blob or e in code} | {e for c, e in constants.items() if re.search(r"\b" + c + r"\b", code)}
+    return _plays
+
+
 def sounds():
     events = json.loads(read(f"{RES}/assets/cobblemon/sounds.json"))
     defined = json.loads(read(f"{RP}/sounds/sound_definitions.json")).get("sound_definitions", {})
@@ -177,8 +198,13 @@ def sounds():
         if event.startswith("pokemon.") and event.endswith(".cry"): continue   # one row per species, under species
         ident = f"cobblemon.{event}"
         if ident not in defined and event.startswith("pokemon."): ident = f"cobblemon.{event[len('pokemon.'):]}"
+        # a species the port does not carry (no model in Cobblemon) has no sounds to carry either
+        species = event.split(".")[1] if event.startswith("pokemon.") else None
+        if ident not in defined and species and not any(re.sub(r"[^a-z]", "", species) == re.sub(r"[^a-z]", "", f.split("_", 1)[1]) for f in PORTED):
+            row("sound", event, "sounds.json", "", "n/a", "a species the port does not carry"); continue
         if ident not in defined: row("sound", event, "sounds.json", "", "missing"); continue
         if ident in used or event in used or any(t.fullmatch(ident) for t in templates): row("sound", event, "sounds.json", ident, "done")
+        elif event not in cobblemon_plays(): row("sound", event, "sounds.json", ident, "n/a", "Cobblemon itself never plays it")
         else: row("sound", event, "sounds.json", ident, "partial", "defined but nothing plays it")
 
 

@@ -2884,7 +2884,9 @@ def create_sounds():
         if folder not in ("pokemon", "battle") and os.path.isdir(f"{soundsBedrock}/{folder}"): shutil.rmtree(f"{soundsBedrock}/{folder}")
     categories = {"battle": "music", "gui": "ui", "pc": "ui", "block": "block"}
     for key, definition in cobblemon_sounds.items():
-        if key.startswith("pokemon.") and not key.startswith("pokemon.gimmighoul."): continue
+        # a species' cry and ambient are its own above; its other sounds (Mightyena's quirks, Ceruledge's battle cry,
+        # Duraludon's bonk), which its animations play, come with the rest
+        if re.match(r"pokemon\.[^.]+\.(cry|ambient)$", key): continue
         sounds = []
         for sound in definition.get("sounds", []):
             entry = sound if isinstance(sound, dict) else {"name": sound}
@@ -2975,8 +2977,10 @@ def fx_flatten(keyframes, t, events, hold, flags):
         elif kind == "remove_holds" and "effects" in k.get("holds", []):
             hold = t
         elif kind == "entity_sound":
-            snd = fx_value(k.get("sound", ""))
-            if snd: events.append({"t": round(t, 2), "k": "s", "s": snd.replace("cobblemon:", "cobblemon."), **base})
+            # a sound named plainly ("move.psychic.target") or as MoLang ("'cobblemon:move.' + q.move.name")
+            raw = str(k.get("sound", ""))
+            snd = fx_value(raw) if "'" in raw or "q." in raw else raw
+            if snd: events.append({"t": round(t, 2), "k": "s", "s": snd.replace("cobblemon:", "cobblemon.") if snd.startswith("cobblemon") else f"cobblemon.{snd}", **base})
             t += fx_seconds(k.get("delay"))
         elif kind == "entity_particles":
             eff = fx_value(k["effect"]) if "'" in str(k.get("effect", "")) else k.get("effect")
@@ -3082,9 +3086,11 @@ def add_primary_controllers(anims, lengths, stems):
 
 
 PARTICLE_SOURCES = {}
-def particle_sounds(identifier):
+def particle_sounds(identifier, depth=0):
     """The sound events a Cobblemon particle plays, as (seconds after it starts, sound): its emitter's creation and
-    timeline events, its expiry at its active time, and its particles' creation, nested event sequences included."""
+    timeline events, its expiry at its active time, and its particles' creation and expiry, nested event sequences
+    included, and those of the particles its events spawn (Leech Seed's seed spawns the burst that carries its sound),
+    a particle's expiry at its lifetime where that is a number."""
     if not PARTICLE_SOURCES:
         for path in glob.glob(f"{cobblemon}/bedrock/particles/**/*.json", recursive=True):
             try: PARTICLE_SOURCES[json.load(open(path, encoding="utf-8"))["particle_effect"]["description"]["identifier"]] = path
@@ -3094,14 +3100,18 @@ def particle_sounds(identifier):
     effect = json.load(open(path, encoding="utf-8"))["particle_effect"]
     events, comps = effect.get("events", {}), effect.get("components", {})
     def sounds_of(name):
-        out = []
+        out, children = [], []
         def walk(node):
             if isinstance(node, dict):
                 if "sound_effect" in node: out.append(node["sound_effect"].get("event_name"))
+                if isinstance(node.get("particle_effect"), dict) and node["particle_effect"].get("effect"): children.append(node["particle_effect"]["effect"])
                 for v in node.values(): walk(v)
             elif isinstance(node, list):
                 for v in node: walk(v)
         for n in ([name] if isinstance(name, str) else name or []): walk(events.get(n, {}))
+        if depth < 3:
+            for child in children:
+                if child != identifier: out += [snd for _, snd in particle_sounds(child, depth + 1)]
         return [x for x in out if x]
     number = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and re.fullmatch(r"[0-9.]+", v)) else 0.0
     found = []
@@ -3110,7 +3120,10 @@ def particle_sounds(identifier):
     for at, name in life.get("timeline", {}).items(): found += [(number(at), snd) for snd in sounds_of(name)]
     active = number(comps.get("minecraft:emitter_lifetime_once", {}).get("active_time", 0))
     found += [(active, snd) for snd in sounds_of(life.get("expiration_event"))]
-    found += [(0.0, snd) for snd in sounds_of(comps.get("minecraft:particle_lifetime_events", {}).get("creation_event"))]
+    particle_life = comps.get("minecraft:particle_lifetime_events", {})
+    found += [(0.0, snd) for snd in sounds_of(particle_life.get("creation_event"))]
+    lifetime = number(comps.get("minecraft:particle_lifetime_expression", {}).get("max_lifetime", 0))
+    found += [(active + lifetime, snd) for snd in sounds_of(particle_life.get("expiration_event"))]
     seen, unique = set(), []
     for delay, snd in found:
         if snd not in seen: seen.add(snd); unique.append((delay, snd))   # one sound each, the first time it comes
@@ -3126,7 +3139,9 @@ def create_move_fx():
                 try: particles.add(json.load(open(f"{folder}/{name}", encoding="utf-8"))["particle_effect"]["description"]["identifier"])
                 except Exception: pass
     effects, used = {}, set()
-    for folder, _, files in os.walk(root):
+    # with the moves' effects, the residual damage ones (DamageInstruction's damage_<effect>: Fire Spin, Infestation,
+    # Leech Seed), played on the Pokemon that takes the damage
+    for folder, _, files in [*os.walk(root), *os.walk(f"{cobblemonData}/action_effects/damages")]:
         for name in files:
             if not name.endswith(".json"): continue
             timeline = json.load(open(f"{folder}/{name}", encoding="utf-8")).get("timeline", [])
@@ -3915,6 +3930,7 @@ def animation_effects(pokemon, pokemonName):
                 match = re.match(r"pokemon\.(\w+)\.(cry|ambient)$", effect or "")
                 if match and os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/{match.group(2)}.ogg"): sounds[effect] = f"cobblemon.{match.group(1)}.{match.group(2)}"
                 elif effect and not effect.startswith("pokemon."): sounds[effect] = f"cobblemon.{effect}"   # a timeline's q.sound: the wing flaps, Cinderace's ball
+                elif effect and effect in cobblemon_sounds and not match: sounds[effect] = f"cobblemon.{effect}"   # a species' own other sounds (create_sounds)
     return particles, sounds
 
 
