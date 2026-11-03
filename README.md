@@ -127,6 +127,13 @@ packs need regenerating; the release tag is the manifests' version, which `port.
 ## Porting From Cobblemon
 The script [port.py](/port.py) handles copying the assets and creating the Bedrock-exclusive files.
 
+[PARITY.csv](/PARITY.csv) lists everything Cobblemon has, one row each, with where it comes from, where the port has
+it, and whether it is done, partial, missing or n/a, and why. `python tools/parity.py` writes it from Cobblemon's own
+source: every item, block and entity in its lang file, every sound event, species, Showdown move, ability and held
+item, every GUI class, command, keybind, data folder and config option, and each "Not carried" note in the table
+below. Run it after a change to see what is left. Where a status is a heuristic (a move whose effect lives in code
+counts as done when the battle script names it), its comment says so.
+
 Cobblemon itself never spawns a legendary or mythical Pokemon. The Legendary Encounters datapack's spawn pools
 (`legendary_encounters/spawn_pool_world/`, MIT) are read alongside Cobblemon's own: ultra-rare natural spawns in
 fitting biomes, some only by day or at night, at levels 50 to 90. Of its 53 species, the 18 Cobblemon has models for
