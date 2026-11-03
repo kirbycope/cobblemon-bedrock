@@ -92,6 +92,18 @@ function useUp(battle, f, text) {
     const item = f.held;
     f.held = null;
     if (item && consumedFor(battle, item)) setProp(f.entity, "cobblemon:held", undefined);
+    if (item) itemGone(battle, f, item);
+}
+// an item a Pokemon has used up, eaten or lost: kept as its last item (Showdown's lastItem) for Harvest and Pickup;
+// Unburden doubles its Speed from then, Cheek Pouch heals a third on a berry, and Cud Chew eats the berry again next turn
+function itemGone(battle, f, item) {
+    f.lastItem = item; f.itemGoneTurn = battle.turn;
+    if (f.ability === "unburden") f.unburden = true;
+    if (!item.endsWith("_berry")) return;
+    if (f.ability === "cheekpouch" && f.hp > 0 && f.hp < f.stats.hp) {
+        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / 3)); say(battle, `§a${f.info.name}'s Cheek Pouch restored its HP!`); syncHealth(f);
+    }
+    if (f.ability === "cudchew" && !f.cudChewing) f.cudChew = { item, turn: battle.turn };
 }
 // two-turn moves: what each says as it charges (Showdown's prepare messages), the stat it raises then, where it hides
 // the user, and the moves that still reach a Pokemon hidden there (Showdown's onInvulnerability)
@@ -305,14 +317,37 @@ function terrainSeed(battle, f) {
     useUp(battle, f, `§7${f.info.name}'s ${itemName(f.held)}!`);
     boost(battle, f, TERRAIN_SEEDS[kind]);
 }
-// first in its priority bracket (Showdown's fractional priority): Quick Claw one time in five, and a Custap Berry eaten
-// at a quarter of HP or less for a move of no more than normal priority
+// a move's priority with its user's ability (Showdown's onModifyPriority): Prankster +1 for status moves, Gale Wings +1
+// for Flying moves at full HP, Triage +3 for healing moves
+function priorityOf(battle, f, m) {
+    let p = m?.priority ?? 0;
+    if (!m || !f) return p;
+    if (f.ability === "prankster" && m.category === "Status") p += 1;
+    if (f.ability === "galewings" && m.type === "flying" && f.hp === f.stats.hp) p += 1;
+    if (f.ability === "triage" && m.flags?.includes("heal")) p += 3;
+    return p;
+}
+// whether the player's Pokemon moves first: the higher priority, then in the same bracket the one going first (Quick
+// Claw, Custap, Quick Draw), then the one going last (Lagging Tail, Full Incense, Stall, Mycelium Might's status
+// moves), then speed
+function allyGoesFirst(battle, ally, foe, move, foeMove) {
+    const last = (f, m) => held(f) === "lagging_tail" || held(f) === "full_incense" || f.ability === "stall" || (f.ability === "myceliummight" && m?.category === "Status");
+    const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
+    const pa = priorityOf(battle, ally, move), pf = priorityOf(battle, foe, foeMove);
+    if (pa !== pf) return pa > pf;
+    if (allyClaw !== foeClaw) return allyClaw;
+    if (last(ally, move) !== last(foe, foeMove)) return last(foe, foeMove);
+    return fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle);
+}
+// first in its priority bracket (Showdown's fractional priority): Quick Claw one time in five, a Custap Berry eaten
+// at a quarter of HP or less for a move of no more than normal priority, and Quick Draw three times in ten for a damaging move
 function goesFirst(battle, f, m) {
-    if (held(f) === "custap_berry" && !unnerved(battle, f) && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / 4) {
+    if (held(f) === "custap_berry" && !unnerved(battle, f) && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) {
         useUp(battle, f, `§7${f.info.name} can act faster than normal, thanks to its Custap Berry!`);
         return true;
     }
     if (held(f) === "quick_claw" && Math.random() < 0.2) { say(battle, `§7${f.info.name} can act faster than normal, thanks to its Quick Claw!`); return true; }
+    if (f.ability === "quickdraw" && m && m.category !== "Status" && Math.random() < 0.3) { say(battle, `§7${f.info.name} can act faster than normal, thanks to its Quick Draw!`); return true; }
     return false;
 }
 // which goes first by speed: the faster, a tie either way, and under Trick Room the slower
@@ -505,6 +540,7 @@ function speedOf(f, battle) {
     if (f.ability === "quickfeet" && f.status) spe *= 1.5;
     if (battle && paradoxStat(battle, f) === "spe") spe *= 1.5;
     if (battle && f.slowStart > battle.turn) spe *= 0.5;
+    if (f.unburden && !f.held) spe *= 2;
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
@@ -940,7 +976,8 @@ function pivot(battle, swap, then) {
     });
 }
 function runMove(battle, attacker, defender, move, called = false) {
-    const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
+    const name = attacker.info.name, atkAb = attacker.ability;
+    const defAb = atkAb === "myceliummight" && move.category === "Status" ? null : ability(defender, attacker);
     attacker.destinyBond = false;   // it holds only until the user moves again
     if (attacker.taunt > 0 && move.category === "Status" && move.id) { say(battle, `§7${name} can't use ${move.name} after the taunt!`); return; }
     if (!called && attacker.disabled?.id === move.id) { say(battle, `§7${name}'s ${move.name} is disabled!`); return; }
@@ -1037,7 +1074,15 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (!setTerrain(battle, move.terrain, attacker)) say(battle, "§7But it failed!");
         return;
     }
-    if (!self && (move.priority ?? 0) > 0 && terrainOf(battle) === "psychic" && onGround(battle, defender)) {
+    if (!self && priorityOf(battle, attacker, move) > 0 && ["dazzling", "queenlymajesty", "armortail"].includes(defAb)) {
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s ${abilityName(defender.ability)} makes it unable to use the move!`);
+        return;
+    }
+    if (!self && atkAb === "prankster" && move.category === "Status" && defender.info.types.includes("dark")) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`);
+        return;
+    }
+    if (!self && priorityOf(battle, attacker, move) > 0 && terrainOf(battle) === "psychic" && onGround(battle, defender)) {
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by the Psychic Terrain!`);
         return;
     }
@@ -1178,9 +1223,10 @@ function runMove(battle, attacker, defender, move, called = false) {
             dmg = Math.floor(dmg * eff);
             const resist = unnerved(battle, defender) ? null : RESIST_BERRIES[held(defender)];
             if (resist === move.type && (eff > 1 || resist === "normal")) {
-                dmg = Math.floor(dmg / 2);
+                dmg = Math.floor(dmg / (defender.ability === "ripen" ? 4 : 2));
                 say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
-                defender.held = null; setProp(defender.entity, "cobblemon:held", undefined);
+                const eaten = defender.held;
+                defender.held = null; setProp(defender.entity, "cobblemon:held", undefined); itemGone(battle, defender, eaten);
             }
             const screens = sideOf(battle, defender);
             if (!crit && atkAb !== "infiltrator" && ((physical && (screens.reflect > 0 || screens.auroraveil > 0)) || (!physical && (screens.lightscreen > 0 || screens.auroraveil > 0)))) dmg = Math.floor(dmg / 2);
@@ -1355,9 +1401,11 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
     // battle only, as nothing saves the change, so each item is back with its owner afterwards
     if (contact && alive && ab === "pickpocket" && !defender.held && attacker.held && attacker.ability !== "stickyhold") {
         defender.held = attacker.held; attacker.held = null; says(`${dName} stole ${name}'s ${itemName(defender.held)}!`);
+        if (attacker.ability === "unburden") attacker.unburden = true;
     }
     if (attacker.ability === "magician" && attacker.hp > 0 && !attacker.held && defender.held && defender.ability !== "stickyhold") {
         attacker.held = defender.held; defender.held = null; says(`${name} stole ${dName}'s ${itemName(attacker.held)}!`);
+        if (defender.ability === "unburden") defender.unburden = true;
     }
     // the attacker's: Poison Touch poisons on contact, Toxic Chain badly poisons on any hit, three times in ten
     const cloaked = defender.ability === "shielddust" || held(defender) === "covert_cloak";
@@ -1365,13 +1413,41 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
     if (alive && !cloaked && attacker.ability === "toxicchain" && Math.random() < 0.3) inflict(battle, defender, "tox", false, attacker);
 }
 
+// the abilities that act at the end of a turn (Showdown's onResidual)
+function endOfTurnAbility(battle, f, other) {
+    const name = f.info.name, says = (t) => say(battle, `§7${t}`);
+    if (f.ability === "hydration" && f.status && weatherOf(battle) === "rain") { f.status = null; say(battle, `§a${name}'s Hydration cured its status!`); }
+    if (f.ability === "baddreams" && other.hp > 0 && other.status === "slp") hurt(battle, other, other.stats.hp / 8, `${other.info.name} is tormented by ${name}'s Bad Dreams!`);
+    if (f.ability === "moody") {
+        const stats = ["atk", "def", "spa", "spd", "spe"];
+        const ups = stats.filter((k) => f.stages[k] < 6), up = ups[Math.floor(Math.random() * ups.length)];
+        const downs = stats.filter((k) => f.stages[k] > -6 && k !== up), down = downs[Math.floor(Math.random() * downs.length)];
+        boost(battle, f, { ...(up ? { [up]: 2 } : {}), ...(down ? { [down]: -1 } : {}) });
+    }
+    // Harvest: the berry it ate grows back half the time, every time in sun; Pickup: the item the other used up this turn
+    if (f.ability === "harvest" && !f.held && f.lastItem?.endsWith("_berry") && (weatherOf(battle) === "sun" || Math.random() < 0.5)) {
+        f.held = f.lastItem; f.lastItem = null; setProp(f.entity, "cobblemon:held", f.held); says(`${name} harvested one ${itemName(f.held)}!`);
+    }
+    if (f.ability === "pickup" && !f.held && other.lastItem && other.itemGoneTurn === battle.turn) {
+        f.held = other.lastItem; other.lastItem = null; says(`${name} found one ${itemName(f.held)}!`);
+    }
+    if (f.cudChew && f.cudChew.turn < battle.turn) {
+        const { item } = f.cudChew, keep = f.held;
+        f.cudChew = null; f.cudChewing = true; f.held = item;
+        heldBerry(battle, f, true);
+        f.held = keep; f.cudChewing = false;
+        if (keep) setProp(f.entity, "cobblemon:held", keep);
+    }
+}
+
 // berries eaten when they apply: Oran and Sitrus below half HP, the status berries on their status, Leppa on an empty move
-function heldBerry(battle, f) {
+function heldBerry(battle, f, force = false) {
     const item = held(f);
     if (!item || f.hp <= 0 || (item.endsWith("_berry") && unnerved(battle, f))) return;
+    const ripe = f.ability === "ripen" ? 2 : 1, pinch = f.stats.hp / (f.ability === "gluttony" ? 2 : 4);
     let used = false;
-    if ((item === "oran_berry" || item === "sitrus_berry") && f.hp <= f.stats.hp / 2) {
-        f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4))); used = true; syncHealth(f);
+    if ((item === "oran_berry" || item === "sitrus_berry") && (force || f.hp <= f.stats.hp / 2)) {
+        f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4)) * ripe); used = true; syncHealth(f);
     } else if (item in STATUS_BERRIES && f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) {
         f.status = null; used = true;
     } else if (item === "berry_juice" && f.hp <= f.stats.hp / 2) {
@@ -1384,15 +1460,17 @@ function heldBerry(battle, f) {
     }
     // the portion berries heal a third at a quarter of HP or less (PortionHealingBerryItem, potion_by_portion); the stat
     // berries raise a stat by one there (Starf two, of one at random), and Lansat gives Focus Energy
-    else if (PORTION_BERRIES.has(`cobblemon:${item}`) && f.hp <= f.stats.hp / 4) {
-        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33)); used = true; syncHealth(f);
-    } else if (PINCH_BERRIES[item] && f.hp <= f.stats.hp / 4) {
+    else if (PORTION_BERRIES.has(`cobblemon:${item}`) && (force || f.hp <= pinch)) {
+        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33 * ripe)); used = true; syncHealth(f);
+    } else if (PINCH_BERRIES[item] && (force || f.hp <= pinch)) {
         const stat = PINCH_BERRIES[item] === "random" ? ["atk", "def", "spa", "spd", "spe"][Math.floor(Math.random() * 5)] : PINCH_BERRIES[item];
+        const eaten = f.held;
         say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined);
-        if (stat === "focus") { f.focusEnergy = true; say(battle, `§7${f.info.name} is getting pumped!`); } else boost(battle, f, { [stat]: item === "starf_berry" ? 2 : 1 });
+        if (stat === "focus") { f.focusEnergy = true; say(battle, `§7${f.info.name} is getting pumped!`); } else boost(battle, f, { [stat]: (item === "starf_berry" ? 2 : 1) * ripe });
+        itemGone(battle, f, eaten);
         return;
     }
-    if (used) { say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); }
+    if (used) { const eaten = f.held; say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); itemGone(battle, f, eaten); }
 }
 const PINCH_BERRIES = { liechi_berry: "atk", ganlon_berry: "def", petaya_berry: "spa", apicot_berry: "spd", salac_berry: "spe", starf_berry: "random", lansat_berry: "focus" };
 // the type berries halve a super effective hit of their type (Chilan any Normal hit) and are eaten
@@ -2932,11 +3010,7 @@ function turn(battle) {
         if (held(ally)?.startsWith("choice_") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
         const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
-        const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
-        const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
-        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
+        const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
         battle.movedFirst = allyFirst ? ally : foe;
         battle.swap = null;
         const order = allyFirst ? [true, false] : [false, true];
@@ -3145,7 +3219,8 @@ function endOfTurn(battle) {
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
-        if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / 4) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
+        endOfTurnAbility(battle, f, f === battle.ally ? battle.foe : battle.ally);
+        if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
             && !["sandveil", "sandrush", "sandforce", "overcoat"].includes(f.ability) && held(f) !== "safety_goggles") {
@@ -4155,11 +4230,7 @@ function pvpResolve(battle) {
     const { ally, foe } = battle;
     if (ca.kind === "move" && cb.kind === "move") {
         const move = ca.move, foeMove = cb.move;
-        const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
-        const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
-        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
+        const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
         battle.movedFirst = allyFirst ? ally : foe;
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, mv] of order) if (a.hp > 0 && d.hp > 0) useMove(battle, a, d, mv);
