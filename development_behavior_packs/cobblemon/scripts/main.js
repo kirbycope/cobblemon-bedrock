@@ -62,7 +62,17 @@ const TYPE_ITEMS = { charcoal_stick: "fire", mystic_water: "water", miracle_seed
     poison_barb: "poison", soft_sand: "ground", sharp_beak: "flying", twisted_spoon: "psychic", silver_powder: "bug", hard_stone: "rock",
     spell_tag: "ghost", dragon_fang: "dragon", black_glasses: "dark", metal_coat: "steel", silk_scarf: "normal", fairy_feather: "fairy" };
 const STATUS_BERRIES = { cheri_berry: ["par"], chesto_berry: ["slp"], pecha_berry: ["psn", "tox"], rawst_berry: ["brn"], aspear_berry: ["frz"], lum_berry: null };
-function held(f) { return f.held ? f.held.slice("cobblemon:".length) : null; }
+const KLUTZ_KEEPS = new Set(["macho_brace", "power_anklet", "power_band", "power_belt", "power_bracer", "power_lens", "power_weight", "lucky_egg", "exp_share", "amulet_coin"]);
+function held(f) {
+    if (!f.held) return null;
+    const item = f.held.slice("cobblemon:".length);
+    return f.ability === "klutz" && !KLUTZ_KEEPS.has(item) ? null : item;
+}
+// Unnerve and As One: the other side's Pokemon cannot eat berries
+function unnerved(battle, f) {
+    const other = f === battle?.ally ? battle?.foe : battle?.ally;
+    return !!other && other.hp > 0 && ["unnerve", "asoneglastrier", "asonespectrier"].includes(other.ability);
+}
 // more of Showdown's items: the species items that double a stat, the crit items, and the items used up when they act
 const SPECIES_ITEMS = { light_ball: [["pikachu"], ["atk", "spa"]], thick_club: [["cubone", "marowak"], ["atk"]], deep_sea_tooth: [["clamperl"], ["spa"]],
     deep_sea_scale: [["clamperl"], ["spd"]], metal_powder: [["ditto"], ["def"]] };
@@ -250,7 +260,10 @@ const WEATHER_TEXT = { rain: ["It started to rain!", "The rain stopped."], sun: 
 const WEATHER_ROCKS = { rain: "damp_rock", sun: "heat_rock", sand: "smooth_rock", snow: "icy_rock" };
 const WEATHER_ABILITIES = { drizzle: "rain", drought: "sun", sandstream: "sand", snowwarning: "snow", orichalcumpulse: "sun" };
 const WEATHER_SPEED = { swiftswim: "rain", chlorophyll: "sun", sandrush: "sand", slushrush: "snow" };
-function weatherOf(battle) { return battle?.weather?.kind ?? null; }
+function weatherOf(battle) {
+    const kind = battle?.weather?.kind ?? null;
+    return kind && [battle.ally, battle.foe].some((f) => f?.hp > 0 && (f.ability === "airlock" || f.ability === "cloudnine")) ? null : kind;
+}
 function setWeather(battle, kind, setter) {
     if (weatherOf(battle) === kind) return false;
     battle.weather = { kind, turns: held(setter) === WEATHER_ROCKS[kind] ? 8 : 5 };
@@ -295,7 +308,7 @@ function terrainSeed(battle, f) {
 // first in its priority bracket (Showdown's fractional priority): Quick Claw one time in five, and a Custap Berry eaten
 // at a quarter of HP or less for a move of no more than normal priority
 function goesFirst(battle, f, m) {
-    if (held(f) === "custap_berry" && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / 4) {
+    if (held(f) === "custap_berry" && !unnerved(battle, f) && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / 4) {
         useUp(battle, f, `§7${f.info.name} can act faster than normal, thanks to its Custap Berry!`);
         return true;
     }
@@ -490,6 +503,8 @@ function entryHazards(battle, f) {
 function speedOf(f, battle) {
     let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" && f.ability !== "quickfeet" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
     if (f.ability === "quickfeet" && f.status) spe *= 1.5;
+    if (battle && paradoxStat(battle, f) === "spe") spe *= 1.5;
+    if (battle && f.slowStart > battle.turn) spe *= 0.5;
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
@@ -1102,6 +1117,9 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (physical && atkAb === "hustle") a *= 1.5;
             if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
             if (physical && defAb === "furcoat") d *= 2;
+            if (paradoxStat(battle, attacker) === (physical ? "atk" : "spa")) a *= 1.3;
+            if (paradoxStat(battle, defender) === (physical ? "def" : "spd")) d *= 1.3;
+            if (physical && attacker.slowStart > battle.turn) a *= 0.5;
             if (atkAb === "defeatist" && attacker.hp <= attacker.stats.hp / 2) a *= 0.5;
             const typeBoost = { dragonsmaw: ["dragon", 1.5], rockypayload: ["rock", 1.5], steelworker: ["steel", 1.5], transistor: ["electric", 1.3] }[atkAb];
             if (typeBoost && typeBoost[0] === move.type) a *= typeBoost[1];
@@ -1158,7 +1176,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
             if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
             dmg = Math.floor(dmg * eff);
-            const resist = RESIST_BERRIES[held(defender)];
+            const resist = unnerved(battle, defender) ? null : RESIST_BERRIES[held(defender)];
             if (resist === move.type && (eff > 1 || resist === "normal")) {
                 dmg = Math.floor(dmg / 2);
                 say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
@@ -1222,7 +1240,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + Math.max(1, Math.floor(dealt / 8))); say(battle, `§a${name} restored a little HP using its Shell Bell!`); syncHealth(attacker);
         }
         if (dealt && held(defender) === "air_balloon") useUp(battle, defender, `§7${defender.info.name}'s Air Balloon popped!`);
-        const hitBerry = held(defender);
+        const hitBerry = unnerved(battle, defender) ? null : held(defender);
         if (dealt && defender.hp > 0 && hitBerry === "enigma_berry" && eff > 1) {
             useUp(battle, defender, `§a${defender.info.name} ate its Enigma Berry!`); defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
         } else if (dealt && ((hitBerry === "jaboca_berry" && physical) || (hitBerry === "rowap_berry" && !physical))) {
@@ -1282,8 +1300,8 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (dealt && defAb === "weakarmor" && move.category === "Physical" && defender.hp > 0) boost(battle, defender, { def: -1, spe: 2 });
     if (dealt && defAb === "justified" && move.type === "dark" && defender.hp > 0) boost(battle, defender, { atk: 1 });
     if (dealt && defAb === "rattled" && ["dark", "bug", "ghost"].includes(move.type) && defender.hp > 0) boost(battle, defender, { spe: 1 });
-    if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh")) boost(battle, attacker, { atk: 1 });
-    if (defender.hp <= 0 && atkAb === "grimneigh") boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh" || atkAb === "asoneglastrier")) boost(battle, attacker, { atk: 1 });
+    if (defender.hp <= 0 && (atkAb === "grimneigh" || atkAb === "asonespectrier")) boost(battle, attacker, { spa: 1 });
     if (defender.hp <= 0 && atkAb === "beastboost") {
         const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
         boost(battle, attacker, { [best]: 1 });
@@ -1350,7 +1368,7 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
 // berries eaten when they apply: Oran and Sitrus below half HP, the status berries on their status, Leppa on an empty move
 function heldBerry(battle, f) {
     const item = held(f);
-    if (!item || f.hp <= 0) return;
+    if (!item || f.hp <= 0 || (item.endsWith("_berry") && unnerved(battle, f))) return;
     let used = false;
     if ((item === "oran_berry" || item === "sitrus_berry") && f.hp <= f.stats.hp / 2) {
         f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4))); used = true; syncHealth(f);
@@ -1505,9 +1523,62 @@ function endBattle(battle, text) {
 }
 
 // on entering battle: Intimidate
+// Protosynthesis and Quark Drive: the stat they raise while on, the highest with its stages
+function paradoxStat(battle, f) {
+    const on = (f.ability === "protosynthesis" && (weatherOf(battle) === "sun" || f.boosterEnergy))
+        || (f.ability === "quarkdrive" && (terrainOf(battle) === "electric" || f.boosterEnergy));
+    if (!on) return null;
+    const value = (k) => f.stats[k] * stage(f.stages[k] ?? 0);
+    return ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (value(y) > value(x) ? y : x));
+}
+const NO_TRACE = new Set([...NO_SWAP, "flowergift", "forecast", "zenmode", "neutralizinggas"]);
 function enter(battle, f, other) {
     f.enteredTurn = battle.turn;
     entryHazards(battle, f);
+    // Neutralizing Gas: while its holder is out, the other side's ability does nothing; it comes back once it has gone
+    if (other.gassed !== undefined && f.ability !== "neutralizinggas") { other.ability = other.gassed; delete other.gassed; }
+    if (f.ability === "neutralizinggas" && !CANT_SUPPRESS.has(other.ability) && other.hp > 0) {
+        say(battle, "§7Neutralizing gas filled the area!"); other.gassed = other.ability; other.ability = null;
+    }
+    if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability)) { f.gassed = f.ability; f.ability = null; }
+    entryAbility(battle, f, other);
+}
+// what an ability does as its holder comes in (Showdown's onStart and onSwitchIn)
+function entryAbility(battle, f, other) {
+    const name = f.info.name, says = (t) => say(battle, `§7${t}`);
+    if (f.ability === "trace" && other.ability && !NO_TRACE.has(other.ability)) {
+        f.baseAbility ??= "trace"; f.ability = other.ability;
+        says(`${name} traced ${other.info.name}'s ${abilityName(other.ability)}!`);
+        if (f.ability !== "trace") entryAbility(battle, f, other);
+        return;
+    }
+    if (f.ability === "airlock" || f.ability === "cloudnine") says("The effects of the weather disappeared.");
+    if (f.ability === "unnerve" || f.ability === "asoneglastrier" || f.ability === "asonespectrier") says(`${other.info.name} is too nervous to eat Berries!`);
+    if (f.ability === "slowstart") { f.slowStart = battle.turn + 5; says(`${name} can't get it going!`); }
+    if (f.ability === "download") {
+        const def = other.stats.def * stage(other.stages.def), spd = other.stats.spd * stage(other.stages.spd);
+        boost(battle, f, def < spd ? { atk: 1 } : { spa: 1 });
+    }
+    if (f.ability === "intrepidsword" && !f.swordDone) { f.swordDone = true; boost(battle, f, { atk: 1 }); }
+    if (f.ability === "dauntlessshield" && !f.shieldDone) { f.shieldDone = true; boost(battle, f, { def: 1 }); }
+    if (f.ability === "supersweetsyrup" && !f.syrupDone) { f.syrupDone = true; says(`A supersweet aroma is wafting from ${name}!`); boost(battle, other, { evasion: -1 }, f); }
+    if (f.ability === "screencleaner") {
+        const real = realBattle(battle);
+        for (const side of Object.values(real.sides ?? {})) for (const k of ["reflect", "lightscreen", "auroraveil"]) delete side[k];
+        says(`${name}'s Screen Cleaner removed the screens!`);
+    }
+    if (f.ability === "anticipation" && other.moves?.some((m) => { const d = MOVES[m.id]; return d && (d.ohko || (d.category !== "Status" && effectiveness(d.type, f.info.types) > 1)); })) says(`${name} shuddered!`);
+    if (f.ability === "forewarn") {
+        const power = (m) => { const d = MOVES[m.id]; return !d ? -1 : d.ohko ? 150 : ["counter", "metalburst", "mirrorcoat"].includes(m.id) ? 120 : d.category === "Status" ? 0 : d.power || 80; };
+        const best = (other.moves ?? []).filter((m) => m.id).reduce((x, y) => (power(y) > power(x) ? y : x), { id: null });
+        if (best.id) says(`${name}'s Forewarn alerted it to ${MOVES[best.id].name}!`);
+    }
+    if (f.ability === "frisk" && other.held) says(`${name} frisked ${other.info.name} and found its ${itemName(other.held)}!`);
+    if ((f.ability === "protosynthesis" || f.ability === "quarkdrive") && !paradoxStat(battle, f) && held(f) === "booster_energy") {
+        useUp(battle, f, `§7${name} used its Booster Energy!`); f.boosterEnergy = true;
+    }
+    const raised = paradoxStat(battle, f);
+    if (raised) says(`${name}'s ${STAT_NAMES[raised]} was heightened by ${abilityName(f.ability)}!`);
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (TERRAIN_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setTerrain(battle, TERRAIN_ABILITIES[f.ability], f); }
     terrainSeed(battle, f);
@@ -2757,6 +2828,7 @@ function switchTo(battle, entity) {
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
     leaving.bound = null; leaving.trappedBy = null; leaving.charged = false;
+    if (leaving.gassed !== undefined) { leaving.ability = leaving.gassed; delete leaving.gassed; }
     if (leaving.baseAbility) { leaving.ability = leaving.baseAbility; leaving.baseAbility = null; }
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
@@ -3073,7 +3145,7 @@ function endOfTurn(battle) {
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
-        if (held(f) === "micle_berry" && f.hp > 0 && f.hp <= f.stats.hp / 4) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
+        if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / 4) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
             && !["sandveil", "sandrush", "sandforce", "overcoat"].includes(f.ability) && held(f) !== "safety_goggles") {

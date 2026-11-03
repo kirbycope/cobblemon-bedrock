@@ -62,6 +62,8 @@ port_entities = identifiers(f"{BP}/entities", "minecraft:entity")
 DATA_SCRIPTS = {"data.js", "fishing.js", "herds.js", "dex.js", "tms.js", "pot.js", "move_fx.js", "variants.js", "dex_evolution.js",
                 "chest_loot.js", "fossil_loot.js", "rct_trainers.js", "npc_dialogue.js", "items.js", "cosmetics.js", "features.js"}
 battle_js = "\n".join(read(p) for p in glob.glob(f"{SCRIPTS}/*.js") if os.path.basename(p) not in DATA_SCRIPTS)
+# the lists of abilities other abilities cannot take or stop name abilities without making them act
+battle_js = re.sub(r"^const (CANT_SUPPRESS|NO_SWAP|NO_TRACE) = new Set\(\[[^\]]*\]\);", "", battle_js, flags=re.M)
 corpus = read(f"{REPO}/port.py") + battle_js + read(f"{REPO}/README.md") + "".join(read(p) for p in glob.glob(f"{REPO}/tools/*.py"))
 readme = read(f"{REPO}/README.md")
 
@@ -236,6 +238,9 @@ DOUBLES_ONLY = {"battery", "powerspot", "steelyspirit", "flowerveil", "friendgua
                 "powerofalchemy", "receiver", "costar", "commander", "aromaveil", "plus", "minus", "curiousmedicine",
                 "hospitality", "propellertail", "stalwart"}
 
+TERA_ONLY = {"embodyaspectcornerstone", "embodyaspecthearthflame", "embodyaspectteal", "embodyaspectwellspring", "terashift",
+             "terashell", "teraformzero"}
+
 
 def abilities():
     owned = set()
@@ -249,6 +254,8 @@ def abilities():
         hooks = sorted(set(re.findall(r"^    (on\w+|\w+Callback)[:(]", body, re.M)))
         if not hooks: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "no battle effect")
         elif ability_id in DOUBLES_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on an ally; battles here are single")
+        elif ability_id in TERA_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on a Terastallized Pokemon; there is no Terastallization here")
+        elif ability_id not in owned and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "no species has it")
         elif quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "battle script", "done", note + "named in the battle script (heuristic)")
         else: row("ability", name, "showdown data/abilities.js", "", "missing", note + "hooks: " + ", ".join(hooks[:6]))
 
