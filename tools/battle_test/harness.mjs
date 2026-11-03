@@ -18,6 +18,7 @@ const names = [...main.matchAll(/^(?:async )?function (\w+)/gm)].map((m) => m[1]
 writeFileSync(join(copy, "main.js"), `${main}\nexport { ${[...new Set(names)].join(", ")} };\n`);
 export const M = await import(pathToFileURL(join(copy, "main.js")).href);
 export const D = await import(pathToFileURL(join(copy, "data.js")).href);
+export const F = await import(pathToFileURL(join(copy, "fishing.js")).href);   // BIOME_TAGS and the spawn tables
 queue.length = 0;   // what loading queued (world setup) is not the battle's
 
 // runs what system.run and runTimeout queued, the battle's delayed lines among them

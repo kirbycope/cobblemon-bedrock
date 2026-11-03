@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0732_trumbeak/trumbeak",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0732_trumbeak/trumbeak",
-                "v1": "textures/entity/0732_trumbeak/trumbeak_shiny"
+                "v1": "textures/entity/0732_trumbeak/trumbeak_shiny",
+                "alpha_eyes": "textures/entity/0732_trumbeak/trumbeak_alpha"
             },
             "geometry": {
                 "g_trumbeak": "geometry.trumbeak"
@@ -52,7 +54,10 @@
                 "evolution": "animation.0732_trumbeak.evolution"
             },
             "render_controllers": [
-                "controller.render.trumbeak"
+                "controller.render.trumbeak",
+                {
+                    "controller.render.trumbeak_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0732_trumbeak_spawn_egg"

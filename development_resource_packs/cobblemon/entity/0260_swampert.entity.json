@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0260_swampert/swampert",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0260_swampert/swampert",
-                "v1": "textures/entity/0260_swampert/swampert_shiny"
+                "v1": "textures/entity/0260_swampert/swampert_shiny",
+                "alpha_eyes": "textures/entity/0260_swampert/swampert_alpha"
             },
             "geometry": {
                 "g_swampert": "geometry.swampert"
@@ -54,7 +56,10 @@
                 "evolution": "animation.0260_swampert.evolution"
             },
             "render_controllers": [
-                "controller.render.swampert"
+                "controller.render.swampert",
+                {
+                    "controller.render.swampert_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0260_swampert_spawn_egg"

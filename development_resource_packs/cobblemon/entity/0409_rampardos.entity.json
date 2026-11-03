@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0409_rampardos/rampardos",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0409_rampardos/rampardos",
-                "v1": "textures/entity/0409_rampardos/rampardos_shiny"
+                "v1": "textures/entity/0409_rampardos/rampardos_shiny",
+                "alpha_eyes": "textures/entity/0409_rampardos/rampardos_alpha"
             },
             "geometry": {
                 "g_rampardos": "geometry.rampardos"
@@ -73,7 +75,10 @@
                 "primary_controller": "controller.animation.rampardos.primary"
             },
             "render_controllers": [
-                "controller.render.rampardos"
+                "controller.render.rampardos",
+                {
+                    "controller.render.rampardos_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0409_rampardos_spawn_egg"

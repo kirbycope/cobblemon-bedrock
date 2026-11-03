@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0850_sizzlipede/sizzlipede",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0850_sizzlipede/sizzlipede",
                 "emissive_0_0": "textures/entity/0850_sizzlipede/sizzlipede_emissive__glow__sizzlipede",
                 "v1": "textures/entity/0850_sizzlipede/sizzlipede_shiny",
-                "emissive_1_0": "textures/entity/0850_sizzlipede/sizzlipede_emissive_shiny__glow__sizzlipede_shiny"
+                "emissive_1_0": "textures/entity/0850_sizzlipede/sizzlipede_emissive_shiny__glow__sizzlipede_shiny",
+                "alpha_eyes": "textures/entity/0850_sizzlipede/sizzlipede_alpha"
             },
             "geometry": {
                 "g_sizzlipede": "geometry.sizzlipede"
@@ -59,7 +61,10 @@
             },
             "render_controllers": [
                 "controller.render.sizzlipede",
-                "controller.render.sizzlipede_emissive"
+                "controller.render.sizzlipede_emissive",
+                {
+                    "controller.render.sizzlipede_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0850_sizzlipede_spawn_egg"

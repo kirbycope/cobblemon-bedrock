@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0326_grumpig/grumpig",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0326_grumpig/grumpig",
-                "v1": "textures/entity/0326_grumpig/grumpig_shiny"
+                "v1": "textures/entity/0326_grumpig/grumpig_shiny",
+                "alpha_eyes": "textures/entity/0326_grumpig/grumpig_alpha"
             },
             "geometry": {
                 "g_grumpig": "geometry.grumpig"
@@ -51,7 +53,10 @@
                 "evolution": "animation.0326_grumpig.evolution"
             },
             "render_controllers": [
-                "controller.render.grumpig"
+                "controller.render.grumpig",
+                {
+                    "controller.render.grumpig_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0326_grumpig_spawn_egg"

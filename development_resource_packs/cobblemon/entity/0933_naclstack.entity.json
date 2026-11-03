@@ -7,7 +7,8 @@
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
                 "translucent": "entity_alphablend",
-                "held": "entity_alphatest"
+                "held": "entity_alphatest",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0933_naclstack/naclstack",
@@ -286,7 +287,8 @@
                 "held_268": "textures/items/trident",
                 "held_269": "textures/items/shears",
                 "held_270": "textures/blocks/stone",
-                "held_271": "textures/items/glowstone_dust"
+                "held_271": "textures/items/glowstone_dust",
+                "alpha_eyes": "textures/entity/0933_naclstack/naclstack_alpha"
             },
             "geometry": {
                 "g_naclstack": "geometry.naclstack",
@@ -328,6 +330,9 @@
                 "controller.render.naclstack_glow",
                 {
                     "controller.render.naclstack_held": "q.property('cobblemon:held_index') > 0"
+                },
+                {
+                    "controller.render.naclstack_alpha": "q.property('cobblemon:alpha')"
                 }
             ],
             "spawn_egg": {

@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0705_sliggoo/sliggoo",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0705_sliggoo/sliggoo",
                 "v1": "textures/entity/0705_sliggoo/sliggoo_shiny",
                 "v2": "textures/entity/0705_sliggoo/sliggoo_hisuian",
-                "v3": "textures/entity/0705_sliggoo/sliggoo_hisuian_shiny"
+                "v3": "textures/entity/0705_sliggoo/sliggoo_hisuian_shiny",
+                "alpha_eyes": "textures/entity/0705_sliggoo/sliggoo_alpha"
             },
             "geometry": {
                 "g_sliggoo": "geometry.sliggoo",
@@ -67,7 +69,10 @@
                 "evolution": "animation.0705_sliggoo.evolution"
             },
             "render_controllers": [
-                "controller.render.sliggoo"
+                "controller.render.sliggoo",
+                {
+                    "controller.render.sliggoo_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0705_sliggoo_spawn_egg"

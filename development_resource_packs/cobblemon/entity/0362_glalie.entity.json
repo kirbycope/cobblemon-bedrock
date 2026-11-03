@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0362_glalie/glalie",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0362_glalie/glalie",
-                "v1": "textures/entity/0362_glalie/glalie_shiny"
+                "v1": "textures/entity/0362_glalie/glalie_shiny",
+                "alpha_eyes": "textures/entity/0362_glalie/glalie_alpha"
             },
             "geometry": {
                 "g_glalie": "geometry.glalie"
@@ -50,7 +52,10 @@
                 "evolution": "animation.0362_glalie.evolution"
             },
             "render_controllers": [
-                "controller.render.glalie"
+                "controller.render.glalie",
+                {
+                    "controller.render.glalie_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0362_glalie_spawn_egg"

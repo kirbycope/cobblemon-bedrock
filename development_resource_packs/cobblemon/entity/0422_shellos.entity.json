@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0422_shellos/shellos_west",
@@ -16,7 +17,8 @@
                 "v2": "textures/entity/0422_shellos/shellos_east",
                 "v3": "textures/entity/0422_shellos/shellos_east_shiny",
                 "v4": "textures/entity/0422_shellos/shellos_west",
-                "v5": "textures/entity/0422_shellos/shellos_west_shiny"
+                "v5": "textures/entity/0422_shellos/shellos_west_shiny",
+                "alpha_eyes": "textures/entity/0422_shellos/shellos_west_alpha"
             },
             "geometry": {
                 "g_shellos_west": "geometry.shellos_west",
@@ -79,7 +81,10 @@
                 "primary_controller": "controller.animation.shellos.primary"
             },
             "render_controllers": [
-                "controller.render.shellos"
+                "controller.render.shellos",
+                {
+                    "controller.render.shellos_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0422_shellos_spawn_egg"

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0509_purrloin/purrloin",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0509_purrloin/purrloin",
-                "v1": "textures/entity/0509_purrloin/purrloin_shiny"
+                "v1": "textures/entity/0509_purrloin/purrloin_shiny",
+                "alpha_eyes": "textures/entity/0509_purrloin/purrloin_alpha"
             },
             "geometry": {
                 "g_purrloin": "geometry.purrloin"
@@ -83,7 +85,10 @@
                 "primary_controller": "controller.animation.purrloin.primary"
             },
             "render_controllers": [
-                "controller.render.purrloin"
+                "controller.render.purrloin",
+                {
+                    "controller.render.purrloin_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0509_purrloin_spawn_egg"

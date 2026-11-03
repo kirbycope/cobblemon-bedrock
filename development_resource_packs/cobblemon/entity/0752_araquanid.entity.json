@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0752_araquanid/araquanid",
@@ -16,7 +17,8 @@
                 "translucent_0_0": "textures/entity/0752_araquanid/araquanid_translucent__cut__araquanid",
                 "v1": "textures/entity/0752_araquanid/araquanid_shiny",
                 "glow_1_0": "textures/entity/0752_araquanid/araquanid_emissive__glow__araquanid_shiny",
-                "translucent_1_0": "textures/entity/0752_araquanid/araquanid_translucent__cut__araquanid_shiny"
+                "translucent_1_0": "textures/entity/0752_araquanid/araquanid_translucent__cut__araquanid_shiny",
+                "alpha_eyes": "textures/entity/0752_araquanid/araquanid_alpha"
             },
             "geometry": {
                 "g_araquanid": "geometry.araquanid"
@@ -58,7 +60,10 @@
             "render_controllers": [
                 "controller.render.araquanid",
                 "controller.render.araquanid_glow",
-                "controller.render.araquanid_translucent"
+                "controller.render.araquanid_translucent",
+                {
+                    "controller.render.araquanid_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0752_araquanid_spawn_egg"

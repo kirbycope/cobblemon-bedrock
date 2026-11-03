@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 13
+                    "default": 39
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -80,6 +80,46 @@
                     "max": 7,
                     "adjust_for_weather": true
                 },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 154
+                },
+                "minecraft:biome_filter": {
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "basalt_deltas"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "nether"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "spawn_ghast"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "spawn_many_magma_cubes"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "spawns_warm_variant_farm_animals"
+                        }
+                    ]
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:spawns_on_surface": {},
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0305_lairon/lairon",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0305_lairon/lairon",
-                "v1": "textures/entity/0305_lairon/lairon_shiny"
+                "v1": "textures/entity/0305_lairon/lairon_shiny",
+                "alpha_eyes": "textures/entity/0305_lairon/lairon_alpha"
             },
             "geometry": {
                 "g_lairon": "geometry.lairon"
@@ -49,7 +51,10 @@
                 "evolution": "animation.0305_lairon.evolution"
             },
             "render_controllers": [
-                "controller.render.lairon"
+                "controller.render.lairon",
+                {
+                    "controller.render.lairon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0305_lairon_spawn_egg"

@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0275_shiftry/shiftry",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0275_shiftry/shiftry",
                 "v1": "textures/entity/0275_shiftry/shiftry_shiny",
                 "v2": "textures/entity/0275_shiftry/shiftry",
-                "v3": "textures/entity/0275_shiftry/shiftry_shiny"
+                "v3": "textures/entity/0275_shiftry/shiftry_shiny",
+                "alpha_eyes": "textures/entity/0275_shiftry/shiftry_alpha"
             },
             "geometry": {
                 "g_shiftry_male": "geometry.shiftry_male",
@@ -58,7 +60,10 @@
                 "evolution": "animation.0275_shiftry.evolution"
             },
             "render_controllers": [
-                "controller.render.shiftry"
+                "controller.render.shiftry",
+                {
+                    "controller.render.shiftry_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0275_shiftry_spawn_egg"

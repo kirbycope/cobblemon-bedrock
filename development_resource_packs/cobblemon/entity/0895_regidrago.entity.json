@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0895_regidrago/regidrago",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0895_regidrago/regidrago",
-                "v1": "textures/entity/0895_regidrago/regidrago_shiny"
+                "v1": "textures/entity/0895_regidrago/regidrago_shiny",
+                "alpha_eyes": "textures/entity/0895_regidrago/regidrago_alpha"
             },
             "geometry": {
                 "g_regidrago": "geometry.regidrago"
@@ -46,7 +48,10 @@
                 "evolution": "animation.0895_regidrago.evolution"
             },
             "render_controllers": [
-                "controller.render.regidrago"
+                "controller.render.regidrago",
+                {
+                    "controller.render.regidrago_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0895_regidrago_spawn_egg"

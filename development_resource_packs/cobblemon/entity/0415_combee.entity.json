@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0415_combee/combee",
@@ -18,7 +19,8 @@
                 "v4": "textures/entity/0415_combee/combee__combee_pollinated",
                 "v5": "textures/entity/0415_combee/combee_shiny__combee_pollinated",
                 "v6": "textures/entity/0415_combee/combee__combee_pollinated",
-                "v7": "textures/entity/0415_combee/combee_shiny__combee_pollinated"
+                "v7": "textures/entity/0415_combee/combee_shiny__combee_pollinated",
+                "alpha_eyes": "textures/entity/0415_combee/combee_alpha"
             },
             "geometry": {
                 "g_combee_male": "geometry.combee_male",
@@ -59,7 +61,10 @@
                 "evolution": "animation.0415_combee.evolution"
             },
             "render_controllers": [
-                "controller.render.combee"
+                "controller.render.combee",
+                {
+                    "controller.render.combee_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0415_combee_spawn_egg"

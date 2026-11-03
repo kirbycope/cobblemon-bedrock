@@ -3600,7 +3600,7 @@ def create_spawn_rules():
         if not pokemon: continue
         pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
         legendary += 1
-    weather_events, slime_events = {}, set()
+    weather_events, slime_events, bias_events = {}, set(), {}
     # A herd (PokemonHerdSpawnDetail) starts with one member, a leader where the herd has one and otherwise a follower,
     # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
     # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
@@ -3655,6 +3655,12 @@ def create_spawn_rules():
             if rule and weather and not form:
                 rule["minecraft:herd"]["event"] = f"cobblemon:spawn_weather_{weather}"; rule["minecraft:herd"]["event_skip_count"] = 0
                 weather_events.setdefault(pokemon, set()).add(weather)
+            # a region_bias entry ("cyndaquil region_bias=hisui") marks the Pokemon with its bias, which the script keeps
+            # and evolves it by (main.js, evolutionsOf), where the species has a bias form to evolve by
+            bias = next((w.split("=", 1)[1] for w in words[1:] if w.startswith("region_bias=")), None)
+            if rule and bias and not form and not weather and bias in bias_evolutions(species):
+                rule["minecraft:herd"]["event"] = f"cobblemon:spawn_bias_{bias}"; rule["minecraft:herd"]["event_skip_count"] = 0
+                bias_events.setdefault(pokemon, set()).add(bias)
             if rule: conditions.append((rule, spawn))
             else: skipped += 1
         if not conditions: continue
@@ -3676,6 +3682,14 @@ def create_spawn_rules():
         with open(f"{pwd}/legendary_encounters/LICENSE", encoding="utf-8") as file: notice = file.read()
         with open(f"{behaviorPack}/LEGENDARY_ENCOUNTERS_LICENSE.txt", "w", encoding="utf-8", newline="\n") as file:
             file.write(LEGENDARY_CREDIT + notice)
+    for pokemon, regions in bias_events.items():
+        path = f"{entitiesBedrock}/{pokemon}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); entity = data["minecraft:entity"]
+        entity["description"]["properties"]["cobblemon:region_bias"] = {"type": "enum", "values": ["none", *sorted(regions)], "default": "none"}
+        for region in regions: entity.setdefault("events", {})[f"cobblemon:spawn_bias_{region}"] = {"set_property": {"cobblemon:region_bias": region}}
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     for pokemon, kinds in weather_events.items():
         path = f"{entitiesBedrock}/{pokemon}.behavior.json"
         with open(path, encoding="utf-8") as file: text = file.read()
@@ -4062,6 +4076,8 @@ def add_item_evolutions(entity, species, pokemon):
     minecraft = entity["minecraft:entity"]
     variations = resolver_variations(pokemon)
     interactions = []
+    # an item evolution that depends on the biome (or on a region bias) is the script's to pick (item_evolutions)
+    by_script = bool(item_evolutions(species)) or any(b["item"] for b in bias_evolutions(species).values())
     for evolution in species.get("evolutions", []):
         result = pokemon_for_species_name(evolution.get("result", ""))
         if result:
@@ -4069,6 +4085,7 @@ def add_item_evolutions(entity, species, pokemon):
             minecraft["component_groups"][group] = {"minecraft:transformation": {"into": entity_id(result), "keep_level": True}}
             minecraft["events"][f"cobblemon:evolve_to_{result}"] = {"add": {"component_groups": [group]}}
         if evolution.get("variant") not in ("item_interact", "trade"): continue
+        if by_script and evolution.get("variant") == "item_interact": continue
         requirements = evolution.get("requirements", [])
         # a biome anticondition marks the everywhere-else evolution, which is the one kept
         if any(r.get("variant") == "biome" and "biomeCondition" in r for r in requirements): continue
@@ -5258,44 +5275,87 @@ def level_evolutions(species):
         if evolution.get("variant") != "level_up": continue
         result = pokemon_for_species_name(evolution.get("result", ""))
         if not result: continue
-        req = []
-        for r in evolution.get("requirements", []):
-            v = r.get("variant")
-            if v == "level": req.append({"t": "level", "min": r.get("minLevel", 1)})
-            elif v == "friendship": req.append({"t": "friendship", "min": r.get("amount", 160)})
-            elif v == "time_range": req.append({"t": "time", "range": r.get("range", "any")})
-            elif v == "held_item" and not str(r.get("itemCondition", "")).startswith("#"): req.append({"t": "held", "item": r.get("itemCondition")})
-            # a regional evolution: the biome it happens in (a Bedrock biome filter the script tests), and its
-            # everywhere-else partner, which needs any biome but those
-            elif v == "biome" and ("biomeCondition" in r or "biomeAnticondition" in r):
-                cond = biome_filter_for([r["biomeCondition"]]) if "biomeCondition" in r else None
-                anti = biome_filter_for([r["biomeAnticondition"]]) if "biomeAnticondition" in r else None
-                if ("biomeCondition" in r and not cond) or ("biomeAnticondition" in r and not anti): req.append({"t": "never", "why": "biome"})
-                else: req.append({"t": "biome", **({"in": cond} if cond else {}), **({"out": anti} if anti else {})})
-            # what the Pokemon has done (Cobblemon's evolution progress), counted by the script
-            elif v == "use_move": req.append({"t": "used", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower()), "min": r.get("amount", 1)})
-            elif v == "defeat": req.append({"t": "defeats", "target": str(r.get("target", "")).lower(), "min": r.get("amount", 1)})
-            elif v == "battle_critical_hits": req.append({"t": "crits", "min": r.get("amount", 1)})
-            elif v == "damage_taken": req.append({"t": "damage", "min": r.get("amount", 1)})
-            elif v == "recoil": req.append({"t": "recoil", "min": r.get("amount", 1)})
-            elif v == "has_move": req.append({"t": "move", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower())})
-            elif v == "has_move_type": req.append({"t": "move_type", "type": str(r.get("type", "")).lower()})
-            elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
-            elif v == "weather": req.append({"t": "weather", "rain": r.get("isRaining"), "thunder": r.get("isThundering")})
-            elif v == "moon_phase": req.append({"t": "moon", "phase": r.get("moonPhase")})
-            elif v == "blocks_traveled": req.append({"t": "steps", "min": r.get("amount", 0)})
-            elif v == "stat_compare": req.append({"t": "stat_gt", "hi": STAT_KEYS.get(r.get("highStat")), "lo": STAT_KEYS.get(r.get("lowStat"))})
-            elif v == "stat_equal": req.append({"t": "stat_eq", "a": STAT_KEYS.get(r.get("statOne")), "b": STAT_KEYS.get(r.get("statTwo"))})
-            elif v == "properties":
-                target = str(r.get("target", ""))
-                m = re.search(r"(gender|nature|nickname|cocoon_species)=(\S+)", target)
-                stash = re.search(r"(gimmighoul_coins)=(\d+)", target)
-                if m: req.append({"t": "prop", "key": m.group(1), "value": m.group(2)})
-                elif stash: req.append({"t": "feature", "key": stash.group(1), "value": int(stash.group(2))})
-                else: req.append({"t": "never", "why": target})
-            else: req.append({"t": "never", "why": v})
+        req = [evolution_requirement(r) for r in evolution.get("requirements", [])]
         out.append({"to": entity_id(result), "event": f"cobblemon:evolve_to_{result}", "req": req, **evolution_extras(evolution)})
     return out
+
+
+def bias_evolutions(species):
+    """A species' region-biased evolutions (the Hisui-Bias, Alola-Bias and Galar-Bias forms, aspect region-bias-<region>):
+    {region: {"level": [level-up evolutions], "item": [item evolutions]}}, which a Pokemon carrying
+    that bias (a Hisui starter, a region_bias spawn) uses in place of its species' own. The bias makes the regional
+    form the everywhere-else one, and the original form the one that needs its home region's biomes."""
+    out = {}
+    for form in species.get("forms", []):
+        region = next((a[len("region-bias-"):] for a in form.get("aspects", []) if a.startswith("region-bias-")), None)
+        if not region or not form.get("evolutions"): continue
+        items = []
+        for evolution in form["evolutions"]:
+            result, item = pokemon_for_species_name(evolution.get("result", "")), evolution_item(evolution)
+            if evolution.get("variant") == "item_interact" and result and item: items.append(item_evolution(evolution, result, item))
+        out[region] = {"level": level_evolutions(form), "item": items}
+    return out
+
+
+def item_evolutions(species):
+    """A species' item evolutions that depend on the biome (Pikachu into Alolan Raichu with a Thunder Stone in an Alola
+    biome, and into Raichu elsewhere), which the script picks between when
+    the item is used, as the entity's own interaction cannot test a biome. Each is a level-up evolution's record with
+    the item it needs."""
+    evolutions = [e for e in species.get("evolutions", []) if e.get("variant") == "item_interact"]
+    if not any(r.get("variant") == "biome" for e in evolutions for r in e.get("requirements", [])): return []
+    out = []
+    for evolution in evolutions:
+        result, item = pokemon_for_species_name(evolution.get("result", "")), evolution_item(evolution)
+        if result and item: out.append(item_evolution(evolution, result, item))
+    return out
+
+
+def item_evolution(evolution, result, item):
+    return {"item": item, "to": entity_id(result), "event": f"cobblemon:evolve_to_{result}",
+            "req": [evolution_requirement(r) for r in evolution.get("requirements", [])], **evolution_extras(evolution)}
+
+
+def evolution_requirement(r):
+    """One evolution requirement as the script checks it; one the port cannot check is {"t": "never"}."""
+    v = r.get("variant")
+    req = []   # the one requirement, appended where the branches below were written for a list
+    if v == "level": req.append({"t": "level", "min": r.get("minLevel", 1)})
+    elif v == "friendship": req.append({"t": "friendship", "min": r.get("amount", 160)})
+    elif v == "time_range": req.append({"t": "time", "range": r.get("range", "any")})
+    elif v == "held_item" and not str(r.get("itemCondition", "")).startswith("#"): req.append({"t": "held", "item": r.get("itemCondition")})
+    # a regional evolution: the biome it happens in (a Bedrock biome filter the script tests), and its
+    # everywhere-else partner, which needs any biome but those
+    elif v == "biome" and ("biomeCondition" in r or "biomeAnticondition" in r):
+        cond = biome_filter_for([r["biomeCondition"]]) if "biomeCondition" in r else None
+        anti = biome_filter_for([r["biomeAnticondition"]]) if "biomeAnticondition" in r else None
+        if ("biomeCondition" in r and not cond) or ("biomeAnticondition" in r and not anti): req.append({"t": "never", "why": "biome"})
+        else: req.append({"t": "biome", **({"in": cond} if cond else {}), **({"out": anti} if anti else {})})
+    # what the Pokemon has done (Cobblemon's evolution progress), counted by the script
+    elif v == "use_move": req.append({"t": "used", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower()), "min": r.get("amount", 1)})
+    elif v == "defeat": req.append({"t": "defeats", "target": str(r.get("target", "")).lower(), "min": r.get("amount", 1)})
+    elif v == "battle_critical_hits": req.append({"t": "crits", "min": r.get("amount", 1)})
+    elif v == "damage_taken": req.append({"t": "damage", "min": r.get("amount", 1)})
+    elif v == "recoil": req.append({"t": "recoil", "min": r.get("amount", 1)})
+    elif v == "has_move": req.append({"t": "move", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower())})
+    elif v == "has_move_type": req.append({"t": "move_type", "type": str(r.get("type", "")).lower()})
+    elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
+    elif v == "weather": req.append({"t": "weather", "rain": r.get("isRaining"), "thunder": r.get("isThundering")})
+    elif v == "moon_phase": req.append({"t": "moon", "phase": r.get("moonPhase")})
+    elif v == "blocks_traveled": req.append({"t": "steps", "min": r.get("amount", 0)})
+    elif v == "stat_compare": req.append({"t": "stat_gt", "hi": STAT_KEYS.get(r.get("highStat")), "lo": STAT_KEYS.get(r.get("lowStat"))})
+    elif v == "stat_equal": req.append({"t": "stat_eq", "a": STAT_KEYS.get(r.get("statOne")), "b": STAT_KEYS.get(r.get("statTwo"))})
+    elif v == "properties":
+        target = str(r.get("target", ""))
+        m = re.search(r"(gender|nature|nickname|cocoon_species)=(\S+)", target)
+        stash = re.search(r"(gimmighoul_coins)=(\d+)", target)
+        if m: req.append({"t": "prop", "key": m.group(1), "value": m.group(2)})
+        elif stash: req.append({"t": "feature", "key": stash.group(1), "value": int(stash.group(2))})
+        else: req.append({"t": "never", "why": target})
+    # a requirement that must not hold (the bias forms' original evolution, away from the regional biomes)
+    elif v == "negate" and isinstance(r.get("inner"), dict): req.append({"t": "not", "r": evolution_requirement(r["inner"])})
+    else: req.append({"t": "never", "why": v})
+    return req[0]
 
 
 def natures():
@@ -5363,6 +5423,7 @@ def create_battle_data():
             # its hitbox width at its base scale, which spaces a battle's send-outs (ActiveBattlePokemon.getSendOutPosition)
             "width": round((species.get("hitbox") or {}).get("width", 1) * species.get("baseScale", 1), 3),
             "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
+            **({"bias": bias} if (bias := bias_evolutions(species)) else {}), **({"itemEvos": ie} if (ie := item_evolutions(species)) else {}),
             "variants": variant_battle_overrides(pokemon, species),
             # the cry the send-out and the Pokedex play, when the pack has one
             "cry": f"cobblemon.{species_key(species)}.cry" if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else None,
@@ -6228,7 +6289,7 @@ def java_model(name):
     ns, rel = name.split(":", 1) if ":" in name else ("cobblemon", name)
     path = f"{ASSET_ROOTS.get(ns, cobblemon)}/models/{rel}.json"
     if not os.path.exists(path): return None
-    with open(path, encoding="utf-8") as file: model = json.load(file)
+    with open(path, encoding="utf-8-sig") as file: model = json.load(file)
     parent = model.get("parent")
     if parent and parent.split(":", 1)[0] in ASSET_ROOTS:
         base = java_model(parent) or {}
@@ -8363,7 +8424,7 @@ def flat_icon(name):
     """The item's icon as one image: its model's layers drawn over each other. None for a model that is not flat."""
     path = f"{cobblemon}/models/item/{name}.json"
     if not os.path.exists(path): return None
-    with open(path, encoding="utf-8") as file: model = json.load(file)
+    with open(path, encoding="utf-8-sig") as file: model = json.load(file)
     if model.get("parent") not in FLAT_PARENTS: return None
     layers = [v for k, v in sorted(model.get("textures", {}).items()) if k.startswith("layer")]
     image = None
@@ -8596,7 +8657,7 @@ def block_model_of(name):
     """(parent, textures) of the first model a Cobblemon block's blockstate uses, with its parents' textures merged."""
     path = f"{cobblemon}/blockstates/{name}.json"
     if not os.path.exists(path): return None, {}
-    with open(path, encoding="utf-8") as file: state = json.load(file)
+    with open(path, encoding="utf-8-sig") as file: state = json.load(file)
     ref = None
     for v in state.get("variants", {}).values(): ref = (v if isinstance(v, dict) else v[0])["model"]; break
     if ref is None:
@@ -9097,7 +9158,7 @@ FACE_OF = {"up": "floor", "down": "ceiling"}
 def blockstate_variants(name):
     path = f"{cobblemon}/blockstates/{name}.json"
     if not os.path.exists(path): return None
-    with open(path, encoding="utf-8") as file: state = json.load(file)
+    with open(path, encoding="utf-8-sig") as file: state = json.load(file)
     if "multipart" in state: return multipart_variants(state["multipart"])
     if "variants" not in state: return None
     out = []
@@ -9114,6 +9175,8 @@ def multipart_variants(parts):
     java_model joins) and the rotation of its turned part. Pomohana's flower_amount is an amount, which grows when the
     same item is used on it, as the stackable blocks do."""
     rename = {"flower_amount": "amount"}
+    # an AND or OR condition (the berry trees' age and rooted parts) is not one of these; those blocks have their own
+    if any(k in ("AND", "OR") for part in parts for k in part.get("when", {})): return []
     values = {}
     for part in parts:
         for k, v in part.get("when", {}).items():
@@ -11184,7 +11247,8 @@ def starter_categories():
             pokemon = by_name.get(words[0].lower())
             if not pokemon: continue
             props = dict(w.split("=", 1) for w in words[1:] if "=" in w)
-            entries.append({"id": entity_id(pokemon), "level": int(props.get("level", 10)), "ball": f"cobblemon:{props.get('pokeball', 'poke_ball')}"})
+            entries.append({"id": entity_id(pokemon), "level": int(props.get("level", 10)), "ball": f"cobblemon:{props.get('pokeball', 'poke_ball')}",
+                            **({"bias": props["region_bias"]} if "region_bias" in props else {})})
         # randomStarter adds CategoryList's Random slot after the category's own
         if entries: out.append({"name": lang.get(key, key.rsplit(".", 1)[-1].title()), "pokemon": entries, "random": "randomStarter = true" in block})
     return out
@@ -11492,7 +11556,7 @@ def item_icons():
     for path in glob.glob(f"{cobblemon}/models/item/*.json"):
         item_id = f"cobblemon:{os.path.basename(path)[:-5]}"
         if item_id in icons: continue
-        with open(path, encoding="utf-8") as file: model = json.load(file)
+        with open(path, encoding="utf-8-sig") as file: model = json.load(file)
         layer = (model.get("textures") or {}).get("layer0", "")
         if not layer.startswith("cobblemon:item/"): continue
         rel = layer.split(":", 1)[1][len("item/"):]
@@ -13485,7 +13549,7 @@ def create_building_blocks():
                 # NutBushBlock: four ages, each its own cross texture and its own drops; a random tick grows it one
                 # time in eight, using it fully grown picks one or two Galarica Nuts and takes it back to age 1
                 # (scripts/main.js, cobblemon:nut_bush), and Galarica Nuts plant it on dirt
-                with open(f"{cobblemon}/blockstates/{name}.json", encoding="utf-8") as file: variants = json.load(file)["variants"]
+                with open(f"{cobblemon}/blockstates/{name}.json", encoding="utf-8-sig") as file: variants = json.load(file)["variants"]
                 ages = sorted(int(k.split("=")[1]) for k in variants)
                 permutations = []
                 for age in ages:
@@ -13517,7 +13581,7 @@ def create_building_blocks():
                 # a type gem cluster (TypeGemClusterBlock) grows through four stages, each its own texture, which the
                 # crystal core's random ticks advance (scripts/main.js, cobblemon:gem_core)
                 if name.endswith("_gem_cluster"):
-                    with open(f"{cobblemon}/blockstates/{name}.json", encoding="utf-8") as file: gem_variants = json.load(file).get("variants", {})
+                    with open(f"{cobblemon}/blockstates/{name}.json", encoding="utf-8-sig") as file: gem_variants = json.load(file).get("variants", {})
                     stages = sorted({int(k.split("stage=")[1].split(",")[0]) for k in gem_variants if "stage=" in k})
                     if stages:
                         description["states"] = {"cobblemon:stage": stages}

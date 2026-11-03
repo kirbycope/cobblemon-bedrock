@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0441_chatot/chatot",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0441_chatot/chatot",
-                "v1": "textures/entity/0441_chatot/chatot_shiny"
+                "v1": "textures/entity/0441_chatot/chatot_shiny",
+                "alpha_eyes": "textures/entity/0441_chatot/chatot_alpha"
             },
             "geometry": {
                 "g_chatot": "geometry.chatot"
@@ -59,7 +61,10 @@
                 "evolution": "animation.0441_chatot.evolution"
             },
             "render_controllers": [
-                "controller.render.chatot"
+                "controller.render.chatot",
+                {
+                    "controller.render.chatot_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0441_chatot_spawn_egg"

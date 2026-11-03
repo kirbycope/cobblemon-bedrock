@@ -54,7 +54,7 @@
                     "type": "float",
                     "range": [
                         0.5,
-                        1.5
+                        2.0
                     ],
                     "default": 1.0,
                     "client_sync": true
@@ -68,10 +68,23 @@
                     "default": 0.0,
                     "client_sync": true
                 },
+                "cobblemon:alpha": {
+                    "type": "bool",
+                    "default": false,
+                    "client_sync": true
+                },
                 "cobblemon:primary": {
                     "type": "bool",
                     "default": false,
                     "client_sync": true
+                },
+                "cobblemon:region_bias": {
+                    "type": "enum",
+                    "values": [
+                        "none",
+                        "hisui"
+                    ],
+                    "default": "none"
                 },
                 "cobblemon:shoulder": {
                     "type": "int",
@@ -718,6 +731,11 @@
                     "component_groups": [
                         "cobblemon:variant_1"
                     ]
+                }
+            },
+            "cobblemon:spawn_bias_hisui": {
+                "set_property": {
+                    "cobblemon:region_bias": "hisui"
                 }
             },
             "cobblemon:conflict_on": {

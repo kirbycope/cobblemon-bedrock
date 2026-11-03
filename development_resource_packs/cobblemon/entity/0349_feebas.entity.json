@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0349_feebas/feebas",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0349_feebas/feebas",
-                "v1": "textures/entity/0349_feebas/feebas_shiny"
+                "v1": "textures/entity/0349_feebas/feebas_shiny",
+                "alpha_eyes": "textures/entity/0349_feebas/feebas_alpha"
             },
             "geometry": {
                 "g_feebas": "geometry.feebas"
@@ -58,7 +60,10 @@
                 "evolution": "animation.0349_feebas.evolution"
             },
             "render_controllers": [
-                "controller.render.feebas"
+                "controller.render.feebas",
+                {
+                    "controller.render.feebas_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0349_feebas_spawn_egg"

@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0486_regigigas/regigigas",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0486_regigigas/regigigas",
                 "emissive_0_0": "textures/entity/0486_regigigas/regigigas_emissive__glow__regigigas",
                 "v1": "textures/entity/0486_regigigas/regigigas_shiny",
-                "emissive_1_0": "textures/entity/0486_regigigas/regigigas_emissive__glow__regigigas_shiny"
+                "emissive_1_0": "textures/entity/0486_regigigas/regigigas_emissive__glow__regigigas_shiny",
+                "alpha_eyes": "textures/entity/0486_regigigas/regigigas_alpha"
             },
             "geometry": {
                 "g_regigigas": "geometry.regigigas"
@@ -48,7 +50,10 @@
             },
             "render_controllers": [
                 "controller.render.regigigas",
-                "controller.render.regigigas_emissive"
+                "controller.render.regigigas_emissive",
+                {
+                    "controller.render.regigigas_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0486_regigigas_spawn_egg"

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0286_breloom/breloom",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0286_breloom/breloom",
-                "v1": "textures/entity/0286_breloom/breloom_shiny"
+                "v1": "textures/entity/0286_breloom/breloom_shiny",
+                "alpha_eyes": "textures/entity/0286_breloom/breloom_alpha"
             },
             "geometry": {
                 "g_breloom": "geometry.breloom"
@@ -55,7 +57,10 @@
                 "evolution": "animation.0286_breloom.evolution"
             },
             "render_controllers": [
-                "controller.render.breloom"
+                "controller.render.breloom",
+                {
+                    "controller.render.breloom_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0286_breloom_spawn_egg"

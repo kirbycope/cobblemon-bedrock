@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0711_gourgeist/gourgeist",
@@ -26,7 +27,8 @@
                 "v6": "textures/entity/0711_gourgeist/gourgeist",
                 "color_6_0": "textures/entity/0711_gourgeist/gourgeist_emissive__glow__gourgeist",
                 "v7": "textures/entity/0711_gourgeist/gourgeist_shiny",
-                "color_7_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive__glow__gourgeist_shiny"
+                "color_7_0": "textures/entity/0711_gourgeist/gourgeist_shiny_emissive__glow__gourgeist_shiny",
+                "alpha_eyes": "textures/entity/0711_gourgeist/gourgeist_alpha"
             },
             "geometry": {
                 "g_gourgeist": "geometry.gourgeist"
@@ -66,7 +68,10 @@
             },
             "render_controllers": [
                 "controller.render.gourgeist",
-                "controller.render.gourgeist_color"
+                "controller.render.gourgeist_color",
+                {
+                    "controller.render.gourgeist_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0711_gourgeist_spawn_egg"

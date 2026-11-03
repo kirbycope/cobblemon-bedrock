@@ -6162,7 +6162,7 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress", "cobblemon:region_bias"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -9138,6 +9138,7 @@ function meets(entity, f, r, player) {
         case "moon": { let phase = 0; try { phase = world.getMoonPhase(); } catch (e) { } return MOON_PHASES[phase] === r.phase; }
         case "stat_gt": return f.stats[r.hi] > f.stats[r.lo];
         case "stat_eq": return f.stats[r.a] === f.stats[r.b];
+        case "not": return !meets(entity, f, r.r, player);
         // a regional evolution: the biome it is in now, and its everywhere-else partner's biomes it must not be in
         case "biome": {
             let tags = [];
@@ -9164,11 +9165,20 @@ function meets(entity, f, r, player) {
     }
 }
 // every evolution ready now, one a species (EvolutionSelectScreen lists them), at most three
+// a region bias (the Hisui starters, region_bias=hisui): the species' bias form's evolutions in place of its own, which
+// make the regional form the everywhere-else one (a Hisui Cyndaquil's Quilava becomes Hisuian Typhlosion outside Johto's
+// biomes)
+const REGION_BIAS = "cobblemon:region_bias";
+function evolutionsOf(entity, kind) {
+    const info = POKEMON[entity.typeId], bias = info?.bias?.[prop(entity, REGION_BIAS)];
+    if (kind === "item") return bias?.item?.length ? bias.item : info?.itemEvos ?? [];
+    return bias ? bias.level : info?.evolutions ?? [];
+}
 function readyEvolutions(entity, player) {
-    const f = fighter(entity), info = POKEMON[entity.typeId];
-    if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
+    const f = fighter(entity), evolutions = evolutionsOf(entity, "level");
+    if (!f || !evolutions.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
     // of two evolutions into one species, the one asking more (Grotle holding a sapling: the tree's Torterra) comes first
-    const seen = new Set(), ordered = [...info.evolutions].sort((a, b) => b.req.length - a.req.length);
+    const seen = new Set(), ordered = [...evolutions].sort((a, b) => b.req.length - a.req.length);
     return ordered.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
 // Evolution.forceEvolve's effect: the Pokemon stops where it is (navigation.stop, here the battle group's movement 0),
@@ -9228,6 +9238,27 @@ function evolve(entity, evolution) {
         entity.triggerEvent(evolution.event);
     }, 224);
 }
+
+// An evolution item whose result depends on where it is used (a Thunder Stone makes an Alolan Raichu in an Alola biome,
+// and a Raichu elsewhere) or on a region bias: the entity's own interaction leaves these out (port.py's
+// item_evolutions), and the one whose requirements hold is picked here, the one asking more first
+function itemEvolution(entity, player, itemId) {
+    const f = fighter(entity), options = evolutionsOf(entity, "item").filter((e) => e.item === itemId);
+    if (!f || !options.length) return undefined;
+    return [...options].sort((a, b) => b.req.length - a.req.length).find((e) => e.req.every((r) => meets(entity, f, r, player))) ?? null;
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (!itemStack || !POKEMON[target.typeId] || prop(target, OWNER) !== player.id || evolvingNow.has(target.id)) return;
+    if (!evolutionsOf(target, "item").some((e) => e.item === itemStack.typeId)) return;
+    event.cancel = true;
+    system.run(() => {
+        const evolution = itemEvolution(target, player, itemStack.typeId);
+        if (!evolution) { player.onScreenDisplay.setActionBar("§7It won't have any effect."); return; }
+        consumeHand(player);
+        evolve(target, evolution);
+    });
+});
 
 // Fullness (Pokemon.currentFullness): its most is Grass Knot's power for the species' weight, a tenth, halved, plus
 // one; food raises it (feedPokemon, with the eating sound rising as it fills) and Poke food cannot be given once full
@@ -10306,7 +10337,7 @@ function useBagItem(battle, id) {
 // A party slot is 1 to 6. A command runs in a read-only moment, so what it changes happens on the next tick
 const COMMAND_PROPS = 6;
 function parseProps(words) {
-    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species"];
+    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species", "region_bias"];
     // Bedrock's command parser takes "level=5" only in quotes, so "level 5" (the key, then its value) works too
     const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
     const joined = list.flatMap((w, i) => (KEYS.includes(w.toLowerCase()) && !w.includes("=") && list[i + 1] ? [`${w}=${list[i + 1]}`] : KEYS.includes(list[i - 1]?.toLowerCase()) && !list[i - 1].includes("=") ? [] : [w]));
@@ -10357,6 +10388,7 @@ function applyProps(e, props) {
     if (props.ability) setProp(e, "cobblemon:ability", props.ability.toLowerCase().replace(/[^a-z]/g, ""));
     if (props.held_item) setProp(e, "cobblemon:held", props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`);
     if (props.nickname) setProp(e, "cobblemon:nickname", props.nickname);
+    if (props.region_bias) setProp(e, REGION_BIAS, props.region_bias.toLowerCase());
     if (props.shiny !== undefined || props.form) {
         const n = variantFor(e.typeId, props);
         if (e.isProxy) { e.slot.rec.v = n; saveParty(prop(e, OWNER)); }
@@ -10963,6 +10995,8 @@ function scaleOf(e) {
 function showScale(e) {
     try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", Math.min(2, scaleOf(e))); } catch (err) { }
     try { if (e.getProperty("cobblemon:alpha") !== isAlpha(e)) e.setProperty("cobblemon:alpha", isAlpha(e)); } catch (err) { }   // the alpha eyes' pass
+    // a region_bias spawn's bias (port.py's cobblemon:spawn_bias_<region>), kept with the Pokemon from then on
+    try { const bias = e.getProperty("cobblemon:region_bias"); if (bias && bias !== "none" && prop(e, REGION_BIAS) === undefined) setProp(e, REGION_BIAS, bias); } catch (err) { }
 }
 function sizeCategory(e) {
     if (isAlpha(e)) return "XL";
@@ -11506,6 +11540,7 @@ function giveStarter(player, chosen) {
             setProp(entity, EXP, expFor(info.expGroup, chosen.level));
             setProp(entity, MOVESET, JSON.stringify(movesAt(info, chosen.level)));
             setProp(entity, "cobblemon:caught_ball", chosen.ball);
+            if (chosen.bias) setProp(entity, REGION_BIAS, chosen.bias);
         } catch (e) { }
         register(player, chosen.id, 2);
         sendOutEffect(player, entity, chosen.ball);

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0753_fomantis/fomantis",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0753_fomantis/fomantis",
-                "v1": "textures/entity/0753_fomantis/fomantis_shiny"
+                "v1": "textures/entity/0753_fomantis/fomantis_shiny",
+                "alpha_eyes": "textures/entity/0753_fomantis/fomantis_alpha"
             },
             "geometry": {
                 "g_fomantis": "geometry.fomantis"
@@ -52,7 +54,10 @@
                 "evolution": "animation.0753_fomantis.evolution"
             },
             "render_controllers": [
-                "controller.render.fomantis"
+                "controller.render.fomantis",
+                {
+                    "controller.render.fomantis_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0753_fomantis_spawn_egg"

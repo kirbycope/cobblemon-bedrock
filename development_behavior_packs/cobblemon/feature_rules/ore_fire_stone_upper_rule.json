@@ -8,9 +8,37 @@
     "conditions": {
       "placement_pass": "underground_pass",
       "minecraft:biome_filter": {
-        "test": "has_biome_tag",
-        "operator": "==",
-        "value": "desert"
+        "any_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "desert"
+          },
+          {
+            "all_of": [
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "caves"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "monster"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "overworld"
+              },
+              {
+                "test": "has_biome_tag",
+                "operator": "==",
+                "value": "sulfur_caves"
+              }
+            ]
+          }
+        ]
       }
     },
     "distribution": {

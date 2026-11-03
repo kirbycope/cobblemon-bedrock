@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0503_samurott/samurott",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0503_samurott/samurott",
                 "v1": "textures/entity/0503_samurott/samurott_shiny",
                 "v2": "textures/entity/0503_samurott/samurott_hisuian",
-                "v3": "textures/entity/0503_samurott/samurott_hisuian_shiny"
+                "v3": "textures/entity/0503_samurott/samurott_hisuian_shiny",
+                "alpha_eyes": "textures/entity/0503_samurott/samurott_alpha"
             },
             "geometry": {
                 "g_samurott": "geometry.samurott",
@@ -53,7 +55,10 @@
                 "evolution": "animation.0503_samurott.evolution"
             },
             "render_controllers": [
-                "controller.render.samurott"
+                "controller.render.samurott",
+                {
+                    "controller.render.samurott_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0503_samurott_spawn_egg"

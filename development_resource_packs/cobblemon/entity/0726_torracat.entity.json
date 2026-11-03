@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0726_torracat/torracat",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0726_torracat/torracat",
                 "emissive_0_0": "textures/entity/0726_torracat/torracat_emissive__glow__torracat",
                 "v1": "textures/entity/0726_torracat/torracat_shiny",
-                "emissive_1_0": "textures/entity/0726_torracat/torracat_emissive_shiny__glow__torracat_shiny"
+                "emissive_1_0": "textures/entity/0726_torracat/torracat_emissive_shiny__glow__torracat_shiny",
+                "alpha_eyes": "textures/entity/0726_torracat/torracat_alpha"
             },
             "geometry": {
                 "g_torracat": "geometry.torracat"
@@ -69,7 +71,10 @@
             },
             "render_controllers": [
                 "controller.render.torracat",
-                "controller.render.torracat_emissive"
+                "controller.render.torracat_emissive",
+                {
+                    "controller.render.torracat_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0726_torracat_spawn_egg"

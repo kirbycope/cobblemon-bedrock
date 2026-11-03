@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0829_gossifleur/gossifleur",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0829_gossifleur/gossifleur",
-                "v1": "textures/entity/0829_gossifleur/gossifleur_shiny"
+                "v1": "textures/entity/0829_gossifleur/gossifleur_shiny",
+                "alpha_eyes": "textures/entity/0829_gossifleur/gossifleur_alpha"
             },
             "geometry": {
                 "g_gossifleur": "geometry.gossifleur"
@@ -59,7 +61,10 @@
                 "evolution": "animation.0829_gossifleur.evolution"
             },
             "render_controllers": [
-                "controller.render.gossifleur"
+                "controller.render.gossifleur",
+                {
+                    "controller.render.gossifleur_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0829_gossifleur_spawn_egg"

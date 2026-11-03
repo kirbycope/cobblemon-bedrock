@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0882_dracovish/dracovish",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0882_dracovish/dracovish",
-                "v1": "textures/entity/0882_dracovish/dracovish_shiny"
+                "v1": "textures/entity/0882_dracovish/dracovish_shiny",
+                "alpha_eyes": "textures/entity/0882_dracovish/dracovish_alpha"
             },
             "geometry": {
                 "g_dracovish": "geometry.dracovish"
@@ -60,7 +62,10 @@
                 "evolution": "animation.0882_dracovish.evolution"
             },
             "render_controllers": [
-                "controller.render.dracovish"
+                "controller.render.dracovish",
+                {
+                    "controller.render.dracovish_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0882_dracovish_spawn_egg"

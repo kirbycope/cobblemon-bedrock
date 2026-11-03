@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0754_lurantis/lurantis",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0754_lurantis/lurantis",
                 "transparency_0_0": "textures/entity/0754_lurantis/lurantis_transparent__cut__lurantis",
                 "v1": "textures/entity/0754_lurantis/lurantis_shiny",
-                "transparency_1_0": "textures/entity/0754_lurantis/lurantis_shiny_transparent__cut__lurantis_shiny"
+                "transparency_1_0": "textures/entity/0754_lurantis/lurantis_shiny_transparent__cut__lurantis_shiny",
+                "alpha_eyes": "textures/entity/0754_lurantis/lurantis_alpha"
             },
             "geometry": {
                 "g_lurantis": "geometry.lurantis"
@@ -56,7 +58,10 @@
             },
             "render_controllers": [
                 "controller.render.lurantis",
-                "controller.render.lurantis_transparency"
+                "controller.render.lurantis_transparency",
+                {
+                    "controller.render.lurantis_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0754_lurantis_spawn_egg"

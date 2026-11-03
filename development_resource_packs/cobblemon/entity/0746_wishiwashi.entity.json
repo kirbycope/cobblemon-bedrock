@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0746_wishiwashi/wishiwashi_solo",
@@ -16,7 +17,8 @@
                 "v2": "textures/entity/0746_wishiwashi/wishiwashi_school",
                 "emissive_2_0": "textures/entity/0746_wishiwashi/wishiwashi_school_emissive__glow__wishiwashi_school",
                 "v3": "textures/entity/0746_wishiwashi/wishiwashi_school_shiny",
-                "emissive_3_0": "textures/entity/0746_wishiwashi/wishiwashi_school_shiny_emissive__glow__wishiwashi_school_shiny"
+                "emissive_3_0": "textures/entity/0746_wishiwashi/wishiwashi_school_shiny_emissive__glow__wishiwashi_school_shiny",
+                "alpha_eyes": "textures/entity/0746_wishiwashi/wishiwashi_solo_alpha"
             },
             "geometry": {
                 "g_wishiwashi_solo": "geometry.wishiwashi_solo",
@@ -48,7 +50,10 @@
             },
             "render_controllers": [
                 "controller.render.wishiwashi",
-                "controller.render.wishiwashi_emissive"
+                "controller.render.wishiwashi_emissive",
+                {
+                    "controller.render.wishiwashi_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0746_wishiwashi_spawn_egg"

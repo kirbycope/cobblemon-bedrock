@@ -12,6 +12,14 @@
             "minecraft:block_face"
           ]
         }
+      },
+      "states": {
+        "cobblemon:stage": [
+          0,
+          1,
+          2,
+          3
+        ]
       }
     },
     "components": {
@@ -113,6 +121,58 @@
               270,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 0",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_small_ground_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_medium_ground_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_large_ground_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 3",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_ground_gem_cluster",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
           }
         }
       }

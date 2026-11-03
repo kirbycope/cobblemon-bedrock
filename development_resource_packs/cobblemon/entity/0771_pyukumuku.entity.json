@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0771_pyukumuku/pyukumuku",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0771_pyukumuku/pyukumuku",
-                "v1": "textures/entity/0771_pyukumuku/pyukumuku_shiny"
+                "v1": "textures/entity/0771_pyukumuku/pyukumuku_shiny",
+                "alpha_eyes": "textures/entity/0771_pyukumuku/pyukumuku_alpha"
             },
             "geometry": {
                 "g_pyukumuku": "geometry.pyukumuku"
@@ -40,7 +42,10 @@
                 "evolution": "animation.0771_pyukumuku.evolution"
             },
             "render_controllers": [
-                "controller.render.pyukumuku"
+                "controller.render.pyukumuku",
+                {
+                    "controller.render.pyukumuku_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0771_pyukumuku_spawn_egg"

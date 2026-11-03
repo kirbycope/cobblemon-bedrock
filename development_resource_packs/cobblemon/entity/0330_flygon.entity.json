@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0330_flygon/flygon",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0330_flygon/flygon",
                 "eyes_0_0": "textures/entity/0330_flygon/flygon_transparency__cut__flygon",
                 "v1": "textures/entity/0330_flygon/flygon_shiny",
-                "eyes_1_0": "textures/entity/0330_flygon/flygon_transparency_shiny__cut__flygon_shiny"
+                "eyes_1_0": "textures/entity/0330_flygon/flygon_transparency_shiny__cut__flygon_shiny",
+                "alpha_eyes": "textures/entity/0330_flygon/flygon_alpha"
             },
             "geometry": {
                 "g_flygon": "geometry.flygon"
@@ -92,7 +94,10 @@
             },
             "render_controllers": [
                 "controller.render.flygon",
-                "controller.render.flygon_eyes"
+                "controller.render.flygon_eyes",
+                {
+                    "controller.render.flygon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0330_flygon_spawn_egg"

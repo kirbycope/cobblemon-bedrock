@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0290_nincada/nincada",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0290_nincada/nincada",
                 "wings_0_0": "textures/entity/0290_nincada/nincada_transparency__cut__nincada",
                 "v1": "textures/entity/0290_nincada/nincada_shiny",
-                "wings_1_0": "textures/entity/0290_nincada/nincada_shiny_transparency__cut__nincada_shiny"
+                "wings_1_0": "textures/entity/0290_nincada/nincada_shiny_transparency__cut__nincada_shiny",
+                "alpha_eyes": "textures/entity/0290_nincada/nincada_alpha"
             },
             "geometry": {
                 "g_nincada": "geometry.nincada"
@@ -79,7 +81,10 @@
             },
             "render_controllers": [
                 "controller.render.nincada",
-                "controller.render.nincada_wings"
+                "controller.render.nincada_wings",
+                {
+                    "controller.render.nincada_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0290_nincada_spawn_egg"

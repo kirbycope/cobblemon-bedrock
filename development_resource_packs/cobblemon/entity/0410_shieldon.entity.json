@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0410_shieldon/shieldon",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0410_shieldon/shieldon",
-                "v1": "textures/entity/0410_shieldon/shieldon_shiny"
+                "v1": "textures/entity/0410_shieldon/shieldon_shiny",
+                "alpha_eyes": "textures/entity/0410_shieldon/shieldon_alpha"
             },
             "geometry": {
                 "g_shieldon": "geometry.shieldon"
@@ -64,7 +66,10 @@
                 "evolution": "animation.0410_shieldon.evolution"
             },
             "render_controllers": [
-                "controller.render.shieldon"
+                "controller.render.shieldon",
+                {
+                    "controller.render.shieldon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0410_shieldon_spawn_egg"

@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0257_blaziken/blaziken",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0257_blaziken/blaziken",
                 "v1": "textures/entity/0257_blaziken/blaziken_shiny",
                 "v2": "textures/entity/0257_blaziken/blaziken",
-                "v3": "textures/entity/0257_blaziken/blaziken_shiny"
+                "v3": "textures/entity/0257_blaziken/blaziken_shiny",
+                "alpha_eyes": "textures/entity/0257_blaziken/blaziken_alpha"
             },
             "geometry": {
                 "g_blaziken_male": "geometry.blaziken_male",
@@ -81,7 +83,10 @@
                 "primary_controller": "controller.animation.blaziken.primary"
             },
             "render_controllers": [
-                "controller.render.blaziken"
+                "controller.render.blaziken",
+                {
+                    "controller.render.blaziken_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0257_blaziken_spawn_egg"

@@ -363,6 +363,44 @@
                     "held_item_hat": "q.property('cobblemon:held_index') >= 187 && q.property('cobblemon:held_index') < 197"
                 }
             ]
+        },
+        "controller.render.wobbuffet_alpha": {
+            "materials": [
+                {
+                    "*": "Material.alpha_eyes"
+                }
+            ],
+            "geometry": "Array.geo[query.variant]",
+            "textures": [
+                "Texture.alpha_eyes"
+            ],
+            "arrays": {
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_wobbuffet_male",
+                        "Geometry.g_wobbuffet_male",
+                        "Geometry.g_wobbuffet_female",
+                        "Geometry.g_wobbuffet_female"
+                    ]
+                }
+            },
+            "part_visibility": [
+                {
+                    "*": true
+                },
+                {
+                    "lil_stache": "q.property('cobblemon:battle')"
+                },
+                {
+                    "stache": "q.property('cobblemon:battle')"
+                },
+                {
+                    "stache_left": "q.property('cobblemon:battle')"
+                },
+                {
+                    "stache_right": "q.property('cobblemon:battle')"
+                }
+            ]
         }
     }
 }

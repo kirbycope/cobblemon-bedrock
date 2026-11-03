@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0960_wiglett/wiglett",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0960_wiglett/wiglett",
-                "v1": "textures/entity/0960_wiglett/wiglett_shiny"
+                "v1": "textures/entity/0960_wiglett/wiglett_shiny",
+                "alpha_eyes": "textures/entity/0960_wiglett/wiglett_alpha"
             },
             "geometry": {
                 "g_wiglett": "geometry.wiglett"
@@ -50,7 +52,10 @@
                 "evolution": "animation.0960_wiglett.evolution"
             },
             "render_controllers": [
-                "controller.render.wiglett"
+                "controller.render.wiglett",
+                {
+                    "controller.render.wiglett_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0960_wiglett_spawn_egg"

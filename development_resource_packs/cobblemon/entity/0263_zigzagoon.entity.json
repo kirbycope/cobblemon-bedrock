@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0263_zigzagoon/zigzagoon",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0263_zigzagoon/zigzagoon",
                 "v1": "textures/entity/0263_zigzagoon/zigzagoon_shiny",
                 "v2": "textures/entity/0263_zigzagoon/zigzagoon_galarian",
-                "v3": "textures/entity/0263_zigzagoon/zigzagoon_galarian_shiny"
+                "v3": "textures/entity/0263_zigzagoon/zigzagoon_galarian_shiny",
+                "alpha_eyes": "textures/entity/0263_zigzagoon/zigzagoon_alpha"
             },
             "geometry": {
                 "g_zigzagoon": "geometry.zigzagoon",
@@ -61,7 +63,10 @@
                 "evolution": "animation.0263_zigzagoon.evolution"
             },
             "render_controllers": [
-                "controller.render.zigzagoon"
+                "controller.render.zigzagoon",
+                {
+                    "controller.render.zigzagoon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0263_zigzagoon_spawn_egg"
