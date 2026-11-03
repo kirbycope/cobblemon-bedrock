@@ -4004,7 +4004,7 @@ function pickAction(battle, options) {
 
 // The party HUD (ui/hud_screen.json): the player's party, fainted ones included, sent as one fixed-width
 // record per slot in a title starting "cbm:party" whenever it changes, and every five seconds for a HUD that rejoined
-const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS);
+const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS), HIDE_PARTY = "cobblemon:hide_party";
 const partySent = new Map();
 // the slot's pop-ups (PartyOverlayDataControl): the experience text for EXP_POPUP_TIME (63 ticks), and after the bar's
 // 17-tick update the new move and evolution pop-ups for POPUP_TIME (46 ticks: 3 in, 40 held, 3 out)
@@ -4051,7 +4051,8 @@ function partyRecord(e, selected, player) {
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
         // Cobblemon hides the party overlay while its battle overlay is up
-        const mine = battles.has(player.id) ? [] : summaryParty(player), sel = selIndex(player);
+        // and while the player has hidden it (HidePartyBinding, here /cobblemon:hideparty)
+        const mine = battles.has(player.id) || player.getDynamicProperty(HIDE_PARTY) ? [] : summaryParty(player), sel = selIndex(player);
         const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   ";
         const text = PARTY_MARKER + mine.map((e, n) => partyRecord(e, n === sel, player)).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
@@ -10591,6 +10592,13 @@ function registerCommands(registry) {
         later(() => { freeze(hit, true); system.runTimeout(() => { if (hit.isValid && !battles.has(prop(hit, OWNER))) freeze(hit, false); }, Math.max(1, seconds) * 20); });
         return ok("Frozen");
     });
+    // HidePartyBinding: a Bedrock pack adds no keys, so a command toggles the party overlay
+    add("hideparty", "Hides or shows the party overlay", [], [], (origin) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run it as a player");
+        later(() => player.setDynamicProperty(HIDE_PARTY, player.getDynamicProperty(HIDE_PARTY) ? undefined : true));
+        return ok("");
+    }, CommandPermissionLevel.Any);
     // OpenStarterScreenCommand
     add("openstarterscreen", "Opens the starter screen", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
         const player = commandPlayer(origin, players);

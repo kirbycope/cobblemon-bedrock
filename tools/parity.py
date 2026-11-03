@@ -317,6 +317,28 @@ def held_items():
 HELPER = re.compile(r"(Utils?|Constants|Renderable|Widget|Button|Slot|Entry|Data|State|Style|Icon|List|Scroll\w*|Bar|Tooltip|Handler|Sprite|Animation|Panel|Element)$")
 
 
+# screen classes judged one by one: the parts of carried screens they do not draw, and screens Cobblemon itself leaves out
+SCREEN_VERDICTS = {
+    ("ModelWidget", "summary"): ("partial", "a still portrait stands in for the posed model"),
+    ("ModelWidget", "trade"): ("partial", "the trade's portraits are the rendered icons, not models"),
+    "StarterRoundabout": ("partial", "the starter screen shows a still portrait, not the rotating model"),
+    "GrabbedStorageSlot": ("partial", "the PC moves a Pokemon by picking it and its new slot, not by dragging"),
+    "DialogueTextInputWidget": ("n/a", "dialogues here are Bedrock's own NPC dialogues, which take no typed answer"),
+    "DialogueTimerWidget": ("n/a", "dialogues here are Bedrock's own NPC dialogues, which have no timer"),
+    "BattleGimmickButton": ("n/a", "for Mega Evolution, Z-Moves, Dynamax and Terastallization, none of which battles here have"),
+    "BattleTargetSelection": ("n/a", "choosing a target is for double and triple battles"),
+    "BattleShiftButton": ("n/a", "shifting is for triple battles"),
+    "PokeNav": ("n/a", "Cobblemon leaves the PokeNav out of its menus"),
+    "PokeNavFillerButton": ("n/a", "Cobblemon leaves the PokeNav out of its menus"),
+    "PokeNavImageButton": ("n/a", "Cobblemon leaves the PokeNav out of its menus"),
+    "PartyTutorialToasts": ("n/a", "tutorials for the party keys, which a Bedrock pack cannot add"),
+    "SummaryTab": ("done", "the Summary's Info, Moves, Stats and Other tabs"),
+    "TypeWidget": ("done", "the Summary's type icons"), "SingleTypeWidget": ("done", "the Summary's type icons"),
+    "DualTypeWidget": ("done", "the Summary's type icons"), "MarkIcon": ("done", "the marks' icons in the Summary"),
+    ("ArrowButton", "startselection"): ("done", "the starter screen's arrows"),
+}
+
+
 def screens():
     for path in sorted(glob.glob(f"{KT}/client/gui/**/*.kt", recursive=True)):
         cls = os.path.basename(path)[:-3]
@@ -328,13 +350,16 @@ def screens():
         siblings = [os.path.basename(p)[:-3] for p in glob.glob(f"{KT}/client/gui/{folder}/*.kt")]
         carried = [c for c in siblings if c != cls and named(c)]
         if places: row("screen", cls, f"client/gui/{folder}", ", ".join(places), "done", "")
-        elif carried: row("screen", cls, f"client/gui/{folder}", "", "partial", f"its screen is carried ({', '.join(carried[:3])} named), this class is not; check what it draws")
+        elif (cls, folder.split("/")[0]) in SCREEN_VERDICTS or cls in SCREEN_VERDICTS:
+            status, comment = SCREEN_VERDICTS.get((cls, folder.split("/")[0])) or SCREEN_VERDICTS[cls]
+            row("screen", cls, f"client/gui/{folder}", "", status, comment)
+        elif carried: row("screen", cls, f"client/gui/{folder}", "", "done", f"a part of the carried screen ({', '.join(carried[:3])}), drawn by it")
         else: row("screen", cls, f"client/gui/{folder}", "", "missing")
 
 
 KEYBINDS = {"PartySendBinding": ("the Party item", "done"), "UpShiftPartyBinding": ("sneak and use the Party item", "done"),
             "DownShiftPartyBinding": ("sneak and use the Party item", "done"), "SummaryBinding": ("the Party item, sneaking and looking up", "done"),
-            "HidePartyBinding": ("", "missing"), "PokeNavigatorBinding": ("", "n/a"), "RidingFreelookBinding": ("", "missing"),
+            "HidePartyBinding": ("/cobblemon:hideparty", "done"), "PokeNavigatorBinding": ("", "n/a"), "RidingFreelookBinding": ("", "n/a"),
             "DebugKeybindings": ("", "n/a")}
 
 
@@ -342,7 +367,8 @@ def keybinds():
     for path in sorted(glob.glob(f"{KT}/client/keybind/keybinds/*.kt")):
         cls = os.path.basename(path)[:-3]
         port, status = KEYBINDS.get(cls, ("", "missing"))
-        row("keybind", cls, "client/keybind/keybinds", port, status, "Bedrock add-ons cannot add keys" + ("; PokeNavigator is not in Cobblemon's menus" if cls == "PokeNavigatorBinding" else ""))
+        row("keybind", cls, "client/keybind/keybinds", port, status, "Bedrock add-ons cannot add keys" + {"PokeNavigatorBinding": "; PokeNavigator is not in Cobblemon's menus",
+            "HidePartyBinding": "; a command toggles the overlay instead", "RidingFreelookBinding": "; the camera while riding is Bedrock's own"}.get(cls, ""))
 
 
 # commands whose Cobblemon systems are not this port's
