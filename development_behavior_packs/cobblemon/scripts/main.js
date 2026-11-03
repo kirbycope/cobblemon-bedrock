@@ -585,6 +585,9 @@ function fieldMove(battle, a, d, move) {
         case "skillswap": case "roleplay": case "entrainment": case "simplebeam": case "worryseed": case "gastroacid": case "doodle": {
             used();
             const give = (f, ab) => { f.baseAbility ??= f.ability; f.ability = ab; };
+            // Ability Shield: the holder's ability is not changed or suppressed
+            const shield = [a, d].find((f) => held(f) === "ability_shield" && (f === d || move.id === "skillswap" || move.id === "roleplay" || move.id === "doodle"));
+            if (shield) { say(battle, `§7${shield.info.name}'s Ability is protected by the Ability Shield!`); return true; }
             if (move.id === "skillswap") {
                 if (NO_SWAP.has(a.ability) || NO_SWAP.has(d.ability)) { fail(); return true; }
                 const mine = a.ability; give(a, d.ability); give(d, mine);
@@ -2111,10 +2114,10 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
         defender.info = { ...defender.info, types: [move.type] }; says(`${dName}'s Color Change made it the ${cap(move.type)} type!`);
     }
     // the ability takers: Mummy and Lingering Aroma spread themselves to the Pokemon touching them; Wandering Spirit trades
-    if (contact && attacker.hp > 0 && (ab === "mummy" || ab === "lingeringaroma") && attacker.ability !== ab && !CANT_SUPPRESS.has(attacker.ability)) {
+    if (contact && attacker.hp > 0 && (ab === "mummy" || ab === "lingeringaroma") && attacker.ability !== ab && !CANT_SUPPRESS.has(attacker.ability) && held(attacker) !== "ability_shield") {
         attacker.baseAbility ??= attacker.ability; attacker.ability = ab; says(`${name}'s ability became ${abilityName(ab)}!`);
     }
-    if (contact && attacker.hp > 0 && alive && ab === "wanderingspirit" && !NO_SWAP.has(attacker.ability)) {
+    if (contact && attacker.hp > 0 && alive && ab === "wanderingspirit" && !NO_SWAP.has(attacker.ability) && held(attacker) !== "ability_shield") {
         attacker.baseAbility ??= attacker.ability; defender.baseAbility ??= ab;
         [attacker.ability, defender.ability] = [ab, attacker.ability];
         says(`${dName} swapped abilities with ${name}!`);
@@ -2351,10 +2354,10 @@ function enter(battle, f, other) {
     entryHazards(battle, f);
     // Neutralizing Gas: while its holder is out, the other side's ability does nothing; it comes back once it has gone
     if (other.gassed !== undefined && f.ability !== "neutralizinggas") { other.ability = other.gassed; delete other.gassed; }
-    if (f.ability === "neutralizinggas" && !CANT_SUPPRESS.has(other.ability) && other.hp > 0) {
+    if (f.ability === "neutralizinggas" && !CANT_SUPPRESS.has(other.ability) && other.hp > 0 && held(other) !== "ability_shield") {
         say(battle, "§7Neutralizing gas filled the area!"); other.gassed = other.ability; other.ability = null;
     }
-    if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability)) { f.gassed = f.ability; f.ability = null; }
+    if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability) && held(f) !== "ability_shield") { f.gassed = f.ability; f.ability = null; }
     entryAbility(battle, f, other);
     mimicry(battle, f);
     battleForms(battle);

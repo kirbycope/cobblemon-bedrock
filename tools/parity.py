@@ -146,6 +146,7 @@ def items_blocks_entities():
         if ident in port_blocks: row("block", label, f"block.cobblemon.{name}", ident, "done")
         elif alias: row("block", label, f"block.cobblemon.{name}", alias, "done", "under another identifier here")
         elif ident in port_items: row("block", label, f"block.cobblemon.{name}", ident, "partial", "an item here, not a placeable block")
+        elif name.endswith("_sign"): row("block", label, f"block.cobblemon.{name}", "", "n/a", "a Bedrock custom block cannot hold text, so a sign of its own cannot be written on")
         else:
             near = [b for b in port_blocks if b.startswith(ident)]
             if near: row("block", label, f"block.cobblemon.{name}", ", ".join(sorted(near)[:3]), "done", "split into several blocks here")
@@ -154,8 +155,8 @@ def items_blocks_entities():
                 "empty_pokeball": ("cobblemon:ball_<ball>, cobblemon:capture_ball", "done", ""),
                 "poke_bobber": ("cobblemon:poke_bobber", "done", ""),
                 "npc": ("cobblemon:npc_trainer, cobblemon:rct_trainer, cobblemon:nurse and others", "done", "one entity a kind of NPC"),
-                "boat": ("", "missing", "the Apricorn Boat item places nothing"),
-                "chest_boat": ("", "missing", "the Apricorn Chest Boat item places nothing")}
+                "boat": ("cobblemon:apricorn_boat, cobblemon:saccharine_boat", "done", "on Bedrock's own boat (runtime_identifier)"),
+                "chest_boat": ("cobblemon:apricorn_chest_boat, cobblemon:saccharine_chest_boat", "done", "on Bedrock's own chest boat")}
     for name, label in sorted(lang_ids("entity.cobblemon.").items()):
         port, status, comment = ENTITIES.get(name, ("", "missing", ""))
         row("entity", label, f"entity.cobblemon.{name}", port, status, comment)

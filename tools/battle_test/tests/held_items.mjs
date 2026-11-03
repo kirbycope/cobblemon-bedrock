@@ -52,3 +52,9 @@ import { M, mon, battle, move, check, flush } from "../harness.mjs";
     M.boost(b, a, { atk: -1 }, d); flush();
     check("Eject Pack switches out after a drop", b.ejectAlly === true && !a.held, b.log.join(" / "));
 }
+{   // Ability Shield: its holder's ability is not changed or suppressed
+    const a = mon("Snorlax", { ability: "thickfat" }), d = mon("Snorlax", { ability: "immunity", held: "ability_shield" }), b = battle(a, d);
+    M.useMove(b, a, d, move("skillswap")); flush();
+    M.useMove(b, a, d, move("gastroacid")); flush();
+    check("Ability Shield keeps its holder's ability", d.ability === "immunity" && a.ability === "thickfat", b.log.join(" / "));
+}

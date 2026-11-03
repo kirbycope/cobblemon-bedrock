@@ -354,15 +354,7 @@ ability,Telepathy,showdown data/abilities.js,,n/a,acts only on an ally; battles 
 ability,Tera Shell,showdown data/abilities.js,,n/a,only on species the port does not carry (see the species rows)
 ability,Tera Shift,showdown data/abilities.js,,n/a,only on species the port does not carry (see the species rows)
 ability,Teraform Zero,showdown data/abilities.js,,n/a,only on species the port does not carry (see the species rows)
-block,Apricorn Hanging Sign,block.cobblemon.apricorn_hanging_sign,,missing,
-block,Apricorn Sign,block.cobblemon.apricorn_sign,,missing,
-block,Apricorn Wall Hanging Sign,block.cobblemon.apricorn_wall_hanging_sign,,missing,
-block,Apricorn Wall Sign,block.cobblemon.apricorn_wall_sign,,missing,
 block,Pomohana,block.cobblemon.pomohana,,missing,
-block,Saccharine Hanging Sign,block.cobblemon.saccharine_hanging_sign,,missing,
-block,Saccharine Sign,block.cobblemon.saccharine_sign,,missing,
-block,Saccharine Wall Hanging Sign,block.cobblemon.saccharine_wall_hanging_sign,,missing,
-block,Saccharine Wall Sign,block.cobblemon.saccharine_wall_sign,,missing,
 block,Galarica Wreath,block.cobblemon.galarica_wreath,cobblemon:galarica_wreath,partial,"an item here, not a placeable block"
 block,Antidote,block.cobblemon.antidote,cobblemon:antidote_block,done,under another identifier here
 block,Apricorn Button,block.cobblemon.apricorn_button,cobblemon:apricorn_button,done,
@@ -775,6 +767,10 @@ block,Zinc,block.cobblemon.zinc,cobblemon:zinc_block,done,under another identifi
 block,Zoom Lens,block.cobblemon.zoom_lens,cobblemon:zoom_lens_block,done,under another identifier here
 block,Aguav Berry,blockstates/aguav_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Apicot Berry,blockstates/apicot_berry.json,,n/a,a blockstate CobblemonBlocks does not register
+block,Apricorn Hanging Sign,block.cobblemon.apricorn_hanging_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Apricorn Sign,block.cobblemon.apricorn_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Apricorn Wall Hanging Sign,block.cobblemon.apricorn_wall_hanging_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Apricorn Wall Sign,block.cobblemon.apricorn_wall_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
 block,Aspear Berry,blockstates/aspear_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Babiri Berry,blockstates/babiri_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Belue Berry,blockstates/belue_berry.json,,n/a,a blockstate CobblemonBlocks does not register
@@ -832,6 +828,10 @@ block,Razz Berry,blockstates/razz_berry.json,,n/a,a blockstate CobblemonBlocks d
 block,Rindo Berry,blockstates/rindo_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Roseli Berry,blockstates/roseli_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Rowap Berry,blockstates/rowap_berry.json,,n/a,a blockstate CobblemonBlocks does not register
+block,Saccharine Hanging Sign,block.cobblemon.saccharine_hanging_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Saccharine Sign,block.cobblemon.saccharine_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Saccharine Wall Hanging Sign,block.cobblemon.saccharine_wall_hanging_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
+block,Saccharine Wall Sign,block.cobblemon.saccharine_wall_sign,,n/a,"a Bedrock custom block cannot hold text, so a sign of its own cannot be written on"
 block,Salac Berry,blockstates/salac_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Shuca Berry,blockstates/shuca_berry.json,,n/a,a blockstate CobblemonBlocks does not register
 block,Sitrus Berry,blockstates/sitrus_berry.json,,n/a,a blockstate CobblemonBlocks does not register
@@ -1078,13 +1078,13 @@ data,tags,data/cobblemon/tags,port.py,done,
 data,tms,data/cobblemon/tms,port.py,done,
 data,unlockable_pc_box_wallpapers,data/cobblemon/unlockable_pc_box_wallpapers,port.py,done,
 data,worldgen,data/cobblemon/worldgen,port.py,done,
-entity,Boat,entity.cobblemon.boat,,missing,the Apricorn Boat item places nothing
-entity,Boat with Chest,entity.cobblemon.chest_boat,,missing,the Apricorn Chest Boat item places nothing
+entity,Boat,entity.cobblemon.boat,"cobblemon:apricorn_boat, cobblemon:saccharine_boat",done,on Bedrock's own boat (runtime_identifier)
+entity,Boat with Chest,entity.cobblemon.chest_boat,"cobblemon:apricorn_chest_boat, cobblemon:saccharine_chest_boat",done,on Bedrock's own chest boat
 entity,Empty Poké Ball,entity.cobblemon.empty_pokeball,"cobblemon:ball_<ball>, cobblemon:capture_ball",done,
 entity,NPC,entity.cobblemon.npc,"cobblemon:npc_trainer, cobblemon:rct_trainer, cobblemon:nurse and others",done,one entity a kind of NPC
 entity,Poké Bobber,entity.cobblemon.poke_bobber,cobblemon:poke_bobber,done,
 entity,Pokémon,entity.cobblemon.pokemon,"cobblemon:p<number>_<name>, one per species",done,
-held item,Ability Shield,showdown data/items.js,,missing,hooks: onSetAbility
+held item,Ability Shield,showdown data/items.js,battle script,done,named in the scripts (heuristic)
 held item,Absorb Bulb,showdown data/items.js,battle script,done,named in the scripts (heuristic)
 held item,Aguav Berry,showdown data/items.js,battle script,done,named in the scripts (heuristic)
 held item,Air Balloon,showdown data/items.js,battle script,done,named in the scripts (heuristic)
