@@ -66,6 +66,7 @@ const KLUTZ_KEEPS = new Set(["macho_brace", "power_anklet", "power_band", "power
 function held(f) {
     if (!f.held) return null;
     const item = f.held.slice("cobblemon:".length);
+    if (f.embargo > 0 || f.magicRoom) return null;
     return f.ability === "klutz" && !KLUTZ_KEEPS.has(item) ? null : item;
 }
 // Unnerve and As One: the other side's Pokemon cannot eat berries
@@ -149,7 +150,7 @@ function trap(battle, f, by, move) {
 }
 function trappedIn(battle, f) {
     if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
-    if (f.noRetreat || f.ingrain) return true;
+    if (f.noRetreat || f.ingrain || realBattle(battle).fairyLock > 0) return true;
     const other = f === battle.ally ? battle.foe : battle.ally;
     if (other?.hp > 0 && ((other.ability === "shadowtag" && f.ability !== "shadowtag") || (other.ability === "arenatrap" && onGround(battle, f))
         || (other.ability === "magnetpull" && f.info.types.includes("steel")))) return true;
@@ -302,7 +303,7 @@ const TERRAIN_ABILITIES = { electricsurge: "electric", hadronengine: "electric",
 const TERRAIN_SEEDS = { electric: { def: 1 }, grassy: { def: 1 }, misty: { spd: 1 }, psychic: { spd: 1 } };
 const TERRAIN_PULSE = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
 function terrainOf(battle) { return realBattle(battle)?.terrain?.kind ?? null; }
-function onGround(battle, f) { return !!battle?.gravity || !!f.ingrain || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
+function onGround(battle, f) { return !!(battle && realBattle(battle).gravity > 0) || !!f.ingrain || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
 function setTerrain(battle, kind, setter) {
     if (terrainOf(battle) === kind) return false;
     realBattle(battle).terrain = { kind, turns: held(setter) === "terrain_extender" ? 8 : 5 };
@@ -374,7 +375,7 @@ function sideOf(battle, f) {
     real.sides ??= { a: {}, b: {} };
     return real.sides[f === real.ally ? "a" : "b"];
 }
-const SIDE_MOVES = { reflect: "Reflect", lightscreen: "Light Screen", auroraveil: "Aurora Veil", safeguard: "Safeguard", mist: "Mist", tailwind: "Tailwind" };
+const SIDE_MOVES = { reflect: "Reflect", lightscreen: "Light Screen", auroraveil: "Aurora Veil", safeguard: "Safeguard", mist: "Mist", tailwind: "Tailwind", luckychant: "Lucky Chant" };
 const HAZARDS = { stealthrock: 1, spikes: 3, toxicspikes: 2, stickyweb: 1 };
 // the side and field moves, and the status moves that act on HP, stats or types outright: true when the move was one
 function fieldMove(battle, a, d, move) {
@@ -649,6 +650,85 @@ function fieldMove(battle, a, d, move) {
             const n = a.stockpile;
             if (a.hp < a.stats.hp) { a.hp = Math.min(a.stats.hp, a.hp + Math.floor(a.stats.hp * [0, 0.25, 0.5, 1][n])); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
             spentStockpile(battle, a);
+            return true;
+        }
+        // ---- one-turn guards
+        case "quickguard": case "wideguard": case "craftyshield": {
+            used();
+            const side = sideOf(battle, a);
+            if (move.id !== "craftyshield" && battle.movedFirst !== a) { fail(); return true; }
+            side[move.id] = battle.turn;
+            say(battle, `§7${{ quickguard: "Quick Guard", wideguard: "Wide Guard", craftyshield: "Crafty Shield" }[move.id]} protected ${name}'s team!`);
+            return true;
+        }
+        case "magiccoat": case "snatch":
+            used();
+            if (battle.movedFirst !== a) { fail(); return true; }
+            a[move.id === "magiccoat" ? "magicCoat" : "snatch"] = battle.turn;
+            say(battle, move.id === "magiccoat" ? `§7${name} shrouded itself with Magic Coat!` : `§7${name} waits for a target to make a move!`);
+            return true;
+        // ---- the field for five turns: Gravity, Magic Room, Wonder Room, Mud Sport, Water Sport; Fairy Lock for this turn
+        // and the next; Court Change swaps the sides' conditions; Ion Deluge and Electrify for this turn
+        case "gravity": case "magicroom": case "wonderroom": case "mudsport": case "watersport": {
+            const real = realBattle(battle), key = move.id;
+            used();
+            if (real[key] > 0 && key === "gravity") { fail(); return true; }
+            real[key] = real[key] > 0 && (key === "magicroom" || key === "wonderroom") ? 0 : 5;
+            say(battle, `§7${FIELD_TEXT[key][real[key] ? 0 : 1]}`);
+            if (key === "magicroom") for (const f of [battle.ally, battle.foe]) f.magicRoom = real.magicroom > 0;
+            if (key === "gravity") for (const f of [battle.ally, battle.foe]) if (f.hiding === "air") { f.hiding = null; f.charging = null; }
+            return true;
+        }
+        case "fairylock": { used(); const real = realBattle(battle); if (real.fairyLock > 0) { fail(); return true; } real.fairyLock = 2; say(battle, "§7No one will be able to run away during the next turn!"); return true; }
+        case "courtchange": {
+            used();
+            const real = realBattle(battle);
+            real.sides ??= { a: {}, b: {} };
+            [real.sides.a, real.sides.b] = [real.sides.b, real.sides.a];
+            say(battle, `§7${name} swapped the battle effects affecting each side of the field!`);
+            return true;
+        }
+        case "iondeluge": used(); realBattle(battle).ionDeluge = battle.turn; say(battle, "§7A deluge of ions showers the battlefield!"); return true;
+        case "electrify":
+            used();
+            if (battle.movedFirst !== a) { fail(); return true; }
+            d.electrify = battle.turn; say(battle, `§7${d.info.name}'s moves have been electrified!`);
+            return true;
+        // ---- items: swapped, given, brought back, eaten, kept from working; for the battle only, as nothing saves it,
+        // but for Recycle, which brings back an item used up
+        case "trick": case "switcheroo": {
+            used();
+            if ((!a.held && !d.held) || d.ability === "stickyhold") { fail(); return true; }
+            [a.held, d.held] = [d.held, a.held];
+            say(battle, `§7${name} switched items with its target!`);
+            if (a.held) say(battle, `§7${name} obtained one ${itemName(a.held)}.`);
+            if (d.held) say(battle, `§7${d.info.name} obtained one ${itemName(d.held)}.`);
+            for (const f of [a, d]) if (!f.held && f.ability === "unburden") f.unburden = true;
+            return true;
+        }
+        case "bestow":
+            used();
+            if (!a.held || d.held) { fail(); return true; }
+            d.held = a.held; a.held = null; say(battle, `§7${d.info.name} received ${itemName(d.held)} from ${name}!`);
+            if (a.ability === "unburden") a.unburden = true;
+            return true;
+        case "recycle":
+            used();
+            if (a.held || !a.lastItem) { fail(); return true; }
+            a.held = a.lastItem; a.lastItem = null; setProp(a.entity, "cobblemon:held", a.held);
+            say(battle, `§7${name} found one ${itemName(a.held)}!`);
+            return true;
+        case "embargo":
+            used();
+            if (d.embargo > 0) { fail(); return true; }
+            d.embargo = 5; say(battle, `§7${d.info.name} can't use items anymore!`);
+            return true;
+        case "stuffcheeks": case "teatime": {
+            used();
+            const eaters = (move.id === "teatime" ? [a, d] : [a]).filter((f) => f.hp > 0 && f.held?.endsWith("_berry"));
+            if (!eaters.length) { fail(); return true; }
+            for (const f of eaters) heldBerry(battle, f, true);
+            if (move.id === "stuffcheeks") boost(battle, a, { def: 2 }, a);
             return true;
         }
         case "focusenergy":
@@ -1048,6 +1128,38 @@ function healMove(battle, f, move) {
     return true;
 }
 
+const FIELD_TEXT = { gravity: ["Gravity intensified!", "Gravity returned to normal!"], magicroom: ["It created a bizarre area in which Pokemon's held items lose their effects!", "Magic Room wore off, and held items' effects returned to normal!"],
+    wonderroom: ["It created a bizarre area in which Defense and Sp. Def stats are swapped!", "Wonder Room wore off, and Defense and Sp. Def stats returned to normal!"],
+    mudsport: ["Electricity's power was weakened!", "The effects of Mud Sport have faded."], watersport: ["Fire's power was weakened!", "The effects of Water Sport have faded."] };
+// what a damaging move does to items once it has hit (Showdown's onAfterHit and onHit): Knock Off removes the target's,
+// Thief and Covet take it, Incinerate burns a berry, Bug Bite and Pluck eat it; Clear Smog clears the target's stages
+function itemMove(battle, a, d, move) {
+    const name = a.info.name, sticky = d.ability === "stickyhold" && d.hp > 0;
+    if (move.id === "knockoff" && d.held && !sticky) {
+        say(battle, `§7${name} knocked off ${d.info.name}'s ${itemName(d.held)}!`); d.held = null;
+        if (d.ability === "unburden") d.unburden = true;
+    }
+    if ((move.id === "thief" || move.id === "covet") && d.held && !a.held && !sticky) {
+        a.held = d.held; d.held = null; say(battle, `§7${name} stole ${d.info.name}'s ${itemName(a.held)}!`);
+        if (d.ability === "unburden") d.unburden = true;
+    }
+    if (move.id === "incinerate" && d.held && (d.held.endsWith("_berry") || d.held.endsWith("_gem"))) {
+        say(battle, `§7${d.info.name}'s ${itemName(d.held)} was burned up!`); d.held = null; setProp(d.entity, "cobblemon:held", undefined);
+    }
+    if ((move.id === "bugbite" || move.id === "pluck") && d.held?.endsWith("_berry") && !sticky && a.hp > 0) {
+        const berry = d.held, keep = a.held;
+        d.held = null; setProp(d.entity, "cobblemon:held", undefined);
+        say(battle, `§7${name} stole and ate its target's ${itemName(berry)}!`);
+        a.held = berry; a.cudChewing = true;
+        heldBerry(battle, a, true);
+        a.held = keep; a.cudChewing = false;
+        if (keep) setProp(a.entity, "cobblemon:held", keep);
+    }
+    if (move.id === "clearsmog" && d.hp > 0) { for (const k of Object.keys(d.stages)) d.stages[k] = 0; say(battle, `§7${d.info.name}'s stat changes were removed!`); }
+}
+// Fling: the user's item thrown, its power by the item, and its effect on the target for some
+const FLING = { iron_ball: 130, big_nugget: 130, hard_stone: 100, thick_club: 90, rare_bone: 100, kings_rock: 30, razor_fang: 30, light_ball: 30, poison_barb: 70,
+    flame_orb: 30, toxic_orb: 30, deep_sea_tooth: 90, dragon_fang: 70, quick_claw: 80, sharp_beak: 50, black_belt: 30, never_melt_ice: 30 };
 // Swallow and Spit Up spend the Stockpile, and lose the Defense and Sp. Def it raised
 function spentStockpile(battle, f) {
     const n = f.stockpile ?? 0;
@@ -1082,7 +1194,7 @@ function movePower(battle, a, d, move) {
         case "retaliate": return doubled(sideOf(battle, a).faintedTurn === battle.turn - 1);
         case "smellingsalts": return doubled(d.status === "par");
         case "wakeupslap": return doubled(d.status === "slp" || d.ability === "comatose");
-        case "gravapple": return battle.gravity ? move.power * 1.5 : move.power;
+        case "gravapple": return realBattle(battle).gravity > 0 ? move.power * 1.5 : move.power;
         case "psyblade": return terrainOf(battle) === "electric" ? move.power * 1.5 : move.power;
         case "collisioncourse": case "electrodrift": return effectiveness(move.type, d.info.types) > 1 ? move.power * 4 / 3 : move.power;
         // Fusion Bolt and Flare after the other this turn; Echoed Voice stronger each turn in a row it is used
@@ -1100,6 +1212,7 @@ function movePower(battle, a, d, move) {
         case "lastrespects": return 50 + 50 * Math.min(100, faintedOf(battle, a));
         case "ragefist": return Math.min(350, 50 + 50 * (a.timesHit ?? 0));
         case "spitup": return 100 * (a.stockpile ?? 0);
+        case "fling": { const item = held(a); return !item ? 0 : FLING[item] ?? (item.endsWith("_berry") ? 10 : 30); }
         case "trumpcard": { const left = move.left ?? 5; return left <= 0 ? 200 : left === 1 ? 80 : left === 2 ? 60 : left === 3 ? 50 : 40; }
         case "present": { const r = Math.random(); return r < 0.4 ? 40 : r < 0.7 ? 80 : r < 0.8 ? 120 : 0; }
         case "lowkick": case "grassknot": { const w = kg(d); return w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20; }
@@ -1184,6 +1297,10 @@ function faintedOf(battle, f) {
 }
 function useMove(battle, attacker, defender, move, called = false) {
     move = abilityMove(attacker, move);
+    if (move?.id && move.category !== undefined && (attacker.electrify === battle.turn || (realBattle(battle).ionDeluge === battle.turn && move.type === "normal"))) {
+        const real = move;
+        move = new Proxy(real, { get: (t, k) => (k === "type" ? "electric" : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    }
     // Stance Change: Blade Forme to attack, Shield Forme for King's Shield
     if (attacker.ability === "stancechange" && !attacker.transformed && move?.id && ((move.category !== "Status") !== !!attacker.blade) && (move.category !== "Status" || move.id === "kingsshield")) {
         attacker.blade = move.category !== "Status";
@@ -1310,6 +1427,7 @@ function moveFails(battle, a, d, move, firstAction) {
     if (move.id === "synchronoise" && !d.info.types.some((t) => a.info.types.includes(t))) return fail(`It doesn't affect ${d.info.name}...`);
     if (move.id === "poltergeist" && !d.held) return fail();
     if (move.id === "spitup" && !a.stockpile) return fail("But it failed to spit up a thing!");
+    if (move.id === "fling" && !held(a)) return fail();
     if (move.id === "burnup" && !a.info.types.includes("fire")) return fail();
     if (move.id === "doubleshock" && !a.info.types.includes("electric")) return fail();
     if (move.id === "lastresort") {
@@ -1392,6 +1510,25 @@ function runMove(battle, attacker, defender, move, called = false) {
         }
         return;
     }
+    const guard = sideOf(battle, defender);
+    if (!self && attacker !== defender && ((guard.quickguard === battle.turn && priorityOf(battle, attacker, move) > 0)
+        || (guard.wideguard === battle.turn && ["allAdjacent", "allAdjacentFoes"].includes(move.target))
+        || (guard.craftyshield === battle.turn && move.category === "Status"))) {
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s team is protected!`);
+        return;
+    }
+    if (self && move.category === "Status" && defender.snatch === battle.turn && attacker !== defender && !battle.bouncing) {
+        defender.snatch = null; say(battle, `§7${defender.info.name} snatched ${name}'s move!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
+    if (!self && move.category === "Status" && move.flags?.includes("reflectable") && defender.magicCoat === battle.turn && !battle.bouncing && attacker !== defender) {
+        say(battle, `§7${defender.info.name} bounced the ${move.name} back!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
     if (!self && move.category === "Status" && move.flags?.includes("reflectable") && defAb === "magicbounce" && !battle.bouncing && attacker !== defender) {
         say(battle, `§7${defender.info.name} bounced the ${move.name} back!`);
         battle.bouncing = true;
@@ -1409,6 +1546,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
         let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" || atkAb === "mindseye" || atkAb === "illuminate" || move.ignoreStages ? 0 : defender.stages.evasion));
         if (atkAb === "compoundeyes") chance *= 1.3;
+        if (realBattle(battle).gravity > 0) chance *= 5 / 3;
         if (defAb === "wonderskin" && move.category === "Status") chance = Math.min(chance, 50);
         if (defAb === "tangledfeet" && defender.confused) chance *= 0.5;
         if (atkAb === "victorystar") chance *= 1.1;
@@ -1459,7 +1597,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return;
     }
     if (move.flags?.includes("powder") && held(defender) === "safety_goggles") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by its Safety Goggles!`); return; }
-    if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !battle.gravity) {
+    if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !(realBattle(battle).gravity > 0)) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Air Balloon)`); return;
     }
     if ((ABILITY_IMMUNE[defAb] === move.type && move.category !== "Status") || (defAb === "soundproof" && move.flags?.includes("sound"))
@@ -1515,7 +1653,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             const side = sideOf(battle, defender);
             if (side.reflect > 0 || side.lightscreen > 0 || side.auroraveil > 0) { delete side.reflect; delete side.lightscreen; delete side.auroraveil; say(battle, "§7The wall shattered!"); }
         }
-        const noCrit = defAb === "shellarmor" || defAb === "battlearmor";
+        const noCrit = defAb === "shellarmor" || defAb === "battlearmor" || sideOf(battle, defender).luckychant > 0;
         let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0);
         for (const [item, [who, n]] of Object.entries(CRIT_ITEMS)) if (holds(attacker, item, who)) critStage += n;
         // Showdown's multihit: each hit rolls its own critical hit and damage, a gem or a resist berry is used on the
@@ -1534,7 +1672,8 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (defAb === "unaware") atkStage = 0;
             if (atkAb === "unaware") defStage = 0;
             let a = user.stats[atkKey] * stage(crit ? Math.max(0, atkStage) : atkStage);
-            let d = defender.stats[defKey] * stage(crit ? Math.min(0, defStage) : defStage);
+            const roomKey = realBattle(battle).wonderroom > 0 ? { def: "spd", spd: "def" }[defKey] ?? defKey : defKey;
+            let d = defender.stats[roomKey] * stage(crit ? Math.min(0, defStage) : defStage);
             if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
             if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
             if (physical && atkAb === "gorillatactics") a *= 1.5;
@@ -1572,6 +1711,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
             if (atkAb === "technician" && power <= 60) power *= 1.5;
             if (move.typeBoosted) power *= 1.2;
+            if ((move.type === "electric" && realBattle(battle).mudsport > 0) || (move.type === "fire" && realBattle(battle).watersport > 0)) power /= 3;
             if (bond && h === 1) power *= 0.25;
             if (move.id === "triplekick" || move.id === "tripleaxel") power = power0 * (h + 1);
             if (attacker.charged && move.type === "electric") power *= 2;
@@ -1679,6 +1819,17 @@ function runMove(battle, attacker, defender, move, called = false) {
             say(battle, `§7${name} used up all its ${move.id === "burnup" ? "fire" : "electricity"}!`);
         }
         if (move.id === "spitup") spentStockpile(battle, attacker);
+        if (move.id === "fling" && attacker.held) {
+            const item = held(attacker) ?? "";
+            say(battle, `§7${name} flung its ${itemName(attacker.held)}!`);
+            useUp(battle, attacker);
+            if (defender.hp > 0) {
+                const status = { flame_orb: "brn", toxic_orb: "tox", light_ball: "par", poison_barb: "psn" }[item];
+                if (status) inflict(battle, defender, status, false, attacker);
+                if ((item === "kings_rock" || item === "razor_fang") && battle.movedFirst === attacker) defender.flinched = true;
+            }
+        }
+        if (dealt) itemMove(battle, attacker, defender, move);
         // Spectral Thief takes the target's raised stats first
         if (move.stealsBoosts) {
             const raised = Object.fromEntries(Object.entries(defender.stages).filter(([, v]) => v > 0));
@@ -1875,7 +2026,7 @@ function heldBerry(battle, f, force = false) {
     let used = false;
     if ((item === "oran_berry" || item === "sitrus_berry") && (force || f.hp <= f.stats.hp / 2)) {
         f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4)) * ripe); used = true; syncHealth(f);
-    } else if (item in STATUS_BERRIES && f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) {
+    } else if (item in STATUS_BERRIES && ((f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) || force)) {
         f.status = null; used = true;
     } else if (item === "berry_juice" && f.hp <= f.stats.hp / 2) {
         f.hp = Math.min(f.stats.hp, f.hp + 20); syncHealth(f);
@@ -2043,6 +2194,7 @@ function paradoxStat(battle, f) {
 const NO_TRACE = new Set([...NO_SWAP, "flowergift", "forecast", "zenmode", "neutralizinggas"]);
 function enter(battle, f, other) {
     f.enteredTurn = battle.turn;
+    f.magicRoom = realBattle(battle).magicroom > 0;
     const wish = sideOf(battle, f).healingWish;
     if (wish && f.hp > 0) {
         delete sideOf(battle, f).healingWish;
@@ -3402,7 +3554,7 @@ function switchTo(battle, entity) {
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
     leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
     leaving.acted = false; leaving.noRetreat = false; leaving.ingrain = false; leaving.aquaring = false; leaving.cursed = false; leaving.healBlock = 0;
-    leaving.stockpile = 0;
+    leaving.stockpile = 0; leaving.embargo = 0;
     if (leaving.ability === "zerotohero" && leaving.hp > 0) (realBattle(battle).heroes ??= new Set()).add(leaving.entity.id);
     if (leaving.blade) { leaving.blade = false; leaving.info = { ...leaving.info, stats: POKEMON[leaving.entity.typeId]?.stats ?? leaving.info.stats }; leaving.stats = { ...statsOf(leaving.entity, leaving.info, leaving.level), hp: leaving.stats.hp }; }
     untransform(leaving); leaving.gulp = null; leaving.form = null;
@@ -3729,6 +3881,7 @@ function endOfTurn(battle) {
         }
         if (f.cursed && f.hp > 0) hurt(battle, f, f.stats.hp / 4, `${f.info.name} is afflicted by the curse!`);
         if (f.healBlock > 0 && --f.healBlock === 0) say(battle, `§7${f.info.name}'s Heal Block wore off!`);
+        if (f.embargo > 0 && --f.embargo === 0) say(battle, `§7${f.info.name} can use items again!`);
         if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
@@ -3803,6 +3956,11 @@ function endOfTurn(battle) {
         for (const k of Object.keys(SIDE_MOVES)) if (side[k] > 0 && --side[k] === 0) say(battle, `§7${f.info.name}'s team's ${SIDE_MOVES[k]} wore off.`);
     }
     if (real.trickRoom > 0 && --real.trickRoom === 0) say(battle, "§7The twisted dimensions returned to normal!");
+    for (const key of Object.keys(FIELD_TEXT)) if (real[key] > 0 && --real[key] === 0) {
+        say(battle, `§7${FIELD_TEXT[key][1]}`);
+        if (key === "magicroom") for (const f of [battle.ally, battle.foe]) f.magicRoom = false;
+    }
+    if (real.fairyLock > 0) real.fairyLock--;
     afterFx(battle, () => { if (battles.has(battle.player.id)) afterTurn(battle); });
 }
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
