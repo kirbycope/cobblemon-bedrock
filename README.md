@@ -363,6 +363,37 @@ modules (`tools/battle_test/stub_server.mjs`), so a test can build two Pokemon, 
 `tools/battle_test/tests/`, one file a topic (`held_items.mjs`, `abilities_damage.mjs`, `abilities_hit.mjs`, `abilities_entry.mjs`, `abilities_turn.mjs`, `abilities_block.mjs`, `abilities_form.mjs`, `moves_1.mjs`, `moves_2.mjs`, `moves_3.mjs`, `moves_4.mjs`); `node tools/battle_test/run.mjs held` runs the files
 whose names contain "held". `damage()` in the harness builds two Pokemon with every random roll fixed and returns what one move took off, so an ability or item is tested by comparing the same hit with and without it. The add-on's own files are not changed, and nothing of the game is needed.
 
+## Commands
+Cobblemon's commands are Bedrock custom commands under the `cobblemon:` namespace, typed with it (`/cobblemon:givepokemon
+pikachu level 5 shiny`) or without it where no other command has the name. All but `/cobblemon:cobblemon` and
+`/cobblemon:spectatebattle` need operator. Pokemon properties are Cobblemon's: the species first, then `level=`, `shiny`,
+`gender=`, `nature=`, `ability=`, `form=`, `nickname=`, `held_item=`. Bedrock's command parser takes a word with `=` only in
+quotes, so each can be written as the key and its value instead: `/cobblemon:givepokemon pikachu level 5 shiny nature timid`.
+A party slot is 1 to 6.
+
+| Command | What it does |
+| --- | --- |
+| `cobblemon` | the add-on's version and what it carries |
+| `givepokemon <properties>`, `givepokemonother <player> <properties>` | a new Pokemon into the party, or the PC with the party full |
+| `giveallpokemon <min> <max>` | one of each species between those Pokedex numbers |
+| `spawnpokemon <properties>`, `spawnpokemonat <position> <properties>`, `spawnallpokemon <min> <max>` | wild Pokemon |
+| `healpokemon [player]` | heals the party fully |
+| `levelup <slot> [player]`, `pokemonedit <slot> <properties>` | a level up, or any of the properties changed |
+| `teach <player> <slot> <move>`, `querylearnset <player> <slot> <move>` | teaches a move, or says whether and how it can be learnt |
+| `held_item <player> <slot> <item>`, `friendship <slot> [player]` | sets the held item, or shows friendship |
+| `givemark`, `takemark <player> <slot> <mark>`, `giveallmarks <player> <slot>` | marks |
+| `pc [box]`, `pokebox <slot> [box]`, `pokeboxall [box]`, `pctake <player> <box> <slot>`, `pcsearch <properties>` | the PC: open it anywhere, move Pokemon in and out, find them |
+| `renamebox`, `changewallpaper`, `unlockpcboxwallpaper` | PC boxes' names and wallpapers |
+| `clearparty <player>`, `clearpc <player>`, `takepokemon <player> <slot>` | removes Pokemon |
+| `pokedex grant\|revoke <player> <species\|all>` | Pokedex entries |
+| `givetm <move> [quantity]`, `technicalmachine unlock\|lock <player> <move\|all>` | TMs, and the TM Machine's list |
+| `stopbattle [player]`, `spectatebattle <player>` | ends a battle, or follows one in chat |
+| `freezepokemon <seconds>`, `openstarterscreen [player]` | freezes the Pokemon looked at; opens the starter screen |
+
+Not carried: the box count (the PC has a fixed 40), `checkspawn` and `spawnpokemonfrompool` (wild spawning is Bedrock's own
+spawn rules, which a script cannot read), the NPC editor and dialogue commands (the NPCs here are entities of their own,
+with Bedrock's dialogues), multi battles, the config, and the development commands.
+
 ## Testing commands
 `scripts/main.js` answers these script events, for checking a feature without playing up to it. Run them from
 chat, the server console or `tools/bridge.py`; `<pokemon>`, `<player>` and `<entity>` mean the command runs as

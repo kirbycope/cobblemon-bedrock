@@ -38,3 +38,4 @@ export const BlockPermutation = anything(), MolangVariableMap = class { setFloat
 export const EntityComponentTypes = new Proxy({}, { get: (t, k) => String(k) });
 export const EntityInitializationCause = anything(), InputButton = anything(), ButtonState = anything(), EntityDamageCause = anything();
 export const EquipmentSlot = anything(), BlockVolume = class { }, StructureRotation = anything(), StructureSaveMode = anything();
+export const CommandPermissionLevel = anything(), CustomCommandParamType = anything(), CustomCommandStatus = anything();

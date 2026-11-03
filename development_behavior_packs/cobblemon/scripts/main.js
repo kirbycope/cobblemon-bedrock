@@ -6,6 +6,7 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
+import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus } from "@minecraft/server";
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
@@ -1023,6 +1024,8 @@ function sayNow(battle, own, other) {
     const push = (log, t) => { log.push(t); if (log.length > 40) log.shift(); };
     battle.player.sendMessage(own); push(battle.log ??= [], own);
     if (battle.pvp && battle.opponent?.isValid) { battle.opponent.sendMessage(other); push(battle.opponentLog, other); }
+    // spectators (SpectateBattleCommand) follow the battle in chat, as the player in it sees it
+    for (const id of realBattle(battle).spectators ?? []) { try { world.getEntity(id)?.sendMessage(`§8[${battle.player.name}]§r ${own}`); } catch (e) { } }
 }
 
 function syncHealth(f) {
@@ -6049,6 +6052,7 @@ const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:m
 const MARKINGS = "cobblemon:markings";
 
 function setPcScreen(block, on) {
+    if (!block) return;
     const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
     if (top?.typeId === "cobblemon:pc") setState(top, "cobblemon:on", on);
 }
@@ -9728,7 +9732,356 @@ function useBagItem(battle, id) {
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
 // drops Cobblemon's base yield of its berry and goes back to flowering. The healing machine restores the
 // Pokemon around it that belong to the player using it.
-system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
+
+// Cobblemon's commands (common/command), as Bedrock custom commands: "/cobblemon:givepokemon pikachu level=5", or without
+// the namespace where no other command has the name. Pokemon properties are Cobblemon's: the species first, then
+// level=, shiny, gender=, nature=, ability=, form=, nickname=, held_item=, each a word (quote a nickname with spaces).
+// A party slot is 1 to 6. A command runs in a read-only moment, so what it changes happens on the next tick
+const COMMAND_PROPS = 6;
+function parseProps(words) {
+    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species"];
+    // Bedrock's command parser takes "level=5" only in quotes, so "level 5" (the key, then its value) works too
+    const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean);
+    const joined = list.flatMap((w, i) => (KEYS.includes(w.toLowerCase()) && !w.includes("=") && list[i + 1] ? [`${w}=${list[i + 1]}`] : KEYS.includes(list[i - 1]?.toLowerCase()) && !list[i - 1].includes("=") ? [] : [w]));
+    for (const word of joined) {
+        const [k, ...rest] = word.split("="), v = rest.join("=").toLowerCase();
+        const key = k.toLowerCase();
+        if (!rest.length) {
+            if (["shiny", "s"].includes(key)) props.shiny = true;
+            else if (!props.species) props.species = key;
+        } else if (key === "species") props.species = v;
+        else if (key === "level" || key === "lvl" || key === "l") props.level = Math.max(1, Math.min(100, Number(v) || 1));
+        else if (key === "shiny") props.shiny = v !== "no" && v !== "false";
+        else props[key.replace("helditem", "held_item")] = rest.join("=");
+    }
+    return props;
+}
+// a species by its name or id ("mr. mime", "mr_mime", "mrmime", "cobblemon:p0122_mrmime")
+function speciesNamed(name) {
+    if (!name) return undefined;
+    const flat = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const want = flat(name.replace(/^cobblemon:/, ""));
+    return Object.keys(POKEMON).find((id) => id === name || flat(id.split("_").slice(1).join("_")) === want || flat(POKEMON[id].name) === want);
+}
+// the variant for a form and shininess: the base one, or the one whose form aspect matches
+function variantFor(typeId, props) {
+    const looks = VARIANT_LOOKS[typeId];
+    if (!looks) return 0;
+    const form = props.form?.toLowerCase() ?? null, shiny = props.shiny ? 1 : 0;
+    const n = looks.findIndex((l) => (form ? (l[0] ?? "").includes(form) : !l[0]) && l[2] === shiny && !l[1]);
+    return n < 0 ? 0 : n;
+}
+// a record for a new Pokemon of these properties, as the party and PC keep them
+function recordFor(typeId, props) {
+    const info = POKEMON[typeId], level = props.level ?? info.level;
+    const k = { "cobblemon:caught_ball": "cobblemon:poke_ball" };
+    if (props.gender) k["cobblemon:gender"] = props.gender.toLowerCase();
+    if (props.nature) k["cobblemon:nature"] = props.nature.toLowerCase();
+    if (props.ability) k["cobblemon:ability"] = props.ability.toLowerCase().replace(/[^a-z]/g, "");
+    if (props.held_item) k["cobblemon:held"] = props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`;
+    return { t: typeId, v: variantFor(typeId, props), lv: level, xp: expFor(info.expGroup, level), mv: JSON.stringify(movesAt(info, level)), f: false, hp: 1, n: props.nickname ?? null, k };
+}
+// properties put on a Pokemon that exists (pokemonedit, spawnpokemon)
+function applyProps(e, props) {
+    const info = POKEMON[e.typeId];
+    if (props.level) { setProp(e, LEVEL, props.level); setProp(e, EXP, expFor(info.expGroup, props.level)); setProp(e, MOVESET, JSON.stringify(movesAt(info, props.level))); }
+    if (props.gender) setProp(e, "cobblemon:gender", props.gender.toLowerCase());
+    if (props.nature) setProp(e, "cobblemon:nature", props.nature.toLowerCase());
+    if (props.ability) setProp(e, "cobblemon:ability", props.ability.toLowerCase().replace(/[^a-z]/g, ""));
+    if (props.held_item) setProp(e, "cobblemon:held", props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`);
+    if (props.nickname) setProp(e, "cobblemon:nickname", props.nickname);
+    if (props.shiny !== undefined || props.form) {
+        const n = variantFor(e.typeId, props);
+        if (e.isProxy) { e.slot.rec.v = n; saveParty(prop(e, OWNER)); }
+        else try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+    }
+}
+function commandPlayer(origin, players) {
+    if (players?.length) return players[0];
+    const src = origin.sourceEntity ?? origin.initiator;
+    return src?.typeId === "minecraft:player" ? src : undefined;
+}
+const ok = (message) => ({ status: CustomCommandStatus.Success, message });
+const bad = (message) => ({ status: CustomCommandStatus.Failure, message });
+function registerCommands(registry) {
+    const P = CustomCommandParamType, admin = CommandPermissionLevel.GameDirectors;
+    const words = (n) => Array.from({ length: n }, (_, i) => ({ type: P.String, name: `more${i + 1}` }));
+    const later = (fn) => system.run(() => { try { fn(); } catch (e) { console.warn(`[cobblemon] command: ${e}`); } });
+    const add = (name, description, mandatory, optional, run, permissionLevel = admin) => registry.registerCommand(
+        { name: `cobblemon:${name}`, description, permissionLevel, mandatoryParameters: mandatory, optionalParameters: optional }, run);
+    const memberAt = (player, slot) => summaryParty(player)[slot - 1];
+    registry.registerEnum("cobblemon:dexaction", ["grant", "revoke"]);
+    registry.registerEnum("cobblemon:boxcount", ["query"]);
+    registry.registerEnum("cobblemon:tmaction", ["unlock", "lock"]);
+
+    // CobblemonInfoCommand
+    add("cobblemon", "Shows the add-on's version and what it carries", [], [], () => ok(`Cobblemon for Bedrock: ${Object.keys(POKEMON).length} Pokemon, ${Object.keys(MOVES).length} moves`), CommandPermissionLevel.Any);
+    // GivePokemon: to the player, or another player with givepokemonother
+    const give = (player, props) => {
+        const typeId = speciesNamed(props.species);
+        if (!player || !typeId) return bad(`Unknown species ${props.species ?? ""}`);
+        later(() => {
+            const rec = recordFor(typeId, props), where = addRecord(player, rec);
+            if (!where) { player.sendMessage("§cThe party and the PC are full."); return; }
+            register(player, typeId, 2, rec.v);
+            player.sendMessage(`§aYou received ${rec.n || POKEMON[typeId].name} (Lv ${rec.lv})${where.box !== undefined ? ` in Box ${where.box + 1}` : ""}.`);
+        });
+        return ok(`Gave ${POKEMON[typeId].name}`);
+    };
+    add("givepokemon", "Gives the player a Pokemon: species then level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, ...w) => give(commandPlayer(origin), parseProps(w)));
+    add("givepokemonother", "Gives a player a Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, players, ...w) => give(commandPlayer(origin, players), parseProps(w)));
+    // SpawnPokemon: a wild one here, or at a position with spawnpokemonat
+    const spawn = (dim, at, props) => {
+        const typeId = speciesNamed(props.species);
+        if (!typeId || !dim) return bad(`Unknown species ${props.species ?? ""}`);
+        later(() => { const e = dim.spawnEntity(typeId, at); system.run(() => { try { applyProps(e, props); } catch (err) { } }); });
+        return ok(`Spawned ${POKEMON[typeId].name}`);
+    };
+    add("spawnpokemon", "Spawns a wild Pokemon of these properties where the command runs", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, ...w) => { const src = origin.sourceEntity ?? origin.sourceBlock; return spawn(src?.dimension, src?.location, parseProps(w)); });
+    add("spawnpokemonat", "Spawns a wild Pokemon at a position", [{ type: P.Location, name: "position" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, at, ...w) => spawn((origin.sourceEntity ?? origin.sourceBlock)?.dimension ?? world.getDimension("overworld"), at, parseProps(w)));
+    // SpawnAllPokemon and GiveAllPokemon: every species from one National Dex number to another
+    const range = (min, max) => NATIONAL.slice(Math.max(0, min - 1), Math.max(min, max)).filter((id) => POKEMON[id]);
+    add("spawnallpokemon", "Spawns one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+        const src = origin.sourceEntity, list = range(min, max);
+        if (!src) return bad("Run it as a player or entity");
+        later(() => list.forEach((id, i) => system.runTimeout(() => { try { src.dimension.spawnEntity(id, { x: src.location.x + (i % 10) * 2, y: src.location.y, z: src.location.z + Math.floor(i / 10) * 2 }); } catch (e) { } }, i)));
+        return ok(`Spawning ${list.length} Pokemon`);
+    });
+    add("giveallpokemon", "Gives the player one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+        const player = commandPlayer(origin), list = range(min, max);
+        if (!player) return bad("Run it as a player");
+        later(() => { for (const id of list) { const rec = recordFor(id, {}); if (!addRecord(player, rec)) break; register(player, id, 2, 0); } });
+        return ok(`Giving ${list.length} Pokemon`);
+    });
+    // HealPokemonCommand
+    add("healpokemon", "Heals a player's party fully", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (const m of summaryParty(player)) { setProp(m, FAINTED, undefined); setProp(m, STATUS, undefined); try { m.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (e) { } if (m.isProxy) { m.slot.rec.f = false; m.slot.rec.hp = 1; } } saveParty(player.id); player.sendMessage("§aYour Pokemon were healed."); });
+        return ok("Healed");
+    });
+    // LevelUp
+    add("levelup", "Raises a party Pokemon a level", [{ type: P.Integer, name: "slot" }], [{ type: P.PlayerSelector, name: "player" }], (origin, slot, players) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { const lv = Math.min(100, (prop(m, LEVEL) ?? POKEMON[m.typeId].level) + 1); setProp(m, LEVEL, lv); setProp(m, EXP, expFor(POKEMON[m.typeId].expGroup, lv)); saveParty(player.id); player.sendMessage(`§a${nicknameOf(m) || POKEMON[m.typeId].name} grew to Lv ${lv}!`); });
+        return ok("Levelled up");
+    });
+    // PcCommand: the PC screen anywhere
+    add("pc", "Opens the PC", [], [{ type: P.Integer, name: "box" }], (origin, n) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run it as a player");
+        later(() => openPc(null, player, { box: Math.max(0, Math.min(PC_BOXES - 1, (n ?? 1) - 1)), sel: null }));
+        return ok("");
+    });
+    // PokeboxCommand: a party Pokemon into the PC (the first free box, or the one given); pokeboxall for the whole party
+    const toBox = (player, slots, boxN) => later(() => {
+        const party = partyOf(player.id);
+        for (const slot of slots.map((n) => party[n - 1]).filter(Boolean)) {
+            const m = partyMember(player, slot), rec = m.isProxy ? slot.rec : snapshot(m);
+            let placed = false;
+            for (let n = boxN ?? 0; n < PC_BOXES && !placed; n++) {
+                const contents = box(player, n), i = contents.indexOf(null);
+                if (i >= 0) { contents[i] = rec; saveBox(player, n, contents); placed = true; }
+                if (boxN !== undefined) break;
+            }
+            if (placed) removeMember(player, slot);
+        }
+        saveParty(player.id);
+    });
+    add("pokebox", "Moves a party Pokemon into the PC", [{ type: P.Integer, name: "slot" }], [{ type: P.Integer, name: "box" }, { type: P.PlayerSelector, name: "player" }], (origin, slot, n, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player || !partyOf(player.id)[slot - 1]) return bad("No Pokemon in that slot");
+        toBox(player, [slot], n ? n - 1 : undefined); return ok("Moved to the PC");
+    });
+    add("pokeboxall", "Moves the whole party into the PC", [], [{ type: P.Integer, name: "box" }, { type: P.PlayerSelector, name: "player" }], (origin, n, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        toBox(player, partyOf(player.id).map((_, i) => i + 1), n ? n - 1 : undefined); return ok("Moved the party to the PC");
+    });
+    // PcTakeCommand: a PC Pokemon into the party
+    add("pctake", "Takes a Pokemon from the PC into the party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.Integer, name: "slot" }], [], (origin, players, b, slot) => {
+        const player = commandPlayer(origin, players), contents = player && box(player, b - 1), rec = contents?.[slot - 1];
+        if (!rec) return bad("Nothing in that slot");
+        if (partyOf(player.id).length >= PARTY_SIZE) return bad("The party is full");
+        later(() => { contents[slot - 1] = null; saveBox(player, b - 1, contents); addRecord(player, rec); });
+        return ok("Taken into the party");
+    });
+    // PcSearchCommand: where in the PC the Pokemon of these properties are
+    add("pcsearch", "Lists where in the PC Pokemon of these properties are", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, ...w) => {
+        const player = commandPlayer(origin), props = parseProps(w), typeId = speciesNamed(props.species);
+        if (!player) return bad("Run it as a player");
+        const found = [];
+        for (let n = 0; n < PC_BOXES; n++) box(player, n).forEach((rec, i) => {
+            if (rec && (!typeId || rec.t === typeId) && (!props.level || rec.lv === props.level) && (props.shiny === undefined || (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0) === props.shiny)) found.push(`Box ${n + 1} slot ${i + 1}: ${describe(rec)}`);
+        });
+        return ok(found.length ? found.slice(0, 30).join("\n") : "None found");
+    });
+    // ClearPartyCommand and ClearPCCommand
+    add("clearparty", "Removes every Pokemon from a player's party", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (const slot of [...partyOf(player.id)]) removeMember(player, slot); saveParty(player.id); });
+        return ok("Party cleared");
+    });
+    add("clearpc", "Removes every Pokemon from a player's PC", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (let n = 0; n < PC_BOXES; n++) saveBox(player, n, []); });
+        return ok("PC cleared");
+    });
+    // TakePokemon
+    add("takepokemon", "Takes a Pokemon from a player's party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
+        const player = commandPlayer(origin, players), s = player && partyOf(player.id)[slot - 1];
+        if (!s) return bad("No Pokemon in that slot");
+        later(() => { removeMember(player, s); saveParty(player.id); });
+        return ok("Taken");
+    });
+    // RenameBoxCommand, ChangeBoxWallpaperCommand, UnlockPCBoxWallpaperCommand
+    add("renamebox", "Renames a PC box", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "name" }], [], (origin, players, b, name) => {
+        const player = commandPlayer(origin, players);
+        if (!player || b < 1 || b > PC_BOXES) return bad("No such box");
+        later(() => { const names = jsonProp(player, PC_NAMES, {}); names[b - 1] = name; player.setDynamicProperty(PC_NAMES, JSON.stringify(names)); });
+        return ok(`Box ${b} is now ${name}`);
+    });
+    add("changewallpaper", "Sets a PC box's wallpaper", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "wallpaper" }], [], (origin, players, b, wall) => {
+        const player = commandPlayer(origin, players), code = PC_WALLPAPERS.find((w) => w[0] === wall || w[2] === wall || `${w[0]}` === wall)?.[0] ?? wall;
+        if (!player || b < 1 || b > PC_BOXES) return bad("No such box");
+        later(() => { const walls = jsonProp(player, WALLS, {}); walls[b - 1] = code; player.setDynamicProperty(WALLS, JSON.stringify(walls)); });
+        return ok(`Box ${b}'s wallpaper set`);
+    });
+    add("unlockpcboxwallpaper", "Unlocks a PC wallpaper for a player", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "wallpaper" }], [], (origin, players, unlock) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => unlockWallpaper(player, unlock.includes(":") ? unlock : `cobblemon:${unlock}`));
+        return ok("Unlocked");
+    });
+    // PokedexCommand: grant or revoke a species, or all
+    add("pokedex", "Grants or revokes Pokedex entries: grant|revoke, player, species or all", [{ type: P.Enum, name: "cobblemon:dexaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "species" }], [], (origin, action, players, species) => {
+        const player = commandPlayer(origin, players), all = species === "all", typeId = all ? null : speciesNamed(species);
+        if (!player || (!all && !typeId)) return bad("No such player or species");
+        later(() => {
+            if (action === "grant") { for (const id of all ? NATIONAL.filter((i) => POKEMON[i]) : [typeId]) register(player, id, 2, 0); return; }
+            let s = dexString(player);
+            for (const id of all ? NATIONAL : [typeId]) { const n = DEX_INDEX.get(id); if (n !== undefined) s = s.slice(0, n) + "0" + s.slice(n + 1); }
+            player.setDynamicProperty(DEX, s);
+        });
+        return ok(`${action === "grant" ? "Granted" : "Revoked"} ${all ? "every entry" : POKEMON[typeId].name}`);
+    });
+    // TeachCommand, QueryLearnsetCommand
+    add("teach", "Teaches a party Pokemon a move", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [], (origin, players, slot, move) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!m || !MOVES[id]) return bad("No such Pokemon or move");
+        later(() => {
+            const ids = fighter(m)?.moves.map((x) => x.id) ?? [];
+            if (ids.includes(id)) return;
+            setProp(m, MOVESET, JSON.stringify(ids.length < 4 ? [...ids, id] : [...ids.slice(0, 3), id])); saveParty(player.id);
+            player.sendMessage(`§a${nicknameOf(m) || POKEMON[m.typeId].name} learned ${MOVES[id].name}!`);
+        });
+        return ok("Taught");
+    });
+    add("querylearnset", "Says whether a party Pokemon can learn a move, and how", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [], (origin, players, slot, move) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!m) return bad("No Pokemon in that slot");
+        const info = POKEMON[m.typeId], how = [];
+        const at = info.learnset?.find(([, mv]) => mv === id);
+        if (at) how.push(`at level ${at[0]}`);
+        if (info.egg?.includes(id)) how.push("as an egg move");
+        if ((TM_SPECIES[m.typeId] ?? []).includes(TM_BY_MOVE.get(id))) how.push("from a TM");
+        return ok(how.length ? `${info.name} can learn ${MOVES[id]?.name ?? id} ${how.join(", ")}` : `${info.name} cannot learn ${MOVES[id]?.name ?? id}`);
+    });
+    // HeldItemCommand
+    add("held_item", "Gives a party Pokemon an item to hold", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.ItemType, name: "item" }], [], (origin, players, slot, item) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, "cobblemon:held", item.id); saveParty(player.id); });
+        return ok("Held item set");
+    });
+    // FriendshipCommand
+    add("friendship", "Shows a party Pokemon's friendship", [{ type: P.Integer, name: "slot" }], [{ type: P.PlayerSelector, name: "player" }], (origin, slot, players) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        return ok(`${nicknameOf(m) || POKEMON[m.typeId].name}'s friendship is ${prop(m, "cobblemon:friendship") ?? POKEMON[m.typeId].friendship ?? 50}`);
+    });
+    // PokemonEditCommand
+    add("pokemonedit", "Changes a party Pokemon's properties: level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.Integer, name: "slot" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, slot, ...w) => {
+        const player = commandPlayer(origin), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { applyProps(m, parseProps(w)); saveParty(player.id); });
+        return ok("Edited");
+    });
+    // MarkGiveCommand, MarkTakeCommand, MarkGiveAllCommand
+    const markId = (name) => `cobblemon:${name.replace(/^cobblemon:/, "")}`;
+    add("givemark", "Gives a party Pokemon a mark", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "mark" }], [], (origin, players, slot, mark) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = markId(mark);
+        if (!m || !MARKS[id]) return bad("No such Pokemon or mark");
+        later(() => { if (!marksOf(m).includes(id)) setProp(m, MARK_LIST, JSON.stringify([...marksOf(m), id])); saveParty(player.id); });
+        return ok(`Gave ${MARKS[id][1]}`);
+    });
+    add("takemark", "Takes a mark from a party Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "mark" }], [], (origin, players, slot, mark) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = markId(mark);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, MARK_LIST, JSON.stringify(marksOf(m).filter((x) => x !== id))); if (prop(m, ACTIVE_MARK) === id) setProp(m, ACTIVE_MARK, undefined); saveParty(player.id); });
+        return ok("Taken");
+    });
+    add("giveallmarks", "Gives a party Pokemon every mark", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, MARK_LIST, JSON.stringify(Object.keys(MARKS))); saveParty(player.id); });
+        return ok("Gave every mark");
+    });
+    // GiveTmCommand, TmCommand (unlock or lock a TM for the TM Machine)
+    add("givetm", "Gives TMs of a move", [{ type: P.String, name: "move" }], [{ type: P.Integer, name: "quantity" }, { type: P.PlayerSelector, name: "player" }], (origin, move, quantity, players) => {
+        const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!player || !TM_BY_MOVE.has(id)) return bad("No such TM");
+        later(() => player.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack(`cobblemon:tm_${id}`, Math.max(1, Math.min(64, quantity ?? 1)))));
+        return ok("Given");
+    });
+    add("technicalmachine", "Unlocks or locks a TM for a player's TM Machine: unlock|lock, player, move or all", [{ type: P.Enum, name: "cobblemon:tmaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "move" }], [], (origin, action, players, move) => {
+        const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, ""), all = id === "all";
+        if (!player || (!all && !TM_BY_MOVE.has(id))) return bad("No such TM");
+        later(() => {
+            const known = learnedTms(player), ids = all ? TMS.map((t) => t[0]) : [id];
+            for (const t of ids) action === "unlock" ? known.add(t) : known.delete(t);
+            player.setDynamicProperty(LEARNED_TMS, JSON.stringify([...known]));
+        });
+        return ok(`${action === "unlock" ? "Unlocked" : "Locked"} ${all ? "every TM" : id}`);
+    });
+    // StopBattleCommand, SpectateBattleCommand
+    add("stopbattle", "Ends a player's battle", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players), battle = player && battles.get(player.id);
+        if (!battle) return bad("Not in a battle");
+        later(() => endBattle(battle, "§7The battle was stopped."));
+        return ok("Stopped");
+    });
+    add("spectatebattle", "Follows another player's battle in chat", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin), target = players?.[0], battle = target && battles.get(target.id);
+        if (!player || !battle) return bad("That player is not in a battle");
+        later(() => { (realBattle(battle).spectators ??= new Set()).add(player.id); player.sendMessage(`§7Spectating ${target.name}'s battle.`); });
+        return ok("");
+    }, CommandPermissionLevel.Any);
+    // FreezePokemonCommand: the Pokemon looked at stands still for some seconds
+    add("freezepokemon", "Freezes the Pokemon you look at for some seconds", [{ type: P.Integer, name: "seconds" }], [], (origin, seconds) => {
+        const player = commandPlayer(origin), hit = player?.getEntitiesFromViewDirection({ maxDistance: 16 })[0]?.entity;
+        if (!hit || !POKEMON[hit.typeId]) return bad("Look at a Pokemon");
+        later(() => { freeze(hit, true); system.runTimeout(() => { if (hit.isValid && !battles.has(prop(hit, OWNER))) freeze(hit, false); }, Math.max(1, seconds) * 20); });
+        return ok("Frozen");
+    });
+    // OpenStarterScreenCommand
+    add("openstarterscreen", "Opens the starter screen", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => openStarter(player));
+        return ok("");
+    });
+}
+
+system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRegistry }) => {
+    try { registerCommands(customCommandRegistry); } catch (e) { console.warn(`[cobblemon] commands: ${e}`); }
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);

@@ -127,6 +127,8 @@ def items_blocks_entities():
             row("item", label, f"item.cobblemon.{name}", ident if ident in port_items else "", "n/a", "commented out of CobblemonItems; not in Cobblemon 1.8"); continue
         if f'"item.cobblemon.{name}"' in kotlin and name not in classes and ident not in port_items:
             row("item", label, f"item.cobblemon.{name}", "", "n/a", "a name Cobblemon gives another item, not an item of its own (see its comment in the port)"); continue
+        if name == "technical_machine":
+            row("item", label, f"item.cobblemon.{name} ({cls})", "cobblemon:tm_<move>", "done", "one item a move here (items/tms), each a TechnicalMachineItem in scripts/tms.js and teachTm"); continue
         if ident in port_items:
             # the hand-written scripts, not the generated tables, which name every item
             acts = (components.get(ident, set()) - BASIC_COMPONENTS) or re.search(rf"[\"'`]{re.escape(ident)}[\"'`]|\b{name}\b", battle_js)
@@ -340,12 +342,28 @@ def keybinds():
         row("keybind", cls, "client/keybind/keybinds", port, status, "Bedrock add-ons cannot add keys" + ("; PokeNavigator is not in Cobblemon's menus" if cls == "PokeNavigatorBinding" else ""))
 
 
+# commands whose Cobblemon systems are not this port's
+COMMAND_NA = {"AbandonMultiTeam": "multi battles (teams of players) are not carried",
+              "ChangePCBoxesCommand": "the PC here has a fixed 40 boxes (CobblemonConfig.defaultBoxCount), not a count per player",
+              "CheckSpawnsCommand": "wild spawning here is Bedrock's own spawn rules, which a script cannot list",
+              "SpawnPokemonFromPool": "wild spawning here is Bedrock's own spawn rules, which a script cannot draw from",
+              "CobblemonConfigCommand": "Cobblemon's config file is not carried (see the config rows)",
+              "NPCEditCommand": "NPC classes and the NPC editor are not carried; the NPCs here are entities of their own",
+              "NPCDeleteCommand": "NPC classes and the NPC editor are not carried; /kill removes an NPC entity",
+              "SpawnNPCCommand": "NPC classes are not carried; /summon makes the NPC entities here",
+              "OpenDialogueCommand": "dialogues here are Bedrock's own NPC dialogues, opened with /dialogue open"}
+
+
 def commands():
     for path in sorted(glob.glob(f"{KT}/command/*.kt")):
         cls = os.path.basename(path)[:-3]
         if re.match(r"Test|Get|Run|Transform|Change(EyeHeight|ScaleAndSize|WalkSpeed)|BedrockParticle|BehaviourEdit|ApplyPlayerTexture|ReloadShowdown|ClickText|PokemonRestart", cls):
             row("command", cls, "command/", "", "n/a", "a development command"); continue
-        row("command", cls, "command/", "", "missing", "the port has test scriptevents, not Cobblemon's commands (custom slash commands are possible in @minecraft/server 2)")
+        if cls in COMMAND_NA: row("command", cls, "command/", "", "n/a", COMMAND_NA[cls]); continue
+        literals = [n.lower() for n in re.findall(r'(?:literal\(|NAME = )"([A-Za-z_]+)"', read(path))]
+        names = [n for n in literals if re.search(rf'add\("{n}"', battle_js)]   # registerCommands' add("name", ...)
+        if names: row("command", cls, "command/", ", ".join(f"/cobblemon:{n}" for n in names), "done", "a Bedrock custom command")
+        else: row("command", cls, "command/", "", "missing", "")
 
 
 # ---------------------------------------------------------------------------- data, config
