@@ -243,11 +243,11 @@ TERA_ONLY = {"embodyaspectcornerstone", "embodyaspecthearthflame", "embodyaspect
 
 
 def abilities():
-    owned = set()
+    owned, battle_only = set(), set()   # battle_only: on a form Cobblemon only shows in battle (Mega, Primal), never reached here
     for path in glob.glob(f"{RES}/data/cobblemon/species/**/*.json", recursive=True):
         data = json.loads(read(path))
         for form in [data] + data.get("forms", []):
-            for ability in form.get("abilities", []): owned.add(ability.split(":")[-1].lower())
+            for ability in form.get("abilities", []): (battle_only if form.get("battleOnly") else owned).add(ability.split(":")[-1].lower())
     for ability_id, body in sorted(showdown_entries("data/abilities.js").items()):
         name = (re.search(r'^    name: "([^"]+)"', body, re.M) or [None, ability_id])[1]
         note = "" if ability_id in owned else "no species has it; "
@@ -255,6 +255,7 @@ def abilities():
         if not hooks: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "no battle effect")
         elif ability_id in DOUBLES_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on an ally; battles here are single")
         elif ability_id in TERA_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on a Terastallized Pokemon; there is no Terastallization here")
+        elif ability_id not in owned and ability_id in battle_only and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "only on a battle-only form (Mega, Primal) there is no way to reach")
         elif ability_id not in owned and not quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "", "n/a", "no species has it")
         elif quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "battle script", "done", note + "named in the battle script (heuristic)")
         else: row("ability", name, "showdown data/abilities.js", "", "missing", note + "hooks: " + ", ".join(hooks[:6]))

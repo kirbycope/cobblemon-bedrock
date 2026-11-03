@@ -150,6 +150,8 @@ function trap(battle, f, by, move) {
 function trappedIn(battle, f) {
     if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
     const other = f === battle.ally ? battle.foe : battle.ally;
+    if (other?.hp > 0 && ((other.ability === "shadowtag" && f.ability !== "shadowtag") || (other.ability === "arenatrap" && onGround(battle, f))
+        || (other.ability === "magnetpull" && f.info.types.includes("steel")))) return true;
     return (!!f.bound && f.bound.by === other) || (!!f.trappedBy && f.trappedBy === other);
 }
 const PROTECTING = new Set(["protect", "detect", "spikyshield", "kingsshield", "banefulbunker", "silktrap", "obstruct", "burningbulwark", "endure"]);
@@ -303,8 +305,16 @@ function setTerrain(battle, kind, setter) {
     if (terrainOf(battle) === kind) return false;
     realBattle(battle).terrain = { kind, turns: held(setter) === "terrain_extender" ? 8 : 5 };
     say(battle, `§a${TERRAIN_TEXT[kind][0]}`);
-    for (const f of [battle.ally, battle.foe]) terrainSeed(battle, f);
+    for (const f of [battle.ally, battle.foe]) { terrainSeed(battle, f); mimicry(battle, f); }
     return true;
+}
+const MIMICRY = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
+function mimicry(battle, f) {
+    if (f?.ability !== "mimicry" || f.hp <= 0) return;
+    f.ownTypes ??= f.info.types;
+    const types = MIMICRY[terrainOf(battle)] ? [MIMICRY[terrainOf(battle)]] : f.ownTypes;
+    if (types.join() === f.info.types.join()) return;
+    f.info = { ...f.info, types }; say(battle, `§7${f.info.name}'s Mimicry made it the ${types.map(cap).join("/")} type!`);
 }
 function roomService(battle, f) {
     if (held(f) !== "room_service" || f.hp <= 0 || !(realBattle(battle).trickRoom > 0)) return;
@@ -430,6 +440,10 @@ function fieldMove(battle, a, d, move) {
             a.charged = true; say(battle, `§e${name} began charging power!`);
             boost(battle, a, { spd: 1 }, a);
             return true;
+        case "attract":
+            used();
+            if (!attract(battle, d, a)) fail();
+            return true;
         case "focusenergy":
             used();
             if (a.focusEnergy) { fail(); return true; }
@@ -516,6 +530,7 @@ function fieldMove(battle, a, d, move) {
             // Showdown's forceSwitch: the target is dragged out for another of its side at random (useMove's pivot), and
             // with nothing on the bench to bring in, as against a lone wild Pokemon, it fails
             used();
+            if (ability(d, a) === "suctioncups") { say(battle, `§7${d.info.name} anchors itself with Suction Cups!`); return true; }
             if (battle.pvp || !benchOf(battle, d === battle.ally ? "ally" : "foe").length) fail();
             else battle.swap = { side: d === battle.ally ? "ally" : "foe", drag: true };
             return true;
@@ -696,6 +711,12 @@ function boost(battle, target, boosts, source) {
         for (const k of Object.keys(target.stages)) if (target.stages[k] < 0) target.stages[k] = 0;
         useUp(battle, target, `§7${target.info.name} returned its stats to normal using its White Herb!`);
     }
+    // Opportunist copies what the other side's Pokemon gained
+    const other = target === battle.ally ? battle.foe : target === battle.foe ? battle.ally : null;
+    const raised = Object.fromEntries(Object.entries(boosts ?? {}).filter(([, v]) => v > 0));
+    if (other?.ability === "opportunist" && other.hp > 0 && Object.keys(raised).length && !battle.copying) {
+        battle.copying = true; say(battle, `§7${other.info.name}'s Opportunist!`); boost(battle, other, raised, other); battle.copying = false;
+    }
     // Defiant and Competitive answer a drop from the foe
     if (lowered && source && source !== target) {
         if (target.ability === "defiant") { say(battle, `§7${target.info.name}'s Defiant!`); boost(battle, target, { atk: 2 }); }
@@ -710,7 +731,7 @@ function inflict(battle, target, status, announceFailure, source) {
         if (announceFailure) say(battle, `§7${target.info.name} surrounds itself with ${terrain === "misty" ? "a protective mist" : "electrified terrain"}!`);
         return;
     }
-    const guard = STATUS_GUARD[ability(target, source)] ?? [];
+    const guard = ability(target, source) === "leafguard" && weatherOf(battle) === "sun" ? ["slp", "par", "brn", "frz", "psn", "tox"] : STATUS_GUARD[ability(target, source)] ?? [];
     if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
         if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
         return;
@@ -718,6 +739,7 @@ function inflict(battle, target, status, announceFailure, source) {
     target.status = status;
     if (status === "slp") target.sleep = 1 + Math.floor(Math.random() * 3);
     say(battle, `§d${target.info.name} ${STATUS_TEXT[status] ?? "was afflicted"}!`);
+    if (source?.ability === "poisonpuppeteer" && source !== target && (status === "psn" || status === "tox")) confuse(battle, target);
     // Synchronize passes burn, paralysis and poison back
     if (target.ability === "synchronize" && source && source !== target && ["brn", "par", "psn", "tox"].includes(status)) {
         say(battle, `§7${target.info.name}'s Synchronize!`); inflict(battle, source, status === "tox" ? "psn" : status, false);
@@ -740,6 +762,10 @@ function canAct(battle, f, move) {
         if (Math.random() < 0.2) { f.status = null; say(battle, `§7${f.info.name} thawed out!`); }
         else { say(battle, `§7${f.info.name} is frozen solid!`); return false; }
     }
+    if (f.ability === "truant") {
+        if (f.truant) { f.truant = false; say(battle, `§7${f.info.name} is loafing around!`); return false; }
+        f.truant = true;
+    }
     if (f.confused) {
         if (--f.confused <= 0) { f.confused = 0; say(battle, `§7${f.info.name} snapped out of its confusion!`); }
         else {
@@ -747,7 +773,22 @@ function canAct(battle, f, move) {
             if (Math.random() < 1 / 3) { confusionHit(battle, f); return false; }
         }
     }
+    if (f.attracted) {
+        const other = f === battle.ally ? battle.foe : battle.ally;
+        if (f.attracted !== other || other.hp <= 0) f.attracted = null;
+        else {
+            say(battle, `§d${f.info.name} is in love with ${other.info.name}!`);
+            if (Math.random() < 0.5) { say(battle, `§7${f.info.name} is immobilized by love!`); return false; }
+        }
+    }
     if (f.status === "par" && Math.random() < 0.25) { say(battle, `§7${f.info.name} is paralyzed! It can't move!`); return false; }
+    return true;
+}
+function attract(battle, f, by) {
+    const [g1, g2] = [genderOf(f.entity), genderOf(by.entity)];
+    if (f.hp <= 0 || f.attracted || g1 === "genderless" || g2 === "genderless" || g1 === g2 || f.ability === "oblivious") return false;
+    f.attracted = by; say(battle, `§d${f.info.name} fell in love with ${by.info.name}!`);
+    if (held(f) === "destiny_knot" && !by.attracted) { say(battle, `§7${f.info.name}'s Destiny Knot!`); attract(battle, by, f); }
     return true;
 }
 // Showdown's confusion: two to five turns, and each turn one time in three the Pokemon hits itself instead of moving,
@@ -893,6 +934,12 @@ function faintedOf(battle, f) {
 }
 function useMove(battle, attacker, defender, move, called = false) {
     move = abilityMove(attacker, move);
+    // Libero and Protean: the user becomes the type of the move it uses, once each time it comes in
+    if ((attacker.ability === "libero" || attacker.ability === "protean") && !attacker.protean && move?.type && move.type !== "???"
+        && !(attacker.info.types.length === 1 && attacker.info.types[0] === move.type)) {
+        attacker.protean = true; attacker.info = { ...attacker.info, types: [move.type] };
+        say(battle, `§7${attacker.info.name}'s ${abilityName(attacker.ability)} made it the ${cap(move.type)} type!`);
+    }
     const name = attacker.info.name, outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
     battle.curFx = outcome; battle.said = said;
     try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
@@ -932,7 +979,7 @@ function useMove(battle, attacker, defender, move, called = false) {
     }
     if (!worked || battle.pvp || battle.swap) return;
     if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
-    else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
+    else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0 && ability(defender, attacker) !== "suctioncups") battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
 }
 // how many times a multi-hit move hits: its fixed count, or 2 to 5 at 35, 35, 15 and 15 in 100 (Skill Link all 5, Loaded
 // Dice 4 or 5), as Showdown's sim/battle-actions.ts rolls it
@@ -1043,6 +1090,16 @@ function runMove(battle, attacker, defender, move, called = false) {
         }
         return;
     }
+    if (!self && move.category === "Status" && move.flags?.includes("reflectable") && defAb === "magicbounce" && !battle.bouncing && attacker !== defender) {
+        say(battle, `§7${defender.info.name} bounced the ${move.name} back!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
+    if (!self && move.category === "Status" && defAb === "goodasgold" && attacker !== defender && !["all", "foeSide", "allySide", "allyTeam"].includes(move.target)) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Good as Gold)`);
+        return;
+    }
     if (!self && defender.sub > 0 && move.category === "Status" && move.target !== "all" && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub")) {
         say(battle, `§e${name} used ${move.name}!§r §7But it failed!`);
         return;
@@ -1050,6 +1107,9 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
         let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" || atkAb === "mindseye" || atkAb === "illuminate" ? 0 : defender.stages.evasion));
         if (atkAb === "compoundeyes") chance *= 1.3;
+        if (defAb === "wonderskin" && move.category === "Status") chance = Math.min(chance, 50);
+        if (defAb === "tangledfeet" && defender.confused) chance *= 0.5;
+        if (atkAb === "victorystar") chance *= 1.1;
         if ((defAb === "sandveil" && weatherOf(battle) === "sand") || (defAb === "snowcloak" && weatherOf(battle) === "snow")) chance *= 0.8;
         if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
         if (held(attacker) === "wide_lens") chance *= 1.1;
@@ -1145,7 +1205,8 @@ function runMove(battle, attacker, defender, move, called = false) {
         // Showdown's multihit: each hit rolls its own critical hit and damage, a gem or a resist berry is used on the
         // first, Sturdy and Focus Sash hold only against the first, and what follows the hit (drain, recoil, the
         // berries) answers the total
-        const hits = multiHits(move, attacker);
+        const bond = atkAb === "parentalbond" && multiHits(move, attacker) === 1 && !move.ohko;
+        const hits = bond ? 2 : multiHits(move, attacker);
         let total = 0, landed = 0;
         shielded = false;
         for (let h = 0; h < hits && defender.hp > 0; h++) {
@@ -1159,6 +1220,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
             if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
             if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
+            if (physical && atkAb === "gorillatactics") a *= 1.5;
             if (physical && atkAb === "hustle") a *= 1.5;
             if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
             if (physical && defAb === "furcoat") d *= 2;
@@ -1191,6 +1253,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
             if (atkAb === "technician" && power <= 60) power *= 1.5;
             if (move.typeBoosted) power *= 1.2;
+            if (bond && h === 1) power *= 0.25;
             if (attacker.charged && move.type === "electric") power *= 2;
             if (atkAb === "analytic" && battle.movedFirst === defender) power *= 1.3;
             if (atkAb === "flareboost" && attacker.status === "brn" && !physical) power *= 1.5;
@@ -1319,6 +1382,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (dealt && defender.hp > 0 && attacker.hp > 0) {
         if (held(defender) === "eject_button" && defender === battle.ally) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectAlly = true; }
         else if (held(defender) === "eject_button" && defender === battle.foe && battle.pvp) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectFoe = true; }
+        else if (held(defender) === "red_card" && attacker.ability === "suctioncups") { }
         else if (held(defender) === "red_card" && attacker === battle.ally) { useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`); battle.ejectAlly = true; }
         else if (held(defender) === "red_card" && attacker === battle.foe) {
             useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`);
@@ -1347,7 +1411,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (dealt && defAb === "justified" && move.type === "dark" && defender.hp > 0) boost(battle, defender, { atk: 1 });
     if (dealt && defAb === "rattled" && ["dark", "bug", "ghost"].includes(move.type) && defender.hp > 0) boost(battle, defender, { spe: 1 });
     if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh" || atkAb === "asoneglastrier")) boost(battle, attacker, { atk: 1 });
-    if (defender.hp <= 0 && (atkAb === "grimneigh" || atkAb === "asonespectrier")) boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && (atkAb === "grimneigh" || atkAb === "asonespectrier" || atkAb === "soulheart")) boost(battle, attacker, { spa: 1 });
     if (defender.hp <= 0 && atkAb === "beastboost") {
         const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
         boost(battle, attacker, { [best]: 1 });
@@ -1385,6 +1449,12 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
     const halved = alive && hpBefore > defender.stats.hp / 2 && defender.hp <= defender.stats.hp / 2 && !sheer;
     if (halved && ab === "angershell") boost(battle, defender, { atk: 1, spa: 1, spe: 1, def: -1, spd: -1 });
     if (halved && ab === "berserk") boost(battle, defender, { spa: 1 });
+    if (halved && (ab === "emergencyexit" || ab === "wimpout") && attacker.hp > 0) {
+        says(`${dName}'s ${abilityName(ab)}!`);
+        if (defender === battle.ally) battle.ejectAlly = true;
+        else if (battle.pvp) battle.ejectFoe = true;
+        else if (!battle.trainer) battle.dragFoe = true;
+    }
     if (alive && ab === "colorchange" && move.type !== "???" && !defender.info.types.includes(move.type)) {
         defender.info = { ...defender.info, types: [move.type] }; says(`${dName}'s Color Change made it the ${cap(move.type)} type!`);
     }
@@ -1407,6 +1477,7 @@ function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBe
         attacker.held = defender.held; defender.held = null; says(`${name} stole ${dName}'s ${itemName(attacker.held)}!`);
         if (defender.ability === "unburden") defender.unburden = true;
     }
+    if (contact && ab === "cutecharm" && attacker.hp > 0 && Math.random() < 0.3) attract(battle, attacker, defender);
     // the attacker's: Poison Touch poisons on contact, Toxic Chain badly poisons on any hit, three times in ten
     const cloaked = defender.ability === "shielddust" || held(defender) === "covert_cloak";
     if (alive && !cloaked && contact && attacker.ability === "poisontouch" && Math.random() < 0.3) inflict(battle, defender, "psn", false, attacker);
@@ -1620,6 +1691,7 @@ function enter(battle, f, other) {
     }
     if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability)) { f.gassed = f.ability; f.ability = null; }
     entryAbility(battle, f, other);
+    mimicry(battle, f);
 }
 // what an ability does as its holder comes in (Showdown's onStart and onSwitchIn)
 function entryAbility(battle, f, other) {
@@ -2905,7 +2977,7 @@ function switchTo(battle, entity) {
     leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
-    leaving.bound = null; leaving.trappedBy = null; leaving.charged = false;
+    leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
     if (leaving.gassed !== undefined) { leaving.ability = leaving.gassed; delete leaving.gassed; }
     if (leaving.baseAbility) { leaving.ability = leaving.baseAbility; leaving.baseAbility = null; }
     if (leaving.ability === "naturalcure") leaving.status = null;
@@ -3007,7 +3079,7 @@ function turn(battle) {
         if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
         if (choice.blocked) { say(battle, `§7${choice.blocked}`); battle.turn--; turn(battle); return; }
         const move = choice.move;
-        if (held(ally)?.startsWith("choice_") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
+        if ((held(ally)?.startsWith("choice_") || ally.ability === "gorillatactics") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
         const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
         const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
@@ -3237,7 +3309,10 @@ function endOfTurn(battle) {
         }
     }
     const field = realBattle(battle);
-    if (field.terrain && --field.terrain.turns <= 0) { say(battle, `§a${TERRAIN_TEXT[field.terrain.kind][1]}`); field.terrain = null; }
+    if (field.terrain && --field.terrain.turns <= 0) {
+        say(battle, `§a${TERRAIN_TEXT[field.terrain.kind][1]}`); field.terrain = null;
+        for (const f of [battle.ally, battle.foe]) mimicry(battle, f);
+    }
     for (const f of [battle.ally, battle.foe]) {
         if (f.hp > 0 && held(f) === "black_sludge") {
             if (f.info.types.includes("poison")) { if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Black Sludge!`); syncHealth(f); } }
