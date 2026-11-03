@@ -35,6 +35,7 @@ import { CHEST_LOOT } from "./chest_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF } from "./silk.js";
+import { POTTED } from "./potted.js";
 import { SACCHARINE_TREES } from "./saccharine.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
@@ -8676,6 +8677,24 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
         }
     });
     // a revival herb (RevivalHerbBlock.randomTick): an age on, one random tick in 26, as a dry crop's
+    // a budding tumblestone (TumblestoneBlock, GrowableStoneBlock.randomTick): one random tick in five, with lava or a
+    // magma block (#cobblemon:tumblestone_heat_source) touching it or its corners, it grows to the next stage, small to
+    // medium to large to the cluster, keeping its facing. Bedrock's random ticks come a third as often as Java's, so
+    // each of Bedrock's grows at three in five
+    blockComponentRegistry.registerCustomComponent("cobblemon:tumblestone", {
+        onRandomTick({ block }) {
+            if (Math.random() >= 0.6) return;
+            const m = block.typeId.match(/^cobblemon:(small|medium|large)_budding_(\w+)$/);
+            if (!m) return;
+            let heated = false;
+            for (let x = -1; x <= 1 && !heated; x++) for (let y = -1; y <= 1 && !heated; y++) for (let z = -1; z <= 1 && !heated; z++) {
+                try { heated = /^minecraft:(flowing_)?lava$|^minecraft:magma$/.test(block.offset({ x, y, z })?.typeId ?? ""); } catch (e) { }
+            }
+            if (!heated) return;
+            const next = { small: `cobblemon:medium_budding_${m[2]}`, medium: `cobblemon:large_budding_${m[2]}`, large: `cobblemon:${m[2]}_cluster` }[m[1]];
+            try { block.setPermutation(BlockPermutation.resolve(next, { "minecraft:block_face": block.permutation.getState("minecraft:block_face") })); } catch (e) { }
+        }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:revival_herb", {
         onRandomTick({ block }) {
             const age = block.permutation.getState("cobblemon:age");
@@ -9971,6 +9990,78 @@ function tradeEvolution(entity, tradedFor) {
     if (evolution.held && evolution.use) setProp(entity, HELD, undefined);
     try { entity.triggerEvent(evolution.event); } catch (e) { }
 }
+// CobblemonBoatItem (BoatItem.use): an apricorn or saccharine boat, or chest boat, goes on the water or block looked at
+// within five blocks, facing the way the player looks, the item used up; it is a vanilla boat underneath (port.py's
+// create_boats), so it paddles and floats as one
+const BOAT_ITEMS = new Set(["cobblemon:apricorn_boat", "cobblemon:apricorn_chest_boat", "cobblemon:saccharine_boat", "cobblemon:saccharine_chest_boat"]);
+const boatPlaced = new Map();   // player id -> tick, so a use on a block and in the air place one boat
+function placeBoat(player, id) {
+    if (boatPlaced.get(player.id) === system.currentTick) return;
+    boatPlaced.set(player.id, system.currentTick);
+    let hit;
+    // water counts as passable, so passable blocks are looked through for it
+    try { hit = player.getBlockFromViewDirection({ includeLiquidBlocks: true, includePassableBlocks: true, maxDistance: 5 }); } catch (e) { }
+    if (!hit?.block) return;
+    const b = hit.block, water = b.isLiquid;
+    const at = { x: b.location.x + 0.5, y: b.location.y + (water ? 0.9 : 1), z: b.location.z + 0.5 };
+    let boat;
+    try { boat = player.dimension.spawnEntity(id, at); } catch (e) { return; }
+    try { boat.setRotation({ x: 0, y: player.getRotation().y }); } catch (e) { }
+    consumeHand(player);
+}
+world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
+    if (source?.typeId === "minecraft:player" && BOAT_ITEMS.has(itemStack?.typeId)) placeBoat(source, itemStack.typeId);
+});
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (!event.isFirstEvent || !BOAT_ITEMS.has(event.itemStack?.typeId)) return;
+    event.cancel = true;
+    const { player, itemStack } = event;
+    system.run(() => placeBoat(player, itemStack.typeId));
+});
+
+// FlowerPotBlock: a Cobblemon sapling, berry, mint or flower used on an empty flower pot plants it there (the pot turns
+// into Cobblemon's potted block, port.py's POTTED), and an empty hand takes it out again, the pot left empty; broken, a
+// potted plant drops the pot and the plant (Cobblemon's loot table). Bedrock's script cannot see what a vanilla pot
+// holds, so a pot already holding a vanilla flower is not told apart from an empty one
+const POTTED_PLANT = Object.fromEntries(Object.entries(POTTED).map(([plant, block]) => [block, plant]));
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { block, player, itemStack } = event;
+    if (!event.isFirstEvent) return;
+    if (block.typeId === "minecraft:flower_pot" && POTTED[itemStack?.typeId]) {
+        event.cancel = true;
+        const target = POTTED[itemStack.typeId];
+        system.run(() => {
+            try { block.setType(target); } catch (e) { return; }
+            consumeHand(player);
+            try { block.dimension.playSound("block.flower_pot.place", block.center()); } catch (e) { }
+        });
+    } else if (POTTED_PLANT[block.typeId] && !itemStack) {
+        event.cancel = true;
+        const plant = POTTED_PLANT[block.typeId];
+        system.run(() => {
+            try { block.setType("minecraft:flower_pot"); } catch (e) { return; }
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            const left = inv?.addItem(new ItemStack(plant, 1));
+            if (left) block.dimension.spawnItem(left, block.center());
+        });
+    }
+});
+
+// LinkCableItem: used on one of your own Pokemon, it runs a trade evolution whose conditions hold (its held item, no
+// Everstone) and is used up; an evolution that needs a particular partner (Shelmet and Karrablast) is left to a trade
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (itemStack?.typeId !== "cobblemon:link_cable" || !POKEMON[target?.typeId] || prop(target, OWNER) !== player.id) return;
+    event.cancel = true;
+    system.run(() => {
+        if (!target.isValid || prop(target, HELD) === "cobblemon:everstone") { player.sendMessage("§7It didn't have any effect..."); return; }
+        const evolution = (TRADE_EVOLUTIONS[target.typeId] ?? []).find((e) => !e.with && (!e.held || prop(target, HELD) === e.held));
+        if (!evolution) { player.sendMessage("§7It didn't have any effect..."); return; }
+        consumeHand(player);
+        if (evolution.held && evolution.use) setProp(target, HELD, undefined);
+        try { target.triggerEvent(evolution.event); } catch (e) { }
+    });
+});
 function cancelTrade(trade) {
     for (const part of trade.parts) {
         if (trades.get(part.id) === trade) trades.delete(part.id);

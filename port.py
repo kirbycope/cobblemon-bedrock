@@ -4508,6 +4508,127 @@ def create_items():
     print(f"Create items complete: {count} filled balls, {len(evolution_items)} evolution items.")
 
 
+def cobblemon_jar():
+    """The published Cobblemon jar of the version the repository is (gradle.properties' mod_version), fetched from
+    Modrinth into java/minecraft/ when missing: its build generates assets the source tree lacks (the boat textures)."""
+    import urllib.request
+    version = "1.8.2"
+    props = f"{cobblemonRepo}/gradle.properties"
+    if os.path.exists(props):
+        with open(props, encoding="utf-8") as file: version = (re.search(r"^mod_version\s*=\s*(\S+)", file.read(), re.M) or [None, version])[1]
+    jar = f"{cobblemonRepo}/minecraft/cobblemon-fabric-{version}.jar"
+    if not os.path.exists(jar):
+        try:
+            found = json.load(urllib.request.urlopen('https://api.modrinth.com/v2/project/cobblemon/version?loaders=["fabric"]'.replace('"', "%22")))
+            url = next(f["url"] for v in found if v["version_number"] == version for f in v["files"] if f.get("primary", True))
+            os.makedirs(os.path.dirname(jar), exist_ok=True)
+            urllib.request.urlretrieve(url, jar)
+        except Exception as error: print(f"  no Cobblemon {version} jar: {error}")
+    return jar if os.path.exists(jar) else None
+
+
+def vanilla_sample(path):
+    """A file of Mojang's bedrock-samples (vanilla entity definitions), fetched into java/bedrock-samples/vanilla/."""
+    import urllib.request
+    local = f"{pwd}/java/bedrock-samples/vanilla/{path.replace('/', '_')}"
+    if not os.path.exists(local):
+        os.makedirs(os.path.dirname(local), exist_ok=True)
+        urllib.request.urlretrieve(f"https://raw.githubusercontent.com/Mojang/bedrock-samples/main/{path}", local)
+    with open(local, encoding="utf-8") as file: return json.loads(re.sub(r"^\s*//.*$", "", file.read(), flags=re.M))
+
+
+# Java's BoatModel and ChestBoatModel (net.minecraft.client.model, 1.21.1): each part's box (texture offset, from,
+# size) and pose (pivot, rotation in radians, applied z, y, x as ModelPart does). Bedrock draws its own boats with a
+# model built into the client that an add-on cannot name, so the port's boats carry this one
+BOAT_PARTS = [
+    ("bottom", [((0, 0), (-14, -9, -3), (28, 16, 3))], (0, 3, 1), (math.pi / 2, 0, 0)),
+    ("back", [((0, 19), (-13, -7, -1), (18, 6, 2))], (-15, 4, 4), (0, 3 * math.pi / 2, 0)),
+    ("front", [((0, 27), (-8, -7, -1), (16, 6, 2))], (15, 4, 0), (0, math.pi / 2, 0)),
+    ("right", [((0, 35), (-14, -7, -1), (28, 6, 2))], (0, 4, -9), (0, math.pi, 0)),
+    ("left", [((0, 43), (-14, -7, -1), (28, 6, 2))], (0, 4, 9), (0, 0, 0)),
+    ("left_paddle", [((62, 0), (-1, 0, -5), (2, 2, 18)), ((62, 0), (-1.001, -3, 8), (1, 6, 7))], (3, -5, 9), (0, 0, math.pi / 16)),
+    ("right_paddle", [((62, 20), (-1, 0, -5), (2, 2, 18)), ((62, 20), (0.001, -3, 8), (1, 6, 7))], (3, -5, -9), (0, math.pi, math.pi / 16)),
+]
+CHEST_PARTS = [
+    ("chest_bottom", [((0, 76), (0, 0, 0), (12, 8, 12))], (-2, -5, -6), (0, -math.pi / 2, 0)),
+    ("chest_lid", [((0, 59), (0, 0, 0), (12, 4, 12))], (-2, -9, -6), (0, -math.pi / 2, 0)),
+    ("chest_lock", [((0, 59), (0, 0, 0), (2, 4, 1))], (-1, -6, -1), (0, -math.pi / 2, 0)),
+]
+
+
+def boat_geometry(identifier, parts, height):
+    """A Bedrock geometry for Java model parts, converted as Blockbench converts a Java entity: x mirrored, y measured
+    down from the renderer's lift (BoatRenderer raises the boat 0.375 blocks, 6 pixels, before its scale(-1, -1, 1)),
+    rotations about x and y turned round. BoatRenderer's quarter turn about y is already Bedrock's own: the rider faces
+    along the hull with no turn of the root bone (checked in the client, a turn put the paddles fore and aft)."""
+    lift = 6
+    bones = [{"name": "root", "pivot": [0, lift, 0], "rotation": [0, 0, 0]}]
+    for name, boxes, (px, py, pz), (rx, ry, rz) in parts:
+        bone = {"name": name, "parent": "root", "pivot": [-px, lift - py, pz],
+                "rotation": [-math.degrees(rx), -math.degrees(ry), math.degrees(rz)], "cubes": []}
+        for (u, v), (bx, by, bz), (w, h, d) in boxes:
+            bone["cubes"].append({"origin": [-(px + bx + w), lift - (py + by + h), pz + bz], "size": [w, h, d], "uv": [u, v]})
+        bones.append(bone)
+    return {"format_version": "1.12.0", "minecraft:geometry": [{"description": {
+        "identifier": identifier, "texture_width": 128, "texture_height": height,
+        "visible_bounds_width": 3, "visible_bounds_height": 2, "visible_bounds_offset": [0, 0.5, 0]}, "bones": bones}]}
+
+
+def create_boats():
+    """CobblemonBoatEntity and CobblemonChestBoatEntity: the apricorn and saccharine boats and chest boats, each an
+    entity on Bedrock's own boat or chest boat (runtime_identifier, so it paddles, floats and carries two, or one and a
+    chest of 27 slots, as a vanilla one does) drawn on the vanilla model with Cobblemon's texture, dropping its item
+    when broken. CobblemonBoatItem places it on the block or water looked at (scripts/main.js)."""
+    import zipfile
+    jar = cobblemon_jar()
+    if not jar: return
+    textures = f"{texturesEntityBedrock}/cobblemon_boat"
+    os.makedirs(textures, exist_ok=True)
+    made = 0
+    with zipfile.ZipFile(jar) as z:
+        for wood in ("apricorn", "saccharine"):
+            for chest in (False, True):
+                kind = "chest_boat" if chest else "boat"
+                name = f"{wood}_{kind}"
+                try: png = z.read(f"assets/cobblemon/textures/entity/{kind}/{wood}.png")
+                except KeyError: continue
+                with open(f"{textures}/{name}.png", "wb") as file: file.write(png)
+                sample = vanilla_sample(f"behavior_pack/entities/{kind}.json")
+                vanilla = sample["minecraft:entity"]
+                vanilla["description"] = {"identifier": f"cobblemon:{name}", "runtime_identifier": f"minecraft:{kind}", "is_summonable": True, "is_spawnable": False}
+                vanilla["components"]["minecraft:loot"] = {"table": f"loot_tables/entities/{name}.json"}
+                with open(f"{lootTablesBedrock}/{name}.json", "w", encoding="utf-8") as file:
+                    file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{name}"}]}]}))
+                with open(f"{entitiesBedrock}/{name}.json", "w", encoding="utf-8") as file:
+                    file.write(json.dumps({"format_version": sample.get("format_version", "1.21.90"), "minecraft:entity": vanilla}, indent=2))   # the sample's own (presets)
+                os.makedirs(f"{modelsBedrock}/cobblemon_boat", exist_ok=True)
+                with open(f"{modelsBedrock}/cobblemon_boat/{kind}.geo.json", "w", encoding="utf-8") as file:
+                    file.write(json.dumps(boat_geometry(f"geometry.cobblemon_{kind}", BOAT_PARTS + (CHEST_PARTS if chest else []), 128 if chest else 64), indent=1))
+                with open(f"{entityBedrock}/{name}.entity.json", "w", encoding="utf-8") as file:
+                    file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+                        "identifier": f"cobblemon:{name}", "materials": {"default": "entity_alphatest"},
+                        "textures": {"default": f"textures/entity/cobblemon_boat/{name}"},
+                        "geometry": {"default": f"geometry.cobblemon_{kind}"}, "render_controllers": ["controller.render.default"]}}}, indent=2))
+                made += 1
+                # vanilla's own words for the boat's name and the hint to get out (resource_pack/texts/en_US.lang)
+                with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+                    file.write(f"entity.cobblemon:{name}.name={lang.get(f'item.cobblemon.{name}', name.replace('_', ' ').title())}" + chr(10))
+                    file.write(f"action.hint.exit.cobblemon:{name}=Tap jump to exit the boat" + chr(10))
+    # the items place their boats, on water as on land
+    for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: item = json.load(file)
+        ident = item.get("minecraft:item", {}).get("description", {}).get("identifier", "")
+        m = re.fullmatch(r"cobblemon:(apricorn|saccharine)_(chest_boat|boat)", ident)
+        if not m: continue
+        # placed by scripts/main.js, which looks through water for its surface (an entity_placer stops at the block
+        # under it); a use in the air is reported only for an item with a use, so it gets a short one
+        components = item["minecraft:item"]["components"]
+        components.pop("minecraft:entity_placer", None)
+        components.update({"minecraft:max_stack_size": 1, "minecraft:use_modifiers": {"use_duration": 0.05, "movement_modifier": 1.0}, "minecraft:use_animation": "none"})
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+    print(f"Boats: {made} boat entities from Cobblemon's textures.")
+
+
 def create_poke_ball_entity():
     """The thrown balls: a projectile per ball that lands as a one-point hit on whatever Pokemon it strikes,
     which the Pokemon's damage sensor turns into the catch roll for the ball's class."""
@@ -6016,7 +6137,28 @@ def java_model(name):
             textures = dict(model.get("textures", {}))
             textures.setdefault("bottom", textures.get("top"))
             model = {"textures": textures, "elements": elements}
+        else:
+            # any other of Minecraft's own models (flower_pot_cross, the potted plants' parent), from the Java client
+            base = vanilla_jar_model(parent)
+            if base.get("elements"): model = {"textures": {**base.get("textures", {}), **model.get("textures", {})}, "elements": base["elements"]}
     return model
+
+
+def vanilla_jar_model(name):
+    """One of Minecraft's own block models, with its parents' textures and elements, from the Java client jar."""
+    import zipfile
+    global _client_jars
+    if "_client_jars" not in globals(): _client_jars = java_client_jars()
+    rel = name.split(":", 1)[-1]
+    for jar in _client_jars:
+        try:
+            with zipfile.ZipFile(jar) as z: model = json.loads(z.read(f"assets/minecraft/models/{rel}.json"))
+        except (KeyError, zipfile.BadZipFile, OSError): continue
+        if model.get("parent") and not model.get("elements"):
+            base = vanilla_jar_model(model["parent"])
+            return {"textures": {**base.get("textures", {}), **model.get("textures", {})}, "elements": base.get("elements", [])}
+        return model
+    return {}
 
 
 def java_model_cubes(model):
@@ -6113,26 +6255,43 @@ def fit_block(cubes):
             if end < start or (end == start and size[axis] > 0): break
             origin[axis], size[axis] = start, end - start
         else:
-            if cube.get("rotation") and not corners_inside(origin, size, cube["rotation"], cube.get("pivot", [0, 0, 0])): continue
+            pivot = list(cube.get("pivot", [0, 0, 0]))
+            if cube.get("rotation"):
+                # a tilted cube a little past the limits (a berry bush's leaves, Java allowing up to 32 where Bedrock
+                # stops at 30) moves back inside with its pivot; one further out goes
+                shift = overflow(origin, size, cube["rotation"], pivot)
+                if any(abs(d) > 2 for d in shift): continue
+                origin = [o - d for o, d in zip(origin, shift)]; pivot = [p - d for p, d in zip(pivot, shift)]
+                kept.append(dict(cube, origin=origin, size=size, pivot=pivot)); continue
             kept.append(dict(cube, origin=origin, size=size))
     return kept
 
 
-def corners_inside(origin, size, rotation, pivot):
-    """Whether a rotated cube's corners stay inside Bedrock's block bounds (rotation about one axis, as Java allows)."""
+def overflow(origin, size, rotation, pivot):
+    """How far a rotated cube's corners go past Bedrock's block bounds on each axis (positive past the top, negative
+    past the bottom), taking the rotation either way round, since Java and Bedrock turn x opposite ways."""
     low, high = BLOCK_LIMIT
+    bounds = [(low - 8, high - 8), (low, high), (low - 8, high - 8)]
     axis = next((i for i, a in enumerate(rotation) if a), None)
-    if axis is None: return True
-    angle = math.radians(rotation[axis]); c, s = math.cos(angle), math.sin(angle)
-    for dx in (0, size[0]):
-        for dy in (0, size[1]):
-            for dz in (0, size[2]):
-                p = [origin[0] + dx - pivot[0], origin[1] + dy - pivot[1], origin[2] + dz - pivot[2]]
-                i, j = [(1, 2), (0, 2), (0, 1)][axis]
-                p[i], p[j] = p[i] * c - p[j] * s, p[i] * s + p[j] * c
-                x, y, z = p[0] + pivot[0], p[1] + pivot[1], p[2] + pivot[2]
-                if not (low - 8 <= x <= high - 8 and low <= y <= high and low - 8 <= z <= high - 8): return False
-    return True
+    if axis is None: return [0, 0, 0]
+    shift = [0.0, 0.0, 0.0]
+    for sign in (1, -1):
+        angle = math.radians(sign * rotation[axis]); c, s = math.cos(angle), math.sin(angle)
+        for dx in (0, size[0]):
+            for dy in (0, size[1]):
+                for dz in (0, size[2]):
+                    p = [origin[0] + dx - pivot[0], origin[1] + dy - pivot[1], origin[2] + dz - pivot[2]]
+                    i, j = [(1, 2), (0, 2), (0, 1)][axis]
+                    p[i], p[j] = p[i] * c - p[j] * s, p[i] * s + p[j] * c
+                    for k in range(3):
+                        v = p[k] + pivot[k]
+                        if v > bounds[k][1]: shift[k] = max(shift[k], v - bounds[k][1] + 0.01)
+                        if v < bounds[k][0]: shift[k] = min(shift[k], v - bounds[k][0] - 0.01)
+    return shift
+
+
+def corners_inside(origin, size, rotation, pivot):
+    return overflow(origin, size, rotation, pivot) == [0, 0, 0]
 
 
 def minecraft_model(name):
@@ -7460,6 +7619,27 @@ def add_party_select_use():
     print(f"  party select: {done} items used in the air pick a party member")
 
 
+def add_cobblemon_food():
+    """CobblemonItems' foodItem(nutrition, saturation) items (the seven sweets, Alcremie's held items) are food as well:
+    any of them the pack makes without a food component gets one, eaten as Java eats it (32 ticks)."""
+    with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/CobblemonItems.kt", encoding="utf-8") as file: text = file.read()
+    foods = {name: (int(n), float(s)) for name, n, s in re.findall(r'create\("(\w+)",\s*foodItem\((\d+),\s*([\d.]+)f\)\)', text)}
+    done = 0
+    for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
+        with open(path, encoding="utf-8") as file: item = json.load(file)
+        body = item.get("minecraft:item", {})
+        name = body.get("description", {}).get("identifier", "").removeprefix("cobblemon:")
+        components = body.setdefault("components", {})
+        if name not in foods or "minecraft:food" in components: continue
+        nutrition, saturation = foods[name]
+        components["minecraft:food"] = {"nutrition": nutrition, "saturation_modifier": saturation, "can_always_eat": False}
+        components["minecraft:use_modifiers"] = {"use_duration": 1.6, "movement_modifier": 0.35}
+        components["minecraft:use_animation"] = "eat"
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=4))
+        done += 1
+    print(f"  food: {done} of Cobblemon's foodItem items made edible")
+
+
 def add_bait_offhand():
     """PokerodItem.use takes bait from the off hand; Bedrock lets an item into the off hand only with allow_off_hand, so
     the pack's own bait items (berries, Poke Bait) get it. Vanilla baits (apples, sweet and glow berries) cannot."""
@@ -7861,8 +8041,9 @@ def create_apricorns():
                                "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.2}, "minecraft:light_dampening": 0,
                                "minecraft:loot": "loot_tables/empty.json", "cobblemon:apricorn": {}},
                 "permutations": permutations}}, indent=2))
+    # TumblestoneItem.useOn: a tumblestone placed on a block's face starts a small bud there, facing out
     for stone in ("tumblestone", "sky_tumblestone", "black_tumblestone"):
-        item(stone, f"{cobblemon}/textures/item/{stone}.png", category="items")
+        item(stone, f"{cobblemon}/textures/item/{stone}.png", {"minecraft:block_placer": {"block": f"cobblemon:small_budding_{stone}"}}, category="items")
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     # trees: worldgen variants (fruit at random ages) and sapling variants (unripe fruit)
     rng = random.Random(1234)
@@ -12674,9 +12855,13 @@ def create_model_blocks():
     made, placers = [], 0
     existing = {os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json")}
     items = defined_items()
+    with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/CobblemonBlocks.kt", encoding="utf-8") as file: blocks_kt = file.read()
     for path in sorted(glob.glob(f"{cobblemon}/blockstates/*.json")):
         name = os.path.basename(path)[:-len(".json")]
-        if name in existing or name.startswith("potted_") or f"{name}_block" in existing: continue
+        if name in existing or f"{name}_block" in existing: continue
+        # a potted plant only where CobblemonBlocks registers it (saplings, mints, the Pep-Up Flower); the potted
+        # berries' blockstates are left over from an older version
+        if name.startswith("potted_") and f'"{name}"' not in blocks_kt: continue
         backed = f"cobblemon:{name}" in items
         identifier = f"cobblemon:{name}_block" if backed else f"cobblemon:{name}"
         try:
@@ -12707,6 +12892,20 @@ def create_model_blocks():
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         for chest in chests:
             file.write(f"entity.cobblemon:{chest}_entity.name={lang.get('block.cobblemon.' + chest, chest.replace('_', ' ').title())}" + chr(10))
+    # FlowerPotBlock: each potted plant's plant, the item its Cobblemon loot table drops besides the pot, for
+    # scripts/main.js to put in an empty flower pot and take out again
+    potted = {}
+    for block in made:
+        if not block.startswith("potted_"): continue
+        loot_path = f"{cobblemonData}/loot_table/blocks/{block}.json"
+        if not os.path.exists(loot_path): continue
+        with open(loot_path, encoding="utf-8") as file: pools = json.load(file).get("pools", [])
+        plants = [e["name"] for p in pools for e in p.get("entries", []) if e.get("name") and e["name"] != "minecraft:flower_pot"]
+        if plants: potted[plants[0]] = f"cobblemon:{block}"
+    with open(f"{scriptsBedrock}/potted.js", "w", encoding="utf-8", newline=chr(10)) as file:
+        file.write("// generated by port.py (create_model_blocks): the plant each potted Cobblemon block holds, plant item -> block" + chr(10))
+        file.write("export const POTTED = " + json.dumps(potted, sort_keys=True) + ";" + chr(10))
+    print(f"  potted plants: {len(potted)}")
     with open(f"{scriptsBedrock}/silk.js", "w", encoding="utf-8", newline=chr(10)) as file:
         file.write("// generated by port.py (block_loot): the blocks Cobblemon's loot tables keep whole under Silk Touch" + chr(10))
         file.write("export const SILK_SELF = " + json.dumps(sorted(SILK_SELF)) + ";" + chr(10))
@@ -13095,13 +13294,24 @@ def create_building_blocks():
                                        "cobblemon:nut_bush": {}},
                         "permutations": permutations}}, indent=2))
             elif parent == "block/cross" and "cross" in tex:
+                # a DirectionalBlock (the tumblestones, GrowableStoneBlock) faces away from the face it was placed on,
+                # each facing its blockstate's turn; a tumblestone short of its cluster grows (cobblemon:tumblestone)
+                facings = {p.get("facing"): (rx, ry) for p, _, rx, ry in blockstate_variants(name) or [] if p.get("facing")}
+                description, extra = {"identifier": identifier, "menu_category": {"category": "nature"}}, {}
+                permutations = []
+                if len(facings) == 6:
+                    description["traits"] = {"minecraft:placement_position": {"enabled_states": ["minecraft:block_face"]}}
+                    permutations = [{"condition": f"q.block_state('minecraft:block_face') == '{f}'", "components": {"minecraft:transformation": {"rotation": [-rx % 360, -ry % 360, 0]}}}
+                                    for f, (rx, ry) in facings.items()]
+                    if "tumblestone" in name and not name.endswith("_cluster"): extra["cobblemon:tumblestone"] = {}
                 with open(f"{blocksBedrock}/{name}.json", "w") as file:
                     file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
-                        "description": {"identifier": identifier, "menu_category": {"category": "nature"}},
+                        "description": description,
                         "components": {"minecraft:geometry": "minecraft:geometry.cross",
                                        "minecraft:material_instances": {"*": {"texture": java_texture(tex["cross"]), "render_method": "alpha_test", "face_dimming": False, "ambient_occlusion": False}},
                                        "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 13, 12]},
-                                       "minecraft:light_dampening": 0, **base, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}}}}, indent=2))
+                                       "minecraft:light_dampening": 0, **base, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, **extra},
+                        **({"permutations": permutations} if permutations else {})}}, indent=2))
             elif name.endswith("_slab") and ("bottom" in tex or "side" in tex or "all" in tex):
                 side = tex.get("side", tex.get("all", tex.get("bottom"))); top = tex.get("top", side); bottom = tex.get("bottom", top)
                 for half, y in (("bottom", 0), ("top", 8)):
@@ -13270,6 +13480,8 @@ def main():
     create_book_glyphs()
     create_ride_glyphs()
     create_party_item()
+    add_cobblemon_food()   # after every item is written
+    create_boats()   # after every item is written, whose boat items it gives their entity
     add_bait_offhand()   # after every item is written
     add_party_select_use()   # after every item is written, and items.js
     refresh_block_loot()   # after every item is written

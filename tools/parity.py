@@ -93,6 +93,7 @@ def item_classes():
     """Each item Cobblemon registers by name, and the class or helper it is made with (CobblemonItems.kt)."""
     text = read(f"{KT}/CobblemonItems.kt")
     found = {}
+    text = re.sub(r"^\s*//.*$", "", text, flags=re.M)   # what Cobblemon has commented out is not registered
     for name, cls in re.findall(r'create\(\s*"(\w+)",\s*(\w+)', text): found[name] = cls
     for cls, name in re.findall(r'(blockItem|itemNameBlockItem|noSettingsItem|itemWithRarity|mulchItem|candyItem|wearableItem|wearableBlockItem|heldItem|berryItem|aprijuiceItem|pokepuffItem|regionalFoodItem|foodItem)\(\s*"(\w+)"', text):
         found.setdefault(name, cls)
@@ -110,10 +111,20 @@ def port_item_components():
 
 def items_blocks_entities():
     items, blocks = lang_ids("item.cobblemon."), lang_ids("block.cobblemon.")
+    # every block Cobblemon has a blockstate for, named or not (the potted berries borrow their berry's name)
+    lang_blocks, blocks_kt = set(blocks), read(f"{KT}/CobblemonBlocks.kt")
+    for path in glob.glob(f"{RES}/assets/cobblemon/blockstates/*.json"):
+        name = os.path.basename(path)[:-5]
+        blocks.setdefault(name, name.replace("_", " ").title())
     classes, components = item_classes(), port_item_components()
+    kotlin = read(f"{KT}/CobblemonItems.kt") + "".join(read(p) for p in glob.glob(f"{KT}/item/**/*.kt", recursive=True))
     for name, label in sorted(items.items()):
         ident = f"cobblemon:{name}"
         cls = classes.get(name, "")
+        if re.search(rf"^\s*//.*{name}", read(f"{KT}/CobblemonItems.kt"), re.M) and name not in classes:
+            row("item", label, f"item.cobblemon.{name}", ident if ident in port_items else "", "n/a", "commented out of CobblemonItems; not in Cobblemon 1.8"); continue
+        if f'"item.cobblemon.{name}"' in kotlin and name not in classes and ident not in port_items:
+            row("item", label, f"item.cobblemon.{name}", "", "n/a", "a name Cobblemon gives another item, not an item of its own (see its comment in the port)"); continue
         if ident in port_items:
             # the hand-written scripts, not the generated tables, which name every item
             acts = (components.get(ident, set()) - BASIC_COMPONENTS) or re.search(rf"[\"'`]{re.escape(ident)}[\"'`]|\b{name}\b", battle_js)
@@ -125,7 +136,13 @@ def items_blocks_entities():
         else: row("item", label, f"item.cobblemon.{name}", "", "missing")
     for name, label in sorted(blocks.items()):
         ident = f"cobblemon:{name}"
+        if name not in lang_blocks and f'"{name}"' not in blocks_kt and ident not in port_blocks:
+            row("block", label, f"blockstates/{name}.json", "", "n/a", "a blockstate CobblemonBlocks does not register"); continue
+        # the port names some blocks apart from their items: a placed medicine is <item>_block, a berry's plant
+        # <berry>_bush, a mint's leaf litter the mint itself
+        alias = next((a for a in (f"{ident}_block", f"{ident}_bush", ident.replace("_leaf_litter", "")) if a in port_blocks), None)
         if ident in port_blocks: row("block", label, f"block.cobblemon.{name}", ident, "done")
+        elif alias: row("block", label, f"block.cobblemon.{name}", alias, "done", "under another identifier here")
         elif ident in port_items: row("block", label, f"block.cobblemon.{name}", ident, "partial", "an item here, not a placeable block")
         else:
             near = [b for b in port_blocks if b.startswith(ident)]
@@ -237,7 +254,14 @@ def held_items():
         name = (re.search(r'^    name: "([^"]+)"', body, re.M) or [None, item_id])[1]
         hooks = sorted(set(re.findall(r"^    (on\w+)[:(]", body, re.M)))
         if not hooks: continue   # no battle effect beyond being held
-        if quoted(item_id, battle_js) or quoted(by_showdown[item_id], all_scripts): row("held item", name, "showdown data/items.js", "battle script", "done", "named in the scripts (heuristic)")
+        cob = by_showdown[item_id]
+        # an onEat that does nothing (Pomeg, Razz, Nanab: berries Cobblemon uses outside battle) is no battle effect
+        if hooks == ["onEat"] and re.search(r"^    onEat(\(\) \{\s*\}|: false)", body, re.M):
+            row("held item", name, "showdown data/items.js", "", "n/a", "no battle effect in Showdown (its onEat does nothing)"); continue
+        # the battle script names some held items by a template: a type gem as `${type}_gem`, a terrain seed as
+        # `${terrain}_seed`, and some berries by their stem (PORTION_BERRIES' "figy")
+        templated = (cob.endswith("_gem") and "_gem`" in battle_js) or (cob.endswith("_seed") and "_seed`" in battle_js)             or (cob.endswith("_berry") and quoted(cob[:-len("_berry")], battle_js))
+        if quoted(item_id, battle_js) or quoted(cob, all_scripts) or templated: row("held item", name, "showdown data/items.js", "battle script", "done", "named in the scripts (heuristic)")
         else: row("held item", name, "showdown data/items.js", "", "missing", "hooks: " + ", ".join(hooks[:6]))
 
 
