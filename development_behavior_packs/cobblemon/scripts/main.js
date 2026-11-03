@@ -6988,6 +6988,15 @@ function release(player, n, slot, done) {
 // as pastured and cannot be withdrawn or released until it is back. Breaking the pasture brings them all back.
 const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture", OWNER_NAME = "cobblemon:owner_name";
 
+// PokemonPastureBlockEntity.canAddPokemon's crowding limit: no more go out while the 32 block square round the pasture
+// (pastureMaxWanderDistance wide, at any height) holds pastureMaxPerChunk (4) Pokemon for each of its 4 by 4 chunks
+const PASTURE_CROWD = 4 * 4 * 4;
+function pastureCrowded(block) {
+    const { x, z } = block.location, { min, max } = block.dimension.heightRange;
+    let near = [];
+    try { near = block.dimension.getEntities({ location: { x: x + 0.5 - 16, y: min, z: z + 0.5 - 16 }, volume: { x: 32, y: max - min, z: 32 } }); } catch (e) { return false; }
+    return near.filter((e) => POKEMON[e.typeId]).length >= PASTURE_CROWD;
+}
 function pastureKey(block) {
     const bottom = block.permutation.getState("cobblemon:part") === "top" ? block.below() : block;
     return keyOf(bottom.dimension, bottom.location);
@@ -7205,6 +7214,7 @@ function openPasture(block, player, state) {
         }
         if (!send) { again(); return; }
         if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); again(); return; }
+        if (pastureCrowded(block)) { player.onScreenDisplay.setActionBar("§cThere are too many Pokémon nearby."); return; }
         const pcBox = box(player, send.box), rec = pcBox[send.slot];
         state.sel = null;
         if (!rec || rec.p) { again(); return; }
