@@ -13559,7 +13559,10 @@ def create_building_blocks():
                 # the crystal core (TypeGemCoreBlock) grows the type gem clusters about it on its random ticks
                 full_block(identifier, {"*": tex["all"]}, extra={**base, **({"cobblemon:gem_core": {}} if name == "deepslate_crystal_core" else {})}, render=render)
             elif parent in ("block/cube_column", "block/cube_column_horizontal") and "side" in tex and "end" in tex:
-                full_block(identifier, {"*": tex["side"], "up": tex["end"], "down": tex["end"]}, extra=base)
+                # a RotatedPillarBlock (the saccharine logs, their axis in the blockstate) turns to the face it was placed
+                # on, as the apricorn logs do; the trees' structures place them by minecraft:block_face
+                if any("axis" in p for p, *_ in blockstate_variants(name) or []): pillar_block(identifier, tex["side"], tex["end"], extra=base)
+                else: full_block(identifier, {"*": tex["side"], "up": tex["end"], "down": tex["end"]}, extra=base)
             elif parent == "block/cross" and "cross" in tex and name == "galarica_nut_bush":
                 # NutBushBlock: four ages, each its own cross texture and its own drops; a random tick grows it one
                 # time in eight, using it fully grown picks one or two Galarica Nuts and takes it back to age 1

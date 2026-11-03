@@ -123,7 +123,7 @@ BLOCK_NAMES = {
     "carved_pumpkin": "carved_pumpkin", "frosted_ice": "frosted_ice", "bubble_column": "water",
     # Bedrock's own names, checked against the server with /setblock (the Radical Gyms structures used these)
     "stone_stairs": "normal_stone_stairs", "cobblestone_stairs": "stone_stairs", "dead_bush": "deadbush",
-    "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "prismarine_brick_stairs": "prismarine_bricks_stairs",
+    "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "oak_pressure_plate": "wooden_pressure_plate", "prismarine_brick_stairs": "prismarine_bricks_stairs",
     "waxed_copper_block": "waxed_copper",
     # Bedrock 1.26's names, from Mojang's own list (bedrock-samples mojang-blocks.json, tools/check_structures.py): a name
     # Bedrock does not know loads as the "?" block
