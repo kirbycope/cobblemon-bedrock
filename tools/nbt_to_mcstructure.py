@@ -167,6 +167,9 @@ def convert_states(java_name, name, props):
     """The Bedrock states for the few Java properties that matter to how a ruin looks."""
     states = {}
     if name.startswith("cobblemon:") and name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
+    # a block a structure placed is natural (CoinPouchBlock, PCBlock, HealingMachineBlock), which its drops depend on
+    if name in ("cobblemon:relic_coin_pouch", "cobblemon:relic_coin_sack", "cobblemon:pc", "cobblemon:healing_machine") and props and props.get("natural") == "true":
+        return {"cobblemon:natural": Tag(BYTE, 1)}
     if name.startswith("cobblemon:"): return {}   # the pack's blocks keep their default states
     if name.startswith("cobblefurnies:"):
         # a furniture piece keeps the shape it was saved in: its facing, its half and the rest of its properties

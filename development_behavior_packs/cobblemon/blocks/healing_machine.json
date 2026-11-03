@@ -10,6 +10,10 @@
         "cobblemon:active": [
           false,
           true
+        ],
+        "cobblemon:natural": [
+          false,
+          true
         ]
       },
       "traits": {
@@ -141,6 +145,18 @@
             }
           },
           "minecraft:light_emission": 10
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == false",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/healing_machine_false.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == true",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/healing_machine_true.json"
         }
       }
     ]

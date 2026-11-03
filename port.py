@@ -8058,6 +8058,32 @@ def pillar_block(identifier, side, end, extra=None):
     with open(path, "w") as file: file.write(json.dumps(data, indent=2))
 
 
+NATURAL_BLOCKS = ("relic_coin_pouch", "relic_coin_sack", "pc", "healing_machine")
+
+
+def create_natural_blocks():
+    """The blocks whose drops Cobblemon ties to the natural property, true where a structure placed them: a ruin's
+    Relic Coin Sack breaks into 20 to 64 Relic Coins (a pouch 2 to 9) and a village Pokemon Center's PC and healing
+    machine into iron ingots, while ones a player placed drop themselves. Each gets cobblemon:natural, which the
+    structures set (tools/nbt_to_mcstructure.py), and its loot by that state."""
+    for name in NATURAL_BLOCKS:
+        path = f"{blocksBedrock}/{name}.json"
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        block = data["minecraft:block"]
+        block["description"].setdefault("states", {})["cobblemon:natural"] = [False, True]
+        block["components"].pop("minecraft:loot", None)
+        perms = [p for p in block.get("permutations", []) if "cobblemon:natural" not in p["condition"]]
+        for p in perms: p["components"].pop("minecraft:loot", None)
+        for natural in (False, True):
+            state = {"natural": str(natural).lower(), **({"part": "bottom"} if name == "pc" else {})}
+            # either half of the PC is the one a player breaks (the script takes the other away), so both drop
+            perms.append({"condition": f"q.block_state('cobblemon:natural') == {str(natural).lower()}", "components": {"minecraft:loot": block_loot(name, state)}})
+        block["permutations"] = perms
+        with open(path, "w") as file: file.write(json.dumps(data, indent=2))
+    print("Create natural blocks complete.")
+
+
 def create_leaf_decay():
     """Apricorn and saccharine leaves decay as LeavesBlock's do (scripts/main.js, cobblemon:leaves): they carry
     cobblemon:persistent, set when a player places one (LeavesBlock.PERSISTENT), and the component's random tick takes a
@@ -13787,6 +13813,7 @@ def main():
     create_lectern()   # the same
     create_model_blocks()
     create_leaf_decay()   # after every block is written, the saccharine leaves among the model blocks
+    create_natural_blocks()   # the same
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()
