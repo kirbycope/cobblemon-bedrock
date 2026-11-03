@@ -481,7 +481,8 @@ function entryHazards(battle, f) {
     if (side.stickyweb && grounded) { say(battle, `§7${f.info.name} was caught in a sticky web!`); boost(battle, f, { spe: -1 }); }
 }
 function speedOf(f, battle) {
-    let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
+    let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" && f.ability !== "quickfeet" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
+    if (f.ability === "quickfeet" && f.status) spe *= 1.5;
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
@@ -600,7 +601,8 @@ function syncHealth(f) {
 
 // Abilities, as Showdown's scripts have them, for those that act in a single battle without weather or terrain.
 // moldbreaker (and Teravolt, Turboblaze) ignore the defender's.
-const STAT_GUARD = { clearbody: null, whitesmoke: null, fullmetalbody: null, keeneye: ["accuracy"], hypercutter: ["atk"], bigpecks: ["def"], mirrorarmor: null };
+const STAT_GUARD = { clearbody: null, whitesmoke: null, fullmetalbody: null, keeneye: ["accuracy"], hypercutter: ["atk"], bigpecks: ["def"], mirrorarmor: null,
+    mindseye: ["accuracy"], illuminate: ["accuracy"] };
 const STATUS_GUARD = { insomnia: ["slp"], vitalspirit: ["slp"], sweetveil: ["slp"], limber: ["par"], immunity: ["psn", "tox"], pastelveil: ["psn", "tox"],
     waterveil: ["brn"], waterbubble: ["brn"], thermalexchange: ["brn"], magmaarmor: ["frz"], comatose: ["slp", "par", "psn", "tox", "brn", "frz"], purifyingsalt: ["slp", "par", "psn", "tox", "brn", "frz"] };
 const INTIMIDATE_GUARD = new Set(["innerfocus", "owntempo", "oblivious", "scrappy", "guarddog"]);
@@ -804,7 +806,35 @@ function fixedDamage(battle, a, d, move) {
     }
     return undefined;
 }
+// Showdown's onModifyType: Aerilate, Galvanize, Pixilate and Refrigerate turn Normal moves Flying, Electric, Fairy and
+// Ice, Normalize turns every move Normal, and Liquid Voice turns sound moves Water, those that change a move boosting
+// it 1.2 times (typeChangerBoosted); a few moves keep their own type. Long Reach's moves make no contact (onModifyMove)
+const ATE = { aerilate: "flying", galvanize: "electric", pixilate: "fairy", refrigerate: "ice" };
+const KEEPS_TYPE = new Set(["hiddenpower", "judgment", "multiattack", "naturalgift", "revelationdance", "struggle", "technoblast", "terrainpulse", "weatherball"]);
+function abilityMove(attacker, move) {
+    if (!move?.id || KEEPS_TYPE.has(move.id)) return move;
+    const ab = attacker.ability;
+    let type = null, boosted = false;
+    if (ATE[ab] && move.type === "normal") { type = ATE[ab]; boosted = true; }
+    else if (ab === "normalize") { type = "normal"; boosted = true; }
+    else if (ab === "liquidvoice" && move.flags?.includes("sound")) type = "water";
+    const noContact = ab === "longreach" && move.contact;
+    if (!type && !noContact) return move;
+    return new Proxy(move, {
+        get: (t, k) => (k === "type" && type ? type : k === "typeBoosted" ? boosted : k === "contact" && noContact ? false : t[k]),
+        set: (t, k, v) => { t[k] = v; return true; },
+    });
+}
+// the Pokemon of a side that have fainted, for Supreme Overlord: the player's party, or a gym trainer's
+function faintedOf(battle, f) {
+    try {
+        if (f === battle.ally && !battle.pvp) return partyOf(battle.player.id).filter((slot) => slot.rec?.k?.[FAINTED] || (slot.rec?.hp === 0)).length;
+        if (f === battle.foe && battle.gym) return battle.gym.party.filter((p) => p.down).length;
+    } catch (e) { }
+    return 0;
+}
 function useMove(battle, attacker, defender, move, called = false) {
+    move = abilityMove(attacker, move);
     const name = attacker.info.name, outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
     battle.curFx = outcome; battle.said = said;
     try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
@@ -939,7 +969,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} avoided the attack!`);
         return;
     }
-    if (!self && defender.protected?.turn === battle.turn && move.flags?.includes("protect")
+    if (!self && defender.protected?.turn === battle.turn && move.flags?.includes("protect") && !(atkAb === "unseenfist" && move.contact)
         && !(["kingsshield", "silktrap", "obstruct"].includes(defender.protected.kind) && move.category === "Status")) {
         if (battle.curFx) battle.curFx.missed = true;
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} protected itself!`);
@@ -959,7 +989,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         return;
     }
     if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
-        let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
+        let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" || atkAb === "mindseye" || atkAb === "illuminate" ? 0 : defender.stages.evasion));
         if (atkAb === "compoundeyes") chance *= 1.3;
         if ((defAb === "sandveil" && weatherOf(battle) === "sand") || (defAb === "snowcloak" && weatherOf(battle) === "snow")) chance *= 0.8;
         if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
@@ -1035,7 +1065,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     if (power0) {
         let types = defender.info.types;
         let eff = move.type === "???" ? 1 : effectiveness(move.type, types, held(defender) === "ring_target");
-        if (eff === 0 && atkAb === "scrappy" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
+        if (eff === 0 && (atkAb === "scrappy" || atkAb === "mindseye") && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
         if (eff === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
         if (defAb === "wonderguard" && eff <= 1) { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s Wonder Guard protects it!`); return; }
         const physical = move.category === "Physical";
@@ -1050,7 +1080,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         shielded = false;
         for (let h = 0; h < hits && defender.hp > 0; h++) {
             note = "";
-            const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
+            const crit = !noCrit && ((atkAb === "merciless" && (defender.status === "psn" || defender.status === "tox")) || Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)]);
             // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
             let atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
             if (defAb === "unaware") atkStage = 0;
@@ -1062,6 +1092,15 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (physical && atkAb === "hustle") a *= 1.5;
             if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
             if (physical && defAb === "furcoat") d *= 2;
+            if (atkAb === "defeatist" && attacker.hp <= attacker.stats.hp / 2) a *= 0.5;
+            const typeBoost = { dragonsmaw: ["dragon", 1.5], rockypayload: ["rock", 1.5], steelworker: ["steel", 1.5], transistor: ["electric", 1.3] }[atkAb];
+            if (typeBoost && typeBoost[0] === move.type) a *= typeBoost[1];
+            if (atkAb === "stakeout" && defender.enteredTurn === battle.turn) a *= 2;
+            // the Ruin abilities lower that stat of every Pokemon but their own holder (onAnyModify*)
+            if (physical && defender.ability !== "swordofruin" && attacker.ability === "swordofruin") d *= 0.75;
+            if (!physical && defender.ability !== "beadsofruin" && attacker.ability === "beadsofruin") d *= 0.75;
+            if (physical && attacker.ability !== "tabletsofruin" && defender.ability === "tabletsofruin") a *= 0.75;
+            if (!physical && attacker.ability !== "vesselofruin" && defender.ability === "vesselofruin") a *= 0.75;
             const w = weatherOf(battle);
             if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
             if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
@@ -1078,6 +1117,15 @@ function runMove(battle, attacker, defender, move, called = false) {
             let power = power0;
             if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
             if (atkAb === "technician" && power <= 60) power *= 1.5;
+            if (move.typeBoosted) power *= 1.2;
+            if (atkAb === "analytic" && battle.movedFirst === defender) power *= 1.3;
+            if (atkAb === "flareboost" && attacker.status === "brn" && !physical) power *= 1.5;
+            if (atkAb === "toxicboost" && (attacker.status === "psn" || attacker.status === "tox") && physical) power *= 1.5;
+            if (atkAb === "punkrock" && move.flags?.includes("sound")) power *= 1.3;
+            if (atkAb === "rivalry") { const [ga, gd] = [genderOf(attacker.entity), genderOf(defender.entity)]; if (ga !== "genderless" && gd !== "genderless") power *= ga === gd ? 1.25 : 0.75; }
+            if (atkAb === "supremeoverlord") power *= 1 + 0.1 * Math.min(5, faintedOf(battle, attacker));
+            const aura = { dark: "darkaura", fairy: "fairyaura" }[move.type];
+            if (aura && (attacker.ability === aura || defender.ability === aura)) power *= attacker.ability === "aurabreak" || defender.ability === "aurabreak" ? 0.75 : 4 / 3;
             if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
             if (atkAb === "ironfist" && move.flags?.includes("punch")) power *= 1.2;
             if (atkAb === "megalauncher" && move.flags?.includes("pulse")) power *= 1.5;
@@ -1114,6 +1162,11 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (defAb === "heatproof" && move.type === "fire") dmg = Math.floor(dmg / 2);
             if (defAb === "dryskin" && move.type === "fire") dmg = Math.floor(dmg * 1.25);
             if ((defAb === "multiscale" || defAb === "shadowshield") && defender.hp === defender.stats.hp) dmg = Math.floor(dmg / 2);
+            if (defAb === "fluffy" && move.contact && move.type !== "fire") dmg = Math.floor(dmg / 2);
+            if (defAb === "fluffy" && move.type === "fire" && !move.contact) dmg *= 2;
+            if (defAb === "icescales" && !physical) dmg = Math.floor(dmg / 2);
+            if (defAb === "punkrock" && move.flags?.includes("sound")) dmg = Math.floor(dmg / 2);
+            if (atkAb === "neuroforce" && eff > 1) dmg = Math.floor(dmg * 1.25);
             const item = held(attacker);
             if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
             if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
@@ -1183,7 +1236,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (sec.boosts) boost(battle, sec.self ? attacker : defender, sec.boosts, attacker);
     }
     if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
-    if (dealt && defender.hp > 0 && !move.secondary?.flinch && !move.secondaries?.some((x) => x.flinch) && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang")
+    if (dealt && defender.hp > 0 && !move.secondary?.flinch && !move.secondaries?.some((x) => x.flinch) && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang" || attacker.ability === "stench")
         && defender.ability !== "innerfocus" && Math.random() < 0.1) defender.flinched = true;
     // Eject Button sends its holder back when it is hit; Red Card sends back the Pokemon that hit its holder
     if (dealt && defender.hp > 0 && attacker.hp > 0) {
@@ -1382,6 +1435,7 @@ function endBattle(battle, text) {
 
 // on entering battle: Intimidate
 function enter(battle, f, other) {
+    f.enteredTurn = battle.turn;
     entryHazards(battle, f);
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (TERRAIN_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setTerrain(battle, TERRAIN_ABILITIES[f.ability], f); }

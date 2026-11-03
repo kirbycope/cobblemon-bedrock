@@ -231,6 +231,12 @@ def moves():
         else: row("move", name, "showdown data/moves.js", f"MOVES.{move_id}", "partial", note + "deals its damage or plain effect, but its own code is not carried (heuristic): " + ", ".join(extra))
 
 
+# abilities that only act on an ally, so never in Cobblemon-on-Bedrock's single battles
+DOUBLES_ONLY = {"battery", "powerspot", "steelyspirit", "flowerveil", "friendguard", "healer", "telepathy", "symbiosis",
+                "powerofalchemy", "receiver", "costar", "commander", "aromaveil", "plus", "minus", "curiousmedicine",
+                "hospitality", "propellertail", "stalwart"}
+
+
 def abilities():
     owned = set()
     for path in glob.glob(f"{RES}/data/cobblemon/species/**/*.json", recursive=True):
@@ -242,6 +248,7 @@ def abilities():
         note = "" if ability_id in owned else "no species has it; "
         hooks = sorted(set(re.findall(r"^    (on\w+|\w+Callback)[:(]", body, re.M)))
         if not hooks: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "no battle effect")
+        elif ability_id in DOUBLES_ONLY: row("ability", name, "showdown data/abilities.js", "", "n/a", note + "acts only on an ally; battles here are single")
         elif quoted(ability_id, battle_js): row("ability", name, "showdown data/abilities.js", "battle script", "done", note + "named in the battle script (heuristic)")
         else: row("ability", name, "showdown data/abilities.js", "", "missing", note + "hooks: " + ", ".join(hooks[:6]))
 

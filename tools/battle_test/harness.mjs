@@ -41,6 +41,7 @@ export function mon(species, opts = {}) {
     const e = entity(typeId);
     if (opts.level) e.setDynamicProperty("cobblemon:level", opts.level);
     if (opts.moves) e.setDynamicProperty("cobblemon:moves", JSON.stringify(opts.moves));
+    if (opts.gender) e.setDynamicProperty("cobblemon:gender", opts.gender);
     const f = M.fighter(e);
     if (opts.ability) f.ability = opts.ability;
     if (opts.held !== undefined) f.held = opts.held ? `cobblemon:${opts.held}` : null;
@@ -58,6 +59,21 @@ export function battle(ally, foe, extra = {}) {
 }
 
 export function move(id) { const m = D.MOVES[id]; if (!m) throw new Error(`no move ${id}`); return { id, ...m, pp: m.pp, left: m.pp }; }
+
+// the damage one move does, with every random roll fixed (the same IVs and nature, no critical hit, the middle damage
+// roll), so two setups compare exactly; a and d are mon() options, or the Pokemon themselves
+export function damage(aSpec, dSpec, moveId, setup) {
+    const random = Math.random;
+    Math.random = () => 0.5;
+    try {
+        const a = aSpec.info ? aSpec : mon(aSpec.species, aSpec), d = dSpec.info ? dSpec : mon(dSpec.species, dSpec);
+        const b = battle(a, d);
+        if (setup) setup(b, a, d);
+        const before = d.hp;
+        M.useMove(b, a, d, move(moveId)); flush();
+        return { dealt: before - d.hp, b, a, d };
+    } finally { Math.random = random; }
+}
 
 // asserts, counted by run.mjs
 export const results = [];
