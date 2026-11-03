@@ -8042,6 +8042,21 @@ def pillar_block(identifier, side, end, extra=None):
     with open(path, "w") as file: file.write(json.dumps(data, indent=2))
 
 
+def create_leaf_decay():
+    """Apricorn and saccharine leaves decay as LeavesBlock's do (scripts/main.js, cobblemon:leaves): they carry
+    cobblemon:persistent, set when a player places one (LeavesBlock.PERSISTENT), and the component's random tick takes a
+    leaf with no log within six blocks."""
+    for name in ("apricorn_leaves", "saccharine_leaves"):
+        path = f"{blocksBedrock}/{name}.json"
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        block = data["minecraft:block"]
+        block["description"].setdefault("states", {})["cobblemon:persistent"] = [False, True]
+        block["components"]["cobblemon:leaves"] = {}
+        with open(path, "w") as file: file.write(json.dumps(data, indent=2))
+    print("Create leaf decay complete.")
+
+
 def apricorn_tree(rng, colour, generating):
     """{(x, y, z): (block, states)} for one tree from ApricornTreeFeature, the sapling at (0, 0, 0)."""
     blocks = {}
@@ -13752,6 +13767,7 @@ def main():
     create_furniture()   # before create_model_blocks, which writes the terrain textures
     create_lectern()   # the same
     create_model_blocks()
+    create_leaf_decay()   # after every block is written, the saccharine leaves among the model blocks
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()

@@ -6368,6 +6368,50 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
 });
 
 
+// Leaf decay (LeavesBlock, which SaccharineLeafBlock and the apricorn leaves are): on a random tick, apricorn and
+// saccharine leaves with no log within six blocks (counted through leaves, as LeavesBlock's distance is) fall, dropping
+// what their loot table gives, unless a player placed them (cobblemon:persistent, LeavesBlock.PERSISTENT). An apricorn
+// hangs from the leaf its facing names and falls when that leaf goes (ApricornBlock.canSurvive), broken or decayed
+const SIDES = { east: [1, 0, 0], west: [-1, 0, 0], up: [0, 1, 0], down: [0, -1, 0], south: [0, 0, 1], north: [0, 0, -1] };
+const isLog = (b) => /(_log|_wood|_stem|_hyphae)$/.test(b?.typeId ?? "");
+const isLeaves = (b) => /leaves/.test(b?.typeId ?? "");
+function besideBlock(dimension, { x, y, z }, [dx, dy, dz]) { try { return dimension.getBlock({ x: x + dx, y: y + dy, z: z + dz }); } catch (e) { return undefined; } }
+function leafHeld(block) {
+    const key = (b) => `${b.x}|${b.y}|${b.z}`, seen = new Set([key(block)]), queue = [[block, 0]];
+    while (queue.length) {
+        const [at, steps] = queue.shift();
+        for (const side of Object.values(SIDES)) {
+            const n = besideBlock(block.dimension, at, side);
+            if (!n || seen.has(key(n))) continue;
+            seen.add(key(n));
+            if (isLog(n)) return true;   // LeavesBlock's distance, steps + 1, is at most 6
+            if (steps < 5 && isLeaves(n)) queue.push([n, steps + 1]);
+        }
+    }
+    return false;
+}
+function dropHangingApricorns(dimension, at) {
+    for (const [facing, [dx, , dz]] of Object.entries(SIDES)) {
+        if (facing === "up" || facing === "down") continue;
+        const fruit = besideBlock(dimension, at, [-dx, 0, -dz]);
+        if (!/^cobblemon:[a-z]+_apricorn$/.test(fruit?.typeId ?? "")) continue;
+        let hangs;
+        try { hangs = fruit.permutation.getState("cobblemon:facing"); } catch (e) { continue; }
+        if (hangs === facing) try { dimension.runCommand(`setblock ${fruit.x} ${fruit.y} ${fruit.z} air destroy`); } catch (e) { }
+    }
+}
+function decayLeaf(block) {
+    let persistent = false;
+    try { persistent = block.permutation.getState("cobblemon:persistent"); } catch (e) { }
+    if (persistent || leafHeld(block)) return;
+    const { x, y, z } = block, dimension = block.dimension;
+    try { dimension.runCommand(`setblock ${x} ${y} ${z} air destroy`); } catch (e) { return; }
+    dropHangingApricorns(dimension, { x, y, z });
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id === "cobblemon:apricorn_leaves") dropHangingApricorns(block.dimension, block);
+});
+
 // Type gem growth (TypeGemCoreBlock, TypeGemClusterBlock): on each random tick a crystal core works through the gem
 // blocks joined to it. Each open face of a gem block may sprout a bud of its type (one chance in ten), as a full grower,
 // a stunted one or a decoration (half, a quarter, a quarter; past 16 joined blocks only the last two); each bud facing
@@ -10747,6 +10791,10 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:gem_core", { onRandomTick({ block }) { gemCoreTick(block); } });
+    blockComponentRegistry.registerCustomComponent("cobblemon:leaves", {
+        onRandomTick({ block }) { decayLeaf(block); },
+        beforeOnPlayerPlace(event) { try { event.permutationToPlace = event.permutationToPlace.withState("cobblemon:persistent", true); } catch (e) { } },
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
         beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },
         onTick({ block }) { snackTick(block); }
