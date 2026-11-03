@@ -237,9 +237,9 @@ function fighter(entity) {
     return f;
 }
 
-function effectiveness(moveType, defenderTypes) {
+function effectiveness(moveType, defenderTypes, ringTarget = false) {
     let mult = 1;
-    for (const t of defenderTypes) { const row = TYPES[t]; if (row && row[moveType] !== undefined) mult *= row[moveType]; }
+    for (const t of defenderTypes) { const row = TYPES[t]; if (row && row[moveType] !== undefined && !(ringTarget && row[moveType] === 0)) mult *= row[moveType]; }
     return mult;
 }
 
@@ -281,11 +281,26 @@ function setTerrain(battle, kind, setter) {
     for (const f of [battle.ally, battle.foe]) terrainSeed(battle, f);
     return true;
 }
+function roomService(battle, f) {
+    if (held(f) !== "room_service" || f.hp <= 0 || !(realBattle(battle).trickRoom > 0)) return;
+    useUp(battle, f, `§7${f.info.name}'s Room Service!`);
+    boost(battle, f, { spe: -1 });
+}
 function terrainSeed(battle, f) {
     const kind = terrainOf(battle);
     if (!kind || f.hp <= 0 || held(f) !== `${kind}_seed`) return;
     useUp(battle, f, `§7${f.info.name}'s ${itemName(f.held)}!`);
     boost(battle, f, TERRAIN_SEEDS[kind]);
+}
+// first in its priority bracket (Showdown's fractional priority): Quick Claw one time in five, and a Custap Berry eaten
+// at a quarter of HP or less for a move of no more than normal priority
+function goesFirst(battle, f, m) {
+    if (held(f) === "custap_berry" && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / 4) {
+        useUp(battle, f, `§7${f.info.name} can act faster than normal, thanks to its Custap Berry!`);
+        return true;
+    }
+    if (held(f) === "quick_claw" && Math.random() < 0.2) { say(battle, `§7${f.info.name} can act faster than normal, thanks to its Quick Claw!`); return true; }
+    return false;
 }
 // which goes first by speed: the faster, a tie either way, and under Trick Room the slower
 function fasterOf(a, b, battle) {
@@ -326,6 +341,7 @@ function fieldMove(battle, a, d, move) {
             used();
             real.trickRoom = real.trickRoom > 0 ? 0 : 5;
             say(battle, real.trickRoom ? `§d${name} twisted the dimensions!` : "§7The twisted dimensions returned to normal!");
+            for (const f of [battle.ally, battle.foe]) roomService(battle, f);
             return true;
         }
         case "defog":
@@ -612,6 +628,10 @@ function boost(battle, target, boosts, source) {
         else say(battle, `§7${target.info.name}'s ${name} ${change > 0 ? "rose" : "fell"}${Math.abs(change) >= 2 ? " sharply" : ""}!`);
         if (change < 0) lowered = true;
     }
+    if (lowered && held(target) === "eject_pack" && target.hp > 0 && (target === battle.ally || battle.pvp)) {
+        useUp(battle, target, `§7${target.info.name} is switched out by the Eject Pack!`);
+        if (target === battle.ally) battle.ejectAlly = true; else battle.ejectFoe = true;
+    }
     if (lowered && held(target) === "white_herb") {
         for (const k of Object.keys(target.stages)) if (target.stages[k] < 0) target.stages[k] = 0;
         useUp(battle, target, `§7${target.info.name} returned its stats to normal using its White Herb!`);
@@ -728,7 +748,8 @@ function hurt(battle, f, amount, text) {
 // Showdown's basePowerCallback: the moves whose power the battle decides (their listed power is 0, or the one they start at)
 const WEATHER_BALL = { rain: "water", sun: "fire", sand: "rock", snow: "ice" };
 function movePower(battle, a, d, move) {
-    const kg = (f) => (f.info.weight ?? 100) / 10, spe = (f) => speedOf(f, battle);
+    const kg = (f) => ((f.info.weight ?? 100) / 10) * (held(f) === "float_stone" ? 0.5 : 1) * (f.ability === "heavymetal" ? 2 : f.ability === "lightmetal" ? 0.5 : 1);
+    const spe = (f) => speedOf(f, battle);
     const raised = (f) => Object.values(f.stages).reduce((n, v) => n + Math.max(0, v), 0);
     switch (move.id) {
         case "lowkick": case "grassknot": { const w = kg(d); return w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20; }
@@ -943,6 +964,7 @@ function runMove(battle, attacker, defender, move, called = false) {
         if ((defAb === "sandveil" && weatherOf(battle) === "sand") || (defAb === "snowcloak" && weatherOf(battle) === "snow")) chance *= 0.8;
         if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
         if (held(attacker) === "wide_lens") chance *= 1.1;
+        if (attacker.micle && !move.ohko) { chance *= 1.2; attacker.micle = false; }
         if (held(attacker) === "zoom_lens" && battle.movedFirst === defender) chance *= 1.2;
         if (held(defender) === "bright_powder" || held(defender) === "lax_incense") chance *= 0.9;
         if (move.ohko) chance = attacker.level >= defender.level ? 30 + attacker.level - defender.level : 0;
@@ -1001,7 +1023,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     const sheer = atkAb === "sheerforce" && !!(move.secondary || move.secondaries);
     const fixed = fixedDamage(battle, attacker, defender, move);
     if (fixed !== undefined) {
-        if (effectiveness(move.type, defender.info.types) === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
+        if (effectiveness(move.type, defender.info.types, held(defender) === "ring_target") === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
         if (!fixed) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
         dealt = Math.min(fixed, defender.hp); defender.hp -= dealt;
         defender.lastHit = { dmg: dealt, physical: move.category === "Physical", tick: system.currentTick };
@@ -1012,7 +1034,7 @@ function runMove(battle, attacker, defender, move, called = false) {
     const power0 = movePower(battle, attacker, defender, move);
     if (power0) {
         let types = defender.info.types;
-        let eff = move.type === "???" ? 1 : effectiveness(move.type, types);
+        let eff = move.type === "???" ? 1 : effectiveness(move.type, types, held(defender) === "ring_target");
         if (eff === 0 && atkAb === "scrappy" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
         if (eff === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
         if (defAb === "wonderguard" && eff <= 1) { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s Wonder Guard protects it!`); return; }
@@ -1210,6 +1232,10 @@ function heldBerry(battle, f) {
         f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4))); used = true; syncHealth(f);
     } else if (item in STATUS_BERRIES && f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) {
         f.status = null; used = true;
+    } else if (item === "berry_juice" && f.hp <= f.stats.hp / 2) {
+        f.hp = Math.min(f.stats.hp, f.hp + 20); syncHealth(f);
+        useUp(battle, f, `§a${f.info.name}'s Berry Juice activated!`);
+        return;
     } else if (item === "leppa_berry") {
         const empty = f.moves.find((m) => m.left === 0);
         if (empty) { empty.left = Math.min(empty.pp, 10); used = true; }
@@ -1360,6 +1386,7 @@ function enter(battle, f, other) {
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (TERRAIN_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setTerrain(battle, TERRAIN_ABILITIES[f.ability], f); }
     terrainSeed(battle, f);
+    roomService(battle, f);
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
         if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
@@ -2708,9 +2735,7 @@ function turn(battle) {
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
         const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
         const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
-        const allyClaw = claw(ally), foeClaw = claw(foe);
-        if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
+        const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
         const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
             allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
@@ -2922,6 +2947,7 @@ function endOfTurn(battle) {
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
+        if (held(f) === "micle_berry" && f.hp > 0 && f.hp <= f.stats.hp / 4) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
             && !["sandveil", "sandrush", "sandforce", "overcoat"].includes(f.ability) && held(f) !== "safety_goggles") {
@@ -3931,9 +3957,7 @@ function pvpResolve(battle) {
     if (ca.kind === "move" && cb.kind === "move") {
         const move = ca.move, foeMove = cb.move;
         const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
-        const allyClaw = claw(ally), foeClaw = claw(foe);
-        if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
+        const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
         const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
         const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
             allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
