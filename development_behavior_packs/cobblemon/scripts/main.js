@@ -6333,6 +6333,81 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     if (BERRIES[brokenBlockPermutation?.type?.id] && berryCare()[careKey(block)]) setCare(block, null);
 });
 
+
+// Type gem growth (TypeGemCoreBlock, TypeGemClusterBlock): on each random tick a crystal core works through the gem
+// blocks joined to it. Each open face of a gem block may sprout a bud of its type (one chance in ten), as a full grower,
+// a stunted one or a decoration (half, a quarter, a quarter; past 16 joined blocks only the last two); each bud facing
+// away from a gem may grow a stage (one in ten), and a full grower at its last stage becomes a gem block of its own,
+// unless a gem already touches it, which leaves it stunted. With no full grower left and fewer than 8 blocks, one bud is
+// made a full grower again. A bud's growth kind lives in the world, by position; one a structure placed is a full grower
+const GEM_GROWTH = "cobblemon:gem_growth", GEM_FACES = { up: [0, 1, 0], down: [0, -1, 0], north: [0, 0, -1], south: [0, 0, 1], east: [1, 0, 0], west: [-1, 0, 0] };
+const OPPOSITE = { up: "down", down: "up", north: "south", south: "north", east: "west", west: "east" };
+function gemGrowth() { try { return JSON.parse(world.getDynamicProperty(GEM_GROWTH) ?? "{}"); } catch (e) { return {}; } }
+const gemKey = (b) => `${b.dimension.id}|${b.x}|${b.y}|${b.z}`;
+const isGem = (b) => /^cobblemon:[a-z]+_gem_block$/.test(b?.typeId ?? "");
+function gemNeighbour(b, face) { try { const [dx, dy, dz] = GEM_FACES[face]; return b.dimension.getBlock({ x: b.x + dx, y: b.y + dy, z: b.z + dz }); } catch (e) { return undefined; } }
+function joinedGems(core) {
+    const out = [], seen = new Set([gemKey(core)]), queue = [core];
+    while (queue.length && out.length < 64) {
+        const at = queue.shift();
+        for (const face of Object.keys(GEM_FACES)) {
+            const n = gemNeighbour(at, face);
+            if (!n || seen.has(gemKey(n))) continue;
+            seen.add(gemKey(n));
+            if (isGem(n)) { out.push(n); queue.push(n); }
+        }
+    }
+    return out;
+}
+function budsOn(gem) {
+    const cluster = gem.typeId.replace("_gem_block", "_gem_cluster");
+    return Object.keys(GEM_FACES).map((face) => [face, gemNeighbour(gem, face)]).filter(([, b]) => b?.typeId === cluster);
+}
+function sproutBuds(gem, growth, many) {
+    for (const face of Object.keys(GEM_FACES)) {
+        if (Math.random() >= 0.1) continue;
+        const spot = gemNeighbour(gem, face);
+        if (!spot?.isAir) continue;
+        const roll = Math.random() * (many ? 0.5 : 1);
+        const kind = many ? (roll < 0.25 ? "none" : "stunted") : roll < 0.25 ? "none" : roll < 0.75 ? "full" : "stunted";
+        try {
+            spot.setPermutation(BlockPermutation.resolve(gem.typeId.replace("_gem_block", "_gem_cluster"), { "minecraft:block_face": face }));
+            growth[gemKey(spot)] = kind;
+        } catch (e) { }
+    }
+}
+function growBud(gem, face, bud, growth) {
+    const key = gemKey(bud), kind = growth[key] ?? "full";
+    if (kind === "none") return;
+    let stage = 3;
+    try { stage = bud.permutation.getState("cobblemon:stage") ?? 3; } catch (e) { }
+    if (kind === "stunted" && stage >= 3) return;
+    if (stage < 3) { try { bud.setPermutation(bud.permutation.withState("cobblemon:stage", stage + 1)); } catch (e) { } return; }
+    // its last stage: a gem block, unless one already touches it
+    if (Object.keys(GEM_FACES).some((f) => f !== OPPOSITE[face] && isGem(gemNeighbour(bud, f)))) { growth[key] = "stunted"; return; }
+    try { bud.setPermutation(BlockPermutation.resolve(gem.typeId)); } catch (e) { return; }
+    delete growth[key];
+    sproutBuds(bud, growth, false);
+}
+function gemCoreTick(core) {
+    const gems = joinedGems(core), growth = gemGrowth();
+    const buds = gems.flatMap((g) => budsOn(g).map(([face, b]) => [g, face, b]));
+    if (!buds.some(([, , b]) => (growth[gemKey(b)] ?? "full") === "full") && gems.length < 8 && buds.length) {
+        const [, , b] = buds[Math.floor(Math.random() * buds.length)];
+        growth[gemKey(b)] = "full";
+    }
+    const many = gems.length > 16;
+    for (const gem of gems) {
+        sproutBuds(gem, growth, many);
+        for (const [face, bud] of budsOn(gem)) {
+            let facing = face;
+            try { facing = bud.permutation.getState("minecraft:block_face") ?? face; } catch (e) { }
+            if (facing === face && Math.random() < 0.1) growBud(gem, face, bud, growth);
+        }
+    }
+    world.setDynamicProperty(GEM_GROWTH, JSON.stringify(growth));
+}
+
 // Honey-slathered Saccharine logs (SaccharineLogBlock, SaccharineLogSlatheredInfluence): a honey bottle used on a
 // Saccharine log slathers it, giving back the bottle. The next wild Pokemon to spawn within 32 blocks comes to it: it is
 // moved in front of the log, has one chance in 20 of its hidden ability, a shiny roll of one in 4000 and an alpha roll
@@ -9214,6 +9289,24 @@ function endRide(st) {
     rideStates.delete(st.mount.id);
 }
 // the style the mount rides by where it is
+// RideLoopSound: a style's loops while it is ridden, louder the faster it goes (volume (speed / 1.5)^2, at least a whisper
+// to start), the stereo one for the rider and the mono one for those about; replayed as each loop runs out
+function rideSounds(player, mount, st, settings) {
+    if (!settings.sounds?.length) return;
+    st.soundTick = (st.soundTick ?? 0) + 1;
+    if (st.soundTick % 40 !== 1) return;
+    let v = 0;
+    // in blocks a tick, as q.ride_velocity
+    try { const vel = mount.getVelocity(); v = Math.hypot(vel.x, vel.y, vel.z); } catch (e) { }
+    const volume = Math.min(1, Math.pow(Math.min(v / 1.5, 1), 2)), pitch = Math.max(1, 0.2 + volume);
+    if (volume < 0.02) return;
+    for (const sound of settings.sounds) {
+        try {
+            if (sound.endsWith(".stereo")) player.playSound(sound, { volume, pitch });
+            else for (const other of mount.dimension.getPlayers({ location: mount.location, maxDistance: 32 })) if (other.id !== player.id) other.playSound(sound, { location: mount.location, volume, pitch });
+        } catch (e) { }
+    }
+}
 function rideStyle(ride, mount) {
     const has = (style) => ride.some(([s]) => s === style);
     if (has("liquid") && mount.isInWater) return "liquid";
@@ -9251,6 +9344,7 @@ system.runInterval(() => {
         }
         const kind = RIDE_KINDS[entry[1]] ?? "horse";
         rideHint(player, st, style, kind, settings);
+        rideSounds(player, mount, st, settings);
         let input = { x: 0, y: 0 }, jumping = false;
         try { input = player.inputInfo.getMovementVector(); jumping = player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed; } catch (e) { }
         const forward = input.y > 0.1;
@@ -10549,6 +10643,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
             }
         }
     });
+    blockComponentRegistry.registerCustomComponent("cobblemon:gem_core", { onRandomTick({ block }) { gemCoreTick(block); } });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
         beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },
         onTick({ block }) { snackTick(block); }

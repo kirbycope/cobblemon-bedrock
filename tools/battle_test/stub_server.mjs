@@ -35,7 +35,9 @@ export const world = new Proxy({
 }, handler);
 
 export class ItemStack { constructor(typeId, amount = 1) { this.typeId = typeId; this.amount = amount; } getLore() { return []; } setLore() { } }
-export const BlockPermutation = anything(), MolangVariableMap = class { setFloat() { } setVector3() { } setColorRGB() { } setColorRGBA() { } };
+// a permutation that remembers its block and states, for a test's stand-in blocks to read back
+export const BlockPermutation = { resolve: (id, states = {}) => ({ type: { id }, states, getState: (k) => states[k], withState: (k, v) => BlockPermutation.resolve(id, { ...states, [k]: v }) }) };
+export const MolangVariableMap = class { setFloat() { } setVector3() { } setColorRGB() { } setColorRGBA() { } };
 export const EntityComponentTypes = new Proxy({}, { get: (t, k) => String(k) });
 export const EntityInitializationCause = anything(), InputButton = anything(), ButtonState = anything(), EntityDamageCause = anything();
 export const EquipmentSlot = anything(), BlockVolume = class { }, StructureRotation = anything(), StructureSaveMode = anything();
