@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 40
+                    "default": 38
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -37,7 +37,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 40
+                    "default": 38
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -99,7 +99,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 80
+                    "default": 77
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -130,7 +130,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 80
+                    "default": 77
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -187,6 +187,77 @@
                     "min_size": 1,
                     "max_size": 1,
                     "event": "cobblemon:herd_seed_hisuian",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 2
+                },
+                "minecraft:biome_filter": {
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "ocean"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "frozen"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 2
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "frozen_peaks"
+                        },
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "ice_plains"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mutated"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha_hisuian",
                     "event_skip_count": 0
                 }
             }

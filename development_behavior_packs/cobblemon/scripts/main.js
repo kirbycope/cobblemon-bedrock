@@ -7803,8 +7803,20 @@ system.runInterval(() => {
 // create_spawn_rules); the pass then fills the herd to its size (at most maximumSpawnsPerPass, 8). One herd level is
 // rolled in the herd's range; while the herd has a leader to give and none yet, the next is a leader, otherwise a
 // follower, by weight, none more often than its maxTimes; each member's level is the herd's clamped to its own range and
-// moved by its offset. A member with no room about the first is left out, as Cobblemon's EmptySpawnAction is
+// moved by its offset. A member with no room about the first is left out, as Cobblemon's EmptySpawnAction is. An alpha
+// herd (bucket boss) seeds with cobblemon:herd_seed_alpha and is filled from the alpha herds only; its alpha members
+// (the leader) are made alphas, and a member given an item holds it
 const HERD_RADIUS = 6;
+// the herd a seed event asks for: an alpha one or not, and the form event its first member spawned with
+function herdSeedOf(eventId) {
+    const rest = eventId.slice("cobblemon:herd_seed".length);
+    const alpha = rest === "_alpha" || rest.startsWith("_alpha_"), form = alpha ? rest.slice("_alpha_".length) : rest.slice(1);
+    return { alpha, form: form ? `cobblemon:spawn_form_${form}` : null };
+}
+function dressHerdMember(e, m) {
+    if (m.held && HELD_SET.has(m.held)) setProp(e, HELD, m.held);
+    if (m.alpha) makeAlpha(e, true);
+}
 function herdMemberLevel(m, level) {
     let l = m.level ? Math.min(Math.max(level, m.level[0]), m.level[1]) : level;
     if (m.off) l = ri(l + m.off[0], l + m.off[1]);
@@ -7820,18 +7832,19 @@ function fillHerd(seed, eventId) {
         const near = dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } });
         if (near.filter((e) => e.id !== seed.id).length >= POKEMON_PER_AREA) return;
     } catch (e) { return; }
-    const form = eventId === "cobblemon:herd_seed" ? null : `cobblemon:spawn_form_${eventId.slice("cobblemon:herd_seed_".length)}`;
+    const { alpha, form } = herdSeedOf(eventId);
     let tags = [];
     try { tags = BIOME_TAGS[dim.getBiome(at).id] ?? []; } catch (e) { }
     const fits = (h) => herdFirsts(h).filter((m) => m.entity === seed.typeId && (m.event ?? null) === form);
     const share = (h, ms) => h.weight * ms.reduce((a, m) => a + m.w, 0) / (herdFirsts(h).reduce((a, m) => a + m.w, 0) || 1);
-    let options = HERDS.filter((h) => fits(h).length);
+    let options = HERDS.filter((h) => !!h.boss === alpha && fits(h).length);
     const here = options.filter((h) => spawnAllowed(h, { effects: [], luck: 0, lure: 0 }, seed, tags));
     if (here.length) options = here;
     if (!options.length) return;
     const herd = pick(options.map((h) => [h, share(h, fits(h))]))[0], first = pick(fits(herd).map((m) => [m, m.w]))[0];
     const level = ri(herd.level[0], herd.level[1]), counts = new Map([[first, 1]]);
     setProp(seed, LEVEL, herdMemberLevel(first, level));
+    dressHerdMember(seed, first);
     const centre = { x: Math.floor(at.x), y: Math.floor(at.y) - 1, z: Math.floor(at.z) };
     for (let n = 1; n < herd.size; n++) {
         const valid = herd.members.filter((m) => (counts.get(m) ?? 0) < m.max);
@@ -7845,7 +7858,7 @@ function fillHerd(seed, eventId) {
         let e;
         try { e = dim.spawnEntity(m.entity, spot); } catch (err) { continue; }
         const lv = herdMemberLevel(m, level);
-        system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); } catch (err) { } });
+        system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); dressHerdMember(e, m); } catch (err) { } });
     }
 }
 // Bedrock's slime chunks: the first number of a Mersenne Twister seeded with chunk x times 0x1f1f1f1f xor chunk z is a

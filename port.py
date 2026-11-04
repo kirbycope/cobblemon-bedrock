@@ -3552,11 +3552,11 @@ bedrock_biome_tags = {}
 
 
 # Cobblemon's bucket weights (data/cobblemon/spawning/best-spawner-config.json), so rarity survives the port
-BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2}
+BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2, "boss": 0.3}
 SURFACE_PRESETS = {"natural", "wild", "treetop", "foliage", "water"}
 # What a species' conditions add up to once normalised, in the 1 to 240 band vanilla's own rules keep to
 # (husk 240 is the highest Bedrock ships, median 10), in Cobblemon's 94 : 5 : 0.5 : 0.2 bucket proportions.
-SPAWN_TOTALS = {"common": 240, "uncommon": 13, "rare": 2, "ultra-rare": 1}
+SPAWN_TOTALS = {"common": 240, "uncommon": 13, "rare": 2, "ultra-rare": 1, "boss": 1}
 # Bedrock treats the whole Nether as underground: it has no sky, so a rule that only spawns on the surface
 # never fires there. Every vanilla Nether mob spawns underground, Hoglin and Strider included.
 NETHER_TAGS = {"nether", "nether_wastes", "crimson_forest", "warped_forest", "soulsand_valley", "basalt_deltas"}
@@ -3668,13 +3668,14 @@ HERD_PASS = 8   # CobblemonConfig.maximumSpawnsPerPass: a spawning pass, and so 
 
 
 def herd_spawns():
-    """Cobblemon's herd spawns (spawn_pool_world/herds, PokemonHerdSpawnDetail) but the alphas' (bucket boss, which the
-    port does not carry), each with its members resolved to the pack's entities and form events."""
+    """Cobblemon's herd spawns (spawn_pool_world/herds, PokemonHerdSpawnDetail), each with its members resolved to the
+    pack's entities and form events; an alpha herd's (bucket boss) leader is marked alpha, with the held item it is
+    given ("venusaur held_item=cobblemon:grass_gem alpha=true")."""
     herds = []
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/herds/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
-            if spawn.get("type") != "pokemon-herd" or spawn.get("bucket") == "boss": continue
+            if spawn.get("type") != "pokemon-herd": continue
             members = []
             for m in spawn.get("herdablePokemon", []):
                 words = m.get("pokemon", "").split(" ")
@@ -3685,7 +3686,9 @@ def herd_spawns():
                 form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events), None)
                 members.append({"folder": folder, "pokemon": m["pokemon"], "form": form, "weight": m.get("weight", 1.0),
                                 "level": int_range(m.get("levelRange")), "offset": int_range(m.get("levelRangeOffset")),
-                                "max": m.get("maxTimes", 10), "leader": bool(m.get("isLeader")), "follower": m.get("isFollower", True)})
+                                "max": m.get("maxTimes", 10), "leader": bool(m.get("isLeader")), "follower": m.get("isFollower", True),
+                                "alpha": "alpha=true" in words[1:],
+                                "held": next((w.split("=", 1)[1] for w in words[1:] if w.startswith("held_item=")), None)})
             if members: herds.append((spawn, members))
     return herds
 
@@ -3724,7 +3727,9 @@ def create_spawn_rules():
         entry = {"id": herd["id"], "pos": herd.get("spawnablePositionType", "grounded"), "size": min(herd.get("maxHerdSize", 10), HERD_PASS),
                  "level": int_range(herd.get("levelRange"), [1, 100]), "weight": herd.get("weight", 1.0), "biome": biome,
                  "members": [{"entity": entity_id(m["folder"]), "event": f"cobblemon:spawn_form_{m['form']}" if m["form"] else None, "w": m["weight"],
-                              "level": m["level"], "off": m["offset"], "max": m["max"], "leader": m["leader"], "follower": m["follower"]} for m in members]}
+                              "level": m["level"], "off": m["offset"], "max": m["max"], "leader": m["leader"], "follower": m["follower"],
+                              **({"alpha": True} if m["alpha"] else {}), **({"held": m["held"]} if m["held"] else {})} for m in members]}
+        if herd.get("bucket") == "boss": entry["boss"] = True
         if anti.get("biomes") and biome_filter_for(anti["biomes"]): entry["notBiome"] = biome_filter_for(anti["biomes"])
         for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
             if key in condition: entry[key] = condition[key]
@@ -3744,8 +3749,10 @@ def create_spawn_rules():
             form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
             rule = spawn_condition(spawn, species, kind)
             if rule and member:
-                rule["minecraft:herd"]["event"] = f"cobblemon:herd_seed_{form}" if form else "cobblemon:herd_seed"; rule["minecraft:herd"]["event_skip_count"] = 0
-                seed_events.setdefault(pokemon, set()).add(form)
+                # an alpha herd's first member has a seed of its own, so the script fills it from the alpha herds only
+                key = ("alpha_" + form if form else "alpha") if spawn.get("bucket") == "boss" else form
+                rule["minecraft:herd"]["event"] = f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"; rule["minecraft:herd"]["event_skip_count"] = 0
+                seed_events.setdefault(pokemon, set()).add(key)
                 if rule: conditions.append((rule, spawn))
                 continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
@@ -3820,12 +3827,13 @@ def create_spawn_rules():
         with open(path, encoding="utf-8") as file: text = file.read()
         data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
         # nothing of its own: the script hears it (dataDrivenEntityTrigger); a form's seed sets the form as its event would
-        for form in forms:
-            events[f"cobblemon:herd_seed_{form}" if form else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
+        for key in forms:
+            form = key[len("alpha_"):] if key and key.startswith("alpha_") else None if key == "alpha" else key
+            events[f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     with open(f"{scriptsBedrock}/herds.js", "w", encoding="utf-8", newline="\n") as file:
-        file.write("// generated by port.py (create_spawn_rules): Cobblemon's herd spawns but the alphas', each member's entity, form event, weight, levels and most\n")
+        file.write("// generated by port.py (create_spawn_rules): Cobblemon's herd spawns, alpha herds (boss) among them, each member's entity, form event, weight, levels and most\n")
         file.write("export const HERDS = " + json.dumps(herd_table, separators=(",", ":")) + ";\n")
     print(f"Herds: {len(herd_table)} herd spawns, {sum(len(v) for v in seeds.values())} first members spawning naturally across {len(seeds)} species.")
     print(f"Create spawn rules complete: {written} Pokemon spawn naturally ({legendary} legendary and mythical from Legendary Encounters), {skipped} spawn entries not expressible (structures, nearby blocks, fishing, modded biomes).")
