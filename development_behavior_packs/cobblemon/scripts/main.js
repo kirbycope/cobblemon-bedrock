@@ -20,6 +20,7 @@ import { MARKS } from "./marks.js";
 import { HABITAT_POOLS } from "./habitats.js";
 import { BERRY_CARE } from "./berry_care.js";
 import { TMS, TM_SPECIES } from "./tms.js";
+import { INTERACT_GENDERS } from "./interactions.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
 import { DEFENDERS } from "./defenders.js";
@@ -9499,6 +9500,12 @@ function evolve(entity, evolution) {
     }, 224);
 }
 
+// A Pokemon interaction only one gender gives (port.py's write_gendered_interactions: a female Gogoat, Skiddo or
+// Bouffalant milked): the entity's own interaction cannot see the gender, so the script holds it back from the other
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const need = INTERACT_GENDERS[event.target?.typeId]?.[event.itemStack?.typeId];
+    if (need && genderOf(event.target) !== need) event.cancel = true;
+});
 // An evolution item whose result depends on where it is used (a Thunder Stone makes an Alolan Raichu in an Alola biome,
 // and a Raichu elsewhere) or on a region bias: the entity's own interaction leaves these out (port.py's
 // item_evolutions), and the one whose requirements hold is picked here, the one asking more first

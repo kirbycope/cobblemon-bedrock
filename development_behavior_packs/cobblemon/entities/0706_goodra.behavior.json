@@ -277,6 +277,7 @@
                             "swing": true,
                             "interact_text": "action.interact.use",
                             "cooldown": 0.0,
+                            "play_sounds": "brush.generic",
                             "hurt_item": 1,
                             "spawn_items": {
                                 "table": "loot_tables/interactions/0706_goodra_0.json"
@@ -901,14 +902,14 @@
                     }
                 ]
             },
-            "cobblemon:spawn_weather_rain": {
+            "cobblemon:spawn_weather_clear": {
                 "sequence": [
                     {
                         "filters": {
                             "test": "weather_at_position",
                             "subject": "self",
                             "operator": "!=",
-                            "value": "precipitation"
+                            "value": "clear"
                         },
                         "add": {
                             "component_groups": [
@@ -918,14 +919,14 @@
                     }
                 ]
             },
-            "cobblemon:spawn_weather_clear": {
+            "cobblemon:spawn_weather_rain": {
                 "sequence": [
                     {
                         "filters": {
                             "test": "weather_at_position",
                             "subject": "self",
                             "operator": "!=",
-                            "value": "clear"
+                            "value": "precipitation"
                         },
                         "add": {
                             "component_groups": [

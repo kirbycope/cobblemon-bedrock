@@ -262,6 +262,29 @@
                     "cooldown_time": 0.25,
                     "horizontal_momentum": 0.0,
                     "vertical_momentum": 0.0
+                },
+                "minecraft:interact": {
+                    "interactions": [
+                        {
+                            "on_interact": {
+                                "filters": {
+                                    "all_of": [
+                                        {
+                                            "test": "has_equipment",
+                                            "subject": "other",
+                                            "domain": "hand",
+                                            "value": "minecraft:bucket"
+                                        }
+                                    ]
+                                }
+                            },
+                            "swing": true,
+                            "interact_text": "action.interact.use",
+                            "cooldown": 0.0,
+                            "play_sounds": "bucket.fill_water",
+                            "transform_to_item": "minecraft:milk_bucket"
+                        }
+                    ]
                 }
             },
             "cobblemon:pastured": {
