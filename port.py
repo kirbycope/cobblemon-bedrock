@@ -7328,19 +7328,15 @@ def fossil_recipes():
 
 
 def natural_materials():
-    """{item id: [worth, item given back]} for every natural material this pack has."""
-    known = {f"cobblemon:{berry}" for berry, _ in berry_bushes()} | {"cobblemon:moomoo_milk", "cobblemon:revival_herb", "cobblemon:shed_shell"}
+    """{item id: [worth, item given back]} for every natural material: written before most of the pack's items exist, so
+    every one Cobblemon names is kept (an item the pack lacks is never in a player's hand to put in)."""
+    berries = sorted(f"cobblemon:{berry}" for berry, _ in berry_bushes())
     materials = {}
     for path in sorted(glob.glob(f"{cobblemonData}/natural_materials/*.json")):
         with open(path, encoding="utf-8") as file: entries = json.load(file)
         for entry in entries:
-            if "tag" in entry:
-                items = sorted(known - {"cobblemon:moomoo_milk", "cobblemon:revival_herb", "cobblemon:shed_shell"}) if entry["tag"] == "#cobblemon:berries" else MATERIAL_TAGS.get(entry["tag"], [])
-            else:
-                items = [entry["item"]]
-            for item in items:
-                if item.startswith("cobblemon:") and item not in known: continue
-                materials[item] = [entry["content"], entry.get("returnItem")]
+            items = (berries if entry["tag"] == "#cobblemon:berries" else MATERIAL_TAGS.get(entry["tag"], [])) if "tag" in entry else [entry["item"]]
+            for item in items: materials[item] = [entry["content"], entry.get("returnItem")]
     return materials
 
 
@@ -9633,6 +9629,8 @@ def model_block(name, identifier, items, category="items"):
     if name == "poke_snack":
         extra["cobblemon:poke_snack"] = {}
         extra["minecraft:tick"] = {"interval_range": [683, 2048], "looping": True}
+    # PokeSnackBlock (the snack and the cake) has no loot table: broken, it drops nothing, as a cake does
+    if name in ("poke_snack", "poke_cake"): extra["minecraft:loot"] = "loot_tables/empty.json"
     definition = {"format_version": "1.21.90", "minecraft:block": {
         "description": {"identifier": identifier, "menu_category": {"category": category}, "states": states, **({"traits": traits} if traits else {})},
         "components": {**{k: v for k, v in base.items() if k != "minecraft:transformation"},
