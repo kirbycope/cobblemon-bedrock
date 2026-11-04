@@ -3286,11 +3286,30 @@ const RB_ALL = [...POT_SHAPED, ...POT_SHAPELESS].sort((a, b) => (a.id < b.id ? -
 const RB_TABS = [["foods", "misc", "medicines", "complex_dishes"], ["foods"], ["medicines"], ["complex_dishes"], ["misc"]];
 const RB_TAB_ICONS = ["minecraft:compass", "cobblemon:leek_and_potato_stew", "cobblemon:potion", "cobblemon:aprijuice_red", "cobblemon:protein"];
 const RB_FIRST = 51, RB_SETTINGS = "cobblemon:pot_book";
-function rbCollections(tab) {
+// The recipe book's known recipes (its recipe advancements, advancement/recipes/campfire_pot): one is learnt the first
+// time the player holds one of the items its advancement names (inventory_changed), and the book shows only those; a
+// recipe with no such items is known from the start. Cooking is not gated, as in Cobblemon
+const RB_KNOWN = "cobblemon:pot_recipes";
+const RB_UNLOCKERS = new Map();   // item -> the recipes it unlocks
+for (const r of [...POT_SHAPED, ...POT_SHAPELESS]) for (const item of r.unlock ?? []) (RB_UNLOCKERS.get(item) ?? RB_UNLOCKERS.set(item, []).get(item)).push(r.id);
+function rbKnown(player) { return new Set(jsonProp(player, RB_KNOWN, [])); }
+function learnRecipes(player) {
+    let inv;
+    try { inv = player.getComponent(EntityComponentTypes.Inventory)?.container; } catch (e) { return; }
+    if (!inv) return;
+    const known = rbKnown(player), before = known.size;
+    for (let slot = 0; slot < inv.size; slot++) {
+        const id = inv.getItem(slot)?.typeId;
+        for (const r of RB_UNLOCKERS.get(id) ?? []) known.add(r);
+    }
+    if (known.size !== before) player.setDynamicProperty(RB_KNOWN, JSON.stringify([...known]));
+}
+system.runInterval(() => { for (const player of world.getPlayers()) learnRecipes(player); }, 40);
+function rbCollections(tab, known) {
     const out = [];
     for (const cat of RB_TABS[tab]) {
         const groups = new Map();
-        for (const r of RB_ALL.filter((r) => r.cat === cat)) {
+        for (const r of RB_ALL.filter((r) => r.cat === cat && (!r.unlock || !known || known.has(r.id)))) {
             const key = r.grp || r.id;
             if (!groups.has(key)) { groups.set(key, []); out.push(groups.get(key)); }
             groups.get(key).push(r);
@@ -3342,7 +3361,8 @@ function rbView(player, st, data, inv) {
     for (let n = 1; n < 10; n++) add(data.s[n]?.[0], data.s[n]?.[1] ?? 0);
     const set = rbSettings(player), query = (st.search ?? "").toLowerCase();
     const craftable = (r) => rbCraftable(r, counts);
-    const shown = rbCollections(st.tab ?? 0)
+    learnRecipes(player);
+    const shown = rbCollections(st.tab ?? 0, rbKnown(player))
         .filter((c) => !query || c.some((r) => itemName(r.out).toLowerCase().includes(query)))
         .map((c) => (set.filter ? c.filter(craftable) : c)).filter((c) => c.length);
     const pages = Math.max(1, Math.ceil(shown.length / 20)), page = Math.min(st.page ?? 0, pages - 1);
@@ -8771,7 +8791,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.show(player).then((r) => {
         // PokedexGUI's sounds: close as it shuts, click on an entry (EntriesScrollingWidget), click_short on every other
         // button (ScaledButton)
-        if (r.canceled) { scanSound(player, "close"); return; }
+        if (r.canceled) { scanSound(player, "close"); state.onClose?.(); return; }
         const pick = r.selection, again = () => openDex(player, colour, state);
         if (pick < 50) scanSound(player, pick < 25 ? "click" : "click_short");   // the tree's slots and icons are not buttons on Java
         if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; state.evoPan = 0; } }
@@ -8867,6 +8887,10 @@ function restoreLectern(block) {
     catch (e) { try { block.setPermutation(BlockPermutation.resolve("minecraft:lectern", { "minecraft:cardinal_direction": facing })); } catch (err) { } }
     try { world.structureManager.delete(id); } catch (e) { }
 }
+const lecternReaders = new Map();   // lectern -> the players reading the Pokedex on it
+function setLecternLight(dim, at, on) {
+    try { const b = dim.getBlock(at); if (b?.typeId === LECTERN && b.permutation.getState("cobblemon:emit_light") !== on) b.setPermutation(b.permutation.withState("cobblemon:emit_light", on)); } catch (e) { }
+}
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { block, player, itemStack } = event;
     if (block.typeId === "minecraft:lectern" && itemStack?.typeId.startsWith("cobblemon:pokedex_")) {
@@ -8879,7 +8903,15 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             const colour = block.permutation.getState("cobblemon:pokedex");
             if (!player.isSneaking) {
                 try { block.dimension.playSound("cobblemon.item.pokedex.open", block.center(), { volume: 0.25 }); } catch (e) { }
-                openDex(player, colour);
+                // LecternBlockEntity: it gives light while anyone reads it (EMIT_LIGHT, hasViewer)
+                const key = keyOf(block.dimension, block.location), dim = block.dimension, at = { ...block.location };
+                const readers = lecternReaders.get(key) ?? new Set();
+                readers.add(player.id); lecternReaders.set(key, readers);
+                setLecternLight(dim, at, true);
+                openDex(player, colour, { region: 0, page: 0, filter: 0, chosen: null, tab: "i", onClose: () => {
+                    readers.delete(player.id);
+                    if (!readers.size) { lecternReaders.delete(key); setLecternLight(dim, at, false); }
+                } });
                 return;
             }
             const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;

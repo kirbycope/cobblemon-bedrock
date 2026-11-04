@@ -11990,13 +11990,27 @@ def cooking_recipes():
                 elif tag in COMMON_TAGS: out.append(COMMON_TAGS[tag])
                 elif tag.startswith("cobblemon:"): out += sorted(bedrock(i if ":" in i else f"minecraft:{i}") for i in item_tag(tag.split(":", 1)[1]))
         return sorted(set(out))
+    # the items that unlock a recipe in the recipe book: its advancement's inventory_changed criteria
+    # (advancement/recipes/campfire_pot), a recipe with none being always known
+    unlocks = {}
+    for path in glob.glob(f"{cobblemonData}/advancement/recipes/campfire_pot/*.json"):
+        with open(path, encoding="utf-8") as file: adv = json.load(file)
+        items = set()
+        for crit in adv.get("criteria", {}).values():
+            if not crit.get("trigger", "").endswith("inventory_changed"): continue
+            for cond in crit.get("conditions", {}).get("items", []):
+                for it in (cond.get("items") if isinstance(cond.get("items"), list) else [cond.get("items")]):
+                    if not it: continue
+                    items.update(accepts({"tag": it[1:]} if it.startswith("#") else {"item": it}))
+        if items: unlocks[os.path.basename(path)[:-5]] = sorted(items)
     shaped, shapeless = [], []
     for path in sorted(glob.glob(f"{cobblemonData}/recipe/campfire_pot/*.json")):
         with open(path, encoding="utf-8") as file: r = json.load(file)
         result = r.get("result", {})
         base = {"id": os.path.basename(path)[:-5], "out": bedrock(result.get("id") or result.get("item", "")), "n": result.get("count", 1),
                 "cat": r.get("category", "misc"), "grp": r.get("group", ""),
-                "tag": r.get("seasoningTag", "cobblemon:empty"), "proc": r.get("seasoningProcessors", [])}
+                "tag": r.get("seasoningTag", "cobblemon:empty"), "proc": r.get("seasoningProcessors", []),
+                **({"unlock": unlocks[os.path.basename(path)[:-5]]} if os.path.basename(path)[:-5] in unlocks else {})}
         if r.get("type") == "cobblemon:cooking_pot":
             shaped.append({**base, "rows": r["pattern"], "key": {k: accepts(v) for k, v in r["key"].items()}})
         else:
@@ -13673,18 +13687,22 @@ def create_lectern():
     permutations += [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}'",
                       "components": {"minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}}
                      for d, ry in (("north", 0), ("east", 90), ("south", 180), ("west", 270))]
-    definition = {"format_version": "1.21.90", "minecraft:block": {
+    # 1.21.120: the first format with minecraft:redstone_producer out of the experimental toggle
+    definition = {"format_version": "1.21.120", "minecraft:block": {
         "description": {"identifier": "cobblemon:lectern", "menu_category": {"category": "none"},
-                        "states": {"cobblemon:pokedex": POKEDEX_COLOURS},
+                        # LecternBlock.EMIT_LIGHT, set by scripts/main.js while someone reads the Pokedex on it
+                        "states": {"cobblemon:pokedex": POKEDEX_COLOURS, "cobblemon:emit_light": [False, True]},
                         "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
         "components": {"minecraft:geometry": "geometry.cobblemon_lectern", "minecraft:material_instances": materials,
+                       # LecternBlock.getSignal: a constant 15
+                       "minecraft:redstone_producer": {"power": 15},
                        # MinecraftLecternBlock.SHAPE_COLLISION (the base and the post) and its outline, the whole of it
                        "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]},
                        "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 16, 16]},
                        "minecraft:destructible_by_mining": {"seconds_to_destroy": 2.5}, "minecraft:destructible_by_explosion": {"explosion_resistance": 2.5},
                        "minecraft:flammable": {"catch_chance_modifier": 30, "destroy_chance_modifier": 20},
                        "minecraft:light_dampening": 0, "minecraft:loot": block_loot_pokedex("red")},
-        "permutations": permutations}}
+        "permutations": permutations + [{"condition": "q.block_state('cobblemon:emit_light')", "components": {"minecraft:light_emission": 13}}]}}
     with open(f"{blocksBedrock}/lectern.json", "w") as file: file.write(json.dumps(definition, indent=2))
     print(f"  lectern: the vanilla lectern's model with a Pokedex on it, {len(POKEDEX_COLOURS)} colours")
 
