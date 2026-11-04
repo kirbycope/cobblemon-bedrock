@@ -38,3 +38,11 @@ const forms = (list) => list.map((e) => e.form ?? "plain");
     M.showScale(g.entity);
     check("a region_bias spawn keeps its bias", g.entity.getDynamicProperty("cobblemon:region_bias") === "hisui");
 }
+{
+    // the Summary's evolution choice shows the look it becomes
+    const q = owned("Quilava", { level: 40 });
+    q.entity.setDynamicProperty("cobblemon:region_bias", "hisui");
+    q.entity.dimension = { getBiome: () => ({ id: tagsOf(["desert"]) }) };
+    const [e] = M.readyEvolutions(q.entity), look = M.evolutionLook(q.entity, e);
+    check("the evolution choice shows Hisuian Typhlosion's look", look > 0, String(look));
+}

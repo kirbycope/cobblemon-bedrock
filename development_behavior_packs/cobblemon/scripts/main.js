@@ -5662,7 +5662,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         if (level >= 1 && level <= 100) { setProp(target, LEVEL, level); setProp(target, EXP, expFor(POKEMON[target.typeId].expGroup, level)); }
         player.sendMessage(`§a${POKEMON[target.typeId]?.name} is now yours.`);
     } else if (event.id === "cobblemon:summary") {
-        showSummary(source);
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:summary [evolve]" opens its Summary, or its evolutions
+        showSummary(source, "i", undefined, 0, event.message.trim() === "evolve" ? "e" : "p");
     } else if (event.id === "cobblemon:take_item") {
         takeHeld(source);
     } else if (event.id === "cobblemon:join_fences") {
@@ -9722,6 +9723,13 @@ function evolvedVariant(from, variant, to, cosmetic) {
     const dressed = wear ? looks.findIndex(([lf, lg, ls]) => lf === wear && lg === female && ls === shiny) : -1;
     return dressed >= 0 ? dressed : n;
 }
+// the variant a Pokemon becomes by an evolution: the evolution's form where it names one (with the Pokemon's gender
+// and shininess), else the look evolvedVariant carries over
+function evolutionLook(entity, evolution) {
+    const looks = VARIANT_LOOKS[evolution.to], [, female, shiny] = VARIANT_LOOKS[entity.typeId]?.[variantOf(entity)] ?? [null, 0, 0];
+    const formed = evolution.form && looks ? looks.findIndex(([f, g, s]) => f === evolution.form && g === female && s === shiny) : -1;
+    return formed >= 0 ? formed : evolvedVariant(entity.typeId, variantOf(entity), evolution.to, prop(entity, COSMETIC));
+}
 // the ability an evolution gives: the one in the same slot, hidden or not
 function evolvedAbility(from, to, ability) {
     const before = POKEMON[from], after = POKEMON[to];
@@ -10138,12 +10146,15 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const canForget = side === "s" && f.moves.length > 1 && f.moves[swapSlot];
     v.side = side;
     for (let n = 0; n < 3; n++) {
-        const e = side === "e" ? evolutions[n] : undefined, into = e && POKEMON[e.to];
+        const e = side === "e" ? evolutions[n] : undefined;
+        // the look it will have (EVO_FORM: Hisuian Typhlosion from a Hisui-biased Quilava) and that look's types, under the
+        // species' name as EvolutionSelectScreen writes it
+        const look = e ? evolutionLook(source, e) : -1, into = e && { ...POKEMON[e.to], ...(POKEMON[e.to]?.variants?.[look] ?? {}) };
         v[`e${n}slot`] = into ? "y" : "n";
-        v[`e${n}name`] = into?.name ?? "";
+        v[`e${n}name`] = e ? POKEMON[e.to].name : "";
         v[`e${n}type1`] = into ? typeCode(into.types[0]) : "x--";
         v[`e${n}type2`] = into?.types[1] ? typeCode(into.types[1]) : "x--";
-        v[`e${n}icon`] = into ? iconOf(e.to) : "i----";
+        v[`e${n}icon`] = into ? iconOf(e.to, Math.max(0, look)) : "i----";
     }
     const party = side === "p" ? summaryParty(player) : [];
     for (let n = 0; n < 6; n++) {
