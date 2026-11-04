@@ -6401,8 +6401,13 @@ HEALING_FLIPBOOKS = [{"flipbook_texture": "textures/blocks/cobblemon/block/funct
                       "atlas_tile": "cobblemon_block_functional_healing_machine_active", "ticks_per_frame": 2}]
 
 
+ANIMATED_TEXTURES = {}   # terrain key -> flipbook entry, for each animated Java texture a block uses (write_flipbooks)
+
+
 def java_texture(ref):
-    """A Java texture reference as a terrain texture key, copying the mod's file (Cobblemon's or CobbleFurnies') into the pack."""
+    """A Java texture reference as a terrain texture key, copying the mod's file (Cobblemon's or CobbleFurnies') into the pack.
+    An animated one (a strip of square frames with a .mcmeta beside it) becomes a Bedrock flipbook at its frametime, in
+    its frame order, blended only where Java interpolates (the Restoration Tank's bubbling, the Monitor's scan)."""
     ref = ref.split("minecraft:", 1)[-1]
     ns = ref.split(":", 1)[0] if ":" in ref else None
     if ns not in ASSET_ROOTS:
@@ -6416,6 +6421,12 @@ def java_texture(ref):
         shutil.copyfile(source, f"{resourcePack}/textures/blocks/{ns}/{rel}.png")
         path = f"textures/blocks/{ns}/{rel}"
         key = f"{ns}_" + re.sub(r"[^a-z0-9_]", "_", rel)
+        if os.path.exists(source + ".mcmeta"):
+            with open(source + ".mcmeta", encoding="utf-8") as file: anim = json.load(file).get("animation", {})
+            entry = {"flipbook_texture": path, "atlas_tile": key, "ticks_per_frame": anim.get("frametime", 1), "blend_frames": bool(anim.get("interpolate"))}
+            frames = [f if isinstance(f, int) else f.get("index", 0) for f in anim.get("frames", [])]
+            if frames: entry["frames"] = frames
+            ANIMATED_TEXTURES[key] = entry
     terrain_textures[key] = {"textures": path}
     return key
 
@@ -7333,11 +7344,14 @@ def natural_materials():
     return materials
 
 
-def first_frame(path):
-    """An animated Java texture is a strip of square frames with a .mcmeta beside it; Bedrock gets the first frame."""
-    if not os.path.exists(path + ".mcmeta"): return
-    image = Image.open(path)
-    if image.height > image.width: image.crop((0, 0, image.width, image.width)).save(path)
+def write_flipbooks():
+    """The animated textures java_texture found, added to the flipbooks the campfire and healing machine write by hand."""
+    path = f"{resourcePack}/textures/flipbook_textures.json"
+    flipbooks = json.load(open(path, encoding="utf-8")) if os.path.exists(path) else []
+    have = {f["atlas_tile"] for f in flipbooks}
+    added = [e for k, e in ANIMATED_TEXTURES.items() if k not in have]
+    with open(path, "w") as file: file.write(json.dumps(flipbooks + added, indent=2))
+    print(f"  flipbooks: {len(added)} animated block textures added")
 
 
 def combine_models(*names):
@@ -7366,7 +7380,6 @@ def machine_block(name, display, states, variants, extra=None, collision=(16, 16
         for cube in cubes:
             for face in cube["uv"].values(): face["material_instance"] = f"v{index}_{face['material_instance']}"
         instances = {f"v{index}_{k}": v for k, v in instances.items()}
-        for key in instances.values(): first_frame(f"{texturesBlocksBedrock}/" + terrain_textures[key]["textures"][len("textures/blocks/cobblemon/"):] + ".png")
         geometry = f"geometry.cobblemon_{name}_{index}"
         write_block_geometry(geometry, cubes)
         materials = material_instances(instances)
@@ -14155,6 +14168,7 @@ def main():
     check_pokemon_complete()
     check_spawn_balance()
     check_structure_blocks()
+    write_flipbooks()   # after every block's textures
     bump_pack_versions()
 
 
