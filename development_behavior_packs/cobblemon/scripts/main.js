@@ -6297,7 +6297,9 @@ function loadMachines() {
 function saveMachines() { try { world.setDynamicProperty(MACHINES, JSON.stringify(Object.fromEntries(machines))); } catch (e) { } }
 function keyOf(dimension, p) { return `${dimension.id}|${p.x},${p.y},${p.z}`; }
 
-// the tank's lower block for any part of a machine, and the analyzer and monitor beside it
+// the tank's lower block for any part of a machine, and the analyzer and monitor of FossilMultiblockBuilder's layout: a
+// Monitor directly on top of a Fossil Analyzer, and the Analyzer level with the tank's lower half on one of its four
+// sides; anything short of that is no machine (the parts do nothing on their own)
 function findMachine(block) {
     const d = block.dimension, around = [];
     for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
@@ -6306,10 +6308,11 @@ function findMachine(block) {
     const tank = around.find((b) => b.typeId === "cobblemon:restoration_tank" && b.permutation.getState("cobblemon:part") === "bottom"
         && Math.abs(b.location.x - block.location.x) <= 1 && Math.abs(b.location.z - block.location.z) <= 1);
     if (!tank) return undefined;
-    const near = (b, r) => Math.abs(b.location.x - tank.location.x) <= r && Math.abs(b.location.z - tank.location.z) <= r;
-    const analyzer = around.find((b) => b.typeId === "cobblemon:fossil_analyzer" && b.location.y === tank.location.y && near(b, 1));
-    const monitor = around.find((b) => b.typeId === "cobblemon:monitor" && near(b, 2));
-    return { tank, analyzer, monitor, key: keyOf(tank.dimension, tank.location) };
+    const beside = (b) => b.location.y === tank.location.y && Math.abs(b.location.x - tank.location.x) + Math.abs(b.location.z - tank.location.z) === 1;
+    const above = (b) => around.find((m) => m.typeId === "cobblemon:monitor" && m.location.x === b.location.x && m.location.z === b.location.z && m.location.y === b.location.y + 1);
+    const analyzer = around.find((b) => b.typeId === "cobblemon:fossil_analyzer" && beside(b) && above(b));
+    if (!analyzer) return undefined;
+    return { tank, analyzer, monitor: above(analyzer), key: keyOf(tank.dimension, tank.location) };
 }
 
 function stateFor(key) {
@@ -6366,8 +6369,7 @@ function takeFromHand(player, count = 1) {
 
 function useMachine(block, player) {
     const m = findMachine(block);
-    if (!m) { player.sendMessage("§7A Restoration Tank needs a Fossil Analyzer right beside it."); return; }
-    if (!m.analyzer) { player.sendMessage("§7Place a Fossil Analyzer beside the Restoration Tank."); return; }
+    if (!m) { player.sendMessage("§7A fossil machine is a Restoration Tank with a Fossil Analyzer beside it and a Monitor on the Analyzer."); return; }
     const st = stateFor(m.key);
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     const item = inv?.getItem(player.selectedSlotIndex);
