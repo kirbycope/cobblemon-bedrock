@@ -13,11 +13,34 @@
           1,
           2,
           3
+        ],
+        "cobblemon:mulch": [
+          "none",
+          "coarse",
+          "growth",
+          "humid",
+          "loamy",
+          "peat",
+          "rich",
+          "sandy",
+          "surprise"
         ]
       }
     },
     "components": {
-      "minecraft:geometry": "geometry.cobblemon_chople_berry_0",
+      "minecraft:geometry": {
+        "identifier": "geometry.cobblemon_chople_berry_0",
+        "bone_visibility": {
+          "mulch_coarse": "q.block_state('cobblemon:mulch') == 'coarse'",
+          "mulch_growth": "q.block_state('cobblemon:mulch') == 'growth'",
+          "mulch_humid": "q.block_state('cobblemon:mulch') == 'humid'",
+          "mulch_loamy": "q.block_state('cobblemon:mulch') == 'loamy'",
+          "mulch_peat": "q.block_state('cobblemon:mulch') == 'peat'",
+          "mulch_rich": "q.block_state('cobblemon:mulch') == 'rich'",
+          "mulch_sandy": "q.block_state('cobblemon:mulch') == 'sandy'",
+          "mulch_surprise": "q.block_state('cobblemon:mulch') == 'surprise'"
+        }
+      },
       "minecraft:material_instances": {
         "t0": {
           "texture": "cobblemon_vanilla_block_farmland_moist",
@@ -27,6 +50,54 @@
         },
         "t1": {
           "texture": "cobblemon_block_berries_chople_sprout",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_coarse": {
+          "texture": "cobblemon_block_crops_coarse_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_growth": {
+          "texture": "cobblemon_block_crops_growth_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_humid": {
+          "texture": "cobblemon_block_crops_humid_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_loamy": {
+          "texture": "cobblemon_block_crops_loamy_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_peat": {
+          "texture": "cobblemon_block_crops_peat_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_rich": {
+          "texture": "cobblemon_block_crops_rich_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_sandy": {
+          "texture": "cobblemon_block_crops_sandy_mulch",
+          "render_method": "alpha_test",
+          "ambient_occlusion": false,
+          "face_dimming": false
+        },
+        "mulch_surprise": {
+          "texture": "cobblemon_block_crops_surprise_mulch",
           "render_method": "alpha_test",
           "ambient_occlusion": false,
           "face_dimming": false
@@ -85,7 +156,19 @@
       {
         "condition": "q.block_state('cobblemon:stage') == 0",
         "components": {
-          "minecraft:geometry": "geometry.cobblemon_chople_berry_0",
+          "minecraft:geometry": {
+            "identifier": "geometry.cobblemon_chople_berry_0",
+            "bone_visibility": {
+              "mulch_coarse": "q.block_state('cobblemon:mulch') == 'coarse'",
+              "mulch_growth": "q.block_state('cobblemon:mulch') == 'growth'",
+              "mulch_humid": "q.block_state('cobblemon:mulch') == 'humid'",
+              "mulch_loamy": "q.block_state('cobblemon:mulch') == 'loamy'",
+              "mulch_peat": "q.block_state('cobblemon:mulch') == 'peat'",
+              "mulch_rich": "q.block_state('cobblemon:mulch') == 'rich'",
+              "mulch_sandy": "q.block_state('cobblemon:mulch') == 'sandy'",
+              "mulch_surprise": "q.block_state('cobblemon:mulch') == 'surprise'"
+            }
+          },
           "minecraft:material_instances": {
             "t0": {
               "texture": "cobblemon_vanilla_block_farmland_moist",
@@ -95,6 +178,54 @@
             },
             "t1": {
               "texture": "cobblemon_block_berries_chople_sprout",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_coarse": {
+              "texture": "cobblemon_block_crops_coarse_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_growth": {
+              "texture": "cobblemon_block_crops_growth_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_humid": {
+              "texture": "cobblemon_block_crops_humid_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_loamy": {
+              "texture": "cobblemon_block_crops_loamy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_peat": {
+              "texture": "cobblemon_block_crops_peat_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_rich": {
+              "texture": "cobblemon_block_crops_rich_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_sandy": {
+              "texture": "cobblemon_block_crops_sandy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_surprise": {
+              "texture": "cobblemon_block_crops_surprise_mulch",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -112,7 +243,19 @@
       {
         "condition": "q.block_state('cobblemon:stage') == 1",
         "components": {
-          "minecraft:geometry": "geometry.cobblemon_chople_berry_1",
+          "minecraft:geometry": {
+            "identifier": "geometry.cobblemon_chople_berry_1",
+            "bone_visibility": {
+              "mulch_coarse": "q.block_state('cobblemon:mulch') == 'coarse'",
+              "mulch_growth": "q.block_state('cobblemon:mulch') == 'growth'",
+              "mulch_humid": "q.block_state('cobblemon:mulch') == 'humid'",
+              "mulch_loamy": "q.block_state('cobblemon:mulch') == 'loamy'",
+              "mulch_peat": "q.block_state('cobblemon:mulch') == 'peat'",
+              "mulch_rich": "q.block_state('cobblemon:mulch') == 'rich'",
+              "mulch_sandy": "q.block_state('cobblemon:mulch') == 'sandy'",
+              "mulch_surprise": "q.block_state('cobblemon:mulch') == 'surprise'"
+            }
+          },
           "minecraft:material_instances": {
             "t0": {
               "texture": "cobblemon_block_berries_chople_tree",
@@ -122,6 +265,54 @@
             },
             "t1": {
               "texture": "cobblemon_block_berries_chople_leaves",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_coarse": {
+              "texture": "cobblemon_block_crops_coarse_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_growth": {
+              "texture": "cobblemon_block_crops_growth_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_humid": {
+              "texture": "cobblemon_block_crops_humid_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_loamy": {
+              "texture": "cobblemon_block_crops_loamy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_peat": {
+              "texture": "cobblemon_block_crops_peat_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_rich": {
+              "texture": "cobblemon_block_crops_rich_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_sandy": {
+              "texture": "cobblemon_block_crops_sandy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_surprise": {
+              "texture": "cobblemon_block_crops_surprise_mulch",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -139,7 +330,19 @@
       {
         "condition": "q.block_state('cobblemon:stage') == 2",
         "components": {
-          "minecraft:geometry": "geometry.cobblemon_chople_berry_2",
+          "minecraft:geometry": {
+            "identifier": "geometry.cobblemon_chople_berry_2",
+            "bone_visibility": {
+              "mulch_coarse": "q.block_state('cobblemon:mulch') == 'coarse'",
+              "mulch_growth": "q.block_state('cobblemon:mulch') == 'growth'",
+              "mulch_humid": "q.block_state('cobblemon:mulch') == 'humid'",
+              "mulch_loamy": "q.block_state('cobblemon:mulch') == 'loamy'",
+              "mulch_peat": "q.block_state('cobblemon:mulch') == 'peat'",
+              "mulch_rich": "q.block_state('cobblemon:mulch') == 'rich'",
+              "mulch_sandy": "q.block_state('cobblemon:mulch') == 'sandy'",
+              "mulch_surprise": "q.block_state('cobblemon:mulch') == 'surprise'"
+            }
+          },
           "minecraft:material_instances": {
             "t0": {
               "texture": "cobblemon_block_berries_chople_leaves",
@@ -149,6 +352,54 @@
             },
             "t1": {
               "texture": "cobblemon_block_berries_chople_tree",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_coarse": {
+              "texture": "cobblemon_block_crops_coarse_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_growth": {
+              "texture": "cobblemon_block_crops_growth_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_humid": {
+              "texture": "cobblemon_block_crops_humid_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_loamy": {
+              "texture": "cobblemon_block_crops_loamy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_peat": {
+              "texture": "cobblemon_block_crops_peat_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_rich": {
+              "texture": "cobblemon_block_crops_rich_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_sandy": {
+              "texture": "cobblemon_block_crops_sandy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_surprise": {
+              "texture": "cobblemon_block_crops_surprise_mulch",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -166,7 +417,19 @@
       {
         "condition": "q.block_state('cobblemon:stage') == 3",
         "components": {
-          "minecraft:geometry": "geometry.cobblemon_chople_berry_3",
+          "minecraft:geometry": {
+            "identifier": "geometry.cobblemon_chople_berry_3",
+            "bone_visibility": {
+              "mulch_coarse": "q.block_state('cobblemon:mulch') == 'coarse'",
+              "mulch_growth": "q.block_state('cobblemon:mulch') == 'growth'",
+              "mulch_humid": "q.block_state('cobblemon:mulch') == 'humid'",
+              "mulch_loamy": "q.block_state('cobblemon:mulch') == 'loamy'",
+              "mulch_peat": "q.block_state('cobblemon:mulch') == 'peat'",
+              "mulch_rich": "q.block_state('cobblemon:mulch') == 'rich'",
+              "mulch_sandy": "q.block_state('cobblemon:mulch') == 'sandy'",
+              "mulch_surprise": "q.block_state('cobblemon:mulch') == 'surprise'"
+            }
+          },
           "minecraft:material_instances": {
             "t0": {
               "texture": "cobblemon_block_berries_chople_leaves",
@@ -182,6 +445,54 @@
             },
             "fruit": {
               "texture": "cobblemon_berries_chople",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_coarse": {
+              "texture": "cobblemon_block_crops_coarse_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_growth": {
+              "texture": "cobblemon_block_crops_growth_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_humid": {
+              "texture": "cobblemon_block_crops_humid_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_loamy": {
+              "texture": "cobblemon_block_crops_loamy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_peat": {
+              "texture": "cobblemon_block_crops_peat_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_rich": {
+              "texture": "cobblemon_block_crops_rich_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_sandy": {
+              "texture": "cobblemon_block_crops_sandy_mulch",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "mulch_surprise": {
+              "texture": "cobblemon_block_crops_surprise_mulch",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false

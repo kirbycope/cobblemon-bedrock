@@ -6794,7 +6794,7 @@ def create_campfire_blocks():
     return made
 
 
-def write_block_geometry(identifier, cubes):
+def write_block_geometry(identifier, cubes, extra_bones=()):
     cubes = fit_block(cubes)
     os.makedirs(blockModelsBedrock, exist_ok=True)
     with open(f"{blockModelsBedrock}/{identifier.split('.', 1)[1]}.geo.json", "w") as file:
@@ -6802,7 +6802,7 @@ def write_block_geometry(identifier, cubes):
         file.write(json.dumps({"format_version": "1.21.0", "minecraft:geometry": [{
             "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
                             "visible_bounds_width": 3, "visible_bounds_height": 3, "visible_bounds_offset": [0, 1, 0]},
-            "bones": [{"name": "block", "pivot": [0, 0, 0], "cubes": cubes}]}]}, indent=1))
+            "bones": [{"name": "block", "pivot": [0, 0, 0], "cubes": cubes}, *extra_bones]}]}, indent=1))
 
 
 def material_instances(instances, first=None):
@@ -7154,6 +7154,9 @@ def create_wild_features():
     print(f"  wild features: {ores} evolution stone ore placements, Medicinal Leek, mints, big roots, Galarica bushes")
 
 
+MULCH_KINDS = ("coarse", "growth", "humid", "loamy", "peat", "rich", "sandy", "surprise")
+
+
 def create_blocks():
     print("Creating blocks...")
     for folder in (blocksBedrock, blockModelsBedrock, texturesBlocksBedrock, lootBlocksBedrock, f"{behaviorPack}/recipes",
@@ -7163,6 +7166,12 @@ def create_blocks():
     with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
     os.makedirs(f"{itemsBedrock}/berries", exist_ok=True)
     berries = {}
+    # BerryBlock.MULCH: the mulch on the soil, Cobblemon's <kind>_mulch model, a plane 0.95 pixel under the bush (on the
+    # farmland's top), one bone a kind shown by cobblemon:mulch, which scripts/main.js sets with the tree's mulch
+    mulch_bones = [{"name": f"mulch_{k}", "pivot": [0, 0, 0], "cubes": [{"origin": [-8, -0.95, -8], "size": [16, 0, 16],
+                    "uv": {"up": {"uv": [16, 16], "uv_size": [-16, -16], "material_instance": f"mulch_{k}"}}}]} for k in MULCH_KINDS]
+    mulch_textures = {f"mulch_{k}": java_texture(f"cobblemon:block/crops/{k}_mulch") for k in MULCH_KINDS}
+    mulch_shown = {f"mulch_{k}": f"q.block_state('cobblemon:mulch') == '{k}'" for k in MULCH_KINDS}
     for berry, data in berry_bushes():
         base = berry.replace("_berry", ""); bush = f"cobblemon:{berry}_bush"
         permutations = []
@@ -7172,18 +7181,19 @@ def create_blocks():
                 fruit, fruit_key = fruit_cubes(berry, data.get("growthPoints", []))
                 if fruit_key: cubes = cubes + fruit; instances["fruit"] = fruit_key
             geometry = f"geometry.cobblemon_{berry}_{stage}"
-            write_block_geometry(geometry, cubes)
+            write_block_geometry(geometry, cubes, mulch_bones)
+            instances.update({k: v for k, v in mulch_textures.items() if v})
             # BerryBlock: broken, a bush just planted gives its berry back and one in fruit its harvest; one growing, nothing
             permutations.append({"condition": f"q.block_state('cobblemon:stage') == {stage}", "components": {
-                "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances),
+                "minecraft:geometry": {"identifier": geometry, "bone_visibility": mulch_shown}, "minecraft:material_instances": material_instances(instances),
                 "minecraft:loot": f"loot_tables/blocks/{berry}_bush.json" if stage in (0, 3) else "loot_tables/empty.json"}})
         with open(f"{lootBlocksBedrock}/{berry}_bush.json", "w") as file:
             file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{berry}"}]}]}, indent=4))
         definition = {"format_version": "1.21.90", "minecraft:block": {
             "description": {"identifier": bush, "menu_category": {"category": "nature", "is_hidden_in_commands": False},
-                            "states": {"cobblemon:stage": [0, 1, 2, 3]}},
+                            "states": {"cobblemon:stage": [0, 1, 2, 3], "cobblemon:mulch": ["none", *MULCH_KINDS]}},
             "components": {
-                "minecraft:geometry": f"geometry.cobblemon_{berry}_0",
+                "minecraft:geometry": {"identifier": f"geometry.cobblemon_{berry}_0", "bone_visibility": mulch_shown},
                 "minecraft:material_instances": permutations[0]["components"]["minecraft:material_instances"],
                 "minecraft:collision_box": False,
                 "minecraft:selection_box": {"origin": [-7, 0, -7], "size": [14, 16, 14]},

@@ -6740,6 +6740,9 @@ function setCare(block, care) {
     const all = berryCare(), key = careKey(block);
     if (!care || (!care.mulch && !care.mut)) delete all[key]; else all[key] = care;
     saveBerryCare(all);
+    // the mulch shows on the soil under the bush (BerryBlock.MULCH, its <kind>_mulch plane)
+    const look = care?.mulch ? care.mulch.replace("_mulch", "") : "none";
+    try { if (BERRIES[block.typeId] && block.permutation.getState("cobblemon:mulch") !== look) block.setPermutation(block.permutation.withState("cobblemon:mulch", look)); } catch (e) { }
 }
 // a mulch used up: Growth and Rich on each harvest, Surprise on each mutation roll
 function spendMulch(block, care) {
