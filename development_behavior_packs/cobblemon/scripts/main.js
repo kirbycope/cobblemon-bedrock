@@ -8327,9 +8327,56 @@ function checkSpawns(player, bucket) {
 system.runInterval(() => { for (const player of world.getPlayers()) specialSpawn(player); }, 20);
 // PokeSnackBlock.playerEat: a Poke Cake (not a lure) is eaten a bite at a time like a cake, by a player who is hungry,
 // two hunger a bite (saturation for a tick gives it), gone after its ninth
+// PokeSnackBlock's candle, on the Poke Cake: a candle (any of the 17) goes on top of one without, flint and steel or a
+// fire charge lights it, an empty hand puts a lit one out, and sneaking with an empty hand takes an unlit one back; it
+// drops when the cake is broken (not in creative), and lit it flickers with a candle's flame. CAKE_CANDLES is port.py's
+const CAKE_CANDLES = ["candle", ...["white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple",
+    "blue", "brown", "green", "red", "black"].map((c) => `${c}_candle`)];
+// the candle number, kept in two states (a block state holds at most 16 values)
+const cakeCandleOf = (p) => (p.getState("cobblemon:candle_hi") ?? 0) * 16 + (p.getState("cobblemon:candle_lo") ?? 0);
+const withCakeCandle = (p, n) => p.withState("cobblemon:candle_hi", Math.floor(n / 16)).withState("cobblemon:candle_lo", n % 16);
+function cakeCandle(block, player, hand) {
+    const p = block.permutation, candle = cakeCandleOf(p), lit = p.getState("cobblemon:lit");
+    const kind = hand?.startsWith("minecraft:") ? CAKE_CANDLES.indexOf(hand.slice(10)) : -1;
+    if (kind >= 0) {
+        if (candle) return false;
+        block.setPermutation(withCakeCandle(p, kind + 1));
+        consumeHand(player);
+        try { block.dimension.playSound("cake.add_candle", block.location); } catch (e) { }
+        return true;
+    }
+    if (!candle) return false;
+    if ((hand === "minecraft:flint_and_steel" || hand === "minecraft:fire_charge") && !lit) {
+        block.setPermutation(p.withState("cobblemon:lit", true));
+        if (hand === "minecraft:flint_and_steel") damageHeld(player); else consumeHand(player);
+        try { block.dimension.playSound(hand === "minecraft:flint_and_steel" ? "fire.ignite" : "mob.ghast.fireball", block.location); } catch (e) { }
+        return true;
+    }
+    if (!hand && lit) {
+        block.setPermutation(p.withState("cobblemon:lit", false));
+        try { block.dimension.playSound("extinguish.candle", block.location); } catch (e) { }
+        return true;
+    }
+    if (!hand && player.isSneaking && !lit) {
+        block.setPermutation(withCakeCandle(p, 0));
+        giveOrDrop(player, `minecraft:${CAKE_CANDLES[candle - 1]}`);
+        try { block.dimension.playSound("random.pop", block.location); } catch (e) { }
+        return true;
+    }
+    return false;
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation, player }) => {
+    if (brokenBlockPermutation.type.id !== "cobblemon:poke_cake" || player?.getGameMode?.() === "Creative") return;
+    const candle = cakeCandleOf(brokenBlockPermutation);
+    if (candle) try { block.dimension.spawnItem(new ItemStack(`minecraft:${CAKE_CANDLES[candle - 1]}`, 1), { x: block.x + 0.5, y: block.y + 0.4375, z: block.z + 0.5 }); } catch (e) { }
+});
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
-    if (event.block.typeId !== "cobblemon:poke_cake" || !event.isFirstEvent || event.itemStack?.typeId?.endsWith("candle")) return;
-    const { block, player } = event;
+    if (event.block.typeId !== "cobblemon:poke_cake" || !event.isFirstEvent) return;
+    const { block, player } = event, hand = event.itemStack?.typeId;
+    // the candle first; an item other than a candle, a light or nothing leaves the cake alone
+    const candleUse = CAKE_CANDLES.some((c) => hand === `minecraft:${c}`) || hand === "minecraft:flint_and_steel" || hand === "minecraft:fire_charge"
+        || (!hand && (block.permutation.getState("cobblemon:lit") || (player.isSneaking && cakeCandleOf(block.permutation))));
+    if (candleUse) { event.cancel = true; system.run(() => { try { cakeCandle(block, player, hand); } catch (e) { } }); return; }
     let hunger = 0;
     try { hunger = player.getComponent("minecraft:player.hunger")?.currentValue ?? 0; } catch (e) { }
     if (hunger >= 20 && player.getGameMode?.() !== "Creative") return;
@@ -11488,6 +11535,13 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     blockComponentRegistry.registerCustomComponent("cobblemon:leaves", {
         onRandomTick({ block }) { decayLeaf(block); },
         beforeOnPlayerPlace(event) { try { event.permutationToPlace = event.permutationToPlace.withState("cobblemon:persistent", true); } catch (e) { } },
+    });
+    // a lit candle on a Poke Cake flickers with a candle's flame (AbstractCandleBlock.addParticlesAndSound)
+    blockComponentRegistry.registerCustomComponent("cobblemon:poke_cake", {
+        onTick({ block }) {
+            if (!block.permutation.getState("cobblemon:lit")) return;
+            try { block.dimension.spawnParticle("minecraft:candle_flame_particle", { x: block.x + 0.5, y: block.y + 0.4375 + 0.5, z: block.z + 0.5 }); } catch (e) { }
+        }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
         beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },

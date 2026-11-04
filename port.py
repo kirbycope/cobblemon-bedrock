@@ -6389,7 +6389,11 @@ lootBlocksBedrock = f"{behaviorPack}/loot_tables/blocks"
 VANILLA_TEXTURES = {"block/farmland_moist": "textures/blocks/farmland_wet", "block/farmland": "textures/blocks/farmland_dry",
                     # Bedrock names its planks the other way round: the ring target's frame drew the missing texture
                     **{f"block/{w}_planks": f"textures/blocks/planks_{'big_oak' if w == 'dark_oak' else w}"
-                       for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak")}}
+                       for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak")},
+                    # and keeps its candles in a folder of their own
+                    **{f"block/{c}": f"textures/blocks/candles/{c}" for c in ["candle"] + [f"{d}_candle" for d in (
+                        "white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue",
+                        "brown", "green", "red", "black")]}}
 BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", "minecraft:podzol", "minecraft:coarse_dirt",
                "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots"]
 terrain_textures = {}
@@ -9563,6 +9567,30 @@ def state_value(text):
     return True if text == "true" else False if text == "false" else int(text) if text.isdigit() else text
 
 
+# PokeSnackBlock.CANDLE on the Poke Cake: Minecraft's candle and its 16 dyed ones, by the candle number candle_hi * 16 +
+# candle_lo (0 none, n the (n-1)th of these), the order scripts/main.js's CAKE_CANDLES keeps
+CAKE_CANDLES = ["candle"] + [f"{c}_candle" for c in ("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray",
+                                                     "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black")]
+CAKE_HEIGHT = 7   # PokeSnackBlock.CAKE_HEIGHT, 0.4375 of a block, in pixels
+
+
+def cake_candle_bones():
+    """One bone a candle, Minecraft's template_candle on top of the cake, its faces on that candle's Bedrock texture."""
+    template = vanilla_jar_model("block/template_candle") or {}
+    bones, instances = [], {}
+    for n, kind in enumerate(CAKE_CANDLES):
+        cubes, _ = java_model_cubes({"elements": json.loads(json.dumps(template.get("elements", []))), "textures": {"all": "minecraft:block/candle"}})
+        for cube in cubes:
+            cube["origin"][1] += CAKE_HEIGHT
+            if "pivot" in cube: cube["pivot"][1] += CAKE_HEIGHT
+            for face in cube.get("uv", {}).values(): face["material_instance"] = f"candle_{n}"
+        key = f"cobblemon_vanilla_candles_{kind}"
+        terrain_textures[key] = {"textures": f"textures/blocks/candles/{kind}"}
+        instances[f"candle_{n}"] = {"texture": key, "render_method": "alpha_test", "ambient_occlusion": False, "face_dimming": False}
+        bones.append({"name": f"candle_{n}", "pivot": [0, 0, 0], "cubes": cubes})
+    return bones, instances
+
+
 def model_block(name, identifier, items, category="items"):
     """A block from a Cobblemon blockstate of element models, or False when its models are not elements."""
     variants = blockstate_variants(name)
@@ -9578,6 +9606,9 @@ def model_block(name, identifier, items, category="items"):
             values = sorted(values, key=lambda v: v is not False)
         states[f"cobblemon:{k}"] = values
     geometries, permutations, base = {}, [], None
+    candle_bones, candle_instances = cake_candle_bones() if name == "poke_cake" else ([], {})
+    # two states, as one may hold at most 16 values: the candle is candle_hi * 16 + candle_lo
+    if candle_bones: states.update({"cobblemon:candle_hi": [0, 1], "cobblemon:candle_lo": {"values": {"min": 0, "max": 15}}, "cobblemon:lit": [False, True]})
     for props_v, model_ref, rx, ry in variants:
         model = java_model(model_ref)
         if not model or not model.get("elements"): continue
@@ -9585,8 +9616,10 @@ def model_block(name, identifier, items, category="items"):
             cubes, instances = java_model_cubes(model)
             if not cubes: continue
             gid = f"geometry.cobblemon_{name}_{len(geometries)}"
-            write_block_geometry(gid, cubes)
-            geometries[model_ref] = (gid, material_instances(instances))
+            write_block_geometry(gid, cubes, candle_bones)
+            materials_here = {**material_instances(instances), **candle_instances}
+            if candle_bones: gid = {"identifier": gid, "bone_visibility": {f"candle_{n}": f"q.block_state('cobblemon:candle_hi') == {(n + 1) // 16} && q.block_state('cobblemon:candle_lo') == {(n + 1) % 16}" for n in range(len(CAKE_CANDLES))}}
+            geometries[model_ref] = (gid, materials_here)
         gid, materials = geometries[model_ref]
         conds = []
         for k, v in props_v.items():
@@ -9631,13 +9664,18 @@ def model_block(name, identifier, items, category="items"):
         extra["minecraft:tick"] = {"interval_range": [683, 2048], "looping": True}
     # PokeSnackBlock (the snack and the cake) has no loot table: broken, it drops nothing, as a cake does
     if name in ("poke_snack", "poke_cake"): extra["minecraft:loot"] = "loot_tables/empty.json"
+    # the cake's candle, lit, gives light 3 and its flame (the cobblemon:poke_cake component's tick, scripts/main.js)
+    if name == "poke_cake":
+        extra["cobblemon:poke_cake"] = {}
+        extra["minecraft:tick"] = {"interval_range": [10, 10], "looping": True}
     definition = {"format_version": "1.21.90", "minecraft:block": {
         "description": {"identifier": identifier, "menu_category": {"category": category}, "states": states, **({"traits": traits} if traits else {})},
         "components": {**{k: v for k, v in base.items() if k != "minecraft:transformation"},
                        "minecraft:collision_box": {"origin": [-6, 0, -6], "size": [12, 8, 12]}, "minecraft:selection_box": {"origin": [-7, 0, -7], "size": [14, 12, 14]},
                        "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, "minecraft:light_dampening": 0,
                        "minecraft:loot": block_loot(name) if "amount" not in props else base["minecraft:loot"], **extra},
-        "permutations": [pm for pm in permutations if pm["condition"] != "1"] or permutations}}
+        "permutations": ([pm for pm in permutations if pm["condition"] != "1"] or permutations)
+                        + ([{"condition": "q.block_state('cobblemon:lit')", "components": {"minecraft:light_emission": 3}}] if name == "poke_cake" else [])}}
     if name in ROOT_SHAPES:
         low, high = ROOT_SHAPES[name]
         definition["minecraft:block"]["components"].update({"minecraft:collision_box": False, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0},
