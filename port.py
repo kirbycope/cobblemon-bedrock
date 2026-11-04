@@ -7691,6 +7691,9 @@ def snack_spawns():
 NEARBY_BLOCK_EXTRAS = {"kelp_plant": ["kelp"], "redstone_ore": ["redstone_ore", "lit_redstone_ore"],
                        "deepslate_redstone_ore": ["deepslate_redstone_ore", "lit_deepslate_redstone_ore"]}
 VILLAGE_STRUCTURE = "#minecraft:village"
+# a Woodland Mansion (the mansion preset: Ditto and 95 others indoors), which the spawner takes to be a dark forest spot
+# with no sky, on the mansion's floors and by its walls (the preset's own base and nearby blocks)
+MANSION_STRUCTURES = {"minecraft:mansion", "minecraft:woodland_mansion"}
 # the water positions the spawner takes as well as the ground: a solid block under water, water with water above and
 # below, water with air above (Seafloor, Submerged and SurfaceSpawnablePositionCalculator); lava's are left out
 WATER_POSITIONS = {"seafloor", "submerged", "surface"}
@@ -7764,7 +7767,7 @@ def special_spawns():
         if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or spawn.get("bucket") == "boss": return
         if cond.get("fluid") and not (pos in WATER_POSITIONS and cond["fluid"] in WATER_FLUIDS): return
         structures = set(cond.get("structures") or [])
-        if structures - {VILLAGE_STRUCTURE}: return
+        if structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES: return
         needs = cond.get("neededNearbyBlocks") or cond.get("neededBaseBlocks") or structures
         if not needs:
             # the natural pool, as spawn_condition carries it: a surface preset, or none
@@ -7785,6 +7788,7 @@ def special_spawns():
             if near: e["near"] = near
             if base: e["base"] = base
             if VILLAGE_STRUCTURE in structures: e["village"] = True
+            if structures & MANSION_STRUCTURES: e["mansion"] = True
             if VILLAGE_STRUCTURE in (anti.get("structures") or []): e["notVillage"] = True
             if spawn.get("type") == "pokemon-herd": e["herd"] = True
             if pos != "grounded": e["pos"] = pos

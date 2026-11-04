@@ -7683,7 +7683,8 @@ world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
 // these, whose blocks are looked for within 4 blocks across and 2 up or down of the position
 // (maxNearbyBlocksHorizontalRange, maxNearbyBlocksVerticalRange). A natural draw is left to the spawn rules, which spawn those themselves; a draw of one of
 // these spawns it, and a herd's first member has its herd filled about it, unless the 3 by 3 chunks round the spot hold
-// nine Pokemon already. A village is the ground within 48 blocks of a village bell the Pokemon Centers have recorded
+// nine Pokemon already. A village is the ground within 48 blocks of a village bell the Pokemon Centers have recorded, and a
+// Woodland Mansion (Ditto's uncommon spawn, and 95 more species') a dark forest spot on and by its blocks
 const SPECIAL_RANGE = [16, 64], NEAR_ACROSS = 4, NEAR_UP = 2, VILLAGE_RADIUS = 48;
 let specialLog = false;   // the cobblemon:special_spawns scriptevent logs each spawn this makes
 const isWater = (b) => !!b && (b.typeId === "minecraft:water" || b.typeId === "minecraft:flowing_water" || b.isWaterlogged);
@@ -7737,7 +7738,9 @@ function specialSpawn(player) {
     let base;
     try { base = dim.getBlock(ground)?.typeId; } catch (e) { return; }
     const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
-    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village) && (!sp.near || near(sp.near)));
+    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test
+    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village)
+        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
     if (!fits.length) return;
     const pool = WORLD_SPAWNS.filter(allowed).concat(fits);
     const bucket = pick(Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b)))[0];

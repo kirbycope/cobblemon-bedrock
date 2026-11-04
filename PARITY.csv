@@ -18,9 +18,9 @@ README note,held items on the model,"`HeldItemRenderer.kt`, `tags/item/held`, `P
 README note,items,"`models/item`, `textures/item`, `CobblemonItems.kt`, `mechanics/`, Showdown `items.js` behaviour",README,partial,"not carried: the held items that need terrain (the terrain seeds), items with 3D or animated models (the ones not made here), and Poke Puffs, which Cobblemon itself has switched off (its item registration is commented out)"
 README note,items and blocks that act,"`CobblemonBoatItem`, `CobblemonBoatEntity`, `LinkCableItem`, `TumblestoneItem`, `GrowableStoneBlock`, `FlowerPotBlock`, ",README,partial,"not carried: the paddles' rowing (they rest at the sides), and a pot already holding a vanilla flower is not told apart from an empty one, since a script cannot see a vanilla pot's plant"
 README note,lectern,"`LecternBlock.kt`, `LecternBlockMixin.java`, `LecternBlockEntityRenderer.kt`",README,partial,"not carried: the screen lighting up and the lectern giving light while someone reads it (the Pokedex form gives no close event to turn it off), and its constant redstone signal"
-README note,model blocks,"`blockstates`, `models/block`",README,partial,"not carried: signs (see building blocks), the Relic Coin Sack's and Pouch's coin behaviour, and the display case's item (a block cannot draw an item; a custom entity draws a held item only on the armor stand's runtime identifier, which brings back gravity and the stand's own placement, so the item would not stay in the case)"
+README note,model blocks,"`blockstates`, `models/block`",README,partial,"not carried: signs (see building blocks), and the display case's item (a block cannot draw an item; a custom entity draws a held item only on the armor stand's runtime identifier, which brings back gravity and the stand's own placement, so the item would not stay in the case)"
 README note,move effects,"`MoveInstruction.kt`, `ActionEffects.kt`, `ParticleStorm.kt`, `bedrock/particles/moves`",README,partial,"not carried: particles following a bone (a script places them at the feet, body or head), move_to_target walks"
-README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns that need any other structure (Cobblemon's ruins and shipwreck coves, the vanilla structures), since the script API tells what structure a block is in only with the Beta APIs experiment, and lava's surface spawns"
+README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns that need any other structure (Cobblemon's ruins and shipwreck coves, the other vanilla structures), since the script API tells what structure a block is in only with the Beta APIs experiment, and lava's surface spawns"
 README note,ores and wild plants,"`world/feature`, `worldgen/placed_feature`, `loot_table`",README,partial,"not carried: Fortune (Bedrock loot cannot tell the enchantment, so its bonus count is dropped rather than made the whole count), Hearty Grains in the wild (they stand in water, which a Bedrock custom block cannot hold), the saccharine tree's bee nests and honey, and Cobblemon's advancements, which Bedrock add-ons cannot add"
 README note,party,"`PlayerPartyStore.kt`, `PartySendBinding.kt`, `SendOutPokemonPacket`, `PokemonState.kt`, `PokemonEntity.recallWithAnimat",README,partial,"not carried: the keybinds themselves (Bedrock lets a pack add no keys), throwing the ball by hand, and sending out onto water platforms"
 README note,party HUD,"`client/gui/PartyOverlay.kt`, `PokemonState.kt`, `textures/gui/party`, `textures/gui/ball`",README,partial,"not carried: the Pokemon models in the portrait windows, the level-up scroll"
@@ -2882,18 +2882,8 @@ sound,block.display_case.add_item,sounds.json,cobblemon.block.display_case.add_i
 sound,block.display_case.remove_item,sounds.json,cobblemon.block.display_case.remove_item,partial,defined but nothing plays it
 sound,block.tm_machine.item_retrieve,sounds.json,cobblemon.block.tm_machine.item_retrieve,partial,defined but nothing plays it
 sound,entity.villager.work_nurse,sounds.json,cobblemon.entity.villager.work_nurse,partial,defined but nothing plays it
-sound,gui.levelup_start,sounds.json,cobblemon.gui.levelup_start,partial,defined but nothing plays it
-sound,move.dracometeor.target_2,sounds.json,cobblemon.move.dracometeor.target_2,partial,defined but nothing plays it
-sound,move.infestation.residual,sounds.json,cobblemon.move.infestation.residual,partial,defined but nothing plays it
-sound,move.leechseed.target,sounds.json,cobblemon.move.leechseed.target,partial,defined but nothing plays it
-sound,move.psychic.target,sounds.json,cobblemon.move.psychic.target,partial,defined but nothing plays it
-sound,move.pursuit.target,sounds.json,cobblemon.move.pursuit.target,partial,defined but nothing plays it
 sound,move.quickattack.actor,sounds.json,cobblemon.move.quickattack.actor,partial,defined but nothing plays it
-sound,move.quickattack.target,sounds.json,cobblemon.move.quickattack.target,partial,defined but nothing plays it
 sound,move.seismictoss.target2,sounds.json,cobblemon.move.seismictoss.target2,partial,defined but nothing plays it
-sound,move.spore.mushroom,sounds.json,cobblemon.move.spore.mushroom,partial,defined but nothing plays it
-sound,particle.shiny_ambient_chime,sounds.json,cobblemon.particle.shiny_ambient_chime,partial,defined but nothing plays it
-sound,poke_ball.trail,sounds.json,cobblemon.poke_ball.trail,partial,defined but nothing plays it
 sound,animation.chitin.wing_flap.large,sounds.json,cobblemon.animation.chitin.wing_flap.large,done,
 sound,animation.chitin.wing_flap.medium,sounds.json,cobblemon.animation.chitin.wing_flap.medium,done,
 sound,animation.chitin.wing_flap.small,sounds.json,cobblemon.animation.chitin.wing_flap.small,done,
@@ -3039,6 +3029,7 @@ sound,fishing.splash_big,sounds.json,cobblemon.fishing.splash_big,done,
 sound,fishing.splash_small,sounds.json,cobblemon.fishing.splash_small,done,
 sound,gui.click,sounds.json,cobblemon.gui.click,done,
 sound,gui.levelup,sounds.json,cobblemon.gui.levelup,done,
+sound,gui.levelup_start,sounds.json,cobblemon.gui.levelup_start,done,
 sound,gui.move_learn,sounds.json,cobblemon.gui.move_learn,done,
 sound,gui.trade,sounds.json,cobblemon.gui.trade,done,
 sound,impact.bug,sounds.json,cobblemon.impact.bug,done,
@@ -3116,6 +3107,7 @@ sound,move.doubleteam.actor,sounds.json,cobblemon.move.doubleteam.actor,done,
 sound,move.dracometeor.actor_1,sounds.json,cobblemon.move.dracometeor.actor_1,done,
 sound,move.dracometeor.actor_2,sounds.json,cobblemon.move.dracometeor.actor_2,done,
 sound,move.dracometeor.target_1,sounds.json,cobblemon.move.dracometeor.target_1,done,
+sound,move.dracometeor.target_2,sounds.json,cobblemon.move.dracometeor.target_2,done,
 sound,move.dracometeor.target_3,sounds.json,cobblemon.move.dracometeor.target_3,done,
 sound,move.ember.actor,sounds.json,cobblemon.move.ember.actor,done,
 sound,move.ember.target,sounds.json,cobblemon.move.ember.target,done,
@@ -3144,6 +3136,7 @@ sound,move.icebeam.target_1,sounds.json,cobblemon.move.icebeam.target_1,done,
 sound,move.icebeam.target_2,sounds.json,cobblemon.move.icebeam.target_2,done,
 sound,move.icepunch.target,sounds.json,cobblemon.move.icepunch.target,done,
 sound,move.infestation.actor,sounds.json,cobblemon.move.infestation.actor,done,
+sound,move.infestation.residual,sounds.json,cobblemon.move.infestation.residual,done,
 sound,move.infestation.target,sounds.json,cobblemon.move.infestation.target,done,
 sound,move.kinesis.actor,sounds.json,cobblemon.move.kinesis.actor,done,
 sound,move.lavaplume.actor,sounds.json,cobblemon.move.lavaplume.actor,done,
@@ -3153,6 +3146,7 @@ sound,move.leafstorm.target,sounds.json,cobblemon.move.leafstorm.target,done,
 sound,move.leechlife.actor,sounds.json,cobblemon.move.leechlife.actor,done,
 sound,move.leechlife.target,sounds.json,cobblemon.move.leechlife.target,done,
 sound,move.leechseed.actor,sounds.json,cobblemon.move.leechseed.actor,done,
+sound,move.leechseed.target,sounds.json,cobblemon.move.leechseed.target,done,
 sound,move.lick.target,sounds.json,cobblemon.move.lick.target,done,
 sound,move.lightscreen.actor,sounds.json,cobblemon.move.lightscreen.actor,done,
 sound,move.magicalleaf.actor_1,sounds.json,cobblemon.move.magicalleaf.actor_1,done,
@@ -3174,6 +3168,9 @@ sound,move.powdersnow.actor,sounds.json,cobblemon.move.powdersnow.actor,done,
 sound,move.powdersnow.target,sounds.json,cobblemon.move.powdersnow.target,done,
 sound,move.protect.actor,sounds.json,cobblemon.move.protect.actor,done,
 sound,move.psychic.actor,sounds.json,cobblemon.move.psychic.actor,done,
+sound,move.psychic.target,sounds.json,cobblemon.move.psychic.target,done,
+sound,move.pursuit.target,sounds.json,cobblemon.move.pursuit.target,done,
+sound,move.quickattack.target,sounds.json,cobblemon.move.quickattack.target,done,
 sound,move.ragepowder.actor,sounds.json,cobblemon.move.ragepowder.actor,done,
 sound,move.ragepowder.target,sounds.json,cobblemon.move.ragepowder.target,done,
 sound,move.razorleaf.actor_1,sounds.json,cobblemon.move.razorleaf.actor_1,done,
@@ -3198,6 +3195,7 @@ sound,move.sludgebomb.target,sounds.json,cobblemon.move.sludgebomb.target,done,
 sound,move.smokescreen.actor,sounds.json,cobblemon.move.smokescreen.actor,done,
 sound,move.smokescreen.target,sounds.json,cobblemon.move.smokescreen.target,done,
 sound,move.spore.actor,sounds.json,cobblemon.move.spore.actor,done,
+sound,move.spore.mushroom,sounds.json,cobblemon.move.spore.mushroom,done,
 sound,move.spore.target,sounds.json,cobblemon.move.spore.target,done,
 sound,move.stringshot.actor,sounds.json,cobblemon.move.stringshot.actor,done,
 sound,move.stringshot.target,sounds.json,cobblemon.move.stringshot.target,done,
@@ -3225,6 +3223,7 @@ sound,move.willowisp.actor_1,sounds.json,cobblemon.move.willowisp.actor_1,done,
 sound,move.willowisp.actor_2,sounds.json,cobblemon.move.willowisp.actor_2,done,
 sound,move.willowisp.target,sounds.json,cobblemon.move.willowisp.target,done,
 sound,move.withdraw.actor,sounds.json,cobblemon.move.withdraw.actor,done,
+sound,particle.shiny_ambient_chime,sounds.json,cobblemon.particle.shiny_ambient_chime,done,
 sound,particle.shiny_chime,sounds.json,cobblemon.particle.shiny_chime,done,
 sound,particle.wild_shiny_ambient_chime,sounds.json,cobblemon.particle.wild_shiny_ambient_chime,done,
 sound,particle.wild_shiny_chime,sounds.json,cobblemon.particle.wild_shiny_chime,done,
@@ -3254,6 +3253,7 @@ sound,poke_ball.shiny_send_out,sounds.json,cobblemon.poke_ball.shiny_send_out,do
 sound,poke_ball.shut,sounds.json,cobblemon.poke_ball.shut,done,
 sound,poke_ball.shut.ancient,sounds.json,cobblemon.poke_ball.shut.ancient,done,
 sound,poke_ball.throw,sounds.json,cobblemon.poke_ball.throw,done,
+sound,poke_ball.trail,sounds.json,cobblemon.poke_ball.trail,done,
 sound,pokemon.abomasnow.ambient,sounds.json,cobblemon.abomasnow.ambient,done,
 sound,pokemon.abra.ambient,sounds.json,cobblemon.abra.ambient,done,
 sound,pokemon.absol.ambient,sounds.json,cobblemon.absol.ambient,done,
