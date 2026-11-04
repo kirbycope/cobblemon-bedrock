@@ -9350,6 +9350,34 @@ function registerWoodComponents(registry) {
 }
 
 world.afterEvents.playerPlaceBlock.subscribe(({ block }) => joinAround(block));
+// DoorBlock.getHinge: a door placed beside a door of its kind whose hinge side it would share takes the other hinge, so
+// the two make a double door; otherwise the solid blocks either side decide (the side with more of them, at the door's
+// height and above, takes the hinge), and failing that where on the block the player clicked
+const DOOR_SIDES = { north: [[-1, 0], [1, 0]], south: [[1, 0], [-1, 0]], east: [[0, -1], [0, 1]], west: [[0, 1], [0, -1]] };   // [counter-clockwise, clockwise] steps
+const doorClicks = new Map();   // player id -> where they last clicked a block holding a door (beforeEvents.playerPlaceBlock is beta)
+world.beforeEvents.playerInteractWithBlock.subscribe(({ player, faceLocation, itemStack }) => {
+    if (/^cobblemon:\w+_door$/.test(itemStack?.typeId ?? "") && faceLocation) doorClicks.set(player.id, faceLocation);   // relative to the block's corner, as the door's own x and z
+});
+function doorHinge(block, click) {
+    const facing = block.permutation.getState("minecraft:cardinal_direction"), [ccw, cw] = DOOR_SIDES[facing] ?? DOOR_SIDES.north;
+    const at = (d, dy) => { try { return block.dimension.getBlock({ x: block.x + d[0], y: block.y + dy, z: block.z + d[1] }); } catch (e) { return undefined; } };
+    const solid = (b) => !!b && !b.isAir && !b.isLiquid && b.typeId !== block.typeId;
+    const count = (solid(at(ccw, 0)) ? -1 : 0) + (solid(at(ccw, 1)) ? -1 : 0) + (solid(at(cw, 0)) ? 1 : 0) + (solid(at(cw, 1)) ? 1 : 0);
+    const isDoor = (b) => b?.typeId === block.typeId && b.permutation.getState("minecraft:multi_block_part") === 0;
+    const leftDoor = isDoor(at(ccw, 0)), rightDoor = isDoor(at(cw, 0));
+    if ((leftDoor && !rightDoor) || count > 0) return "right";
+    if ((rightDoor && !leftDoor) || count < 0) return "left";
+    const dx = (click?.x ?? 0.5) - Math.floor(click?.x ?? 0.5), dz = (click?.z ?? 0.5) - Math.floor(click?.z ?? 0.5);
+    const [sx, sz] = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[facing] ?? [0, -1];
+    return (sx < 0 && dz < 0.5) || (sx > 0 && dz > 0.5) || (sz < 0 && dx > 0.5) || (sz > 0 && dx < 0.5) ? "right" : "left";
+}
+world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
+    if (!/^cobblemon:\w+_door$/.test(block.typeId) || block.permutation.getState("minecraft:multi_block_part") !== 0) return;
+    const click = doorClicks.get(player?.id);
+    doorClicks.delete(player?.id);
+    const hinge = doorHinge(block, click);
+    for (const b of [block, block.above()]) try { if (b?.typeId === block.typeId) b.setPermutation(b.permutation.withState("cobblemon:hinge", hinge)); } catch (e) { }
+});
 world.afterEvents.playerBreakBlock.subscribe(({ block }) => joinAround(block));
 
 function registerApricornComponents(registry) {

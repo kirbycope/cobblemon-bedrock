@@ -3863,7 +3863,7 @@ def create_spawn_rules():
         with open(path, encoding="utf-8") as file: text = file.read()
         data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
         # nothing of its own: the script hears it (dataDrivenEntityTrigger); a form's seed sets the form as its event would
-        for key in forms:
+        for key in sorted(forms, key=lambda k: k or ""):   # a set: sorted so each run writes the same file
             form = key[len("alpha_"):] if key and key.startswith("alpha_") else None if key == "alpha" else key
             events[f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
         second = text.split(chr(10))[1]
@@ -9103,10 +9103,16 @@ def cube_uv(origin, size):
             "up": {"uv": [x + 8, z + 8], "uv_size": [w, d]}, "down": {"uv": [x + 8, z + 8], "uv_size": [w, d]}}
 
 
-def write_bone_geometry(identifier, bones):
-    """A block geometry of named bones, each a list of (origin, size) boxes in block space, -8..8 across."""
+def write_bone_geometry(identifier, bones, mirror=False):
+    """A block geometry of named bones, each a list of (origin, size) boxes in block space, -8..8 across; mirror flips
+    each face's texture left to right."""
     os.makedirs(blockModelsBedrock, exist_ok=True)
-    out = [{"name": name, "pivot": [0, 0, 0], "cubes": [{"origin": o, "size": sz, "uv": cube_uv(o, sz)} for o, sz in boxes]} for name, boxes in bones.items()]
+    def faces(o, sz):
+        uv = cube_uv(o, sz)
+        if mirror:
+            for face in uv.values(): face["uv"] = [face["uv"][0] + face["uv_size"][0], face["uv"][1]]; face["uv_size"] = [-face["uv_size"][0], face["uv_size"][1]]
+        return uv
+    out = [{"name": name, "pivot": [0, 0, 0], "cubes": [{"origin": o, "size": sz, "uv": faces(o, sz)} for o, sz in boxes]} for name, boxes in bones.items()]
     with open(f"{blockModelsBedrock}/{identifier.split('.', 1)[1]}.geo.json", "w") as file:
         file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
             "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
@@ -9181,18 +9187,23 @@ def create_wood_pieces():
         open_state = {"cobblemon:open": [False, True]}
 
         # door: part 0 the bottom, part 1 the top; closed it stands on the side toward whoever placed it, open it
-        # swings a quarter turn against its hinge
+        # swings a quarter turn against its hinge, left or right (DoorBlock.HINGE, set by scripts/main.js as getHinge
+        # picks it), a right-hinged door drawn mirrored as Java's door_*_right models are
         name = f"{wood}_door"
         write_bone_geometry("geometry.cobblemon_door", {"door": [([-8, 0, -8], [16, 16, 3])]})
+        write_bone_geometry("geometry.cobblemon_door_right", {"door": [([-8, 0, -8], [16, 16, 3])]}, mirror=True)
         bottom, top = java_texture(f"cobblemon:block/wood/{wood}_door_bottom"), java_texture(f"cobblemon:block/wood/{wood}_door_top")
         perms = []
         for d, r in TURN.items():
             for opened in (False, True):
-                perms.append({"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('cobblemon:open') == {str(opened).lower()}",
-                              "components": {"minecraft:transformation": {"rotation": [0, (r + (90 if opened else 0)) % 360, 0]}}})
+                for hinge in ("left", "right"):
+                    swing = (90 if hinge == "left" else -90) if opened else 0
+                    perms.append({"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}' && q.block_state('cobblemon:open') == {str(opened).lower()} && q.block_state('cobblemon:hinge') == '{hinge}'",
+                                  "components": {"minecraft:transformation": {"rotation": [0, (r + swing) % 360, 0]}}})
+        perms.append({"condition": "q.block_state('cobblemon:hinge') == 'right'", "components": {"minecraft:geometry": "geometry.cobblemon_door_right"}})
         perms.append({"condition": "q.block_state('minecraft:multi_block_part') == 1",
                       "components": {"minecraft:material_instances": {"*": {"texture": top, "render_method": "alpha_test"}}}})
-        wood_piece(f"cobblemon:{name}", {"states": open_state, "traits": {
+        wood_piece(f"cobblemon:{name}", {"states": {**open_state, "cobblemon:hinge": ["left", "right"]}, "traits": {
             "minecraft:multi_block": {"enabled_states": ["minecraft:multi_block_part"], "parts": 2, "direction": "up"},
             "minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
             {"minecraft:geometry": "geometry.cobblemon_door", "minecraft:material_instances": {"*": {"texture": bottom, "render_method": "alpha_test"}},
