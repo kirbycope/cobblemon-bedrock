@@ -11272,7 +11272,7 @@ function registerCommands(registry) {
     add("spectatebattle", "Follows another player's battle in chat", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
         const player = commandPlayer(origin), target = players?.[0], battle = target && battles.get(target.id);
         if (!player || !battle) return bad("That player is not in a battle");
-        later(() => { (realBattle(battle).spectators ??= new Set()).add(player.id); player.sendMessage(`§7Spectating ${target.name}'s battle.`); });
+        later(() => spectateBattle(player, target, battle));
         return ok("");
     }, CommandPermissionLevel.Any);
     // FreezePokemonCommand: the Pokemon looked at stands still for some seconds
@@ -12701,14 +12701,25 @@ function tradeDistance(a, b) {
     const p = a.entity.location, q = b.entity.location;
     return a.entity.dimension.id === b.entity.dimension.id ? Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) : Infinity;
 }
+// SpectateBattleCommand and the wheel's Spectate: the player follows the battle in chat, as its player sees it
+function spectateBattle(player, target, battle) {
+    if (!battle) return;
+    (realBattle(battle).spectators ??= new Set()).add(player.id);
+    player.sendMessage(`§7Spectating ${target.name}'s battle.`);
+}
 // the player wheel (createPlayerInteractGui), on a player or the test trader
 function openPlayerWheel(player, target) {
     const me = tradeParticipant(player), other = tradeParticipant(target);
     if (!me || !other) return;
     const pending = tradeRequests.find((r) => r.from.id === other.id && r.to.id === me.id);
+    const challenged = challenges.some((c) => c.from.id === other.id && c.to.id === me.id);
     const options = {
-        north: other.player && !battles.has(me.id) && !battles.has(other.id)
-            ? { icon: challenges.some((c) => c.from.id === other.id && c.to.id === me.id) ? "battle_new" : "battle", on: true, tip: "Battle", act: () => openChallenge(player, target) }
+        // a player already in a battle offers Spectate in Battle's place (InteractWheelGuiFactory's SPECTATE_BATTLE), unless
+        // they have challenged this one
+        north: other.player && battles.has(other.id) && !battles.has(me.id) && !challenged
+            ? { icon: "spectate", on: true, tip: "Spectate", act: () => spectateBattle(player, target, battles.get(other.id)) }
+            : other.player && !battles.has(me.id) && !battles.has(other.id)
+            ? { icon: challenged ? "battle_new" : "battle", on: true, tip: "Battle", act: () => openChallenge(player, target) }
             : { icon: "battle", on: false, tip: "Target is currently unavailable for that action." },
         northeast: { icon: pending ? "trade_new" : "trade", on: !trades.has(other.id), tip: trades.has(other.id) ? "Target is currently unavailable for that action." : "Trade",
                      act: () => requestTrade(me, other) },

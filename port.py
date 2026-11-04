@@ -12683,7 +12683,8 @@ def create_interact_ui():
     # each option's icon is drawn onto its button (at twice the size, so the icons' half-pixel offsets land on a
     # pixel), one texture per button, icon and state, since a form button carries a single texture
     icons = {key: Image.open(f"{src}/interact_wheel_icon_{name}.png").convert("RGBA") for key, name in
-             (("held", "held_item"), ("cosmetic", "cosmetic_item"), ("ride", "ride"), ("shoulder", "shoulder"), ("battle", "battle"), ("trade", "trade"))}
+             (("held", "held_item"), ("cosmetic", "cosmetic_item"), ("ride", "ride"), ("shoulder", "shoulder"), ("battle", "battle"), ("trade", "trade"),
+              ("spectate", "spectate_battle"))}
     # the player wheel's Trade with a pending request carries the exclamation mark above its icon (secondaryIconResource)
     exclamation = Image.open(f"{src}/interact_wheel_icon_exclamation.png").convert("RGBA").resize((32, 32), Image.NEAREST)
     # the port's own two: the Summary's info tab icon, and the pasture's move icon for Stay and Follow
