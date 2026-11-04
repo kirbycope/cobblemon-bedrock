@@ -8687,6 +8687,46 @@ def flat_icon(name):
     return image
 
 
+APRIJUICE_QUALITIES = (("tasty", "leaf", "Tasty"), ("delicious", "umbrella", "Delicious"))
+
+
+def create_aprijuice_qualities():
+    """The Aprijuice's quality looks (its item model's cobblemon:aprijuice_quality overrides: a Tasty one wears a leaf,
+    aprijuice_<colour>_leaf, a Delicious one an umbrella, aprijuice_<colour>_umbrella). A Bedrock item has one icon,
+    so each is an item of its own, cobblemon:aprijuice_<colour>_tasty and _delicious, which scripts/main.js gives the
+    cooked juice by its quality and reads as the same Aprijuice."""
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    lines = []
+    for base_path in sorted(glob.glob(f"{itemsBedrock}/general/aprijuice_*.json")):
+        name = os.path.basename(base_path)[:-len(".json")]
+        if any(name.endswith(f"_{q}") for q, _, _ in APRIJUICE_QUALITIES): continue
+        colour = name[len("aprijuice_"):]
+        with open(f"{cobblemon}/models/item/{name}.json", encoding="utf-8-sig") as file: parent = json.load(file)
+        for quality, look, label in APRIJUICE_QUALITIES:
+            look_path = f"{cobblemon}/models/item/{name}_{look}.json"
+            if not os.path.exists(look_path): continue
+            with open(look_path, encoding="utf-8-sig") as file: model = json.load(file)
+            textures = {**parent.get("textures", {}), **model.get("textures", {})}
+            image = None
+            for ref in [v for k, v in sorted(textures.items()) if k.startswith("layer")]:
+                layer = Image.open(f"{cobblemon}/textures/{ref.split(':', 1)[-1]}.png").convert("RGBA")
+                image = layer if image is None else Image.alpha_composite(image, layer.resize(image.size) if layer.size != image.size else layer)
+            item_id = f"{name}_{quality}"
+            image.save(f"{texturesItemsBedrock}/{item_id}.png")
+            itemTextureData["texture_data"][item_id] = {"textures": [f"textures/items/{item_id}"]}
+            with open(base_path, encoding="utf-8") as file: item = json.load(file)
+            item["minecraft:item"]["description"]["identifier"] = f"cobblemon:{item_id}"
+            item["minecraft:item"]["description"]["menu_category"] = {"category": "items", "is_hidden_in_commands": False}
+            item["minecraft:item"]["components"]["minecraft:icon"] = item_id
+            item["minecraft:item"]["components"]["minecraft:display_name"] = {"value": f"item.cobblemon:{item_id}.name"}
+            with open(f"{itemsBedrock}/general/{item_id}.json", "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+            lines.append(f"item.cobblemon:{item_id}.name={label} {colour.replace('_', ' ').title()} Aprijuice")
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    with open(f"{resourcePack}/texts/en_US.lang", "a", encoding="utf-8") as file: file.write("\n".join(lines) + "\n")
+    print(f"  Aprijuice qualities: {len(lines)} items")
+
+
 def create_tms():
     """Cobblemon's TMs (data/cobblemon/tms): one item a move, cobblemon:tm_<move>, on its type's disc icon and named
     "Technical Machine" as TechnicalMachineItem is (the move shows as its tooltip); scripts/tms.js carries each TM's
@@ -14062,6 +14102,7 @@ def main():
     create_fishing()
     create_pokedex()
     general_items = create_general_items()
+    create_aprijuice_qualities()
     create_revival_herb()   # after the items, whose Revival Herb it makes plantable
     create_wild_features()   # after the blocks it places
     create_tms()

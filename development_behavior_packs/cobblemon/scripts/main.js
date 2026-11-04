@@ -3147,7 +3147,9 @@ const RIDE_STATS = ["ACCELERATION", "SKILL", "SPEED", "STAMINA", "JUMP"];
 const RIDE_STAT_NAMES = { ACCELERATION: "Accel.", SKILL: "Skill", SPEED: "Speed", STAMINA: "Stamina", JUMP: "Jump" };
 const RIDE_FLAVOURS = { ACCELERATION: "SPICY", SKILL: "DRY", SPEED: "SWEET", STAMINA: "SOUR", JUMP: "BITTER" };
 const RIDE_COLOURS = { ACCELERATION: "§c", SKILL: "§b", SPEED: "§d", STAMINA: "§e", JUMP: "§a" };
-const aprijuiceColour = (id) => (id?.startsWith("cobblemon:aprijuice_") ? id.slice("cobblemon:aprijuice_".length).toUpperCase() : null);
+// an Aprijuice's colour, whichever of its quality items it is (cobblemon:aprijuice_red, _red_tasty, _red_delicious)
+const aprijuiceBase = (id) => id?.replace(/_(tasty|delicious)$/, "");
+const aprijuiceColour = (id) => (id?.startsWith("cobblemon:aprijuice_") ? aprijuiceBase(id).slice("cobblemon:aprijuice_".length).toUpperCase() : null);
 function aprijuiceBoosts(colour, seasonings) {
     const flavours = {};
     for (const id of seasonings) for (const [flavour, value] of Object.entries(SEASONINGS[id]?.flavours ?? {})) flavours[flavour] = (flavours[flavour] ?? 0) + value;
@@ -3199,8 +3201,11 @@ function consumesSeasoning(recipe, id) {
 }
 // a slot's item as an ItemStack, with an Aprijuice's name and boosts
 function slotStack(s) {
-    const stack = new ItemStack(s[0], s[1]);
     const boosts = s[2]?.boosts, colour = aprijuiceColour(s[0]);
+    // the quality's look, its item of its own (the model's aprijuice_quality override: Tasty a leaf, Delicious an umbrella)
+    const quality = boosts && colour && Object.keys(boosts).length ? aprijuiceQuality(boosts) : null;
+    const id = colour ? aprijuiceBase(s[0]) + ({ MEDIUM: "_tasty", HIGH: "_delicious" }[quality] ?? "") : s[0];
+    const stack = new ItemStack(id, s[1]);
     if (boosts && colour) {
         const has = Object.keys(boosts).length, quality = aprijuiceQuality(boosts);
         const prefix = !has ? "Plain" : { HIGH: "Delicious", MEDIUM: "Tasty", LOW: "Plain" }[quality];
@@ -3225,7 +3230,7 @@ function slotStack(s) {
 }
 function stackSlot(item) {
     if (!item) return null;
-    const out = [item.typeId, item.amount];
+    const out = [aprijuiceColour(item.typeId) ? aprijuiceBase(item.typeId) : item.typeId, item.amount];
     if (aprijuiceColour(item.typeId) && /Aprijuice/.test(item.nameTag ?? "")) {
         const boosts = {};
         for (const line of item.getLore()) {
