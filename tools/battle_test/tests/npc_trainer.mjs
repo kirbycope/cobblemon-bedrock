@@ -43,3 +43,13 @@ const preset = {
     for (let n = 0; n < 200; n++) if (M.strongFoeMove(b, 0).id !== "quickattack") random++;
     check("skill 0 picks at random", random > 100, String(random));
 }
+{
+    // StrongBattleAI's switch: a Fire Pokemon facing a faster Water one switches to a faster Electric bench Pokemon (a bench Pokemon rated under 1, a slow Ferrothorn, is never switched to)
+    const foe = mon("Charmander", { level: 30, moves: ["scratch", "ember"] }), b = battle(mon("Greninja", { level: 30, moves: ["watergun", "quickattack"] }), foe);
+    b.gym = { npc: foe.entity, at: 0, turns: 3, skill: 5, name: "Test", party: [{ spec: { t: foe.entity.typeId, lv: 30, moves: ["scratch", "ember"] }, down: false },
+                                                                       { spec: { t: mon("Jolteon").entity.typeId, lv: 30, moves: ["thunderbolt", "quickattack"] }, down: false }] };
+    const action = M.strongFoeMove(b, 5);
+    check("a trainer in a losing matchup switches to the bench Pokemon that beats it", action?.gymSwitch && action.to === 1, JSON.stringify(action));
+    b.gym.turns = 1;
+    check("but not on its first turn out", !M.strongFoeMove(b, 5)?.gymSwitch);
+}

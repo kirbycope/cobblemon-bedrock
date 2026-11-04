@@ -4662,13 +4662,60 @@ function startNpcBattle(player, npc) {
 }
 
 // StrongBattleAI, Cobblemon's NPC battle AI: a skill check (skill 5 always, otherwise skill in 5) or a random move; past
-// it, at under 30% HP the most damaging move, Sleep Talk asleep, a recovery move under half HP, an entry hazard while the
+// it, a switch where shouldSwitchOut finds one (strongSwitch), at under 30% HP the most damaging move, Sleep Talk asleep, a recovery move under half HP, an entry hazard while the
 // player has three Pokemon or more, a field move it lacks (Tailwind, Trick Room, Reflect and Light Screen against the
 // matching attacker, Aurora Veil in hail or snow), a status move above half HP on a target it can afflict and not knock
 // out (burn on a strong attacker, paralysis on a faster one, sleep by Spore or Sleep Powder, poison and confusion
 // always), and otherwise the most damaging move
 const STRONG_RECOVERY = new Set(["healorder", "milkdrink", "recover", "rest", "roost", "slackoff", "softboiled"]);
 const STRONG_HAZARDS = new Set(["spikes", "stealthrock", "stickyweb", "toxicspikes"]);
+// StrongBattleAI.estimateMatchup: one side's standing against the player's Pokemon, from its best move's type
+// multiplier and its types' against the other's (2.5 a matchup, 0.8 a move), speed (4 either way, turned round in
+// Trick Room), health, and 25 for a way to undo the player's boosts; for a bench member, its spec
+function strongSide(battle, member) {
+    if (!member) {
+        const f = battle.foe;
+        return { types: f.info.types, moveTypes: f.moves.map((m) => m.type), spe: (f.info.stats?.spe ?? 0) * stage(f.stages.spe ?? 0), hp: Math.max(0, f.hp) / f.stats.hp, moves: f.moves.map((m) => m.id), ability: f.ability };
+    }
+    const info = POKEMON[member.spec.t], looks = VARIANT_LOOKS[member.spec.t], v = looks?.findIndex((l) => l[0] === member.spec.form);
+    return { types: (v > 0 && info.variants?.[v]?.types) || info.types, moveTypes: member.spec.moves.map((m) => MOVES[m]?.type).filter(Boolean),
+             spe: info.stats?.spe ?? 0, hp: member.kept ? member.kept.hp / hpAt(info.stats.hp, member.spec.lv) : 1, moves: member.spec.moves, ability: member.spec.ability };
+}
+const typeMultiplier = (att, def) => att.reduce((m, a) => m * effectiveness(a, def), 1);
+const bestMultiplier = (moveTypes, def) => Math.max(1, ...moveTypes.map((t) => effectiveness(t, def)));
+function strongMatchup(battle, me) {
+    const opp = battle.ally, room = realBattle(battle)?.trickroom ? -1 : 1;
+    let score = 1;
+    score += bestMultiplier(me.moveTypes, opp.info.types) * 0.8 + typeMultiplier(me.types, opp.info.types) * 2.5;
+    score -= bestMultiplier(opp.moves.map((m) => m.type), me.types) * 0.8 + typeMultiplier(opp.info.types, me.types) * 2.5;
+    const oppSpe = (opp.info.stats?.spe ?? 0) * stage(opp.stages.spe ?? 0);
+    if (me.spe > oppSpe) score += 4 * room; else if (oppSpe > me.spe) score -= 4 * room;
+    score += me.hp * 0.4 * 0.25 - (Math.max(0, opp.hp) / opp.stats.hp) * 0.4 * 0.25;
+    if (((opp.stages.atk ?? 0) > 1 || (opp.stages.spa ?? 0) > 1) && (me.moves.some((m) => m === "clearsmog" || m === "haze") || me.ability === "unaware")) score += 25;
+    return score;
+}
+// StrongBattleAI.shouldSwitchOut: never on its first turn or trapped; only to a bench Pokemon rated well above it (by
+// half its own rating and 3), and not when it is under 30% HP and slower; then for moves locked into doing nothing,
+// the player's lowered accuracy or defences, or a lowered attacking stat, or a rating under -2 above 30% HP
+function strongSwitch(battle) {
+    const g = battle.gym, foe = battle.foe, ally = battle.ally;
+    if (!g || g.turns <= 1 || trappedIn(battle, foe)) return null;
+    const bench = g.party.map((p, i) => [p, i]).filter(([p, i]) => !p.down && i !== g.at);
+    if (!bench.length) return null;
+    const me = strongSide(battle), current = strongMatchup(battle, me);
+    const rated = bench.map(([p, i]) => [i, strongMatchup(battle, strongSide(battle, p))]);
+    const [bestAt, best] = rated.reduce((b, r) => (r[1] > b[1] ? r : b));
+    if (best <= current + Math.abs(current) * 0.5 + 3 || best < 1) return null;
+    const oppSpe = (ally.info.stats?.spe ?? 0) * stage(ally.stages.spe ?? 0);
+    if (me.hp < 0.3 && oppSpe > me.spe) return null;
+    const usable = foe.moves.filter((m) => canPick(foe, m));
+    if (usable.length < foe.moves.length && usable.every((m) => effectiveness(m.type, ally.info.types) === 0 || (m.power ?? 0) < 40)) return bestAt;
+    if (!rated.some(([, r]) => r > 0)) return null;
+    const st = ally.stages, base = ally.info.stats ?? {};
+    if ((st.accuracy ?? 0) <= -3 || (st.def ?? 0) <= -3 || (st.spd ?? 0) <= -3) return bestAt;
+    if ((base.atk ?? 0) > (base.spa ?? 0) ? (st.atk ?? 0) <= -3 : (st.spa ?? 0) <= -3) return bestAt;
+    return current < -2 && me.hp > 0.3 ? bestAt : null;
+}
 function strongDamage(battle, a, d, move) {
     return gymDamage(battle, a, d, move) * (move.accuracy === true ? 1 : (move.accuracy ?? 100) / 100);
 }
@@ -4678,6 +4725,8 @@ function strongFoeMove(battle, skill) {
     if (!usable.length) return STRUGGLE;
     const random = usable[Math.floor(Math.random() * usable.length)];
     if (skill < 5 && Math.floor(Math.random() * 100) >= skill * 20) return random;
+    const swap = strongSwitch(battle);
+    if (swap !== null) return gymSwitchTo(swap);
     const share = (f) => Math.max(0, f.hp) / f.stats.hp;
     const best = () => usable.reduce((b, m) => (strongDamage(battle, foe, ally, m) > strongDamage(battle, foe, ally, b) ? m : b));
     if (share(foe) < 0.3) return best();
