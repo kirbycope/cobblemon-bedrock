@@ -7997,6 +7997,19 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     return true;
 }
 
+// SpawnDetail.weightMultipliers: a spawn's weight times each multiplier whose condition holds where it is drawn (a Poke
+// Snack's draw, thunder, the time of day, the moon, the rod's lure level), port.py's "wm"
+function weightMultiplier(spawn, cast, at, tags, snack) {
+    let m = 1;
+    for (const [mult, cond] of spawn.wm ?? []) {
+        if (cond.isPokeSnack !== undefined && cond.isPokeSnack !== snack) continue;
+        if (cond.isThundering !== undefined && (weatherIn(at.dimension) === "Thunder") !== cond.isThundering) continue;
+        const { isPokeSnack, isThundering, ...rest } = cond;
+        if (Object.keys(rest).length && !spawnAllowed(rest, cast, at, tags)) continue;
+        m *= mult;
+    }
+    return m;
+}
 // SpawnBaitInfluence.affectWeight: a bait's EV effect leaves out a species without that EV yield, and its typing and egg
 // group effects weight a species that matches by their value
 function baitWeight(cast, spawn) {
@@ -8025,7 +8038,7 @@ function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
     const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
     const present = Object.entries(buckets).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
-    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp)]).filter(([, w]) => w > 0);
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, pool === SNACK_SPAWNS)]).filter(([, w]) => w > 0);
     if (!inBucket.length) return undefined;
     return { spawn: pick(inBucket)[0], bucketWeight: buckets[bucket] };
 }
@@ -8269,14 +8282,15 @@ function spawnsAt(dim, where, naturalToo) {
     const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village)
         && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
     if (!fits.length && !naturalToo) return null;
-    return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base };
+    return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base, at, tags, cast };
 }
 // a bucket by Cobblemon's world bucket weights among those the pool has, then a spawn in it by weight
-function drawSpawn(pool) {
+function drawSpawn(pool, here) {
     const buckets = Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b));
     if (!buckets.length) return null;
     const bucket = pick(buckets)[0];
-    return { bucket, drawn: pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]))[0] };
+    const weight = (sp) => sp.weight * (here ? weightMultiplier(sp, here.cast, here.at, here.tags, false) : 1);
+    return { bucket, drawn: pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, weight(sp)]))[0] };
 }
 // one spawn of a drawn entry at its spot: its form event, and its herd filled about it
 function spawnDrawn(dim, drawn, spot) {
@@ -8299,7 +8313,7 @@ function specialSpawn(player) {
     const here = spawnsAt(dim, where, false);
     if (!here) return;
     const { fits, pool, base } = here;
-    const { bucket, drawn } = drawSpawn(pool) ?? {};
+    const { bucket, drawn } = drawSpawn(pool, here) ?? {};
     if (!fits.includes(drawn)) return;
     try {
         const cx = Math.floor(spot.x / 16) * 16, cz = Math.floor(spot.z / 16) * 16;
@@ -8316,7 +8330,7 @@ function spawnFromPool(player) {
         const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
         const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
         const here = where && spawnsAt(dim, where, true);
-        const draw = here && drawSpawn(here.pool);
+        const draw = here && drawSpawn(here.pool, here);
         if (!draw?.drawn?.entity || !POKEMON[draw.drawn.entity]) continue;
         try { return spawnDrawn(dim, draw.drawn, where.spot); } catch (e) { }
     }
@@ -8336,7 +8350,7 @@ function checkSpawns(player, bucket) {
             if (sp.bucket !== bucket || seen.has(sp) || !POKEMON[sp.entity]) continue;
             seen.add(sp);
             const name = POKEMON[sp.entity].name;
-            weights.set(name, (weights.get(name) ?? 0) + sp.weight);
+            weights.set(name, (weights.get(name) ?? 0) + sp.weight * weightMultiplier(sp, here.cast, here.at, here.tags, false));
         }
     }
     const total = [...weights.values()].reduce((a, b) => a + b, 0);

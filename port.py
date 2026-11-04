@@ -3632,6 +3632,23 @@ def biome_filter_for(biome_ids):
     return filters[0] if len(filters) == 1 else _any(*filters)
 
 
+WEIGHT_CONDITIONS = ("isPokeSnack", "isThundering", "isRaining", "timeRange", "moonPhase", "minLureLevel", "maxLureLevel", "canSeeSky")
+
+
+def weight_multipliers(spawn):
+    """A spawn's weightMultiplier(s) (SpawnDetail.weightMultipliers) for the script's draws: {"wm": [[multiplier,
+    condition]]}, each condition kept to what the script can test (a Poke Snack's draw, thunder, rain, the time, the
+    moon, the rod's lure); one naming anything else is left out, as the port cannot tell when it would hold."""
+    out = []
+    for key in ("weightMultiplier", "weightMultipliers"):
+        v = spawn.get(key)
+        for m in (v if isinstance(v, list) else [v] if v else []):
+            cond = m.get("condition", {}) or {}
+            if m.get("anticondition") or not cond or any(k not in WEIGHT_CONDITIONS for k in cond): continue
+            out.append([m.get("multiplier", 1), cond])
+    return {"wm": out} if out else {}
+
+
 def spawn_condition(spawn, species, kind):
     """One Bedrock spawn condition from one Cobblemon spawn entry, or None if it cannot be expressed."""
     condition = spawn.get("condition", {})
@@ -7802,7 +7819,7 @@ def fishing_spawns():
             not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
             low, _, high = str(spawn.get("level", "5-30")).partition("-")
             entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
-                     "level": [int(low), int(high or low)], "biome": biome}
+                     "level": [int(low), int(high or low)], "biome": biome, **weight_multipliers(spawn)}
             if not_biome: entry["notBiome"] = not_biome
             for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait", "isSlimeChunk"):
                 if key in condition: entry[key] = condition[key]
@@ -7831,7 +7848,7 @@ def snack_spawns():
             not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
             low, _, high = str(spawn.get("level", "5-30")).partition("-")
             entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
-                     "level": [int(low), int(high or low)], "biome": biome}
+                     "level": [int(low), int(high or low)], "biome": biome, **weight_multipliers(spawn)}
             if not_biome: entry["notBiome"] = not_biome
             for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
                 if key in condition: entry[key] = condition[key]
@@ -7908,7 +7925,8 @@ def special_spawns():
     def entry_for(pokemon, words, spawn, cond, anti, level):
         biome = biome_filter_for(cond.get("biomes", ["#cobblemon:is_overworld"]))
         if not pokemon or not biome: return None
-        entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1), "level": level, "biome": biome}
+        entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1), "level": level, "biome": biome,
+                 **weight_multipliers(spawn)}
         not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
         if not_biome: entry["notBiome"] = not_biome
         for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
