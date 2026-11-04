@@ -6738,11 +6738,33 @@ const careKey = (block) => `${block.dimension.id}|${block.x}|${block.y}|${block.
 function careOf(block) { return berryCare()[careKey(block)] ?? {}; }
 function setCare(block, care) {
     const all = berryCare(), key = careKey(block);
-    if (!care || (!care.mulch && !care.mut)) delete all[key]; else all[key] = care;
+    if (!care || (!care.mulch && !care.mut && care.due === undefined)) delete all[key]; else all[key] = JSON.parse(JSON.stringify(care));
     saveBerryCare(all);
     // the mulch shows on the soil under the bush (BerryBlock.MULCH, its <kind>_mulch plane)
     const look = care?.mulch ? care.mulch.replace("_mulch", "") : "none";
     try { if (BERRIES[block.typeId] && block.permutation.getState("cobblemon:mulch") !== look) block.setPermutation(block.permutation.withState("cobblemon:mulch", look)); } catch (e) { }
+}
+// BerryBlockEntity.resetGrowTimers: a bush grows from planted to flowering in its growthTime and from flowering to fruit
+// in its refreshRate, minutes times 1.4, each stage of a phase 80 to 100% of its even share of what is left (the port's
+// two growing stages and its one fruiting stage stand for Java's three and two), Growth Mulch halving it
+// (GROWTH_TIME_MULTIPLIER). The time the next stage is due is kept with the bush, and the first random tick after it
+// moves it on
+const BERRY_MINUTES = 1200, BERRY_TIME_SCALE = 1.4;
+// a phase's whole time, rolled as it starts (planted, or flowering after a harvest)
+function berryPhaseTicks(berry, stage, mulch) {
+    const [lo, hi] = stage < 2 ? berry.grow ?? [36, 44] : berry.refresh ?? [18, 22];
+    return Math.round(ri(Math.floor(lo * BERRY_TIME_SCALE), Math.floor(hi * BERRY_TIME_SCALE)) * BERRY_MINUTES * (mulch === "growth_mulch" ? 0.5 : 1));
+}
+// goToNextStageTimer: this stage's time out of what the phase has left, 80 to 100% of its even share
+function berryStageTicks(left, stagesLeft) { return Math.round((left / stagesLeft) * (0.8 + Math.random() * 0.2)); }
+// the bush is at this stage from now: its next one due, or nothing kept once it bears fruit
+function scheduleBerry(block, stage, care = careOf(block)) {
+    const berry = BERRIES[block.typeId];
+    if (!berry) return;
+    if (stage >= 3) { setCare(block, { ...care, due: undefined, left: undefined }); return; }
+    const left = stage === 0 || stage === 2 || care.left === undefined ? berryPhaseTicks(berry, stage, care.mulch) : care.left;
+    const ticks = berryStageTicks(left, stage < 2 ? 2 - stage : 1);
+    setCare(block, { ...care, due: world.getAbsoluteTime() + ticks, left: left - ticks });
 }
 // a mulch used up: Growth and Rich on each harvest, Surprise on each mutation roll
 function spendMulch(block, care) {
@@ -6758,7 +6780,10 @@ function applyMulch(block, player, itemId) {
     if (!(kind in MULCHES)) return false;
     const care = careOf(block);
     if (care.mulch) { player.onScreenDisplay.setActionBar("§7This tree already has mulch on it."); return true; }
-    setCare(block, { ...care, mulch: kind, uses: MULCHES[kind] });
+    // refreshTimers: Growth Mulch halves the time left to the next stage too
+    const now = world.getAbsoluteTime(), halve = kind === "growth_mulch" && care.due !== undefined;
+    const due = halve ? now + Math.max(0, care.due - now) / 2 : care.due, left = halve && care.left !== undefined ? care.left / 2 : care.left;
+    setCare(block, { ...care, mulch: kind, uses: MULCHES[kind], due, left });
     consumeHand(player);
     try { block.dimension.playSound("cobblemon.block.mulch.place", block.location); block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
     player.onScreenDisplay.setActionBar(`§aThe tree has ${itemName(itemId)} on it.`);
@@ -9289,7 +9314,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             useBoneMeal(player);
             try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
             const stage = block.permutation.getState("cobblemon:stage");
-            if (stage < 3 && Math.random() < bush.boneMeal) block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1));
+            if (stage < 3 && Math.random() < bush.boneMeal) { block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1)); scheduleBerry(block, stage + 1); }
         });
         return;
     }
@@ -11465,9 +11490,13 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");
             if (stage >= 3) return;
-            // Growth Mulch halves the growth time: a second stage on the same tick
-            const next = Math.min(3, stage + (careOf(block).mulch === "growth_mulch" ? 2 : 1));
+            const care = careOf(block);
+            // a bush with no time kept (newly planted, or from before) starts its stage's clock now
+            if (care.due === undefined) { scheduleBerry(block, stage, care); return; }
+            if (world.getAbsoluteTime() < care.due) return;
+            const next = stage + 1;
             block.setPermutation(block.permutation.withState("cobblemon:stage", next));
+            scheduleBerry(block, next, care);
             if (next === 3) berryMutation(block);
         },
         onPlayerInteract({ block, player }) {
@@ -11479,6 +11508,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
             const { x, y, z } = block.location;
             for (const [item, count] of berryHarvest(block)) block.dimension.spawnItem(new ItemStack(item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
+            scheduleBerry(block, 2);
             try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
     });

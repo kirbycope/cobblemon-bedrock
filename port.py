@@ -7215,8 +7215,10 @@ def create_blocks():
                            "minecraft:block_placer": {"block": bush, "use_on": BERRY_SOILS}}}}
         with open(f"{itemsBedrock}/berries/{berry}.json", "w") as file: file.write(json.dumps(item, indent=4))
         yield_range = data.get("baseYield", {"min": 1, "max": 3})
+        # growthTime and refreshRate, minutes from planted to flowering and from flowering to fruit (BerryBlockEntity)
+        grow, refresh = data.get("growthTime", {"min": 36, "max": 44}), data.get("refreshRate", {"min": 18, "max": 22})
         berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3),
-                         "boneMeal": data.get("boneMealChance", 0.5)}
+                         "boneMeal": data.get("boneMealChance", 0.5), "grow": [grow["min"], grow["max"]], "refresh": [refresh["min"], refresh["max"]]}
     # the healing machine, facing the player who places it, its lights by its charge (cobblemon:charge 0 to 5,
     # HealingMachineBlock.CHARGE_LEVEL: healing_machine_<charge>, and a natural one's healing_machine_limited_<charge>,
     # set by scripts/main.js); while it heals (cobblemon:active) its front and back are healing_machine_active, whose
