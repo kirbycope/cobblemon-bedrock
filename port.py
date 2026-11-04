@@ -4872,20 +4872,25 @@ def ball_model_textures(model):
 
 
 # the capture ball's states, set by scripts/main.js as EmptyPokeBallEntity's CaptureState moves on
-BALL_STATES = {"fly": 0, "hover": 1, "open": 2, "shut": 3, "shake": 4, "critical": 5, "capture": 6, "break": 7}
+BALL_STATES = {"fly": 0, "hover": 1, "open": 2, "shut": 3, "shake": 4, "critical": 5, "capture": 6, "break": 7, "hop": 8}
+# an ancient ball hops once in place of its shakes, by the checks it passed (EmptyPokeBallEntity.shakeBall: a set's first
+# animation is the one played, so midhop1 and smallhop1)
+ANCIENT_HOPS = {1: "weirdhop", 2: "bighop", 3: "midhop1", 4: "smallhop1"}
 
 
 def create_capture_ball():
     """The ball after it hits: one entity per ball model, its texture picked by cobblemon:ball, playing
     PokeBallModel's poses and PokeBallPosableState's animations for the state the script sets: open when the
-    ball hovers (then shut 1.75 seconds later), bounce as it lands, a random bob on each shake, capture or break."""
+    ball hovers (then shut 1.75 seconds later), bounce as it lands, a random bob on each shake (an ancient ball's one
+    hop, by cobblemon:shake), capture or break."""
     for model in ("poke_ball", "ancient_poke_ball"):
         balls = ball_model_textures(model)
         stem = "capture_ball" if model == "poke_ball" else "capture_ball_ancient"
         ident = f"cobblemon:{stem}"
         state = "q.property('cobblemon:state')"
         a = lambda n: f"animation.{model}.{n}"
-        route = lambda here: [{name: f"{state} == {value}"} for name, value in BALL_STATES.items() if name != here]
+        ancient = model == "ancient_poke_ball"
+        route = lambda here: [{name: f"{state} == {value}"} for name, value in BALL_STATES.items() if name != here and (ancient or name != "hop")]
         bob = {f"bob{n}": f"v.bob == {n}" for n in range(1, 7)}
         odd = "math.mod(q.property('cobblemon:shake'), 2) == 1"
         states = {
@@ -4902,6 +4907,8 @@ def create_capture_ball():
             "capture": {"animations": ["capture"], "transitions": route("capture")},
             "break": {"animations": ["break"], "transitions": route("break")},
         }
+        if ancient:
+            states["hop"] = {"animations": [{hop: f"q.property('cobblemon:shake') == {n}"} for n, hop in ANCIENT_HOPS.items()], "transitions": route("hop")}
         with open(f"{animationControllersBedrock}/{stem}.animation_controllers.json", "w") as file:
             file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": {f"controller.animation.{stem}": {"initial_state": "fly", "states": states}}}, indent=2))
         with open(f"{renderControllersBedrock}/{stem}.render_controllers.json", "w") as file:
@@ -4909,7 +4916,7 @@ def create_capture_ball():
                 "arrays": {"textures": {"Array.ball": [f"Texture.b{n}" for n in range(len(balls))]}},
                 "geometry": "Geometry.default", "materials": [{"*": "Material.default"}],
                 "textures": ["Array.ball[q.property('cobblemon:ball')]"]}}}, indent=2))
-        names = ["throw", "open", "open_idle", "shut", "shut_idle", "bounce", "critical", "capture", "break"] + [f"bob{n}" for n in range(1, 7)]
+        names = ["throw", "open", "open_idle", "shut", "shut_idle", "bounce", "critical", "capture", "break"] + [f"bob{n}" for n in range(1, 7)] + (list(ANCIENT_HOPS.values()) if ancient else [])
         with open(f"{pokeBallsMain}/animations/{model}.animation.json", encoding="utf-8") as file: clips = json.load(file)["animations"]
         effects = sorted({e["effect"] for c in clips.values() for e in c.get("sound_effects", {}).values() if isinstance(e, dict)})
         particles = sorted({e["effect"] for c in clips.values() for v in c.get("particle_effects", {}).values() for e in (v if isinstance(v, list) else [v])})

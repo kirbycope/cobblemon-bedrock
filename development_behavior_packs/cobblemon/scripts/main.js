@@ -11410,7 +11410,7 @@ function captureBall(dim, ballId, at) {
     return entity;
 }
 
-function ballState(entity, state) { try { entity.setProperty("cobblemon:state", { fly: 0, hover: 1, open: 2, shut: 3, shake: 4, critical: 5, capture: 6, break: 7 }[state]); } catch (e) { } }
+function ballState(entity, state) { try { entity.setProperty("cobblemon:state", { fly: 0, hover: 1, open: 2, shut: 3, shake: 4, critical: 5, capture: 6, break: 7, hop: 8 }[state]); } catch (e) { } }
 
 function dropBall(dim, ballId, at, player) {
     if (player?.getGameMode?.() === "Creative") return;
@@ -11560,11 +11560,30 @@ function fall(ball, pos, player, pokemon, ballId, gone) {
     });
 }
 
-// on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result
+// the hop an ancient ball makes in place of its shakes, by the checks passed (a critical capture counts one, a catch
+// four), as EmptyPokeBallEntity.shakeBall picks it
+function ancientHops(roll) { return roll.critical ? 1 : roll.caught ? 4 : roll.shakes; }
+
+// on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result; an ancient
+// ball hops once instead, and the result follows 1.25 s after the hop
 function land(ball, pos, player, pokemon, ballId, gone) {
     const dim = ball.dimension, roll = captureRoll(player, pokemon, ballId, captureBattles.get(pokemon.id));
     ballState(ball, "shake");
     let shake = 0;
+    if (BALLS[ballId]?.ancient) {
+        const hops = ancientHops(roll);
+        if (hops) system.runTimeout(() => {
+            if (!ball.isValid) return;
+            ballState(ball, "hop");
+            try { ball.setProperty("cobblemon:shake", hops); } catch (e) { }
+        }, 20);
+        system.runTimeout(() => {
+            if (!ball.isValid || !pokemon.isValid) { gone(); return; }
+            if (roll.caught) caught(ball, pos, player, pokemon, ballId, gone);
+            else brokeFree(ball, pos, pokemon, ballId, gone);
+        }, hops ? 45 : 20);
+        return;
+    }
     const steps = roll.shakes + 1;
     for (let i = 0; i < steps; i++) {
         system.runTimeout(() => {
