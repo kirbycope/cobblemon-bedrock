@@ -246,9 +246,12 @@ MOVE_KEYS_HANDLED = {"num", "accuracy", "basePower", "category", "name", "pp", "
 
 # moves whose own code only matters with allies on the field
 DOUBLES_MOVES = {"afteryou", "allyswitch", "followme", "helpinghand", "quash", "ragepowder", "spotlight", "aromaticmist", "coaching",
-                 "decorate", "holdhands", "instruct"}
+                 "decorate", "holdhands", "instruct", "dragoncheer"}
 # moves whose own code changes nothing in a single battle, so the move table's fields are the whole move here
 SINGLES_WHOLE = {"dragondarts": "both hits land on the one target in a single battle", "snipeshot": "redirection only exists in doubles",
+                 "firepledge": "its combination needs an ally's Pledge", "grasspledge": "its combination needs an ally's Pledge",
+                 "waterpledge": "its combination needs an ally's Pledge",
+                 "steelbeam": "its half-HP cost is the battle script's (mindBlownRecoil, cut its own HP)",
                  "flameburst": "its splash only reaches an ally", "pollenpuff": "it heals only an ally", "round": "doubling needs an ally using it too",
                  "orderup": "its raise needs a Commander Tatsugiri, a doubles pairing", "splash": "it does nothing, as it should (the battle script says so)",
                  "snore": "sleepUsable, failing while awake, in the battle script", "watershuriken": "its 20 power is Ash-Greninja's, a form Battle Bond no longer makes"}
@@ -291,7 +294,7 @@ DOUBLES_ONLY = {"battery", "powerspot", "steelyspirit", "flowerveil", "friendgua
 # a battle here is between real entities in the world, so one Pokemon cannot pass as another
 NO_ILLUSION = {"illusion": "the Pokemon in battle are real entities in the world, so Zoroark cannot be shown as another"}
 TERA_ONLY = {"embodyaspectcornerstone", "embodyaspecthearthflame", "embodyaspectteal", "embodyaspectwellspring", "terashift",
-             "terashell", "teraformzero"}
+             "terashell", "teraformzero", "terablast"}
 
 
 def abilities():

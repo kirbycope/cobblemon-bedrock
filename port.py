@@ -5468,6 +5468,8 @@ def create_battle_data():
             known = (known[1:] + damaging[-1:]) if damaging else known
         learned = known or ["tackle"]
         used.update(learned); used.update(m for _, m in learnset); used.update(egg)
+        # and the moves it learns by TM or tutor, which a TM taught (scripts/tms.js) must find in the battle data
+        used.update(m.split(":", 1)[1] for m in species.get("moves", []) if m.split(":", 1)[0] in ("tm", "tutor") and m.split(":", 1)[1] in moves)
         abilities = [a for a in species.get("abilities", []) if not a.startswith("h:")]
         stats = species.get("baseStats", {})
         table[entity_id(pokemon)] = {
