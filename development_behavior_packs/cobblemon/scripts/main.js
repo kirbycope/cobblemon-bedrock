@@ -7609,11 +7609,37 @@ function snackTick(block) {
             if (plan.spawn.event) pokemon.triggerEvent(plan.spawn.event);
             setProp(pokemon, LEVEL, level);
             applyBait(pokemon, cast);
+            setProp(pokemon, SNACK_CRUMBED, true);   // PokeSnackBlockEntity.affectSpawn's poke_snack_crumbed
         } catch (e) { }
     });
     eatSnack(block);
     return `drew ${plan.spawn.entity}`;
 }
+// AspectParticleMap: a Pokemon with crumbs of the snack it ate, or honey from a slathered log, gives them off now and then
+// (each client tick, 0.05 chance of three crumbs, 0.075 of a drop of honey), here checked every 4 ticks for the Pokemon
+// within 32 blocks of a player, its particle box its own size
+const SNACK_CRUMBED = "cobblemon:snack_crumbed";
+const ASPECT_PARTICLES = [[SNACK_CRUMBED, "cobblemon:poke_snack_crumbs", 0.05], ["cobblemon:honey_drenched", "cobblemon:honey_drip", 0.075]];
+system.runInterval(() => {
+    const seen = new Set();
+    for (const player of world.getAllPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (seen.has(e.id)) continue;
+            seen.add(e.id);
+            for (const [key, particle, chance] of ASPECT_PARTICLES) {
+                if (!prop(e, key) || Math.random() >= 1 - (1 - chance) ** 4) continue;
+                try {
+                    const feet = e.location, head = e.getHeadLocation(), half = Math.max(0.15, (head.y - feet.y) / 2);
+                    const vars = new MolangVariableMap();
+                    vars.setFloat("variable.half_height", half); vars.setFloat("variable.half_width", Math.min(half, 0.6));
+                    e.dimension.spawnParticle(particle, { x: feet.x, y: feet.y + half, z: feet.z }, vars);
+                } catch (err) { }
+            }
+        }
+    }
+}, 4);
 // Herds (PokemonHerdSpawnDetail): a herd's first member spawns naturally and fires cobblemon:herd_seed (port.py's
 // create_spawn_rules); the pass then fills the herd to its size (at most maximumSpawnsPerPass, 8). One herd level is
 // rolled in the herd's range; while the herd has a leader to give and none yet, the next is a leader, otherwise a
@@ -11363,7 +11389,8 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
             try { pokemon.teleport(pos); } catch (e) { }
             player.sendMessage(`§aGotcha! ${name} was caught!`);
             if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
-            setProp(pokemon, "cobblemon:honey_drenched", undefined);   // callbacks/pokemon_captured/remove_aspects
+            // callbacks/pokemon_captured/remove_aspects
+            setProp(pokemon, "cobblemon:honey_drenched", undefined); setProp(pokemon, SNACK_CRUMBED, undefined);
             const battle = captureBattles.get(pokemon.id);
             captureBattles.delete(pokemon.id);
             keepCaught(player, pokemon, ballId);   // first, so the battle's end does not heal it as a wild one

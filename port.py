@@ -9224,6 +9224,35 @@ def create_habitat_pools():
     print(f"Create habitat pools complete: {len(pools)} pools.")
 
 
+def create_aspect_particles():
+    """AspectParticleMap's particles, which a Pokemon gives off while it has the aspect (scripts/main.js plays them): the
+    crumbs of the Poke Snack it ate (poke_snack_crumbed, Minecraft's block particle of the snack, here bits in its
+    colour) and the honey of a slathered log (honey_drenched, FALLING_HONEY, an amber drop)."""
+    def particle(name, texture, uv, size, colour, count, life, gravity):
+        tint = {"minecraft:particle_appearance_tinting": {"color": colour}} if colour else {}
+        data = {"format_version": "1.10.0", "particle_effect": {
+            "description": {"identifier": f"cobblemon:{name}", "basic_render_parameters": {"material": "particles_alpha", "texture": texture}},
+            "components": {
+                "minecraft:emitter_rate_instant": {"num_particles": count},
+                "minecraft:emitter_lifetime_once": {"active_time": 0.05},
+                "minecraft:emitter_shape_box": {"half_dimensions": ["v.half_width ?? 0.3", "v.half_height ?? 0.3", "v.half_width ?? 0.3"], "direction": "outwards"},
+                "minecraft:particle_lifetime_expression": {"max_lifetime": life},
+                "minecraft:particle_initial_speed": 0.4,
+                "minecraft:particle_motion_dynamic": {"linear_acceleration": [0, -gravity, 0], "linear_drag_coefficient": 0.5},
+                "minecraft:particle_motion_collision": {"collision_radius": 0.05, "coefficient_of_restitution": 0.1},
+                "minecraft:particle_appearance_billboard": {"size": [size, size], "facing_camera_mode": "rotate_xyz", "uv": uv},
+                "minecraft:particle_appearance_lighting": {}, **tint}}}
+        os.makedirs(f"{particlesBedrock}/aspects", exist_ok=True)
+        with open(f"{particlesBedrock}/aspects/{name}.particle.json", "w") as file: file.write(json.dumps(data, indent=2))
+    # a block particle is a bit of the block's texture; a pack's block texture does not load as a particle's, so the
+    # crumbs are the particle sheet's square in the snack's own colour (poke_snack_top's 229, 205, 122)
+    particle("poke_snack_crumbs", "textures/particle/particles", {"texture_width": 128, "texture_height": 128, "uv": [0, 56], "uv_size": [8, 8]},
+             0.05, [0.9, 0.8, 0.48, 1.0], 3, "math.random(0.5, 1.0)", 9.8)
+    particle("honey_drip", "textures/particle/particles", {"texture_width": 128, "texture_height": 128, "uv": [0, 56], "uv_size": [8, 8]},
+             0.06, [0.97, 0.67, 0.13, 1.0], 1, "math.random(1.0, 1.5)", 4.0)
+    print("Create aspect particles complete.")
+
+
 def create_alpha_eyes():
     """An alpha's glowing eyes: the species' alpha_eyes layer (its resolver's emissive <name>_alpha texture, which the
     Alpha Mark's aspect shows) as a second render pass over the same geometry, shown while cobblemon:alpha is set."""
@@ -13861,6 +13890,7 @@ def main():
     create_tms()
     create_held_display()
     create_alpha_eyes()
+    create_aspect_particles()   # after copy_particles, which writes the folder afresh
     create_habitat_pools()
     create_berry_care()
     write_item_names(general_items)
