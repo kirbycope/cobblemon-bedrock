@@ -4025,6 +4025,7 @@ function turn(battle) {
                 if (!battles.has(battle.player.id)) return;
                 if (!entity) { battle.turn--; turn(battle); return; }
                 const foeMove = foe.hp > 0 ? forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe)) : null;
+                if (foeMove?.gymSwitch) { switchTo(battle, entity); if (!gymNextPokemon(battle, { to: foeMove.to, then: () => endOfTurn(battle) })) endOfTurn(battle); return; }
                 if (foeMove?.id === "pursuit") {
                     battle.movedFirst = foe; battle.pursuing = true;
                     try { useMove(battle, foe, ally, foeMove); } finally { battle.pursuing = false; }
@@ -4042,7 +4043,15 @@ function turn(battle) {
         const move = choice.move;
         if ((held(ally)?.startsWith("choice_") || ally.ability === "gorillatactics") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
-        const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
+        let foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
+        // the trainer's switch comes first; the player's move then goes at the one coming in
+        if (foeMove?.gymSwitch) {
+            const to = foeMove.to;
+            foeMove = GYM_ITEM;
+            if (gymNextPokemon(battle, { to, then: () => runTurn() })) { ally.chosenMove = move; return; }
+        }
+        runTurn();
+        function runTurn() {
         ally.chosenMove = move; foe.chosenMove = foeMove;
         const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
         battle.movedFirst = allyFirst ? ally : foe;
@@ -4064,6 +4073,7 @@ function turn(battle) {
             pivot(battle, swap, () => step(i + 1));
         };
         step(0);
+        }
     }).catch((e) => battleFailed(battle, e));
 }
 
@@ -4508,6 +4518,8 @@ const RCT_DEFEATS = "cobblemon:rct_defeats", RCT_SERIES = "cobblemon:rct_series"
 const RCT_HEALS = { "cobblemon:potion": 20, "cobblemon:super_potion": 50, "cobblemon:hyper_potion": 200, "cobblemon:max_potion": Infinity, "cobblemon:full_restore": Infinity };
 const RCT_STATUS_BIAS = 0.85, RCT_ITEM_BIAS = 0.85;
 const GYM_ITEM = { name: "(item)", priority: 6 };   // the trainer used an item this turn instead of a move
+// the trainer switches this turn instead of moving (to: its party index); the switch comes before any move
+const gymSwitchTo = (to) => ({ name: "(switch)", priority: 7, gymSwitch: true, to });
 const gymRest = new Map();   // trainer entity id -> the tick it battles again
 // trainers in the same group of a requirement stand in for each other (SeriesManager's siblings): the two Agathas
 const RCT_SIBLINGS = new Map();
@@ -4588,7 +4600,7 @@ function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
     if (!data?.team.length) return;
     startTeamBattle(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
-                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin });
+                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin, switchBias: data.switchBias });
 }
 // a trainer's team battle: its first Pokemon comes out, and the rest follow as each faints (gymNextPokemon)
 function startTeamBattle(player, npc, team, trainer) {
@@ -4733,6 +4745,47 @@ function gymMoveValue(battle, foe, ally, move, maxMargin) {
     const faster = speedOf(foe, battle) >= speedOf(ally, battle) || (move.priority || 0) > 0;
     return e * (faster ? 1 : hpShare(foe) + Math.random() * (1 - hpShare(foe)));
 }
+// RCTBattleAI.evalSwitch: how much better off the trainer is with a bench Pokemon in, from the leaving one's stat stages
+// and status, the two's type matchups against the player's Pokemon (the heaviest), their health, and the bench one's
+// stats against the player's; each term blurred by a normal spread, the sum pushed up by the trainer's switch bias, a
+// Pokemon in its first turn kept in more often, and the rating bent down by a random power
+const RCT_SWITCH_WEIGHTS = { boosts: 6, status: 8, typing: 48, health: 6 };
+function gaussian(mean, sd) { return mean + sd * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); }
+function gaussClamp(mean, sig3, min, max) { return Math.min(max, Math.max(min, gaussian(mean, sig3 / 3))); }
+const gaussNorm = (mean = 0.5, sig3 = 1) => gaussClamp(mean, sig3, 0, 1);
+const rngSin = () => Math.sin(Math.random() * Math.PI / 2 * Math.PI / 2);
+const rngRange = (min, max) => min + (1 - rngSin()) * (max - min);
+// TypeChart.getAverageEffectiveness: every attacking type against every defending type, averaged, an absorbing ability
+// counting nothing
+const ABSORBS = { water: ["stormdrain", "waterabsorb", "dryskin"], electric: ["voltabsorb", "lightningrod", "motordrive"], ground: ["eartheater", "levitate"], fire: ["flashfire", "wellbakedbody"], grass: ["sapsipper"] };
+function averageEffectiveness(attackTypes, defendTypes, ability) {
+    let sum = 0;
+    for (const at of attackTypes) for (const dt of defendTypes) sum += (ABSORBS[at] ?? []).includes(ability) ? 0 : effectiveness(at, [dt]);
+    return attackTypes.length && defendTypes.length ? sum / (attackTypes.length * defendTypes.length) : 0;
+}
+function gymSwitchRating(battle, member) {
+    const g = battle.gym, from = battle.foe, opp = battle.ally, info = POKEMON[member.spec.t];
+    const looks = VARIANT_LOOKS[member.spec.t], v = looks?.findIndex((l) => l[0] === member.spec.form);
+    const types = (v > 0 && info.variants?.[v]?.types) || info.types;
+    const parts = [];
+    const boosts = ["atk", "def", "spa", "spd", "spd", "evasion"].reduce((t, k) => t + (from.stages[k] ?? 0) / 6, 0) / 6;
+    parts.push([gaussNorm(Math.max(0, Math.min(1, 0.5 - boosts)), 0.125), RCT_SWITCH_WEIGHTS.boosts]);
+    parts.push([gaussNorm(from.status || from.confused ? 0.5 : 0, 0.125), RCT_SWITCH_WEIGHTS.status]);
+    const eff = (a, d, ab) => Math.min(1, averageEffectiveness(a, d, ab) / 2);
+    const effFrom = (eff(from.info.types, opp.info.types, opp.ability) + 1 - eff(opp.info.types, from.info.types, from.ability)) / 2;
+    const effTo = (eff(types, opp.info.types, opp.ability) + 1 - eff(opp.info.types, types, member.spec.ability)) / 2;
+    parts.push([gaussClamp(Math.sin((effTo - effFrom) * Math.PI / 2), 0.125, -1, 1), RCT_SWITCH_WEIGHTS.typing]);
+    const lv = member.spec.lv, statsOfSpec = ["atk", "def", "spa", "spd", "spe"].map((k) => statAt(info.stats[k], lv, member.spec.ivs?.[k] ?? 0, member.spec.evs?.[k] ?? 0));
+    const oppAvg = ["atk", "def", "spa", "spd", "spe"].reduce((t, k) => t + opp.stats[k], 0) / 5;
+    const statsFactor = oppAvg > 0 ? statsOfSpec.reduce((a, b) => a + b, 0) / 5 / oppAvg : 1;
+    const toHp = member.kept ? member.kept.hp / hpAt(info.stats.hp, lv, member.spec.ivs?.hp ?? 0, member.spec.evs?.hp ?? 0) : 1;
+    parts.push([gaussClamp(toHp - Math.max(0, from.hp) / from.stats.hp, 0.125, -1, 1), RCT_SWITCH_WEIGHTS.health]);
+    const total = parts.reduce((t, [, w]) => t + w, 0), delta = Math.max(0, parts.reduce((t, [x, w]) => t + x * w, 0)) / total;
+    const biased = gaussClamp(delta, (g.switchBias ?? 0.5) / 2, delta, 1);
+    const age = g.turns > 1 || battle.turn <= 1 ? 1 : gaussNorm();
+    const rating = Math.min(1, biased * age * statsFactor);
+    return rngRange(Math.pow(rating, 1.25), rating);
+}
 // the trainer's move or item for the turn; an item is used here, before anyone moves, as items go first
 function gymFoeAction(battle) {
     const g = battle.gym, foe = battle.foe, ally = battle.ally;
@@ -4749,7 +4802,10 @@ function gymFoeAction(battle) {
             options.push({ item: slot, e: Math.min(1, g.turns / 3) * Math.min(1, amount * (1 - share) * 4 * cures) * RCT_ITEM_BIAS });
         }
     }
+    // a switch is weighed with the moves and items (ResponseBuilder.suggestSwitches), unless it is trapped
+    if (!trappedIn(battle, foe)) g.party.forEach((p, i) => { if (!p.down && i !== g.at) options.push({ swap: i, e: gymSwitchRating(battle, p) }); });
     const pick = rctPick(options, g.margin);
+    if (pick.swap !== undefined) return gymSwitchTo(pick.swap);
     if (!pick.item) return pick.move;
     const [item] = pick.item, data = { name: g.name };
     pick.item[1]--; g.itemsLeft--;
@@ -4774,7 +4830,7 @@ function gymNextPokemon(battle, swap) {
         const defence = Math.max(...ally.info.types.map((t) => effectiveness(t, types)));
         return offence - defence;
     };
-    const [next, index] = swap?.random ? left[Math.floor(Math.random() * left.length)] : left.reduce((best, c) => (score(c) > score(best) ? c : best));
+    const [next, index] = swap?.to !== undefined ? left.find(([, i]) => i === swap.to) ?? left[0] : swap?.random ? left[Math.floor(Math.random() * left.length)] : left.reduce((best, c) => (score(c) > score(best) ? c : best));
     const entity = spawnGymPokemon(g.npc.isValid ? g.npc : battle.foe.entity, next.spec, battle.player);
     if (!entity) return false;
     g.at = index; g.turns = 0;

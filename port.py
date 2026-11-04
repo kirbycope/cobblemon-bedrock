@@ -6057,6 +6057,7 @@ def rct_trainer_data(trainers, items):
                     "bag": [[f"cobblemon:{b['item'].split(':')[-1]}", b.get("quantity", 1)] for b in data.get("bag", [])],
                     "maxItemUses": data.get("battleRules", {}).get("maxItemUses", -1),
                     "margin": data.get("ai", {}).get("data", {}).get("maxSelectMargin", 0.25),
+                    "switchBias": data.get("ai", {}).get("data", {}).get("switchBias", 0.5),
                     "doubles": data.get("battleFormat") == "GEN_9_DOUBLES"}
     # LevelUtils: a trainer's level is its strongest Pokemon's, or a required trainer's where that is higher
     def level_of(tid):
