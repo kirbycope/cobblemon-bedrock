@@ -12316,22 +12316,61 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const type = event.target?.typeId;
     if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse") return;
     event.cancel = true;
-    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player) : openMart(event.player));
+    const target = event.target;
+    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player, target) : openMart(event.player));
 });
 
-// The Nurse's trades (CobblemonTradeOffers, all five levels at once, since an NPC does not level): what she wants for
-// what she gives, an emerald and a glass bottle for a medicine, Medicinal Leeks and Mulch Base bought for emeralds
+// The Nurse's trades (CobblemonTradeOffers) by villager level, Novice to Master: what she wants, what she gives, its
+// maxUses and the villager XP it earns her. She levels as a villager does: two offers drawn from a level's list as she
+// reaches it (VillagerData's two new offers a level), each good for its uses until she restocks at her healing machine
+// (twice a day at most, 2400 ticks apart, in working hours), and XP from each trade taking her up at 10, 70, 150 and
+// 250; the player gains 3 to 6 experience a trade, 5 more when she levels
 const EMERALD = "minecraft:emerald";
-const NURSE_TRADES = [
-    [[[EMERALD, 4]], ["cobblemon:oran_berry", 1]], [[[EMERALD, 4]], ["cobblemon:persim_berry", 1]], [[[EMERALD, 4]], ["cobblemon:energy_root", 1]],
-    [[["cobblemon:medicinal_leek", 24]], [EMERALD, 1]],
-    [[[EMERALD, 8], ["minecraft:glass_bottle", 1]], ["cobblemon:medicinal_brew", 1]],
-    ...["blue", "cyan", "green", "pink", "red", "white"].map((c) => [[[EMERALD, 2]], [`cobblemon:${c}_mint_leaf`, 1]]),
-    [[["cobblemon:mulch_base", 4]], [EMERALD, 2]], [[[EMERALD, 1]], ["minecraft:glass_bottle", 1]],
-    [[[EMERALD, 8]], ["cobblemon:revival_herb", 1]], [[[EMERALD, 24]], ["cobblemon:vivichoke_seeds", 1]],
-    ...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1]]),
-    [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1]]
+const NURSE_LEVELS = [
+    [[[[EMERALD, 4]], ["cobblemon:oran_berry", 1], 16, 1], [[[EMERALD, 4]], ["cobblemon:persim_berry", 1], 16, 1], [[[EMERALD, 4]], ["cobblemon:energy_root", 1], 12, 1],
+     [[["cobblemon:medicinal_leek", 24]], [EMERALD, 1], 12, 2]],
+    [[[[EMERALD, 8], ["minecraft:glass_bottle", 1]], ["cobblemon:medicinal_brew", 1], 8, 5],
+     ...["blue", "cyan", "green", "pink", "red", "white"].map((c) => [[[EMERALD, 2]], [`cobblemon:${c}_mint_leaf`, 1], 8, 5])],
+    [[[["cobblemon:mulch_base", 4]], [EMERALD, 2], 16, 20], [[[EMERALD, 1]], ["minecraft:glass_bottle", 1], 16, 10]],
+    [[[[EMERALD, 8]], ["cobblemon:revival_herb", 1], 16, 15], [[[EMERALD, 24]], ["cobblemon:vivichoke_seeds", 1], 4, 15]],
+    [...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1], 12, 30]),
+     [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1], 4, 30]]
 ];
+const NURSE_LEVEL_XP = [0, 10, 70, 150, 250], NURSE_LEVEL_NAMES = ["Novice", "Apprentice", "Journeyman", "Expert", "Master"];
+const NURSE_STATE = "cobblemon:nurse_trades";
+// her level, XP, the offers she has ([level, index] each) and the uses left of each; drawn afresh for a new Nurse
+function nurseState(nurse) {
+    return drawOffers(jsonProp(nurse, NURSE_STATE, null) ?? { level: 1, xp: 0, offers: [], uses: [], restocks: 0, day: -1, last: -99999 });
+}
+// two offers from each level she has reached and has none from yet
+function drawOffers(state) {
+    for (let lv = 0; lv < state.level; lv++) {
+        if (state.offers.some(([l]) => l === lv)) continue;
+        for (const i of NURSE_LEVELS[lv].map((_, n) => n).sort(() => Math.random() - 0.5).slice(0, 2)) {
+            state.offers.push([lv, i]); state.uses.push(NURSE_LEVELS[lv][i][2]);
+        }
+    }
+    return state;
+}
+function saveNurse(nurse, state) { setProp(nurse, NURSE_STATE, JSON.stringify(state)); }
+// a trade made: its use spent, her XP up, and her level when it reaches the next threshold (which draws its two offers)
+function nurseTraded(state, k) {
+    const [lv, i] = state.offers[k];
+    state.uses[k]--;
+    state.xp += NURSE_LEVELS[lv][i][3];
+    let levelled = false;
+    while (state.level < NURSE_LEVELS.length && state.xp >= NURSE_LEVEL_XP[state.level]) { state.level++; levelled = true; }
+    drawOffers(state);
+    return levelled;
+}
+// restocking at her healing machine: every offer back to its full uses, twice a day at most and 2400 ticks apart
+function nurseRestock(state, day, tick) {
+    if (state.day !== day) { state.day = day; state.restocks = 0; }
+    if (state.restocks >= 2 || tick - state.last < 2400 || state.offers.every(([lv, i], k) => state.uses[k] >= NURSE_LEVELS[lv][i][2])) return false;
+    state.offers.forEach(([lv, i], k) => { state.uses[k] = NURSE_LEVELS[lv][i][2]; });
+    state.restocks++; state.last = tick;
+    return true;
+}
 // A villager at work uses its job block now and then through the working day (Minecraft's WorkAtPoi, the profession's
 // work sound): the Nurse's is CobblemonVillagerProfessions' work_nurse, played at her healing machine's side, a third
 // of the checks each ten seconds from 2000 to 9000 ticks into the day
@@ -12342,24 +12381,41 @@ system.runInterval(() => {
     for (const player of world.getAllPlayers()) {
         let nurses = [];
         try { nurses = player.dimension.getEntities({ type: "cobblemon:nurse", location: player.location, maxDistance: 32 }); } catch (e) { continue; }
-        for (const nurse of nurses) if (!heard.has(nurse.id) && heard.add(nurse.id) && Math.random() < 1 / 3) try { nurse.dimension.playSound("cobblemon.entity.villager.work_nurse", nurse.location); } catch (e) { }
+        for (const nurse of nurses) if (!heard.has(nurse.id) && heard.add(nurse.id) && Math.random() < 1 / 3) try {
+            nurse.dimension.playSound("cobblemon.entity.villager.work_nurse", nurse.location);
+            // at work she restocks her offers when they need it
+            const state = nurseState(nurse);
+            if (nurseRestock(state, world.getDay(), system.currentTick)) saveNurse(nurse, state);
+        } catch (e) { }
     }
 }, 200);
-function openNurse(player) {
-    const form = new ActionFormData().title("Nurse").body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.`);
+function openNurse(player, nurse) {
+    if (!nurse?.isValid) return;
+    const state = nurseState(nurse);
+    saveNurse(nurse, state);
+    const next = NURSE_LEVEL_XP[state.level];
+    const form = new ActionFormData().title(`Nurse - ${NURSE_LEVEL_NAMES[state.level - 1]}`)
+        .body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.${next !== undefined ? ` §8(${state.xp}/${next} to ${NURSE_LEVEL_NAMES[state.level]})` : ""}`);
     const label = ([id, n]) => id === EMERALD ? `${n} emerald${n === 1 ? "" : "s"}` : `${n > 1 ? `${n} ` : ""}${itemName(id)}`;
-    for (const [wants, gives] of NURSE_TRADES) {
-        const can = wants.every(([id, n]) => countOf(player, id) >= n);
-        form.button(`${label(gives)}\n${can ? "§2" : "§c"}for ${wants.map(label).join(" + ")}`, potIcon(gives[0] === EMERALD ? wants[0][0] : gives[0]));
-    }
+    state.offers.forEach(([lv, i], k) => {
+        const [wants, gives] = NURSE_LEVELS[lv][i], can = wants.every(([id, n]) => countOf(player, id) >= n);
+        form.button(`${label(gives)}\n${state.uses[k] <= 0 ? "§cout of stock" : `${can ? "§2" : "§c"}for ${wants.map(label).join(" + ")}`}`, potIcon(gives[0] === EMERALD ? wants[0][0] : gives[0]));
+    });
     form.show(player).then((r) => {
-        if (r.canceled || r.selection === undefined) return;
-        const [wants, gives] = NURSE_TRADES[r.selection];
-        if (!wants.every(([id, n]) => countOf(player, id) >= n)) { player.sendMessage(`§cYou need ${wants.map(label).join(" + ")}.`); return openNurse(player); }
+        if (r.canceled || r.selection === undefined || !nurse.isValid) return;
+        const fresh = nurseState(nurse), k = r.selection, [lv, i] = fresh.offers[k] ?? [];
+        if (lv === undefined) return;
+        const [wants, gives] = NURSE_LEVELS[lv][i];
+        if (fresh.uses[k] <= 0) { player.sendMessage("§cShe is out of that until she restocks."); return openNurse(player, nurse); }
+        if (!wants.every(([id, n]) => countOf(player, id) >= n)) { player.sendMessage(`§cYou need ${wants.map(label).join(" + ")}.`); return openNurse(player, nurse); }
         for (const [id, n] of wants) takeOf(player, id, n);
-        for (let i = 0; i < gives[1]; i++) giveOrDrop(player, gives[0]);
-        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
-        openNurse(player);
+        for (let j = 0; j < gives[1]; j++) giveOrDrop(player, gives[0]);
+        const levelled = nurseTraded(fresh, k), after = fresh;
+        saveNurse(nurse, after);
+        try { player.addExperience(ri(3, 6) + (levelled ? 5 : 0)); } catch (e) { }
+        try { player.playSound(levelled ? "random.levelup" : "cobblemon.gui.click"); } catch (e) { }
+        if (levelled) player.sendMessage(`§aThe Nurse is now ${NURSE_LEVEL_NAMES[after.level - 1]}.`);
+        openNurse(player, nurse);
     }).catch(() => { });
 }
 
