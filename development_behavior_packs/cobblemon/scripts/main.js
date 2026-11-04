@@ -2856,6 +2856,8 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
 // BURN_TOTAL_TIME at two a tick, then the craft and the disc's reset: 114 ticks, with the start, burn and craft sounds
 function burnTm(block, player, move) {
     const key = tmKey(block), dim = block.dimension, at = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
+    // the machine remembers the TM last made on it (TMMachineBlockEntity.activeMove), which it makes again when powered
+    if (player) { const m = tmMachineData(block); m.m = move; saveTmMachine(block, m); }
     burning.set(key, 114);
     try { setState(block, "cobblemon:active", true); dim.playSound("cobblemon.block.tm_machine.start", at); } catch (e) { }
     const loop = system.runInterval(() => {
@@ -2866,10 +2868,106 @@ function burnTm(block, player, move) {
         system.clearRun(loop); burning.delete(key);
         try { setState(dim.getBlock(block.location), "cobblemon:active", false); dim.playSound("cobblemon.block.tm_machine.craft", at); } catch (e) { }
         try { dim.playSound("cobblemon.block.tm_machine.tm_retrieve", at); } catch (e) { }   // the finished disc comes out
-        if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
+        if (!player) {
+            // made by the machine on its own: into its result slot, for a hopper below to take
+            let here; try { here = dim.getBlock(block.location); } catch (e) { }
+            if (here?.typeId === "cobblemon:tm_machine") {
+                const m = tmMachineData(here);
+                m.s[0] = [`cobblemon:tm_${move}`, (m.s[0]?.[1] ?? 0) + 1];
+                saveTmMachine(here, m);
+            } else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
+        } else if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
         else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
     }, 1);
 }
+
+// The TM Machine's own slots and automation (TMMachineBlockEntity, TMMachineBlockInventory): the result, a Blank TM and
+// the three ingredients of the TM last made on it. While it has redstone power (hasNeighborSignal), hoppers pointing
+// into it from above or a side fill the Blank TM slot and each ingredient's slot with what that recipe takes, it
+// starts making that TM whenever the slots hold the recipe and the result slot has room for one more of it, and a
+// hopper under it takes the made TMs out. An unpowered machine takes nothing in. Breaking it drops what its slots hold.
+// What each machine holds is kept by the world, by place, as the pot's is; Bedrock's hoppers cannot see a scripted
+// block, so the script moves the items, one each eight ticks as a hopper does.
+const TM_SITES = "cobblemon:tm_sites";
+const tmMachineKey = (block) => `cobblemon:tmm|${tmKey(block)}`;
+function tmMachineData(block) {
+    try { return JSON.parse(world.getDynamicProperty(tmMachineKey(block)) ?? "null") ?? { m: null, s: Array(5).fill(null) }; } catch (e) { return { m: null, s: Array(5).fill(null) }; }
+}
+function saveTmMachine(block, data) {
+    const empty = !data.m && data.s.every((x) => !x);
+    world.setDynamicProperty(tmMachineKey(block), empty ? undefined : JSON.stringify(data));
+    const sites = new Set(JSON.parse(world.getDynamicProperty(TM_SITES) ?? "[]"));
+    if (empty) sites.delete(tmKey(block)); else sites.add(tmKey(block));
+    world.setDynamicProperty(TM_SITES, JSON.stringify([...sites]));
+}
+function tmPowered(block) {
+    for (const b of [block, block.above(), block.below(), block.north(), block.south(), block.east(), block.west()]) {
+        try { if ((b?.getRedstonePower() ?? 0) > 0) return true; } catch (e) { }
+    }
+    return false;
+}
+// which slot an item goes in for this machine's TM: 1 the Blank TM, 2 to 4 the recipe's ingredients in order
+function tmSlotFor(move, itemId) {
+    if (itemId === "cobblemon:blank_tm") return 1;
+    const tm = TMS[TM_BY_MOVE.get(move)];
+    const i = (tm?.[3] ?? []).findIndex((entry) => recipeIds(entry).includes(itemId));
+    return i >= 0 && i < 3 ? 2 + i : -1;
+}
+function tmReady(move, data) {
+    const tm = TMS[TM_BY_MOVE.get(move)];
+    if (!tm || !(data.s[1]?.[1] > 0)) return false;
+    if (data.s[0] && (data.s[0][0] !== `cobblemon:tm_${move}` || data.s[0][1] >= 64)) return false;
+    return tm[3].slice(0, 3).every((entry, i) => (data.s[2 + i]?.[1] ?? 0) >= entry[1]);
+}
+system.runInterval(() => {
+    for (const site of JSON.parse(world.getDynamicProperty(TM_SITES) ?? "[]")) {
+        const [dimId, pos] = site.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (!block) continue;   // not loaded
+        const data = tmMachineData(block);
+        let changed = false;
+        if (block.typeId !== "cobblemon:tm_machine") {
+            // broken: what it held comes out where it stood
+            for (const item of data.s) if (item) try { block.dimension.spawnItem(new ItemStack(item[0], item[1]), { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
+            saveTmMachine(block, { m: null, s: Array(5).fill(null) });
+            continue;
+        }
+        const powered = tmPowered(block), active = burning.has(tmKey(block));
+        if (data.m && (powered || active)) {
+            for (const [side, facing] of HOPPER_INTO) {
+                let from; try { from = block[side](); } catch (e) { continue; }
+                const container = hopperAt(from);
+                if (!container) continue;
+                try { if (from.permutation.getState("facing_direction") !== facing) continue; } catch (e) { continue; }
+                for (let i = 0; i < container.size; i++) {
+                    const item = container.getItem(i);
+                    if (!item) continue;
+                    const n = tmSlotFor(data.m, item.typeId);
+                    if (n < 0 || (data.s[n] && (data.s[n][0] !== item.typeId || data.s[n][1] >= item.maxAmount))) continue;
+                    data.s[n] = [item.typeId, (data.s[n]?.[1] ?? 0) + 1];
+                    if (item.amount > 1) { item.amount--; container.setItem(i, item); } else container.setItem(i, undefined);
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        // the made TMs into a hopper below
+        const below = hopperAt(block.below());
+        if (below && data.s[0] && !below.addItem(new ItemStack(data.s[0][0], 1))) {
+            data.s[0] = data.s[0][1] > 1 ? [data.s[0][0], data.s[0][1] - 1] : null;
+            changed = true;
+        }
+        if (powered && !active && data.m && tmReady(data.m, data)) {
+            const tm = TMS[TM_BY_MOVE.get(data.m)];
+            data.s[1] = data.s[1][1] > 1 ? [data.s[1][0], data.s[1][1] - 1] : null;
+            tm[3].slice(0, 3).forEach((entry, i) => { const left = data.s[2 + i][1] - entry[1]; data.s[2 + i] = left > 0 ? [data.s[2 + i][0], left] : null; });
+            saveTmMachine(block, data); changed = false;
+            burnTm(block, null, data.m);
+        }
+        if (changed) saveTmMachine(block, data);
+    }
+}, 8);
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { block, player, isFirstEvent } = event;
     if (block?.typeId !== "cobblemon:tm_machine" || player.isSneaking) return;
@@ -5661,6 +5759,24 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const level = Number(event.message);
         if (level >= 1 && level <= 100) { setProp(target, LEVEL, level); setProp(target, EXP, expFor(POKEMON[target.typeId].expGroup, level)); }
         player.sendMessage(`§a${POKEMON[target.typeId]?.name} is now yours.`);
+    } else if (event.id === "cobblemon:power") {
+        // testing: "/scriptevent cobblemon:power x y z" logs the redstone power the script reads at a block and round it
+        const [x, y, z] = event.message.split(/\s+/).map(Number), dim = (source ?? world.getPlayers()[0]).dimension;
+        const at = dim.getBlock({ x, y, z }), out = [];
+        for (const [name, b] of [["self", at], ["up", at?.above()], ["down", at?.below()], ["north", at?.north()], ["south", at?.south()], ["east", at?.east()], ["west", at?.west()]]) {
+            let p; try { p = b?.getRedstonePower(); } catch (e) { p = `error ${e}`; }
+            out.push(`${name} ${b?.typeId} ${p}`);
+        }
+        console.warn(`[cobblemon] power: ${out.join("; ")}`);
+    } else if (event.id === "cobblemon:tm_machine") {
+        // testing: "/scriptevent cobblemon:tm_machine x y z <move>" makes that the machine's TM, as a player making it does;
+        // with no move it logs what the machine holds
+        const [x, y, z, move] = event.message.trim().split(/\s+/), dim = (source ?? world.getPlayers()[0]).dimension;
+        const block = dim.getBlock({ x: Number(x), y: Number(y), z: Number(z) });
+        if (block?.typeId !== "cobblemon:tm_machine") return;
+        const m = tmMachineData(block);
+        if (move) { m.m = move; saveTmMachine(block, m); }
+        console.warn(`[cobblemon] tm machine: ${JSON.stringify(tmMachineData(block))} powered ${tmPowered(block)}`);
     } else if (event.id === "cobblemon:summary") {
         // testing: "/execute as <pokemon> run scriptevent cobblemon:summary [evolve]" opens its Summary, or its evolutions
         showSummary(source, "i", undefined, 0, event.message.trim() === "evolve" ? "e" : "p");
