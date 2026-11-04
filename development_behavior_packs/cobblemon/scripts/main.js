@@ -38,7 +38,7 @@ import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
-import { SILK_SELF } from "./silk.js";
+import { SILK_SELF, FORTUNE } from "./silk.js";
 import { POTTED } from "./potted.js";
 import { SACCHARINE_TREES } from "./saccharine.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
@@ -8662,6 +8662,36 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
         try { dim.playSound(id.endsWith("_leaves") ? "dig.grass" : "dig.stone", where); } catch (e) { }
         if (player.getGameMode?.() !== "Creative") dim.spawnItem(new ItemStack(id, 1), { x: where.x + 0.5, y: where.y + 0.5, z: where.z + 0.5 });
     });
+});
+
+// Fortune on Cobblemon's ores, gem blocks and crops (ApplyBonusCount): the loot table drops the base count, and the
+// script adds Fortune's share (and, for the binomial, its extra tries, which roll at any level) by Minecraft's formulas: ore_drops multiplies the count by 1 to level + 1 (a third of the
+// time, at level I, no bonus), uniform_bonus_count adds up to multiplier times the level, and binomial_with_bonus_count
+// adds a binomial of level + extra tries
+function fortuneExtra(bonus, level) {
+    const base = typeof bonus.base === "object" ? ri(bonus.base.min, bonus.base.max) : bonus.base ?? 1;
+    if (bonus.formula === "ore_drops") return base * Math.max(0, Math.floor(Math.random() * (level + 2)) - 1);
+    if (bonus.formula === "uniform_bonus_count") return Math.floor(Math.random() * ((bonus.params.bonusMultiplier ?? 1) * level + 1));
+    if (bonus.formula === "binomial_with_bonus_count") {
+        let n = 0;
+        for (let i = 0; i < level + (bonus.params.extra ?? 0); i++) if (Math.random() < (bonus.params.probability ?? 0.5)) n++;
+        return n;
+    }
+    return 0;
+}
+function fortuneLevel(item) {
+    try { return item?.getComponent("minecraft:enchantable")?.getEnchantment("fortune")?.level ?? 0; } catch (e) { return 0; }
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation, itemStackBeforeBreak, player }) => {
+    const bonuses = FORTUNE[brokenBlockPermutation?.type?.id], level = fortuneLevel(itemStackBeforeBreak);
+    if (!bonuses || silkTouch(itemStackBeforeBreak) || player?.getGameMode?.() === "Creative") return;
+    for (const bonus of bonuses) {
+        // the binomial's own extra tries roll without Fortune too (a ripe Medicinal Leek's leeks)
+        if (!level && bonus.formula !== "binomial_with_bonus_count") continue;
+        const holds = Object.entries(bonus.when ?? {}).every(([k, v]) => { try { return String(brokenBlockPermutation.getState(k)) === String(v); } catch (e) { return false; } });
+        const extra = holds ? fortuneExtra(bonus, level) : 0;
+        if (extra > 0) try { block.dimension.spawnItem(new ItemStack(bonus.item, extra), { x: block.x + 0.5, y: block.y + 0.5, z: block.z + 0.5 }); } catch (e) { }
+    }
 });
 
 // a click on a button does not always reach its component, as with bone meal, so the interaction event presses it too
