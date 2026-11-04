@@ -2884,7 +2884,21 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
 function burnTm(block, player, move) {
     const key = tmKey(block), dim = block.dimension, at = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
     // the machine remembers the TM last made on it (TMMachineBlockEntity.activeMove), which it makes again when powered
-    if (player) { const m = tmMachineData(block); m.m = move; saveTmMachine(block, m); }
+    // and another TM chosen hands back what its slots were loaded with for the old one (TMMachineScreen's item_retrieve)
+    if (player) {
+        const m = tmMachineData(block);
+        if (m.m !== move && m.s.slice(1).some(Boolean)) {
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            for (const item of m.s.slice(1)) {
+                if (!item) continue;
+                const left = inv?.addItem(new ItemStack(item[0], item[1])) ?? new ItemStack(item[0], item[1]);
+                if (left) try { dim.spawnItem(left, player.location); } catch (e) { }
+            }
+            m.s = [m.s[0], null, null, null, null];
+            try { dim.playSound("cobblemon.block.tm_machine.item_retrieve", at); } catch (e) { }
+        }
+        m.m = move; saveTmMachine(block, m);
+    }
     burning.set(key, 114);
     try { setState(block, "cobblemon:active", true); dim.playSound("cobblemon.block.tm_machine.start", at); } catch (e) { }
     const loop = system.runInterval(() => {

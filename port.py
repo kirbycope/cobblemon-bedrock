@@ -3000,6 +3000,34 @@ def fx_seconds(value):
         return float(numbers[-1]) if numbers else 0.0
 
 
+# Minecraft's own sounds an effect names, by their Bedrock names (Self-Destruct's explosion, Egg Bomb's throw)
+VANILLA_FX_SOUNDS = {"minecraft:entity.generic.explode": "random.explode", "minecraft:entity.egg.throw": "random.bow"}
+
+
+def fx_sound(name):
+    """A sound an action effect names, as the pack's or Bedrock's identifier."""
+    if name in VANILLA_FX_SOUNDS: return VANILLA_FX_SOUNDS[name]
+    return "cobblemon." + name.replace("cobblemon:", "")
+
+
+def stateful_effects(clip, part):
+    """The sound and particle keyframes of Cobblemon's generic move clip animation.<clip>.<part>
+    (generic/animations/moves), as (seconds in, event) in fx_flatten's form."""
+    path = f"{cobblemon}/bedrock/generic/animations/moves/{clip}.animation.json"
+    if not os.path.exists(path): return []
+    with open(path, encoding="utf-8-sig") as file: anim = json.load(file).get("animations", {}).get(f"animation.{clip}.{part}", {})
+    out = []
+    for key, kind in (("sound_effects", "s"), ("particle_effects", "p")):
+        for at, keyframe in (anim.get(key) or {}).items():
+            for entry in (keyframe if isinstance(keyframe, list) else [keyframe]):
+                effect = entry.get("effect") if isinstance(entry, dict) else None
+                if not effect: continue
+                if kind == "s": out.append((float(at), {"k": "s", "s": fx_sound(effect)}))
+                # Seismic Toss's target clip names its particles without the namespace
+                else: out.append((float(at), {"k": "p", "p": effect if ":" in effect else f"cobblemon:{effect}", "l": entry.get("locator", "root")}))
+    return out
+
+
 def fx_flatten(keyframes, t, events, hold, flags):
     """Walk a timeline from time t, appending events; returns the time it ends at and the hold's release time."""
     for k in keyframes:
@@ -3025,7 +3053,7 @@ def fx_flatten(keyframes, t, events, hold, flags):
             # a sound named plainly ("move.psychic.target") or as MoLang ("'cobblemon:move.' + q.move.name")
             raw = str(k.get("sound", ""))
             snd = fx_value(raw) if "'" in raw or "q." in raw else raw
-            if snd: events.append({"t": round(t, 2), "k": "s", "s": snd.replace("cobblemon:", "cobblemon.") if snd.startswith("cobblemon") else f"cobblemon.{snd}", **base})
+            if snd: events.append({"t": round(t, 2), "k": "s", "s": fx_sound(snd), **base})
             t += fx_seconds(k.get("delay"))
         elif kind == "entity_particles":
             eff = fx_value(k["effect"]) if "'" in str(k.get("effect", "")) else k.get("effect")
@@ -3036,8 +3064,13 @@ def fx_flatten(keyframes, t, events, hold, flags):
             t += fx_seconds(k.get("delay"))
         elif kind == "entity_molang":
             for expr in k.get("expressions", []):
+                # a generic stateful clip played on the entity (Quick Attack's dash, Seismic Toss's throw): its sound and
+                # particle keyframes, at their times; the clip's own bone movement is not carried
+                for clip, part in re.findall(r"bedrock_stateful\('([^']+)'\s*,\s*'([^']+)'\)", expr):
+                    for at, ev in stateful_effects(clip, part):
+                        events.append({**ev, "t": round(t + at, 2), **base})
                 for snd in re.findall(r"q\.sound\('([^']+)'\)", expr):
-                    events.append({"t": round(t, 2), "k": "s", "s": "cobblemon." + snd.replace("cobblemon:", ""), **base})
+                    events.append({"t": round(t, 2), "k": "s", "s": fx_sound(snd), **base})
                 for eff, loc in re.findall(r"q\.particle\('([^']+)'\s*,\s*'([^']+)'\)", expr):
                     events.append({"t": round(t, 2), "k": "p", "p": eff, "l": loc, **base})
             t += fx_seconds(k.get("delay"))
@@ -3198,7 +3231,7 @@ def create_move_fx():
             # 0.91 s), which a Bedrock particle cannot, as sound entries the script plays beside the particle
             for e in [e for e in events if e["k"] == "p" and "$" not in e["p"]]:
                 for delay, snd in particle_sounds(e["p"]):
-                    events.append({**{k: v for k, v in e.items() if k not in ("p", "l", "aim")}, "t": round(e["t"] + delay, 2), "k": "s", "s": "cobblemon." + snd.replace("cobblemon:", "")})
+                    events.append({**{k: v for k, v in e.items() if k not in ("p", "l", "aim")}, "t": round(e["t"] + delay, 2), "k": "s", "s": fx_sound(snd)})
             events.sort(key=lambda e: e["t"])
             for e in events:
                 if e["k"] == "a": used.update(a for a in e["a"] if "$" not in a)
