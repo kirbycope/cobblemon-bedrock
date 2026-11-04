@@ -7628,15 +7628,19 @@ def vanilla_biome_tags():
 
 
 def fishing_spawns():
-    """Cobblemon's fishing spawns as the script tests them; those that need a structure, nearby blocks or a slime
-    chunk are left out, as the spawn rules leave them out."""
+    """Cobblemon's fishing spawns as the script tests them: a slime chunk (Feebas, the Goomy line), a village (Grimer and
+    Muk in its water) and nearby blocks (Skrelp by kelp) among their conditions, which the script tests where the bobber
+    lands; those that need any other structure (the shipwreck coves) are left out, as the spawn rules leave them out."""
     spawns = []
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
             if spawn.get("spawnablePositionType") != "fishing": continue
             condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
-            if condition.get("structures") or condition.get("neededNearbyBlocks") or condition.get("isSlimeChunk"): continue
+            structures = set(condition.get("structures") or [])
+            if structures - {VILLAGE_STRUCTURE}: continue
+            near = bedrock_blocks(condition["neededNearbyBlocks"]) if condition.get("neededNearbyBlocks") else None
+            if condition.get("neededNearbyBlocks") and not near: continue
             pokemon = pokemon_for_species_name(spawn.get("pokemon", ""))
             biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
             if not pokemon or not biome: continue
@@ -7645,8 +7649,10 @@ def fishing_spawns():
             entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
                      "level": [int(low), int(high or low)], "biome": biome}
             if not_biome: entry["notBiome"] = not_biome
-            for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait"):
+            for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait", "isSlimeChunk"):
                 if key in condition: entry[key] = condition[key]
+            if structures: entry["fishVillage"] = True
+            if near: entry["fishNear"] = near
             spawns.append(entry)
     return spawns
 

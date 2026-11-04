@@ -607,12 +607,43 @@ def render_species(folder, size=128, ss=4, variant=0, frame="fit", rest=False, m
     W = H = size * ss
     allpts = np.array([p for tris, _, b, _ in passes if not b for t in tris for p in t[:3]]
                       or [p for tris, _, _, _ in passes for t in tris for p in t[:3]])
+
+    def draw(k, off, n, s):
+        w = h = n * s
+        xf = lambda p: (p[0] * k + off[0], p[1] * k + off[1], p[2])
+        color = np.zeros((h, w, 3), np.float32)
+        alpha = np.zeros((h, w), np.float32)
+        zbuf = np.full((h, w), np.inf, np.float32)
+        for tris, tex, blend, emis in sorted(passes, key=lambda x: x[2]):
+            raster(tris, tex, w, h, xf, color, alpha, zbuf, blend, emis)
+        img = np.dstack([color * alpha[..., None], alpha]).reshape(n, s, n, s, 4).mean(axis=(1, 3))
+        return img
+
     if frame == "fit":
         mn, mx = allpts[:, :2].min(0), allpts[:, :2].max(0)
         ext = max(mx[0] - mn[0], mx[1] - mn[1], 1e-6)
         k = W * (1 - 2 * margin) / ext
         c = (mn + mx) / 2
         off = np.array([W / 2 - c[0] * k, H / 2 - c[1] * k])
+        # a sliver far out from the rest (Alolan Raichu's tail, a line a pixel wide) shrank the body to a speck: frame
+        # the rows and columns that hold at least a twentieth of the fullest one's pixels instead, where that is under
+        # two thirds of it
+        test = 96
+        a = draw(k * test / W, off * test / W, test, 1)[..., 3]
+        if a.sum() > 0:
+            def span(mass):
+                kept = np.nonzero(mass >= mass.max() / 20)[0]
+                return kept[0], kept[-1] + 1
+            (x0, x1), (y0, y1) = span(a.sum(0)), span(a.sum(1))
+            full = max(np.ptp(np.nonzero(a.sum(0))[0]), np.ptp(np.nonzero(a.sum(1))[0]), 1) + 1
+            if max(x1 - x0, y1 - y0) < full * 2 / 3:
+                # back from test pixels to model units, then fit that box as before
+                lo = (np.array([x0, y0]) * W / test - off) / k
+                hi = (np.array([x1, y1]) * W / test - off) / k
+                ext = max(hi[0] - lo[0], hi[1] - lo[1], 1e-6)
+                k = W * (1 - 2 * margin) / ext
+                c = (lo + hi) / 2
+                off = np.array([W / 2 - c[0] * k, H / 2 - c[1] * k])
     else:
         # Cobblemon PC slot: 25x25 GUI px, origin at (12.5, 1), 2.5 * 4.5 GUI px per block
         ps = info["profileScale"]
@@ -622,16 +653,7 @@ def render_species(folder, size=128, ss=4, variant=0, frame="fit", rest=False, m
         off = np.array([gui * (12.5 + 11.25 * tr[0]),
                         gui * (1.0 + 11.25 * (tr[1] + 1.5 * ps))])
 
-    def xf(p):
-        return (p[0] * k + off[0], p[1] * k + off[1], p[2])
-
-    color = np.zeros((H, W, 3), np.float32)
-    alpha = np.zeros((H, W), np.float32)
-    zbuf = np.full((H, W), np.inf, np.float32)
-    for tris, tex, blend, emis in sorted(passes, key=lambda x: x[2]):
-        raster(tris, tex, W, H, xf, color, alpha, zbuf, blend, emis)
-    img = np.dstack([color * alpha[..., None], alpha])  # premultiplied
-    img = img.reshape(size, ss, size, ss, 4).mean(axis=(1, 3))
+    img = draw(k, off, size, ss)
     a = img[..., 3:4]
     rgb = np.where(a > 0, img[..., :3] / np.maximum(a, 1e-6), 0)
     out = np.dstack([rgb, a[..., 0]])

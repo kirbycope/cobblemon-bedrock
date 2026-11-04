@@ -7503,6 +7503,14 @@ function spawnAllowed(spawn, cast, bobber, tags) {
         });
         if (!ok) return false;
     }
+    // a fishing spawn's slime chunk, village and nearby blocks (Feebas, Grimer, Skrelp), where the bobber is
+    if (spawn.isSlimeChunk !== undefined && isSlimeChunk(at.x, at.z) !== spawn.isSlimeChunk) return false;
+    if (spawn.fishVillage && !pokecenterSites().some(([x, z]) => Math.hypot(x - at.x, z - at.z) < VILLAGE_RADIUS)) return false;
+    if (spawn.fishNear) {
+        const x = Math.floor(at.x), y = Math.floor(at.y), z = Math.floor(at.z);
+        try { if (!bobber.dimension.containsBlock(new BlockVolume({ x: x - NEAR_ACROSS, y: y - NEAR_UP, z: z - NEAR_ACROSS }, { x: x + NEAR_ACROSS, y: y + NEAR_UP, z: z + NEAR_ACROSS }), { includeTypes: spawn.fishNear }, false)) return false; }
+        catch (e) { return false; }
+    }
     return true;
 }
 
