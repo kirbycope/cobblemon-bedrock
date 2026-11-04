@@ -239,6 +239,8 @@ MOLANG_QUERIES = [
     (r"q\.riding_style\s*==\s*'LIQUID'", "q.is_in_water"), (r"q\.riding_style\s*!=\s*'AIR'", "q.is_on_ground"),
     (r"q\.riding_style\s*!=\s*'LAND'", "!q.is_on_ground"), (r"q\.riding_style\s*!=\s*'LIQUID'", "!q.is_in_water"), (r"q\.is_air\b", "!q.is_on_ground"),
     (r"q\.horizontal_velocity\b", "(q.ground_speed / 20)"),   # Cobblemon's is blocks a tick
+    # Slowpoke's regrown tail (slowpoke_tails.json), the segments the script counts back in cobblemon:tail
+    (r"q\.has_aspect\('regrown-tail-(\d)'\)", r"(q.property('cobblemon:tail') >= \1)"),
     (r"q\.has_aspect\([^)]*\)", "0"), (r"q\.is_standing_on_blocks\([^)]*\)", f"({SAND} > 0)"),
 ]
 
@@ -301,8 +303,13 @@ def json_parts(parts):
     for t in parts or []:
         visible = t.get("isVisible", t.get("visible"))
         hidden = str(visible).strip().lower() in ("false", "0", "0.0") if visible is not None else False
+        # a visibility Cobblemon works out (Slowpoke's tail by its regrown aspects) becomes a Molang condition on the scale
+        shown_if = None
+        if isinstance(visible, str) and not hidden and visible.strip().lower() not in ("true", "1", "1.0"):
+            shown_if = molang_condition(visible)
+            if shown_if in ("1", "(1)"): shown_if = None
         out.append({"part": t["part"], "position": t.get("position", [0, 0, 0]), "rotation": t.get("rotation", [0, 0, 0]),
-                    "scale": t.get("scale"), "hidden": hidden})
+                    "scale": t.get("scale"), "hidden": hidden, **({"shown_if": shown_if} if shown_if else {})})
     return out
 
 
@@ -569,6 +576,7 @@ def static_parts(parts, bones):
         for i, v in enumerate(t["rotation"]):
             if v: add(bones, t["part"], "rotation", i, f"{v:g}")
         if t["hidden"]: bones.setdefault(t["part"], {})["scale"] = [0, 0, 0]
+        elif t.get("shown_if"): bones.setdefault(t["part"], {})["scale"] = [f"({t['shown_if']}) ? 1 : 0"] * 3
         elif t.get("scale") and t["scale"] != [1, 1, 1]: bones.setdefault(t["part"], {})["scale"] = t["scale"]
 
 

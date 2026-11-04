@@ -1,53 +1,163 @@
 {
-  "format_version": "1.8.0",
-  "animations": {
-    "animation.0079_slowpoke.pose_standing": {
-      "loop": true,
-      "bones": {
-        "head": {
-          "rotation": [
-            "1 * math.clamp(q.target_x_rotation, -45, 70)",
-            "1 * math.clamp(q.target_y_rotation, -45, 45)",
-            "0"
-          ]
-        }
-      }
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.0079_slowpoke.pose_standing": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
     },
-    "animation.0079_slowpoke.pose_walking": {
-      "loop": true,
-      "bones": {
-        "head": {
-          "rotation": [
-            "1 * math.clamp(q.target_x_rotation, -45, 70)",
-            "1 * math.clamp(q.target_y_rotation, -45, 45)",
-            "0"
-          ]
-        }
-      }
+    "tail2": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0"
+     ]
     },
-    "animation.0079_slowpoke.pose_float": {
-      "loop": true,
-      "bones": {
-        "head": {
-          "rotation": [
-            "1 * math.clamp(q.target_x_rotation, -45, 70)",
-            "1 * math.clamp(q.target_y_rotation, -45, 45)",
-            "0"
-          ]
-        }
-      }
+    "tail3": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0"
+     ]
     },
-    "animation.0079_slowpoke.pose_swim": {
-      "loop": true,
-      "bones": {
-        "head": {
-          "rotation": [
-            "1 * math.clamp(q.target_x_rotation, -45, 70)",
-            "1 * math.clamp(q.target_y_rotation, -45, 45)",
-            "0"
-          ]
-        }
-      }
+    "tail4": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0"
+     ]
     }
+   }
+  },
+  "animation.0079_slowpoke.pose_walking": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "tail2": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0"
+     ]
+    },
+    "tail3": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0"
+     ]
+    },
+    "tail4": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0"
+     ]
+    }
+   }
+  },
+  "animation.0079_slowpoke.pose_sleep": {
+   "loop": true,
+   "bones": {
+    "tail2": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0"
+     ]
+    },
+    "tail3": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0"
+     ]
+    },
+    "tail4": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0"
+     ]
+    }
+   }
+  },
+  "animation.0079_slowpoke.pose_float": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "tail2": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0"
+     ]
+    },
+    "tail3": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0"
+     ]
+    },
+    "tail4": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0"
+     ]
+    }
+   }
+  },
+  "animation.0079_slowpoke.pose_swim": {
+   "loop": true,
+   "bones": {
+    "head": {
+     "rotation": [
+      "1 * math.clamp(q.target_x_rotation, -45, 70)",
+      "1 * math.clamp(q.target_y_rotation, -45, 45)",
+      "0"
+     ]
+    },
+    "tail2": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 1)) ? 1 : 0"
+     ]
+    },
+    "tail3": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 2)) ? 1 : 0"
+     ]
+    },
+    "tail4": {
+     "scale": [
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0",
+      "((q.property('cobblemon:tail') >= 3)) ? 1 : 0"
+     ]
+    }
+   }
   }
+ }
 }

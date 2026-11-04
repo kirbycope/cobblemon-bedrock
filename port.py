@@ -872,7 +872,8 @@ def fix_molang(expr):
     # math.clamp with only a minimum is math.max
     expr = re.sub(r"math\.clamp\(([^(),]*(?:\([^()]*\)[^(),]*)*),([^(),]*)\)", r"math.max(\1,\2)", expr)
     # an identifier that is neither a namespace nor a function is a test-only variable (walk, run)
-    for tok in re.findall(r"(?<![\w.])([A-Za-z_]\w*)(?![\w.(])", expr):
+    # (a quoted name is no identifier: q.property('cobblemon:tail') in Slowpoke's generated pose)
+    for tok in re.findall(r"(?<![\w.])([A-Za-z_]\w*)(?![\w.(])", re.sub(r"'[^']*'", "''", expr)):
         if tok not in MOLANG_KNOWN: return None
     # a query only Cobblemon answers (q.r.velocity_y(0), q.r.yaw_change, q.input_up) reads 0, as on a still mount, and
     # the rest of the expression stays: dropping it zeroed its constants too (Gyarados' ride clips lost the body's 12.5
@@ -2825,6 +2826,9 @@ def create_behavior_entities():
                                    "cobblemon:holding": {"type": "bool", "default": False, "client_sync": True},
                                    "cobblemon:held_index": {"type": "int", "range": [0, 1023], "default": 0, "client_sync": True},
                                    "cobblemon:on_sand": {"type": "int", "range": [0, 2], "default": 0, "client_sync": True},
+                                   # Slowpoke's tail segments grown back since it was sheared (slowpoke_tails.json's aspect
+                                   # thresholds, set by the script), which its poser shows by regrown-tail-1 to 3
+                                   **({"cobblemon:tail": {"type": "int", "range": [0, 3], "default": 3, "client_sync": True}} if pokemon.endswith("_slowpoke") else {}),
                                    # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
                                    # Pokemon.scaleModifier, rolled between pokemonIntrinsicSizeMin and Max by the script

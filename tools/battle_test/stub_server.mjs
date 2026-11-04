@@ -25,7 +25,9 @@ export const system = new Proxy({
     beforeEvents: anything(),
 }, handler);
 const worldProps = new Map();   // the world's dynamic properties, kept for a test to read back
+export const clock = { ticks: 0 };   // world.getAbsoluteTime, which a test moves on
 export const world = new Proxy({
+    getAbsoluteTime() { return clock.ticks; },
     getDynamicProperty(k) { return worldProps.get(k); },
     setDynamicProperty(k, v) { if (v === undefined) worldProps.delete(k); else worldProps.set(k, v); },
     getPlayers() { return []; },

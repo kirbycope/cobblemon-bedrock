@@ -9325,14 +9325,34 @@ function setColour(entity, colour) {
     if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
     return n >= 0;
 }
+// SlowpokeTailsMechanic: the tail grows back over 1200 seconds of world time, its segments showing as fewer than 700,
+// 200 and 1 seconds are left (the regrown-tail-1 to 3 aspects its poser shows them by), kept as cobblemon:tail
+const TAIL_REGROWTH = 1200, TAIL_THRESHOLDS = [700, 200, 1];
+function tailSegments(entity) {
+    const cut = prop(entity, TAIL_CUT);
+    if (cut === undefined) return 3;
+    const left = TAIL_REGROWTH - (world.getAbsoluteTime() - cut) / 20;
+    return left > TAIL_REGROWTH ? 3 : TAIL_THRESHOLDS.filter((t) => left < t).length;
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ type: SLOWPOKE, location: player.location, maxDistance: 64 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (prop(e, TAIL_CUT) === undefined) continue;
+            try { const n = tailSegments(e); if (e.getProperty("cobblemon:tail") !== n) e.setProperty("cobblemon:tail", n); } catch (err) { }
+        }
+    }
+}, 100);
 function interactTool(player, target, id) {
     const owner = prop(target, OWNER);
     if (owner !== undefined && owner !== player.id) return false;
     if (id === "minecraft:shears") {
         if (prop(target, FAINTED) || battles.has(player.id)) return false;
         if (target.typeId === SLOWPOKE && variantOf(target) < 2) {
-            if (system.currentTick - (prop(target, TAIL_CUT) ?? -1e9) < 1200 * 20) return false;
-            setProp(target, TAIL_CUT, system.currentTick);
+            if (tailSegments(target) < 3) return false;
+            setProp(target, TAIL_CUT, world.getAbsoluteTime());
+            try { target.setProperty("cobblemon:tail", 0); } catch (e) { }
             target.dimension.spawnItem(new ItemStack("cobblemon:tasty_tail", 1), target.location);
         } else if (SHEARABLE.has(target.typeId)) {
             if (prop(target, SHEARED)) return false;
