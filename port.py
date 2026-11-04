@@ -156,6 +156,18 @@ spawn_range_by_name = {}
 
 
 feature_aspects = {}   # aspect -> {"feature": name, "random": bool, "default": aspect or None}
+feature_formats = {}   # a choice feature's property name (flower) -> its aspect format (flower-{{choice}})
+
+
+def spawn_form(words, events):
+    """The form a spawn entry's properties name, as the entity's cobblemon:spawn_form_<form> event has it: a form or
+    aspect named outright ("rattata alolan", "region_bias=alola"), or a feature's choice ("flower=red", the aspect
+    flower-red; "vivillon_wings=polar", vivillon-wings-polar). None for the species' own look."""
+    for w in words:
+        key, _, value = w.partition("=")
+        for form in ([value or key] + ([feature_formats[key].replace("{{choice}}", value)] if value and key in feature_formats else [])):
+            if f"cobblemon:spawn_form_{form}" in events: return form
+    return None
 
 
 def load_species_features():
@@ -168,6 +180,7 @@ def load_species_features():
             continue
         if feature.get("type") not in ("choice", "weighted_choice") or not feature.get("isAspect", True): continue
         form = feature.get("aspectFormat", "{{choice}}")
+        for key in feature.get("keys", [name]): feature_formats[key] = form
         choices = [c if isinstance(c, str) else c.get("aspect", c.get("value", "")) for c in feature.get("choices", [])]
         default = feature.get("default")
         default_aspect = form.replace("{{choice}}", default) if isinstance(default, str) and default in choices else None
@@ -3683,7 +3696,7 @@ def herd_spawns():
                 if not folder: continue
                 behavior = f"{entitiesBedrock}/{folder}.behavior.json"
                 events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
-                form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events), None)
+                form = spawn_form(words[1:], events)
                 members.append({"folder": folder, "pokemon": m["pokemon"], "form": form, "weight": m.get("weight", 1.0),
                                 "level": int_range(m.get("levelRange")), "offset": int_range(m.get("levelRangeOffset")),
                                 "max": m.get("maxTimes", 10), "leader": bool(m.get("isLeader")), "follower": m.get("isFollower", True),
@@ -3746,7 +3759,7 @@ def create_spawn_rules():
             if words[0] != species_key(species): continue
             # a form's entry ("rattata alolan", "region_bias=alola") spawns that form through its herd event; a shiny
             # or another property spawns as the species, rolled as usual
-            form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in form_events), None)
+            form = spawn_form(words[1:], form_events)
             rule = spawn_condition(spawn, species, kind)
             if rule and member:
                 # an alpha herd's first member has a seed of its own, so the script fills it from the alpha herds only
@@ -7776,7 +7789,7 @@ def snack_spawns():
                 if key in condition: entry[key] = condition[key]
             behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
             events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
-            form = next((w.split("=")[-1] for w in words[1:] if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events), None)
+            form = spawn_form(words[1:], events)
             if form: entry["event"] = f"cobblemon:spawn_form_{form}"
             spawns.append(entry)
     return spawns
@@ -7855,7 +7868,7 @@ def special_spawns():
         if pokemon not in events_of:
             behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
             events_of[pokemon] = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
-        form = next((w.split("=")[-1] for w in words if f"cobblemon:spawn_form_{w.split('=')[-1]}" in events_of[pokemon]), None)
+        form = spawn_form(words, events_of[pokemon])
         if form: entry["event"] = f"cobblemon:spawn_form_{form}"
         return entry
     def place(spawn, entries):
