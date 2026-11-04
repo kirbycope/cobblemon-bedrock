@@ -6589,17 +6589,23 @@ def fruit_cubes(berry, points):
 
 
 BLOCK_LIMIT = (-13.5, 29.5)   # Bedrock rejects block geometry past 30 pixels either side of the block (with a little margin)
+# and up, a span of 29 from the geometry's lowest point to its highest, tilted cubes measured by their turned corners: the
+# client rejected every bush reaching past it ("Total length of parts on axis y is greater than 1 + 14/16ths") and drew
+# none of them, 19 grown and fruiting bushes (Tamato, Lum, Rindo, Nanab and the rest), where Kebia's 29 drew
+BLOCK_SPAN_Y = 29.0
 
 
-def fit_block(cubes):
+def fit_block(cubes, floor=0.0):
     """Trim cubes to the space Bedrock allows a block, keeping any that still have volume; tall bushes (Tamato, Lum)
-    lose the top of their canopy rather than the whole model."""
+    lose the top of their canopy rather than the whole model. floor is the lowest point of anything else the geometry
+    holds (a berry bush's mulch plane, under the block), which the vertical span counts from."""
     low, high = BLOCK_LIMIT
+    top = min(high, floor + BLOCK_SPAN_Y)
     kept = []
     for cube in cubes:
         origin, size = list(cube["origin"]), list(cube["size"])
         for axis in range(3):
-            lo_bound, hi_bound = (0, high) if axis == 1 else (low - 8, high - 8)
+            lo_bound, hi_bound = (0, top) if axis == 1 else (low - 8, high - 8)
             start, end = max(origin[axis], lo_bound), min(origin[axis] + size[axis], hi_bound)
             if end < start or (end == start and size[axis] > 0): break
             origin[axis], size[axis] = start, end - start
@@ -6608,7 +6614,7 @@ def fit_block(cubes):
             if cube.get("rotation"):
                 # a tilted cube a little past the limits (a berry bush's leaves, Java allowing up to 32 where Bedrock
                 # stops at 30) moves back inside with its pivot; one further out goes
-                shift = overflow(origin, size, cube["rotation"], pivot)
+                shift = overflow(origin, size, cube["rotation"], pivot, (floor, top))
                 if any(abs(d) > 2 for d in shift): continue
                 origin = [o - d for o, d in zip(origin, shift)]; pivot = [p - d for p, d in zip(pivot, shift)]
                 kept.append(dict(cube, origin=origin, size=size, pivot=pivot)); continue
@@ -6616,11 +6622,11 @@ def fit_block(cubes):
     return kept
 
 
-def overflow(origin, size, rotation, pivot):
+def overflow(origin, size, rotation, pivot, y_bounds=None):
     """How far a rotated cube's corners go past Bedrock's block bounds on each axis (positive past the top, negative
     past the bottom), taking the rotation either way round, since Java and Bedrock turn x opposite ways."""
     low, high = BLOCK_LIMIT
-    bounds = [(low - 8, high - 8), (low, high), (low - 8, high - 8)]
+    bounds = [(low - 8, high - 8), y_bounds or (low, high), (low - 8, high - 8)]
     axis = next((i for i, a in enumerate(rotation) if a), None)
     if axis is None: return [0, 0, 0]
     shift = [0.0, 0.0, 0.0]
@@ -6810,7 +6816,7 @@ def create_campfire_blocks():
 
 
 def write_block_geometry(identifier, cubes, extra_bones=()):
-    cubes = fit_block(cubes)
+    cubes = fit_block(cubes, min([0.0] + [c["origin"][1] for b in extra_bones for c in b.get("cubes", [])]))
     os.makedirs(blockModelsBedrock, exist_ok=True)
     with open(f"{blockModelsBedrock}/{identifier.split('.', 1)[1]}.geo.json", "w") as file:
         # 1.21.0 for the faces' uv_rotation

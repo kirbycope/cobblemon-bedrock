@@ -902,23 +902,6 @@
                     }
                 ]
             },
-            "cobblemon:spawn_weather_rain": {
-                "sequence": [
-                    {
-                        "filters": {
-                            "test": "weather_at_position",
-                            "subject": "self",
-                            "operator": "!=",
-                            "value": "precipitation"
-                        },
-                        "add": {
-                            "component_groups": [
-                                "cobblemon:gone"
-                            ]
-                        }
-                    }
-                ]
-            },
             "cobblemon:spawn_weather_clear": {
                 "sequence": [
                     {
@@ -936,8 +919,24 @@
                     }
                 ]
             },
+            "cobblemon:spawn_weather_rain": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "precipitation"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:spawn_slime_chunk": {},
-            "cobblemon:herd_seed_alpha": {},
             "cobblemon:herd_seed_alpha_hisuian": {
                 "randomize": [
                     {
@@ -972,6 +971,7 @@
                     }
                 ]
             },
+            "cobblemon:herd_seed_alpha": {},
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [
