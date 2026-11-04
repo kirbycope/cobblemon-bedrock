@@ -3653,6 +3653,8 @@ function cosmeticLook(entity, item) {
     if (!aspect) return null;
     const worn = new Set(Object.values(info.items)), [form, female, shiny] = info.looks[variantOf(entity)] ?? [null, 0, 0];
     if (form && (info.not.includes(form) || !worn.has(form))) return null;
+    // an item the species wears with no look of its own (Furfrou's dyes) puts nothing on: -1
+    if (!info.looks.some(([f]) => f === aspect)) return -1;
     const n = info.looks.findIndex(([f, g, s]) => f === aspect && g === female && s === shiny);
     return n < 0 ? null : n;
 }
@@ -3677,7 +3679,7 @@ function offerCosmetic(player, target) {
     } else {
         consumeHand(player);
         setProp(target, COSMETIC, hand);
-        try { target.triggerEvent(`cobblemon:set_variant_${look}`); } catch (e) { }
+        if (look >= 0) try { target.triggerEvent(`cobblemon:set_variant_${look}`); } catch (e) { }
     }
     if (worn) giveOrDrop(player, worn);
     player.sendMessage(!hand ? `You retrieved ${itemName(worn)} from ${name}.` : !worn ? `${name} was given ${itemName(hand)} to wear.`
@@ -9316,7 +9318,7 @@ function applyCandy(player, entity, candy) {
 // (two to four of its colour; it grows back when the Pokemon eats grass, EatGrassTask) and a Slowpoke's tail (a Tasty
 // Tail, grown back after slowpoke_tails.json's 1200 seconds); a dye colours Wooloo, Dubwool and Conkeldurr (the color
 // feature) and a water bucket washes it off
-const SHEARABLE = new Set(["cobblemon:p0179_mareep", "cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool"]), SLOWPOKE = "cobblemon:p0079_slowpoke";
+const SHEARABLE = new Set(["cobblemon:p0179_mareep", "cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool"]), SLOWPOKE = "cobblemon:p0079_slowpoke", FURFROU = "cobblemon:p0676_furfrou";
 const COLOURABLE = new Set(["cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool", "cobblemon:p0534_conkeldurr"]), SHEARED = "cobblemon:sheared", TAIL_CUT = "cobblemon:tail_cut";
 function dyeOf(entity) { const form = VARIANT_LOOKS[entity.typeId]?.[variantOf(entity)]?.[0]; return form?.startsWith("color-") ? form.slice(6) : null; }
 function setColour(entity, colour) {
@@ -9349,6 +9351,19 @@ function interactTool(player, target, id) {
     if (owner !== undefined && owner !== player.id) return false;
     if (id === "minecraft:shears") {
         if (prop(target, FAINTED) || battles.has(player.id)) return false;
+        // Furfrou's trim (pokemon_interactions/furfrou.json, action_effects/misc/furfrou_trim): on the owner's own, eight of
+        // the shears' durability, the hair of its dye's colour twice, and half a second later the dye is gone
+        if (target.typeId === FURFROU) {
+            if (owner !== player.id) return false;
+            damageHeld(player, 8);
+            const dye = prop(target, COSMETIC)?.match(/^minecraft:(\w+)_dye$/)?.[1];
+            const hair = dye && `cobblemon:poodle_hair_${dye === "lime" ? "green" : dye}`;
+            const shed = () => { if (hair && target.isValid) try { target.dimension.spawnParticle(hair, { x: target.location.x, y: target.location.y + 0.6, z: target.location.z }); } catch (e) { } };
+            shed(); system.runTimeout(shed, 4);
+            system.runTimeout(() => { if (target.isValid) setProp(target, COSMETIC, undefined); }, 14);
+            try { target.dimension.playSound("mob.sheep.shear", target.location); } catch (e) { }
+            return true;
+        }
         if (target.typeId === SLOWPOKE && variantOf(target) < 2) {
             if (tailSegments(target) < 3) return false;
             setProp(target, TAIL_CUT, world.getAbsoluteTime());
@@ -9381,12 +9396,12 @@ function interactTool(player, target, id) {
     return false;
 }
 // a tool in the main hand takes a point of wear
-function damageHeld(player) {
+function damageHeld(player, amount = 1) {
     if (player.getGameMode?.() === "Creative") return;
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
     const dur = item?.getComponent("minecraft:durability");
     if (!dur) return;
-    if (dur.damage + 1 >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += 1; inv.setItem(slot, item); }
+    if (dur.damage + amount >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += amount; inv.setItem(slot, item); }
 }
 // RootBlock: a big or an energy root (cobblemon:root) on a random tick, in light under 11 (MAX_PROPAGATING_LIGHT_LEVEL)
 // and with fewer than 9 roots (maxRootsInArea) within 4 blocks across and 1 up or down, spreads to a side that is free

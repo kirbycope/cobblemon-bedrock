@@ -1645,7 +1645,9 @@ def create_cosmetics():
             # "hisuian=false": not while it has that form
             entry["not"] += [w.split("=")[0] for w in words[1:] if w.endswith("=false")]
             for cosmetic in data.get("cosmeticItems", []):
-                aspect = next((a for a in cosmetic.get("aspects", []) if a in forms), None)
+                # a species with no look for the item still wears it (Furfrou's dyes, which only its trim's hair shows)
+                aspect = next((a for a in cosmetic.get("aspects", []) if a in forms), None) or (None if forms & set(cosmetic.get("aspects", [])) or any(
+                    a in forms for c in data.get("cosmeticItems", []) for a in c.get("aspects", [])) else next(iter(cosmetic.get("aspects", [])), None))
                 if not aspect: continue
                 consumed = cosmetic["consumedItem"]
                 for item in (item_tag_values(consumed) if consumed.startswith("#") else [consumed]):
