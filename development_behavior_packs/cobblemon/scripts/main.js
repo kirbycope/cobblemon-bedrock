@@ -11972,6 +11972,19 @@ const NURSE_TRADES = [
     ...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1]]),
     [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1]]
 ];
+// A villager at work uses its job block now and then through the working day (Minecraft's WorkAtPoi, the profession's
+// work sound): the Nurse's is CobblemonVillagerProfessions' work_nurse, played at her healing machine's side, a third
+// of the checks each ten seconds from 2000 to 9000 ticks into the day
+system.runInterval(() => {
+    const t = world.getTimeOfDay();
+    if (t < 2000 || t > 9000) return;
+    const heard = new Set();
+    for (const player of world.getAllPlayers()) {
+        let nurses = [];
+        try { nurses = player.dimension.getEntities({ type: "cobblemon:nurse", location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const nurse of nurses) if (!heard.has(nurse.id) && heard.add(nurse.id) && Math.random() < 1 / 3) try { nurse.dimension.playSound("cobblemon.entity.villager.work_nurse", nurse.location); } catch (e) { }
+    }
+}, 200);
 function openNurse(player) {
     const form = new ActionFormData().title("Nurse").body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.`);
     const label = ([id, n]) => id === EMERALD ? `${n} emerald${n === 1 ? "" : "s"}` : `${n > 1 ? `${n} ` : ""}${itemName(id)}`;
