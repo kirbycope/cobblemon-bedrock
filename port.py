@@ -7207,17 +7207,26 @@ def create_blocks():
         yield_range = data.get("baseYield", {"min": 1, "max": 3})
         berries[bush] = {"item": f"cobblemon:{berry}", "min": yield_range.get("min", 1), "max": yield_range.get("max", 3),
                          "boneMeal": data.get("boneMealChance", 0.5)}
-    # the healing machine, facing the player who places it. It never runs out here, so it stands at full charge
-    # (healing_machine_5, its five lights lit); while it heals (cobblemon:active, scripts/main.js) its front and back
-    # are healing_machine_active, whose screen is a flipbook (HEALING_FLIPBOOKS)
+    # the healing machine, facing the player who places it, its lights by its charge (cobblemon:charge 0 to 5,
+    # HealingMachineBlock.CHARGE_LEVEL: healing_machine_<charge>, and a natural one's healing_machine_limited_<charge>,
+    # set by scripts/main.js); while it heals (cobblemon:active) its front and back are healing_machine_active, whose
+    # screen is a flipbook (HEALING_FLIPBOOKS)
     cubes, instances = java_model_cubes(java_model("cobblemon:block/healing_machine_5") or {})
     write_block_geometry("geometry.cobblemon_healing_machine", cubes)
+    charge_looks = []
+    for natural in (False, True):
+        for level in range(6):
+            model = f"healing_machine_limited_{level}" if natural and level else f"healing_machine_{level}"
+            level_cubes, level_instances = java_model_cubes(java_model(f"cobblemon:block/{model}") or {})
+            write_block_geometry(f"geometry.cobblemon_{model}", level_cubes)
+            charge_looks.append({"condition": f"q.block_state('cobblemon:charge') == {level} && q.block_state('cobblemon:natural') == {str(natural).lower()}",
+                                 "components": {"minecraft:geometry": f"geometry.cobblemon_{model}", "minecraft:material_instances": material_instances(level_instances)}})
     active_cubes, active_instances = java_model_cubes(java_model("cobblemon:block/healing_machine_active") or {})
     write_block_geometry("geometry.cobblemon_healing_machine_active", active_cubes)
     turns = {"north": 180, "south": 0, "east": 90, "west": 270}
     machine = {"format_version": "1.21.90", "minecraft:block": {
         "description": {"identifier": "cobblemon:healing_machine", "menu_category": {"category": "equipment"},
-                        "states": {"cobblemon:active": [False, True]},
+                        "states": {"cobblemon:active": [False, True], "cobblemon:charge": [5, 4, 3, 2, 1, 0]},
                         "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
         "components": {
             "minecraft:geometry": "geometry.cobblemon_healing_machine",
@@ -7229,6 +7238,7 @@ def create_blocks():
             "cobblemon:healing_machine": {}},
         "permutations": [{"condition": f"q.block_state('minecraft:cardinal_direction') == '{d}'",
                           "components": {"minecraft:transformation": {"rotation": [0, r, 0]}}} for d, r in turns.items()]
+                       + charge_looks
                        + [{"condition": "q.block_state('cobblemon:active')",
                            "components": {"minecraft:geometry": "geometry.cobblemon_healing_machine_active",
                                           "minecraft:material_instances": material_instances(active_instances),
@@ -8243,7 +8253,8 @@ def create_natural_blocks():
         block = data["minecraft:block"]
         block["description"].setdefault("states", {})["cobblemon:natural"] = [False, True]
         block["components"].pop("minecraft:loot", None)
-        perms = [p for p in block.get("permutations", []) if "cobblemon:natural" not in p["condition"]]
+        # its own loot permutations from an earlier pass go; the healing machine's charge looks, which also read the state, stay
+        perms = [p for p in block.get("permutations", []) if not re.fullmatch(r"q\.block_state\('cobblemon:natural'\) == (true|false)", p["condition"])]
         for p in perms: p["components"].pop("minecraft:loot", None)
         for natural in (False, True):
             state = {"natural": str(natural).lower(), **({"part": "bottom"} if name == "pc" else {})}

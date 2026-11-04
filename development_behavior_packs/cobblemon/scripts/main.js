@@ -5663,9 +5663,54 @@ function healAround(dimension, location, player) {
 // HealingMachineRenderer's two rows of three, the machine lights up (charge MAX_CHARGE_LEVEL + 1, its active screen)
 // with healing_machine.active, and 24 ticks later (healTimeLeft) the party is healed, the balls come off and the
 // message shows over the hotbar (healingmachine.healed). A machine in use, or a player already healing, is refused,
-// as alreadyHealing does. It never runs out of charge here.
+// as alreadyHealing does.
+// Its charge (healingCharge): up to maxHealerCharge 6, a newly placed machine empty and filling in
+// secondsToChargeHealingMachine 900; a heal needs the party's missing health in Pokemon (getHealingRemainderPercent:
+// each one's missing share of its HP summed) and spends it, except from a full machine, which HealingMachineBlockEntity
+// leaves full; one placed in creative is infinite. Its lights show the charge in fifths (CHARGE_LEVEL), a natural
+// one's on the limited model. A machine with no record (placed before, or by a structure) counts as full.
 const HEAL_TICKS = 24, TRAY = [[0.2, 0.385], [-0.2, 0.385], [0.2, 0], [-0.2, 0], [0.2, -0.385], [-0.2, -0.385]];
 const healingAt = new Set(), healingPlayers = new Set();
+const HEALER_MAX = 6, HEALER_FILL_TICKS = 900 * 20, HEALERS = "cobblemon:healers";
+function healerRecords() { return jsonProp(world, HEALERS, {}); }
+function saveHealers(all) { world.setDynamicProperty(HEALERS, JSON.stringify(all)); }
+// the charge a record has now, filled for the world time since it was last set
+function healerCharge(rec, now) {
+    if (!rec) return HEALER_MAX;
+    return Math.min(HEALER_MAX, rec.c + Math.max(0, now - rec.t) * HEALER_MAX / HEALER_FILL_TICKS);
+}
+// a party member's missing share of its HP, a fainted one all of it
+function missingShare(member) {
+    if (prop(member, FAINTED)) return 1;
+    try { const h = member.getComponent(EntityComponentTypes.Health); return h ? Math.max(0, 1 - h.currentValue / h.effectiveMax) : 0; } catch (e) { return 0; }
+}
+function showHealerCharge(block, rec, now) {
+    const level = !rec || rec.inf ? 5 : Math.floor((healerCharge(rec, now) / HEALER_MAX) * 5);
+    try { if (block.permutation.getState("cobblemon:charge") !== level) block.setPermutation(block.permutation.withState("cobblemon:charge", level)); } catch (e) { }
+}
+world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
+    if (block.typeId !== "cobblemon:healing_machine") return;
+    const all = healerRecords(), key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+    all[key] = { c: 0, t: world.getAbsoluteTime(), inf: player?.getGameMode?.() === "Creative" };
+    saveHealers(all);
+    showHealerCharge(block, all[key], all[key].t);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation.type.id !== "cobblemon:healing_machine") return;
+    const all = healerRecords(), key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+    if (key in all) { delete all[key]; saveHealers(all); }
+});
+// the lights of the machines with a record follow their charge as it fills
+system.runInterval(() => {
+    const all = healerRecords(), now = world.getAbsoluteTime();
+    for (const [key, rec] of Object.entries(all)) {
+        if (rec.inf) continue;
+        const [dimId, pos] = key.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (block?.typeId === "cobblemon:healing_machine" && !block.permutation.getState("cobblemon:active")) showHealerCharge(block, rec, now);
+    }
+}, 100);
 function useHealingMachine(block, player) {
     const key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
     if (healingAt.has(key) || healingPlayers.has(player.id)) {
@@ -5674,6 +5719,16 @@ function useHealingMachine(block, player) {
     }
     const party = summaryParty(player);
     if (!party.length) { player.onScreenDisplay.setActionBar("§cYou don't have any Pokémon in your party to heal!"); return; }
+    const all = healerRecords(), rec = all[key], now = world.getAbsoluteTime();
+    if (rec && !rec.inf) {
+        const needed = party.reduce((t, m) => t + missingShare(m), 0), charge = healerCharge(rec, now);
+        if (charge < needed) {
+            player.onScreenDisplay.setActionBar(`§cThis machine needs ${Math.floor(((needed - charge) / party.length) * 100)}% more charge to heal your party!`);
+            return;
+        }
+        all[key] = { ...rec, c: charge >= HEALER_MAX ? charge : Math.max(0, charge - needed), t: now };
+        saveHealers(all);
+    }
     healingAt.add(key); healingPlayers.add(player.id);
     const dim = block.dimension, { x, y, z } = block.location;
     // the tray's slots turned with the machine: HealingMachineRenderer rotates by -FACING.toYRot() and draws at 0.65.
@@ -5698,6 +5753,7 @@ function useHealingMachine(block, player) {
         healingAt.delete(key); healingPlayers.delete(player.id);
         for (const ball of balls) try { ball?.remove(); } catch (e) { }
         lit(false);
+        try { const b = dim.getBlock({ x, y, z }); if (b?.typeId === "cobblemon:healing_machine") showHealerCharge(b, healerRecords()[key], world.getAbsoluteTime()); } catch (e) { }
         if (!player.isValid) return;
         healAround(dim, { x: x + 0.5, y: y + 0.5, z: z + 0.5 }, player);
         player.onScreenDisplay.setActionBar("§aYour Pokémon party has been healed!");
