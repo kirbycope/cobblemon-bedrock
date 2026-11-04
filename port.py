@@ -7889,7 +7889,8 @@ def special_spawns():
             for words, level, weight in entries:
                 e = entry_for(pokemon_for_species_name(words[0]), words[1:], {**spawn, "weight": weight}, cond, anti, level)
                 if not e: continue
-                world.append({**{k: v for k, v in e.items() if k not in ("entity", "level", "event")}, **({"pos": pos} if pos != "grounded" else {})})
+                # the species too, for spawnpokemonfrompool and checkspawn, which draw from the natural pool as well
+                world.append({**e, **({"pos": pos} if pos != "grounded" else {}), **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
                 if pos == "grounded": on_land.add(e["entity"])
                 else: in_water.append({**e, "pos": pos, **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
             return

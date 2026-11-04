@@ -8129,19 +8129,16 @@ function spawnerSpot(dim, c) {
     const [pos, y] = k === 0 ? ["seafloor", floor] : k > deep ? ["surface", surface] : ["submerged", floor + 1 + k];
     return { spot: { x: c.x + 0.5, y: pos === "seafloor" ? floor + 1 : y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos, sky: true };
 }
-function specialSpawn(player) {
-    const dim = player.dimension;
-    if (dim.id !== "minecraft:overworld") return;
-    const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
-    const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
-    if (!where) return;
+// the spawns that may come at one spot: the natural ones (WORLD_SPAWNS) and the special ones whose blocks, base or village
+// are there; with spot and position type
+function spawnsAt(dim, where, naturalToo) {
     const { spot, ground, pos } = where;
     let tags = [];
-    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { return; }
+    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { return null; }
     const at = { dimension: dim, location: spot, sky: where.sky }, cast = { effects: [], luck: 0, lure: 0 };
     const allowed = (sp) => (sp.pos ?? "grounded") === pos && spawnAllowed(sp, cast, at, tags);
     const special = SPECIAL_SPAWNS.filter(allowed);
-    if (!special.length) return;
+    if (!special.length && !naturalToo) return null;
     const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
     const found = new Map();
     const near = (blocks) => {
@@ -8155,23 +8152,84 @@ function specialSpawn(player) {
     // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test
     const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village)
         && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
-    if (!fits.length) return;
-    const pool = WORLD_SPAWNS.filter(allowed).concat(fits);
-    const bucket = pick(Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b)))[0];
-    const drawn = pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]))[0];
+    if (!fits.length && !naturalToo) return null;
+    return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base };
+}
+// a bucket by Cobblemon's world bucket weights among those the pool has, then a spawn in it by weight
+function drawSpawn(pool) {
+    const buckets = Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b));
+    if (!buckets.length) return null;
+    const bucket = pick(buckets)[0];
+    return { bucket, drawn: pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]))[0] };
+}
+// one spawn of a drawn entry at its spot: its form event, and its herd filled about it
+function spawnDrawn(dim, drawn, spot) {
+    const pokemon = dim.spawnEntity(drawn.entity, spot);
+    system.run(() => {
+        try {
+            if (drawn.event) pokemon.triggerEvent(drawn.event);
+            if (drawn.herd) fillHerd(pokemon, drawn.event ? `cobblemon:herd_seed_${drawn.event.slice("cobblemon:spawn_form_".length)}` : "cobblemon:herd_seed");
+        } catch (e) { }
+    });
+    return pokemon;
+}
+function specialSpawn(player) {
+    const dim = player.dimension;
+    if (dim.id !== "minecraft:overworld") return;
+    const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
+    const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+    if (!where) return;
+    const { spot, ground, pos } = where;
+    const here = spawnsAt(dim, where, false);
+    if (!here) return;
+    const { fits, pool, base } = here;
+    const { bucket, drawn } = drawSpawn(pool) ?? {};
     if (!fits.includes(drawn)) return;
     try {
         const cx = Math.floor(spot.x / 16) * 16, cz = Math.floor(spot.z / 16) * 16;
         if (dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } }).length >= POKEMON_PER_AREA) return;
-        const pokemon = dim.spawnEntity(drawn.entity, spot);
+        spawnDrawn(dim, drawn, spot);
         if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
-        system.run(() => {
-            try {
-                if (drawn.event) pokemon.triggerEvent(drawn.event);
-                if (drawn.herd) fillHerd(pokemon, drawn.event ? `cobblemon:herd_seed_${drawn.event.slice("cobblemon:spawn_form_".length)}` : "cobblemon:herd_seed");
-            } catch (e) { }
-        });
     } catch (e) { }
+}
+// SpawnPokemonFromPool: the spawner run once for the player's area, any spawn it draws coming, the natural ones too; up
+// to twenty spots are tried for one that something can come to. The Pokemon spawned, or nothing
+function spawnFromPool(player) {
+    const dim = player.dimension;
+    for (let n = 0; n < 20; n++) {
+        const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
+        const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+        const here = where && spawnsAt(dim, where, true);
+        const draw = here && drawSpawn(here.pool);
+        if (!draw?.drawn?.entity || !POKEMON[draw.drawn.entity]) continue;
+        try { return spawnDrawn(dim, draw.drawn, where.spot); } catch (e) { }
+    }
+    return null;
+}
+// CheckSpawnsCommand: in one bucket, each species' share of what may spawn about the player (spots sampled across
+// Cobblemon's spawning zone round them), coloured as Cobblemon colours them: green from 5%, yellow from 0.1%, red from
+// 0.01%, light purple under it
+function checkSpawns(player, bucket) {
+    const dim = player.dimension, weights = new Map(), seen = new Set();
+    for (let n = 0; n < 48; n++) {
+        const angle = Math.random() * Math.PI * 2, r = Math.random() * SPECIAL_RANGE[0];
+        const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+        const here = where && spawnsAt(dim, where, true);
+        if (!here) continue;
+        for (const sp of here.pool) {
+            if (sp.bucket !== bucket || seen.has(sp) || !POKEMON[sp.entity]) continue;
+            seen.add(sp);
+            const name = POKEMON[sp.entity].name;
+            weights.set(name, (weights.get(name) ?? 0) + sp.weight);
+        }
+    }
+    const total = [...weights.values()].reduce((a, b) => a + b, 0);
+    if (!total) return null;
+    const colour = (p) => (p < 0.01 ? "§d" : p < 0.1 ? "§c" : p < 5 ? "§e" : "§a");
+    return [...weights.entries()].sort((a, b) => b[1] - a[1]).map(([name, w]) => {
+        const p = (w / total) * 100;
+        return `§f${name}: ${colour(p)}${Number(p.toFixed(2))}%`;
+    }).join("§f, ");
 }
 system.runInterval(() => { for (const player of world.getPlayers()) specialSpawn(player); }, 20);
 // PokeSnackBlock.playerEat: a Poke Cake (not a lure) is eaten a bite at a time like a cake, by a player who is hungry,
@@ -10940,6 +10998,32 @@ function registerCommands(registry) {
     registry.registerEnum("cobblemon:dexaction", ["grant", "revoke"]);
     registry.registerEnum("cobblemon:boxcount", ["query"]);
     registry.registerEnum("cobblemon:tmaction", ["unlock", "lock"]);
+    registry.registerEnum("cobblemon:bucket", Object.keys(BUCKETS));
+
+    // SpawnPokemonFromPool (alias forcespawn) and CheckSpawnsCommand, on the script's spawner and the port's spawn tables
+    const fromPool = (origin, amount) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run this as a player.");
+        later(() => {
+            for (let n = 0; n < Math.max(1, amount ?? 1); n++) {
+                const e = spawnFromPool(player);
+                player.sendMessage(e ? `§aA ${POKEMON[e.typeId]?.name ?? "Pokemon"} has spawned in the area.` : "§cUnable to spawn a Pokémon.");
+            }
+        });
+        return ok();
+    };
+    add("spawnpokemonfrompool", "Spawns Pokemon from the spawn pool around you, as the spawner would", [], [{ type: P.Integer, name: "amount" }], fromPool);
+    add("forcespawn", "Spawns Pokemon from the spawn pool around you, as the spawner would", [], [{ type: P.Integer, name: "amount" }], fromPool);
+    add("checkspawn", "Lists what may spawn around you in a rarity bucket, and how likely each is", [{ type: P.Enum, name: "cobblemon:bucket" }], [], (origin, bucket) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run this as a player.");
+        later(() => {
+            const list = checkSpawns(player, bucket);
+            if (!list) { player.sendMessage("§cNothing can spawn here right now."); return; }
+            player.sendMessage("§nSpawns§r"); player.sendMessage(list);
+        });
+        return ok();
+    });
 
     // CobblemonInfoCommand
     add("cobblemon", "Shows the add-on's version and what it carries", [], [], () => ok(`Cobblemon for Bedrock: ${Object.keys(POKEMON).length} Pokemon, ${Object.keys(MOVES).length} moves`), CommandPermissionLevel.Any);

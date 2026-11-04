@@ -393,9 +393,11 @@ A party slot is 1 to 6.
 | `stopbattle [player]`, `spectatebattle <player>` | ends a battle, or follows one in chat |
 | `freezepokemon <seconds>`, `openstarterscreen [player]` | freezes the Pokemon looked at; opens the starter screen |
 | `hideparty` | hides or shows the party overlay, as Cobblemon's Hide Party key does (any player) |
+| `spawnpokemonfrompool [amount]` (`forcespawn`), `checkspawn <bucket>` | spawns from the spawn pool about the player; lists what may spawn there |
 
-Not carried: the box count (the PC has a fixed 40), `checkspawn` and `spawnpokemonfrompool` (wild spawning is Bedrock's own
-spawn rules, which a script cannot read), the NPC editor and dialogue commands (the NPCs here are entities of their own,
+`spawnpokemonfrompool [amount]` (alias `forcespawn`) runs the script's spawner for spots 16 to 64 blocks from the player and spawns what it draws, the natural spawns as well as the ones that need blocks or a village ("A Rattata has spawned in the area."); `checkspawn <bucket>` samples spots about the player and lists each species' share of that bucket, coloured as Cobblemon colours it (green from 5%, yellow from 0.1%, red from 0.01%). Both read the port's spawn tables, which mirror the spawn rules.
+
+Not carried: the box count (the PC has a fixed 40), the NPC editor and dialogue commands (the NPCs here are entities of their own,
 with Bedrock's dialogues), multi battles, the config, and the development commands.
 
 ## Testing commands
