@@ -2195,15 +2195,23 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None, posed=f
     # and what stacked on it is stacked again on where it stays; otherwise it, and a plane seen
     # from both sides (a wing membrane), takes what its faces on the model's outer side ask, which keeps Cobblemon's
     # order from either side (Wartortle's jaw box, around its head, comes out at the front)
-    stays = set()
+    stays, grows = set(), {}
     while True:
         asks = {}
         for k, f in enumerate(faces):
             delta = final[k] - f[1]
             if abs(delta) > 1e-3 and (id(f[4]) not in fixed or (id(f[4]) in detail_cubes and spin_axis(f[4]) == f[6])): asks.setdefault((id(f[4]), f[6]), []).append((f[7] * delta, k))
-        shifts, held = {}, set()   # shifts: (id(cube), axis) -> (cube, axis, shift)
+        shifts, held, grows = {}, set(), {}   # shifts: (id(cube), axis) -> (cube, axis, shift)
         for (cid, a), wants in asks.items():
             cube = faces[wants[0][1]][4]
+            # a box asked out past both its sides, round the faces it covers (Toxicroak's lips and closed mouth, a hair
+            # wider than its head), grows to where both asked: moved, it slid one side into the head and the other out;
+            # kept, its sides stayed 0.01 out of the head's. Its texture keeps its own size, as per-face UVs
+            lo = [s for s, k in wants if faces[k][7] < 0 and s < 0 and outward[k]]
+            hi = [s for s, k in wants if faces[k][7] > 0 and s > 0 and outward[k]]
+            if lo and hi and cube["size"][a] > 0 and isinstance(cube.get("uv"), list) and not cube.get("mirror") and cid not in ghosts:
+                grows[(cid, a)] = (cube, a, min(lo), max(hi))
+                continue
             if any(s > 0 for s, _ in wants) and any(s < 0 for s, _ in wants):
                 out = [w for w in wants if outward[w[1]]] or wants
                 off = lambda up: {id(faces[m][4]) for s, k in out if (s > 0) == up for m in under[k]}
@@ -2257,6 +2265,11 @@ def separate_layers(geo, nudges=None, clear=(), plays=None, steady=None, posed=f
             if c is not cube and id(c) not in fixed and (id(c), a) not in shifts and twin(c, cube): shifts[(id(c), a)] = (c, a, shift)
     for (cid, a), (cube, _, shift) in shifts.items():
         if cid not in ghosts: cube["origin"][a] = round(cube["origin"][a] + shift, 4)
+    for (cid, a), (cube, _, low, high) in grows.items():
+        for c in [cube] + [c for c in cubes if c is not cube and id(c) not in fixed and (id(c), a) not in shifts and (id(c), a) not in grows and twin(c, cube)]:
+            if isinstance(c.get("uv"), list): c["uv"] = box_uv_faces(c)
+            c["origin"][a] = round(c["origin"][a] + low, 4)
+            c["size"][a] = round(c["size"][a] + high - low, 4)
     return {k: v for k, v in closed.items() if list(k[1]) != v}
 
 
