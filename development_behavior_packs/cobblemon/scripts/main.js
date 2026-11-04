@@ -972,7 +972,7 @@ function fxFill(text, move) {
 // clips on the client, where a clip played from a script reached the client after the property and left the model in its rest pose
 // in between (issue 32), and ran before the controller, out of override_previous_animation's reach. A faint holds,
 // so it stays on. A later clip on the same Pokemon takes over the timer.
-const primaryUntil = new Map();
+const primaryUntil = new Map(), PRIMARY_HOLD = 20;   // ticks the clip's property stays on past its length
 function playClip(entity, clip) {
     const own = FX_PRIMARY[entity.typeId]?.[clip];
     if (!own) { entity.playAnimation(clip, { blendOutTime: 0.2 }); return; }
@@ -983,11 +983,14 @@ function playClip(entity, clip) {
     if (entity.getProperty("cobblemon:primary") === index) { set(0); system.runTimeout(() => { if (primaryUntil.get(id) === token) set(index); }, 1); }
     else set(index);
     if (/faint/.test(clip)) return;
+    // held past the clip's length: the client starts it a few ticks after the property is set, and its own timer
+    // (v.primary_t) ends it with the fade-out; cleared on the clip's length, the property reached the client before
+    // that fade had run and cut the pose straight back to the stance (issue 54, Tyrantrum on every move)
     system.runTimeout(() => {
         if (primaryUntil.get(id) !== token) return;
         primaryUntil.delete(id);
         set(0);
-    }, Math.max(1, Math.round(length * 20)));
+    }, Math.max(1, Math.round(length * 20)) + PRIMARY_HOLD);
 }
 function fxEvent(e, user, target, move, outcome) {
     if (e.m && outcome.missed) return;
