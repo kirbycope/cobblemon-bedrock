@@ -13,7 +13,7 @@ import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, I
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
-import { NPC_SCENES } from "./npc_dialogue.js";
+import { NPC_SCENES, NPC_BATTLER } from "./npc_dialogue.js";
 import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
@@ -4586,18 +4586,116 @@ function spawnGymPokemon(npc, spec, player) {
 }
 function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
-    if (!data?.team.length || battles.has(player.id) || !npc.isValid) return;
-    const party = data.team.map((spec) => ({ spec, down: false }));
+    if (!data?.team.length) return;
+    startTeamBattle(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
+                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin });
+}
+// a trainer's team battle: its first Pokemon comes out, and the rest follow as each faints (gymNextPokemon)
+function startTeamBattle(player, npc, team, trainer) {
+    if (!team.length || battles.has(player.id) || !npc.isValid) return;
+    const party = team.map((spec) => ({ spec, down: false }));
     const foe = spawnGymPokemon(npc, party[0].spec, player);
     if (!foe) return;
     system.runTimeout(() => {
         if (!foe.isValid || !player.isValid) return;
-        startBattle(player, foe, data.name);
+        startBattle(player, foe, trainer.name);
         const battle = battles.get(player.id);
         if (!battle || battle.foe.entity !== foe) { try { foe.remove(); } catch (e) { } return; }
-        battle.gym = { id, npc, party, at: 0, turns: 0, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
-                       bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin };
+        battle.gym = { npc, party, at: 0, turns: 0, itemsLeft: 0, bag: [], margin: 0, ...trainer };
     }, 5);
+}
+
+// Cobblemon's NPC trainer (npcs/standard.json with npc_presets/battler_test.json, NPC_BATTLER): PoolPartyProvider draws
+// its party, minPokemon to maxPokemon by weight from the entries whose npcLevels hold the trainer's level, none more
+// often than its selectableTimes, each at the trainer's level plus up to its levelVariation; a static party is drawn
+// once and kept. The trainer's level is rolled once over its pool's npcLevels, as NPCSpawnAction seeds one. Cobblemon
+// gives no reward for beating one (NPCBattleActor's rewards are commented out)
+const NPC_LEVEL = "cobblemon:npc_level", NPC_PARTY = "cobblemon:npc_party";
+function npcPresetParty(preset, level) {
+    const pool = preset.pool.filter((p) => level >= p.levels[0] && level <= p.levels[1] && p.times > 0), used = new Map(), party = [];
+    let count = ri(preset.min, preset.max);
+    while (count > 0 && pool.some((p) => p.weight !== 0)) {
+        const any = pool.filter((p) => p.weight === -1);
+        const chosen = any.length ? any[Math.floor(Math.random() * any.length)] : pick(pool.filter((p) => p.weight > 0).map((p) => [p, p.weight]))[0];
+        used.set(chosen, (used.get(chosen) ?? 0) + 1);
+        if (used.get(chosen) >= chosen.times) pool.splice(pool.indexOf(chosen), 1);
+        count--;
+        party.push([chosen.entity, chosen.level ?? level + ri(0, chosen.variation ?? 0)]);
+    }
+    return party;
+}
+function npcTrainerParty(npc) {
+    const preset = NPC_BATTLER;
+    let level = prop(npc, NPC_LEVEL);
+    if (!level) {
+        level = ri(Math.min(...preset.pool.map((p) => p.levels[0])), Math.max(...preset.pool.map((p) => p.levels[1])));
+        setProp(npc, NPC_LEVEL, level);
+    }
+    if (!preset.isStatic) return npcPresetParty(preset, level);
+    let party = jsonProp(npc, NPC_PARTY, null);
+    if (!party?.length) { party = npcPresetParty(preset, level); setProp(npc, NPC_PARTY, JSON.stringify(party)); }
+    return party;
+}
+// a party member as PokemonProperties.create makes it: its moves at its level, gender by the species' ratio, the rest
+// (IVs, nature, ability) rolled when it first fights
+function npcSpec([t, lv]) {
+    const info = POKEMON[t];
+    return { t, lv, moves: movesAt(info, lv), female: (info.maleRatio ?? 0.5) >= 0 && Math.random() >= (info.maleRatio ?? 0.5) };
+}
+function startNpcBattle(player, npc) {
+    const team = npcTrainerParty(npc).filter(([t]) => POKEMON[t]).map(npcSpec);
+    const name = npc.nameTag && npc.nameTag !== "NPC" ? npc.nameTag.replace(/§./g, "") : "Trainer";
+    if ((gymRest.get(npc.id) ?? 0) > system.currentTick) return;
+    startTeamBattle(player, npc, team, { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown });
+}
+
+// StrongBattleAI, Cobblemon's NPC battle AI: a skill check (skill 5 always, otherwise skill in 5) or a random move; past
+// it, at under 30% HP the most damaging move, Sleep Talk asleep, a recovery move under half HP, an entry hazard while the
+// player has three Pokemon or more, a field move it lacks (Tailwind, Trick Room, Reflect and Light Screen against the
+// matching attacker, Aurora Veil in hail or snow), a status move above half HP on a target it can afflict and not knock
+// out (burn on a strong attacker, paralysis on a faster one, sleep by Spore or Sleep Powder, poison and confusion
+// always), and otherwise the most damaging move
+const STRONG_RECOVERY = new Set(["healorder", "milkdrink", "recover", "rest", "roost", "slackoff", "softboiled"]);
+const STRONG_HAZARDS = new Set(["spikes", "stealthrock", "stickyweb", "toxicspikes"]);
+function strongDamage(battle, a, d, move) {
+    return gymDamage(battle, a, d, move) * (move.accuracy === true ? 1 : (move.accuracy ?? 100) / 100);
+}
+function strongFoeMove(battle, skill) {
+    const foe = battle.foe, ally = battle.ally;
+    const usable = foe.moves.filter((m) => canPick(foe, m));
+    if (!usable.length) return STRUGGLE;
+    const random = usable[Math.floor(Math.random() * usable.length)];
+    if (skill < 5 && Math.floor(Math.random() * 100) >= skill * 20) return random;
+    const share = (f) => Math.max(0, f.hp) / f.stats.hp;
+    const best = () => usable.reduce((b, m) => (strongDamage(battle, foe, ally, m) > strongDamage(battle, foe, ally, b) ? m : b));
+    if (share(foe) < 0.3) return best();
+    const has = (id) => usable.find((m) => m.id === id);
+    if (foe.status === "slp" && has("sleeptalk")) return has("sleeptalk");
+    const heal = usable.find((m) => STRONG_RECOVERY.has(m.id));
+    if (heal && share(foe) < 0.5) return heal;
+    const mine = sideOf(battle, foe), theirs = sideOf(battle, ally);
+    const theirsLeft = 1 + benchOf(battle, "ally").length;
+    const hazard = usable.find((m) => STRONG_HAZARDS.has(m.id) && !theirs[m.id]);
+    if (hazard && theirsLeft >= 3) return hazard;
+    const left = benchOf(battle, "foe").length, base = ally.info.stats ?? {};
+    if (has("tailwind") && !mine.tailwind && left > 2) return has("tailwind");
+    if (has("trickroom") && !realBattle(battle)?.trickroom && benchOf(battle, "foe").filter((p) => (POKEMON[p.spec.t]?.stats.spe ?? 0) <= 85).length >= 2) return has("trickroom");
+    if (has("auroraveil") && !mine.auroraveil && ["hail", "snow"].includes(weatherOf(battle))) return has("auroraveil");
+    if (has("lightscreen") && !mine.lightscreen && (base.spa ?? 0) > (base.atk ?? 0) && left > 1) return has("lightscreen");
+    if (has("reflect") && !mine.reflect && (base.atk ?? 0) > (base.spa ?? 0) && left > 1) return has("reflect");
+    if (share(foe) > 0.5 && !ally.status && share(ally) > 0.3) {
+        for (const m of usable) {
+            const status = m.category === "Status" ? m.status ?? (m.volatileStatus === "confusion" ? "confusion" : null) : null;
+            if (!status || m.target === "self") continue;
+            if ((STATUS_IMMUNE[status] ?? []).some((t) => ally.info.types.includes(t)) || effectiveness(m.type, ally.info.types) === 0) continue;
+            if (["comatose", "purifyingsalt"].includes(ally.ability)) continue;
+            if (status === "brn" && (base.atk ?? 0) > 80) return m;
+            if (status === "par" && (base.spe ?? 0) > (foe.info.stats?.spe ?? 0)) return m;
+            if (status === "slp" && ["spore", "sleeppowder"].includes(m.id)) return m;
+            if (["psn", "tox", "confusion"].includes(status)) return m;
+        }
+    }
+    return best();
 }
 
 // an estimate of a move's damage (PokeMath.damage's role), without the random roll's spread or a critical hit
@@ -4638,6 +4736,7 @@ function gymMoveValue(battle, foe, ally, move, maxMargin) {
 // the trainer's move or item for the turn; an item is used here, before anyone moves, as items go first
 function gymFoeAction(battle) {
     const g = battle.gym, foe = battle.foe, ally = battle.ally;
+    if (g.skill !== undefined) return strongFoeMove(battle, g.skill);
     g.turns++;
     const usable = foe.moves.filter((m) => canPick(foe, m));
     const options = (usable.length ? usable : [STRUGGLE]).map((move) => ({ move, e: gymMoveValue(battle, foe, ally, move, g.margin) }));
@@ -4652,7 +4751,7 @@ function gymFoeAction(battle) {
     }
     const pick = rctPick(options, g.margin);
     if (!pick.item) return pick.move;
-    const [item] = pick.item, data = RCT_TRAINERS[g.id];
+    const [item] = pick.item, data = { name: g.name };
     pick.item[1]--; g.itemsLeft--;
     foe.hp = Math.min(foe.stats.hp, foe.hp + Math.min(RCT_HEALS[item], foe.stats.hp));
     if (item === "cobblemon:full_restore") foe.status = null;
@@ -4681,7 +4780,7 @@ function gymNextPokemon(battle, swap) {
     g.at = index; g.turns = 0;
     if (swap) {
         const old = leaving.entity;
-        say(battle, `§7${RCT_TRAINERS[g.id].name} withdrew ${leaving.info.name}!`);
+        say(battle, `§7${g.name} withdrew ${leaving.info.name}!`);
         freeze(old, false);
         beamIn(old, () => (g.npc.isValid ? g.npc.getHeadLocation() : old.location), false, () => { try { if (old.isValid) old.remove(); } catch (e) { } });
     }
@@ -4691,7 +4790,7 @@ function gymNextPokemon(battle, swap) {
         if (next.kept) { Object.assign(f, next.kept); next.kept = null; syncHealth(f); }
         freeze(entity, true);
         battle.foe = f; battle.faced = new Set([memberKey(battle.ally.entity)]);
-        say(battle, `§6${RCT_TRAINERS[g.id].name} sent out ${f.info.name}! §7(Lv ${f.level})`);
+        say(battle, `§6${g.name} sent out ${f.info.name}! §7(Lv ${f.level})`);
         register(battle.player, entity.typeId, 1, variantOf(entity));
         enter(battle, f, battle.ally);
         if (swap?.then) swap.then(); else system.runTimeout(() => turn(battle), 20);
@@ -4700,6 +4799,7 @@ function gymNextPokemon(battle, swap) {
 }
 function gymWon(battle) {
     const g = battle.gym, player = battle.player, data = RCT_TRAINERS[g.id];
+    if (g.preset) { g.won = true; say(battle, `§6You defeated ${g.name}!`); try { player.playSound("random.levelup"); } catch (e) { } return; }
     const before = rctLevelCap(player), defeats = rctDefeats(player), wasDone = rctSeriesDone(player);
     defeats[g.id] = (defeats[g.id] ?? 0) + 1;
     player.setDynamicProperty(RCT_DEFEATS, JSON.stringify(defeats));
@@ -4720,7 +4820,7 @@ function gymWon(battle) {
 // the battle is over, won or lost: the trainer's Pokemon still out goes, and the trainer rests
 function gymEnded(battle) {
     const g = battle.gym;
-    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + GYM_COOLDOWN);
+    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + (g.cooldown ?? GYM_COOLDOWN));
     const foe = battle.foe?.entity;
     if (foe?.isValid) system.runTimeout(() => { try { if (foe.isValid) foe.triggerEvent("cobblemon:vanish"); } catch (e) { } }, g.won ? 30 : 0);
 }
@@ -5942,6 +6042,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         });
     } else if (event.id === "cobblemon:trainer") {
         const player = nearestPlayer(source);
+        // the dialogue's challenge: the trainer's own party (NPC_BATTLER); a species named fights that one alone
+        if (!event.message.trim()) { if (player && source) startNpcBattle(player, source); return; }
         const typeId = `cobblemon:${event.message.trim()}`;
         if (!player || !POKEMON[typeId]) return;
         const dx = player.location.x - source.location.x, dz = player.location.z - source.location.z, len = Math.hypot(dx, dz) || 1;
