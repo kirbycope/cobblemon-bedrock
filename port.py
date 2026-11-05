@@ -8010,15 +8010,29 @@ def fishing_spawns():
 def snack_spawns():
     """What a Poke Snack can draw (PokeSnackSpawnerFactory: the world spawn pool, non-herd Pokemon): Cobblemon's grounded
     spawns, those only a snack draws (isPokeSnack) among them and those it never does left out, in fishing_spawns' form
-    with the sky light range and the herd event that spawns a form ("rattata alolan")."""
+    with the sky light range and the herd event that spawns a form ("rattata alolan"). One that needs a place carries it
+    as special_spawns' do ("near", "base", "village", "notVillage", "mansion", "structures"), with its presets' conditions,
+    for the script to test at the snack's spot."""
+    presets = {}
+    for path in glob.glob(f"{cobblemonData}/spawn_detail_presets/*.json"):
+        with open(path, encoding="utf-8") as file: presets[os.path.basename(path)[:-len(".json")]] = json.load(file)
     spawns = []
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
             if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
             condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
-            if condition.get("isPokeSnack") is False or condition.get("structures") or condition.get("neededNearbyBlocks") or condition.get("isSlimeChunk"): continue
-            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: continue
+            merged, merged_anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
+            if merged.get("neededNearbyBlocks") or merged.get("neededBaseBlocks") or merged.get("structures"): condition, anti = merged, merged_anti
+            if condition.get("isPokeSnack") is False or condition.get("isSlimeChunk"): continue
+            structures = set(condition.get("structures") or [])
+            own = structure_ids(structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+            if structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES and not own: continue
+            near = bedrock_blocks(condition["neededNearbyBlocks"]) if condition.get("neededNearbyBlocks") else None
+            base = bedrock_blocks(condition["neededBaseBlocks"]) if condition.get("neededBaseBlocks") else None
+            if (condition.get("neededNearbyBlocks") and not near) or (condition.get("neededBaseBlocks") and not base): continue
+            needs = near or base or structures
+            if not needs and spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: continue
             words = spawn.get("pokemon", "").split(" ")
             pokemon = pokemon_for_species_name(words[0])
             biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
@@ -8034,6 +8048,12 @@ def snack_spawns():
             events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
             form = spawn_form(words[1:], events)
             if form: entry["event"] = f"cobblemon:spawn_form_{form}"
+            if near: entry["near"] = near
+            if base: entry["base"] = base
+            if VILLAGE_STRUCTURE in structures: entry["village"] = True
+            if structures & MANSION_STRUCTURES: entry["mansion"] = True
+            if own: entry["structures"] = sorted(own)
+            if VILLAGE_STRUCTURE in (anti.get("structures") or []): entry["notVillage"] = True
             spawns.append(entry)
     return spawns
 
@@ -8041,9 +8061,10 @@ def snack_spawns():
 # Spawns that need blocks nearby or a village, which Bedrock's spawn rules cannot test, for scripts/main.js's spawner:
 # AreaSpawningCondition.neededNearbyBlocks (within maxNearbyBlocksHorizontalRange 4 and maxNearbyBlocksVerticalRange 2
 # of the spot), neededBaseBlocks (the block it stands on) and structures #minecraft:village, from a spawn's own
-# condition or its presets' (redstone, urban, saccharine_tree, stronghold, the pyramids). Any other structure (the
-# ruins, the shipwreck coves, the vanilla structures) is left out: the script API cannot tell what structure a block is
-# in without the Beta APIs experiment. The spawner draws from these together with the natural pool they compete in.
+# condition or its presets' (redstone, urban, saccharine_tree, stronghold, the pyramids), a mansion's (a dark forest
+# spot by its blocks) and Cobblemon's own ruins and coves (found by their markers, create_structures). A vanilla
+# structure other than those is left out: the script API cannot tell what structure a block is in without the Beta APIs
+# experiment. The spawner draws from these together with the natural pool they compete in.
 NEARBY_BLOCK_EXTRAS = {"kelp_plant": ["kelp"], "redstone_ore": ["redstone_ore", "lit_redstone_ore"],
                        "deepslate_redstone_ore": ["deepslate_redstone_ore", "lit_deepslate_redstone_ore"]}
 VILLAGE_STRUCTURE = "#minecraft:village"

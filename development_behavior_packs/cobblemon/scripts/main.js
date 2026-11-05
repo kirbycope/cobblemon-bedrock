@@ -8866,7 +8866,7 @@ function baitWeight(cast, spawn) {
 
 // the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight; a Poke Snack draws from
 // its own pool and buckets the same way
-function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
+function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS, snack = false) {
     let tags = [];
     try { tags = BIOME_TAGS[bobber.dimension.getBiome(bobber.location).id] ?? []; } catch (e) { }
     const allowed = pool.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
@@ -8877,7 +8877,7 @@ function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
     const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
     const present = Object.entries(buckets).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
-    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, pool === SNACK_SPAWNS)]).filter(([, w]) => w > 0);
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, snack)]).filter(([, w]) => w > 0);
     if (!inBucket.length) return undefined;
     return { spawn: pick(inBucket)[0], bucketWeight: buckets[bucket] };
 }
@@ -8933,7 +8933,13 @@ function snackTick(block) {
     if (wild.length >= 2) return "two wild Pokemon about it already";
     const spot = snackSpot(block);
     if (!spot) return "no spot to spawn on";
-    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, SNACK_SPAWNS, SNACK_BUCKETS);
+    // a snack draws the spawns that need a place too (nearby blocks, the block beneath, a village, a mansion, one of
+    // Cobblemon's structures) where the spot offers it, as the spawner it works through tests every condition
+    let tags = [];
+    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { }
+    const place = placeTest(dim, spot, { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, tags);
+    const pool = place ? SNACK_SPAWNS.filter(place.fits) : SNACK_SPAWNS.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures));
+    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, pool, SNACK_BUCKETS, true);
     if (!plan) return "nothing in the pool can spawn here";
     let pokemon;
     try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return `spawning ${plan.spawn.entity} failed: ${e}`; }
@@ -9097,6 +9103,27 @@ function spawnerSpot(dim, c) {
     const [pos, y] = k === 0 ? ["seafloor", floor] : k > deep ? ["surface", surface] : ["submerged", floor + 1 + k];
     return { spot: { x: c.x + 0.5, y: pos === "seafloor" ? floor + 1 : y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos, sky: true };
 }
+// what a spot offers a spawn that needs a place: the blocks within 4 across and 2 up or down of the block it stands on,
+// that block, a village, a mansion, one of Cobblemon's structures; fits(spawn) tests one, the blocks looked for once each
+function placeTest(dim, spot, ground, tags) {
+    const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
+    const found = new Map();
+    const near = (blocks) => {
+        const key = blocks.join();
+        if (!found.has(key)) { let yes = false; try { yes = dim.containsBlock(around, { includeTypes: blocks }, false); } catch (e) { } found.set(key, yes); }
+        return found.get(key);
+    };
+    let base;
+    try { base = dim.getBlock(ground)?.typeId; } catch (e) { return undefined; }
+    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
+    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
+    const fits = (sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
+        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near));
+    return { fits, base };
+}
 // the spawns that may come at one spot: the natural ones (WORLD_SPAWNS) and the special ones whose blocks, base or village
 // are there; with spot and position type
 function spawnsAt(dim, where, naturalToo) {
@@ -9107,22 +9134,9 @@ function spawnsAt(dim, where, naturalToo) {
     const allowed = (sp) => (sp.pos ?? "grounded") === pos && spawnAllowed(sp, cast, at, tags);
     const special = SPECIAL_SPAWNS.filter(allowed);
     if (!special.length && !naturalToo) return null;
-    const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
-    const found = new Map();
-    const near = (blocks) => {
-        const key = blocks.join();
-        if (!found.has(key)) { let yes = false; try { yes = dim.containsBlock(around, { includeTypes: blocks }, false); } catch (e) { } found.set(key, yes); }
-        return found.get(key);
-    };
-    let base;
-    try { base = dim.getBlock(ground)?.typeId; } catch (e) { return; }
-    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
-    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
-    // a spawn naming a village and Cobblemon structures comes in any of them
-    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
-    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
-    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
-        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
+    const place = placeTest(dim, spot, ground, tags);
+    if (!place) return;
+    const { base } = place, fits = special.filter(place.fits);
     if (!fits.length && !naturalToo) return null;
     return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base, at, tags, cast };
 }
