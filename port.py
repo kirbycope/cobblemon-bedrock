@@ -7229,6 +7229,22 @@ def create_wild_features():
         "x": {"distribution": "uniform", "extent": [-5, 5]}, "y": 0, "z": {"distribution": "uniform", "extent": [-5, 5]}})
     beach = biome_filter_for(["#cobblemon:is_beach"])
     if beach: feature_rule("galarica_nuts", "cobblemon:galarica_patch", beach, 1, surface, chance=6)
+    # Hearty Grains (hearty_grains/grains_patch): twenty tries 3 across at y 62, the sea's top, each a grown or nearly
+    # grown lower half (age 6, 5 or 4, 6:3:3) standing in water on what it grows on there; one chunk in 8 in swamps and
+    # one in 7 in plains (swamp_grains, plains_grains)
+    floor = ["minecraft:farmland", "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mud",
+             "minecraft:muddy_mangrove_roots", "minecraft:moss_block", "minecraft:sand", "minecraft:red_sand", "minecraft:gravel"]
+    for age in (4, 5, 6):
+        write_feature(f"hearty_grains_{age}_wild", "minecraft:single_block_feature", {
+            "places_block": {"name": "cobblemon:hearty_grains_block", "states": {"cobblemon:age": age, "cobblemon:half": "lower"}},
+            "enforce_placement_rules": False, "enforce_survivability_rules": False,
+            "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": floor}, "may_replace": ["minecraft:water"]})
+    write_feature("hearty_grains_wild", "minecraft:weighted_random_feature", {"features": [["cobblemon:hearty_grains_6_wild", 6], ["cobblemon:hearty_grains_5_wild", 3], ["cobblemon:hearty_grains_4_wild", 3]]})
+    write_feature("hearty_grains_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:hearty_grains_wild", "iterations": 20,
+        "x": {"distribution": "uniform", "extent": [-3, 3]}, "y": 0, "z": {"distribution": "uniform", "extent": [-3, 3]}})
+    for kind, chance in (("swamp", 8), ("plains", 7)):
+        biomes = biome_filter_for([f"#cobblemon:is_{kind}"])
+        if biomes: feature_rule(f"hearty_grains_{kind}", "cobblemon:hearty_grains_patch", biomes, 1, 62, chance=chance)
     # type gems (TypeGemFeature): two tries a chunk one chunk in three, from -64 to 0, a gem cluster of a type at random
     # on the deepslate of a cave; the core and the clusters' growth are not carried, so a cluster here is a grown one
     gems = [os.path.basename(f)[:-len("_gem_cluster.json")] for f in glob.glob(f"{blocksBedrock}/*_gem_cluster.json")]
@@ -9792,6 +9808,12 @@ def model_block(name, identifier, items, category="items"):
     extra = {}
     if "amount" in props: extra["cobblemon:stackable"] = {}
     if "age" in props: extra["cobblemon:grows"] = {}
+    # HeartyGrainsBlock is waterloggable: it stands in a water source (Bedrock's liquid_detection, can_contain_liquid),
+    # and the script checks where it may be planted (canSurvive: in water on dirt, sand, gravel or farmland, on land on
+    # mud, muddy mangrove roots or farmland)
+    if name == "hearty_grains":
+        extra["cobblemon:hearty_grains"] = {}
+        extra["minecraft:liquid_detection"] = {"detection_rules": [{"liquid_type": "water", "can_contain_liquid": True, "on_liquid_touches": "no_reaction"}]}
     if "open" in props: extra["cobblemon:openable"] = {}
     # PokeSnackBlock with isLure: its random ticks draw wild Pokemon (scripts/main.js). Bedrock's randomtickspeed is 1
     # where Java's is 3, so a tick as often as one of Java's random ticks (3 a tick in a 4096 block section: every 1365

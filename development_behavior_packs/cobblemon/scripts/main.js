@@ -9812,6 +9812,11 @@ system.runInterval(() => {
     }
 }, 1);
 
+const GRAINS_WATER_FLOOR = new Set(["minecraft:farmland", "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mycelium",
+    "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots", "minecraft:pale_moss_block", "minecraft:sand",
+    "minecraft:red_sand", "minecraft:suspicious_sand", "minecraft:gravel", "minecraft:suspicious_gravel"]);
+const GRAINS_LAND_FLOOR = new Set(["minecraft:mud", "minecraft:muddy_mangrove_roots", "minecraft:farmland"]);
+function heartyGrainsSurvive(inWater, floor) { return (inWater ? GRAINS_WATER_FLOOR : GRAINS_LAND_FLOOR).has(floor); }
 // Apricorns (ApricornBlock): a fruit ripens a stage on one random tick in five; used when ripe it drops its apricorn,
 // and a sprout one time in ten, and starts again; broken when ripe it drops the same; bone meal ripens it a stage.
 // A sapling grows into a tree on one random tick in seven, or at once from bone meal 45 times in 100, placing one
@@ -10050,6 +10055,14 @@ function registerModelBlockComponents(registry) {
             let next;
             try { next = block.permutation.withState("cobblemon:amount", amount + 1); } catch (e) { return; }   // already a full stack
             block.setPermutation(next); consumeHand(player);
+        }
+    });
+    // HeartyGrainsBlock.canSurvive: in a water source it needs dirt, sand, gravel or farmland under it
+    // (hearty_grains_land_plantable, which names the water planting), on land mud, muddy mangrove roots or farmland
+    registry.registerCustomComponent("cobblemon:hearty_grains", {
+        beforeOnPlayerPlace(event) {
+            const below = event.block.below()?.typeId ?? "";
+            if (!heartyGrainsSurvive(event.block.typeId === "minecraft:water", below)) event.cancel = true;
         }
     });
     registry.registerCustomComponent("cobblemon:grows", {
