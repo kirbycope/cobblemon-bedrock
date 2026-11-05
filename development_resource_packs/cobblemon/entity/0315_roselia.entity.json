@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0315_roselia/roselia",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0315_roselia/roselia",
                 "v1": "textures/entity/0315_roselia/roselia_shiny",
                 "v2": "textures/entity/0315_roselia/roselia",
-                "v3": "textures/entity/0315_roselia/roselia_shiny"
+                "v3": "textures/entity/0315_roselia/roselia_shiny",
+                "alpha_eyes": "textures/entity/0315_roselia/roselia_alpha"
             },
             "geometry": {
                 "g_roselia_male": "geometry.roselia_male",
@@ -59,7 +61,10 @@
                 "evolution": "animation.0315_roselia.evolution"
             },
             "render_controllers": [
-                "controller.render.roselia"
+                "controller.render.roselia",
+                {
+                    "controller.render.roselia_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0315_roselia_spawn_egg"

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0099_kingler/kingler",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0099_kingler/kingler",
-                "v1": "textures/entity/0099_kingler/kingler_shiny"
+                "v1": "textures/entity/0099_kingler/kingler_shiny",
+                "alpha_eyes": "textures/entity/0099_kingler/kingler_alpha"
             },
             "geometry": {
                 "g_kingler": "geometry.kingler"
@@ -56,7 +58,10 @@
                 "evolution": "animation.0099_kingler.evolution"
             },
             "render_controllers": [
-                "controller.render.kingler"
+                "controller.render.kingler",
+                {
+                    "controller.render.kingler_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0099_kingler_spawn_egg"

@@ -3,42 +3,19 @@
     "minecraft:spawn_rules": {
         "description": {
             "identifier": "cobblemon:p0980_clodsire",
-            "population_control": "water_animal"
+            "population_control": "animal"
         },
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 3
+                    "default": 75
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
                     "operator": "==",
-                    "value": "savanna"
+                    "value": "mangrove_swamp"
                 },
-                "minecraft:spawns_underwater": {},
                 "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 3
-                },
-                "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "savanna"
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
                 "minecraft:brightness_filter": {
                     "min": 8,
                     "max": 15,
@@ -51,17 +28,18 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 4
+                    "default": 149
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
                     "operator": "==",
-                    "value": "savanna"
+                    "value": "mangrove_swamp"
                 },
-                "minecraft:spawns_underwater": {},
                 "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
                 },
                 "minecraft:herd": {
                     "min_size": 1,
@@ -72,18 +50,14 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 4
+                    "default": 8
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
                     "operator": "==",
-                    "value": "savanna"
+                    "value": "mangrove_swamp"
                 },
-                "minecraft:spawns_underwater": {},
                 "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
                 "minecraft:brightness_filter": {
                     "min": 8,
                     "max": 15,
@@ -92,7 +66,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             }

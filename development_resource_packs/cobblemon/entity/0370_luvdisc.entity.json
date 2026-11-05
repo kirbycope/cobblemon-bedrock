@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0370_luvdisc/luvdisc",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0370_luvdisc/luvdisc",
-                "v1": "textures/entity/0370_luvdisc/luvdisc_shiny"
+                "v1": "textures/entity/0370_luvdisc/luvdisc_shiny",
+                "alpha_eyes": "textures/entity/0370_luvdisc/luvdisc_alpha"
             },
             "geometry": {
                 "g_luvdisc": "geometry.luvdisc"
@@ -64,7 +66,10 @@
                 "primary_controller": "controller.animation.luvdisc.primary"
             },
             "render_controllers": [
-                "controller.render.luvdisc"
+                "controller.render.luvdisc",
+                {
+                    "controller.render.luvdisc_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0370_luvdisc_spawn_egg"

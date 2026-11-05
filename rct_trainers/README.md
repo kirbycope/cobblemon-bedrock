@@ -15,6 +15,9 @@ unchanged. `association.json` holds what the Association needs from RCT, unchang
 (`data/rctmod/series/*.json`) and the English text of the series, the Association's screen, the series titles and the
 trainers' wrong-series lines (`assets/rctmod/lang/en_us.json`).
 
+`loot_table/` holds RCT's loot tables (`data/rctmod/loot_table/`, same commit) that these 14 trainers drop, unchanged: the
+leaders' own `trainers/single/` tables, the `elite_four` and `champion` group tables, and the `generic/` tables they reach.
+
 `progression.json` is RCT's `requiredDefeats` (`data/rctmod/mobs/trainers/single/`, with Radical Gyms' own versions of the
 leaders' files) cut down to these 14: each trainer's groups of trainers, one of each group to be beaten first. Where RCT
 names a trainer not ported (a rival, Brendan, Giovanni), that trainer's own requirements stand in for it, so the order is

@@ -54,7 +54,7 @@
                     "type": "float",
                     "range": [
                         0.5,
-                        1.5
+                        2.0
                     ],
                     "default": 1.0,
                     "client_sync": true
@@ -66,6 +66,11 @@
                         1.0
                     ],
                     "default": 0.0,
+                    "client_sync": true
+                },
+                "cobblemon:alpha": {
+                    "type": "bool",
+                    "default": false,
                     "client_sync": true
                 },
                 "cobblemon:primary": {
@@ -872,23 +877,6 @@
                     }
                 ]
             },
-            "cobblemon:spawn_weather_rain": {
-                "sequence": [
-                    {
-                        "filters": {
-                            "test": "weather_at_position",
-                            "subject": "self",
-                            "operator": "!=",
-                            "value": "precipitation"
-                        },
-                        "add": {
-                            "component_groups": [
-                                "cobblemon:gone"
-                            ]
-                        }
-                    }
-                ]
-            },
             "cobblemon:spawn_weather_clear": {
                 "sequence": [
                     {
@@ -906,7 +894,93 @@
                     }
                 ]
             },
+            "cobblemon:spawn_weather_rain": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "precipitation"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:herd_seed": {},
+            "cobblemon:herd_seed_alpha": {},
+            "cobblemon:herd_seed_alpha_sunshine-form": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_3"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_2"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_3"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:herd_seed_sunshine-form": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_3"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_2"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_3"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [

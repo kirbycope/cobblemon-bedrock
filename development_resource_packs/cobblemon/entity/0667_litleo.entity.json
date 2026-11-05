@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0667_litleo/litleo",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0667_litleo/litleo",
-                "v1": "textures/entity/0667_litleo/litleo_shiny"
+                "v1": "textures/entity/0667_litleo/litleo_shiny",
+                "alpha_eyes": "textures/entity/0667_litleo/litleo_alpha"
             },
             "geometry": {
                 "g_litleo": "geometry.litleo"
@@ -53,7 +55,10 @@
                 "evolution": "animation.0667_litleo.evolution"
             },
             "render_controllers": [
-                "controller.render.litleo"
+                "controller.render.litleo",
+                {
+                    "controller.render.litleo_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0667_litleo_spawn_egg"

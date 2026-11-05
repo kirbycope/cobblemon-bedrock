@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0297_hariyama/hariyama",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0297_hariyama/hariyama",
-                "v1": "textures/entity/0297_hariyama/hariyama_shiny"
+                "v1": "textures/entity/0297_hariyama/hariyama_shiny",
+                "alpha_eyes": "textures/entity/0297_hariyama/hariyama_alpha"
             },
             "geometry": {
                 "g_hariyama": "geometry.hariyama"
@@ -48,7 +50,10 @@
                 "evolution": "animation.0297_hariyama.evolution"
             },
             "render_controllers": [
-                "controller.render.hariyama"
+                "controller.render.hariyama",
+                {
+                    "controller.render.hariyama_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0297_hariyama_spawn_egg"

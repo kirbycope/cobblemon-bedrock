@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0129_magikarp/magikarp",
@@ -138,7 +139,8 @@
                 "v124": "textures/entity/0129_magikarp/magikarp_jump/magikarp_violet_saucy",
                 "v125": "textures/entity/0129_magikarp/magikarp_jump/magikarp_violet_saucy",
                 "v126": "textures/entity/0129_magikarp/magikarp_jump/magikarp_violet_saucy",
-                "v127": "textures/entity/0129_magikarp/magikarp_jump/magikarp_violet_saucy"
+                "v127": "textures/entity/0129_magikarp/magikarp_jump/magikarp_violet_saucy",
+                "alpha_eyes": "textures/entity/0129_magikarp/magikarp_alpha"
             },
             "geometry": {
                 "g_magikarp_male": "geometry.magikarp_male",
@@ -201,7 +203,10 @@
                 "primary_controller": "controller.animation.magikarp.primary"
             },
             "render_controllers": [
-                "controller.render.magikarp"
+                "controller.render.magikarp",
+                {
+                    "controller.render.magikarp_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0129_magikarp_spawn_egg"

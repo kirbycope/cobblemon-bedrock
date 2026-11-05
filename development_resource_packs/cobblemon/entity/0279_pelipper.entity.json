@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0279_pelipper/pelipper",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0279_pelipper/pelipper",
-                "v1": "textures/entity/0279_pelipper/pelipper_shiny"
+                "v1": "textures/entity/0279_pelipper/pelipper_shiny",
+                "alpha_eyes": "textures/entity/0279_pelipper/pelipper_alpha"
             },
             "geometry": {
                 "g_pelipper": "geometry.pelipper"
@@ -53,7 +55,10 @@
                 "evolution": "animation.0279_pelipper.evolution"
             },
             "render_controllers": [
-                "controller.render.pelipper"
+                "controller.render.pelipper",
+                {
+                    "controller.render.pelipper_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0279_pelipper_spawn_egg"

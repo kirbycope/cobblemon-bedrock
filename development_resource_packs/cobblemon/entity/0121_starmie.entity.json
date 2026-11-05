@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0121_starmie/starmie",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0121_starmie/starmie",
                 "glow_0_0": "textures/entity/0121_starmie/starmie_emissive__glow__starmie",
                 "v1": "textures/entity/0121_starmie/starmie_shiny",
-                "glow_1_0": "textures/entity/0121_starmie/starmie_shiny_emissive__glow__starmie_shiny"
+                "glow_1_0": "textures/entity/0121_starmie/starmie_shiny_emissive__glow__starmie_shiny",
+                "alpha_eyes": "textures/entity/0121_starmie/starmie_alpha"
             },
             "geometry": {
                 "g_starmie": "geometry.starmie"
@@ -75,7 +77,10 @@
             },
             "render_controllers": [
                 "controller.render.starmie",
-                "controller.render.starmie_glow"
+                "controller.render.starmie_glow",
+                {
+                    "controller.render.starmie_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0121_starmie_spawn_egg"

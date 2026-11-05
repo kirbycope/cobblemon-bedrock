@@ -5,6 +5,17 @@
       "identifier": "cobblemon:saccharine_leaves",
       "menu_category": {
         "category": "construction"
+      },
+      "states": {
+        "cobblemon:persistent": [
+          false,
+          true
+        ],
+        "cobblemon:age": [
+          0,
+          1,
+          2
+        ]
       }
     },
     "components": {
@@ -18,7 +29,32 @@
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 1.5
       },
-      "minecraft:loot": "loot_tables/blocks/saccharine_leaves.json"
-    }
+      "minecraft:loot": "loot_tables/blocks/saccharine_leaves.json",
+      "cobblemon:leaves": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:age') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_wood_saccharine_leaves_sticky",
+              "render_method": "alpha_test_single_sided"
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_wood_saccharine_leaves_dripping",
+              "render_method": "alpha_test_single_sided"
+            }
+          }
+        }
+      }
+    ]
   }
 }

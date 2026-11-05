@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0925_maushold/maushold",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0925_maushold/maushold",
                 "v1": "textures/entity/0925_maushold/maushold_shiny",
                 "v2": "textures/entity/0925_maushold/maushold",
-                "v3": "textures/entity/0925_maushold/maushold_shiny"
+                "v3": "textures/entity/0925_maushold/maushold_shiny",
+                "alpha_eyes": "textures/entity/0925_maushold/maushold_alpha"
             },
             "geometry": {
                 "g_maushold_three": "geometry.maushold_three",
@@ -73,7 +75,10 @@
                 "primary_controller": "controller.animation.maushold.primary"
             },
             "render_controllers": [
-                "controller.render.maushold"
+                "controller.render.maushold",
+                {
+                    "controller.render.maushold_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0925_maushold_spawn_egg"

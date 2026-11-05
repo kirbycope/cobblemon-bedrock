@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0709_trevenant/trevenant",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0709_trevenant/trevenant",
                 "emissive_0_0": "textures/entity/0709_trevenant/trevenant_emissive__glow__trevenant",
                 "v1": "textures/entity/0709_trevenant/trevenant_shiny",
-                "emissive_1_0": "textures/entity/0709_trevenant/trevenant_shiny_emissive__glow__trevenant_shiny"
+                "emissive_1_0": "textures/entity/0709_trevenant/trevenant_shiny_emissive__glow__trevenant_shiny",
+                "alpha_eyes": "textures/entity/0709_trevenant/trevenant_alpha"
             },
             "geometry": {
                 "g_trevenant": "geometry.trevenant"
@@ -64,7 +66,10 @@
             },
             "render_controllers": [
                 "controller.render.trevenant",
-                "controller.render.trevenant_emissive"
+                "controller.render.trevenant_emissive",
+                {
+                    "controller.render.trevenant_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0709_trevenant_spawn_egg"

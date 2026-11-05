@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 240
+                    "default": 138
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -28,6 +28,32 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 44
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "beach"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "shore"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
                 }
             }
         ]

@@ -6,17 +6,21 @@
 // hits and Struggle. A win earns experience; levels, the moves learned on the way and fainting are kept on
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
+import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus } from "@minecraft/server";
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
-import { NPC_SCENES } from "./npc_dialogue.js";
-import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT } from "./rct_trainers.js";
+import { NPC_SCENES, NPC_BATTLER } from "./npc_dialogue.js";
+import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT, RCT_LOOT } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
+import { HABITAT_POOLS } from "./habitats.js";
+import { BERRY_CARE } from "./berry_care.js";
 import { TMS, TM_SPECIES } from "./tms.js";
+import { INTERACT_GENDERS } from "./interactions.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
 import { DEFENDERS } from "./defenders.js";
@@ -32,9 +36,11 @@ import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
+import { STRUCTURE_PIECES } from "./structure_sites.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
-import { SILK_SELF } from "./silk.js";
+import { SILK_SELF, FORTUNE } from "./silk.js";
+import { POTTED } from "./potted.js";
 import { SACCHARINE_TREES } from "./saccharine.js";
 import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
@@ -50,7 +56,7 @@ const STATUS_TEXT = { brn: "was burned", par: "is paralyzed! It may be unable to
 const STATUS_TAG = { brn: "§6BRN§r", par: "§ePAR§r", psn: "§5PSN§r", tox: "§5TOX§r", slp: "§7SLP§r", frz: "§bFRZ§r" };
 const STATUS_IMMUNE = { brn: ["fire"], par: ["electric"], psn: ["poison", "steel"], tox: ["poison", "steel"], frz: ["ice"] };
 // abilities that make a move type miss, and the ones that power up a type in a pinch
-const ABILITY_IMMUNE = { levitate: "ground", flashfire: "fire", voltabsorb: "electric", lightningrod: "electric", motordrive: "electric", waterabsorb: "water", stormdrain: "water", dryskin: "water", sapsipper: "grass" };
+const ABILITY_IMMUNE = { levitate: "ground", eartheater: "ground", wellbakedbody: "fire", flashfire: "fire", voltabsorb: "electric", lightningrod: "electric", motordrive: "electric", waterabsorb: "water", stormdrain: "water", dryskin: "water", sapsipper: "grass" };
 const ABILITY_PINCH = { blaze: "fire", torrent: "water", overgrow: "grass", swarm: "bug" };
 const ABILITY_CONTACT = { static: "par", flamebody: "brn", poisonpoint: "psn" };
 // held items in battle, as Showdown's item scripts: type boosts 1.2x, Choice items 1.5x a stat and lock the move,
@@ -61,7 +67,18 @@ const TYPE_ITEMS = { charcoal_stick: "fire", mystic_water: "water", miracle_seed
     poison_barb: "poison", soft_sand: "ground", sharp_beak: "flying", twisted_spoon: "psychic", silver_powder: "bug", hard_stone: "rock",
     spell_tag: "ghost", dragon_fang: "dragon", black_glasses: "dark", metal_coat: "steel", silk_scarf: "normal", fairy_feather: "fairy" };
 const STATUS_BERRIES = { cheri_berry: ["par"], chesto_berry: ["slp"], pecha_berry: ["psn", "tox"], rawst_berry: ["brn"], aspear_berry: ["frz"], lum_berry: null };
-function held(f) { return f.held ? f.held.slice("cobblemon:".length) : null; }
+const KLUTZ_KEEPS = new Set(["macho_brace", "power_anklet", "power_band", "power_belt", "power_bracer", "power_lens", "power_weight", "lucky_egg", "exp_share", "amulet_coin"]);
+function held(f) {
+    if (!f.held) return null;
+    const item = f.held.slice("cobblemon:".length);
+    if (f.embargo > 0 || f.magicRoom) return null;
+    return f.ability === "klutz" && !KLUTZ_KEEPS.has(item) ? null : item;
+}
+// Unnerve and As One: the other side's Pokemon cannot eat berries
+function unnerved(battle, f) {
+    const other = f === battle?.ally ? battle?.foe : battle?.ally;
+    return !!other && other.hp > 0 && ["unnerve", "asoneglastrier", "asonespectrier"].includes(other.ability);
+}
 // more of Showdown's items: the species items that double a stat, the crit items, and the items used up when they act
 const SPECIES_ITEMS = { light_ball: [["pikachu"], ["atk", "spa"]], thick_club: [["cubone", "marowak"], ["atk"]], deep_sea_tooth: [["clamperl"], ["spa"]],
     deep_sea_scale: [["clamperl"], ["spd"]], metal_powder: [["ditto"], ["def"]] };
@@ -81,6 +98,18 @@ function useUp(battle, f, text) {
     const item = f.held;
     f.held = null;
     if (item && consumedFor(battle, item)) setProp(f.entity, "cobblemon:held", undefined);
+    if (item) itemGone(battle, f, item);
+}
+// an item a Pokemon has used up, eaten or lost: kept as its last item (Showdown's lastItem) for Harvest and Pickup;
+// Unburden doubles its Speed from then, Cheek Pouch heals a third on a berry, and Cud Chew eats the berry again next turn
+function itemGone(battle, f, item) {
+    f.lastItem = item; f.itemGoneTurn = battle.turn;
+    if (f.ability === "unburden") f.unburden = true;
+    if (!item.endsWith("_berry")) return;
+    if (f.ability === "cheekpouch" && f.hp > 0 && f.hp < f.stats.hp) {
+        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / 3)); say(battle, `§a${f.info.name}'s Cheek Pouch restored its HP!`); syncHealth(f);
+    }
+    if (f.ability === "cudchew" && !f.cudChewing) f.cudChew = { item, turn: battle.turn };
 }
 // two-turn moves: what each says as it charges (Showdown's prepare messages), the stat it raises then, where it hides
 // the user, and the moves that still reach a Pokemon hidden there (Showdown's onInvulnerability)
@@ -111,6 +140,8 @@ function blockedWhy(f, m) {
     if (f.disabled?.id === m.id) return `${f.info.name}'s ${m.name} is disabled!`;
     if (f.encore && f.encore.id !== m.id) return `${f.info.name} can only use ${MOVES[f.encore.id]?.name ?? m.name} after the encore!`;
     if (f.taunt > 0 && m.category === "Status") return `${f.info.name} can't use ${m.name} after the taunt!`;
+    if (f.torment && f.lastMove === m.id && m.id !== "struggle") return `${f.info.name} can't use the same move twice in a row due to the torment!`;
+    if (f.throatChop > 0 && m.flags?.includes("sound")) return `The effects of Throat Chop prevent ${f.info.name} from using ${m.name}!`;
     return null;
 }
 function canPick(f, m) { return m.left > 0 && !blockedWhy(f, m); }
@@ -120,13 +151,16 @@ function canPick(f, m) { return m.left > 0 && !blockedWhy(f, m); }
 function trap(battle, f, by, move) {
     if (move.trap === "partial") {
         if (f.bound) return;
-        f.bound = { by, name: move.name, turns: held(by) === "grip_claw" ? 7 : 4 + Math.floor(Math.random() * 2), share: held(by) === "binding_band" ? 6 : 8 };
+        f.bound = { by, id: move.id, name: move.name, turns: held(by) === "grip_claw" ? 7 : 4 + Math.floor(Math.random() * 2), share: held(by) === "binding_band" ? 6 : 8 };
         say(battle, `§7${f.info.name} was trapped by ${move.name}!`);
     } else if (!f.trappedBy) { f.trappedBy = by; say(battle, `§7${f.info.name} can no longer escape!`); }
 }
 function trappedIn(battle, f) {
     if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
+    if (f.noRetreat || f.ingrain || realBattle(battle).fairyLock > 0) return true;
     const other = f === battle.ally ? battle.foe : battle.ally;
+    if (other?.hp > 0 && ((other.ability === "shadowtag" && f.ability !== "shadowtag") || (other.ability === "arenatrap" && onGround(battle, f))
+        || (other.ability === "magnetpull" && f.info.types.includes("steel")))) return true;
     return (!!f.bound && f.bound.by === other) || (!!f.trappedBy && f.trappedBy === other);
 }
 const PROTECTING = new Set(["protect", "detect", "spikyshield", "kingsshield", "banefulbunker", "silktrap", "obstruct", "burningbulwark", "endure"]);
@@ -236,9 +270,9 @@ function fighter(entity) {
     return f;
 }
 
-function effectiveness(moveType, defenderTypes) {
+function effectiveness(moveType, defenderTypes, ringTarget = false) {
     let mult = 1;
-    for (const t of defenderTypes) { const row = TYPES[t]; if (row && row[moveType] !== undefined) mult *= row[moveType]; }
+    for (const t of defenderTypes) { const row = TYPES[t]; if (row && row[moveType] !== undefined && !(ringTarget && row[moveType] === 0)) mult *= row[moveType]; }
     return mult;
 }
 
@@ -249,11 +283,15 @@ const WEATHER_TEXT = { rain: ["It started to rain!", "The rain stopped."], sun: 
 const WEATHER_ROCKS = { rain: "damp_rock", sun: "heat_rock", sand: "smooth_rock", snow: "icy_rock" };
 const WEATHER_ABILITIES = { drizzle: "rain", drought: "sun", sandstream: "sand", snowwarning: "snow", orichalcumpulse: "sun" };
 const WEATHER_SPEED = { swiftswim: "rain", chlorophyll: "sun", sandrush: "sand", slushrush: "snow" };
-function weatherOf(battle) { return battle?.weather?.kind ?? null; }
+function weatherOf(battle) {
+    const kind = battle?.weather?.kind ?? null;
+    return kind && [battle.ally, battle.foe].some((f) => f?.hp > 0 && (f.ability === "airlock" || f.ability === "cloudnine")) ? null : kind;
+}
 function setWeather(battle, kind, setter) {
     if (weatherOf(battle) === kind) return false;
     battle.weather = { kind, turns: held(setter) === WEATHER_ROCKS[kind] ? 8 : 5 };
     say(battle, `§b${WEATHER_TEXT[kind][0]}`);
+    battleForms(battle);
     return true;
 }
 // Battle terrain, as Showdown's: Electric, Grassy, Misty and Psychic Terrain for five turns (eight with a Terrain
@@ -272,19 +310,66 @@ const TERRAIN_ABILITIES = { electricsurge: "electric", hadronengine: "electric",
 const TERRAIN_SEEDS = { electric: { def: 1 }, grassy: { def: 1 }, misty: { spd: 1 }, psychic: { spd: 1 } };
 const TERRAIN_PULSE = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
 function terrainOf(battle) { return realBattle(battle)?.terrain?.kind ?? null; }
-function onGround(battle, f) { return !!battle?.gravity || (!f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
+function onGround(battle, f) { return !!(battle && realBattle(battle).gravity > 0) || !!f.ingrain || (!(f.magnetRise > 0) && !(f.telekinesis > 0) && !f.info.types.includes("flying") && f.ability !== "levitate" && held(f) !== "air_balloon" && !f.hiding); }
 function setTerrain(battle, kind, setter) {
     if (terrainOf(battle) === kind) return false;
     realBattle(battle).terrain = { kind, turns: held(setter) === "terrain_extender" ? 8 : 5 };
     say(battle, `§a${TERRAIN_TEXT[kind][0]}`);
-    for (const f of [battle.ally, battle.foe]) terrainSeed(battle, f);
+    for (const f of [battle.ally, battle.foe]) { terrainSeed(battle, f); mimicry(battle, f); }
     return true;
+}
+const MIMICRY = { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" };
+function mimicry(battle, f) {
+    if (f?.ability !== "mimicry" || f.hp <= 0) return;
+    f.ownTypes ??= f.info.types;
+    const types = MIMICRY[terrainOf(battle)] ? [MIMICRY[terrainOf(battle)]] : f.ownTypes;
+    if (types.join() === f.info.types.join()) return;
+    f.info = { ...f.info, types }; say(battle, `§7${f.info.name}'s Mimicry made it the ${types.map(cap).join("/")} type!`);
+}
+function roomService(battle, f) {
+    if (held(f) !== "room_service" || f.hp <= 0 || !(realBattle(battle).trickRoom > 0)) return;
+    useUp(battle, f, `§7${f.info.name}'s Room Service!`);
+    boost(battle, f, { spe: -1 });
 }
 function terrainSeed(battle, f) {
     const kind = terrainOf(battle);
     if (!kind || f.hp <= 0 || held(f) !== `${kind}_seed`) return;
     useUp(battle, f, `§7${f.info.name}'s ${itemName(f.held)}!`);
     boost(battle, f, TERRAIN_SEEDS[kind]);
+}
+// a move's priority with its user's ability (Showdown's onModifyPriority): Prankster +1 for status moves, Gale Wings +1
+// for Flying moves at full HP, Triage +3 for healing moves
+function priorityOf(battle, f, m) {
+    let p = m?.priority ?? 0;
+    if (!m || !f) return p;
+    if (f.ability === "prankster" && m.category === "Status") p += 1;
+    if (f.ability === "galewings" && m.type === "flying" && f.hp === f.stats.hp) p += 1;
+    if (f.ability === "triage" && m.flags?.includes("heal")) p += 3;
+    if (m.id === "grassyglide" && battle && terrainOf(battle) === "grassy" && onGround(battle, f)) p += 1;
+    return p;
+}
+// whether the player's Pokemon moves first: the higher priority, then in the same bracket the one going first (Quick
+// Claw, Custap, Quick Draw), then the one going last (Lagging Tail, Full Incense, Stall, Mycelium Might's status
+// moves), then speed
+function allyGoesFirst(battle, ally, foe, move, foeMove) {
+    const last = (f, m) => held(f) === "lagging_tail" || held(f) === "full_incense" || f.ability === "stall" || (f.ability === "myceliummight" && m?.category === "Status");
+    const allyClaw = goesFirst(battle, ally, move), foeClaw = goesFirst(battle, foe, foeMove);
+    const pa = priorityOf(battle, ally, move), pf = priorityOf(battle, foe, foeMove);
+    if (pa !== pf) return pa > pf;
+    if (allyClaw !== foeClaw) return allyClaw;
+    if (last(ally, move) !== last(foe, foeMove)) return last(foe, foeMove);
+    return fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle);
+}
+// first in its priority bracket (Showdown's fractional priority): Quick Claw one time in five, a Custap Berry eaten
+// at a quarter of HP or less for a move of no more than normal priority, and Quick Draw three times in ten for a damaging move
+function goesFirst(battle, f, m) {
+    if (held(f) === "custap_berry" && !unnerved(battle, f) && (m?.priority ?? 0) <= 0 && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) {
+        useUp(battle, f, `§7${f.info.name} can act faster than normal, thanks to its Custap Berry!`);
+        return true;
+    }
+    if (held(f) === "quick_claw" && Math.random() < 0.2) { say(battle, `§7${f.info.name} can act faster than normal, thanks to its Quick Claw!`); return true; }
+    if (f.ability === "quickdraw" && m && m.category !== "Status" && Math.random() < 0.3) { say(battle, `§7${f.info.name} can act faster than normal, thanks to its Quick Draw!`); return true; }
+    return false;
 }
 // which goes first by speed: the faster, a tie either way, and under Trick Room the slower
 function fasterOf(a, b, battle) {
@@ -296,19 +381,33 @@ function fasterOf(a, b, battle) {
 function sideOf(battle, f) {
     const real = realBattle(battle);
     real.sides ??= { a: {}, b: {} };
-    return real.sides[f === real.ally ? "a" : "b"];
+    return real.sides[f?.sideKey ?? (f === real.ally ? "a" : "b")];
 }
-const SIDE_MOVES = { reflect: "Reflect", lightscreen: "Light Screen", auroraveil: "Aurora Veil", safeguard: "Safeguard", mist: "Mist", tailwind: "Tailwind" };
+const SIDE_MOVES = { reflect: "Reflect", lightscreen: "Light Screen", auroraveil: "Aurora Veil", safeguard: "Safeguard", mist: "Mist", tailwind: "Tailwind", luckychant: "Lucky Chant" };
 const HAZARDS = { stealthrock: 1, spikes: 3, toxicspikes: 2, stickyweb: 1 };
 // the side and field moves, and the status moves that act on HP, stats or types outright: true when the move was one
 function fieldMove(battle, a, d, move) {
     const name = a.info.name, used = () => say(battle, `§e${name} used ${move.name}!`), fail = () => say(battle, "§7But it failed!");
+    // a move at the user's partner (Showdown's adjacentAlly target) needs one: it fails in a single battle
+    if (move.target === "adjacentAlly") {
+        used();
+        if (!battle.doubles || d === a || d.sideKey !== a.sideKey || d.hp <= 0) { fail(); return true; }
+        if (move.id === "helpinghand") { d.helped = battle.turn; say(battle, `§7${name} is ready to help ${d.info.name}!`); return true; }
+        if (move.id === "dragoncheer") {
+            if (d.cheered) { fail(); return true; }
+            d.cheered = d.info.types.includes("dragon") ? 2 : 1; say(battle, `§7${d.info.name} is getting pumped!`); return true;
+        }
+        if (move.boosts) { boost(battle, d, move.boosts, a); return true; }
+        return false;
+    }
     if (SIDE_MOVES[move.id]) {
         const side = sideOf(battle, a);
         used();
         if (side[move.id] > 0 || (move.id === "auroraveil" && weatherOf(battle) !== "snow")) { fail(); return true; }
         side[move.id] = move.id === "tailwind" ? 4 : ["reflect", "lightscreen", "auroraveil"].includes(move.id) && held(a) === "light_clay" ? 8 : 5;
         say(battle, `§a${SIDE_MOVES[move.id]} protects ${name}'s team.`);
+        if (move.id === "tailwind" && a.ability === "windpower") { a.charged = true; say(battle, `§7Being hit by the wind charged ${name} with power!`); }
+        if (move.id === "tailwind" && a.ability === "windrider") boost(battle, a, { atk: 1 });
         return true;
     }
     if (HAZARDS[move.id]) {
@@ -325,6 +424,7 @@ function fieldMove(battle, a, d, move) {
             used();
             real.trickRoom = real.trickRoom > 0 ? 0 : 5;
             say(battle, real.trickRoom ? `§d${name} twisted the dimensions!` : "§7The twisted dimensions returned to normal!");
+            for (const f of [battle.ally, battle.foe]) roomService(battle, f);
             return true;
         }
         case "defog":
@@ -356,6 +456,410 @@ function fieldMove(battle, a, d, move) {
             a.status = null; a.sleep = 0;
             for (const k of Object.values(realBattle(battle).kept ?? {})) if (k) k.status = null;
             say(battle, `§a${name}'s team was cured of its status conditions!`);
+            return true;
+        }
+        case "charge":
+            used();
+            a.charged = true; say(battle, `§e${name} began charging power!`);
+            boost(battle, a, { spd: 1 }, a);
+            return true;
+        case "transform":
+            used();
+            if (!transform(battle, a, d)) fail();
+            return true;
+        case "attract":
+            used();
+            if (!attract(battle, d, a)) fail();
+            return true;
+        // ---- stats: the moves that raise, copy, swap, share or turn round stat stages and stats (Showdown's onHit)
+        case "acupressure": {
+            used();
+            const open = ["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"].filter((k) => a.stages[k] < 6);
+            if (!open.length) { fail(); return true; }
+            boost(battle, a, { [open[Math.floor(Math.random() * open.length)]]: 2 }, a);
+            return true;
+        }
+        case "clangoroussoul": case "filletaway": {
+            used();
+            const cost = Math.floor(a.stats.hp / (move.id === "filletaway" ? 2 : 3));
+            if (a.hp <= cost) { fail(); return true; }
+            a.hp -= cost; syncHealth(a);
+            boost(battle, a, move.id === "filletaway" ? { atk: 2, spa: 2, spe: 2 } : { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 }, a);
+            return true;
+        }
+        case "noretreat":
+            used();
+            if (a.noRetreat) { fail(); return true; }
+            a.noRetreat = true; boost(battle, a, { atk: 1, def: 1, spa: 1, spd: 1, spe: 1 }, a);
+            say(battle, `§7${name} can no longer escape because it used No Retreat!`);
+            return true;
+        case "curse":
+            used();
+            if (a.info.types.includes("ghost")) {
+                if (d.cursed) { fail(); return true; }
+                a.hp = Math.max(0, a.hp - Math.floor(a.stats.hp / 2)); syncHealth(a);
+                d.cursed = true; say(battle, `§7${name} cut its own HP and put a curse on ${d.info.name}!`);
+            } else boost(battle, a, { spe: -1, atk: 1, def: 1 }, a);
+            return true;
+        case "growth": { used(); const n = weatherOf(battle) === "sun" ? 2 : 1; boost(battle, a, { atk: n, spa: n }, a); return true; }
+        case "psychup": used(); a.stages = { ...d.stages }; say(battle, `§7${name} copied ${d.info.name}'s stat changes!`); return true;
+        case "guardswap": case "powerswap": case "heartswap": {
+            used();
+            const keys = { guardswap: ["def", "spd"], powerswap: ["atk", "spa"], heartswap: Object.keys(a.stages) }[move.id];
+            for (const k of keys) [a.stages[k], d.stages[k]] = [d.stages[k], a.stages[k]];
+            say(battle, `§7${name} switched stat changes with ${d.info.name}!`);
+            return true;
+        }
+        case "guardsplit": case "powersplit": {
+            used();
+            for (const k of move.id === "guardsplit" ? ["def", "spd"] : ["atk", "spa"]) { const mid = Math.floor((a.stats[k] + d.stats[k]) / 2); a.stats[k] = mid; d.stats[k] = mid; }
+            say(battle, `§7${name} shared its ${move.id === "guardsplit" ? "guard" : "power"} with ${d.info.name}!`);
+            return true;
+        }
+        case "speedswap": used(); [a.stats.spe, d.stats.spe] = [d.stats.spe, a.stats.spe]; say(battle, `§7${name} switched Speed with ${d.info.name}!`); return true;
+        case "powertrick": used(); [a.stats.atk, a.stats.def] = [a.stats.def, a.stats.atk]; say(battle, `§7${name} switched its Attack and Defense!`); return true;
+        case "topsyturvy":
+            used();
+            if (!Object.values(d.stages).some((v) => v)) { fail(); return true; }
+            for (const k of Object.keys(d.stages)) d.stages[k] = -d.stages[k];
+            say(battle, `§7${d.info.name}'s stat changes were all reversed!`);
+            return true;
+        case "venomdrench":
+            used();
+            if (d.status !== "psn" && d.status !== "tox") { fail(); return true; }
+            boost(battle, d, { atk: -1, spa: -1, spe: -1 }, a);
+            return true;
+        case "gearup": case "magneticflux":
+            used();
+            if (a.ability !== "plus" && a.ability !== "minus") { fail(); return true; }
+            boost(battle, a, move.id === "gearup" ? { atk: 1, spa: 1 } : { def: 1, spd: 1 }, a);
+            return true;
+        case "flowershield": case "rototiller": {
+            used();
+            const grass = [a, d].filter((f) => f.hp > 0 && f.info.types.includes("grass") && (move.id === "flowershield" || onGround(battle, f)));
+            if (!grass.length) { fail(); return true; }
+            for (const f of grass) boost(battle, f, move.id === "flowershield" ? { def: 1 } : { atk: 1, spa: 1 }, a);
+            return true;
+        }
+        case "strengthsap": {
+            used();
+            if (d.stages.atk <= -6) { fail(); return true; }
+            const heal = Math.floor(d.stats.atk * stage(d.stages.atk) * (held(a) === "big_root" ? 1.3 : 1));
+            boost(battle, d, { atk: -1 }, a);
+            if (d.ability === "liquidooze") hurt(battle, a, heal, `${name} sucked up the liquid ooze!`);
+            else if (!a.healBlock) { a.hp = Math.min(a.stats.hp, a.hp + heal); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        }
+        case "spite": {
+            used();
+            const last = d.moves.find((m) => m.id === d.lastMove);
+            if (!last || last.left <= 0) { fail(); return true; }
+            const cut = Math.min(4, last.left); last.left -= cut;
+            say(battle, `§7It reduced the PP of ${d.info.name}'s ${last.name} by ${cut}!`);
+            return true;
+        }
+        case "tidyup": {
+            used();
+            const real = realBattle(battle);
+            for (const side of Object.values(real.sides ?? {})) for (const k of Object.keys(HAZARDS)) delete side[k];
+            for (const f of [a, d]) f.sub = 0;
+            say(battle, "§7Tidying up complete!");
+            boost(battle, a, { atk: 1, spe: 1 }, a);
+            return true;
+        }
+        case "autotomize":
+            used();
+            boost(battle, a, { spe: 2 }, a);
+            a.info = { ...a.info, weight: Math.max(1, (a.info.weight ?? 100) - 1000) }; say(battle, `§7${name} became nimble!`);
+            return true;
+        // ---- types
+        case "conversion": {
+            used();
+            const t = MOVES[a.moves.find((m) => m.id)?.id]?.type;
+            if (!t || (a.info.types.length === 1 && a.info.types[0] === t)) { fail(); return true; }
+            a.info = { ...a.info, types: [t] }; say(battle, `§7${name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        case "conversion2": {
+            used();
+            const hit = MOVES[d.lastMove]?.type;
+            const resists = hit ? Object.keys(TYPES).filter((t) => effectiveness(hit, [t]) < 1 && !a.info.types.includes(t)) : [];
+            if (!resists.length) { fail(); return true; }
+            const t = resists[Math.floor(Math.random() * resists.length)];
+            a.info = { ...a.info, types: [t] }; say(battle, `§7${name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        case "reflecttype": used(); a.info = { ...a.info, types: [...d.info.types] }; say(battle, `§7${name}'s type became the same as ${d.info.name}'s!`); return true;
+        case "magicpowder": case "trickortreat": case "forestscurse": case "camouflage": {
+            used();
+            const t = { magicpowder: "psychic", trickortreat: "ghost", forestscurse: "grass", camouflage: { electric: "electric", grassy: "grass", misty: "fairy", psychic: "psychic" }[terrainOf(battle)] ?? "normal" }[move.id];
+            const f = move.id === "camouflage" ? a : d, added = move.id === "trickortreat" || move.id === "forestscurse";
+            if (f.info.types.includes(t) && (added || f.info.types.length === 1)) { fail(); return true; }
+            f.info = { ...f.info, types: added ? [...f.info.types.filter((x) => x !== "ghost" && x !== "grass").slice(0, 2), t] : [t] };
+            say(battle, added ? `§7${cap(t)} type was added to ${f.info.name}!` : `§7${f.info.name}'s type changed to ${cap(t)}!`);
+            return true;
+        }
+        // ---- abilities: taken, given, swapped or suppressed for the battle; a switch out gives the own one back
+        case "skillswap": case "roleplay": case "entrainment": case "simplebeam": case "worryseed": case "gastroacid": case "doodle": {
+            used();
+            const give = (f, ab) => { f.baseAbility ??= f.ability; f.ability = ab; };
+            // Ability Shield: the holder's ability is not changed or suppressed
+            const shield = [a, d].find((f) => held(f) === "ability_shield" && (f === d || move.id === "skillswap" || move.id === "roleplay" || move.id === "doodle"));
+            if (shield) { say(battle, `§7${shield.info.name}'s Ability is protected by the Ability Shield!`); return true; }
+            if (move.id === "skillswap") {
+                if (NO_SWAP.has(a.ability) || NO_SWAP.has(d.ability)) { fail(); return true; }
+                const mine = a.ability; give(a, d.ability); give(d, mine);
+                say(battle, `§7${name} swapped Abilities with its target!`);
+            } else if (move.id === "roleplay" || move.id === "doodle") {
+                if (!d.ability || NO_TRACE.has(d.ability) || a.ability === d.ability) { fail(); return true; }
+                give(a, d.ability); say(battle, `§7${name} copied ${d.info.name}'s ${abilityName(d.ability)}!`);
+            } else if (move.id === "entrainment") {
+                if (CANT_SUPPRESS.has(d.ability) || d.ability === "truant" || d.ability === a.ability || NO_TRACE.has(a.ability)) { fail(); return true; }
+                give(d, a.ability); say(battle, `§7${d.info.name} acquired ${abilityName(a.ability)}!`);
+            } else if (move.id === "gastroacid") {
+                if (!d.ability || CANT_SUPPRESS.has(d.ability)) { fail(); return true; }
+                give(d, null); say(battle, `§7${d.info.name}'s Ability was suppressed!`);
+            } else {
+                const ab = move.id === "simplebeam" ? "simple" : "insomnia";
+                if (d.ability === ab || CANT_SUPPRESS.has(d.ability) || d.ability === "truant") { fail(); return true; }
+                give(d, ab); say(battle, `§7${d.info.name} acquired ${abilityName(ab)}!`);
+                if (ab === "insomnia" && d.status === "slp") { d.status = null; say(battle, `§7${d.info.name} woke up!`); }
+            }
+            return true;
+        }
+        // ---- healing others, and the user's own cures
+        case "healpulse": case "floralhealing": {
+            used();
+            if (d.hp >= d.stats.hp || d.healBlock > 0) { fail(); return true; }
+            const share = move.id === "floralhealing" && terrainOf(battle) === "grassy" ? 2 / 3 : 1 / 2;
+            d.hp = Math.min(d.stats.hp, d.hp + Math.round(d.stats.hp * share)); syncHealth(d); say(battle, `§a${d.info.name}'s HP was restored.`);
+            return true;
+        }
+        case "purify":
+            used();
+            if (!d.status) { fail(); return true; }
+            d.status = null; say(battle, `§a${d.info.name} was purified!`);
+            if (!a.healBlock && a.hp < a.stats.hp) { a.hp = Math.min(a.stats.hp, a.hp + Math.round(a.stats.hp / 2)); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        case "junglehealing": case "refresh": {
+            used();
+            const cures = move.id === "refresh" ? ["brn", "par", "psn", "tox"] : ["brn", "par", "psn", "tox", "slp", "frz"];
+            const cured = a.status && cures.includes(a.status), heals = move.id === "junglehealing" && a.hp < a.stats.hp && !a.healBlock;
+            if (!cured && !heals) { fail(); return true; }
+            if (cured) { a.status = null; say(battle, `§a${name}'s status returned to normal!`); }
+            if (heals) { a.hp = Math.min(a.stats.hp, a.hp + Math.round(a.stats.hp / 4)); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            return true;
+        }
+        case "aquaring": case "ingrain":
+            used();
+            if (a[move.id]) { fail(); return true; }
+            a[move.id] = true; say(battle, move.id === "aquaring" ? `§7${name} surrounded itself with a veil of water!` : `§7${name} planted its roots!`);
+            return true;
+        case "healblock":
+            used();
+            if (d.healBlock > 0) { fail(); return true; }
+            d.healBlock = 5; say(battle, `§7${d.info.name} was prevented from healing!`);
+            return true;
+        // ---- Stockpile, Swallow (Spit Up is in movePower): up to three, each raising Defense and Sp. Def
+        case "stockpile":
+            used();
+            if ((a.stockpile ?? 0) >= 3) { fail(); return true; }
+            a.stockpile = (a.stockpile ?? 0) + 1; say(battle, `§7${name} stockpiled ${a.stockpile}!`);
+            boost(battle, a, { def: 1, spd: 1 }, a);
+            return true;
+        case "swallow": {
+            used();
+            if (!a.stockpile || a.healBlock > 0) { fail(); return true; }
+            const n = a.stockpile;
+            if (a.hp < a.stats.hp) { a.hp = Math.min(a.stats.hp, a.hp + Math.floor(a.stats.hp * [0, 0.25, 0.5, 1][n])); syncHealth(a); say(battle, `§a${name} restored its HP.`); }
+            spentStockpile(battle, a);
+            return true;
+        }
+        // ---- one-turn guards
+        case "quickguard": case "wideguard": case "craftyshield": {
+            used();
+            const side = sideOf(battle, a);
+            if (move.id !== "craftyshield" && battle.movedFirst !== a) { fail(); return true; }
+            side[move.id] = battle.turn;
+            say(battle, `§7${{ quickguard: "Quick Guard", wideguard: "Wide Guard", craftyshield: "Crafty Shield" }[move.id]} protected ${name}'s team!`);
+            return true;
+        }
+        case "magiccoat": case "snatch":
+            used();
+            if (battle.movedFirst !== a) { fail(); return true; }
+            a[move.id === "magiccoat" ? "magicCoat" : "snatch"] = battle.turn;
+            say(battle, move.id === "magiccoat" ? `§7${name} shrouded itself with Magic Coat!` : `§7${name} waits for a target to make a move!`);
+            return true;
+        // ---- the field for five turns: Gravity, Magic Room, Wonder Room, Mud Sport, Water Sport; Fairy Lock for this turn
+        // and the next; Court Change swaps the sides' conditions; Ion Deluge and Electrify for this turn
+        case "gravity": case "magicroom": case "wonderroom": case "mudsport": case "watersport": {
+            const real = realBattle(battle), key = move.id;
+            used();
+            if (real[key] > 0 && key === "gravity") { fail(); return true; }
+            real[key] = real[key] > 0 && (key === "magicroom" || key === "wonderroom") ? 0 : 5;
+            say(battle, `§7${FIELD_TEXT[key][real[key] ? 0 : 1]}`);
+            if (key === "magicroom") for (const f of [battle.ally, battle.foe]) f.magicRoom = real.magicroom > 0;
+            if (key === "gravity") for (const f of [battle.ally, battle.foe]) if (f.hiding === "air") { f.hiding = null; f.charging = null; }
+            return true;
+        }
+        case "fairylock": { used(); const real = realBattle(battle); if (real.fairyLock > 0) { fail(); return true; } real.fairyLock = 2; say(battle, "§7No one will be able to run away during the next turn!"); return true; }
+        case "courtchange": {
+            used();
+            const real = realBattle(battle);
+            real.sides ??= { a: {}, b: {} };
+            [real.sides.a, real.sides.b] = [real.sides.b, real.sides.a];
+            say(battle, `§7${name} swapped the battle effects affecting each side of the field!`);
+            return true;
+        }
+        case "iondeluge": used(); realBattle(battle).ionDeluge = battle.turn; say(battle, "§7A deluge of ions showers the battlefield!"); return true;
+        case "electrify":
+            used();
+            if (battle.movedFirst !== a) { fail(); return true; }
+            d.electrify = battle.turn; say(battle, `§7${d.info.name}'s moves have been electrified!`);
+            return true;
+        // ---- items: swapped, given, brought back, eaten, kept from working; for the battle only, as nothing saves it,
+        // but for Recycle, which brings back an item used up
+        case "trick": case "switcheroo": {
+            used();
+            if ((!a.held && !d.held) || d.ability === "stickyhold") { fail(); return true; }
+            [a.held, d.held] = [d.held, a.held];
+            say(battle, `§7${name} switched items with its target!`);
+            if (a.held) say(battle, `§7${name} obtained one ${itemName(a.held)}.`);
+            if (d.held) say(battle, `§7${d.info.name} obtained one ${itemName(d.held)}.`);
+            for (const f of [a, d]) if (!f.held && f.ability === "unburden") f.unburden = true;
+            return true;
+        }
+        case "bestow":
+            used();
+            if (!a.held || d.held) { fail(); return true; }
+            d.held = a.held; a.held = null; say(battle, `§7${d.info.name} received ${itemName(d.held)} from ${name}!`);
+            if (a.ability === "unburden") a.unburden = true;
+            return true;
+        case "recycle":
+            used();
+            if (a.held || !a.lastItem) { fail(); return true; }
+            a.held = a.lastItem; a.lastItem = null; setProp(a.entity, "cobblemon:held", a.held);
+            say(battle, `§7${name} found one ${itemName(a.held)}!`);
+            return true;
+        case "embargo":
+            used();
+            if (d.embargo > 0) { fail(); return true; }
+            d.embargo = 5; say(battle, `§7${d.info.name} can't use items anymore!`);
+            return true;
+        case "stuffcheeks": case "teatime": {
+            used();
+            const eaters = (move.id === "teatime" ? [a, d] : [a]).filter((f) => f.hp > 0 && f.held?.endsWith("_berry"));
+            if (!eaters.length) { fail(); return true; }
+            for (const f of eaters) heldBerry(battle, f, true);
+            if (move.id === "stuffcheeks") boost(battle, a, { def: 2 }, a);
+            return true;
+        }
+        // ---- lasting effects on one Pokemon (Showdown's volatiles)
+        case "foresight": case "odorsleuth": case "miracleeye":
+            used();
+            d.identified = move.id === "miracleeye" ? "dark" : "ghost"; d.stages.evasion = Math.min(0, d.stages.evasion);
+            say(battle, `§7${name} identified ${d.info.name}!`);
+            return true;
+        case "laserfocus": used(); a.laserFocus = battle.turn + 1; say(battle, `§7${name} concentrated intensely!`); return true;
+        case "lockon": case "mindreader": used(); a.lockOn = { target: d, turn: battle.turn + 1 }; say(battle, `§7${name} took aim at ${d.info.name}!`); return true;
+        case "telekinesis":
+            used();
+            d.telekinesis = 3; say(battle, `§7${d.info.name} was hurled into the air!`);
+            return true;
+        case "corrosivegas":
+            // melts the target's item for the rest of the battle (Sticky Hold keeps it)
+            used();
+            if (!d.held || d.ability === "stickyhold") { fail(); return true; }
+            say(battle, `§7${name} corroded ${d.info.name}'s ${itemName(d.held)}!`); d.held = null;
+            if (d.ability === "unburden") d.unburden = true;
+            return true;
+        case "magnetrise":
+            used();
+            if (a.magnetRise > 0 || a.ingrain || realBattle(battle).gravity > 0) { fail(); return true; }
+            a.magnetRise = 5; say(battle, `§7${name} levitated with electromagnetism!`);
+            return true;
+        case "nightmare":
+            used();
+            if (d.status !== "slp" || d.nightmare) { fail(); return true; }
+            d.nightmare = true; say(battle, `§7${d.info.name} began having a nightmare!`);
+            return true;
+        case "octolock":
+            used();
+            if (d.octolock || d.info.types.includes("ghost")) { fail(); return true; }
+            d.octolock = a; d.trappedBy = a; say(battle, `§7${d.info.name} can no longer escape because of Octolock!`);
+            return true;
+        case "torment":
+            used();
+            if (d.torment) { fail(); return true; }
+            d.torment = true; say(battle, `§7${d.info.name} was subjected to torment!`);
+            return true;
+        case "imprison": used(); a.imprison = true; say(battle, `§7${name} sealed any moves its target shares with it!`); return true;
+        case "grudge": used(); a.grudge = true; say(battle, `§7${name} wants its target to bear a grudge!`); return true;
+        case "tarshot":
+            used();
+            boost(battle, d, { spe: -1 }, a);
+            if (!d.tarShot) { d.tarShot = true; say(battle, `§7${d.info.name} became weaker to fire!`); }
+            return true;
+        case "captivate": {
+            used();
+            const [g1, g2] = [genderOf(a.entity), genderOf(d.entity)];
+            if (g1 === "genderless" || g2 === "genderless" || g1 === g2 || d.ability === "oblivious") { fail(); return true; }
+            boost(battle, d, { spa: -2 }, a);
+            return true;
+        }
+        case "psychoshift":
+            used();
+            if (!a.status || d.status) { fail(); return true; }
+            inflict(battle, d, a.status, true, a);
+            if (d.status) { a.status = null; say(battle, `§a${name} was cured!`); }
+            return true;
+        // Shed Tail: a substitute of a quarter of HP, for half of it, handed to the one the trainer sends in
+        case "shedtail": {
+            used();
+            const cost = Math.ceil(a.stats.hp / 2);
+            if (a.hp <= cost || !benchOf(battle, a === battle.ally ? "ally" : "foe").length) { fail(); return true; }
+            a.hp -= cost; syncHealth(a);
+            say(battle, `§7${name} shed its tail to create a decoy!`);
+            battle.swap = { side: a === battle.ally ? "ally" : "foe", sub: Math.floor(a.stats.hp / 4) };
+            return true;
+        }
+        // Revival Blessing: the first fainted Pokemon of the user's party back with half its HP
+        case "revivalblessing": {
+            used();
+            const down = a === battle.ally && !battle.pvp ? benchOf(battle, "ally").find((e) => prop(e, FAINTED)) : null;
+            if (!down) { fail(); return true; }
+            applyMedicine(down, { revive: 0.5 });
+            const k = battle.kept?.[memberKey(down)];
+            if (k) { k.hp = undefined; k.status = null; }
+            say(battle, `§a${POKEMON[down.typeId]?.name ?? "The Pokemon"} was revived and is ready to fight again!`);
+            return true;
+        }
+        // Showdown's Follow Me and Rage Powder: the user draws the foes' one-target moves this turn (Rage Powder not
+        // from a Pokemon safe from powder); Spotlight does it to its target. They fail in a single battle
+        case "followme": case "ragepowder":
+            used();
+            if (!battle.doubles) { fail(); return true; }
+            a.spotlit = { turn: battle.turn, powder: move.id === "ragepowder", rank: 1 };
+            say(battle, `§7${name} became the center of attention!`);
+            return true;
+        case "spotlight":
+            used();
+            if (!battle.doubles) { fail(); return true; }
+            d.spotlit = { turn: battle.turn, powder: false, rank: 2 };
+            say(battle, `§7${d.info.name} became the center of attention!`);
+            return true;
+        // Ally Switch: the user and its partner trade places, so a move aimed at a place hits the other; used again
+        // the next turn it works one time in three, then one in nine, and so on, as Protect does
+        case "allyswitch": {
+            used();
+            const again = a.allySwitch?.turn === battle.turn - 1;
+            if (again && Math.random() >= 1 / a.allySwitch.counter) { a.allySwitch = null; fail(); return true; }
+            a.allySwitch = { turn: battle.turn, counter: again ? Math.min(729, a.allySwitch.counter * 3) : 3 };
+            // in a triple battle the edges trade with each other and the middle one fails (Showdown's newPosition)
+            const n = battle.doubles ? slotCount(battle) : 0, partner = battle.doubles && !(n === 3 && a.slot === 1) ? battle.slots[a.sideKey][a.slot === 0 ? n - 1 : 0] : null;
+            if (!alive(partner)) { fail(); return true; }
+            swapPlaces(battle, a, partner);
+            say(battle, `§7${name} and ${partner.info.name} switched places!`);
             return true;
         }
         case "focusenergy":
@@ -444,6 +948,7 @@ function fieldMove(battle, a, d, move) {
             // Showdown's forceSwitch: the target is dragged out for another of its side at random (useMove's pivot), and
             // with nothing on the bench to bring in, as against a lone wild Pokemon, it fails
             used();
+            if (ability(d, a) === "suctioncups") { say(battle, `§7${d.info.name} anchors itself with Suction Cups!`); return true; }
             if (battle.pvp || !benchOf(battle, d === battle.ally ? "ally" : "foe").length) fail();
             else battle.swap = { side: d === battle.ally ? "ally" : "foe", drag: true };
             return true;
@@ -464,7 +969,11 @@ function entryHazards(battle, f) {
     if (side.stickyweb && grounded) { say(battle, `§7${f.info.name} was caught in a sticky web!`); boost(battle, f, { spe: -1 }); }
 }
 function speedOf(f, battle) {
-    let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
+    let spe = f.stats.spe * stage(f.stages.spe) * (f.status === "par" && f.ability !== "quickfeet" ? 0.5 : 1) * (held(f) === "choice_scarf" ? 1.5 : 1);
+    if (f.ability === "quickfeet" && f.status) spe *= 1.5;
+    if (battle && paradoxStat(battle, f) === "spe") spe *= 1.5;
+    if (battle && f.slowStart > battle.turn) spe *= 0.5;
+    if (f.unburden && !f.held) spe *= 2;
     if (held(f) === "iron_ball" || held(f) === "macho_brace" || POWER_ITEMS[held(f)]) spe *= 0.5;
     if (holds(f, "quick_powder", ["ditto"])) spe *= 2;
     if (WEATHER_SPEED[f.ability] && WEATHER_SPEED[f.ability] === weatherOf(battle)) spe *= 2;
@@ -504,7 +1013,7 @@ function fxFill(text, move) {
 // clips on the client, where a clip played from a script reached the client after the property and left the model in its rest pose
 // in between (issue 32), and ran before the controller, out of override_previous_animation's reach. A faint holds,
 // so it stays on. A later clip on the same Pokemon takes over the timer.
-const primaryUntil = new Map();
+const primaryUntil = new Map(), PRIMARY_HOLD = 20;   // ticks the clip's property stays on past its length
 function playClip(entity, clip) {
     const own = FX_PRIMARY[entity.typeId]?.[clip];
     if (!own) { entity.playAnimation(clip, { blendOutTime: 0.2 }); return; }
@@ -515,11 +1024,14 @@ function playClip(entity, clip) {
     if (entity.getProperty("cobblemon:primary") === index) { set(0); system.runTimeout(() => { if (primaryUntil.get(id) === token) set(index); }, 1); }
     else set(index);
     if (/faint/.test(clip)) return;
+    // held past the clip's length: the client starts it a few ticks after the property is set, and its own timer
+    // (v.primary_t) ends it with the fade-out; cleared on the clip's length, the property reached the client before
+    // that fade had run and cut the pose straight back to the stance (issue 54, Tyrantrum on every move)
     system.runTimeout(() => {
         if (primaryUntil.get(id) !== token) return;
         primaryUntil.delete(id);
         set(0);
-    }, Math.max(1, Math.round(length * 20)));
+    }, Math.max(1, Math.round(length * 20)) + PRIMARY_HOLD);
 }
 function fxEvent(e, user, target, move, outcome) {
     if (e.m && outcome.missed) return;
@@ -549,6 +1061,14 @@ function fxEvent(e, user, target, move, outcome) {
         }
     } catch (err) { }
 }
+// DamageInstruction's damage_<effect> (Fire Spin's flames, Infestation's swarm, Leech Seed's sapping) on the Pokemon
+// that takes residual damage from it, as its own user and target
+function playDamageFx(battle, f, id) {
+    const fx = MOVE_FX[`damage_${id}`];
+    if (!fx || !f?.entity) return;
+    const move = { id, name: id, type: "normal", category: "Status" };
+    for (const e of fx.e) system.runTimeout(() => fxEvent(e, f, f, move, { missed: false }), Math.round(e.t * 20));
+}
 function playMoveFx(battle, user, target, move, outcome) {
     const clock = fxClock(battle), now = system.currentTick, start = Math.max(now, clock.fxUntil ?? 0);
     const species = user.entity?.typeId?.replace(/^cobblemon:p\d+_/, "");
@@ -571,6 +1091,8 @@ function sayNow(battle, own, other) {
     const push = (log, t) => { log.push(t); if (log.length > 40) log.shift(); };
     battle.player.sendMessage(own); push(battle.log ??= [], own);
     if (battle.pvp && battle.opponent?.isValid) { battle.opponent.sendMessage(other); push(battle.opponentLog, other); }
+    // spectators (SpectateBattleCommand) follow the battle in chat, as the player in it sees it
+    for (const id of realBattle(battle).spectators ?? []) { try { world.getEntity(id)?.sendMessage(`§8[${battle.player.name}]§r ${own}`); } catch (e) { } }
 }
 
 function syncHealth(f) {
@@ -583,7 +1105,8 @@ function syncHealth(f) {
 
 // Abilities, as Showdown's scripts have them, for those that act in a single battle without weather or terrain.
 // moldbreaker (and Teravolt, Turboblaze) ignore the defender's.
-const STAT_GUARD = { clearbody: null, whitesmoke: null, fullmetalbody: null, keeneye: ["accuracy"], hypercutter: ["atk"], bigpecks: ["def"], mirrorarmor: null };
+const STAT_GUARD = { clearbody: null, whitesmoke: null, fullmetalbody: null, keeneye: ["accuracy"], hypercutter: ["atk"], bigpecks: ["def"], mirrorarmor: null,
+    mindseye: ["accuracy"], illuminate: ["accuracy"] };
 const STATUS_GUARD = { insomnia: ["slp"], vitalspirit: ["slp"], sweetveil: ["slp"], limber: ["par"], immunity: ["psn", "tox"], pastelveil: ["psn", "tox"],
     waterveil: ["brn"], waterbubble: ["brn"], thermalexchange: ["brn"], magmaarmor: ["frz"], comatose: ["slp", "par", "psn", "tox", "brn", "frz"], purifyingsalt: ["slp", "par", "psn", "tox", "brn", "frz"] };
 const INTIMIDATE_GUARD = new Set(["innerfocus", "owntempo", "oblivious", "scrappy", "guarddog"]);
@@ -609,11 +1132,23 @@ function boost(battle, target, boosts, source) {
         const name = STAT_NAMES[stat] ?? stat, change = target.stages[stat] - before;
         if (!change) say(battle, `§7${target.info.name}'s ${name} won't go any ${amount > 0 ? "higher" : "lower"}!`);
         else say(battle, `§7${target.info.name}'s ${name} ${change > 0 ? "rose" : "fell"}${Math.abs(change) >= 2 ? " sharply" : ""}!`);
-        if (change < 0) lowered = true;
+        if (change < 0) { lowered = true; target.loweredTurn = battle.turn; }
+        if (change > 0) target.raisedTurn = battle.turn;
+        if (change) fighterSound(target, change > 0 ? "up" : "down");
+    }
+    if (lowered && held(target) === "eject_pack" && target.hp > 0 && (target === battle.ally || battle.pvp)) {
+        useUp(battle, target, `§7${target.info.name} is switched out by the Eject Pack!`);
+        if (target === battle.ally) battle.ejectAlly = true; else battle.ejectFoe = true;
     }
     if (lowered && held(target) === "white_herb") {
         for (const k of Object.keys(target.stages)) if (target.stages[k] < 0) target.stages[k] = 0;
         useUp(battle, target, `§7${target.info.name} returned its stats to normal using its White Herb!`);
+    }
+    // Opportunist copies what the other side's Pokemon gained
+    const other = target === battle.ally ? battle.foe : target === battle.foe ? battle.ally : null;
+    const raised = Object.fromEntries(Object.entries(boosts ?? {}).filter(([, v]) => v > 0));
+    if (other?.ability === "opportunist" && other.hp > 0 && Object.keys(raised).length && !battle.copying) {
+        battle.copying = true; say(battle, `§7${other.info.name}'s Opportunist!`); boost(battle, other, raised, other); battle.copying = false;
     }
     // Defiant and Competitive answer a drop from the foe
     if (lowered && source && source !== target) {
@@ -629,14 +1164,16 @@ function inflict(battle, target, status, announceFailure, source) {
         if (announceFailure) say(battle, `§7${target.info.name} surrounds itself with ${terrain === "misty" ? "a protective mist" : "electrified terrain"}!`);
         return;
     }
-    const guard = STATUS_GUARD[ability(target, source)] ?? [];
+    const guard = (ability(target, source) === "leafguard" && weatherOf(battle) === "sun") || (target.ability === "shieldsdown" && target.form === "meteor-form") ? ["slp", "par", "brn", "frz", "psn", "tox"] : STATUS_GUARD[ability(target, source)] ?? [];
     if (target.hp <= 0 || target.status || (STATUS_IMMUNE[status] ?? []).some((t) => target.info.types.includes(t)) || guard.includes(status)) {
         if (announceFailure) say(battle, guard.includes(status) ? `§7${target.info.name}'s ${abilityName(target.ability)} prevents it!` : "§7But it failed!");
         return;
     }
     target.status = status;
+    fighterSound(target, status);
     if (status === "slp") target.sleep = 1 + Math.floor(Math.random() * 3);
     say(battle, `§d${target.info.name} ${STATUS_TEXT[status] ?? "was afflicted"}!`);
+    if (source?.ability === "poisonpuppeteer" && source !== target && (status === "psn" || status === "tox")) confuse(battle, target);
     // Synchronize passes burn, paralysis and poison back
     if (target.ability === "synchronize" && source && source !== target && ["brn", "par", "psn", "tox"].includes(status)) {
         say(battle, `§7${target.info.name}'s Synchronize!`); inflict(battle, source, status === "tox" ? "psn" : status, false);
@@ -659,6 +1196,10 @@ function canAct(battle, f, move) {
         if (Math.random() < 0.2) { f.status = null; say(battle, `§7${f.info.name} thawed out!`); }
         else { say(battle, `§7${f.info.name} is frozen solid!`); return false; }
     }
+    if (f.ability === "truant") {
+        if (f.truant) { f.truant = false; say(battle, `§7${f.info.name} is loafing around!`); return false; }
+        f.truant = true;
+    }
     if (f.confused) {
         if (--f.confused <= 0) { f.confused = 0; say(battle, `§7${f.info.name} snapped out of its confusion!`); }
         else {
@@ -666,7 +1207,22 @@ function canAct(battle, f, move) {
             if (Math.random() < 1 / 3) { confusionHit(battle, f); return false; }
         }
     }
+    if (f.attracted) {
+        const other = f === battle.ally ? battle.foe : battle.ally;
+        if (f.attracted !== other || other.hp <= 0) f.attracted = null;
+        else {
+            say(battle, `§d${f.info.name} is in love with ${other.info.name}!`);
+            if (Math.random() < 0.5) { say(battle, `§7${f.info.name} is immobilized by love!`); return false; }
+        }
+    }
     if (f.status === "par" && Math.random() < 0.25) { say(battle, `§7${f.info.name} is paralyzed! It can't move!`); return false; }
+    return true;
+}
+function attract(battle, f, by) {
+    const [g1, g2] = [genderOf(f.entity), genderOf(by.entity)];
+    if (f.hp <= 0 || f.attracted || g1 === "genderless" || g2 === "genderless" || g1 === g2 || f.ability === "oblivious") return false;
+    f.attracted = by; say(battle, `§d${f.info.name} fell in love with ${by.info.name}!`);
+    if (held(f) === "destiny_knot" && !by.attracted) { say(battle, `§7${f.info.name}'s Destiny Knot!`); attract(battle, by, f); }
     return true;
 }
 // Showdown's confusion: two to five turns, and each turn one time in three the Pokemon hits itself instead of moving,
@@ -679,6 +1235,7 @@ function confuse(battle, f, quiet = false, fatigue = false) {
     if (!fatigue && sideOf(battle, f).safeguard > 0) { if (!quiet) say(battle, `§7${f.info.name} is protected by Safeguard!`); return false; }
     if (!fatigue && terrainOf(battle) === "misty" && onGround(battle, f)) { if (!quiet) say(battle, `§7${f.info.name} surrounds itself with a protective mist!`); return false; }
     f.confused = 2 + Math.floor(Math.random() * 4);
+    fighterSound(f, "confusion");
     say(battle, `§7${f.info.name} became confused${fatigue ? " due to fatigue" : ""}!`);
     if (held(f) === "persim_berry" || held(f) === "lum_berry") { f.confused = 0; useUp(battle, f, `§a${f.info.name}'s ${itemName(f.held)} snapped it out of its confusion!`); }
     return true;
@@ -700,6 +1257,7 @@ const NO_SLEEP_TALK = new Set(["assist", "beakblast", "belch", "bide", "celebrat
     "mefirst", "metronome", "mimic", "mirrormove", "naturepower", "shelltrap", "sketch", "sleeptalk", "uproar"]);
 function healMove(battle, f, move) {
     const w = weatherOf(battle);
+    if (f.healBlock > 0 && (move.heal || WEATHER_HEALS.has(move.id) || move.id === "shoreup" || move.id === "rest")) { say(battle, `§7${f.info.name} can't use ${move.name} because of Heal Block!`); return true; }
     let share = move.heal ? move.heal[0] / move.heal[1] : null;
     if (WEATHER_HEALS.has(move.id)) share = w === "sun" ? 2 / 3 : w ? 1 / 4 : 1 / 2;
     if (move.id === "shoreup") share = w === "sand" ? 2 / 3 : 1 / 2;
@@ -718,18 +1276,139 @@ function healMove(battle, f, move) {
     return true;
 }
 
+const FIELD_TEXT = { gravity: ["Gravity intensified!", "Gravity returned to normal!"], magicroom: ["It created a bizarre area in which Pokemon's held items lose their effects!", "Magic Room wore off, and held items' effects returned to normal!"],
+    wonderroom: ["It created a bizarre area in which Defense and Sp. Def stats are swapped!", "Wonder Room wore off, and Defense and Sp. Def stats returned to normal!"],
+    mudsport: ["Electricity's power was weakened!", "The effects of Mud Sport have faded."], watersport: ["Fire's power was weakened!", "The effects of Water Sport have faded."] };
+// what a damaging move does to items once it has hit (Showdown's onAfterHit and onHit): Knock Off removes the target's,
+// Thief and Covet take it, Incinerate burns a berry, Bug Bite and Pluck eat it; Clear Smog clears the target's stages
+function itemMove(battle, a, d, move) {
+    const name = a.info.name, sticky = d.ability === "stickyhold" && d.hp > 0;
+    if (move.id === "knockoff" && d.held && !sticky) {
+        say(battle, `§7${name} knocked off ${d.info.name}'s ${itemName(d.held)}!`); d.held = null;
+        if (d.ability === "unburden") d.unburden = true;
+    }
+    if ((move.id === "thief" || move.id === "covet") && d.held && !a.held && !sticky) {
+        a.held = d.held; d.held = null; say(battle, `§7${name} stole ${d.info.name}'s ${itemName(a.held)}!`);
+        if (d.ability === "unburden") d.unburden = true;
+    }
+    if (move.id === "incinerate" && d.held && (d.held.endsWith("_berry") || d.held.endsWith("_gem"))) {
+        say(battle, `§7${d.info.name}'s ${itemName(d.held)} was burned up!`); d.held = null; setProp(d.entity, "cobblemon:held", undefined);
+    }
+    if ((move.id === "bugbite" || move.id === "pluck") && d.held?.endsWith("_berry") && !sticky && a.hp > 0) {
+        const berry = d.held, keep = a.held;
+        d.held = null; setProp(d.entity, "cobblemon:held", undefined);
+        say(battle, `§7${name} stole and ate its target's ${itemName(berry)}!`);
+        a.held = berry; a.cudChewing = true;
+        heldBerry(battle, a, true);
+        a.held = keep; a.cudChewing = false;
+        if (keep) setProp(a.entity, "cobblemon:held", keep);
+    }
+    if (move.id === "clearsmog" && d.hp > 0) { for (const k of Object.keys(d.stages)) d.stages[k] = 0; say(battle, `§7${d.info.name}'s stat changes were removed!`); }
+}
+// what more a damaging move does once it has hit (Showdown's onHit and onAfterHit)
+function hitMove(battle, a, d, move) {
+    const name = a.info.name, says = (t) => say(battle, `§7${t}`);
+    if (move.id === "fellstinger" && d.hp <= 0) boost(battle, a, { atk: 3 }, a);
+    if (move.id === "stoneaxe" || move.id === "ceaselessedge") {
+        const side = sideOf(battle, d), hazard = move.id === "stoneaxe" ? "stealthrock" : "spikes";
+        if ((side[hazard] ?? 0) < HAZARDS[hazard]) { side[hazard] = (side[hazard] ?? 0) + 1; says(`${move.id === "stoneaxe" ? "Pointed stones float" : "Spikes were scattered"} around ${d.info.name}'s team!`); }
+    }
+    if (move.id === "icespinner" && terrainOf(battle)) { says(TERRAIN_TEXT[terrainOf(battle)][1]); realBattle(battle).terrain = null; for (const f of [battle.ally, battle.foe]) mimicry(battle, f); }
+    if (move.id === "sparklingaria" && d.hp > 0 && d.status === "brn") { d.status = null; says(`${d.info.name}'s burn was healed!`); }
+    if (move.id === "secretpower" && d.hp > 0 && Math.random() < 0.3 && d.ability !== "shielddust") {
+        const terrain = terrainOf(battle);
+        if (terrain === "grassy") inflict(battle, d, "slp", false, a);
+        else if (terrain === "misty") boost(battle, d, { spa: -1 }, a);
+        else if (terrain === "psychic") boost(battle, d, { spe: -1 }, a);
+        else inflict(battle, d, "par", false, a);
+    }
+    if (move.id === "rage") a.raging = true;
+    if (d.raging && d.hp > 0) { says(`${d.info.name}'s rage is building!`); boost(battle, d, { atk: 1 }, d); }
+    if (d.hp <= 0 && d.grudge) {
+        const slot = a.moves.find((m) => m.id === move.id);
+        if (slot) { slot.left = 0; says(`${name}'s ${move.name} lost all its PP due to the grudge!`); }
+    }
+    if (move.id === "saltcure" && d.hp > 0 && !d.saltCure) { d.saltCure = true; says(`${d.info.name} is being salt cured!`); }
+    if (move.id === "syrupbomb" && d.hp > 0 && !d.syrup) { d.syrup = 3; says(`${d.info.name} got covered in sticky candy syrup!`); }
+    if (move.id === "throatchop" && d.hp > 0) d.throatChop = 2;
+}
+// Fling: the user's item thrown, its power by the item, and its effect on the target for some
+const FLING = { iron_ball: 130, big_nugget: 130, hard_stone: 100, thick_club: 90, rare_bone: 100, kings_rock: 30, razor_fang: 30, light_ball: 30, poison_barb: 70,
+    flame_orb: 30, toxic_orb: 30, deep_sea_tooth: 90, dragon_fang: 70, quick_claw: 80, sharp_beak: 50, black_belt: 30, never_melt_ice: 30 };
+// the base Attack of each of a side's Pokemon able to join in Beat Up: the user and its healthy, unfainted teammates
+function beatUpTeam(battle, f) {
+    const team = [f.info.stats.atk];
+    try {
+        if (f === battle.ally && !battle.pvp) for (const e of benchOf(battle, "ally")) if (!prop(e, FAINTED) && !statusOf(e)) team.push(POKEMON[e.typeId]?.stats.atk ?? 0);
+        if (f === battle.foe && battle.gym) for (const p of benchOf(battle, "foe")) team.push(POKEMON[p.t ?? p.typeId]?.stats.atk ?? 0);
+    } catch (e) { }
+    return team;
+}
+// Swallow and Spit Up spend the Stockpile, and lose the Defense and Sp. Def it raised
+function spentStockpile(battle, f) {
+    const n = f.stockpile ?? 0;
+    f.stockpile = 0;
+    if (n) boost(battle, f, { def: -n, spd: -n }, f);
+}
+// High Jump Kick and the rest: half the user's HP when the move does not land
+function crash(battle, f, move) { if (move.crash) hurt(battle, f, f.stats.hp / 2, `${f.info.name} kept going and crashed!`); }
+// Cobblemon's status sounds, on the Pokemon they happen to
+const STATUS_SOUNDS = { brn: "cobblemon.status.nonvolatile.burn.actor", par: "cobblemon.status.nonvolatile.paralysis.actor",
+    psn: "cobblemon.status.nonvolatile.poison.actor", tox: "cobblemon.status.nonvolatile.toxpoison.actor",
+    confusion: "cobblemon.status.volatile.confusion.actor", up: "cobblemon.status.up.actor", down: "cobblemon.status.down.actor" };
+function fighterSound(f, kind) {
+    if (!STATUS_SOUNDS[kind] || f?.clone) return;
+    try { f.entity.dimension.playSound(STATUS_SOUNDS[kind], f.entity.location); } catch (e) { }
+}
 // indirect damage (status, recoil, items): Magic Guard ignores it
 function hurt(battle, f, amount, text) {
     if (f.ability === "magicguard" || f.hp <= 0) return;
     f.hp = Math.max(0, f.hp - Math.max(1, Math.floor(amount))); say(battle, `§7${text}`); syncHealth(f);
+    f.hurtTurn = battle.turn;
+    if (f.hp <= 0) sideOf(battle, f).faintedTurn = battle.turn;
 }
 
 // Showdown's basePowerCallback: the moves whose power the battle decides (their listed power is 0, or the one they start at)
 const WEATHER_BALL = { rain: "water", sun: "fire", sand: "rock", snow: "ice" };
 function movePower(battle, a, d, move) {
-    const kg = (f) => (f.info.weight ?? 100) / 10, spe = (f) => speedOf(f, battle);
+    const kg = (f) => ((f.info.weight ?? 100) / 10) * (held(f) === "float_stone" ? 0.5 : 1) * (f.ability === "heavymetal" ? 2 : f.ability === "lightmetal" ? 0.5 : 1);
+    const spe = (f) => speedOf(f, battle);
     const raised = (f) => Object.values(f.stages).reduce((n, v) => n + Math.max(0, v), 0);
+    const doubled = (yes) => (yes ? move.power * 2 : move.power);
     switch (move.id) {
+        // twice as strong: against a target hurt this turn (Assurance), after being hit by the target this turn (Avalanche,
+        // Revenge), after a stat fell this turn (Lash Out), after the user's last move failed (Stomping Tantrum, Temper
+        // Flare), after a teammate fainted last turn (Retaliate), against the matching status (Smelling Salts, Wake-Up Slap)
+        case "assurance": return doubled(d.hurtTurn === battle.turn);
+        case "avalanche": case "revenge": return doubled(a.lastHit?.turn === battle.turn && a.lastHit.by === d && a.lastHit.dmg > 0);
+        case "lashout": return doubled(a.loweredTurn === battle.turn);
+        case "stompingtantrum": case "temperflare": return doubled(!!a.lastFailed);
+        case "retaliate": return doubled(sideOf(battle, a).faintedTurn === battle.turn - 1);
+        case "smellingsalts": return doubled(d.status === "par");
+        case "wakeupslap": return doubled(d.status === "slp" || d.ability === "comatose");
+        case "gravapple": return realBattle(battle).gravity > 0 ? move.power * 1.5 : move.power;
+        case "psyblade": return terrainOf(battle) === "electric" ? move.power * 1.5 : move.power;
+        case "collisioncourse": case "electrodrift": return effectiveness(move.type, d.info.types) > 1 ? move.power * 4 / 3 : move.power;
+        // Fusion Bolt and Flare after the other this turn; Echoed Voice stronger each turn in a row it is used
+        case "fusionbolt": case "fusionflare": {
+            const last = realBattle(battle).lastMoveUsed;
+            return doubled(last?.turn === battle.turn && last.id === (move.id === "fusionbolt" ? "fusionflare" : "fusionbolt"));
+        }
+        case "echoedvoice": {
+            const real = realBattle(battle), echo = real.echo;
+            const times = echo && (echo.turn === battle.turn - 1 || echo.turn === battle.turn) ? Math.min(5, echo.times + (echo.turn === battle.turn ? 0 : 1)) : 1;
+            real.echo = { turn: battle.turn, times };
+            return move.power * times;
+        }
+        case "ficklebeam": if (Math.random() < 0.3) { say(battle, `§7${a.info.name} is going all out for this attack!`); return move.power * 2; } return move.power;
+        case "lastrespects": return 50 + 50 * Math.min(100, faintedOf(battle, a));
+        case "ragefist": return Math.min(350, 50 + 50 * (a.timesHit ?? 0));
+        case "spitup": return 100 * (a.stockpile ?? 0);
+        case "beatup": return 1;
+        case "pursuit": return doubled(!!battle.pursuing);
+        case "fling": { const item = held(a); return !item ? 0 : FLING[item] ?? (item.endsWith("_berry") ? 10 : 30); }
+        case "trumpcard": { const left = move.left ?? 5; return left <= 0 ? 200 : left === 1 ? 80 : left === 2 ? 60 : left === 3 ? 50 : 40; }
+        case "present": { const r = Math.random(); return r < 0.4 ? 40 : r < 0.7 ? 80 : r < 0.8 ? 120 : 0; }
         case "lowkick": case "grassknot": { const w = kg(d); return w >= 200 ? 120 : w >= 100 ? 100 : w >= 50 ? 80 : w >= 25 ? 60 : w >= 10 ? 40 : 20; }
         case "heavyslam": case "heatcrash": { const r = kg(a) / Math.max(0.1, kg(d)); return r >= 5 ? 120 : r >= 4 ? 100 : r >= 3 ? 80 : r >= 2 ? 60 : 40; }
         case "gyroball": return Math.min(150, Math.floor((25 * spe(d)) / Math.max(1, spe(a))) + 1);
@@ -774,21 +1453,77 @@ function fixedDamage(battle, a, d, move) {
         case "psywave": return Math.max(1, Math.floor((a.level * (50 + Math.floor(Math.random() * 101))) / 100));
         case "endeavor": return d.hp > a.hp ? d.hp - a.hp : 0;
         case "finalgambit": return a.hp;
-        case "counter": case "mirrorcoat": case "metalburst": {
+        case "counter": case "mirrorcoat": case "metalburst": case "comeuppance": {
             const hit = a.lastHit;
             if (!hit || hit.tick !== system.currentTick || (move.id === "counter" && !hit.physical) || (move.id === "mirrorcoat" && hit.physical)) return 0;
-            return Math.max(1, Math.floor(hit.dmg * (move.id === "metalburst" ? 1.5 : 2)));
+            return Math.max(1, Math.floor(hit.dmg * (move.id === "metalburst" || move.id === "comeuppance" ? 1.5 : 2)));
         }
     }
     return undefined;
 }
+// Showdown's onModifyType: Aerilate, Galvanize, Pixilate and Refrigerate turn Normal moves Flying, Electric, Fairy and
+// Ice, Normalize turns every move Normal, and Liquid Voice turns sound moves Water, those that change a move boosting
+// it 1.2 times (typeChangerBoosted); a few moves keep their own type. Long Reach's moves make no contact (onModifyMove)
+const ATE = { aerilate: "flying", galvanize: "electric", pixilate: "fairy", refrigerate: "ice" };
+const KEEPS_TYPE = new Set(["hiddenpower", "judgment", "multiattack", "naturalgift", "revelationdance", "struggle", "technoblast", "terrainpulse", "weatherball"]);
+function abilityMove(attacker, move) {
+    if (!move?.id || KEEPS_TYPE.has(move.id)) return move;
+    const ab = attacker.ability;
+    let type = null, boosted = false;
+    if (ATE[ab] && move.type === "normal") { type = ATE[ab]; boosted = true; }
+    else if (ab === "normalize") { type = "normal"; boosted = true; }
+    else if (ab === "liquidvoice" && move.flags?.includes("sound")) type = "water";
+    const noContact = ab === "longreach" && move.contact;
+    if (move.id === "aurawheel" && attacker.form === "hangry-mode") type = "dark";
+    if (!type && !noContact) return move;
+    return new Proxy(move, {
+        get: (t, k) => (k === "type" && type ? type : k === "typeBoosted" ? boosted : k === "contact" && noContact ? false : t[k]),
+        set: (t, k, v) => { t[k] = v; return true; },
+    });
+}
+// the Pokemon of a side that have fainted, for Supreme Overlord: the player's party, or a gym trainer's
+function faintedOf(battle, f) {
+    try {
+        if (f === battle.ally && !battle.pvp) return partyOf(battle.player.id).filter((slot) => slot.rec?.k?.[FAINTED] || (slot.rec?.hp === 0)).length;
+        if (f === battle.foe && battle.gym) return battle.gym.party.filter((p) => p.down).length;
+    } catch (e) { }
+    return 0;
+}
 function useMove(battle, attacker, defender, move, called = false) {
+    move = abilityMove(attacker, move);
+    if (move?.id && move.category !== undefined && (attacker.electrify === battle.turn || (realBattle(battle).ionDeluge === battle.turn && move.type === "normal"))) {
+        const real = move;
+        move = new Proxy(real, { get: (t, k) => (k === "type" ? "electric" : t[k]), set: (t, k, v) => { t[k] = v; return true; } });
+    }
+    // Stance Change: Blade Forme to attack, Shield Forme for King's Shield
+    if (attacker.ability === "stancechange" && !attacker.transformed && move?.id && ((move.category !== "Status") !== !!attacker.blade) && (move.category !== "Status" || move.id === "kingsshield")) {
+        attacker.blade = move.category !== "Status";
+        const st = attacker.info.stats, swapped = { ...st, atk: st.def, def: st.atk, spa: st.spd, spd: st.spa };
+        attacker.info = { ...attacker.info, stats: swapped };
+        attacker.stats = { ...statsOf(attacker.entity, attacker.info, attacker.level), hp: attacker.stats.hp };
+        say(battle, `§7${attacker.info.name} changed to ${attacker.blade ? "Blade" : "Shield"} Forme!`);
+    }
+    // Gulp Missile: Surf and Dive catch Cramorant something to spit back at the next Pokemon to hit it
+    if (attacker.ability === "gulpmissile" && (move?.id === "surf" || move?.id === "dive") && !attacker.gulp) attacker.gulp = attacker.hp > attacker.stats.hp / 2 ? "gulping" : "gorging";
+    // Libero and Protean: the user becomes the type of the move it uses, once each time it comes in
+    if ((attacker.ability === "libero" || attacker.ability === "protean") && !attacker.protean && move?.type && move.type !== "???"
+        && !(attacker.info.types.length === 1 && attacker.info.types[0] === move.type)) {
+        attacker.protean = true; attacker.info = { ...attacker.info, types: [move.type] };
+        say(battle, `§7${attacker.info.name}'s ${abilityName(attacker.ability)} made it the ${cap(move.type)} type!`);
+    }
     const name = attacker.info.name, outer = battle.curFx, outcome = { used: false, missed: false }, before = defender.hp, outerSaid = battle.said, said = [];
     battle.curFx = outcome; battle.said = said;
     try { runMove(battle, attacker, defender, move, called); } finally { battle.curFx = outer; battle.said = outerSaid; }
+    battle.lastOutcome = outcome;
     if (outcome.used) playMoveFx(battle, attacker, defender, move, outcome);
     if (outcome.used && move.id) attacker.lastMove = move.id;
     if (!PROTECTING.has(move.id)) attacker.protectChain = 0;
+    // damage the defender took and lived (damage_taken), and a knockout of it by the attacker (defeat)
+    if (defender !== attacker && defender.hp < before && defender.hp > 0) countProgress(defender, (p) => { p.damage = (p.damage ?? 0) + before - defender.hp; });
+    if (defender !== attacker && before > 0 && defender.hp <= 0) countProgress(attacker, (p) => {
+        const key = `${(POKEMON[defender.entity?.typeId]?.name ?? defender.info.name).toLowerCase()}|${defender.held ?? ""}`;
+        p.defeats ??= {}; p.defeats[key] = (p.defeats[key] ?? 0) + 1;
+    });
     if (defender.hp <= 0 && defender.destinyBond && attacker !== defender && attacker.hp > 0) {
         attacker.hp = 0; syncHealth(attacker);
         say(battle, `§c${defender.info.name} took its attacker down with it!`);
@@ -797,6 +1532,17 @@ function useMove(battle, attacker, defender, move, called = false) {
     // to have failed or missed
     const failed = said.some((line) => /But it failed|doesn't affect|missed|avoided|protected/.test(line));
     const worked = outcome.used && !outcome.missed && !failed && (move.category === "Status" || defender.hp < before);
+    if (outcome.used && move.id) {
+        if (!called) countProgress(attacker, (p) => { p.used ??= {}; p.used[move.id] = (p.used[move.id] ?? 0) + 1; });
+        attacker.lastFailed = !worked;
+        (attacker.usedIds ??= new Set()).add(move.id);
+        realBattle(battle).lastMoveUsed = { id: move.id, turn: battle.turn };
+    }
+    if (outcome.used && !outcome.damp && attacker.hp > 0 && (move.selfdestruct === "always" || (move.selfdestruct === "ifHit" && worked))) {
+        if (move.id === "healingwish" || move.id === "lunardance") sideOf(battle, attacker).healingWish = move.id;
+        attacker.hp = 0; syncHealth(attacker); sideOf(battle, attacker).faintedTurn = battle.turn;
+    }
+    if (outcome.used && move.halfRecoil && attacker.hp > 0 && !outcome.damp) hurt(battle, attacker, Math.ceil(attacker.stats.hp / 2), `${name} cut its own HP to power up its move!`);
     if (worked && move.flags?.includes("recharge") && !battle.pvp) attacker.mustRecharge = true;
     if (defender.bide && attacker !== defender && defender.hp < before) defender.bide.dmg += before - defender.hp;
     if ((move.id === "rollout" || move.id === "iceball") && !battle.pvp && outcome.used) {
@@ -822,7 +1568,7 @@ function useMove(battle, attacker, defender, move, called = false) {
     }
     if (!worked || battle.pvp || battle.swap) return;
     if (move.selfSwitch && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: attacker === battle.ally ? "ally" : "foe", pass: move.selfSwitch === "copyvolatile" };
-    else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0) battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
+    else if (move.forceSwitch && move.category !== "Status" && attacker.hp > 0 && defender.hp > 0 && ability(defender, attacker) !== "suctioncups") battle.swap = { side: defender === battle.ally ? "ally" : "foe", drag: true };
 }
 // how many times a multi-hit move hits: its fixed count, or 2 to 5 at 35, 35, 15 and 15 in 100 (Skill Link all 5, Loaded
 // Dice 4 or 5), as Showdown's sim/battle-actions.ts rolls it
@@ -849,7 +1595,7 @@ function pivot(battle, swap, then) {
         if (!battles.has(battle.player.id)) return;
         const bench = benchOf(battle, swap.side), leaving = swap.side === "ally" ? battle.ally : battle.foe;
         if (!bench.length) { then(); return; }
-        const pass = (f) => { if (swap.pass) { f.stages = { ...leaving.stages }; f.focusEnergy = leaving.focusEnergy; } };
+        const pass = (f) => { if (swap.pass) { f.stages = { ...leaving.stages }; f.focusEnergy = leaving.focusEnergy; } if (swap.sub) f.sub = swap.sub; };
         if (swap.side === "foe") {
             if (!gymNextPokemon(battle, { random: swap.drag, then: () => { pass(battle.foe); if (swap.drag) say(battle, `§7${battle.foe.info.name} was dragged out!`); then(); } })) then();
             return;
@@ -865,15 +1611,84 @@ function pivot(battle, swap, then) {
         }).catch((e) => battleFailed(battle, e));
     });
 }
+// the moves Showdown lets work only at some moments (onTry, onTryHit and onTryImmunity), saying why when they fail:
+// true when this one failed
+const TELEKINESIS_IMMUNE = new Set(["diglett", "dugtrio", "sandygast", "palossand"]);
+function moveFails(battle, a, d, move, firstAction) {
+    const name = a.info.name, fail = (why = "But it failed!") => { say(battle, `§e${name} used ${move.name}!§r §7${why}`); return true; };
+    if (move.selfdestruct && [a, d].some((f) => f.hp > 0 && f.ability === "damp")) {
+        if (battle.curFx) battle.curFx.damp = true;
+        return fail(`${(a.ability === "damp" ? a : d).info.name}'s Damp prevents ${name} from using ${move.name}!`);
+    }
+    // Fake Out and First Impression: only the first move after coming in
+    if ((move.id === "fakeout" || move.id === "firstimpression" || move.id === "matblock") && !firstAction) return fail();
+    // Sucker Punch and Thunderclap: only against a target about to use a damaging move; Upper Hand against a priority one
+    const chosen = d.chosenMove, waiting = chosen && battle.movedFirst === a && d.hp > 0;
+    if ((move.id === "suckerpunch" || move.id === "thunderclap") && !(waiting && chosen.category !== "Status")) return fail();
+    if (move.id === "upperhand" && !(waiting && priorityOf(battle, d, chosen) > 0)) return fail();
+    if (move.id === "dreameater" && d.status !== "slp" && d.ability !== "comatose") return fail(`${d.info.name} wasn't affected!`);
+    // a move for the user's ally (Coaching, Dragon Cheer, Helping Hand) has none to target in a single battle, and in a
+    // double battle only its partner
+    if (move.target === "adjacentAlly" && !(battle.doubles && d !== a && d.sideKey === a.sideKey && d.hp > 0)) return fail();
+    // Telekinesis: not on a Pokemon already lifted, rooted, or one Showdown names (Diglett, Dugtrio, Sandygast, Palossand)
+    if (move.id === "telekinesis" && (d.telekinesis > 0 || d.ingrain || realBattle(battle).gravity > 0 || TELEKINESIS_IMMUNE.has(d.info.name.toLowerCase()))) return fail();
+    // Sky Drop cannot lift a Pokemon of 200 kg or more
+    if (move.id === "skydrop" && !a.charging && (d.info.weight ?? 0) >= 2000) return fail();   // weight in hectograms
+    if (move.id === "synchronoise" && !d.info.types.some((t) => a.info.types.includes(t))) return fail(`It doesn't affect ${d.info.name}...`);
+    if (move.id === "poltergeist" && !d.held) return fail();
+    if (move.id === "spitup" && !a.stockpile) return fail("But it failed to spit up a thing!");
+    if (move.id === "fling" && !held(a)) return fail();
+    if (move.id === "burnup" && !a.info.types.includes("fire")) return fail();
+    if (move.id === "doubleshock" && !a.info.types.includes("electric")) return fail();
+    if (move.id === "lastresort") {
+        const others = a.moves.filter((m) => m.id && m.id !== "lastresort");
+        if (!others.length || !a.moves.some((m) => m.id === "lastresort") || others.some((m) => !a.usedIds?.has(m.id))) return fail();
+    }
+    if (move.id === "poltergeist") say(battle, `§7${d.info.name} is about to be attacked by its ${itemName(d.held)}!`);
+    return false;
+}
+// the delayed hits of Future Sight and Doom Desire, at the end of the turn they come due
+function futureHits(battle) {
+    for (const f of [battle.ally, battle.foe]) {
+        const side = sideOf(battle, f), due = side.futureSight;
+        if (!due || --due.turns > 0) continue;
+        delete side.futureSight;
+        if (f.hp <= 0) continue;
+        say(battle, `§7${f.info.name} took the ${MOVES[due.id].name} attack!`);
+        useMove(battle, due.from, f, { ...MOVES[due.id], id: `${due.id}_hit`, delayed: true }, true);
+    }
+}
 function runMove(battle, attacker, defender, move, called = false) {
-    const name = attacker.info.name, atkAb = attacker.ability, defAb = ability(defender, attacker);
+    const name = attacker.info.name, atkAb = attacker.ability;
+    const defAb = (atkAb === "myceliummight" && move.category === "Status") || move.ignoreAbility ? null : ability(defender, attacker);
     attacker.destinyBond = false;   // it holds only until the user moves again
     if (attacker.taunt > 0 && move.category === "Status" && move.id) { say(battle, `§7${name} can't use ${move.name} after the taunt!`); return; }
     if (!called && attacker.disabled?.id === move.id) { say(battle, `§7${name}'s ${move.name} is disabled!`); return; }
+    if (!called && move.id && (blockedWhy(attacker, move) || (defender.imprison && defender.moves.some((m) => m.id === move.id)))) {
+        say(battle, `§7${blockedWhy(attacker, move) ?? `${name} can't use its sealed ${move.name}!`}`); return;
+    }
+    attacker.grudge = false;
+    if (move.id !== "rage") attacker.raging = false;
     // a two-turn move's second turn, or a locked-in move's later ones, which use no PP
     const second = !!move.id && (attacker.charging === move.id || attacker.locked?.id === move.id || attacker.rolling?.id === move.id || (move.id === "bide" && !!attacker.bide));
     if (!called && !canAct(battle, attacker, move)) { attacker.charging = null; attacker.hiding = null; attacker.locked = null; attacker.rolling = null; attacker.bide = null; return; }
     if (battle.curFx) battle.curFx.used = true;
+    const firstAction = !attacker.acted;
+    attacker.acted = true;
+    if (moveFails(battle, attacker, defender, move, firstAction)) return;
+    if (move.id === "naturepower") {
+        const id = { electric: "thunderbolt", grassy: "energyball", misty: "moonblast", psychic: "psychic" }[terrainOf(battle)] ?? "triattack";
+        say(battle, `§e${name} used Nature Power!§r §7Nature Power turned into ${MOVES[id].name}!`);
+        useMove(battle, attacker, defender, { id, ...MOVES[id], pp: 1, left: 1 }, true);
+        return;
+    }
+    if (move.id === "futuresight" || move.id === "doomdesire") {
+        const side = sideOf(battle, defender);
+        if (side.futureSight) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
+        side.futureSight = { id: move.id, from: attacker, turns: 3 };
+        say(battle, `§e${name} used ${move.name}!§r §7${name} ${move.id === "futuresight" ? "foresaw an attack" : "chose Doom Desire as its destiny"}!`);
+        return;
+    }
     if (!called && !second && move.left !== undefined) move.left -= defender.ability === "pressure" && move.left > 1 ? 2 : 1;
     // Showdown's charge flag: the first turn readies the move (Solar Beam and Solar Blade not in sun, Electro Shot not in
     // rain, none with a Power Herb, which is used up), Fly, Dig, Dive and the Force moves taking the user out of reach;
@@ -917,10 +1732,12 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} avoided the attack!`);
         return;
     }
-    if (!self && defender.protected?.turn === battle.turn && move.flags?.includes("protect")
+    if (move.breaksProtect && defender.protected?.turn === battle.turn) { defender.protected = null; say(battle, `§7${defender.info.name} fell for the feint!`); }
+    if (!self && defender.protected?.turn === battle.turn && move.flags?.includes("protect") && !(atkAb === "unseenfist" && move.contact)
         && !(["kingsshield", "silktrap", "obstruct"].includes(defender.protected.kind) && move.category === "Status")) {
         if (battle.curFx) battle.curFx.missed = true;
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} protected itself!`);
+        crash(battle, attacker, move);
         if (move.contact && held(attacker) !== "protective_pads") {
             const kind = defender.protected.kind;
             if (kind === "spikyshield") hurt(battle, attacker, attacker.stats.hp / 8, `${name} was hurt by the Spiky Shield!`);
@@ -932,22 +1749,61 @@ function runMove(battle, attacker, defender, move, called = false) {
         }
         return;
     }
+    const guard = sideOf(battle, defender);
+    if (!self && attacker !== defender && ((guard.quickguard === battle.turn && priorityOf(battle, attacker, move) > 0)
+        || (guard.wideguard === battle.turn && ["allAdjacent", "allAdjacentFoes"].includes(move.target))
+        || (guard.craftyshield === battle.turn && move.category === "Status"))) {
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s team is protected!`);
+        return;
+    }
+    if (self && move.category === "Status" && defender.snatch === battle.turn && attacker !== defender && !battle.bouncing) {
+        defender.snatch = null; say(battle, `§7${defender.info.name} snatched ${name}'s move!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
+    if (!self && move.category === "Status" && move.flags?.includes("reflectable") && defender.magicCoat === battle.turn && !battle.bouncing && attacker !== defender) {
+        say(battle, `§7${defender.info.name} bounced the ${move.name} back!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
+    if (!self && move.category === "Status" && move.flags?.includes("reflectable") && defAb === "magicbounce" && !battle.bouncing && attacker !== defender) {
+        say(battle, `§7${defender.info.name} bounced the ${move.name} back!`);
+        battle.bouncing = true;
+        try { useMove(battle, defender, attacker, move, true); } finally { battle.bouncing = false; }
+        return;
+    }
+    if (!self && move.category === "Status" && defAb === "goodasgold" && attacker !== defender && !["all", "foeSide", "allySide", "allyTeam"].includes(move.target)) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Good as Gold)`);
+        return;
+    }
     if (!self && defender.sub > 0 && move.category === "Status" && move.target !== "all" && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub")) {
         say(battle, `§e${name} used ${move.name}!§r §7But it failed!`);
         return;
     }
-    if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard") {
-        let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" ? 0 : defender.stages.evasion));
+    const sure = (attacker.lockOn?.target === defender && attacker.lockOn.turn >= battle.turn - 1) || (defender.telekinesis > 0 && !move.ohko)
+        || (move.id === "blizzard" && weatherOf(battle) === "snow") || ((move.id === "thunder" || move.id === "hurricane") && weatherOf(battle) === "rain");
+    if (attacker.lockOn && attacker.lockOn.turn < battle.turn) attacker.lockOn = null;
+    if (!self && move.accuracy !== true && atkAb !== "noguard" && defAb !== "noguard" && !sure) {
+        let chance = move.accuracy * accStage(attacker.stages.accuracy - (atkAb === "unaware" || atkAb === "mindseye" || atkAb === "illuminate" || move.ignoreStages || defender.identified ? 0 : defender.stages.evasion));
+        if ((move.id === "thunder" || move.id === "hurricane") && weatherOf(battle) === "sun") chance = 50;
         if (atkAb === "compoundeyes") chance *= 1.3;
+        if (realBattle(battle).gravity > 0) chance *= 5 / 3;
+        if (defAb === "wonderskin" && move.category === "Status") chance = Math.min(chance, 50);
+        if (defAb === "tangledfeet" && defender.confused) chance *= 0.5;
+        if (atkAb === "victorystar") chance *= 1.1;
         if ((defAb === "sandveil" && weatherOf(battle) === "sand") || (defAb === "snowcloak" && weatherOf(battle) === "snow")) chance *= 0.8;
         if (atkAb === "hustle" && move.category === "Physical") chance *= 0.8;
         if (held(attacker) === "wide_lens") chance *= 1.1;
+        if (attacker.micle && !move.ohko) { chance *= 1.2; attacker.micle = false; }
         if (held(attacker) === "zoom_lens" && battle.movedFirst === defender) chance *= 1.2;
         if (held(defender) === "bright_powder" || held(defender) === "lax_incense") chance *= 0.9;
         if (move.ohko) chance = attacker.level >= defender.level ? 30 + attacker.level - defender.level : 0;
         if (Math.random() * 100 >= chance) {
             if (battle.curFx) battle.curFx.missed = true;
             say(battle, `§7${name} used ${move.name}... it missed!`);
+            crash(battle, attacker, move);
             if (held(attacker) === "blunder_policy") { useUp(battle, attacker, `§7${name}'s Blunder Policy!`); boost(battle, attacker, { spe: 2 }); }
             return;
         }
@@ -962,7 +1818,15 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (!setTerrain(battle, move.terrain, attacker)) say(battle, "§7But it failed!");
         return;
     }
-    if (!self && (move.priority ?? 0) > 0 && terrainOf(battle) === "psychic" && onGround(battle, defender)) {
+    if (!self && priorityOf(battle, attacker, move) > 0 && ["dazzling", "queenlymajesty", "armortail"].includes(defAb)) {
+        say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s ${abilityName(defender.ability)} makes it unable to use the move!`);
+        return;
+    }
+    if (!self && atkAb === "prankster" && move.category === "Status" && defender.info.types.includes("dark")) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`);
+        return;
+    }
+    if (!self && priorityOf(battle, attacker, move) > 0 && terrainOf(battle) === "psychic" && onGround(battle, defender)) {
         say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by the Psychic Terrain!`);
         return;
     }
@@ -976,16 +1840,20 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return;
     }
     if (move.flags?.includes("powder") && held(defender) === "safety_goggles") { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name} is protected by its Safety Goggles!`); return; }
-    if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !battle.gravity) {
+    if (move.type === "ground" && move.category !== "Status" && (defender.magnetRise > 0 || defender.telekinesis > 0) && !(realBattle(battle).gravity > 0)) {
+        say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return;
+    }
+    if (move.type === "ground" && move.category !== "Status" && held(defender) === "air_balloon" && !(realBattle(battle).gravity > 0)) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (Air Balloon)`); return;
     }
     if ((ABILITY_IMMUNE[defAb] === move.type && move.category !== "Status") || (defAb === "soundproof" && move.flags?.includes("sound"))
-        || (defAb === "bulletproof" && move.flags?.includes("bullet"))) {
+        || (defAb === "bulletproof" && move.flags?.includes("bullet")) || (defAb === "windrider" && move.flags?.includes("wind"))) {
         say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}... (${abilityName(defender.ability)})`);
-        if (["voltabsorb", "waterabsorb", "dryskin"].includes(defAb) && defender.hp < defender.stats.hp) {
+        if (["voltabsorb", "waterabsorb", "dryskin", "eartheater"].includes(defAb) && defender.hp < defender.stats.hp) {
             defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
         }
-        if (defAb === "sapsipper") boost(battle, defender, { atk: 1 });
+        if (defAb === "sapsipper" || defAb === "windrider") boost(battle, defender, { atk: 1 });
+        if (defAb === "wellbakedbody") boost(battle, defender, { def: 2 });
         if (defAb === "motordrive") boost(battle, defender, { spe: 1 });
         if (defAb === "lightningrod" || defAb === "stormdrain") boost(battle, defender, { spa: 1 });
         if (defAb === "flashfire") defender.flashFire = true;
@@ -996,11 +1864,13 @@ function runMove(battle, attacker, defender, move, called = false) {
         say(battle, `§e${name} used ${move.name}!§r §cIt's a one-hit KO!`); defender.hp = 0; syncHealth(defender); return;
     }
     let dealt = 0, note = "", shielded = false;   // shielded: a substitute took the hit, so its effects do not reach the target
+    let critTaken = false;
+    const hpBefore = defender.hp;
     // Sheer Force drops a move's added effects (its secondaries), not what the move does to its user
     const sheer = atkAb === "sheerforce" && !!(move.secondary || move.secondaries);
     const fixed = fixedDamage(battle, attacker, defender, move);
     if (fixed !== undefined) {
-        if (effectiveness(move.type, defender.info.types) === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
+        if (effectiveness(move.type, defender.info.types, held(defender) === "ring_target") === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
         if (!fixed) { say(battle, `§e${name} used ${move.name}!§r §7But it failed!`); return; }
         dealt = Math.min(fixed, defender.hp); defender.hp -= dealt;
         defender.lastHit = { dmg: dealt, physical: move.category === "Physical", tick: system.currentTick };
@@ -1009,36 +1879,72 @@ function runMove(battle, attacker, defender, move, called = false) {
         return;
     }
     const power0 = movePower(battle, attacker, defender, move);
+    if (move.id === "present" && !power0) {
+        say(battle, `§e${name} used Present!`);
+        if (defender.hp >= defender.stats.hp) { say(battle, `§7${defender.info.name} can't receive the gift!`); return; }
+        defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
+        say(battle, `§a${defender.info.name} restored HP.`);
+        return;
+    }
     if (power0) {
         let types = defender.info.types;
-        let eff = move.type === "???" ? 1 : effectiveness(move.type, types);
-        if (eff === 0 && atkAb === "scrappy" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
-        if (eff === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); return; }
+        let eff = move.type === "???" ? 1 : effectiveness(move.type, types, held(defender) === "ring_target");
+        if (eff === 0 && defender.identified === "ghost" && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
+        if (eff === 0 && defender.identified === "dark" && move.type === "psychic") eff = effectiveness(move.type, types.filter((t) => t !== "dark"));
+        if (defender.tarShot && move.type === "fire") eff *= 2;
+        if (move.id === "freezedry" && types.includes("water")) eff = effectiveness("ice", types.filter((t) => t !== "water")) * 2;
+        if (move.id === "flyingpress") eff *= effectiveness("flying", types);
+        if (eff === 0 && (atkAb === "scrappy" || atkAb === "mindseye") && (move.type === "normal" || move.type === "fighting")) eff = effectiveness(move.type, types.filter((t) => t !== "ghost"));
+        if (eff === 0) { say(battle, `§e${name} used ${move.name}!§r §7It doesn't affect ${defender.info.name}...`); crash(battle, attacker, move); return; }
         if (defAb === "wonderguard" && eff <= 1) { say(battle, `§e${name} used ${move.name}!§r §7${defender.info.name}'s Wonder Guard protects it!`); return; }
         const physical = move.category === "Physical";
-        const noCrit = defAb === "shellarmor" || defAb === "battlearmor";
-        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0);
+        if (["brickbreak", "psychicfangs", "ragingbull"].includes(move.id)) {
+            const side = sideOf(battle, defender);
+            if (side.reflect > 0 || side.lightscreen > 0 || side.auroraveil > 0) { delete side.reflect; delete side.lightscreen; delete side.auroraveil; say(battle, "§7The wall shattered!"); }
+        }
+        const noCrit = defAb === "shellarmor" || defAb === "battlearmor" || sideOf(battle, defender).luckychant > 0;
+        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0) + (attacker.cheered ?? 0);
         for (const [item, [who, n]] of Object.entries(CRIT_ITEMS)) if (holds(attacker, item, who)) critStage += n;
         // Showdown's multihit: each hit rolls its own critical hit and damage, a gem or a resist berry is used on the
         // first, Sturdy and Focus Sash hold only against the first, and what follows the hit (drain, recoil, the
         // berries) answers the total
-        const hits = multiHits(move, attacker);
+        const bond = atkAb === "parentalbond" && multiHits(move, attacker) === 1 && !move.ohko;
+        // Beat Up: a hit for each of the user's side able to fight, each 5 plus a tenth of that one's base Attack
+        const beaters = move.id === "beatup" ? beatUpTeam(battle, attacker) : null;
+        const hits = beaters ? beaters.length : bond ? 2 : multiHits(move, attacker);
         let total = 0, landed = 0;
         shielded = false;
         for (let h = 0; h < hits && defender.hp > 0; h++) {
             note = "";
-            const crit = !noCrit && Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)];
+            const crit = !noCrit && (move.willCrit || attacker.laserFocus >= battle.turn || (atkAb === "merciless" && (defender.status === "psn" || defender.status === "tox")) || Math.random() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, critStage)]);
             // a critical hit ignores the attacker's drops and the defender's raises; Unaware ignores the other side's stages
-            let atkStage = physical ? attacker.stages.atk : attacker.stages.spa, defStage = physical ? defender.stages.def : defender.stages.spd;
+            const atkKey = move.atkStat ?? (physical ? "atk" : "spa"), defKey = move.defStat ?? (physical ? "def" : "spd"), user = move.targetAttack ? defender : attacker;
+            let atkStage = user.stages[atkKey], defStage = move.ignoreStages ? 0 : defender.stages[defKey];
             if (defAb === "unaware") atkStage = 0;
             if (atkAb === "unaware") defStage = 0;
-            let a = (physical ? attacker.stats.atk : attacker.stats.spa) * stage(crit ? Math.max(0, atkStage) : atkStage);
-            let d = (physical ? defender.stats.def : defender.stats.spd) * stage(crit ? Math.min(0, defStage) : defStage);
+            let a = user.stats[atkKey] * stage(crit ? Math.max(0, atkStage) : atkStage);
+            const roomKey = realBattle(battle).wonderroom > 0 ? { def: "spd", spd: "def" }[defKey] ?? defKey : defKey;
+            let d = defender.stats[roomKey] * stage(crit ? Math.min(0, defStage) : defStage);
             if ((held(attacker) === "choice_band" && physical) || (held(attacker) === "choice_specs" && !physical)) a *= 1.5;
             if (physical && (atkAb === "hugepower" || atkAb === "purepower")) a *= 2;
+            if (physical && atkAb === "gorillatactics") a *= 1.5;
+            if (weatherOf(battle) === "sun" && physical && atkAb === "flowergift") a *= 1.5;
+            if (weatherOf(battle) === "sun" && !physical && defAb === "flowergift") d *= 1.5;
             if (physical && atkAb === "hustle") a *= 1.5;
             if (physical && atkAb === "guts" && attacker.status) a *= 1.5;
             if (physical && defAb === "furcoat") d *= 2;
+            if (paradoxStat(battle, attacker) === (physical ? "atk" : "spa")) a *= 1.3;
+            if (paradoxStat(battle, defender) === (physical ? "def" : "spd")) d *= 1.3;
+            if (physical && attacker.slowStart > battle.turn) a *= 0.5;
+            if (atkAb === "defeatist" && attacker.hp <= attacker.stats.hp / 2) a *= 0.5;
+            const typeBoost = { dragonsmaw: ["dragon", 1.5], rockypayload: ["rock", 1.5], steelworker: ["steel", 1.5], transistor: ["electric", 1.3] }[atkAb];
+            if (typeBoost && typeBoost[0] === move.type) a *= typeBoost[1];
+            if (atkAb === "stakeout" && defender.enteredTurn === battle.turn) a *= 2;
+            // the Ruin abilities lower that stat of every Pokemon but their own holder (onAnyModify*)
+            if (physical && defender.ability !== "swordofruin" && attacker.ability === "swordofruin") d *= 0.75;
+            if (!physical && defender.ability !== "beadsofruin" && attacker.ability === "beadsofruin") d *= 0.75;
+            if (physical && attacker.ability !== "tabletsofruin" && defender.ability === "tabletsofruin") a *= 0.75;
+            if (!physical && attacker.ability !== "vesselofruin" && defender.ability === "vesselofruin") a *= 0.75;
             const w = weatherOf(battle);
             if (!physical && w === "sand" && defender.info.types.includes("rock")) d *= 1.5;
             if (physical && w === "snow" && defender.info.types.includes("ice")) d *= 1.5;
@@ -1055,6 +1961,20 @@ function runMove(battle, attacker, defender, move, called = false) {
             let power = power0;
             if (ABILITY_PINCH[atkAb] === move.type && attacker.hp <= attacker.stats.hp / 3) power *= 1.5;
             if (atkAb === "technician" && power <= 60) power *= 1.5;
+            if (move.typeBoosted) power *= 1.2;
+            if ((move.type === "electric" && realBattle(battle).mudsport > 0) || (move.type === "fire" && realBattle(battle).watersport > 0)) power /= 3;
+            if (bond && h === 1) power *= 0.25;
+            if (beaters) power = 5 + Math.floor(beaters[h] / 10);
+            if (move.id === "triplekick" || move.id === "tripleaxel") power = power0 * (h + 1);
+            if (attacker.charged && move.type === "electric") power *= 2;
+            if (atkAb === "analytic" && battle.movedFirst === defender) power *= 1.3;
+            if (atkAb === "flareboost" && attacker.status === "brn" && !physical) power *= 1.5;
+            if (atkAb === "toxicboost" && (attacker.status === "psn" || attacker.status === "tox") && physical) power *= 1.5;
+            if (atkAb === "punkrock" && move.flags?.includes("sound")) power *= 1.3;
+            if (atkAb === "rivalry") { const [ga, gd] = [genderOf(attacker.entity), genderOf(defender.entity)]; if (ga !== "genderless" && gd !== "genderless") power *= ga === gd ? 1.25 : 0.75; }
+            if (atkAb === "supremeoverlord") power *= 1 + 0.1 * Math.min(5, faintedOf(battle, attacker));
+            const aura = { dark: "darkaura", fairy: "fairyaura" }[move.type];
+            if (aura && (attacker.ability === aura || defender.ability === aura)) power *= attacker.ability === "aurabreak" || defender.ability === "aurabreak" ? 0.75 : 4 / 3;
             if (atkAb === "strongjaw" && move.flags?.includes("bite")) power *= 1.5;
             if (atkAb === "ironfist" && move.flags?.includes("punch")) power *= 1.2;
             if (atkAb === "megalauncher" && move.flags?.includes("pulse")) power *= 1.5;
@@ -1076,11 +1996,12 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (crit) dmg = Math.floor(dmg * (atkAb === "sniper" ? 2.25 : 1.5));
             if (attacker.info.types.includes(move.type)) dmg = Math.floor(dmg * (atkAb === "adaptability" ? 2 : 1.5));
             dmg = Math.floor(dmg * eff);
-            const resist = RESIST_BERRIES[held(defender)];
+            const resist = unnerved(battle, defender) ? null : RESIST_BERRIES[held(defender)];
             if (resist === move.type && (eff > 1 || resist === "normal")) {
-                dmg = Math.floor(dmg / 2);
+                dmg = Math.floor(dmg / (defender.ability === "ripen" ? 4 : 2));
                 say(battle, `§a${defender.info.name} ate its ${itemName(defender.held)} and weakened the hit!`);
-                defender.held = null; setProp(defender.entity, "cobblemon:held", undefined);
+                const eaten = defender.held;
+                defender.held = null; setProp(defender.entity, "cobblemon:held", undefined); itemGone(battle, defender, eaten);
             }
             const screens = sideOf(battle, defender);
             if (!crit && atkAb !== "infiltrator" && ((physical && (screens.reflect > 0 || screens.auroraveil > 0)) || (!physical && (screens.lightscreen > 0 || screens.auroraveil > 0)))) dmg = Math.floor(dmg / 2);
@@ -1091,12 +2012,26 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (defAb === "heatproof" && move.type === "fire") dmg = Math.floor(dmg / 2);
             if (defAb === "dryskin" && move.type === "fire") dmg = Math.floor(dmg * 1.25);
             if ((defAb === "multiscale" || defAb === "shadowshield") && defender.hp === defender.stats.hp) dmg = Math.floor(dmg / 2);
+            if (defAb === "fluffy" && move.contact && move.type !== "fire") dmg = Math.floor(dmg / 2);
+            if (defAb === "fluffy" && move.type === "fire" && !move.contact) dmg *= 2;
+            if (defAb === "icescales" && !physical) dmg = Math.floor(dmg / 2);
+            if (defAb === "punkrock" && move.flags?.includes("sound")) dmg = Math.floor(dmg / 2);
+            if (atkAb === "neuroforce" && eff > 1) dmg = Math.floor(dmg * 1.25);
             const item = held(attacker);
             if (TYPE_ITEMS[item] === move.type) dmg = Math.floor(dmg * 1.2);
             if (item === "life_orb") dmg = Math.floor(dmg * 1.3);
             if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
             if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
+            if (battle.spread) dmg = Math.floor(dmg * 0.75);   // a move hitting more than one Pokemon (Showdown's spread modifier)
+            if (attacker.helped === battle.turn) dmg = Math.floor(dmg * 1.5);   // Helping Hand
             dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
+            if ((defAb === "disguise" && !defender.busted && !defender.transformed) || (defAb === "iceface" && physical && defender.form !== "noice_face" && !defender.transformed)) {
+                say(battle, h === 0 ? `§e${name} used ${move.name}!§r §7${defAb === "disguise" ? "Its disguise served it as a decoy!" : `${defender.info.name}'s Ice Face took the hit!`}` : "§7The hit was blocked!");
+                if (defAb === "disguise") { defender.busted = true; hurt(battle, defender, defender.stats.hp / 8, `${defender.info.name}'s disguise was busted!`); }
+                else changeForm(battle, defender, "noice_face");
+                landed++;
+                continue;
+            }
             if (defender.sub > 0 && !move.flags?.includes("sound") && !move.flags?.includes("bypasssub") && atkAb !== "infiltrator") {
                 const took = Math.min(dmg, defender.sub);
                 defender.sub -= took; shielded = true;
@@ -1107,6 +2042,7 @@ function runMove(battle, attacker, defender, move, called = false) {
                 continue;
             }
             dealt = Math.min(dmg, defender.hp);
+            if (dealt >= defender.hp && (move.id === "falseswipe" || move.id === "holdback")) dealt = defender.hp - 1;
             if (dealt >= defender.hp && defender.enduring === battle.turn) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit!`); }
             if (dealt >= defender.hp && defender.hp === defender.stats.hp) {
                 if (defAb === "sturdy") { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} endured the hit with Sturdy!`); }
@@ -1114,26 +2050,68 @@ function runMove(battle, attacker, defender, move, called = false) {
             }
             if (dealt >= defender.hp && held(defender) === "focus_band" && Math.random() < 0.1) { dealt = defender.hp - 1; say(battle, `§7${defender.info.name} hung on using its Focus Band!`); }
             defender.hp -= dealt;
-            defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
-            if (crit) note += " A critical hit!";
+            defender.lastHit = { dmg: dealt, physical, tick: system.currentTick, turn: battle.turn, by: attacker };
+            if (dealt) { defender.hurtTurn = battle.turn; defender.timesHit = (defender.timesHit ?? 0) + 1; }
+            if (defender.hp <= 0) sideOf(battle, defender).faintedTurn = battle.turn;
+            if (crit) {
+                note += " A critical hit!"; critTaken = true;
+                attacker.critsThisBattle = (attacker.critsThisBattle ?? 0) + 1;
+                countProgress(attacker, (p) => { p.crits = Math.max(p.crits ?? 0, attacker.critsThisBattle); });
+            }
             if (h === 0) { if (eff > 1) note += " It's super effective!"; else if (eff < 1) note += " It's not very effective..."; }
             say(battle, h === 0 ? `§e${name} used ${move.name}!§r ${dmg} damage.${note}` : `§7Hit ${h + 1}! ${dmg} damage.${note}`);
             syncHealth(defender);
             total += dealt; landed++;
         }
         dealt = total;
-        defender.lastHit = { dmg: dealt, physical, tick: system.currentTick };
+        if (move.type === "electric") attacker.charged = false;
+        defender.lastHit = { dmg: dealt, physical, tick: system.currentTick, turn: battle.turn, by: attacker };
+        // the hit thaws a frozen target (Scald and the rest); Smelling Salts cures paralysis, Wake-Up Slap sleep
+        if (dealt && defender.hp > 0 && defender.status === "frz" && (move.thaws || move.type === "fire")) { defender.status = null; say(battle, `§7${defender.info.name} thawed out!`); }
+        if (dealt && defender.hp > 0 && ((move.id === "smellingsalts" && defender.status === "par") || (move.id === "wakeupslap" && defender.status === "slp"))) {
+            defender.status = null; say(battle, `§7${defender.info.name} was cured of its ${move.id === "smellingsalts" ? "paralysis" : "sleep"}!`);
+        }
+        if (dealt && (move.id === "burnup" || move.id === "doubleshock")) {
+            const lost = move.id === "burnup" ? "fire" : "electric";
+            attacker.info = { ...attacker.info, types: attacker.info.types.length > 1 ? attacker.info.types.filter((t) => t !== lost) : ["???"] };
+            say(battle, `§7${name} used up all its ${move.id === "burnup" ? "fire" : "electricity"}!`);
+        }
+        if (move.id === "spitup") spentStockpile(battle, attacker);
+        if (move.id === "fling" && attacker.held) {
+            const item = held(attacker) ?? "";
+            say(battle, `§7${name} flung its ${itemName(attacker.held)}!`);
+            useUp(battle, attacker);
+            if (defender.hp > 0) {
+                const status = { flame_orb: "brn", toxic_orb: "tox", light_ball: "par", poison_barb: "psn" }[item];
+                if (status) inflict(battle, defender, status, false, attacker);
+                if ((item === "kings_rock" || item === "razor_fang") && battle.movedFirst === attacker) defender.flinched = true;
+            }
+        }
+        if (dealt) itemMove(battle, attacker, defender, move);
+        if (dealt) hitMove(battle, attacker, defender, move);
+        // Spectral Thief takes the target's raised stats first
+        if (move.stealsBoosts) {
+            const raised = Object.fromEntries(Object.entries(defender.stages).filter(([, v]) => v > 0));
+            for (const k of Object.keys(raised)) defender.stages[k] = 0;
+            if (Object.keys(raised).length) { say(battle, `§7${name} stole the target's boosted stats!`); boost(battle, attacker, raised, attacker); }
+        }
         if (hits > 1) say(battle, `§7Hit ${landed} time${landed === 1 ? "" : "s"}!`);
-        if (move.drain && attacker.hp < attacker.stats.hp) {
+        if (move.drain && defender.ability === "liquidooze") hurt(battle, attacker, Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1])), `${name} sucked up the liquid ooze!`);
+        else if (move.drain && attacker.hp < attacker.stats.hp && !attacker.healBlock) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
         }
-        if (move.recoil && atkAb !== "rockhead") hurt(battle, attacker, (dealt * move.recoil[0]) / move.recoil[1], `${name} is damaged by recoil!`);
+        // Chloroblast's recoil is half the user's maximum HP once it deals damage (Showdown's calcRecoilDamage)
+        if ((move.recoil || (move.id === "chloroblast" && dealt > 0)) && atkAb !== "rockhead") {
+            const hpBefore = attacker.hp;
+            hurt(battle, attacker, move.recoil ? (dealt * move.recoil[0]) / move.recoil[1] : Math.round(attacker.stats.hp / 2), `${name} is damaged by recoil!`);
+            if (attacker.hp > 0) countProgress(attacker, (p) => { p.recoil = (p.recoil ?? 0) + hpBefore - attacker.hp; });
+        }
         if (dealt && held(attacker) === "shell_bell" && attacker.hp > 0 && attacker.hp < attacker.stats.hp) {
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + Math.max(1, Math.floor(dealt / 8))); say(battle, `§a${name} restored a little HP using its Shell Bell!`); syncHealth(attacker);
         }
         if (dealt && held(defender) === "air_balloon") useUp(battle, defender, `§7${defender.info.name}'s Air Balloon popped!`);
-        const hitBerry = held(defender);
+        const hitBerry = unnerved(battle, defender) ? null : held(defender);
         if (dealt && defender.hp > 0 && hitBerry === "enigma_berry" && eff > 1) {
             useUp(battle, defender, `§a${defender.info.name} ate its Enigma Berry!`); defender.hp = Math.min(defender.stats.hp, defender.hp + Math.floor(defender.stats.hp / 4)); syncHealth(defender);
         } else if (dealt && ((hitBerry === "jaboca_berry" && physical) || (hitBerry === "rowap_berry" && !physical))) {
@@ -1160,12 +2138,20 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (sec.boosts) boost(battle, sec.self ? attacker : defender, sec.boosts, attacker);
     }
     if (move.selfBoosts && !sheer) boost(battle, attacker, move.selfBoosts, attacker);
-    if (dealt && defender.hp > 0 && !move.secondary?.flinch && !move.secondaries?.some((x) => x.flinch) && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang")
+    // Burning Jealousy burns, and Alluring Voice confuses, a target whose stats rose this turn; Psychic Noise blocks its
+    // healing for two turns
+    if (dealt && defender.hp > 0 && !sheer && !shielded) {
+        if (move.id === "burningjealousy" && defender.raisedTurn === battle.turn) inflict(battle, defender, "brn", false, attacker);
+        if (move.id === "alluringvoice" && defender.raisedTurn === battle.turn) confuse(battle, defender, true);
+        if (move.id === "psychicnoise" && !(defender.healBlock > 0)) { defender.healBlock = 2; say(battle, `§7${defender.info.name} was prevented from healing!`); }
+    }
+    if (dealt && defender.hp > 0 && !move.secondary?.flinch && !move.secondaries?.some((x) => x.flinch) && battle.movedFirst === attacker && (held(attacker) === "kings_rock" || held(attacker) === "razor_fang" || attacker.ability === "stench")
         && defender.ability !== "innerfocus" && Math.random() < 0.1) defender.flinched = true;
     // Eject Button sends its holder back when it is hit; Red Card sends back the Pokemon that hit its holder
     if (dealt && defender.hp > 0 && attacker.hp > 0) {
         if (held(defender) === "eject_button" && defender === battle.ally) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectAlly = true; }
         else if (held(defender) === "eject_button" && defender === battle.foe && battle.pvp) { useUp(battle, defender, `§7${defender.info.name} is switched out with the Eject Button!`); battle.ejectFoe = true; }
+        else if (held(defender) === "red_card" && attacker.ability === "suctioncups") { }
         else if (held(defender) === "red_card" && attacker === battle.ally) { useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`); battle.ejectAlly = true; }
         else if (held(defender) === "red_card" && attacker === battle.foe) {
             useUp(battle, defender, `§7${defender.info.name} held up its Red Card against ${name}!`);
@@ -1188,42 +2174,154 @@ function runMove(battle, attacker, defender, move, called = false) {
         if (defAb === "effectspore") status = ["psn", "par", "slp"][Math.floor(Math.random() * 3)];
         if (status && Math.random() < 0.3) { say(battle, `§7${defender.info.name}'s ${abilityName(defender.ability)}!`); inflict(battle, attacker, status, false); }
     }
+    if (dealt) abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBefore, sheer });
     if (dealt && defAb === "stamina" && defender.hp > 0) boost(battle, defender, { def: 1 });
     if (dealt && defAb === "weakarmor" && move.category === "Physical" && defender.hp > 0) boost(battle, defender, { def: -1, spe: 2 });
     if (dealt && defAb === "justified" && move.type === "dark" && defender.hp > 0) boost(battle, defender, { atk: 1 });
     if (dealt && defAb === "rattled" && ["dark", "bug", "ghost"].includes(move.type) && defender.hp > 0) boost(battle, defender, { spe: 1 });
-    if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh")) boost(battle, attacker, { atk: 1 });
-    if (defender.hp <= 0 && atkAb === "grimneigh") boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && (atkAb === "moxie" || atkAb === "chillingneigh" || atkAb === "asoneglastrier")) boost(battle, attacker, { atk: 1 });
+    if (defender.hp <= 0 && (atkAb === "grimneigh" || atkAb === "asonespectrier" || atkAb === "soulheart")) boost(battle, attacker, { spa: 1 });
+    if (defender.hp <= 0 && atkAb === "battlebond" && !attacker.bondDone && attacker.hp > 0) {
+        attacker.bondDone = true; say(battle, `§7${name} became fully charged due to its bond with its trainer!`); boost(battle, attacker, { atk: 1, spa: 1, spe: 1 });
+    }
     if (defender.hp <= 0 && atkAb === "beastboost") {
         const best = ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (attacker.stats[y] > attacker.stats[x] ? y : x));
         boost(battle, attacker, { [best]: 1 });
     }
 }
 
+// the abilities that answer a damaging hit, as Showdown's onDamagingHit, onAfterMoveSecondary and onSourceDamagingHit do:
+// on the one hit (defender) and on the one hitting (attacker). These are not ones Mold Breaker gets past
+const CANT_SUPPRESS = new Set(["asone", "battlebond", "comatose", "disguise", "gulpmissile", "iceface", "multitype", "powerconstruct",
+    "rkssystem", "schooling", "shieldsdown", "stancechange", "zerotohero", "commander", "terashift", "mummy", "lingeringaroma"]);
+const NO_SWAP = new Set([...CANT_SUPPRESS, "wonderguard", "illusion", "hungerswitch", "neutralizinggas", "imposter", "receiver",
+    "powerofalchemy", "trace", "wanderingspirit", "protosynthesis", "quarkdrive", "poisonpuppeteer"]);
+function abilityHit(battle, attacker, defender, move, { contact, critTaken, hpBefore, sheer }) {
+    const name = attacker.info.name, dName = defender.info.name, ab = defender.ability, says = (t) => say(battle, `§7${t}`);
+    const alive = defender.hp > 0, fainted = !alive;
+    if (fainted && contact && ab === "aftermath" && attacker.ability !== "damp") hurt(battle, attacker, attacker.stats.hp / 4, `${name} was caught in the aftermath!`);
+    if (fainted && ab === "innardsout") hurt(battle, attacker, hpBefore, `${name} was hurt by ${dName}'s Innards Out!`);
+    if (ab === "cottondown" && attacker.hp > 0) { says(`${dName}'s Cotton Down!`); boost(battle, attacker, { spe: -1 }, defender); }
+    if (contact && (ab === "gooey" || ab === "tanglinghair") && attacker.hp > 0) { says(`${dName}'s ${abilityName(ab)}!`); boost(battle, attacker, { spe: -1 }, defender); }
+    if (contact && ab === "perishbody" && !attacker.perish) {
+        attacker.perish = 4; if (!defender.perish && alive) defender.perish = 4;
+        says("Both Pokemon will faint in three turns!");
+    }
+    if (defender.gulp && attacker.hp > 0) {
+        const prey = defender.gulp; defender.gulp = null;
+        hurt(battle, attacker, attacker.stats.hp / 4, `${dName} spat out its ${prey === "gulping" ? "Arrokuda" : "Pikachu"} at ${name}!`);
+        if (prey === "gulping") boost(battle, attacker, { def: -1 }, defender); else inflict(battle, attacker, "par", false, defender);
+    }
+    if (ab === "sandspit" && setWeather(battle, "sand", defender)) says(`${dName}'s Sand Spit whipped up a sandstorm!`);
+    if (alive && ab === "steamengine" && (move.type === "water" || move.type === "fire")) boost(battle, defender, { spe: 6 });
+    if (alive && ab === "watercompaction" && move.type === "water") boost(battle, defender, { def: 2 });
+    if (alive && ab === "angerpoint" && critTaken && defender.stages.atk < 6) { defender.stages.atk = 6; says(`${dName} maxed its Attack!`); }
+    if (alive && ab === "electromorphosis") { defender.charged = true; says(`Being hit by ${move.name} charged ${dName} with power!`); }
+    if (alive && ab === "windpower" && move.flags?.includes("wind")) { defender.charged = true; says(`Being hit by ${move.name} charged ${dName} with power!`); }
+    if (move.category === "Physical" && ab === "toxicdebris") {
+        const side = sideOf(battle, attacker);
+        if ((side.toxicspikes ?? 0) < 2) { side.toxicspikes = (side.toxicspikes ?? 0) + 1; says(`Poison spikes were scattered around ${name}'s team!`); }
+    }
+    // Anger Shell and Berserk: a hit that takes its holder from above half its HP to half or below
+    const halved = alive && hpBefore > defender.stats.hp / 2 && defender.hp <= defender.stats.hp / 2 && !sheer;
+    if (halved && ab === "angershell") boost(battle, defender, { atk: 1, spa: 1, spe: 1, def: -1, spd: -1 });
+    if (halved && ab === "berserk") boost(battle, defender, { spa: 1 });
+    if (halved && (ab === "emergencyexit" || ab === "wimpout") && attacker.hp > 0) {
+        says(`${dName}'s ${abilityName(ab)}!`);
+        if (defender === battle.ally) battle.ejectAlly = true;
+        else if (battle.pvp) battle.ejectFoe = true;
+        else if (!battle.trainer) battle.dragFoe = true;
+    }
+    if (alive && ab === "colorchange" && move.type !== "???" && !defender.info.types.includes(move.type)) {
+        defender.info = { ...defender.info, types: [move.type] }; says(`${dName}'s Color Change made it the ${cap(move.type)} type!`);
+    }
+    // the ability takers: Mummy and Lingering Aroma spread themselves to the Pokemon touching them; Wandering Spirit trades
+    if (contact && attacker.hp > 0 && (ab === "mummy" || ab === "lingeringaroma") && attacker.ability !== ab && !CANT_SUPPRESS.has(attacker.ability) && held(attacker) !== "ability_shield") {
+        attacker.baseAbility ??= attacker.ability; attacker.ability = ab; says(`${name}'s ability became ${abilityName(ab)}!`);
+    }
+    if (contact && attacker.hp > 0 && alive && ab === "wanderingspirit" && !NO_SWAP.has(attacker.ability) && held(attacker) !== "ability_shield") {
+        attacker.baseAbility ??= attacker.ability; defender.baseAbility ??= ab;
+        [attacker.ability, defender.ability] = [ab, attacker.ability];
+        says(`${dName} swapped abilities with ${name}!`);
+    }
+    // item takers: Pickpocket takes the item of the Pokemon that touched it, Magician that of the one it hit; for the
+    // battle only, as nothing saves the change, so each item is back with its owner afterwards
+    if (contact && alive && ab === "pickpocket" && !defender.held && attacker.held && attacker.ability !== "stickyhold") {
+        defender.held = attacker.held; attacker.held = null; says(`${dName} stole ${name}'s ${itemName(defender.held)}!`);
+        if (attacker.ability === "unburden") attacker.unburden = true;
+    }
+    if (attacker.ability === "magician" && attacker.hp > 0 && !attacker.held && defender.held && defender.ability !== "stickyhold") {
+        attacker.held = defender.held; defender.held = null; says(`${name} stole ${dName}'s ${itemName(attacker.held)}!`);
+        if (defender.ability === "unburden") defender.unburden = true;
+    }
+    if (contact && ab === "cutecharm" && attacker.hp > 0 && Math.random() < 0.3) attract(battle, attacker, defender);
+    // the attacker's: Poison Touch poisons on contact, Toxic Chain badly poisons on any hit, three times in ten
+    const cloaked = defender.ability === "shielddust" || held(defender) === "covert_cloak";
+    if (alive && !cloaked && contact && attacker.ability === "poisontouch" && Math.random() < 0.3) inflict(battle, defender, "psn", false, attacker);
+    if (alive && !cloaked && attacker.ability === "toxicchain" && Math.random() < 0.3) inflict(battle, defender, "tox", false, attacker);
+}
+
+// the abilities that act at the end of a turn (Showdown's onResidual)
+function endOfTurnAbility(battle, f, other) {
+    const name = f.info.name, says = (t) => say(battle, `§7${t}`);
+    if (f.ability === "hungerswitch" && !f.transformed) changeForm(battle, f, f.form === "hangry-mode" ? null : "hangry-mode");
+    if (f.ability === "hydration" && f.status && weatherOf(battle) === "rain") { f.status = null; say(battle, `§a${name}'s Hydration cured its status!`); }
+    if (f.ability === "baddreams" && other.hp > 0 && other.status === "slp") hurt(battle, other, other.stats.hp / 8, `${other.info.name} is tormented by ${name}'s Bad Dreams!`);
+    if (f.ability === "moody") {
+        const stats = ["atk", "def", "spa", "spd", "spe"];
+        const ups = stats.filter((k) => f.stages[k] < 6), up = ups[Math.floor(Math.random() * ups.length)];
+        const downs = stats.filter((k) => f.stages[k] > -6 && k !== up), down = downs[Math.floor(Math.random() * downs.length)];
+        boost(battle, f, { ...(up ? { [up]: 2 } : {}), ...(down ? { [down]: -1 } : {}) });
+    }
+    // Harvest: the berry it ate grows back half the time, every time in sun; Pickup: the item the other used up this turn
+    if (f.ability === "harvest" && !f.held && f.lastItem?.endsWith("_berry") && (weatherOf(battle) === "sun" || Math.random() < 0.5)) {
+        f.held = f.lastItem; f.lastItem = null; setProp(f.entity, "cobblemon:held", f.held); says(`${name} harvested one ${itemName(f.held)}!`);
+    }
+    if (f.ability === "pickup" && !f.held && other.lastItem && other.itemGoneTurn === battle.turn) {
+        f.held = other.lastItem; other.lastItem = null; says(`${name} found one ${itemName(f.held)}!`);
+    }
+    if (f.cudChew && f.cudChew.turn < battle.turn) {
+        const { item } = f.cudChew, keep = f.held;
+        f.cudChew = null; f.cudChewing = true; f.held = item;
+        heldBerry(battle, f, true);
+        f.held = keep; f.cudChewing = false;
+        if (keep) setProp(f.entity, "cobblemon:held", keep);
+    }
+}
+
 // berries eaten when they apply: Oran and Sitrus below half HP, the status berries on their status, Leppa on an empty move
-function heldBerry(battle, f) {
+function heldBerry(battle, f, force = false) {
     const item = held(f);
-    if (!item || f.hp <= 0) return;
+    if (!item || f.hp <= 0 || (item.endsWith("_berry") && unnerved(battle, f))) return;
+    const ripe = f.ability === "ripen" ? 2 : 1, pinch = f.stats.hp / (f.ability === "gluttony" ? 2 : 4);
     let used = false;
-    if ((item === "oran_berry" || item === "sitrus_berry") && f.hp <= f.stats.hp / 2) {
-        f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4))); used = true; syncHealth(f);
-    } else if (item in STATUS_BERRIES && f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) {
+    if ((item === "oran_berry" || item === "sitrus_berry") && (force || f.hp <= f.stats.hp / 2)) {
+        f.hp = Math.min(f.stats.hp, f.hp + (item === "oran_berry" ? 10 : Math.floor(f.stats.hp / 4)) * ripe); used = true; syncHealth(f);
+    } else if (item in STATUS_BERRIES && ((f.status && (STATUS_BERRIES[item] === null || STATUS_BERRIES[item].includes(f.status))) || force)) {
         f.status = null; used = true;
+    } else if (item === "berry_juice" && f.hp <= f.stats.hp / 2) {
+        f.hp = Math.min(f.stats.hp, f.hp + 20); syncHealth(f);
+        useUp(battle, f, `§a${f.info.name}'s Berry Juice activated!`);
+        return;
+    } else if (item === "eggant_berry" && (f.attracted || force)) {
+        f.attracted = null; used = true; say(battle, `§a${f.info.name} got over its infatuation!`);
     } else if (item === "leppa_berry") {
         const empty = f.moves.find((m) => m.left === 0);
         if (empty) { empty.left = Math.min(empty.pp, 10); used = true; }
     }
     // the portion berries heal a third at a quarter of HP or less (PortionHealingBerryItem, potion_by_portion); the stat
     // berries raise a stat by one there (Starf two, of one at random), and Lansat gives Focus Energy
-    else if (PORTION_BERRIES.has(`cobblemon:${item}`) && f.hp <= f.stats.hp / 4) {
-        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33)); used = true; syncHealth(f);
-    } else if (PINCH_BERRIES[item] && f.hp <= f.stats.hp / 4) {
+    else if (PORTION_BERRIES.has(`cobblemon:${item}`) && (force || f.hp <= pinch)) {
+        f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33 * ripe)); used = true; syncHealth(f);
+    } else if (PINCH_BERRIES[item] && (force || f.hp <= pinch)) {
         const stat = PINCH_BERRIES[item] === "random" ? ["atk", "def", "spa", "spd", "spe"][Math.floor(Math.random() * 5)] : PINCH_BERRIES[item];
+        const eaten = f.held;
         say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined);
-        if (stat === "focus") { f.focusEnergy = true; say(battle, `§7${f.info.name} is getting pumped!`); } else boost(battle, f, { [stat]: item === "starf_berry" ? 2 : 1 });
+        if (stat === "focus") { f.focusEnergy = true; say(battle, `§7${f.info.name} is getting pumped!`); } else boost(battle, f, { [stat]: (item === "starf_berry" ? 2 : 1) * ripe });
+        itemGone(battle, f, eaten);
         return;
     }
-    if (used) { say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); }
+    if (used) { const eaten = f.held; say(battle, `§a${f.info.name} ate its ${itemName(f.held)}!`); f.held = null; setProp(f.entity, "cobblemon:held", undefined); itemGone(battle, f, eaten); }
 }
 const PINCH_BERRIES = { liechi_berry: "atk", ganlon_berry: "def", petaya_berry: "spa", apicot_berry: "spd", salac_berry: "spe", starf_berry: "random", lansat_berry: "focus" };
 // the type berries halve a super effective hit of their type (Chilan any Normal hit) and are eaten
@@ -1232,6 +2330,10 @@ const RESIST_BERRIES = { occa_berry: "fire", passho_berry: "water", wacan_berry:
     haban_berry: "dragon", colbur_berry: "dark", babiri_berry: "steel", chilan_berry: "normal", roseli_berry: "fairy" };
 
 function freeze(entity, on) {
+    if (!on) {
+        const base = prop(entity, BATTLE_FORM);
+        if (base !== undefined) { setProp(entity, BATTLE_FORM, undefined); try { entity.triggerEvent(`cobblemon:set_variant_${base}`); } catch (e) { } }
+    }
     try {
         entity.triggerEvent(on ? "cobblemon:battle_start" : "cobblemon:battle_end");
         entity.setProperty("cobblemon:battle", on);   // the client's battle poses
@@ -1331,7 +2433,9 @@ function endBattle(battle, text) {
         battles.delete(battle.opponent.id);
         for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
     }
-    const sides = battle.pvp ? [battle.ally, battle.foe] : [battle.ally];
+    const sides = battle.pvp ? (battle.doubles ? allActives(battle) : [battle.ally, battle.foe]) : battle.doubles ? battle.slots.a.filter(Boolean) : [battle.ally];
+    for (const f of allActives(battle)) if (f) untransform(f);   // its own moves' PP is what is kept, not the copy's
+    burmyCloaks(battle);
     for (const f of sides) if (f?.entity && !f.clone) { keepStatus(f.entity, f.hp > 0 ? f.status : null); if (!(battle.adjustLevel > 0)) keepPp(f.entity, f.moves); }
     for (const [id, k] of Object.entries(battle.kept ?? {})) {
         if (battle.adjustLevel > 0 || sides.some((f) => f?.entity && id === memberKey(f.entity))) continue;
@@ -1339,9 +2443,10 @@ function endBattle(battle, text) {
     }
     system.runTimeout(() => offerLevelEvolutions(battle.player), 40);
     if (battle.pvp && battle.opponent.isValid) system.runTimeout(() => offerLevelEvolutions(battle.opponent), 40);
-    for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
+    for (const f of allActives(battle)) if (f?.entity?.isValid) freeze(f.entity, false);
     // a trainer's Pokemon that fainted goes back into its ball; the rest stay out
-    for (const [owner, f] of battle.pvp ? [[battle.player, battle.ally], [battle.opponent, battle.foe]] : [[battle.player, battle.ally]]) {
+    const ownerOf = (f) => (battle.pvp && (battle.doubles ? f.sideKey === "b" : f === battle.foe) ? battle.opponent : battle.player);
+    for (const [owner, f] of (battle.pvp && !battle.doubles ? [battle.ally, battle.foe] : sides).map((f) => [ownerOf(f), f])) {
         if (!f?.entity?.isValid || f.clone || !(f.hp <= 0 || prop(f.entity, FAINTED))) continue;
         const slot = slotOf(owner, f.entity);
         if (slot) recallMember(owner, slot);
@@ -1354,15 +2459,164 @@ function endBattle(battle, text) {
 }
 
 // on entering battle: Intimidate
+// Protosynthesis and Quark Drive: the stat they raise while on, the highest with its stages
+function paradoxStat(battle, f) {
+    const on = (f.ability === "protosynthesis" && (weatherOf(battle) === "sun" || f.boosterEnergy))
+        || (f.ability === "quarkdrive" && (terrainOf(battle) === "electric" || f.boosterEnergy));
+    if (!on) return null;
+    const value = (k) => f.stats[k] * stage(f.stages[k] ?? 0);
+    return ["atk", "def", "spa", "spd", "spe"].reduce((x, y) => (value(y) > value(x) ? y : x));
+}
+const NO_TRACE = new Set([...NO_SWAP, "flowergift", "forecast", "zenmode", "neutralizinggas"]);
 function enter(battle, f, other) {
+    f.enteredTurn = battle.turn;
+    alphaBoost(battle, f);
+    if (f.entity && prop(f.entity, OWNER) !== undefined) (realBattle(battle).faced ??= new Set()).add(memberKey(f.entity));
+    f.magicRoom = realBattle(battle).magicroom > 0;
+    const wish = sideOf(battle, f).healingWish;
+    if (wish && f.hp > 0) {
+        delete sideOf(battle, f).healingWish;
+        f.hp = f.stats.hp; f.status = null; syncHealth(f);
+        if (wish === "lunardance") for (const m of f.moves) m.left = m.pp;
+        say(battle, `§a${f.info.name} became cloaked in ${wish === "lunardance" ? "mystical moonlight" : "a healing wish"}!`);
+    }
     entryHazards(battle, f);
+    // Neutralizing Gas: while its holder is out, the other side's ability does nothing; it comes back once it has gone
+    if (other.gassed !== undefined && f.ability !== "neutralizinggas") { other.ability = other.gassed; delete other.gassed; }
+    if (f.ability === "neutralizinggas" && !CANT_SUPPRESS.has(other.ability) && other.hp > 0 && held(other) !== "ability_shield") {
+        say(battle, "§7Neutralizing gas filled the area!"); other.gassed = other.ability; other.ability = null;
+    }
+    if (other.ability === "neutralizinggas" && other.hp > 0 && !CANT_SUPPRESS.has(f.ability) && held(f) !== "ability_shield") { f.gassed = f.ability; f.ability = null; }
+    entryAbility(battle, f, other);
+    mimicry(battle, f);
+    battleForms(battle);
+}
+// Battle forms (Showdown's formeChange): an ability turns its holder into another of its species' variants, with that
+// variant's model (minecraft:variant), types and stats, keeping its HP. The variant it came in as is kept on the entity
+// (BATTLE_FORM) and put back when it leaves the battle (freeze), and is what a recall stores (snapshot)
+const BATTLE_FORM = "cobblemon:battle_form";
+function changeForm(battle, f, form, text) {
+    const e = f.entity, looks = VARIANT_LOOKS[e?.typeId], species = POKEMON[e?.typeId];
+    if (!looks || !species) return false;
+    const cur = prop(e, BATTLE_FORM) ?? variantOf(e), [, female, shiny] = looks[cur] ?? [null, 0, 0];
+    const base = prop(e, BATTLE_FORM) ?? cur;
+    const n = form === null ? base : looks.findIndex((l) => l[0] === form && l[1] === female && l[2] === shiny);
+    if (n < 0 || (f.form ?? null) === form) return false;
+    if (prop(e, BATTLE_FORM) === undefined) setProp(e, BATTLE_FORM, cur);
+    try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+    f.form = form;
+    f.info = { ...species, ...(species.variants?.[n] ?? {}), name: f.info.name };   // it is still the same Pokemon by name
+    f.stats = { ...statsOf(e, f.info, f.level), hp: f.stats.hp };
+    if (text) say(battle, `§7${text}`);
+    return true;
+}
+// the forms that follow HP and weather: Zen Mode at half HP, Schooling above a quarter from level 20, Shields Down's
+// Meteor Form above half, Flower Gift's Sunshine Form in sun, Ice Face's face grown back in snow
+function battleForms(battle) {
+    for (const f of [battle.ally, battle.foe]) {
+        if (!f || f.hp <= 0) continue;
+        const half = f.hp <= f.stats.hp / 2, name = f.info.name.split(" (")[0];
+        if (f.ability === "zenmode") changeForm(battle, f, half ? "zen-mode" : null, half ? `${name} triggered Zen Mode!` : `Zen Mode ended!`);
+        if (f.ability === "schooling") {
+            const school = f.level >= 20 && f.hp > f.stats.hp / 4;
+            changeForm(battle, f, school ? "school-form" : null, school ? `${name} formed a school!` : `${name} stopped schooling!`);
+        }
+        if (f.ability === "shieldsdown") changeForm(battle, f, half ? null : "meteor-form", half ? "Its shell broke!" : `${name} put up its shell!`);
+        if (f.ability === "flowergift") changeForm(battle, f, weatherOf(battle) === "sun" ? "sunshine-form" : null);
+        if (f.ability === "iceface" && f.form === "noice_face" && weatherOf(battle) === "snow") changeForm(battle, f, null, `${name}'s Ice Face was restored!`);
+    }
+}
+// Imposter and Transform: the user takes the target's types, stats but HP, stat stages, ability and moves (5 PP each),
+// keeping its own name; it gets its own back on switching out
+function transform(battle, f, target, text) {
+    if (f.transformed || target.transformed || target.hp <= 0 || target.sub > 0) return false;
+    f.ownState = { info: f.info, stats: f.stats, moves: f.moves, ability: f.ability };
+    f.info = { ...target.info, name: f.info.name };
+    f.stats = { ...target.stats, hp: f.stats.hp };
+    f.stages = { ...target.stages };
+    f.moves = target.moves.filter((m) => m.id).map((m) => ({ ...m, pp: 5, left: 5 }));
+    f.ability = target.ability; f.transformed = true;
+    say(battle, `§7${text ?? `${f.info.name} transformed into ${target.info.name}!`}`);
+    return true;
+}
+function untransform(f) {
+    if (!f.ownState) return;
+    Object.assign(f, f.ownState); f.ownState = null; f.transformed = false;
+}
+// callbacks/battle_ended/burmy_cloak_change: after a battle, a trainer's Burmy that fought takes the cloak of the biome
+// its trainer stands in, by Cobblemon's form_change/bagworm_cloak biome tags: sandy (sand, beaches, caves), trash (the
+// deep dark, the End, snow, taiga, mushrooms, the nether's fungus), else plant
+function cloakFor(biome) {
+    if (/desert|beach|badlands|mesa|dripstone|cave|stony_shore|soul_sand/.test(biome)) return "sandy-cloak";
+    if (/deep_dark|the_end|end_|snow|frozen|ice|taiga|grove|peaks|mushroom|crimson|warped/.test(biome)) return "trash-cloak";
+    return null;
+}
+function burmyCloaks(battle) {
+    for (const player of [battle.player, battle.pvp ? battle.opponent : null]) {
+        if (!player?.isValid) continue;
+        let biome = "";
+        try { biome = player.dimension.getBiome(player.location)?.id ?? ""; } catch (e) { continue; }
+        for (const key of realBattle(battle).faced ?? []) {
+            const e = memberByKey(key, [player]);
+            if (!e?.isValid || prop(e, OWNER) !== player.id || e.typeId !== "cobblemon:p0412_burmy") continue;
+            const looks = VARIANT_LOOKS[e.typeId], cur = prop(e, BATTLE_FORM) ?? (e.isProxy ? e.slot.rec.v : variantOf(e)) ?? 0;
+            const shiny = looks[cur]?.[2] ?? 0, cloak = cloakFor(biome), n = looks.findIndex((l) => l[0] === cloak && l[2] === shiny);
+            if (n < 0 || n === cur) continue;
+            if (e.isProxy) { e.slot.rec.v = n; saveParty(player.id); } else try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+            player.sendMessage(`§7${nicknameOf(e) || "Burmy"} changed its cloak!`);
+        }
+    }
+}
+// what an ability does as its holder comes in (Showdown's onStart and onSwitchIn)
+function entryAbility(battle, f, other) {
+    const name = f.info.name, says = (t) => say(battle, `§7${t}`);
+    if (f.ability === "trace" && other.ability && !NO_TRACE.has(other.ability)) {
+        f.baseAbility ??= "trace"; f.ability = other.ability;
+        says(`${name} traced ${other.info.name}'s ${abilityName(other.ability)}!`);
+        if (f.ability !== "trace") entryAbility(battle, f, other);
+        return;
+    }
+    if (f.ability === "airlock" || f.ability === "cloudnine") says("The effects of the weather disappeared.");
+    if (f.ability === "unnerve" || f.ability === "asoneglastrier" || f.ability === "asonespectrier") says(`${other.info.name} is too nervous to eat Berries!`);
+    if (f.ability === "slowstart") { f.slowStart = battle.turn + 5; says(`${name} can't get it going!`); }
+    if (f.ability === "download") {
+        const foes = opponentsOf(battle, f, other);
+        const def = foes.reduce((n, o) => n + o.stats.def * stage(o.stages.def), 0), spd = foes.reduce((n, o) => n + o.stats.spd * stage(o.stages.spd), 0);
+        boost(battle, f, def < spd ? { atk: 1 } : { spa: 1 });
+    }
+    if (f.ability === "intrepidsword" && !f.swordDone) { f.swordDone = true; boost(battle, f, { atk: 1 }); }
+    if (f.ability === "dauntlessshield" && !f.shieldDone) { f.shieldDone = true; boost(battle, f, { def: 1 }); }
+    if (f.ability === "supersweetsyrup" && !f.syrupDone) { f.syrupDone = true; says(`A supersweet aroma is wafting from ${name}!`); for (const o of opponentsOf(battle, f, other)) boost(battle, o, { evasion: -1 }, f); }
+    if (f.ability === "screencleaner") {
+        const real = realBattle(battle);
+        for (const side of Object.values(real.sides ?? {})) for (const k of ["reflect", "lightscreen", "auroraveil"]) delete side[k];
+        says(`${name}'s Screen Cleaner removed the screens!`);
+    }
+    if (f.ability === "anticipation" && other.moves?.some((m) => { const d = MOVES[m.id]; return d && (d.ohko || (d.category !== "Status" && effectiveness(d.type, f.info.types) > 1)); })) says(`${name} shuddered!`);
+    if (f.ability === "forewarn") {
+        const power = (m) => { const d = MOVES[m.id]; return !d ? -1 : d.ohko ? 150 : ["counter", "metalburst", "mirrorcoat"].includes(m.id) ? 120 : d.category === "Status" ? 0 : d.power || 80; };
+        const best = (other.moves ?? []).filter((m) => m.id).reduce((x, y) => (power(y) > power(x) ? y : x), { id: null });
+        if (best.id) says(`${name}'s Forewarn alerted it to ${MOVES[best.id].name}!`);
+    }
+    if (f.ability === "imposter" && other.hp > 0) transform(battle, f, other, `${f.info.name} transformed into ${other.info.name}!`);
+    // Zero to Hero: a Palafin that has switched out once this battle comes back in its Hero Form
+    if (f.ability === "zerotohero" && realBattle(battle).heroes?.has(f.entity?.id)) changeForm(battle, f, "hero-form", `${f.info.name} underwent a heroic transformation!`);
+    if (f.ability === "frisk") for (const o of opponentsOf(battle, f, other)) if (o.held) says(`${name} frisked ${o.info.name} and found its ${itemName(o.held)}!`);
+    if ((f.ability === "protosynthesis" || f.ability === "quarkdrive") && !paradoxStat(battle, f) && held(f) === "booster_energy") {
+        useUp(battle, f, `§7${name} used its Booster Energy!`); f.boosterEnergy = true;
+    }
+    const raised = paradoxStat(battle, f);
+    if (raised) says(`${name}'s ${STAT_NAMES[raised]} was heightened by ${abilityName(f.ability)}!`);
     if (WEATHER_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setWeather(battle, WEATHER_ABILITIES[f.ability], f); }
     if (TERRAIN_ABILITIES[f.ability]) { say(battle, `§7${f.info.name}'s ${abilityName(f.ability)}!`); setTerrain(battle, TERRAIN_ABILITIES[f.ability], f); }
     terrainSeed(battle, f);
+    roomService(battle, f);
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
-        if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
-        else boost(battle, other, { atk: -1 }, f);
+        for (const o of opponentsOf(battle, f, other)) {
+            if (INTIMIDATE_GUARD.has(o.ability)) say(battle, `§7${o.info.name}'s ${abilityName(o.ability)} prevents it!`);
+            else boost(battle, o, { atk: -1 }, f);
+        }
     }
 }
 
@@ -1515,7 +2769,7 @@ function syncTms(player) {
         try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? []; } catch (err) { }
         for (const m of accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
     }
-    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) {
+    for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) {
         if (!rec?.t) continue;
         let known = [], benched = [];
         try { known = JSON.parse(rec.mv ?? "null") ?? []; benched = JSON.parse(rec.k?.[BENCHED] ?? "[]"); } catch (err) { }
@@ -1664,8 +2918,11 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
             const missing = !countIn(player, ["cobblemon:blank_tm"]) || chosen[3].some((entry) => countIn(player, recipeIds(entry)) < entry[1]);
             if (missing) player.sendMessage("§cYou need a Blank TM and the recipe's items.");
             else {
+                // the disc and the recipe go in (TMMachineBlockEntity's tm_insert and item_insert)
                 takeFrom(player, ["cobblemon:blank_tm"], 1);
+                try { block.dimension.playSound("cobblemon.block.tm_machine.tm_insert", block.location); } catch (e) { }
                 for (const entry of chosen[3]) takeFrom(player, recipeIds(entry), entry[1]);
+                try { block.dimension.playSound("cobblemon.block.tm_machine.item_insert", block.location); } catch (e) { }
                 burnTm(block, player, chosen[0]);
             }
         }
@@ -1680,19 +2937,142 @@ function openTmMachine(block, player, state = { mode: "t", type: 0, search: "", 
 // BURN_TOTAL_TIME at two a tick, then the craft and the disc's reset: 114 ticks, with the start, burn and craft sounds
 function burnTm(block, player, move) {
     const key = tmKey(block), dim = block.dimension, at = { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 };
+    // the machine remembers the TM last made on it (TMMachineBlockEntity.activeMove), which it makes again when powered
+    // and another TM chosen hands back what its slots were loaded with for the old one (TMMachineScreen's item_retrieve)
+    if (player) {
+        const m = tmMachineData(block);
+        if (m.m !== move && m.s.slice(1).some(Boolean)) {
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            for (const item of m.s.slice(1)) {
+                if (!item) continue;
+                const left = inv?.addItem(new ItemStack(item[0], item[1])) ?? new ItemStack(item[0], item[1]);
+                if (left) try { dim.spawnItem(left, player.location); } catch (e) { }
+            }
+            m.s = [m.s[0], null, null, null, null];
+            try { dim.playSound("cobblemon.block.tm_machine.item_retrieve", at); } catch (e) { }
+        }
+        m.m = move; saveTmMachine(block, m);
+    }
     burning.set(key, 114);
     try { setState(block, "cobblemon:active", true); dim.playSound("cobblemon.block.tm_machine.start", at); } catch (e) { }
     const loop = system.runInterval(() => {
         const left = (burning.get(key) ?? 0) - 1;
         burning.set(key, left);
         if (left % 20 === 0 && left > 14) try { dim.playSound("cobblemon.block.tm_machine.burn_loop", at); } catch (e) { }
-        if (left > 0) return;
+        if (left > 0) { try { setState(dim.getBlock(block.location), "cobblemon:signal", tmBurnSignal(left)); } catch (e) { } return; }
         system.clearRun(loop); burning.delete(key);
         try { setState(dim.getBlock(block.location), "cobblemon:active", false); dim.playSound("cobblemon.block.tm_machine.craft", at); } catch (e) { }
-        if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
+        try { setState(dim.getBlock(block.location), "cobblemon:signal", 0); } catch (e) { }   // the sites' loop sets the idle one
+        try { dim.playSound("cobblemon.block.tm_machine.tm_retrieve", at); } catch (e) { }   // the finished disc comes out
+        if (!player) {
+            // made by the machine on its own: into its result slot, for a hopper below to take
+            let here; try { here = dim.getBlock(block.location); } catch (e) { }
+            if (here?.typeId === "cobblemon:tm_machine") {
+                const m = tmMachineData(here);
+                m.s[0] = [`cobblemon:tm_${move}`, (m.s[0]?.[1] ?? 0) + 1];
+                saveTmMachine(here, m);
+            } else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
+        } else if (player.isValid) { giveOrDrop(player, `cobblemon:tm_${move}`); player.sendMessage(`§aThe TM Machine made a ${MOVES[move]?.name} TM.`); }
         else try { dim.spawnItem(new ItemStack(`cobblemon:tm_${move}`, 1), at); } catch (e) { }
     }, 1);
 }
+
+// The TM Machine's own slots and automation (TMMachineBlockEntity, TMMachineBlockInventory): the result, a Blank TM and
+// the three ingredients of the TM last made on it. While it has redstone power (hasNeighborSignal), hoppers pointing
+// into it from above or a side fill the Blank TM slot and each ingredient's slot with what that recipe takes, it
+// starts making that TM whenever the slots hold the recipe and the result slot has room for one more of it, and a
+// hopper under it takes the made TMs out. An unpowered machine takes nothing in. Breaking it drops what its slots hold.
+// What each machine holds is kept by the world, by place, as the pot's is; Bedrock's hoppers cannot see a scripted
+// block, so the script moves the items, one each eight ticks as a hopper does.
+const TM_SITES = "cobblemon:tm_sites";
+const tmMachineKey = (block) => `cobblemon:tmm|${tmKey(block)}`;
+function tmMachineData(block) {
+    try { return JSON.parse(world.getDynamicProperty(tmMachineKey(block)) ?? "null") ?? { m: null, s: Array(5).fill(null) }; } catch (e) { return { m: null, s: Array(5).fill(null) }; }
+}
+function saveTmMachine(block, data) {
+    const empty = !data.m && data.s.every((x) => !x);
+    world.setDynamicProperty(tmMachineKey(block), empty ? undefined : JSON.stringify(data));
+    const sites = new Set(JSON.parse(world.getDynamicProperty(TM_SITES) ?? "[]"));
+    if (empty) sites.delete(tmKey(block)); else sites.add(tmKey(block));
+    world.setDynamicProperty(TM_SITES, JSON.stringify([...sites]));
+}
+function tmPowered(block) {
+    for (const b of [block, block.above(), block.below(), block.north(), block.south(), block.east(), block.west()]) {
+        try { if ((b?.getRedstonePower() ?? 0) > 0) return true; } catch (e) { }
+    }
+    return false;
+}
+// which slot an item goes in for this machine's TM: 1 the Blank TM, 2 to 4 the recipe's ingredients in order
+function tmSlotFor(move, itemId) {
+    if (itemId === "cobblemon:blank_tm") return 1;
+    const tm = TMS[TM_BY_MOVE.get(move)];
+    const i = (tm?.[3] ?? []).findIndex((entry) => recipeIds(entry).includes(itemId));
+    return i >= 0 && i < 3 ? 2 + i : -1;
+}
+// TMMachineBlock.getAnalogOutputSignal: the progress in fifteenths while it burns; otherwise, when it is not making
+// TMs on its own (here, unpowered), 15 ready to make one or 0, and when it is, 8 with its result slot blocked or 4
+function tmBurnSignal(left) { return Math.max(0, Math.min(15, Math.floor((114 - left) / 114 * 15))); }
+function tmSignal(data, powered, left) {
+    if (left !== undefined) return tmBurnSignal(left);
+    if (!powered) return data.m && tmReady(data.m, data) ? 15 : 0;
+    return data.m && data.s[0] && (data.s[0][0] !== `cobblemon:tm_${data.m}` || data.s[0][1] >= 64) ? 8 : 4;
+}
+function tmReady(move, data) {
+    const tm = TMS[TM_BY_MOVE.get(move)];
+    if (!tm || !(data.s[1]?.[1] > 0)) return false;
+    if (data.s[0] && (data.s[0][0] !== `cobblemon:tm_${move}` || data.s[0][1] >= 64)) return false;
+    return tm[3].slice(0, 3).every((entry, i) => (data.s[2 + i]?.[1] ?? 0) >= entry[1]);
+}
+system.runInterval(() => {
+    for (const site of JSON.parse(world.getDynamicProperty(TM_SITES) ?? "[]")) {
+        const [dimId, pos] = site.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (!block) continue;   // not loaded
+        const data = tmMachineData(block);
+        let changed = false;
+        if (block.typeId !== "cobblemon:tm_machine") {
+            // broken: what it held comes out where it stood
+            for (const item of data.s) if (item) try { block.dimension.spawnItem(new ItemStack(item[0], item[1]), { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
+            saveTmMachine(block, { m: null, s: Array(5).fill(null) });
+            continue;
+        }
+        const powered = tmPowered(block), active = burning.has(tmKey(block));
+        if (data.m && (powered || active)) {
+            for (const [side, facing] of HOPPER_INTO) {
+                let from; try { from = block[side](); } catch (e) { continue; }
+                const container = hopperAt(from);
+                if (!container) continue;
+                try { if (from.permutation.getState("facing_direction") !== facing) continue; } catch (e) { continue; }
+                for (let i = 0; i < container.size; i++) {
+                    const item = container.getItem(i);
+                    if (!item) continue;
+                    const n = tmSlotFor(data.m, item.typeId);
+                    if (n < 0 || (data.s[n] && (data.s[n][0] !== item.typeId || data.s[n][1] >= item.maxAmount))) continue;
+                    data.s[n] = [item.typeId, (data.s[n]?.[1] ?? 0) + 1];
+                    if (item.amount > 1) { item.amount--; container.setItem(i, item); } else container.setItem(i, undefined);
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        // the made TMs into a hopper below
+        const below = hopperAt(block.below());
+        if (below && data.s[0] && !below.addItem(new ItemStack(data.s[0][0], 1))) {
+            data.s[0] = data.s[0][1] > 1 ? [data.s[0][0], data.s[0][1] - 1] : null;
+            changed = true;
+        }
+        if (powered && !active && data.m && tmReady(data.m, data)) {
+            const tm = TMS[TM_BY_MOVE.get(data.m)];
+            data.s[1] = data.s[1][1] > 1 ? [data.s[1][0], data.s[1][1] - 1] : null;
+            tm[3].slice(0, 3).forEach((entry, i) => { const left = data.s[2 + i][1] - entry[1]; data.s[2 + i] = left > 0 ? [data.s[2 + i][0], left] : null; });
+            saveTmMachine(block, data); changed = false;
+            burnTm(block, null, data.m);
+        }
+        if (changed) saveTmMachine(block, data);
+        setState(block, "cobblemon:signal", tmSignal(data, powered, burning.get(tmKey(block))));
+    }
+}, 8);
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { block, player, isFirstEvent } = event;
     if (block?.typeId !== "cobblemon:tm_machine" || player.isSneaking) return;
@@ -1830,7 +3210,9 @@ const RIDE_STATS = ["ACCELERATION", "SKILL", "SPEED", "STAMINA", "JUMP"];
 const RIDE_STAT_NAMES = { ACCELERATION: "Accel.", SKILL: "Skill", SPEED: "Speed", STAMINA: "Stamina", JUMP: "Jump" };
 const RIDE_FLAVOURS = { ACCELERATION: "SPICY", SKILL: "DRY", SPEED: "SWEET", STAMINA: "SOUR", JUMP: "BITTER" };
 const RIDE_COLOURS = { ACCELERATION: "§c", SKILL: "§b", SPEED: "§d", STAMINA: "§e", JUMP: "§a" };
-const aprijuiceColour = (id) => (id?.startsWith("cobblemon:aprijuice_") ? id.slice("cobblemon:aprijuice_".length).toUpperCase() : null);
+// an Aprijuice's colour, whichever of its quality items it is (cobblemon:aprijuice_red, _red_tasty, _red_delicious)
+const aprijuiceBase = (id) => id?.replace(/_(tasty|delicious)$/, "");
+const aprijuiceColour = (id) => (id?.startsWith("cobblemon:aprijuice_") ? aprijuiceBase(id).slice("cobblemon:aprijuice_".length).toUpperCase() : null);
 function aprijuiceBoosts(colour, seasonings) {
     const flavours = {};
     for (const id of seasonings) for (const [flavour, value] of Object.entries(SEASONINGS[id]?.flavours ?? {})) flavours[flavour] = (flavours[flavour] ?? 0) + value;
@@ -1882,8 +3264,11 @@ function consumesSeasoning(recipe, id) {
 }
 // a slot's item as an ItemStack, with an Aprijuice's name and boosts
 function slotStack(s) {
-    const stack = new ItemStack(s[0], s[1]);
     const boosts = s[2]?.boosts, colour = aprijuiceColour(s[0]);
+    // the quality's look, its item of its own (the model's aprijuice_quality override: Tasty a leaf, Delicious an umbrella)
+    const quality = boosts && colour && Object.keys(boosts).length ? aprijuiceQuality(boosts) : null;
+    const id = colour ? aprijuiceBase(s[0]) + ({ MEDIUM: "_tasty", HIGH: "_delicious" }[quality] ?? "") : s[0];
+    const stack = new ItemStack(id, s[1]);
     if (boosts && colour) {
         const has = Object.keys(boosts).length, quality = aprijuiceQuality(boosts);
         const prefix = !has ? "Plain" : { HIGH: "Delicious", MEDIUM: "Tasty", LOW: "Plain" }[quality];
@@ -1908,7 +3293,7 @@ function slotStack(s) {
 }
 function stackSlot(item) {
     if (!item) return null;
-    const out = [item.typeId, item.amount];
+    const out = [aprijuiceColour(item.typeId) ? aprijuiceBase(item.typeId) : item.typeId, item.amount];
     if (aprijuiceColour(item.typeId) && /Aprijuice/.test(item.nameTag ?? "")) {
         const boosts = {};
         for (const line of item.getLore()) {
@@ -1964,11 +3349,30 @@ const RB_ALL = [...POT_SHAPED, ...POT_SHAPELESS].sort((a, b) => (a.id < b.id ? -
 const RB_TABS = [["foods", "misc", "medicines", "complex_dishes"], ["foods"], ["medicines"], ["complex_dishes"], ["misc"]];
 const RB_TAB_ICONS = ["minecraft:compass", "cobblemon:leek_and_potato_stew", "cobblemon:potion", "cobblemon:aprijuice_red", "cobblemon:protein"];
 const RB_FIRST = 51, RB_SETTINGS = "cobblemon:pot_book";
-function rbCollections(tab) {
+// The recipe book's known recipes (its recipe advancements, advancement/recipes/campfire_pot): one is learnt the first
+// time the player holds one of the items its advancement names (inventory_changed), and the book shows only those; a
+// recipe with no such items is known from the start. Cooking is not gated, as in Cobblemon
+const RB_KNOWN = "cobblemon:pot_recipes";
+const RB_UNLOCKERS = new Map();   // item -> the recipes it unlocks
+for (const r of [...POT_SHAPED, ...POT_SHAPELESS]) for (const item of r.unlock ?? []) (RB_UNLOCKERS.get(item) ?? RB_UNLOCKERS.set(item, []).get(item)).push(r.id);
+function rbKnown(player) { return new Set(jsonProp(player, RB_KNOWN, [])); }
+function learnRecipes(player) {
+    let inv;
+    try { inv = player.getComponent(EntityComponentTypes.Inventory)?.container; } catch (e) { return; }
+    if (!inv) return;
+    const known = rbKnown(player), before = known.size;
+    for (let slot = 0; slot < inv.size; slot++) {
+        const id = inv.getItem(slot)?.typeId;
+        for (const r of RB_UNLOCKERS.get(id) ?? []) known.add(r);
+    }
+    if (known.size !== before) player.setDynamicProperty(RB_KNOWN, JSON.stringify([...known]));
+}
+system.runInterval(() => { for (const player of world.getPlayers()) learnRecipes(player); }, 40);
+function rbCollections(tab, known) {
     const out = [];
     for (const cat of RB_TABS[tab]) {
         const groups = new Map();
-        for (const r of RB_ALL.filter((r) => r.cat === cat)) {
+        for (const r of RB_ALL.filter((r) => r.cat === cat && (!r.unlock || !known || known.has(r.id)))) {
             const key = r.grp || r.id;
             if (!groups.has(key)) { groups.set(key, []); out.push(groups.get(key)); }
             groups.get(key).push(r);
@@ -2020,7 +3424,8 @@ function rbView(player, st, data, inv) {
     for (let n = 1; n < 10; n++) add(data.s[n]?.[0], data.s[n]?.[1] ?? 0);
     const set = rbSettings(player), query = (st.search ?? "").toLowerCase();
     const craftable = (r) => rbCraftable(r, counts);
-    const shown = rbCollections(st.tab ?? 0)
+    learnRecipes(player);
+    const shown = rbCollections(st.tab ?? 0, rbKnown(player))
         .filter((c) => !query || c.some((r) => itemName(r.out).toLowerCase().includes(query)))
         .map((c) => (set.filter ? c.filter(craftable) : c)).filter((c) => c.length);
     const pages = Math.max(1, Math.ceil(shown.length / 20)), page = Math.min(st.page ?? 0, pages - 1);
@@ -2298,6 +3703,9 @@ system.runInterval(() => {
         }
         potProgress.set(key, progress);
         if (before !== progress > 0) setState(block, "cobblemon:cooking", progress > 0);
+        // CampfireBlockEntity's loops: with something in it, the running sound while it cooks, the ambient one while it
+        // waits; an empty pot is quiet (replayed every three seconds)
+        if (system.currentTick % 60 === 0 && data.s.slice(1).some(Boolean)) playAt(block, progress > 0 ? "cobblemon.block.campfire_pot.active" : "cobblemon.block.campfire_pot.ambient");
         // while it cooks the broth bubbles once a second (particleCooldown 20), in the bubble colour
         if (progress > 0 && system.currentTick % 20 === 0) {
             try {
@@ -2333,6 +3741,8 @@ function cosmeticLook(entity, item) {
     if (!aspect) return null;
     const worn = new Set(Object.values(info.items)), [form, female, shiny] = info.looks[variantOf(entity)] ?? [null, 0, 0];
     if (form && (info.not.includes(form) || !worn.has(form))) return null;
+    // an item the species wears with no look of its own (Furfrou's dyes) puts nothing on: -1
+    if (!info.looks.some(([f]) => f === aspect)) return -1;
     const n = info.looks.findIndex(([f, g, s]) => f === aspect && g === female && s === shiny);
     return n < 0 ? null : n;
 }
@@ -2357,7 +3767,7 @@ function offerCosmetic(player, target) {
     } else {
         consumeHand(player);
         setProp(target, COSMETIC, hand);
-        try { target.triggerEvent(`cobblemon:set_variant_${look}`); } catch (e) { }
+        if (look >= 0) try { target.triggerEvent(`cobblemon:set_variant_${look}`); } catch (e) { }
     }
     if (worn) giveOrDrop(player, worn);
     player.sendMessage(!hand ? `You retrieved ${itemName(worn)} from ${name}.` : !worn ? `${name} was given ${itemName(hand)} to wear.`
@@ -2551,6 +3961,7 @@ function startBattle(player, foeEntity, trainer) {
     battleMusic(player, trainer ? "pvn" : "pvw");
     freeze(foeEntity, true);
     say(battle, trainer ? `§6${typeof trainer === "string" ? trainer : "Trainer"} sent out ${foe.info.name}! §7(Lv ${foe.level})` : `§6A wild ${foe.info.name} appeared! §7(Lv ${foe.level})`);
+    if (!trainer) shinyRing(foe.entity);   // BattleSide.playCries: a wild shiny's ring as the battle starts
     register(player, foeEntity.typeId, 1, variantOf(foeEntity));
     // the player's Pokemon is sent out between the player and the foe, spaced by both sizes (a trainer's foe is placed
     // the same way from its trainer when spawned)
@@ -2563,8 +3974,8 @@ function startBattle(player, foeEntity, trainer) {
 
 // Switch: BattleSwitchPokemonSelection's party tiles, laid out by the resource pack (SWITCH_FIELDS in port.py). The one in
 // battle and the fainted show greyed and cannot be picked; the one leaving steps aside and stops fighting
-function switchTile(battle, e) {
-    const f = e.id === battle.ally.entity.id ? battle.ally : battleFighter(battle, e);
+function switchTile(battle, e, leaving = battle.ally) {
+    const f = e.id === leaving.entity.id ? leaving : battleFighter(battle, e);
     const fainted = (!f.clone && !!prop(e, FAINTED)) || f.hp <= 0 || !!battle.down?.has(memberKey(e));
     const step = fainted ? 0 : Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50));
     const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
@@ -2573,25 +3984,26 @@ function switchTile(battle, e) {
     return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId, variantOf(e))
         + "b" + String(ball).padStart(2, "0") + `§f${fainted ? 0 : Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
 }
-function chooseSwitch(battle, forced) {
-    const player = battle.player, ally = battle.ally.entity;
-    const ready = battle.pvp ? pvpReady(battle) : findParty(player).filter((e) => e.id !== ally.id);
+function chooseSwitch(battle, forced, leaving = battle.ally) {
+    const player = battle.player, ally = leaving.entity;
+    const ready = battle.doubles ? benchFor(battle) : battle.pvp ? pvpReady(battle) : findParty(player).filter((e) => e.id !== ally.id);
     if (!ready.length) return Promise.resolve(undefined);
     const readyKeys = new Set(ready.map(memberKey));
-    const fainted = summaryParty(player).filter((e) => e.id !== ally.id && !readyKeys.has(memberKey(e)));
+    const out = new Set(battle.doubles ? battle.slots[battle.side === 1 ? "b" : "a"].filter(Boolean).map((f) => f.entity.id) : [ally.id]);
+    const fainted = summaryParty(player).filter((e) => !out.has(e.id) && !readyKeys.has(memberKey(e)));
     const tiles = [...(ally.isValid && !forced ? [ally] : []), ...ready, ...fainted].slice(0, 6);
-    const form = new ActionFormData().title("cbm:battle_switch").body(battleBody(battle));
+    const form = new ActionFormData().title(battleTitle(battle, "switch")).body(battleBody(battle));
     for (let i = 0; i < 6; i++) {
         const e = tiles[i];
         const picked = e && ready.includes(e);
-        form.button(e ? switchTile(battle, e) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
+        form.button(e ? switchTile(battle, e, leaving) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
     }
     form.button(forced ? "" : "Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
     return form.show(player).then((r) => {
-        if (r.selection === 7 && battles.has(player.id)) { toggleLog(battle); return chooseSwitch(battle, forced); }
-        if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced) : undefined;
+        if (r.selection === 7 && battles.has(player.id)) { toggleLog(battle); return chooseSwitch(battle, forced, leaving); }
+        if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced, leaving) : undefined;
         const e = tiles[r.selection];
-        return e && ready.includes(e) ? e : chooseSwitch(battle, forced);
+        return e && ready.includes(e) ? e : chooseSwitch(battle, forced, leaving);
     });
 }
 
@@ -2603,7 +4015,15 @@ function switchTo(battle, entity) {
     leaving.charging = null; leaving.hiding = null; leaving.mustRecharge = false; leaving.confused = 0; leaving.locked = null;
     leaving.sub = 0; leaving.seeded = false; leaving.taunt = 0; leaving.yawn = 0; leaving.perish = 0; leaving.destinyBond = false; leaving.protectChain = 0;
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
-    leaving.bound = null; leaving.trappedBy = null;
+    leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
+    leaving.acted = false; leaving.noRetreat = false; leaving.ingrain = false; leaving.aquaring = false; leaving.cursed = false; leaving.healBlock = 0;
+    leaving.stockpile = 0; leaving.embargo = 0; leaving.cheered = 0;
+    for (const k of ["identified", "laserFocus", "lockOn", "magnetRise", "telekinesis", "nightmare", "octolock", "torment", "imprison", "grudge", "tarShot", "saltCure", "syrup", "throatChop", "raging"]) leaving[k] = null;
+    if (leaving.ability === "zerotohero" && leaving.hp > 0) (realBattle(battle).heroes ??= new Set()).add(leaving.entity.id);
+    if (leaving.blade) { leaving.blade = false; leaving.info = { ...leaving.info, stats: POKEMON[leaving.entity.typeId]?.stats ?? leaving.info.stats }; leaving.stats = { ...statsOf(leaving.entity, leaving.info, leaving.level), hp: leaving.stats.hp }; }
+    untransform(leaving); leaving.gulp = null; leaving.form = null;
+    if (leaving.gassed !== undefined) { leaving.ability = leaving.gassed; delete leaving.gassed; }
+    if (leaving.baseAbility) { leaving.ability = leaving.baseAbility; leaving.baseAbility = null; }
     if (leaving.ability === "naturalcure") leaving.status = null;
     if (leaving.ability === "regenerator" && leaving.hp > 0) { leaving.hp = Math.min(leaving.stats.hp, leaving.hp + Math.floor(leaving.stats.hp / 3)); syncHealth(leaving); }
     battle.kept[memberKey(old)] = { moves: leaving.moves, status: leaving.status, sleep: leaving.sleep, hp: leaving.hp };
@@ -2695,24 +4115,36 @@ function turn(battle) {
             chooseSwitch(battle, false).then((entity) => {
                 if (!battles.has(battle.player.id)) return;
                 if (!entity) { battle.turn--; turn(battle); return; }
+                const foeMove = foe.hp > 0 ? forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe)) : null;
+                if (foeMove?.gymSwitch) { switchTo(battle, entity); if (!gymNextPokemon(battle, { to: foeMove.to, then: () => endOfTurn(battle) })) endOfTurn(battle); return; }
+                if (foeMove?.id === "pursuit") {
+                    battle.movedFirst = foe; battle.pursuing = true;
+                    try { useMove(battle, foe, ally, foeMove); } finally { battle.pursuing = false; }
+                    if (ally.hp > 0) switchTo(battle, entity);
+                    endOfTurn(battle);
+                    return;
+                }
                 switchTo(battle, entity);
-                foeTurn(battle);
+                foeTurn(battle, foeMove);
             }).catch((e) => battleFailed(battle, e));
             return;
         }
         if (choice.locked) { say(battle, `§7${ally.info.name} can only use ${MOVES[battle.choiceLock]?.name}!`); battle.turn--; turn(battle); return; }
         if (choice.blocked) { say(battle, `§7${choice.blocked}`); battle.turn--; turn(battle); return; }
         const move = choice.move;
-        if (held(ally)?.startsWith("choice_") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
+        if ((held(ally)?.startsWith("choice_") || ally.ability === "gorillatactics") && move !== STRUGGLE && move !== RECHARGE) battle.choiceLock = battle.choiceLock ?? move.id;
         if (move !== STRUGGLE && !lockedIn && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); battle.turn--; turn(battle); return; }
-        const foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
-        const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
-        const allyClaw = claw(ally), foeClaw = claw(foe);
-        if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
-        const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
-        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
+        let foeMove = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
+        // the trainer's switch comes first; the player's move then goes at the one coming in
+        if (foeMove?.gymSwitch) {
+            const to = foeMove.to;
+            foeMove = GYM_ITEM;
+            if (gymNextPokemon(battle, { to, then: () => runTurn() })) { ally.chosenMove = move; return; }
+        }
+        runTurn();
+        function runTurn() {
+        ally.chosenMove = move; foe.chosenMove = foeMove;
+        const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
         battle.movedFirst = allyFirst ? ally : foe;
         battle.swap = null;
         const order = allyFirst ? [true, false] : [false, true];
@@ -2732,6 +4164,7 @@ function turn(battle) {
             pivot(battle, swap, () => step(i + 1));
         };
         step(0);
+        }
     }).catch((e) => battleFailed(battle, e));
 }
 
@@ -2745,9 +4178,13 @@ function pad(value, width) { const s = String(value ?? ""); return s.length >= w
 // BattleMessagePane's expand toggle: the log grows to twice its height, showing more lines, until toggled back
 const LOG_TOGGLE = "textures/ui/cobblemon/battle/log_toggle";
 function toggleLog(battle) { battle.logExpanded = !battle.logExpanded; try { battle.player.playSound("cobblemon.gui.click"); } catch (e) { } }
+// a battle screen's title: the layout it takes, and in a double battle "|d" and the slot of the player's Pokemon choosing
+// ("|d0", "|d1"), which the layout tests as a part of the title (a one-byte field of the body did not read back)
+function battleTitle(battle, kind) { return `cbm:battle_${kind}${battle.doubles ? `|d${battle.choosing ?? "-"}${battle.triples ? "|t" : ""}` : ""}`; }
 function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
+        if (!f) return " ".repeat(33);
         const step = f.hp > 0 ? Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50)) : 0;
         return pad(ascii(f.info.name), 14) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + pad(f.hp <= 0 ? "fnt" : f.status ?? "", 3) + iconOf(f.entity?.typeId, variantOf(f.entity))
             // the gender, and whether the player has caught this species (BattleOverlay's caught indicator)
@@ -2755,12 +4192,19 @@ function battleBody(battle) {
             + (dexStatus(battle.player, f.entity?.typeId) >= 2 ? "y" : "n");
     };
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
-    const own = `${Math.max(0, battle.ally.hp)}/${battle.ally.stats.hp}`, theirs = `${Math.ceil((Math.max(0, battle.foe.hp) / battle.foe.stats.hp) * 100)}%%`;   // a lone % is read as a format
+    const ownHp = (f) => (f ? `${Math.max(0, f.hp)}/${f.stats.hp}` : ""), theirHp = (f) => (f ? `${Math.ceil((Math.max(0, f.hp) / f.stats.hp) * 100)}%%` : "");   // a lone % is read as a format
+    // a double battle: each side's first slot in the usual fields, and the second slots in the double battle's part
+    const me = battle.side === 1 ? "b" : "a", them = otherSide(me);   // the second player's view sees side b as its own
+    const [a0, b0, a1, b1] = battle.doubles ? [battle.slots[me][0], battle.slots[them][0], battle.slots[me][1], battle.slots[them][1]] : [battle.ally, battle.foe, null, null];
+    const [a2, b2] = battle.doubles ? [battle.slots[me][2], battle.slots[them][2]] : [null, null];   // a triple battle's third slots
+    const own = ownHp(a0), theirs = theirHp(b0);
     // the log follows the fixed fields; a lone % would be read as a format there too
     const log = (battle.log ?? []).slice(-40).map((line) => line.replace(/%/g, "%%")).join("\n");
     // BattleOverlay's actorDisplayName: the player's and the trainer's names over the tiles when the foe is a trainer's
     const actors = battle.trainer ? pad(ascii(battle.player.name), 16) + pad(ascii(typeof battle.trainer === "string" ? battle.trainer : "Trainer"), 16) : " ".repeat(32);
-    return "~" + side(battle.ally) + side(battle.foe) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + actors + log;
+    const doubled = (battle.doubles ? "d" : "s") + (battle.doubles ? battle.choosing ?? "-" : "-") + side(a1) + side(b1) + "§f" + pad(ownHp(a1), 10) + "§f" + pad(theirHp(b1), 6);
+    const tripled = side(a2) + side(b2) + "§f" + pad(ownHp(a2), 10) + "§f" + pad(theirHp(b2), 6);
+    return "~" + side(a0) + side(b0) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + actors + doubled + tripled + log;
 }
 
 // BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
@@ -2791,12 +4235,12 @@ function restore(battle) {
 world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
     if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed) return;
     const battle = battles.get(player.id);
-    if (battle && restore(battle)) { if (battle.pvp) pvpAsk(battle); else { battle.turn--; turn(battle); } }
+    if (battle && restore(battle)) { if (battle.doubles) battle.resume?.(); else if (battle.pvp) pvpAsk(battle); else { battle.turn--; turn(battle); } }
 });
 
 // BattleGeneralActionSelection: Fight, Switch, then Catch and Run against a wild Pokemon or Forfeit against a trainer
 function pickAction(battle, options) {
-    const menu = new ActionFormData().title("cbm:battle_menu").body(battleBody(battle))
+    const menu = new ActionFormData().title(battleTitle(battle, "menu")).body(battleBody(battle))
         .button("Fight", `${UI}/battle/menu_fight`).button("Switch", `${UI}/battle/menu_switch`);
     if (battle.trainer) menu.button("Forfeit", `${UI}/battle/menu_forfeit`);
     else menu.button("Catch", `${UI}/battle/menu_bag`).button("Run", `${UI}/battle/menu_run`);
@@ -2813,18 +4257,23 @@ function pickAction(battle, options) {
         }
         const moves = options.filter((o) => o.kind === "move");
         const showMoves = () => {
-        const form = new ActionFormData().title("cbm:battle_moves").body(battleBody(battle));
+        const form = new ActionFormData().title(battleTitle(battle, "moves")).body(battleBody(battle));
         for (const o of moves) {
             const m = o.move, off = o.locked || o.blocked || (m !== STRUGGLE && m.left <= 0);
             const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
             // the category's code after the name (port.py's MOVE_CATEGORY_CODES), for MoveCategoryIcon
             const category = { Physical: "p", Special: "s", Status: "x" }[m.category ?? MOVES[m.id]?.category] ?? "p";
-            form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
+            // the PP padded to five: a one-digit "5/5" after the colour code was a JSON UI parse failure on every button
+            form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`).padStart(5), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
-        form.button("Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
+        const shift = options.find((o) => o.kind === "shift");
+        form.button("Back", `${UI}/battle/back`);
+        if (shift) form.button("", `${UI}/battle/shift`);   // no text, so the move grid's tile for it stays hidden (shift_panel draws it)
+        form.button("", LOG_TOGGLE);
         return form.show(battle.player).then((m) => {
             if (m.canceled || !battles.has(battle.player.id)) return undefined;
-            if (m.selection === moves.length + 1) { toggleLog(battle); return showMoves(); }
+            if (m.selection === moves.length + (shift ? 2 : 1)) { toggleLog(battle); return showMoves(); }
+            if (shift && m.selection === moves.length + 1) return shift;
             if (m.selection >= moves.length) return pickAction(battle, options);
             return moves[m.selection];
         });
@@ -2835,7 +4284,7 @@ function pickAction(battle, options) {
 
 // The party HUD (ui/hud_screen.json): the player's party, fainted ones included, sent as one fixed-width
 // record per slot in a title starting "cbm:party" whenever it changes, and every five seconds for a HUD that rejoined
-const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS);
+const PARTY_MARKER = "cbm:party", BALL_INDEX = Object.keys(BALLS), HIDE_PARTY = "cobblemon:hide_party";
 const partySent = new Map();
 // the slot's pop-ups (PartyOverlayDataControl): the experience text for EXP_POPUP_TIME (63 ticks), and after the bar's
 // 17-tick update the new move and evolution pop-ups for POPUP_TIME (46 ticks: 3 in, 40 held, 3 out)
@@ -2848,6 +4297,16 @@ function partyNotes(e) {
     const note = evo && move ? "vm" : evo ? "nv" : move ? "nm" : "nn";
     // ui.exp.number, "+N EXP", with a colour code first since a leading "+" reads as a number
     return note + padBytes(since < 63 && gain.exp ? `§f+${gain.exp} EXP` : "", 10);
+}
+// the level-up scroll over the portrait (PartyOverlay): after the bar's 17 ticks, fourteen steps over
+// LEVEL_UP_PORTRAIT_TIME's 10 ticks, sent as "a" to "n" ("z" for none)
+function scrollCode(e) {
+    let gain = {};
+    try { gain = JSON.parse(prop(e, GAIN_NOTE) ?? "{}"); } catch (err) { }
+    const t = system.currentTick - (gain.tick ?? -1e9) - 17;
+    if (!gain.up || t < 0 || t >= 10) return "z";
+    const step = Math.ceil(t / 10 * 14);
+    return step ? String.fromCharCode(96 + step) : "z";
 }
 // the held item's HUD icon: "h" and two letters from its HELD_INDEX, "hzz" for none (and for items with no copy there)
 function heldCode(e) {
@@ -2877,31 +4336,36 @@ function partyRecord(e, selected, player) {
     return pad(name, 12) + padBytes(`§r${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
         + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non") + (selected ? "a" : "i") + (fainted ? "x" : "n") + (selected ? "a" : "i")
-        + "b" + String(ball).padStart(2, "0") + (e.isProxy ? "c" : "o") + activeCode(e, player) + "Lv.";
+        + "b" + String(ball).padStart(2, "0") + (e.isProxy ? "c" : "o") + activeCode(e, player) + "Lv." + scrollCode(e);
 }
+// players whose party is showing the level-up scroll, sent every tick until it ends
+const scrollUntil = new Map();
 system.runInterval(() => {
+    const now = system.currentTick;
     for (const player of world.getPlayers()) {
+        if (now % 10 && !(scrollUntil.get(player.id) >= now)) continue;
         // Cobblemon hides the party overlay while its battle overlay is up
-        const mine = battles.has(player.id) ? [] : summaryParty(player), sel = selIndex(player);
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   ";
+        // and while the player has hidden it (HidePartyBinding, here /cobblemon:hideparty)
+        const mine = battles.has(player.id) || player.getDynamicProperty(HIDE_PARTY) ? [] : summaryParty(player), sel = selIndex(player);
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   " + "z";
         const text = PARTY_MARKER + mine.map((e, n) => partyRecord(e, n === sel, player)).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
         partySent.set(player.id, { text, tick: system.currentTick });
         try { player.onScreenDisplay.setTitle(text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
     }
-}, 10);
+}, 1);
 
 function pickFoeMove(foe) {
     const usable = foe.moves.filter((m) => canPick(foe, m));
     return usable.length ? usable[Math.floor(Math.random() * usable.length)] : STRUGGLE;
 }
 
-function foeTurn(battle) {
+function foeTurn(battle, chosen) {
     const { ally, foe } = battle;
     battle.movedFirst = null;   // the player used an item or switched; the foe's move can make nobody flinch
     if (foe.hp > 0 && ally.hp > 0) {
-        const m = forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
+        const m = chosen ?? forcedMove(foe) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(foe));
         if (m === RECHARGE) { foe.mustRecharge = false; say(battle, `§7${foe.info.name} must recharge!`); }
         else if (m !== GYM_ITEM) useMove(battle, foe, ally, m);
     }
@@ -2910,7 +4374,8 @@ function foeTurn(battle) {
 
 // burn and poison damage, then whoever fainted
 function endOfTurn(battle) {
-    for (const f of [battle.ally, battle.foe]) {
+    for (const f of allActives(battle)) {
+        focus(battle, f);
         if (f.hp <= 0) continue;
         if ((f.status === "psn" || f.status === "tox") && f.ability === "poisonheal") {
             if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp / 8)); say(battle, `§a${f.info.name} is healed by its Poison Heal!`); syncHealth(f); }
@@ -2921,6 +4386,24 @@ function endOfTurn(battle) {
         }
         if (f.status && f.ability === "shedskin" && Math.random() < 1 / 3) { f.status = null; say(battle, `§a${f.info.name} shed its skin and was cured!`); }
         if (f.ability === "speedboost" && f.hp > 0) boost(battle, f, { spe: 1 });
+        endOfTurnAbility(battle, f, f === battle.ally ? battle.foe : battle.ally);
+        for (const k of ["aquaring", "ingrain"]) {
+            if (f[k] && f.hp > 0 && f.hp < f.stats.hp && !f.healBlock) {
+                f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor((f.stats.hp / 16) * (held(f) === "big_root" ? 1.3 : 1)))); syncHealth(f);
+                say(battle, `§a${k === "aquaring" ? "A veil of water restored" : `${f.info.name} absorbed nutrients with its roots and restored`} ${k === "aquaring" ? `${f.info.name}'s HP` : "HP"}!`);
+            }
+        }
+        if (f.cursed && f.hp > 0) hurt(battle, f, f.stats.hp / 4, `${f.info.name} is afflicted by the curse!`);
+        if (f.healBlock > 0 && --f.healBlock === 0) say(battle, `§7${f.info.name}'s Heal Block wore off!`);
+        if (f.embargo > 0 && --f.embargo === 0) say(battle, `§7${f.info.name} can use items again!`);
+        if (f.nightmare && f.hp > 0) { if (f.status === "slp") hurt(battle, f, f.stats.hp / 4, `${f.info.name} is locked in a nightmare!`); else f.nightmare = false; }
+        if (f.octolock && f.hp > 0) { if (f.octolock.hp > 0) boost(battle, f, { def: -1, spd: -1 }, f.octolock); else f.octolock = null; }
+        if (f.saltCure && f.hp > 0) hurt(battle, f, f.stats.hp / (f.info.types.some((t) => t === "water" || t === "steel") ? 4 : 8), `${f.info.name} is hurt by Salt Cure!`);
+        if (f.syrup > 0 && f.hp > 0) { boost(battle, f, { spe: -1 }, f); if (--f.syrup === 0) say(battle, `§7${f.info.name} sloughed off the candy syrup!`); }
+        if (f.magnetRise > 0 && --f.magnetRise === 0) say(battle, `§7${f.info.name}'s electromagnetism wore off!`);
+        if (f.telekinesis > 0 && --f.telekinesis === 0) say(battle, `§7${f.info.name} was freed from the telekinesis!`);
+        if (f.throatChop > 0) f.throatChop--;
+        if (held(f) === "micle_berry" && !unnerved(battle, f) && f.hp > 0 && f.hp <= f.stats.hp / (f.ability === "gluttony" ? 2 : 4)) { f.micle = true; useUp(battle, f, `§a${f.info.name} ate its Micle Berry! Its next move will be more accurate.`); }
         const w = weatherOf(battle);
         if (w === "sand" && f.hp > 0 && !f.info.types.some((t) => ["rock", "ground", "steel"].includes(t))
             && !["sandveil", "sandrush", "sandforce", "overcoat"].includes(f.ability) && held(f) !== "safety_goggles") {
@@ -2931,14 +4414,20 @@ function endOfTurn(battle) {
         if (w === "sun" && (f.ability === "dryskin" || f.ability === "solarpower")) hurt(battle, f, f.stats.hp / 8, `${f.info.name} is hurt by the sunlight!`);
     }
     if (battle.weather && --battle.weather.turns <= 0) { say(battle, `§b${WEATHER_TEXT[battle.weather.kind][1]}`); battle.weather = null; }
+    battleForms(battle);
     if (terrainOf(battle) === "grassy") {
-        for (const f of [battle.ally, battle.foe]) {
+        for (const f of allActives(battle)) {
+        focus(battle, f);
             if (f.hp > 0 && f.hp < f.stats.hp && onGround(battle, f)) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name}'s HP was restored by the Grassy Terrain.`); syncHealth(f); }
         }
     }
     const field = realBattle(battle);
-    if (field.terrain && --field.terrain.turns <= 0) { say(battle, `§a${TERRAIN_TEXT[field.terrain.kind][1]}`); field.terrain = null; }
-    for (const f of [battle.ally, battle.foe]) {
+    if (field.terrain && --field.terrain.turns <= 0) {
+        say(battle, `§a${TERRAIN_TEXT[field.terrain.kind][1]}`); field.terrain = null;
+        for (const f of allActives(battle)) { focus(battle, f); mimicry(battle, f); }
+    }
+    for (const f of allActives(battle)) {
+        focus(battle, f);
         if (f.hp > 0 && held(f) === "black_sludge") {
             if (f.info.types.includes("poison")) { if (f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Black Sludge!`); syncHealth(f); } }
             else hurt(battle, f, f.stats.hp / 8, `${f.info.name} was hurt by its Black Sludge!`);
@@ -2946,24 +4435,27 @@ function endOfTurn(battle) {
         if (f.hp > 0 && held(f) === "sticky_barb") hurt(battle, f, f.stats.hp / 8, `${f.info.name} was hurt by its Sticky Barb!`);
         if (f.hp > 0 && !f.status && held(f) === "flame_orb") inflict(battle, f, "brn", false);
         if (f.hp > 0 && !f.status && held(f) === "toxic_orb") inflict(battle, f, "tox", false);
-        if (f.hp > 0 && f.hp < f.stats.hp && held(f) === "leftovers") {
+        if (f.hp > 0 && f.hp < f.stats.hp && held(f) === "leftovers" && !(f.healBlock > 0)) {
             f.hp = Math.min(f.stats.hp, f.hp + Math.max(1, Math.floor(f.stats.hp / 16))); say(battle, `§a${f.info.name} restored a little HP using its Leftovers!`); syncHealth(f);
         }
         heldBerry(battle, f);
     }
-    for (const f of [battle.ally, battle.foe]) {
+    for (const f of allActives(battle)) {
+        focus(battle, f);
         const other = f === battle.ally ? battle.foe : battle.ally;
         if (f.seeded && f.hp > 0 && other.hp > 0) {
             const before = f.hp;
+            playDamageFx(battle, f, "leechseed");
             hurt(battle, f, f.stats.hp / 8, `${f.info.name}'s health is sapped by Leech Seed!`);
-            if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
+            if (f.ability === "liquidooze" && f.hp < before) hurt(battle, other, before - f.hp, `${other.info.name} sucked up the liquid ooze!`);
+            else if (other.hp < other.stats.hp && f.hp < before) { other.hp = Math.min(other.stats.hp, other.hp + (before - f.hp)); syncHealth(other); }
         }
         if (f.yawn && --f.yawn === 0 && f.hp > 0 && !f.status) inflict(battle, f, "slp", false);
         if (f.taunt > 0 && --f.taunt === 0) say(battle, `§7${f.info.name} shook off the taunt!`);
         if (f.bound) {
             if (f.bound.by !== other) f.bound = null;
             else if (f.bound.turns-- <= 0) { say(battle, `§7${f.info.name} was freed from ${f.bound.name}!`); f.bound = null; }
-            else if (f.hp > 0) hurt(battle, f, f.stats.hp / f.bound.share, `${f.info.name} is hurt by ${f.bound.name}!`);
+            else if (f.hp > 0) { playDamageFx(battle, f, f.bound.id); hurt(battle, f, f.stats.hp / f.bound.share, `${f.info.name} is hurt by ${f.bound.name}!`); }
         }
         if (f.encore && (--f.encore.turns <= 0 || !(f.moves.find((m) => m.id === f.encore.id)?.left > 0))) { f.encore = null; say(battle, `§7${f.info.name}'s encore ended!`); }
         if (f.disabled && --f.disabled.turns <= 0) { f.disabled = null; say(battle, `§7${f.info.name}'s move is no longer disabled!`); }
@@ -2974,27 +4466,35 @@ function endOfTurn(battle) {
         }
     }
     const realSides = realBattle(battle).sides ?? {};
-    for (const [key, f] of [["a", realBattle(battle).ally], ["b", realBattle(battle).foe]]) {
+    for (const [key, f] of [["a", sideFront(realBattle(battle), "a")], ["b", sideFront(realBattle(battle), "b")]]) {
         const wish = realSides[key]?.wish;
         if (wish && --wish.turns <= 0) {
             delete realSides[key].wish;
             if (f.hp > 0 && f.hp < f.stats.hp) { f.hp = Math.min(f.stats.hp, f.hp + wish.hp); say(battle, `§a${wish.from}'s wish came true!`); syncHealth(f); }
         }
     }
-    for (const f of [battle.ally, battle.foe]) f.flinched = false;
+    for (const f of allActives(battle)) f.flinched = false;
     // the side conditions and Trick Room run down
     const real = realBattle(battle);
-    for (const [key, f] of [["a", real.ally], ["b", real.foe]]) {
+    for (const [key, f] of [["a", sideFront(real, "a")], ["b", sideFront(real, "b")]]) {
         const side = (real.sides ??= { a: {}, b: {} })[key];
         for (const k of Object.keys(SIDE_MOVES)) if (side[k] > 0 && --side[k] === 0) say(battle, `§7${f.info.name}'s team's ${SIDE_MOVES[k]} wore off.`);
     }
+    futureHits(battle);
     if (real.trickRoom > 0 && --real.trickRoom === 0) say(battle, "§7The twisted dimensions returned to normal!");
+    for (const key of Object.keys(FIELD_TEXT)) if (real[key] > 0 && --real[key] === 0) {
+        say(battle, `§7${FIELD_TEXT[key][1]}`);
+        if (key === "magicroom") for (const f of allActives(battle)) f.magicRoom = false;
+    }
+    if (real.fairyLock > 0) real.fairyLock--;
     afterFx(battle, () => { if (battles.has(battle.player.id)) afterTurn(battle); });
 }
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
 function afterTurn(battle) {
+    if (battle.doubles && battle.pvp) { pvpDoubleAfterTurn(battle); return; }
     if (battle.pvp) { pvpAfterTurn(battle); return; }
-    if (battle.foe.hp <= 0) { faint(battle, battle.foe); return; }
+    if (battle.doubles) { doubleAfterTurn(battle); return; }
+    if (battle.foe.hp <= 0) { alphaDrops(battle.foe); faint(battle, battle.foe); return; }
     if (battle.ally.hp <= 0) { faint(battle, battle.ally); return; }
     if (battle.dragFoe) { battle.dragFoe = false; endBattle(battle, `§7The wild ${battle.foe.info.name} fled!`); return; }
     if (battle.ejectAlly) {
@@ -3019,7 +4519,8 @@ function offerLevelEvolutions(player) {
     // PartyOverlayDataControl's pop-ups once the overlay is back: the experience gained, then a new move
     for (const [e, g] of [...gained]) {
         gained.delete(e);
-        if (e.isValid) setProp(e, GAIN_NOTE, JSON.stringify({ tick: system.currentTick, exp: g.exp, move: g.move }));
+        if (e.isValid) setProp(e, GAIN_NOTE, JSON.stringify({ tick: system.currentTick, exp: g.exp, move: g.move, up: g.up }));
+        if (g.up) scrollUntil.set(player.id, system.currentTick + 28);
     }
     let ready = false;
     for (const e of [...leveled]) {
@@ -3053,6 +4554,7 @@ function gainExperience(battle, f, foe, amount) {
     // from the level it has already reached in this battle (the fighter's own is the one it entered with)
     let level = Math.max(f.level, prop(f.entity, LEVEL) ?? f.level), exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level)) + gain;
     const startLevel = level;
+    if (level >= 100) return;   // Pokemon.addExperience: nothing past the top level, and no message (canLevelUpFurther)
     // a player on the gym challenge gains nothing past their level cap (RCT's ModServer, allowOverLeveling false)
     const levelCap = rctLevelCap(battle.player);
     if (levelCap < 100 && exp > expFor(group, levelCap)) {
@@ -3061,6 +4563,7 @@ function gainExperience(battle, f, foe, amount) {
         if (exp <= Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level))) { setProp(f.entity, EXP, exp); return; }
     }
     say(battle, `§b${f.info.name} gained ${gain} Exp. Points!`);
+    try { battle.player.playSound("cobblemon.gui.levelup_start"); } catch (e) { }   // PartyOverlayDataControl's bar filling up
     const note = gained.get(f.entity) ?? { exp: 0, move: false };
     note.exp += gain; gained.set(f.entity, note);
     const ids = f.moves.map((m) => m.id);
@@ -3079,6 +4582,7 @@ function gainExperience(battle, f, foe, amount) {
             else say(battle, `§7${f.info.name} can learn ${MOVES[id].name}, but already knows four moves. It can be learned later from the Summary.`);
         }
     }
+    if (level > startLevel) note.up = true;
     setProp(f.entity, EXP, exp); setProp(f.entity, LEVEL, level); setProp(f.entity, MOVESET, JSON.stringify(ids));
     // the fighter goes on at its new level, its health rising by what its maximum gained, as Pokemon.levelUp does
     if (level > startLevel && !f.clone && f.level < level) {
@@ -3115,6 +4619,7 @@ function faint(battle, fainted) {
     }
     say(battle, `§c${battle.ally.info.name} fainted!`);
     setProp(battle.ally.entity, FAINTED, true); loseFriendship(battle.ally.entity, 1);
+    countProgress(battle.ally, (p) => { p.damage = 0; p.recoil = 0; });   // the damage and recoil it lived through start again
     freeze(battle.ally.entity, false);
     try { battle.ally.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
     chooseSwitch(battle, true).then((entity) => {
@@ -3143,6 +4648,8 @@ const RCT_DEFEATS = "cobblemon:rct_defeats", RCT_SERIES = "cobblemon:rct_series"
 const RCT_HEALS = { "cobblemon:potion": 20, "cobblemon:super_potion": 50, "cobblemon:hyper_potion": 200, "cobblemon:max_potion": Infinity, "cobblemon:full_restore": Infinity };
 const RCT_STATUS_BIAS = 0.85, RCT_ITEM_BIAS = 0.85;
 const GYM_ITEM = { name: "(item)", priority: 6 };   // the trainer used an item this turn instead of a move
+// the trainer switches this turn instead of moving (to: its party index); the switch comes before any move
+const gymSwitchTo = (to) => ({ name: "(switch)", priority: 7, gymSwitch: true, to });
 const gymRest = new Map();   // trainer entity id -> the tick it battles again
 // trainers in the same group of a requirement stand in for each other (SeriesManager's siblings): the two Agathas
 const RCT_SIBLINGS = new Map();
@@ -3221,18 +4728,167 @@ function spawnGymPokemon(npc, spec, player) {
 }
 function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
-    if (!data?.team.length || battles.has(player.id) || !npc.isValid) return;
-    const party = data.team.map((spec) => ({ spec, down: false }));
+    if (!data?.team.length) return;
+    (data.doubles ? startDoubleBattle : startTeamBattle)(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
+                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin, switchBias: data.switchBias });
+}
+// a trainer's team battle: its first Pokemon comes out, and the rest follow as each faints (gymNextPokemon)
+function startTeamBattle(player, npc, team, trainer) {
+    if (!team.length || battles.has(player.id) || !npc.isValid) return;
+    const party = team.map((spec) => ({ spec, down: false }));
     const foe = spawnGymPokemon(npc, party[0].spec, player);
     if (!foe) return;
     system.runTimeout(() => {
         if (!foe.isValid || !player.isValid) return;
-        startBattle(player, foe, data.name);
+        startBattle(player, foe, trainer.name);
         const battle = battles.get(player.id);
         if (!battle || battle.foe.entity !== foe) { try { foe.remove(); } catch (e) { } return; }
-        battle.gym = { id, npc, party, at: 0, turns: 0, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
-                       bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin };
+        battle.gym = { npc, party, at: 0, turns: 0, itemsLeft: 0, bag: [], margin: 0, ...trainer };
     }, 5);
+}
+
+// Cobblemon's NPC trainer (npcs/standard.json with npc_presets/battler_test.json, NPC_BATTLER): PoolPartyProvider draws
+// its party, minPokemon to maxPokemon by weight from the entries whose npcLevels hold the trainer's level, none more
+// often than its selectableTimes, each at the trainer's level plus up to its levelVariation; a static party is drawn
+// once and kept. The trainer's level is rolled once over its pool's npcLevels, as NPCSpawnAction seeds one. Cobblemon
+// gives no reward for beating one (NPCBattleActor's rewards are commented out)
+const NPC_LEVEL = "cobblemon:npc_level", NPC_PARTY = "cobblemon:npc_party";
+function npcPresetParty(preset, level) {
+    const pool = preset.pool.filter((p) => level >= p.levels[0] && level <= p.levels[1] && p.times > 0), used = new Map(), party = [];
+    let count = ri(preset.min, preset.max);
+    while (count > 0 && pool.some((p) => p.weight !== 0)) {
+        const any = pool.filter((p) => p.weight === -1);
+        const chosen = any.length ? any[Math.floor(Math.random() * any.length)] : pick(pool.filter((p) => p.weight > 0).map((p) => [p, p.weight]))[0];
+        used.set(chosen, (used.get(chosen) ?? 0) + 1);
+        if (used.get(chosen) >= chosen.times) pool.splice(pool.indexOf(chosen), 1);
+        count--;
+        party.push([chosen.entity, chosen.level ?? level + ri(0, chosen.variation ?? 0)]);
+    }
+    return party;
+}
+function npcTrainerParty(npc) {
+    const preset = NPC_BATTLER;
+    let level = prop(npc, NPC_LEVEL);
+    if (!level) {
+        level = ri(Math.min(...preset.pool.map((p) => p.levels[0])), Math.max(...preset.pool.map((p) => p.levels[1])));
+        setProp(npc, NPC_LEVEL, level);
+    }
+    if (!preset.isStatic) return npcPresetParty(preset, level);
+    let party = jsonProp(npc, NPC_PARTY, null);
+    if (!party?.length) { party = npcPresetParty(preset, level); setProp(npc, NPC_PARTY, JSON.stringify(party)); }
+    return party;
+}
+// a party member as PokemonProperties.create makes it: its moves at its level, gender by the species' ratio, the rest
+// (IVs, nature, ability) rolled when it first fights
+function npcSpec([t, lv]) {
+    const info = POKEMON[t];
+    return { t, lv, moves: movesAt(info, lv), female: (info.maleRatio ?? 0.5) >= 0 && Math.random() >= (info.maleRatio ?? 0.5) };
+}
+function startNpcBattle(player, npc) {
+    const team = npcTrainerParty(npc).filter(([t]) => POKEMON[t]).map(npcSpec);
+    const name = npc.nameTag && npc.nameTag !== "NPC" ? npc.nameTag.replace(/§./g, "") : "Trainer";
+    if ((gymRest.get(npc.id) ?? 0) > system.currentTick) return;
+    const fmt = prop(npc, BATTLE_FORMAT), trainer = { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown };
+    if (fmt === "doubles" || fmt === "triples") startDoubleBattle(player, npc, team, trainer, fmt === "triples" ? 3 : 2);
+    else startTeamBattle(player, npc, team, trainer);
+}
+
+// StrongBattleAI, Cobblemon's NPC battle AI: a skill check (skill 5 always, otherwise skill in 5) or a random move; past
+// it, a switch where shouldSwitchOut finds one (strongSwitch), at under 30% HP the most damaging move, Sleep Talk asleep, a recovery move under half HP, an entry hazard while the
+// player has three Pokemon or more, a field move it lacks (Tailwind, Trick Room, Reflect and Light Screen against the
+// matching attacker, Aurora Veil in hail or snow), a status move above half HP on a target it can afflict and not knock
+// out (burn on a strong attacker, paralysis on a faster one, sleep by Spore or Sleep Powder, poison and confusion
+// always), and otherwise the most damaging move
+const STRONG_RECOVERY = new Set(["healorder", "milkdrink", "recover", "rest", "roost", "slackoff", "softboiled"]);
+const STRONG_HAZARDS = new Set(["spikes", "stealthrock", "stickyweb", "toxicspikes"]);
+// StrongBattleAI.estimateMatchup: one side's standing against the player's Pokemon, from its best move's type
+// multiplier and its types' against the other's (2.5 a matchup, 0.8 a move), speed (4 either way, turned round in
+// Trick Room), health, and 25 for a way to undo the player's boosts; for a bench member, its spec
+function strongSide(battle, member) {
+    if (!member) {
+        const f = battle.foe;
+        return { types: f.info.types, moveTypes: f.moves.map((m) => m.type), spe: (f.info.stats?.spe ?? 0) * stage(f.stages.spe ?? 0), hp: Math.max(0, f.hp) / f.stats.hp, moves: f.moves.map((m) => m.id), ability: f.ability };
+    }
+    const info = POKEMON[member.spec.t], looks = VARIANT_LOOKS[member.spec.t], v = looks?.findIndex((l) => l[0] === member.spec.form);
+    return { types: (v > 0 && info.variants?.[v]?.types) || info.types, moveTypes: member.spec.moves.map((m) => MOVES[m]?.type).filter(Boolean),
+             spe: info.stats?.spe ?? 0, hp: member.kept ? member.kept.hp / hpAt(info.stats.hp, member.spec.lv) : 1, moves: member.spec.moves, ability: member.spec.ability };
+}
+const typeMultiplier = (att, def) => att.reduce((m, a) => m * effectiveness(a, def), 1);
+const bestMultiplier = (moveTypes, def) => Math.max(1, ...moveTypes.map((t) => effectiveness(t, def)));
+function strongMatchup(battle, me) {
+    const opp = battle.ally, room = realBattle(battle)?.trickroom ? -1 : 1;
+    let score = 1;
+    score += bestMultiplier(me.moveTypes, opp.info.types) * 0.8 + typeMultiplier(me.types, opp.info.types) * 2.5;
+    score -= bestMultiplier(opp.moves.map((m) => m.type), me.types) * 0.8 + typeMultiplier(opp.info.types, me.types) * 2.5;
+    const oppSpe = (opp.info.stats?.spe ?? 0) * stage(opp.stages.spe ?? 0);
+    if (me.spe > oppSpe) score += 4 * room; else if (oppSpe > me.spe) score -= 4 * room;
+    score += me.hp * 0.4 * 0.25 - (Math.max(0, opp.hp) / opp.stats.hp) * 0.4 * 0.25;
+    if (((opp.stages.atk ?? 0) > 1 || (opp.stages.spa ?? 0) > 1) && (me.moves.some((m) => m === "clearsmog" || m === "haze") || me.ability === "unaware")) score += 25;
+    return score;
+}
+// StrongBattleAI.shouldSwitchOut: never on its first turn or trapped; only to a bench Pokemon rated well above it (by
+// half its own rating and 3), and not when it is under 30% HP and slower; then for moves locked into doing nothing,
+// the player's lowered accuracy or defences, or a lowered attacking stat, or a rating under -2 above 30% HP
+function strongSwitch(battle) {
+    const g = battle.gym, foe = battle.foe, ally = battle.ally;
+    if (!g || g.turns <= 1 || trappedIn(battle, foe)) return null;
+    const bench = g.party.map((p, i) => [p, i]).filter(([p, i]) => !p.down && i !== g.at);
+    if (!bench.length) return null;
+    const me = strongSide(battle), current = strongMatchup(battle, me);
+    const rated = bench.map(([p, i]) => [i, strongMatchup(battle, strongSide(battle, p))]);
+    const [bestAt, best] = rated.reduce((b, r) => (r[1] > b[1] ? r : b));
+    if (best <= current + Math.abs(current) * 0.5 + 3 || best < 1) return null;
+    const oppSpe = (ally.info.stats?.spe ?? 0) * stage(ally.stages.spe ?? 0);
+    if (me.hp < 0.3 && oppSpe > me.spe) return null;
+    const usable = foe.moves.filter((m) => canPick(foe, m));
+    if (usable.length < foe.moves.length && usable.every((m) => effectiveness(m.type, ally.info.types) === 0 || (m.power ?? 0) < 40)) return bestAt;
+    if (!rated.some(([, r]) => r > 0)) return null;
+    const st = ally.stages, base = ally.info.stats ?? {};
+    if ((st.accuracy ?? 0) <= -3 || (st.def ?? 0) <= -3 || (st.spd ?? 0) <= -3) return bestAt;
+    if ((base.atk ?? 0) > (base.spa ?? 0) ? (st.atk ?? 0) <= -3 : (st.spa ?? 0) <= -3) return bestAt;
+    return current < -2 && me.hp > 0.3 ? bestAt : null;
+}
+function strongDamage(battle, a, d, move) {
+    return gymDamage(battle, a, d, move) * (move.accuracy === true ? 1 : (move.accuracy ?? 100) / 100);
+}
+function strongFoeMove(battle, skill) {
+    const foe = battle.foe, ally = battle.ally;
+    const usable = foe.moves.filter((m) => canPick(foe, m));
+    if (!usable.length) return STRUGGLE;
+    const random = usable[Math.floor(Math.random() * usable.length)];
+    if (skill < 5 && Math.floor(Math.random() * 100) >= skill * 20) return random;
+    const swap = strongSwitch(battle);
+    if (swap !== null) return gymSwitchTo(swap);
+    const share = (f) => Math.max(0, f.hp) / f.stats.hp;
+    const best = () => usable.reduce((b, m) => (strongDamage(battle, foe, ally, m) > strongDamage(battle, foe, ally, b) ? m : b));
+    if (share(foe) < 0.3) return best();
+    const has = (id) => usable.find((m) => m.id === id);
+    if (foe.status === "slp" && has("sleeptalk")) return has("sleeptalk");
+    const heal = usable.find((m) => STRONG_RECOVERY.has(m.id));
+    if (heal && share(foe) < 0.5) return heal;
+    const mine = sideOf(battle, foe), theirs = sideOf(battle, ally);
+    const theirsLeft = 1 + benchOf(battle, "ally").length;
+    const hazard = usable.find((m) => STRONG_HAZARDS.has(m.id) && !theirs[m.id]);
+    if (hazard && theirsLeft >= 3) return hazard;
+    const left = benchOf(battle, "foe").length, base = ally.info.stats ?? {};
+    if (has("tailwind") && !mine.tailwind && left > 2) return has("tailwind");
+    if (has("trickroom") && !realBattle(battle)?.trickroom && benchOf(battle, "foe").filter((p) => (POKEMON[p.spec.t]?.stats.spe ?? 0) <= 85).length >= 2) return has("trickroom");
+    if (has("auroraveil") && !mine.auroraveil && ["hail", "snow"].includes(weatherOf(battle))) return has("auroraveil");
+    if (has("lightscreen") && !mine.lightscreen && (base.spa ?? 0) > (base.atk ?? 0) && left > 1) return has("lightscreen");
+    if (has("reflect") && !mine.reflect && (base.atk ?? 0) > (base.spa ?? 0) && left > 1) return has("reflect");
+    if (share(foe) > 0.5 && !ally.status && share(ally) > 0.3) {
+        for (const m of usable) {
+            const status = m.category === "Status" ? m.status ?? (m.volatileStatus === "confusion" ? "confusion" : null) : null;
+            if (!status || m.target === "self") continue;
+            if ((STATUS_IMMUNE[status] ?? []).some((t) => ally.info.types.includes(t)) || effectiveness(m.type, ally.info.types) === 0) continue;
+            if (["comatose", "purifyingsalt"].includes(ally.ability)) continue;
+            if (status === "brn" && (base.atk ?? 0) > 80) return m;
+            if (status === "par" && (base.spe ?? 0) > (foe.info.stats?.spe ?? 0)) return m;
+            if (status === "slp" && ["spore", "sleeppowder"].includes(m.id)) return m;
+            if (["psn", "tox", "confusion"].includes(status)) return m;
+        }
+    }
+    return best();
 }
 
 // an estimate of a move's damage (PokeMath.damage's role), without the random roll's spread or a critical hit
@@ -3270,9 +4926,51 @@ function gymMoveValue(battle, foe, ally, move, maxMargin) {
     const faster = speedOf(foe, battle) >= speedOf(ally, battle) || (move.priority || 0) > 0;
     return e * (faster ? 1 : hpShare(foe) + Math.random() * (1 - hpShare(foe)));
 }
+// RCTBattleAI.evalSwitch: how much better off the trainer is with a bench Pokemon in, from the leaving one's stat stages
+// and status, the two's type matchups against the player's Pokemon (the heaviest), their health, and the bench one's
+// stats against the player's; each term blurred by a normal spread, the sum pushed up by the trainer's switch bias, a
+// Pokemon in its first turn kept in more often, and the rating bent down by a random power
+const RCT_SWITCH_WEIGHTS = { boosts: 6, status: 8, typing: 48, health: 6 };
+function gaussian(mean, sd) { return mean + sd * Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); }
+function gaussClamp(mean, sig3, min, max) { return Math.min(max, Math.max(min, gaussian(mean, sig3 / 3))); }
+const gaussNorm = (mean = 0.5, sig3 = 1) => gaussClamp(mean, sig3, 0, 1);
+const rngSin = () => Math.sin(Math.random() * Math.PI / 2 * Math.PI / 2);
+const rngRange = (min, max) => min + (1 - rngSin()) * (max - min);
+// TypeChart.getAverageEffectiveness: every attacking type against every defending type, averaged, an absorbing ability
+// counting nothing
+const ABSORBS = { water: ["stormdrain", "waterabsorb", "dryskin"], electric: ["voltabsorb", "lightningrod", "motordrive"], ground: ["eartheater", "levitate"], fire: ["flashfire", "wellbakedbody"], grass: ["sapsipper"] };
+function averageEffectiveness(attackTypes, defendTypes, ability) {
+    let sum = 0;
+    for (const at of attackTypes) for (const dt of defendTypes) sum += (ABSORBS[at] ?? []).includes(ability) ? 0 : effectiveness(at, [dt]);
+    return attackTypes.length && defendTypes.length ? sum / (attackTypes.length * defendTypes.length) : 0;
+}
+function gymSwitchRating(battle, member) {
+    const g = battle.gym, from = battle.foe, opp = battle.ally, info = POKEMON[member.spec.t];
+    const looks = VARIANT_LOOKS[member.spec.t], v = looks?.findIndex((l) => l[0] === member.spec.form);
+    const types = (v > 0 && info.variants?.[v]?.types) || info.types;
+    const parts = [];
+    const boosts = ["atk", "def", "spa", "spd", "spd", "evasion"].reduce((t, k) => t + (from.stages[k] ?? 0) / 6, 0) / 6;
+    parts.push([gaussNorm(Math.max(0, Math.min(1, 0.5 - boosts)), 0.125), RCT_SWITCH_WEIGHTS.boosts]);
+    parts.push([gaussNorm(from.status || from.confused ? 0.5 : 0, 0.125), RCT_SWITCH_WEIGHTS.status]);
+    const eff = (a, d, ab) => Math.min(1, averageEffectiveness(a, d, ab) / 2);
+    const effFrom = (eff(from.info.types, opp.info.types, opp.ability) + 1 - eff(opp.info.types, from.info.types, from.ability)) / 2;
+    const effTo = (eff(types, opp.info.types, opp.ability) + 1 - eff(opp.info.types, types, member.spec.ability)) / 2;
+    parts.push([gaussClamp(Math.sin((effTo - effFrom) * Math.PI / 2), 0.125, -1, 1), RCT_SWITCH_WEIGHTS.typing]);
+    const lv = member.spec.lv, statsOfSpec = ["atk", "def", "spa", "spd", "spe"].map((k) => statAt(info.stats[k], lv, member.spec.ivs?.[k] ?? 0, member.spec.evs?.[k] ?? 0));
+    const oppAvg = ["atk", "def", "spa", "spd", "spe"].reduce((t, k) => t + opp.stats[k], 0) / 5;
+    const statsFactor = oppAvg > 0 ? statsOfSpec.reduce((a, b) => a + b, 0) / 5 / oppAvg : 1;
+    const toHp = member.kept ? member.kept.hp / hpAt(info.stats.hp, lv, member.spec.ivs?.hp ?? 0, member.spec.evs?.hp ?? 0) : 1;
+    parts.push([gaussClamp(toHp - Math.max(0, from.hp) / from.stats.hp, 0.125, -1, 1), RCT_SWITCH_WEIGHTS.health]);
+    const total = parts.reduce((t, [, w]) => t + w, 0), delta = Math.max(0, parts.reduce((t, [x, w]) => t + x * w, 0)) / total;
+    const biased = gaussClamp(delta, (g.switchBias ?? 0.5) / 2, delta, 1);
+    const age = g.turns > 1 || battle.turn <= 1 ? 1 : gaussNorm();
+    const rating = Math.min(1, biased * age * statsFactor);
+    return rngRange(Math.pow(rating, 1.25), rating);
+}
 // the trainer's move or item for the turn; an item is used here, before anyone moves, as items go first
 function gymFoeAction(battle) {
     const g = battle.gym, foe = battle.foe, ally = battle.ally;
+    if (g.skill !== undefined) return strongFoeMove(battle, g.skill);
     g.turns++;
     const usable = foe.moves.filter((m) => canPick(foe, m));
     const options = (usable.length ? usable : [STRUGGLE]).map((move) => ({ move, e: gymMoveValue(battle, foe, ally, move, g.margin) }));
@@ -3285,9 +4983,12 @@ function gymFoeAction(battle) {
             options.push({ item: slot, e: Math.min(1, g.turns / 3) * Math.min(1, amount * (1 - share) * 4 * cures) * RCT_ITEM_BIAS });
         }
     }
+    // a switch is weighed with the moves and items (ResponseBuilder.suggestSwitches), unless it is trapped
+    if (!trappedIn(battle, foe)) g.party.forEach((p, i) => { if (!p.down && !p.out && i !== g.at) options.push({ swap: i, e: gymSwitchRating(battle, p) }); });
     const pick = rctPick(options, g.margin);
+    if (pick.swap !== undefined) return gymSwitchTo(pick.swap);
     if (!pick.item) return pick.move;
-    const [item] = pick.item, data = RCT_TRAINERS[g.id];
+    const [item] = pick.item, data = { name: g.name };
     pick.item[1]--; g.itemsLeft--;
     foe.hp = Math.min(foe.stats.hp, foe.hp + Math.min(RCT_HEALS[item], foe.stats.hp));
     if (item === "cobblemon:full_restore") foe.status = null;
@@ -3310,13 +5011,13 @@ function gymNextPokemon(battle, swap) {
         const defence = Math.max(...ally.info.types.map((t) => effectiveness(t, types)));
         return offence - defence;
     };
-    const [next, index] = swap?.random ? left[Math.floor(Math.random() * left.length)] : left.reduce((best, c) => (score(c) > score(best) ? c : best));
+    const [next, index] = swap?.to !== undefined ? left.find(([, i]) => i === swap.to) ?? left[0] : swap?.random ? left[Math.floor(Math.random() * left.length)] : left.reduce((best, c) => (score(c) > score(best) ? c : best));
     const entity = spawnGymPokemon(g.npc.isValid ? g.npc : battle.foe.entity, next.spec, battle.player);
     if (!entity) return false;
     g.at = index; g.turns = 0;
     if (swap) {
         const old = leaving.entity;
-        say(battle, `§7${RCT_TRAINERS[g.id].name} withdrew ${leaving.info.name}!`);
+        say(battle, `§7${g.name} withdrew ${leaving.info.name}!`);
         freeze(old, false);
         beamIn(old, () => (g.npc.isValid ? g.npc.getHeadLocation() : old.location), false, () => { try { if (old.isValid) old.remove(); } catch (e) { } });
     }
@@ -3326,7 +5027,7 @@ function gymNextPokemon(battle, swap) {
         if (next.kept) { Object.assign(f, next.kept); next.kept = null; syncHealth(f); }
         freeze(entity, true);
         battle.foe = f; battle.faced = new Set([memberKey(battle.ally.entity)]);
-        say(battle, `§6${RCT_TRAINERS[g.id].name} sent out ${f.info.name}! §7(Lv ${f.level})`);
+        say(battle, `§6${g.name} sent out ${f.info.name}! §7(Lv ${f.level})`);
         register(battle.player, entity.typeId, 1, variantOf(entity));
         enter(battle, f, battle.ally);
         if (swap?.then) swap.then(); else system.runTimeout(() => turn(battle), 20);
@@ -3335,6 +5036,7 @@ function gymNextPokemon(battle, swap) {
 }
 function gymWon(battle) {
     const g = battle.gym, player = battle.player, data = RCT_TRAINERS[g.id];
+    if (g.preset) { g.won = true; say(battle, `§6You defeated ${g.name}!`); try { player.playSound("random.levelup"); } catch (e) { } return; }
     const before = rctLevelCap(player), defeats = rctDefeats(player), wasDone = rctSeriesDone(player);
     defeats[g.id] = (defeats[g.id] ?? 0) + 1;
     player.setDynamicProperty(RCT_DEFEATS, JSON.stringify(defeats));
@@ -3351,13 +5053,51 @@ function gymWon(battle) {
     if (after > before) say(battle, `§bYour level cap rose to Lv. ${after}.`);
     try { player.playSound("random.levelup"); } catch (e) { }
     giveGymReward(player, g.id);
+    dropRctLoot(g.npc, player, g.id);
+}
+// RCT's battle loot (TrainerMob.dropBattleLoot), dropped at the trainer on every win: its loot table rolled with the
+// player's bonus luck (TrainerPlayerData.getBonusLuck: each completed series' difficulty counted, r += (1 - r) / (8i)),
+// an entry's weight raised by its quality times the luck (LootPoolSingletonContainer), and rctmod:level_range tested
+// against the team's highest level
+function rctLuck(player) {
+    const completed = jsonProp(player, RCT_COMPLETED, {});
+    const n = Object.entries(completed).reduce((sum, [id, count]) => sum + (RCT_SERIES_DATA[id]?.difficulty ?? 0) * count, 0);
+    let r = 0;
+    for (let i = 1; i <= n; i++) r += (1 - r) / (i * 8);
+    return r;
+}
+function rollRctLoot(table, level, luck, out = []) {
+    for (const pool of RCT_LOOT.tables[table] ?? []) {
+        const r = pool.rolls;
+        let rolls = r.c ?? (r.u ? ri(r.u[0], r.u[1]) : [...Array(r.b[0])].filter(() => Math.random() < r.b[1]).length);
+        rolls += Math.floor((pool.bonus ?? 0) * luck);
+        for (let k = 0; k < rolls; k++) {
+            const live = pool.entries.filter((e) => !e.l || (level >= e.l[0] && level <= e.l[1])).map((e) => [e, Math.max(Math.floor(e.w + e.q * luck), 0)]).filter(([, w]) => w > 0);
+            const total = live.reduce((sum, [, w]) => sum + w, 0);
+            if (!total) continue;
+            let roll = Math.floor(Math.random() * total);
+            const [entry] = live.find(([, w]) => (roll -= w) < 0);
+            if (entry.t) rollRctLoot(entry.t, level, luck, out);
+            else out.push([entry.i, entry.n ? ri(entry.n[0], entry.n[1]) : 1]);
+        }
+    }
+    return out;
+}
+function dropRctLoot(npc, player, id) {
+    const table = RCT_LOOT.trainers[id];
+    if (!table || !npc?.isValid) return;
+    const level = Math.max(...(RCT_TRAINERS[id]?.team ?? []).map((m) => m.lv), 0);
+    for (const [item, count] of rollRctLoot(table, level, rctLuck(player))) {
+        try { npc.dimension.spawnItem(new ItemStack(item, count), npc.location); } catch (e) { }
+    }
 }
 // the battle is over, won or lost: the trainer's Pokemon still out goes, and the trainer rests
 function gymEnded(battle) {
     const g = battle.gym;
-    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + GYM_COOLDOWN);
-    const foe = battle.foe?.entity;
-    if (foe?.isValid) system.runTimeout(() => { try { if (foe.isValid) foe.triggerEvent("cobblemon:vanish"); } catch (e) { } }, g.won ? 30 : 0);
+    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + (g.cooldown ?? GYM_COOLDOWN));
+    for (const foe of battle.doubles ? battle.slots.b.filter(Boolean).map((f) => f.entity) : [battle.foe?.entity]) {
+        if (foe?.isValid) system.runTimeout(() => { try { if (foe.isValid) foe.triggerEvent("cobblemon:vanish"); } catch (e) { } }, g.won ? 30 : 0);
+    }
 }
 
 // The Kanto League is wider than a Bedrock structure can be, so worldgen places only a seed of it (port.py's
@@ -3381,6 +5121,14 @@ function completeLeague(block) {
                 if (at?.typeId === probe) continue;   // placed already
                 world.structureManager.place(id, dim, { x: o.x + dx, y: o.y, z: o.z + dz }, { includeEntities: false });
                 if (dim.getBlock({ x: o.x + px, y: o.y + py, z: o.z + pz })?.typeId !== probe) throw new Error(`${id} did not land`);
+            }
+            // the League's Shopkeeper, a CobbleDollars merchant in RGS's structure: the Poke Mart clerk, held in place as in the hub
+            for (const [x, y, z, name] of GYM_LEAGUE.npcs ?? []) {
+                const at = { x: o.x + x + 0.5, y: o.y + y, z: o.z + z + 0.5 };
+                if (dim.getEntities({ type: "cobblemon:poke_mart_clerk", location: at, maxDistance: 2 }).length) continue;
+                const clerk = dim.spawnEntity("cobblemon:poke_mart_clerk", at);
+                clerk.nameTag = name || "Shopkeeper"; clerk.addTag("poke_mart_clerk");
+                clerk.addEffect("slowness", 20000000, { amplifier: 255, showParticles: false });
             }
         } catch (e) { console.warn(`league at ${key}: ${e}`); }
         try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { }
@@ -3803,6 +5551,483 @@ function giveGymReward(player, id) {
 const CHALLENGE_EXPIRY = 20 * 20, PVP_RANGE = 32, LEVEL_RULES = [-1, 50, 100, 5];
 const challenges = [];   // { from, to, level, at }
 const challengeRule = new Map();   // player id -> the level rule chosen on the challenge screen
+const challengeFormat = new Map();   // player id -> the format chosen on the challenge screen, "singles" or "doubles"
+const FORMAT_NAMES = { singles: "Single Battle", doubles: "Double Battle", triples: "Triple Battle" };   // lang cobblemon.battle.types.*
+const FORMAT_ORDER = ["singles", "doubles", "triples"];   // BattleConfigureGUI's pages (Multi and Royal are not carried)
+// Double battles (BattleTypes.DOUBLES: one actor a side with two slots each). The move engine is written for one
+// Pokemon a side, battle.ally against battle.foe, so a double battle keeps its four in battle.slots ("a" the player's,
+// "b" the trainer's, each [left, right]) and points ally and foe at the two a move is between before it runs (focus,
+// focusPair); side conditions are kept per side by each fighter's sideKey (sideOf). Each player Pokemon picks its action
+// and, where its move has one target, which opposing Pokemon; the trainer picks for each of its own; then every move
+// goes in priority and speed order. A move that hits all adjacent foes, or everything adjacent, hits each for 0.75 of
+// its damage (Showdown's spread modifier); a target that fainted earlier in the turn is replaced by the other foe.
+// Cobblemon starts one from a challenge between players or an NPC's battle script; here an NPC trainer fights doubles
+// once /scriptevent cobblemon:battle_format doubles has been run at it.
+const SPREAD_TARGETS = new Set(["allAdjacentFoes", "allAdjacent"]);
+const CHOSEN_TARGETS = new Set(["normal", "any", "adjacentFoe"]);
+const BATTLE_FORMAT = "cobblemon:battle_format";
+const otherSide = (key) => (key === "a" ? "b" : "a");
+const alive = (f) => !!f && f.hp > 0 && f.entity?.isValid !== false;
+// a Triple Battle (BattleTypes.TRIPLES) is a double battle with three slots a side; slotCount is a side's slots
+const slotCount = (battle) => (realBattle(battle).triples ? 3 : 2);
+const emptySlots = (n) => Array(n).fill(null);
+// Showdown's Pokemon.isAdjacent: everyone is in reach in a double battle; in a triple, a partner next to it, and a foe
+// across from it or one place to either side of that (the left edge cannot reach the far right edge)
+function adjacent(battle, x, y) {
+    if (!x || !y || x === y) return false;
+    if (!realBattle(battle).triples) return true;
+    if (x.sideKey === y.sideKey) return Math.abs(x.slot - y.slot) === 1;
+    return Math.abs(x.slot + y.slot + 1 - 3) <= 1;
+}
+// the fighters in battle: all four in a double battle (fainted ones too, until replaced), the two otherwise
+// the Pokemon a side's conditions are named after: its first standing one in a double battle
+function sideFront(battle, key) { return battle.doubles ? battle.slots[key].find(alive) ?? battle.slots[key].find(Boolean) : key === "a" ? battle.ally : battle.foe; }
+function allActives(battle) { return battle.doubles ? [...battle.slots.a, ...battle.slots.b].filter(Boolean) : [battle.ally, battle.foe]; }
+function livingIn(battle, key) { return battle.slots[key].filter(alive); }
+// the first standing Pokemon facing f, for the moves that need one there
+function opponentOf(battle, f) {
+    const side = battle.slots[otherSide(f.sideKey)];
+    return side.find((o) => alive(o) && adjacent(battle, f, o)) ?? side.find(alive) ?? side.find(Boolean);
+}
+// points battle.ally and battle.foe at f and the Pokemon facing it, so the one-on-one code sees f's side as its own
+function focus(battle, f) {
+    if (!battle.doubles || !f) return;
+    const other = opponentOf(battle, f) ?? f;
+    if (f.sideKey === "a") { battle.ally = f; battle.foe = other; } else { battle.foe = f; battle.ally = other; }
+    if (f.sideKey === "b" && battle.gym && f.partyIndex !== undefined) battle.gym.at = f.partyIndex;
+}
+// the same for a move from a at d; a move at a partner keeps the attacker's side as its own
+function focusPair(battle, a, d) {
+    if (!battle.doubles) return;
+    if (!d || d === a || d.sideKey === a.sideKey) { focus(battle, a); return; }
+    if (a.sideKey === "a") { battle.ally = a; battle.foe = d; } else { battle.foe = a; battle.ally = d; }
+    if (battle.gym) { const g = a.sideKey === "b" ? a : d; if (g.partyIndex !== undefined) battle.gym.at = g.partyIndex; }
+}
+function setSlot(battle, key, slot, f) {
+    f.sideKey = key; f.slot = slot;
+    battle.slots[key][slot] = f;
+}
+// where each slot stands: the single battle's spot, then a step to the left or right across the line between the sides
+function slotSpot(from, to, slot, w, wOpp, share, n = 2) {
+    const at = battleSpot(from, to, w, wOpp, share);
+    const ox = to.x - from.x, oz = to.z - from.z, len = Math.hypot(ox, oz) || 1, step = (n === 3 ? (slot - 1) * 2 : slot === 0 ? -1 : 1) * (0.9 + w * 0.6);   // a triple's middle slot on the line
+    return { x: at.x + (-oz / len) * step, y: at.y, z: at.z + (ox / len) * step };
+}
+// which Pokemon a move goes at: chosen is the slot picked, on the other side or (ally) the user's own, for a move with
+// one target
+function moveTargets(battle, a, move, chosen, ally = false) {
+    const target = move.target ?? "normal", allOpp = livingIn(battle, otherSide(a.sideKey)), near = (f) => adjacent(battle, a, f);
+    // in a triple battle only a move at any Pokemon reaches past the ones beside and across (validTargetLoc)
+    const opp = target === "any" ? allOpp : allOpp.filter(near), partner = livingIn(battle, a.sideKey).filter((f) => f !== a && (target === "any" || near(f)));
+    if (target === "allAdjacentFoes") return opp;
+    if (target === "allAdjacent") return [...opp, ...partner];
+    if (target === "adjacentAlly") return ally ? partner.filter((f) => f.slot === chosen).concat(partner).slice(0, 1) : partner.slice(0, 1);
+    if (target === "randomNormal") return opp.length ? [opp[Math.floor(Math.random() * opp.length)]] : [];
+    // a foe that is the center of attention draws a one-target move, unless the user's ability keeps it on its target
+    const lure = !["stalwart", "propellertail"].includes(a.ability) && target !== "adjacentAlly"
+        && opp.filter((f) => f.spotlit?.turn === battle.turn && !(f.spotlit.powder && powderSafe(a))).sort((x, y) => y.spotlit.rank - x.spotlit.rank)[0];
+    if (lure && (CHOSEN_TARGETS.has(target) || target === "randomNormal")) return [lure];
+    if (CHOSEN_TARGETS.has(target) && ally) return partner.filter((f) => f.slot === chosen);
+    if (CHOSEN_TARGETS.has(target)) {
+        const picked = battle.slots[otherSide(a.sideKey)][chosen];
+        return alive(picked) ? [picked] : opp.length ? [opp[Math.floor(Math.random() * opp.length)]] : [];
+    }
+    return [opp[0] ?? a];   // the user, its side or the field: the move needs someone facing it
+}
+// a triple battle's Shift (ShiftActionResponse, Showdown's "shift"): an edge Pokemon trades places with the middle one
+function shiftToCenter(battle, f) {
+    const mid = battle.slots[f.sideKey][1];
+    if (!battle.triples || f.slot === 1) return;
+    if (mid) swapPlaces(battle, f, mid);
+    else { const real = realBattle(battle); real.slots[f.sideKey][f.slot] = null; setSlot(real, f.sideKey, 1, f); swapPlaces(battle, f, f); }
+    say(battle, `§7${f.info.name} moved to the center!`);
+}
+// Showdown's automatic center: with one Pokemon left on each side of a triple battle and the two out of reach, both move
+// to the middle at the start of the turn
+function autoCenter(battle) {
+    if (!battle.triples) return;
+    const real = realBattle(battle), left = (key) => livingIn(real, key).length + (key === "a" || real.pvp ? benchFor(viewOf(real, key)).length : (real.gym?.party ?? []).filter((p) => !p.down && !p.out).length);
+    if (left("a") !== 1 || left("b") !== 1) return;
+    const [x, y] = [livingIn(real, "a")[0], livingIn(real, "b")[0]];
+    if (!x || !y || adjacent(real, x, y)) return;
+    for (const f of [x, y]) if (f.slot !== 1) { const mid = real.slots[f.sideKey][1]; if (mid) swapPlaces(real, f, mid); else { real.slots[f.sideKey][f.slot] = null; setSlot(real, f.sideKey, 1, f); swapPlaces(real, f, f); } }
+    say(real, "§7The Pokémon were moved to the center!");
+}
+// Rage Powder's immunity: Grass types, Overcoat and Safety Goggles
+function powderSafe(f) { return f.info.types.includes("grass") || f.ability === "overcoat" || held(f) === "safety_goggles"; }
+// Ally Switch: two partners trade slots, each moving to its new slot's spot worked out for its own size
+function swapPlaces(battle, a, b) {
+    const real = realBattle(battle), [sa, sb] = [a.slot, b.slot];
+    if (a !== b) { setSlot(real, a.sideKey, sb, a); setSlot(real, b.sideKey, sa, b); }
+    for (const f of a === b ? [a] : [a, b]) {
+        const other = opponentOf(real, f)?.entity, own = f.sideKey === "a" ? real.player : real.gym?.npc ?? real.opponent;
+        if (!f.entity?.isValid || !own?.isValid || !other?.isValid) continue;
+        const spot = slotSpot(own.location, other.location, f.slot, widthOf(f.entity), widthOf(other), 0.3, slotCount(real));
+        try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other.location }); } catch (e) { }
+    }
+}
+// the turn order: priority, then Quick Claw and the like, then the ones that go last, then speed (each worked out once)
+function actionOrder(battle, picks) {
+    const last = (f, m) => held(f) === "lagging_tail" || held(f) === "full_incense" || f.ability === "stall" || (f.ability === "myceliummight" && m?.category === "Status");
+    const keyed = picks.map((p) => ({ p, pri: p.move ? priorityOf(battle, p.f, p.move) : 0, claw: p.move ? goesFirst(battle, p.f, p.move) : false, last: last(p.f, p.move), spe: speedOf(p.f, battle), tie: Math.random() }));
+    const trick = realBattle(battle).trickRoom > 0;
+    keyed.sort((x, y) => (y.pri - x.pri) || (y.claw - x.claw) || (x.last - y.last) || (trick ? x.spe - y.spe : y.spe - x.spe) || (x.tie - y.tie));
+    return keyed.map((k) => k.p);
+}
+
+function startDoubleBattle(player, npc, team, trainer, n = 2) {
+    if (!team.length || battles.has(player.id) || !npc.isValid) return;
+    const party = findParty(player);
+    if (!party.length) { player.sendMessage("§cYou have no Pokemon that can fight. Claim one with a Poke Ball, or heal yours."); return; }
+    const chosen = selectedMember(player), leads = (chosen && !prop(chosen, FAINTED) ? [chosen, ...party.filter((e) => e.id !== chosen.id)] : party).slice(0, n);
+    const foeParty = team.map((spec) => ({ spec, down: false }));
+    const foes = foeParty.slice(0, n).map((p, i) => {
+        const e = spawnGymPokemon(npc, p.spec, player);
+        if (e) { p.out = true; try { e.teleport(slotSpot(npc.location, player.location, i, POKEMON[p.spec.t]?.width ?? 1, 1, 0.3, n)); } catch (err) { } }
+        return e;
+    });
+    if (!foes[0]) { for (const e of foes) try { e?.remove(); } catch (err) { } return; }
+    system.runTimeout(() => {
+        if (!player.isValid || foes.some((e) => e && !e.isValid) || battles.has(player.id)) { for (const e of foes) try { e?.remove(); } catch (err) { } return; }
+        const battle = { player, doubles: true, triples: n === 3, trainer: trainer.name, turn: 0, slots: { a: emptySlots(n), b: emptySlots(n) }, faced: new Set(),
+                         gym: { npc, party: foeParty, at: 0, turns: 0, itemsLeft: 0, bag: [], margin: 0, ...trainer } };
+        holdBattle(battle);
+        battleMusic(player, "pvn");
+        foes.forEach((e, i) => {
+            if (!e) return;
+            const f = fighter(e);
+            f.partyIndex = i;
+            setSlot(battle, "b", i, f);
+            freeze(e, true);
+            say(battle, `§6${trainer.name} sent out ${f.info.name}! §7(Lv ${f.level})`);
+            register(player, e.typeId, 1, variantOf(e));
+        });
+        battle.foe = battle.slots.b[0];
+        leads.forEach((e, i) => {
+            const spot = slotSpot(player.location, npc.location, i, widthOf(e), widthOf(foes[0]), 0.3, n);
+            const f = sendOut(battle, e, { x: spot.x, y: e.isProxy ? npc.location.y : e.location.y, z: spot.z });
+            if (f) setSlot(battle, "a", i, f);
+        });
+        if (!battle.slots.a.some(Boolean)) { endBattle(battle); return; }
+        for (const f of battle.slots.b) if (f) { focus(battle, f); enter(battle, f, battle.ally); }
+        system.runTimeout(() => faceAll(battle), 2);
+        system.runTimeout(() => doubleTurn(battle), 20);
+    }, 5);
+}
+// every standing Pokemon facing f, for the entry abilities that reach them all; one coming in is on the side battle.ally
+// was just pointed at, before its slot is set
+function opponentsOf(battle, f, other) {
+    if (!battle.doubles) return [other];
+    const key = f.sideKey ?? (f === realBattle(battle).ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter((o) => alive(o) && (f.sideKey === undefined || adjacent(battle, f, o)));
+    return opp.length ? opp : [other];
+}
+// Howl, Life Dew and Jungle Healing (Showdown's "allies" target): what they do for the user, done for its partner too
+function alliesEffect(battle, a, move) {
+    for (const p of livingIn(battle, a.sideKey).filter((f) => f !== a)) {
+        if (move.boosts) boost(battle, p, move.boosts, a);
+        if (move.id === "junglehealing" && p.status) { p.status = null; say(battle, `§a${p.info.name}'s status returned to normal!`); }
+        if ((move.heal || move.id === "junglehealing") && p.hp < p.stats.hp && !p.healBlock) {
+            p.hp = Math.min(p.stats.hp, p.hp + Math.round(p.stats.hp / 4)); syncHealth(p); say(battle, `§a${p.info.name} restored its HP.`);
+        }
+    }
+}
+// the view a side's trainer sees: the battle for side a, its mirror for side b in a battle between players
+function viewOf(battle, key) { return key === "b" && battle.mirror ? battle.mirror : battle; }
+function holdBattle(battle) { battles.set(battle.player.id, battle); return battle; }
+function faceAll(battle) {
+    for (const f of allActives(battle)) {
+        const o = opponentOf(battle, f)?.entity;
+        if (f?.entity?.isValid && o?.isValid) try { f.entity.teleport(f.entity.location, { facingLocation: o.location }); } catch (e) { }
+    }
+}
+// BattleTargetSelection, laid out by ui/server_form.json: the foe's two over the player's two, the ones the move can be
+// used on lit; asked when the move has one target and more than one can be picked. A move at any adjacent Pokemon can
+// go at the partner too, as in Cobblemon; Back returns undefined
+function chooseTarget(battle, f, move) {
+    const t = move.target ?? "normal", foeKey = otherSide(f.sideKey), n = slotCount(battle);
+    if (!CHOSEN_TARGETS.has(t)) return Promise.resolve({ slot: 0, ally: false });
+    // by field position: the foe's row turned round, so the one across from each of the player's is above it
+    const tiles = [...[...Array(n).keys()].reverse().map((i) => [foeKey, i]), ...[...Array(n).keys()].map((i) => [f.sideKey, i])];
+    const can = ([key, slot]) => {
+        const g = battle.slots[key][slot];
+        return alive(g) && g !== f && (key === foeKey || t !== "adjacentFoe") && (t === "any" || adjacent(battle, f, g));
+    };
+    const options = tiles.filter(can);
+    if (options.length < 2) return Promise.resolve(options[0] ? { slot: options[0][1], ally: options[0][0] === f.sideKey } : { slot: 0, ally: false });
+    const form = new ActionFormData().title(battleTitle(battle, "target")).body(battleBody(battle));
+    for (const tile of tiles) {
+        const g = battle.slots[tile[0]][tile[1]];
+        if (!g) { form.button("", `${UI}/battle/target_off`); continue; }
+        const name = (nicknameOf(g.entity) || g.info.name).normalize("NFD").replace(/[^ -~]/g, "");
+        form.button(pad(name, 12) + pad(`Lv.${g.level}`, 6) + iconOf(g.entity?.typeId, variantOf(g.entity)), `${UI}/battle/${can(tile) ? "target" : "target_off"}`);
+    }
+    form.button("Back", `${UI}/battle/back`);
+    return form.show(battle.player).then((r) => {
+        if (r.canceled || r.selection >= tiles.length || !battles.has(battle.player.id)) return undefined;
+        const tile = tiles[r.selection];
+        return can(tile) ? { slot: tile[1], ally: tile[0] === f.sideKey } : chooseTarget(battle, f, move);
+    });
+}
+// the player's choices, one Pokemon at a time, then the trainer's, then the turn
+function doubleTurn(battle) {
+    if (!battles.has(battle.player.id)) return;
+    battle.turn++;
+    autoCenter(battle);
+    faceAll(battle);
+    const mine = battle.slots.a.filter(alive);
+    battle.picks = [];
+    const ask = (k) => {
+        if (!battles.has(battle.player.id)) return;
+        battle.resume = () => ask(k);
+        if (k >= mine.length) { battle.choosing = "-"; trainerPicks(battle); resolveDouble(battle); return; }
+        const f = mine[k];
+        battle.choosing = String(f.slot);
+        focus(battle, f);
+        const lockedIn = forcedMove(f);
+        if (lockedIn) { battle.picks.push({ f, move: lockedIn, target: 0 }); ask(k + 1); return; }
+        const usable = f.moves.filter((m) => canPick(f, m));
+        const options = usable.length ? f.moves.map((m) => ({ kind: "move", move: m, blocked: blockedWhy(f, m) })) : [{ kind: "move", move: STRUGGLE }];
+        if (benchFor(battle).length) options.push({ kind: "switch", stuck: trappedIn(battle, f) });
+        options.push({ kind: "run", stuck: true });
+        if (battle.triples && f.slot !== 1) options.push({ kind: "shift" });
+        if (f.choiceLock && held(f)?.startsWith("choice_")) for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== f.choiceLock) o.locked = true;
+        pickAction(battle, options).then((choice) => {
+            if (!battles.has(battle.player.id)) return;
+            if (!choice) { minimise(battle); return; }
+            if (choice.kind === "forfeit") {
+                new MessageFormData().title("Forfeit").body("Are you sure you want to forfeit the battle?").button1("Forfeit").button2("Keep battling").show(battle.player).then((r) => {
+                    if (!battles.has(battle.player.id)) return;
+                    if (r.selection === 0) endBattle(battle, "§7You forfeited the battle."); else ask(k);
+                }).catch(() => { });
+                return;
+            }
+            if (choice.kind === "run" || choice.kind === "catch") { say(battle, "§7There's no running from a Trainer battle!"); ask(k); return; }
+            if (choice.kind === "shift") { battle.picks.push({ f, kind: "shift" }); ask(k + 1); return; }
+            if (choice.kind === "switch") {
+                if (choice.stuck) { say(battle, `§7${f.info.name} can't escape!`); ask(k); return; }
+                chooseSwitch(battle, false).then((entity) => {
+                    if (!battles.has(battle.player.id)) return;
+                    if (!entity) { ask(k); return; }
+                    battle.picks.push({ f, kind: "switch", entity });
+                    ask(k + 1);
+                }).catch((e) => battleFailed(battle, e));
+                return;
+            }
+            if (choice.locked) { say(battle, `§7${f.info.name} can only use ${MOVES[f.choiceLock]?.name}!`); ask(k); return; }
+            if (choice.blocked) { say(battle, `§7${choice.blocked}`); ask(k); return; }
+            const move = choice.move;
+            if (move !== STRUGGLE && move.left <= 0) { say(battle, "§cThere's no PP left for this move!"); ask(k); return; }
+            chooseTarget(battle, f, move).then((target) => {
+                if (!battles.has(battle.player.id)) return;
+                if (target === undefined) { ask(k); return; }
+                if ((held(f)?.startsWith("choice_") || f.ability === "gorillatactics") && move !== STRUGGLE) f.choiceLock = f.choiceLock ?? move.id;
+                battle.picks.push({ f, move, target: target.slot, ally: target.ally });
+                ask(k + 1);
+            }).catch((e) => battleFailed(battle, e));
+        }).catch((e) => battleFailed(battle, e));
+    };
+    ask(0);
+}
+// the player's party that can come in: able, and not out or already picked to come in this turn
+function benchFor(battle) {
+    const key = battle.side === 1 ? "b" : "a";
+    const busy = new Set([...battle.slots[key].filter(Boolean).map((f) => memberKey(f.entity)), ...(battle.picks ?? []).filter((p) => p.entity).map((p) => memberKey(p.entity))]);
+    const party = battle.adjustLevel > 0 ? summaryParty(battle.player) : findParty(battle.player);
+    return party.filter((e) => !busy.has(memberKey(e)) && !battle.down?.has(memberKey(e)));
+}
+// each of the trainer's Pokemon picks a move at one of the player's (its AI sees that one as the player's Pokemon); a
+// trainer's switch in a double battle stays a move
+function trainerPicks(battle) {
+    for (const g of battle.slots.b.filter(alive)) {
+        const all = battle.slots.a.map((f, i) => [f, i]).filter(([f]) => alive(f)), near = all.filter(([f]) => adjacent(battle, g, f));
+        const mine = near.length ? near : all;
+        if (!mine.length) return;
+        const [target, slot] = mine[Math.floor(Math.random() * mine.length)];
+        focusPair(battle, g, target);
+        let move = forcedMove(g) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(g));
+        if (move?.gymSwitch && !battle.picks.some((p) => p.to === move.to) && !battle.gym.party[move.to]?.out) { battle.picks.push({ f: g, kind: "trainerSwitch", to: move.to }); continue; }
+        if (move?.gymSwitch || !move) move = pickFoeMove(g);
+        battle.picks.push({ f: g, move, target: slot });
+    }
+}
+function resolveDouble(battle) {
+    battle.swap = null;
+    for (const p of battle.picks.filter((p) => p.kind === "switch")) if (p.entity?.isValid && alive(p.f)) switchSlot(battle, p.f, p.entity);
+    // the trainer's switches, one after another (each new Pokemon takes a moment to come out), then the moves
+    const trainerSwitches = battle.picks.filter((p) => p.kind === "trainerSwitch");
+    const nextSwitch = (k) => {
+        if (!battles.has(battle.player.id)) return;
+        if (k >= trainerSwitches.length) { resolveMoves(battle); return; }
+        trainerIn(battle, trainerSwitches[k].f.slot, { swap: true, to: trainerSwitches[k].to }, () => nextSwitch(k + 1));
+    };
+    nextSwitch(0);
+}
+function resolveMoves(battle) {
+    const moves = actionOrder(battle, battle.picks.filter((p) => p.move || p.kind === "shift"));
+    for (const p of moves) p.f.chosenMove = p.move;
+    battle.movedFirst = moves[0]?.f ?? null;
+    const step = (i) => {
+        if (!battles.has(battle.player.id)) return;
+        if (i >= moves.length) { focus(battle, battle.slots.a.find(alive) ?? battle.slots.a.find(Boolean)); endOfTurn(battle); return; }
+        const { f: a, target, ally } = moves[i];
+        let m = moves[i].move;
+        if (!alive(a) || !battle.slots[a.sideKey].includes(a) || m === GYM_ITEM) { step(i + 1); return; }
+        if (moves[i].kind === "shift") { shiftToCenter(battle, a); step(i + 1); return; }
+        if (m === RECHARGE) { a.mustRecharge = false; say(battle, `§7${a.info.name} must recharge!`); step(i + 1); return; }
+        if (a.encore && m.id !== a.encore.id && !a.charging && !a.locked && !a.rolling && !a.bide) m = a.moves.find((x) => x.id === a.encore.id && x.left > 0) ?? m;
+        const targets = moveTargets(battle, a, m, target, ally);
+        if (!targets.length) { focus(battle, a); say(battle, `§e${a.info.name} used ${m.name}!§r §7But there was no target...`); step(i + 1); return; }
+        battle.spread = SPREAD_TARGETS.has(m.target) && targets.length > 1;
+        let swap = null, swapFrom = null;
+        try {
+            targets.forEach((d, n) => {
+                if (!alive(a) || (n > 0 && !battle.lastOutcome?.used)) return;   // one that could not move does not hit the next
+                focusPair(battle, a, d);
+                battle.swap = null;
+                useMove(battle, a, d, m, n > 0);
+                if (battle.swap && !swap) { swap = battle.swap; swapFrom = swap.drag ? d : a; }
+            });
+            if (m.target === "allies" && battle.lastOutcome?.used && !battle.lastOutcome.missed) alliesEffect(battle, a, m);
+        } finally { battle.spread = false; battle.swap = null; }
+        if (!swap || !alive(swapFrom)) { step(i + 1); return; }
+        afterFx(battle, () => pivotSlot(battle, swapFrom, swap, () => step(i + 1)));
+    };
+    step(0);
+}
+// a switch into a slot: the player's goes through switchTo with that slot's Pokemon as battle.ally, then stands in the slot
+function switchSlot(battle, leaving, entity) {
+    battle = viewOf(realBattle(battle), leaving.sideKey);
+    focus(realBattle(battle), leaving);
+    const slot = leaving.slot, key = leaving.sideKey, other = opponentOf(battle, leaving);
+    switchTo(battle, entity);
+    const f = battle.ally;
+    if (f === leaving) return;
+    setSlot(battle, key, slot, f);
+    const spot = slotSpot(battle.player.location, other?.entity?.location ?? battle.gym?.npc?.location ?? battle.opponent?.location ?? f.entity.location, slot, widthOf(entity), widthOf(other?.entity), 0.3, slotCount(battle));
+    try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other?.entity?.location }); } catch (e) { }
+}
+// the trainer's next Pokemon into a slot: its best matchup against the player's, or one at random when dragged out
+function trainerIn(battle, slot, opts, then) {
+    const g = battle.gym, bench = g.party.map((p, i) => [p, i]).filter(([p]) => !p.down && !p.out);
+    if (!bench.length) { then(); return; }
+    const [next, index] = (opts.to !== undefined && bench.find(([, i]) => i === opts.to)) || (opts.random ? bench[Math.floor(Math.random() * bench.length)] : bench[0]);
+    const leaving = battle.slots.b[slot];
+    if (opts.swap && leaving) {
+        g.party[leaving.partyIndex].kept = { hp: leaving.hp, status: leaving.status, sleep: leaving.sleep, toxic: leaving.toxic, moves: leaving.moves };
+        g.party[leaving.partyIndex].out = false;
+        const old = leaving.entity;
+        say(battle, `§7${g.name} withdrew ${leaving.info.name}!`);
+        freeze(old, false);
+        beamIn(old, () => (g.npc.isValid ? g.npc.getHeadLocation() : old.location), false, () => { try { if (old.isValid) old.remove(); } catch (e) { } });
+    }
+    const entity = spawnGymPokemon(g.npc.isValid ? g.npc : leaving?.entity ?? battle.player, next.spec, battle.player);
+    if (!entity) { then(); return; }
+    next.out = true;
+    try { entity.teleport(slotSpot(g.npc.location, battle.player.location, slot, widthOf(entity), 1, 0.3, slotCount(battle))); } catch (e) { }
+    system.runTimeout(() => {
+        if (!battles.has(battle.player.id) || !entity.isValid) { try { entity.remove(); } catch (e) { } return; }
+        const f = fighter(entity);
+        if (next.kept) { Object.assign(f, next.kept); next.kept = null; syncHealth(f); }
+        f.partyIndex = index;
+        freeze(entity, true);
+        setSlot(battle, "b", slot, f);
+        say(battle, `§6${g.name} sent out ${f.info.name}! §7(Lv ${f.level})`);
+        register(battle.player, entity.typeId, 1, variantOf(entity));
+        focus(battle, f);
+        enter(battle, f, battle.ally);
+        then();
+    }, 30);
+}
+// U-turn and the like take the user out for another, and Roar or Dragon Tail drag the target out for one at random
+function pivotSlot(battle, leaving, swap, then) {
+    if (!battles.has(battle.player.id)) return;
+    if (leaving.sideKey === "b") { trainerIn(battle, leaving.slot, { swap: true, random: swap.drag }, then); return; }
+    const bench = benchFor(battle);
+    if (!bench.length) { then(); return; }
+    const done = (entity) => {
+        if (!battles.has(battle.player.id)) return;
+        if (entity) {
+            switchSlot(battle, leaving, entity);
+            const f = battle.slots.a[leaving.slot];
+            if (swap.pass && f !== leaving) { f.stages = { ...leaving.stages }; f.focusEnergy = leaving.focusEnergy; }
+            if (swap.drag) say(battle, `§7${f.info.name} was dragged out!`);
+        }
+        then();
+    };
+    if (swap.drag) { done(bench[Math.floor(Math.random() * bench.length)]); return; }
+    focus(battle, leaving);
+    chooseSwitch(battle, true).then(done).catch((e) => battleFailed(battle, e));
+}
+// after the turn: the fainted, the battle's end once a side has nothing left, then the trainer's and the player's
+// replacements, and the next turn
+function doubleAfterTurn(battle) {
+    const g = battle.gym;
+    for (const f of battle.slots.b) {
+        if (!f || f.hp > 0 || f.gone) continue;
+        f.gone = true;
+        say(battle, `§a${f.info.name} fainted!`);
+        if (g?.party[f.partyIndex]) { g.party[f.partyIndex].down = true; g.party[f.partyIndex].out = false; }
+        const gone = f.entity, clip = FX_ANIMS[gone?.typeId]?.faint;
+        try { if (clip) playClip(gone, clip); } catch (e) { }
+        system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
+        // the player's Pokemon standing get its experience in full, and an Exp. Share holder on the bench half
+        const out = battle.slots.a.filter(alive), outIds = new Set(out.map((a) => a.entity.id));
+        for (const a of out) { focus(battle, a); gainExperience(battle, a, f, battleExperience(battle, a, f, 1)); }
+        for (const e of findParty(battle.player)) {
+            if (outIds.has(e.id) || prop(e, "cobblemon:held") !== "cobblemon:exp_share") continue;
+            const h = fighter(e);
+            if (h) gainExperience(battle, h, f, battleExperience(battle, h, f, 0.5));
+        }
+    }
+    for (const f of battle.slots.a) {
+        if (!f || f.hp > 0 || f.gone) continue;
+        f.gone = true;
+        say(battle, `§c${f.info.name} fainted!`);
+        setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1);
+        countProgress(f, (p) => { p.damage = 0; p.recoil = 0; });
+        freeze(f.entity, false);
+        try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
+    }
+    const trainerLeft = battle.slots.b.some(alive) || (g?.party ?? []).some((p) => !p.down && !p.out);
+    if (!trainerLeft) {
+        if (g) { focus(battle, battle.slots.a.find(alive)); gymWon(battle); }
+        else say(battle, "§6You defeated the Trainer!");
+        endBattle(battle);
+        return;
+    }
+    battle.picks = [];
+    if (!battle.slots.a.some(alive) && !benchFor(battle).length) { endBattle(battle, "§cYou have no more Pokemon that can fight!"); return; }
+    const foeSlots = battle.slots.b.map((f, i) => i).filter((i) => battle.slots.b[i]?.gone);
+    const mineSlots = battle.slots.a.map((f, i) => i).filter((i) => battle.slots.a[i]?.gone);
+    const foeNext = (k) => {
+        if (k >= foeSlots.length) { mineNext(0); return; }
+        trainerIn(battle, foeSlots[k], {}, () => foeNext(k + 1));
+    };
+    const mineNext = (k) => {
+        if (!battles.has(battle.player.id)) return;
+        if (k >= mineSlots.length || !benchFor(battle).length) { system.runTimeout(() => doubleTurn(battle), 20); return; }
+        const leaving = battle.slots.a[mineSlots[k]];
+        focus(battle, leaving);
+        chooseSwitch(battle, true).then((entity) => {
+            if (!battles.has(battle.player.id)) return;
+            if (entity) switchSlot(battle, leaving, entity);
+            mineNext(k + 1);
+        }).catch((e) => battleFailed(battle, e));
+    };
+    foeNext(0);
+}
+// /scriptevent cobblemon:battle_format doubles (or singles), run as a player: sets the format of the NPC trainer
+// they are looking at, or the nearest one within 8 blocks
+function setBattleFormat(player, format) {
+    const fmt = format === "doubles" || format === "triples" ? format : "singles";
+    let npc;
+    try { npc = player.getEntitiesFromViewDirection({ maxDistance: 16 }).map((h) => h.entity).find((e) => e.typeId.startsWith("cobblemon:npc")); } catch (e) { }
+    if (!npc) try { npc = player.dimension.getEntities({ location: player.location, maxDistance: 8 }).find((e) => e.typeId.startsWith("cobblemon:npc")); } catch (e) { }
+    if (!npc) { player.sendMessage("§cLook at an NPC trainer, or stand within 8 blocks of one."); return; }
+    setProp(npc, BATTLE_FORMAT, fmt === "singles" ? undefined : fmt);
+    player.sendMessage(`§7${npc.nameTag || "The NPC"} now fights ${FORMAT_NAMES[fmt]}s.`);
+}
+
 function mirrorOf(battle) {
     const m = Object.create(battle);
     const link = (key, other) => Object.defineProperty(m, key, { get: () => battle[other], set: (v) => { battle[other] = v; }, configurable: true });
@@ -3845,6 +6070,134 @@ function battleSpot(actor, opposing, wMe, wOpp, share) {
     return { x: x + ox * share + (-oz / len) * side, y: actor.y, z: z + oz * share + (ox / len) * side };
 }
 const widthOf = (e) => POKEMON[e?.typeId]?.width ?? 1;
+// A Double Battle between players (BattleBuilder.pvp in GEN_9_DOUBLES): each sends out its first two Pokemon side by side
+// and picks for both each turn, as against a trainer; the turn goes once both have chosen, "Waiting for ..." showing
+// on the side that has. A fainted Pokemon gives the other side's Pokemon in battle experience, its trainer picks the
+// next (both at once), and the side with none left loses
+function startPvpDoubles(p1, p2, level, n = 2) {
+    if (battles.has(p1.id) || battles.has(p2.id)) return;
+    const leads = (p) => (level > 0 ? summaryParty(p) : findParty(p)).slice(0, n);
+    const a = leads(p1), b = leads(p2);
+    if (!a.length || !b.length) {
+        for (const [p, other, has] of [[p1, p2, a.length], [p2, p1, b.length]]) if (!has) { p.sendMessage("§cYou don't have any Pokémon to battle with!"); other.sendMessage(`§b${p.name}§c doesn't have any Pokémon to battle with!`); }
+        return;
+    }
+    const battle = { pvp: true, doubles: true, triples: n === 3, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
+                     kept: {}, down: new Set(), choices: [], choiceLock: null, slots: { a: emptySlots(n), b: emptySlots(n) }, picks: [] };
+    const m = mirrorOf(battle);
+    battles.set(p1.id, battle); battles.set(p2.id, m);
+    battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
+    for (const [key, view, party, from, to, wOpp] of [["a", battle, a, p1, p2, widthOf(b[0])], ["b", m, b, p2, p1, widthOf(a[0])]]) {
+        party.forEach((e, i) => {
+            const spot = slotSpot(from.location, to.location, i, widthOf(e), wOpp, 0.3, n);
+            const f = battleFighter(battle, e);
+            if (!f) return;
+            if (f.entity.isProxy) f.entity = materialize(view.player, f.entity, spot);
+            if (!f.entity) return;
+            setSlot(battle, key, i, f);
+            freeze(f.entity, true);
+            try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: to.location }); } catch (e) { }
+            sendOutEffect(view.player, f.entity);
+            const name = titled(f.entity, nicknameOf(f.entity) || f.info.name);
+            sayEach(view, `§6Go! ${name}! §7(Lv ${f.level})`, `§6${view.player.name} sent out ${name}! §7(Lv ${f.level})`);
+            register(view.opponent, f.entity.typeId, 1, variantOf(f.entity));
+        });
+    }
+    if (!battle.slots.a.some(Boolean) || !battle.slots.b.some(Boolean)) { endBattle(battle, "§cThe battle could not start here."); return; }
+    for (const f of allActives(battle)) { focus(battle, f); enter(battle, f, opponentOf(battle, f)); }
+    system.runTimeout(() => faceAll(battle), 2);
+    system.runTimeout(() => pvpDoubleTurn(battle), 20);
+}
+function pvpDoubleTurn(battle) {
+    if (!pvpLive(battle)) return;
+    for (const [v, key] of [[battle, "a"], [battle.mirror, "b"]]) {
+        if (!v.player.isValid || !battle.slots[key].some((f) => alive(f) && f.entity.isValid)) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
+    }
+    battle.turn++;
+    autoCenter(battle);
+    faceAll(battle);
+    battle.picks = []; battle.done = { a: false, b: false }; battle.replacing = null;
+    pvpDoubleAsk(battle, 0); pvpDoubleAsk(battle.mirror, 0);
+}
+// one side's choices, Pokemon by Pokemon, as doubleTurn asks the player against a trainer
+function pvpDoubleAsk(view, k) {
+    const battle = realBattle(view), key = view.side === 1 ? "b" : "a";
+    if (!pvpLive(battle) || battle.done[key]) return;
+    view.resume = () => pvpDoubleAsk(view, k);
+    const mine = battle.slots[key].filter(alive);
+    if (k >= mine.length) {
+        view.choosing = "-"; battle.done[key] = true;
+        if (battle.done[otherSide(key)]) resolveDouble(battle);
+        return;
+    }
+    const f = mine[k], again = () => pvpDoubleAsk(view, k);
+    view.choosing = String(f.slot);
+    const usable = f.moves.filter((m) => m.left > 0);
+    const options = usable.length ? f.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
+    if (benchFor(view).length) options.push({ kind: "switch" });
+    if (battle.triples && f.slot !== 1) options.push({ kind: "shift" });
+    if (f.choiceLock && held(f)?.startsWith("choice_")) for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== f.choiceLock) o.locked = true;
+    pickAction(view, options).then((choice) => {
+        if (!pvpLive(battle) || battle.done[key]) return;
+        if (!choice) { minimise(view); return; }
+        if (choice.kind === "forfeit") { pvpEnd(battle, view, `§7${view.player.name} forfeited the battle!`); return; }
+        if (choice.kind === "shift") { battle.picks.push({ f, kind: "shift" }); pvpDoubleAsk(view, k + 1); return; }
+        if (choice.kind === "switch") {
+            chooseSwitch(view, false, f).then((entity) => {
+                if (!pvpLive(battle)) return;
+                if (!entity) { again(); return; }
+                battle.picks.push({ f, kind: "switch", entity });
+                pvpDoubleAsk(view, k + 1);
+            }).catch(() => minimise(view));
+            return;
+        }
+        if (choice.locked) { view.player.sendMessage(`§7${f.info.name} can only use ${MOVES[f.choiceLock]?.name}!`); again(); return; }
+        const move = choice.move;
+        if (move !== STRUGGLE && move.left <= 0) { view.player.sendMessage("§cThere's no PP left for this move!"); again(); return; }
+        chooseTarget(view, f, move).then((target) => {
+            if (!pvpLive(battle) || battle.done[key]) return;
+            if (target === undefined) { again(); return; }
+            if (held(f)?.startsWith("choice_") && move !== STRUGGLE) f.choiceLock = f.choiceLock ?? move.id;
+            battle.picks.push({ f, move, target: target.slot, ally: target.ally });
+            pvpDoubleAsk(view, k + 1);
+        }).catch(() => minimise(view));
+    }).catch(() => minimise(view));
+}
+// after the turn: the fainted (each side's experience going to the other's Pokemon in battle), the side with nothing
+// left losing, then both trainers' replacements at once, and the next turn
+function pvpDoubleAfterTurn(battle) {
+    if (!pvpLive(battle)) return;
+    for (const key of ["a", "b"]) {
+        for (const f of battle.slots[key]) {
+            if (!f || f.hp > 0 || f.gone) continue;
+            f.gone = true;
+            say(battle, `§c${f.info.name} fainted!`);
+            battle.down.add(memberKey(f.entity));
+            if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); countProgress(f, (p) => { p.damage = 0; p.recoil = 0; }); }
+            freeze(f.entity, false);
+            try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
+            const winners = viewOf(battle, otherSide(key));
+            for (const w of battle.slots[otherSide(key)].filter(alive)) if (!w.clone) gainExperience(winners, w, f);
+        }
+    }
+    const out = ["a", "b"].filter((key) => !battle.slots[key].some(alive) && !benchFor(viewOf(battle, key)).length);
+    if (out.length === 2) { pvpEnd(battle, null, "§7Both trainers are out of usable Pokémon!"); return; }
+    if (out.length) { const loser = viewOf(battle, out[0]); pvpEnd(battle, loser, `§c${loser.player.name} is out of usable Pokémon!`); return; }
+    battle.picks = [];
+    const sides = ["a", "b"].map((key) => [key, viewOf(battle, key), battle.slots[key].filter((f) => f?.gone)]).filter(([, view, gone]) => gone.length && benchFor(view).length);
+    if (!sides.length) { system.runTimeout(() => pvpDoubleTurn(battle), 30); return; }
+    battle.replacing = new Set(sides.map(([, view]) => view.side));
+    const replace = (view, gone, k) => {
+        if (!pvpLive(battle) || k >= gone.length || !benchFor(view).length) return Promise.resolve();
+        return chooseSwitch(view, true, gone[k]).then((entity) => {
+            if (entity && pvpLive(battle)) switchSlot(view, gone[k], entity);
+            return replace(view, gone, k + 1);
+        });
+    };
+    Promise.all(sides.map(([, view, gone]) => replace(view, gone, 0).then(() => battle.replacing.delete(view.side)))).then(() => {
+        if (pvpLive(battle)) system.runTimeout(() => pvpDoubleTurn(battle), 20);
+    }).catch((e) => battleFailed(battle, e));
+}
 function startPvp(p1, p2, level) {
     if (battles.has(p1.id) || battles.has(p2.id)) return;
     const a = pvpLead(p1, level), b = pvpLead(p2, level);
@@ -3929,13 +6282,8 @@ function pvpResolve(battle) {
     const { ally, foe } = battle;
     if (ca.kind === "move" && cb.kind === "move") {
         const move = ca.move, foeMove = cb.move;
-        const last = (f) => held(f) === "lagging_tail" || held(f) === "full_incense";
-        const claw = (f) => held(f) === "quick_claw" && Math.random() < 0.2;
-        const allyClaw = claw(ally), foeClaw = claw(foe);
-        if (allyClaw) say(battle, `§7${ally.info.name}'s Quick Claw let it move first!`); else if (foeClaw) say(battle, `§7${foe.info.name}'s Quick Claw let it move first!`);
-        const sameBracket = (move.priority || 0) === (foeMove.priority || 0);
-        const allyFirst = (move.priority || 0) > (foeMove.priority || 0) || (sameBracket && (
-            allyClaw !== foeClaw ? allyClaw : last(ally) !== last(foe) ? last(foe) : fasterOf(speedOf(ally, battle), speedOf(foe, battle), battle)));
+        ally.chosenMove = move; foe.chosenMove = foeMove;
+        const allyFirst = allyGoesFirst(battle, ally, foe, move, foeMove);
         battle.movedFirst = allyFirst ? ally : foe;
         const order = allyFirst ? [[ally, foe, move], [foe, ally, foeMove]] : [[foe, ally, foeMove], [ally, foe, move]];
         for (const [a, d, mv] of order) if (a.hp > 0 && d.hp > 0) useMove(battle, a, d, mv);
@@ -3952,7 +6300,7 @@ function pvpAfterTurn(battle) {
         const f = v.ally;
         say(battle, `§c${f.info.name} fainted!`);
         battle.down.add(memberKey(f.entity));
-        if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); }
+        if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); countProgress(f, (p) => { p.damage = 0; p.recoil = 0; }); }
         freeze(f.entity, false);
         try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
         const w = v.mirror;
@@ -3975,7 +6323,8 @@ system.runInterval(() => {
     for (const view of battles.values()) {
         if (!view.pvp || !view.player.isValid) continue;
         const battle = realBattle(view);
-        const chose = battle.choices?.[view.side] && !battle.choices[1 - view.side];
+        const mine = view.side === 1 ? "b" : "a";
+        const chose = battle.doubles ? battle.done?.[mine] && !battle.done[otherSide(mine)] : battle.choices?.[view.side] && !battle.choices[1 - view.side];
         const replacing = battle.replacing?.has(1 - view.side) && !battle.replacing.has(view.side);
         if (chose || replacing) { try { view.player.onScreenDisplay.setActionBar(`§7Waiting for ${view.opponent.name}...`); } catch (e) { } }
     }
@@ -4000,15 +6349,18 @@ function openChallenge(player, target) {
     const pending = challenges.find((c) => c.from.id === target.id && c.to.id === player.id);
     const index = pending ? Math.max(0, LEVEL_RULES.indexOf(pending.level)) : challengeRule.get(player.id) ?? 0;
     const level = LEVEL_RULES[index];
-    const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + "Single Battle";
+    const format = pending ? pending.format ?? "singles" : challengeFormat.get(player.id) ?? "singles";
+    const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + FORMAT_NAMES[format];
     const T = `${UI}/request`, none = `${UI}/request/none`;
     const form = new ActionFormData().title("cbm:challenge").body(body);
+    if (pending) pending.shown = true;
     form.button(pending ? "" : "Challenge", pending ? none : `${T}/battle`);
     form.button(pending ? "decline" : "", pending ? `${T}/decline` : none);   // in a challenge, the Challenge button's right half
     form.button("", pending ? none : `${T}/arrow_left`).button("", pending ? none : `${T}/arrow_right`);
     form.button("", pending ? none : `${T}/label_arrow_left`).button("", pending ? none : `${T}/label_arrow_right`);
     form.button(pending ? "accept" : "", pending ? `${T}/accept` : none);   // Accept beside Decline, its own button for a controller
     form.show(player).then((r) => {
+        if (pending) pending.shown = false;
         if (r.canceled || !target.isValid) return;
         const pick = r.selection;
         const click = () => { try { player.playSound("cobblemon.gui.click"); } catch (e) { } };
@@ -4024,20 +6376,28 @@ function openChallenge(player, target) {
             return;
         }
         if (pick === 4 || pick === 5) { click(); challengeRule.set(player.id, (index + (pick === 5 ? 1 : LEVEL_RULES.length - 1)) % LEVEL_RULES.length); openChallenge(player, target); return; }
-        if (pick === 2 || pick === 3) { click(); openChallenge(player, target); return; }   // the Single Battle is the one format
-        if (pick === 0 || pick === 1) sendChallenge(player, target, level);
+        // the format arrows page between Single and Double Battle (Triple, Multi and Royal are not carried)
+        if (pick === 2 || pick === 3) {
+            click();
+            challengeFormat.set(player.id, FORMAT_ORDER[(FORMAT_ORDER.indexOf(format) + (pick === 3 ? 1 : FORMAT_ORDER.length - 1)) % FORMAT_ORDER.length]);
+            openChallenge(player, target); return;
+        }
+        if (pick === 0 || pick === 1) sendChallenge(player, target, level, format);
     }).catch(() => { });
 }
-function sendChallenge(player, target, level) {
+function sendChallenge(player, target, level, format = "singles") {
     if (battles.has(player.id) || battles.has(target.id)) { player.sendMessage("§cTarget is currently unavailable for that action."); return; }
     if (pvpDistance(player, target) > PVP_RANGE) { player.sendMessage("§cTarget is too far away!"); return; }
     if (challenges.some((c) => c.from.id === player.id && c.to.id === target.id)) { player.sendMessage(`§cYou already have a pending battle request sent to §b${target.name}§c.`); return; }
     if (!pvpLead(player, level)) { player.sendMessage("§cYou don't have any Pokémon to battle with!"); return; }
     if (!pvpLead(target, level)) { player.sendMessage(`§b${target.name}§c doesn't have any Pokémon to battle with!`); return; }
-    challenges.push({ from: player, to: target, level, at: system.currentTick });
-    player.sendMessage(`§aYou challenged §b${target.name}§a to a Single Battle.`);
-    target.sendMessage(`§b${player.name}§a challenged you to a Single Battle! §7(${ruleName(level)})`);
+    challenges.push({ from: player, to: target, level, format, at: system.currentTick });
+    player.sendMessage(`§aYou challenged §b${target.name}§a to a ${FORMAT_NAMES[format]}.`);
+    target.sendMessage(`§b${player.name}§a challenged you to a ${FORMAT_NAMES[format]}! §7(${ruleName(level)})`);
     try { target.playSound("random.orb"); } catch (e) { }
+    // Cobblemon tells the receiver with a toast answered by its respond keybind; a pack can add neither, so the request
+    // screen with Accept and Decline opens for them (the player wheel's Battle still reaches it while it is pending)
+    system.run(() => { if (target.isValid && !battles.has(target.id) && challenges.some((c) => c.from === player && c.to === target)) openChallenge(target, player); });
 }
 function acceptChallenge(c) {
     if (!c.from.isValid || !c.to.isValid) return;
@@ -4045,7 +6405,8 @@ function acceptChallenge(c) {
     c.from.sendMessage(`§b${c.to.name}§a accepted the challenge!`);
     c.to.sendMessage(`§aYou accepted §b${c.from.name}§a's challenge!`);
     if (c.test) return;   // cobblemon:challenge_test's stand-in has no Pokemon to battle
-    startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
+    if (c.format === "doubles" || c.format === "triples") startPvpDoubles(c.to, c.from, c.level, c.format === "triples" ? 3 : 2);   // BattleBuilder.pvp(receiver, sender) in GEN_9_DOUBLES
+    else startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
 }
 system.runInterval(() => {
     for (let i = challenges.length - 1; i >= 0; i--) {
@@ -4054,6 +6415,8 @@ system.runInterval(() => {
         challenges.splice(i, 1);
         if (c.from.isValid) c.from.sendMessage(`§7Your challenge to §b${c.to.isValid ? c.to.name : "them"}§7 has timed out!`);
         if (c.to.isValid) c.to.sendMessage(`§7The challenge from §b${c.from.isValid ? c.from.name : "them"}§7 has timed out!`);
+        // the Battle Request still open on it goes with it, rather than answering "already expired" to a late press
+        if (c.shown && c.to.isValid) try { uiManager.closeAllForms(c.to); } catch (e) { }
     }
 }, 20);
 world.afterEvents.playerLeave.subscribe(({ playerId }) => {
@@ -4096,9 +6459,59 @@ function healAround(dimension, location, player) {
 // HealingMachineRenderer's two rows of three, the machine lights up (charge MAX_CHARGE_LEVEL + 1, its active screen)
 // with healing_machine.active, and 24 ticks later (healTimeLeft) the party is healed, the balls come off and the
 // message shows over the hotbar (healingmachine.healed). A machine in use, or a player already healing, is refused,
-// as alreadyHealing does. It never runs out of charge here.
+// as alreadyHealing does.
+// Its charge (healingCharge): up to maxHealerCharge 6, a newly placed machine empty and filling in
+// secondsToChargeHealingMachine 900; a heal needs the party's missing health in Pokemon (getHealingRemainderPercent:
+// each one's missing share of its HP summed) and spends it, except from a full machine, which HealingMachineBlockEntity
+// leaves full; one placed in creative is infinite. Its lights show the charge in fifths (CHARGE_LEVEL), a natural
+// one's on the limited model. A machine with no record (placed before, or by a structure) counts as full.
 const HEAL_TICKS = 24, TRAY = [[0.2, 0.385], [-0.2, 0.385], [0.2, 0], [-0.2, 0], [0.2, -0.385], [-0.2, -0.385]];
 const healingAt = new Set(), healingPlayers = new Set();
+const HEALER_MAX = 6, HEALER_FILL_TICKS = 900 * 20, HEALERS = "cobblemon:healers";
+function healerRecords() { return jsonProp(world, HEALERS, {}); }
+function saveHealers(all) { world.setDynamicProperty(HEALERS, JSON.stringify(all)); }
+// the charge a record has now, filled for the world time since it was last set
+function healerCharge(rec, now) {
+    if (!rec) return HEALER_MAX;
+    return Math.min(HEALER_MAX, rec.c + Math.max(0, now - rec.t) * HEALER_MAX / HEALER_FILL_TICKS);
+}
+// a party member's missing share of its HP, a fainted one all of it
+function missingShare(member) {
+    if (prop(member, FAINTED)) return 1;
+    try { const h = member.getComponent(EntityComponentTypes.Health); return h ? Math.max(0, 1 - h.currentValue / h.effectiveMax) : 0; } catch (e) { return 0; }
+}
+function showHealerCharge(block, rec, now) {
+    const level = !rec || rec.inf ? 5 : Math.floor((healerCharge(rec, now) / HEALER_MAX) * 5);
+    try { if (block.permutation.getState("cobblemon:charge") !== level) block.setPermutation(block.permutation.withState("cobblemon:charge", level)); } catch (e) { }
+    setState(block, "cobblemon:signal", healerSignal(rec, now));
+}
+// HealingMachineBlockEntity.updateRedstoneSignal: the charge's whole tenths, up to MAX_REDSTONE_SIGNAL (10)
+function healerSignal(rec, now) {
+    return !rec || rec.inf ? 10 : Math.min(10, Math.floor(Math.floor((healerCharge(rec, now) / HEALER_MAX) * 100) / 10));
+}
+world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
+    if (block.typeId !== "cobblemon:healing_machine") return;
+    const all = healerRecords(), key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+    all[key] = { c: 0, t: world.getAbsoluteTime(), inf: player?.getGameMode?.() === "Creative" };
+    saveHealers(all);
+    showHealerCharge(block, all[key], all[key].t);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation.type.id !== "cobblemon:healing_machine") return;
+    const all = healerRecords(), key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+    if (key in all) { delete all[key]; saveHealers(all); }
+});
+// the lights of the machines with a record follow their charge as it fills
+system.runInterval(() => {
+    const all = healerRecords(), now = world.getAbsoluteTime();
+    for (const [key, rec] of Object.entries(all)) {
+        if (rec.inf) continue;
+        const [dimId, pos] = key.split("|"), [x, y, z] = pos.split(",").map(Number);
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x, y, z }); } catch (e) { continue; }
+        if (block?.typeId === "cobblemon:healing_machine" && !block.permutation.getState("cobblemon:active")) showHealerCharge(block, rec, now);
+    }
+}, 100);
 function useHealingMachine(block, player) {
     const key = `${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
     if (healingAt.has(key) || healingPlayers.has(player.id)) {
@@ -4107,6 +6520,16 @@ function useHealingMachine(block, player) {
     }
     const party = summaryParty(player);
     if (!party.length) { player.onScreenDisplay.setActionBar("§cYou don't have any Pokémon in your party to heal!"); return; }
+    const all = healerRecords(), rec = all[key], now = world.getAbsoluteTime();
+    if (rec && !rec.inf) {
+        const needed = party.reduce((t, m) => t + missingShare(m), 0), charge = healerCharge(rec, now);
+        if (charge < needed) {
+            player.onScreenDisplay.setActionBar(`§cThis machine needs ${Math.floor(((needed - charge) / party.length) * 100)}% more charge to heal your party!`);
+            return;
+        }
+        all[key] = { ...rec, c: charge >= HEALER_MAX ? charge : Math.max(0, charge - needed), t: now };
+        saveHealers(all);
+    }
     healingAt.add(key); healingPlayers.add(player.id);
     const dim = block.dimension, { x, y, z } = block.location;
     // the tray's slots turned with the machine: HealingMachineRenderer rotates by -FACING.toYRot() and draws at 0.65.
@@ -4131,6 +6554,7 @@ function useHealingMachine(block, player) {
         healingAt.delete(key); healingPlayers.delete(player.id);
         for (const ball of balls) try { ball?.remove(); } catch (e) { }
         lit(false);
+        try { const b = dim.getBlock({ x, y, z }); if (b?.typeId === "cobblemon:healing_machine") showHealerCharge(b, healerRecords()[key], world.getAbsoluteTime()); } catch (e) { }
         if (!player.isValid) return;
         healAround(dim, { x: x + 0.5, y: y + 0.5, z: z + 0.5 }, player);
         player.onScreenDisplay.setActionBar("§aYour Pokémon party has been healed!");
@@ -4388,7 +6812,7 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         if (source.typeId !== "minecraft:player" || !species || !ball) return;
         let taken = 0;
         const counts = {};
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(source); n++) {
             const contents = box(source, n);
             let changed = false;
             contents.forEach((rec, i) => {
@@ -4442,10 +6866,31 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const level = Number(event.message);
         if (level >= 1 && level <= 100) { setProp(target, LEVEL, level); setProp(target, EXP, expFor(POKEMON[target.typeId].expGroup, level)); }
         player.sendMessage(`§a${POKEMON[target.typeId]?.name} is now yours.`);
+    } else if (event.id === "cobblemon:power") {
+        // testing: "/scriptevent cobblemon:power x y z" logs the redstone power the script reads at a block and round it
+        const [x, y, z] = event.message.split(/\s+/).map(Number), dim = (source ?? world.getPlayers()[0]).dimension;
+        const at = dim.getBlock({ x, y, z }), out = [];
+        for (const [name, b] of [["self", at], ["up", at?.above()], ["down", at?.below()], ["north", at?.north()], ["south", at?.south()], ["east", at?.east()], ["west", at?.west()]]) {
+            let p; try { p = b?.getRedstonePower(); } catch (e) { p = `error ${e}`; }
+            out.push(`${name} ${b?.typeId} ${p}`);
+        }
+        console.warn(`[cobblemon] power: ${out.join("; ")}`);
+    } else if (event.id === "cobblemon:tm_machine") {
+        // testing: "/scriptevent cobblemon:tm_machine x y z <move>" makes that the machine's TM, as a player making it does;
+        // with no move it logs what the machine holds
+        const [x, y, z, move] = event.message.trim().split(/\s+/), dim = (source ?? world.getPlayers()[0]).dimension;
+        const block = dim.getBlock({ x: Number(x), y: Number(y), z: Number(z) });
+        if (block?.typeId !== "cobblemon:tm_machine") return;
+        const m = tmMachineData(block);
+        if (move) { m.m = move; saveTmMachine(block, m); }
+        console.warn(`[cobblemon] tm machine: ${JSON.stringify(tmMachineData(block))} powered ${tmPowered(block)}`);
     } else if (event.id === "cobblemon:summary") {
-        showSummary(source);
+        // testing: "/execute as <pokemon> run scriptevent cobblemon:summary [evolve]" opens its Summary, or its evolutions
+        showSummary(source, "i", undefined, 0, event.message.trim() === "evolve" ? "e" : "p");
     } else if (event.id === "cobblemon:take_item") {
         takeHeld(source);
+    } else if (event.id === "cobblemon:battle_format") {
+        if (source?.typeId === "minecraft:player") setBattleFormat(source, event.message.trim());
     } else if (event.id === "cobblemon:join_fences") {
         // for testing and for fences placed by commands or structures: join every fence and wall within 8 blocks
         const { x, y, z } = source.location;
@@ -4563,6 +7008,8 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         });
     } else if (event.id === "cobblemon:trainer") {
         const player = nearestPlayer(source);
+        // the dialogue's challenge: the trainer's own party (NPC_BATTLER); a species named fights that one alone
+        if (!event.message.trim()) { if (player && source) startNpcBattle(player, source); return; }
         const typeId = `cobblemon:${event.message.trim()}`;
         if (!player || !POKEMON[typeId]) return;
         const dx = player.location.x - source.location.x, dz = player.location.z - source.location.z, len = Math.hypot(dx, dz) || 1;
@@ -4648,7 +7095,9 @@ function loadMachines() {
 function saveMachines() { try { world.setDynamicProperty(MACHINES, JSON.stringify(Object.fromEntries(machines))); } catch (e) { } }
 function keyOf(dimension, p) { return `${dimension.id}|${p.x},${p.y},${p.z}`; }
 
-// the tank's lower block for any part of a machine, and the analyzer and monitor beside it
+// the tank's lower block for any part of a machine, and the analyzer and monitor of FossilMultiblockBuilder's layout: a
+// Monitor directly on top of a Fossil Analyzer, and the Analyzer level with the tank's lower half on one of its four
+// sides; anything short of that is no machine (the parts do nothing on their own)
 function findMachine(block) {
     const d = block.dimension, around = [];
     for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
@@ -4657,10 +7106,11 @@ function findMachine(block) {
     const tank = around.find((b) => b.typeId === "cobblemon:restoration_tank" && b.permutation.getState("cobblemon:part") === "bottom"
         && Math.abs(b.location.x - block.location.x) <= 1 && Math.abs(b.location.z - block.location.z) <= 1);
     if (!tank) return undefined;
-    const near = (b, r) => Math.abs(b.location.x - tank.location.x) <= r && Math.abs(b.location.z - tank.location.z) <= r;
-    const analyzer = around.find((b) => b.typeId === "cobblemon:fossil_analyzer" && b.location.y === tank.location.y && near(b, 1));
-    const monitor = around.find((b) => b.typeId === "cobblemon:monitor" && near(b, 2));
-    return { tank, analyzer, monitor, key: keyOf(tank.dimension, tank.location) };
+    const beside = (b) => b.location.y === tank.location.y && Math.abs(b.location.x - tank.location.x) + Math.abs(b.location.z - tank.location.z) === 1;
+    const above = (b) => around.find((m) => m.typeId === "cobblemon:monitor" && m.location.x === b.location.x && m.location.z === b.location.z && m.location.y === b.location.y + 1);
+    const analyzer = around.find((b) => b.typeId === "cobblemon:fossil_analyzer" && beside(b) && above(b));
+    if (!analyzer) return undefined;
+    return { tank, analyzer, monitor: above(analyzer), key: keyOf(tank.dimension, tank.location) };
 }
 
 function stateFor(key) {
@@ -4717,8 +7167,7 @@ function takeFromHand(player, count = 1) {
 
 function useMachine(block, player) {
     const m = findMachine(block);
-    if (!m) { player.sendMessage("§7A Restoration Tank needs a Fossil Analyzer right beside it."); return; }
-    if (!m.analyzer) { player.sendMessage("§7Place a Fossil Analyzer beside the Restoration Tank."); return; }
+    if (!m) { player.sendMessage("§7A fossil machine is a Restoration Tank with a Fossil Analyzer beside it and a Monitor on the Analyzer."); return; }
     const st = stateFor(m.key);
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     const item = inv?.getItem(player.selectedSlotIndex);
@@ -4738,6 +7187,13 @@ function useMachine(block, player) {
                 pokemon.triggerEvent("cobblemon:caught");
                 pokemon.getComponent(EntityComponentTypes.Tameable)?.tame(player);
                 pokemon.setDynamicProperty(OWNER, player.id);
+                rollAlpha(pokemon, 20);   // CobblemonConfig.fossilMachineAlphaChance
+                if (Math.floor(Math.random() * 100) === 0) {   // fossilMachineShinyChance
+                    const looks = VARIANT_LOOKS[pokemon.typeId], [form, female] = looks?.[variantOf(pokemon)] ?? [null, 0];
+                    const n = (looks ?? []).findIndex(([f, g, sh]) => f === form && g === female && sh);
+                    if (n >= 0) pokemon.triggerEvent(`cobblemon:set_variant_${n}`);
+                }
+                if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
                 register(player, st.result, 2);
             } catch (e) { }
         });
@@ -4751,17 +7207,22 @@ function useMachine(block, player) {
     if (id && FOSSILS.fossilItems.includes(id)) {
         if (st.fossils.length >= FOSSILS.maxFossils) { player.sendMessage("§7The analyzer is full."); return; }
         st.fossils.push(id); st.owner = player.id; takeFromHand(player);
+        machineSound(m.analyzer, "cobblemon.block.fossil_machine.insert_fossil");
         const r = resultFor(st.fossils);
         player.sendMessage(r ? `§bThe analyzer reads the fossils: ${POKEMON[r.entity]?.name}.` : "§7The analyzer does not recognise these fossils together.");
+        if (!r) machineSound(m.monitor, "cobblemon.block.monitor.glitching");
     } else if (id && FOSSILS.materials[id]) {
         if (st.material >= FOSSILS.materialToStart) { player.sendMessage("§7The tank is full."); return; }
         const [worth, back] = FOSSILS.materials[id];
         st.material = Math.min(FOSSILS.materialToStart, st.material + worth); takeFromHand(player);
+        machineSound(m.tank, st.material >= FOSSILS.materialToStart ? "cobblemon.block.fossil_machine.dna_full" : worth > 1 ? "cobblemon.block.fossil_machine.insert_dna" : "cobblemon.block.fossil_machine.insert_dna_small");
+        machineSound(m.monitor, "cobblemon.block.monitor.insert");
         if (back) { try { inv.addItem(new ItemStack(back, 1)); } catch (e) { } }
         player.sendMessage(`§7Natural material ${st.material}/${FOSSILS.materialToStart}`);
     } else if (!id) {
         if (!st.fossils.length) { player.sendMessage("§7Put fossils in the analyzer and natural materials (berries, crops, seeds) in the tank."); return; }
         const last = st.fossils.pop();
+        machineSound(m.analyzer, "cobblemon.block.fossil_machine.retrieve_fossil");
         try { inv.setItem(player.selectedSlotIndex, new ItemStack(last, 1)); } catch (e) { }
     } else {
         player.sendMessage("§7That is neither a fossil nor a natural material.");
@@ -4771,11 +7232,39 @@ function useMachine(block, player) {
     const r = resultFor(st.fossils);
     if (r && st.material >= FOSSILS.materialToStart) {
         st.result = r.entity; st.left = FOSSILS.reviveSeconds; st.fossils = [];
+        machineSound(m.tank, "cobblemon.block.fossil_machine.activate"); machineSound(m.monitor, "cobblemon.block.monitor.loading");
         player.sendMessage(`§aThe machine starts reviving ${POKEMON[r.entity]?.name}. Come back in ${FOSSILS.reviveSeconds / 60} minutes.`);
     }
     saveMachines(); show(m, st);
 }
 
+// the machine's last part placed: FossilMultiblockStructure's assemble sound, once all three stand together
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
+    if (!["cobblemon:restoration_tank", "cobblemon:fossil_analyzer", "cobblemon:monitor"].includes(block.typeId)) return;
+    system.runTimeout(() => {
+        const m = findMachine(block);
+        if (m?.tank && m.analyzer && m.monitor) machineSound(m.tank, "cobblemon.block.fossil_machine.assemble");
+    }, 2);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id === "cobblemon:monitor") machineSound(block, "cobblemon.block.monitor.break");
+});
+// an NPC's voice (entity.npc.gibber): one of its speech sounds as a player talks to it, as Cobblemon's dialogue plays a
+// line's gibber; Bedrock's dialogue screen has no lines to time them to
+const GIBBER = ["cobblemon.entity.npc.gibber.speech_type_1_1", "cobblemon.entity.npc.gibber.speech_type_1_2", "cobblemon.entity.npc.gibber.speech_type_1_3", "cobblemon.entity.npc.gibber.generic"];
+world.afterEvents.playerInteractWithEntity.subscribe(({ target }) => {
+    if (!target?.typeId?.startsWith("cobblemon:npc")) return;
+    try { target.dimension.playSound(GIBBER[Math.floor(Math.random() * GIBBER.length)], target.location); } catch (e) { }
+});
+// Hearty Grains' own place and break sounds (HeartyGrainsBlock's sound type), which a Bedrock custom block's sound cannot be
+world.afterEvents.playerPlaceBlock.subscribe(({ block }) => {
+    if (block.typeId.startsWith("cobblemon:hearty_grains")) machineSound(block, "cobblemon.block.hearty_grains.place");
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id?.startsWith("cobblemon:hearty_grains")) machineSound(block, "cobblemon.block.hearty_grains.break");
+});
+// FossilMultiblockEntity's sounds, at the block they belong to
+function machineSound(block, id) { try { block?.dimension.playSound(id, block.location); } catch (e) { } }
 // once a second, running machines count down
 system.runInterval(() => {
     loadMachines();
@@ -4789,8 +7278,9 @@ system.runInterval(() => {
         if (block.typeId !== "cobblemon:restoration_tank") { machines.delete(key); changed = true; continue; }
         if (st.left > 0) {
             st.left--;
-            if (st.left === 0) { st.done = true; st.protect = FOSSILS.protectionSeconds; st.left = -1; }
-        } else st.protect--;
+            if (st.left % 4 === 0) machineSound(block, "cobblemon.block.fossil_machine.active_loop");
+            if (st.left === 0) { st.done = true; st.protect = FOSSILS.protectionSeconds; st.left = -1; machineSound(block, "cobblemon.block.fossil_machine.finished"); }
+        } else if (--st.protect === 0) machineSound(block, "cobblemon.block.fossil_machine.unprotected");
         changed = true;
         if (st.left % 5 === 0 || st.done) { const m = findMachine(block); if (m) show(m, st); }
     }
@@ -4879,7 +7369,29 @@ system.runInterval(() => {
 // free slot; Withdraw sends one out beside the player, while fewer than six of theirs are out; Release lets one
 // go for good. A stored Pokemon keeps its form, level, experience, moves, health and whether it has fainted.
 const PC_BOXES = 40, PER_BOX = 30, PARTY_SIZE = 6;   // CobblemonConfig.defaultBoxCount, PCBox.POKEMON_PER_BOX
+// a player's PC has defaultBoxCount boxes until the boxcount command changes it (PCStore.resize)
+const PC_BOX_COUNT = "cobblemon:pc_box_count";
+function pcBoxes(player) { return Math.max(1, Number(player?.getDynamicProperty?.(PC_BOX_COUNT) ?? PC_BOXES) || PC_BOXES); }
 
+// PCStore.resize and removeListOfBoxes: more boxes are empty ones at the end; fewer removes empty boxes, the last
+// first, moving the boxes after each down with their names and wallpapers; false when that would take a box in use
+function resizePc(player, target) {
+    const count = pcBoxes(player);
+    if (target >= count) { player.setDynamicProperty(PC_BOX_COUNT, target); return true; }
+    const empties = [];
+    for (let n = 0; n < count; n++) if (!box(player, n).some(Boolean)) empties.push(n);
+    if (empties.length < count - target) return false;
+    const drop = new Set(empties.slice(-(count - target)));
+    const keep = [...Array(count).keys()].filter((n) => !drop.has(n));
+    const names = jsonProp(player, PC_NAMES, {}), walls = jsonProp(player, WALLS, {}), contents = keep.map((n) => box(player, n));
+    const newNames = {}, newWalls = {};
+    keep.forEach((n, i) => { if (names[n] !== undefined) newNames[i] = names[n]; if (walls[n] !== undefined) newWalls[i] = walls[n]; });
+    contents.forEach((c, i) => saveBox(player, i, c));
+    for (let n = target; n < count; n++) player.setDynamicProperty(`cobblemon:pc_${n}`, undefined);
+    player.setDynamicProperty(PC_NAMES, JSON.stringify(newNames)); player.setDynamicProperty(WALLS, JSON.stringify(newWalls));
+    player.setDynamicProperty(PC_BOX_COUNT, target);
+    return true;
+}
 function box(player, n) {
     try { const b = JSON.parse(player.getDynamicProperty(`cobblemon:pc_${n}`) ?? "[]"); return Array.from({ length: PER_BOX }, (_, i) => b[i] ?? null); }
     catch (e) { return Array(PER_BOX).fill(null); }
@@ -4900,7 +7412,7 @@ function describe(record) {
 function snapshot(entity) {
     const species = POKEMON[entity.typeId];
     let variant = 0, hp = 1;
-    try { variant = entity.getComponent("minecraft:variant")?.value ?? 0; } catch (e) { }
+    try { variant = prop(entity, BATTLE_FORM) ?? entity.getComponent("minecraft:variant")?.value ?? 0; } catch (e) { }
     try { const h = entity.getComponent(EntityComponentTypes.Health); hp = h.currentValue / h.effectiveMax; } catch (e) { }
     return { t: entity.typeId, v: variant, lv: prop(entity, LEVEL) ?? species.level, xp: prop(entity, EXP) ?? 0,
              mv: prop(entity, MOVESET) ?? null, f: !!prop(entity, FAINTED), hp,
@@ -4912,11 +7424,12 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress", "cobblemon:region_bias"];
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
 function setPcScreen(block, on) {
+    if (!block) return;
     const top = block.permutation.getState("cobblemon:part") === "top" ? block : block.above();
     if (top?.typeId === "cobblemon:pc") setState(top, "cobblemon:on", on);
 }
@@ -4956,6 +7469,518 @@ function pcInfo(v, rec, entity) {
     moves.slice(0, 4).forEach((id, n) => { v[`move${n}`] = MOVES[id]?.name ?? ""; });
     v.held = kept(HELD) ?? null; v.cosmetic = kept(COSMETIC) ?? null;   // the item slot's, set by itemSlot
 }
+
+
+// Alphas (Pokemon.isAlpha): rolled one time in 100 for the Pokemon a honey-slathered Saccharine log draws, one in 20
+// from the fossil machine, and at a bait's alpha_chance. An alpha is larger (getAlphaScaleMultiplier), wears the Alpha
+// Mark as its active one, keeps an alpha's moves (moveset_builders/alpha: its strongest damaging moves), and in the
+// wild matches its level to the nearest player's strongest Pokemon (AlphaLevelMatchingSensor), answers a battle with the
+// Wild Alpha rule's boost (Showdown's alphaboost: level / 10 + 1 random stat steps, each half the stat again), and
+// drops alpha rewards by its level when it faints (callbacks/battle_fainted/pokemon_alpha_drops). Catching one
+// unlocks the Alpha PC wallpaper
+const ALPHA = "cobblemon:alpha";
+function isAlpha(e) { try { return !!prop(e, ALPHA); } catch (err) { return false; } }
+function alphaScale(typeId) {
+    const info = POKEMON[typeId], size = Math.max(0.25, Math.min(5, Math.max(info?.width ?? 1, info?.labelHeight ?? (info?.height ?? 10) / 10)));
+    return Math.min(2, 1.1 + 0.8 * Math.pow(0.5, size));
+}
+function makeAlpha(e, quiet = false) {
+    if (!e?.isValid || !POKEMON[e.typeId] || isAlpha(e)) return;
+    setProp(e, ALPHA, true);
+    const mark = "cobblemon:mark_alpha";
+    if (MARKS[mark] && !marksOf(e).includes(mark)) setProp(e, MARK_LIST, JSON.stringify([...marksOf(e), mark]));
+    setProp(e, ACTIVE_MARK, mark);
+    const info = POKEMON[e.typeId], level = prop(e, LEVEL) ?? info.level;
+    setProp(e, MOVESET, JSON.stringify(alphaMoves(info, level)));
+    showScale(e);
+    if (!quiet) try { e.dimension.spawnParticle("cobblemon:statup_actor", e.location); } catch (err) { }
+}
+// moveset_builders/alpha: the last damaging moves learnt by level first (the strongest), then the last others
+function alphaMoves(info, level) {
+    const learned = [];
+    for (const [at, id] of info.learnset ?? []) if (at <= level && MOVES[id] && !learned.includes(id)) learned.push(id);
+    const damaging = learned.filter((id) => MOVES[id].power).sort((a, b) => MOVES[b].power - MOVES[a].power).slice(0, 2);
+    const rest = learned.filter((id) => !damaging.includes(id)).slice(-(4 - damaging.length));
+    const moves = [...damaging, ...rest].slice(0, 4);
+    return moves.length ? moves : movesAt(info, level);
+}
+function rollAlpha(e, oneIn) { if (oneIn > 0 && Math.floor(Math.random() * oneIn) === 0) makeAlpha(e); }
+// the level a wild alpha takes near a player: their strongest Pokemon's, plus 4 to 20 by band
+function alphaLevelFor(player) {
+    const best = Math.max(0, ...summaryParty(player).map((m) => prop(m, LEVEL) ?? 1));
+    if (!best) return null;
+    return Math.min(100, best + (best < 21 ? 4 : best <= 30 ? 8 : best <= 45 ? 12 : best <= 65 ? 16 : 20));
+}
+const alphaMatched = new Map();   // alpha id -> the player it last matched
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (!isAlpha(e) || prop(e, OWNER) !== undefined || battleOf(e) || alphaMatched.get(e.id) === player.id) continue;
+            const level = alphaLevelFor(player);
+            if (!level) continue;
+            alphaMatched.set(e.id, player.id);
+            setProp(e, LEVEL, level); setProp(e, EXP, expFor(POKEMON[e.typeId].expGroup, level));
+            setProp(e, MOVESET, JSON.stringify(alphaMoves(POKEMON[e.typeId], level)));
+            try { e.dimension.spawnParticle("cobblemon:statup_actor", { x: e.location.x, y: e.location.y + 1, z: e.location.z }); } catch (err) { }
+            try { const cry = POKEMON[e.typeId]?.cry; if (cry) e.dimension.playSound(cry, e.location, { pitch: 0.92, volume: 1.5 }); } catch (err) { }   // AlphaCrySoundInstance
+        }
+    }
+}, 40);
+function battleOf(e) { for (const b of battles.values()) if (allActives(b).some((f) => f?.entity?.id === e.id)) return b; return undefined; }
+// the Wild Alpha rule's boost, on a wild alpha coming into battle
+function alphaBoost(battle, f) {
+    if (f.alphaBoosted || battle.pvp || battle.trainer || f !== battle.foe || !isAlpha(f.entity) || prop(f.entity, OWNER) !== undefined) return;
+    f.alphaBoosted = true;
+    const stats = ["atk", "def", "spa", "spd", "spe"], boosts = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 }, pool = stats.slice();
+    for (let i = 0; i < Math.floor(f.level / 10) + 1 && pool.length; i++) {
+        const n = Math.floor(Math.random() * pool.length);
+        if (++boosts[pool[n]] >= 6) pool.splice(n, 1);
+    }
+    const table = [1, 1.5, 2, 2.5, 3, 3.5, 4];
+    for (const k of stats) f.stats[k] = Math.floor(f.stats[k] * table[boosts[k]]);
+    say(battle, `§c${f.info.name} is an alpha! Its stats are boosted!`);
+}
+// callbacks/battle_fainted/pokemon_alpha_drops: a wild alpha's rewards, tier by its level
+function alphaDrops(f) {
+    const e = f.entity;
+    if (!e?.isValid || !isAlpha(e) || prop(e, OWNER) !== undefined) return;
+    const tier = f.level >= 66 ? 4 : f.level >= 51 ? 3 : f.level >= 31 ? 2 : 1, { x, y, z } = e.location;
+    try { e.dimension.runCommand(`loot spawn ${x} ${y + 0.5} ${z} loot "alpha/alpha_rewards_tier${tier}"`); } catch (err) { }
+}
+
+
+// Berry care (BerryBlockEntity, MulchItem, Berry.calculateYield, BerryBlock's mutations): a mulch used on a berry tree
+// stays on it. Growth Mulch grows it twice as fast for five harvests, Rich Mulch adds one or two berries to five, and
+// Surprise Mulch makes three mutations four times as likely; the rest (Coarse, Humid, Loamy, Peat, Sandy) count as the
+// tree's preferred biome for the berries that favour them. A harvest gives the berry's base yield, its preferred biome's
+// bonus where it grows in one (or has a mulch it favours), and Rich Mulch's, up to its growth points. When its fruit
+// ripens, a tree beside one of its mutation partners has one chance in eight (one in two with Surprise Mulch) of one of
+// its berries becoming the mutation. Each tree's mulch and mutation live in the world, by position
+const BERRY_CARE_KEY = "cobblemon:berry_care", MULCHES = { growth_mulch: 5, rich_mulch: 5, surprise_mulch: 3, coarse_mulch: -1, humid_mulch: -1, loamy_mulch: -1, peat_mulch: -1, sandy_mulch: -1 };
+function berryCare() { try { return JSON.parse(world.getDynamicProperty(BERRY_CARE_KEY) ?? "{}"); } catch (e) { return {}; } }
+function saveBerryCare(all) { world.setDynamicProperty(BERRY_CARE_KEY, JSON.stringify(all)); }
+const careKey = (block) => `${block.dimension.id}|${block.x}|${block.y}|${block.z}`;
+function careOf(block) { return berryCare()[careKey(block)] ?? {}; }
+function setCare(block, care) {
+    const all = berryCare(), key = careKey(block);
+    if (!care || (!care.mulch && !care.mut && care.due === undefined)) delete all[key]; else all[key] = JSON.parse(JSON.stringify(care));
+    saveBerryCare(all);
+    // the mulch shows on the soil under the bush (BerryBlock.MULCH, its <kind>_mulch plane)
+    const look = care?.mulch ? care.mulch.replace("_mulch", "") : "none";
+    try { if (BERRIES[block.typeId] && block.permutation.getState("cobblemon:mulch") !== look) block.setPermutation(block.permutation.withState("cobblemon:mulch", look)); } catch (e) { }
+}
+// BerryBlockEntity.resetGrowTimers: a bush grows from planted to flowering in its growthTime and from flowering to fruit
+// in its refreshRate, minutes times 1.4, each stage of a phase 80 to 100% of its even share of what is left (the port's
+// two growing stages and its one fruiting stage stand for Java's three and two), Growth Mulch halving it
+// (GROWTH_TIME_MULTIPLIER). The time the next stage is due is kept with the bush, and the first random tick after it
+// moves it on
+const BERRY_MINUTES = 1200, BERRY_TIME_SCALE = 1.4;
+// a phase's whole time, rolled as it starts (planted, or flowering after a harvest)
+function berryPhaseTicks(berry, stage, mulch) {
+    const [lo, hi] = stage < 2 ? berry.grow ?? [36, 44] : berry.refresh ?? [18, 22];
+    return Math.round(ri(Math.floor(lo * BERRY_TIME_SCALE), Math.floor(hi * BERRY_TIME_SCALE)) * BERRY_MINUTES * (mulch === "growth_mulch" ? 0.5 : 1));
+}
+// goToNextStageTimer: this stage's time out of what the phase has left, 80 to 100% of its even share
+function berryStageTicks(left, stagesLeft) { return Math.round((left / stagesLeft) * (0.8 + Math.random() * 0.2)); }
+// the bush is at this stage from now: its next one due, or nothing kept once it bears fruit
+function scheduleBerry(block, stage, care = careOf(block)) {
+    const berry = BERRIES[block.typeId];
+    if (!berry) return;
+    if (stage >= 3) { setCare(block, { ...care, due: undefined, left: undefined }); return; }
+    const left = stage === 0 || stage === 2 || care.left === undefined ? berryPhaseTicks(berry, stage, care.mulch) : care.left;
+    const ticks = berryStageTicks(left, stage < 2 ? 2 - stage : 1);
+    setCare(block, { ...care, due: world.getAbsoluteTime() + ticks, left: left - ticks });
+}
+// a mulch used up: Growth and Rich on each harvest, Surprise on each mutation roll
+function spendMulch(block, care) {
+    if (!care.mulch || care.uses < 0) return care;
+    if (--care.uses <= 0) {
+        care.mulch = null; care.uses = 0;
+        try { block.dimension.playSound("cobblemon.block.mulch.remove", block.location); } catch (e) { }
+    }
+    return care;
+}
+function applyMulch(block, player, itemId) {
+    const kind = itemId.replace("cobblemon:", "");
+    if (!(kind in MULCHES)) return false;
+    const care = careOf(block);
+    if (care.mulch) { player.onScreenDisplay.setActionBar("§7This tree already has mulch on it."); return true; }
+    // refreshTimers: Growth Mulch halves the time left to the next stage too
+    const now = world.getAbsoluteTime(), halve = kind === "growth_mulch" && care.due !== undefined;
+    const due = halve ? now + Math.max(0, care.due - now) / 2 : care.due, left = halve && care.left !== undefined ? care.left / 2 : care.left;
+    setCare(block, { ...care, mulch: kind, uses: MULCHES[kind], due, left });
+    consumeHand(player);
+    try { block.dimension.playSound("cobblemon.block.mulch.place", block.location); block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+    player.onScreenDisplay.setActionBar(`§aThe tree has ${itemName(itemId)} on it.`);
+    return true;
+}
+// when the fruit ripens: a mutation from a partner beside it
+function berryMutation(block) {
+    const own = BERRY_CARE[block.typeId];
+    if (!own) return;
+    const offers = [];
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        let other;
+        try { other = block.dimension.getBlock({ x: block.x + dx, y: block.y, z: block.z + dz }); } catch (e) { continue; }
+        const result = own.mut[other?.typeId];
+        if (result) offers.push(result);
+    }
+    if (!offers.length) return;
+    let care = careOf(block), chance = 125;
+    if (care.mulch === "surprise_mulch") { chance *= 4; care = spendMulch(block, care); }
+    if (Math.floor(Math.random() * 1000) < chance) care.mut = offers[Math.floor(Math.random() * offers.length)];
+    setCare(block, care);
+}
+// a harvest's berries: [item, count] pairs
+function berryHarvest(block) {
+    const berry = BERRIES[block.typeId], own = BERRY_CARE[block.typeId];
+    let care = careOf(block);
+    let count = berry.min + Math.floor(Math.random() * (berry.max - berry.min + 1));
+    if (own) {
+        let tags = [];
+        try { tags = BIOME_TAGS[block.dimension.getBiome(block.location).id] ?? []; } catch (e) { }
+        if ((own.biome && filterPasses(own.biome, tags)) || (care.mulch && own.fav.includes(care.mulch.replace("_mulch", "")))) count += ri(own.bonus[0], own.bonus[1]);
+        if (care.mulch === "rich_mulch") count += ri(1, 2);
+        count = Math.min(count, own.points);
+    }
+    const out = [];
+    if (care.mut && count > 0) { out.push([care.mut, 1]); count--; }
+    if (count > 0) out.push([berry.item, count]);
+    care.mut = null;
+    if (care.mulch === "rich_mulch" || care.mulch === "growth_mulch") care = spendMulch(block, care);
+    setCare(block, care);
+    return out;
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (BERRIES[brokenBlockPermutation?.type?.id] && berryCare()[careKey(block)]) setCare(block, null);
+});
+
+
+// Leaf decay (LeavesBlock, which SaccharineLeafBlock and the apricorn leaves are): on a random tick, apricorn and
+// saccharine leaves with no log within six blocks (counted through leaves, as LeavesBlock's distance is) fall, dropping
+// what their loot table gives, unless a player placed them (cobblemon:persistent, LeavesBlock.PERSISTENT). An apricorn
+// hangs from the leaf its facing names and falls when that leaf goes (ApricornBlock.canSurvive), broken or decayed
+const SIDES = { east: [1, 0, 0], west: [-1, 0, 0], up: [0, 1, 0], down: [0, -1, 0], south: [0, 0, 1], north: [0, 0, -1] };
+const isLog = (b) => /(_log|_wood|_stem|_hyphae)$/.test(b?.typeId ?? "");
+const isLeaves = (b) => /leaves/.test(b?.typeId ?? "");
+function besideBlock(dimension, { x, y, z }, [dx, dy, dz]) { try { return dimension.getBlock({ x: x + dx, y: y + dy, z: z + dz }); } catch (e) { return undefined; } }
+function leafHeld(block) {
+    const key = (b) => `${b.x}|${b.y}|${b.z}`, seen = new Set([key(block)]), queue = [[block, 0]];
+    while (queue.length) {
+        const [at, steps] = queue.shift();
+        for (const side of Object.values(SIDES)) {
+            const n = besideBlock(block.dimension, at, side);
+            if (!n || seen.has(key(n))) continue;
+            seen.add(key(n));
+            if (isLog(n)) return true;   // LeavesBlock's distance, steps + 1, is at most 6
+            if (steps < 5 && isLeaves(n)) queue.push([n, steps + 1]);
+        }
+    }
+    return false;
+}
+function dropHangingApricorns(dimension, at) {
+    for (const [facing, [dx, , dz]] of Object.entries(SIDES)) {
+        if (facing === "up" || facing === "down") continue;
+        const fruit = besideBlock(dimension, at, [-dx, 0, -dz]);
+        if (!/^cobblemon:[a-z]+_apricorn$/.test(fruit?.typeId ?? "")) continue;
+        let hangs;
+        try { hangs = fruit.permutation.getState("cobblemon:facing"); } catch (e) { continue; }
+        if (hangs === facing) try { dimension.runCommand(`setblock ${fruit.x} ${fruit.y} ${fruit.z} air destroy`); } catch (e) { }
+    }
+}
+function decayLeaf(block) {
+    let persistent = false;
+    try { persistent = block.permutation.getState("cobblemon:persistent"); } catch (e) { }
+    if (persistent || leafHeld(block)) return;
+    const { x, y, z } = block, dimension = block.dimension;
+    try { dimension.runCommand(`setblock ${x} ${y} ${z} air destroy`); } catch (e) { return; }
+    dropHangingApricorns(dimension, { x, y, z });
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id === "cobblemon:apricorn_leaves") dropHangingApricorns(block.dimension, block);
+});
+
+// Type gem growth (TypeGemCoreBlock, TypeGemClusterBlock): on each random tick a crystal core works through the gem
+// blocks joined to it. Each open face of a gem block may sprout a bud of its type (one chance in ten), as a full grower,
+// a stunted one or a decoration (half, a quarter, a quarter; past 16 joined blocks only the last two); each bud facing
+// away from a gem may grow a stage (one in ten), and a full grower at its last stage becomes a gem block of its own,
+// unless a gem already touches it, which leaves it stunted. With no full grower left and fewer than 8 blocks, one bud is
+// made a full grower again. A bud's growth kind lives in the world, by position; one a structure placed is a full grower
+const GEM_GROWTH = "cobblemon:gem_growth", GEM_FACES = { up: [0, 1, 0], down: [0, -1, 0], north: [0, 0, -1], south: [0, 0, 1], east: [1, 0, 0], west: [-1, 0, 0] };
+const OPPOSITE = { up: "down", down: "up", north: "south", south: "north", east: "west", west: "east" };
+function gemGrowth() { try { return JSON.parse(world.getDynamicProperty(GEM_GROWTH) ?? "{}"); } catch (e) { return {}; } }
+const gemKey = (b) => `${b.dimension.id}|${b.x}|${b.y}|${b.z}`;
+const isGem = (b) => /^cobblemon:[a-z]+_gem_block$/.test(b?.typeId ?? "");
+function gemNeighbour(b, face) { try { const [dx, dy, dz] = GEM_FACES[face]; return b.dimension.getBlock({ x: b.x + dx, y: b.y + dy, z: b.z + dz }); } catch (e) { return undefined; } }
+function joinedGems(core) {
+    const out = [], seen = new Set([gemKey(core)]), queue = [core];
+    while (queue.length && out.length < 64) {
+        const at = queue.shift();
+        for (const face of Object.keys(GEM_FACES)) {
+            const n = gemNeighbour(at, face);
+            if (!n || seen.has(gemKey(n))) continue;
+            seen.add(gemKey(n));
+            if (isGem(n)) { out.push(n); queue.push(n); }
+        }
+    }
+    return out;
+}
+function budsOn(gem) {
+    const cluster = gem.typeId.replace("_gem_block", "_gem_cluster");
+    return Object.keys(GEM_FACES).map((face) => [face, gemNeighbour(gem, face)]).filter(([, b]) => b?.typeId === cluster);
+}
+function sproutBuds(gem, growth, many) {
+    for (const face of Object.keys(GEM_FACES)) {
+        if (Math.random() >= 0.1) continue;
+        const spot = gemNeighbour(gem, face);
+        if (!spot?.isAir) continue;
+        const roll = Math.random() * (many ? 0.5 : 1);
+        const kind = many ? (roll < 0.25 ? "none" : "stunted") : roll < 0.25 ? "none" : roll < 0.75 ? "full" : "stunted";
+        try {
+            spot.setPermutation(BlockPermutation.resolve(gem.typeId.replace("_gem_block", "_gem_cluster"), { "minecraft:block_face": face }));
+            growth[gemKey(spot)] = kind;
+        } catch (e) { }
+    }
+}
+function growBud(gem, face, bud, growth) {
+    const key = gemKey(bud), kind = growth[key] ?? "full";
+    if (kind === "none") return;
+    let stage = 3;
+    try { stage = bud.permutation.getState("cobblemon:stage") ?? 3; } catch (e) { }
+    if (kind === "stunted" && stage >= 3) return;
+    if (stage < 3) { try { bud.setPermutation(bud.permutation.withState("cobblemon:stage", stage + 1)); } catch (e) { } return; }
+    // its last stage: a gem block, unless one already touches it
+    if (Object.keys(GEM_FACES).some((f) => f !== OPPOSITE[face] && isGem(gemNeighbour(bud, f)))) { growth[key] = "stunted"; return; }
+    try { bud.setPermutation(BlockPermutation.resolve(gem.typeId)); } catch (e) { return; }
+    delete growth[key];
+    sproutBuds(bud, growth, false);
+}
+function gemCoreTick(core) {
+    const gems = joinedGems(core), growth = gemGrowth();
+    const buds = gems.flatMap((g) => budsOn(g).map(([face, b]) => [g, face, b]));
+    if (!buds.some(([, , b]) => (growth[gemKey(b)] ?? "full") === "full") && gems.length < 8 && buds.length) {
+        const [, , b] = buds[Math.floor(Math.random() * buds.length)];
+        growth[gemKey(b)] = "full";
+    }
+    const many = gems.length > 16;
+    for (const gem of gems) {
+        sproutBuds(gem, growth, many);
+        for (const [face, bud] of budsOn(gem)) {
+            let facing = face;
+            try { facing = bud.permutation.getState("minecraft:block_face") ?? face; } catch (e) { }
+            if (facing === face && Math.random() < 0.1) growBud(gem, face, bud, growth);
+        }
+    }
+    world.setDynamicProperty(GEM_GROWTH, JSON.stringify(growth));
+}
+
+// Honey-slathered Saccharine logs (SaccharineLogBlock, SaccharineLogSlatheredInfluence): a honey bottle used on a
+// Saccharine log slathers it, giving back the bottle. The next wild Pokemon to spawn within 32 blocks comes to it: it is
+// moved in front of the log, has one chance in 20 of its hidden ability, a shiny roll of one in 4000 and an alpha roll
+// of one in 100, and the log, its honey eaten, is a plain log again
+const SLATHERED = "cobblemon:slathered_logs", SLATHER_RANGE = 32;
+function slatheredLogs() { try { return JSON.parse(world.getDynamicProperty(SLATHERED) ?? "[]"); } catch (e) { return []; } }
+function saveSlathered(list) { world.setDynamicProperty(SLATHERED, JSON.stringify(list)); }
+// SaccharineLeafBlock's honey (AGE 0 to 2, sticky then dripping): a honey bottle fills a leaf (back an empty bottle),
+// an empty bottle takes the honey from a dripping one, bone meal adds a stage, and on a random tick one time in two a
+// honeyed leaf passes a stage to the first saccharine leaf below it within ten blocks, through air
+function leafAge(block) { try { return block.permutation.getState("cobblemon:age") ?? 0; } catch (e) { return 0; } }
+function setLeafAge(block, age) { try { block.setPermutation(block.permutation.withState("cobblemon:age", age)); } catch (e) { } }
+function honeyDrip(block) {
+    const age = leafAge(block);
+    if (age <= 0 || Math.random() >= 0.5) return;
+    for (let i = 1; i <= 10; i++) {
+        let below;
+        try { below = block.dimension.getBlock({ x: block.x, y: block.y - i, z: block.z }); } catch (e) { return; }
+        if (!below || below.typeId === "minecraft:air") continue;
+        if (below.typeId === "cobblemon:saccharine_leaves" && leafAge(below) < 2) { setLeafAge(block, age - 1); setLeafAge(below, leafAge(below) + 1); }
+        return;
+    }
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { player, block, itemStack } = event, id = itemStack?.typeId;
+    if (block?.typeId !== "cobblemon:saccharine_leaves" || !["minecraft:glass_bottle", "minecraft:honey_bottle", "minecraft:bone_meal"].includes(id)) return;
+    const age = leafAge(block);
+    if ((id === "minecraft:glass_bottle" && age < 2) || (id !== "minecraft:glass_bottle" && age >= 2)) return;
+    event.cancel = true;
+    system.run(() => {
+        if (!block.isValid) return;
+        const creative = player.getGameMode?.() === "Creative", inv = player.getComponent("minecraft:inventory")?.container;
+        const give = (item) => { try { const left = inv?.addItem(new ItemStack(item, 1)); if (left) player.dimension.spawnItem(left, player.location); } catch (e) { } };
+        if (id === "minecraft:glass_bottle") {
+            consumeHand(player); give("minecraft:honey_bottle"); setLeafAge(block, 0);
+            try { player.dimension.playSound("bottle.fill", block.location); } catch (e) { }
+        } else if (id === "minecraft:honey_bottle") {
+            if (!creative) { consumeHand(player); give("minecraft:glass_bottle"); }
+            setLeafAge(block, 2);
+            try { player.dimension.playSound("place.honey_block", block.location); } catch (e) { }
+        } else {
+            if (!creative) consumeHand(player);
+            setLeafAge(block, age + 1);
+            try { player.dimension.spawnParticle("minecraft:crop_growth_emitter", { x: block.x + 0.5, y: block.y + 0.5, z: block.z + 0.5 }); } catch (e) { }
+        }
+    });
+});
+world.afterEvents.playerInteractWithBlock.subscribe(({ player, block, itemStack }) => {
+    if (block?.typeId !== "cobblemon:saccharine_log" || itemStack?.typeId !== "minecraft:honey_bottle") return;
+    const dir = ["south", "west", "north", "east"][Math.floor((((player.getRotation().y + 45) % 360) + 360) % 360 / 90)];
+    const facing = { south: "north", west: "east", north: "south", east: "west" }[dir];   // the honey faces the player
+    try {
+        block.setPermutation(BlockPermutation.resolve("cobblemon:saccharine_log_slathered", { "minecraft:cardinal_direction": facing, "cobblemon:honey_type": Math.floor(Math.random() * 6) }));
+    } catch (e) { return; }
+    consumeHand(player);
+    try { player.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack("minecraft:glass_bottle", 1)); } catch (e) { }
+    try { player.dimension.playSound("block.beehive.drip", block.location); } catch (e) { }
+    saveSlathered([...slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z)), { x: block.x, y: block.y, z: block.z, d: block.dimension.id, f: facing }]);
+});
+world.afterEvents.entitySpawn.subscribe(({ entity, cause }) => {
+    if (cause !== EntityInitializationCause.Spawned || !POKEMON[entity?.typeId]) return;
+    system.runTimeout(() => {
+        if (!entity.isValid || prop(entity, OWNER) !== undefined) return;
+        const logs = slatheredLogs(), { x, y, z } = entity.location;
+        const i = logs.findIndex((l) => l.d === entity.dimension.id && Math.hypot(l.x - x, l.y - y, l.z - z) <= SLATHER_RANGE);
+        if (i < 0) return;
+        const log = logs[i];
+        logs.splice(i, 1); saveSlathered(logs);
+        let block;
+        try { block = entity.dimension.getBlock(log); } catch (e) { return; }
+        if (block?.typeId !== "cobblemon:saccharine_log_slathered") return;
+        const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[block.permutation.getState("minecraft:cardinal_direction") ?? log.f] ?? [0, 1];
+        try { entity.teleport({ x: log.x + 0.5 + step[0] * 1.5, y: log.y, z: log.z + 0.5 + step[1] * 1.5 }); } catch (e) { }
+        try { block.setPermutation(BlockPermutation.resolve("cobblemon:saccharine_log")); entity.dimension.playSound("random.burp", log); } catch (e) { }
+        setProp(entity, "cobblemon:honey_drenched", true);
+        const info = POKEMON[entity.typeId];
+        if (Math.random() < 0.05 && info.hidden?.length) setProp(entity, "cobblemon:ability", info.hidden[Math.floor(Math.random() * info.hidden.length)]);
+        const looks = VARIANT_LOOKS[entity.typeId], [form, female, shiny] = looks?.[variantOf(entity)] ?? [null, 0, 0];
+        if (!shiny && Math.floor(Math.random() * 4000) === 0) {
+            const n = (looks ?? []).findIndex(([f, g, sh]) => f === form && g === female && sh);
+            if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
+        }
+        rollAlpha(entity, 100);
+    }, 5);
+});
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation }) => {
+    if (brokenBlockPermutation?.type?.id !== "cobblemon:saccharine_log_slathered") return;
+    saveSlathered(slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z)));
+});
+
+
+// The Habitat Block (HabitatBlock, HabitatBlockEntity, ActivatedHabitatSpawning): a game master's spawner. A player in
+// creative uses it to choose one of Cobblemon's habitat pools (data/cobblemon/habitat_pools) and its settings, as the
+// HabitatEditGUI does: what sets it off (a redstone signal coming on, every second, or now and then as a random tick
+// would), the chance an activation spawns, the range it spawns in, the most of its Pokemon alive at once and per
+// activation, and a level range. A spawn takes the pool's spawns for the day's phase (the day number through the
+// pool's phases) and the time of day, picks a bucket by activatedHabitatBuckets' weights, then a spawn by weight, with
+// its form and a level in both ranges. It spawns only with a player within 64 blocks. The settings live in the world.
+const HABITATS = "cobblemon:habitats", HABITAT_BUCKETS = { common: 83.25, uncommon: 11.25, rare: 4.125, "ultra-rare": 1.375 };
+const HABITAT_TRIGGERS = ["redstone", "tick", "random_tick"];
+function habitats() { try { return JSON.parse(world.getDynamicProperty(HABITATS) ?? "{}"); } catch (e) { return {}; } }
+function saveHabitats(all) { world.setDynamicProperty(HABITATS, JSON.stringify(all)); }
+const habitatKey = (block) => `${block.dimension.id}|${block.x}|${block.y}|${block.z}`;
+const habitatSpawned = new Map();   // habitat key -> ids of its Pokemon
+world.afterEvents.playerInteractWithBlock.subscribe(({ player, block }) => {
+    if (block?.typeId !== "cobblemon:habitat_block") return;
+    let creative = false;
+    try { creative = player.getGameMode() === "Creative" || player.getGameMode() === "creative"; } catch (e) { }
+    if (!creative) return;
+    editHabitat(player, block);
+});
+function editHabitat(player, block) {
+    const key = habitatKey(block), all = habitats(), now = all[key];
+    const ids = Object.keys(HABITAT_POOLS).sort((a, b) => HABITAT_POOLS[a].name.localeCompare(HABITAT_POOLS[b].name));
+    const form = new ActionFormData().title("Habitat Block").body(now ? `Spawning from ${HABITAT_POOLS[now.pool]?.name ?? now.pool}.` : "Choose a habitat pool to spawn from.");
+    if (now) form.button("Settings").button("Turn off");
+    for (const id of ids) form.button(HABITAT_POOLS[id].name);
+    form.show(player).then((r) => {
+        if (r.canceled) return;
+        let pick = r.selection;
+        if (now && pick === 0) { habitatSettings(player, block, now.pool); return; }
+        if (now && pick === 1) { delete all[key]; saveHabitats(all); player.sendMessage("§7The Habitat Block is off."); return; }
+        if (now) pick -= 2;
+        habitatSettings(player, block, ids[pick]);
+    }).catch(() => { });
+}
+function habitatSettings(player, block, pool) {
+    const key = habitatKey(block), all = habitats(), was = all[key] ?? { trigger: "redstone", chance: 1, range: 16, max: -1, per: 1, min: 1, maxLevel: 100 };
+    new ModalFormData().title(HABITAT_POOLS[pool]?.name ?? "Habitat")
+        .dropdown("Trigger", ["A redstone signal", "Every second", "Now and then (random ticks)"], { defaultValueIndex: Math.max(0, HABITAT_TRIGGERS.indexOf(was.trigger)) })
+        .slider("Chance per activation (%)", 1, 100, { valueStep: 1, defaultValue: Math.round(was.chance * 100) })
+        .slider("Spawn range (blocks)", 2, 32, { valueStep: 1, defaultValue: was.range })
+        .slider("Most alive at once (0 is no limit)", 0, 32, { valueStep: 1, defaultValue: Math.max(0, was.max) })
+        .slider("Most per activation", 1, 8, { valueStep: 1, defaultValue: was.per })
+        .slider("Lowest level", 1, 100, { valueStep: 1, defaultValue: was.min })
+        .slider("Highest level", 1, 100, { valueStep: 1, defaultValue: was.maxLevel })
+        .show(player).then((r) => {
+            if (r.canceled || !r.formValues) return;
+            const [t, chance, range, max, per, min, maxLevel] = r.formValues;
+            const fresh = habitats();
+            fresh[key] = { pool, trigger: HABITAT_TRIGGERS[t], chance: chance / 100, range, max: max || -1, per, min: Math.min(min, maxLevel), maxLevel: Math.max(min, maxLevel), power: 0 };
+            saveHabitats(fresh);
+            player.sendMessage(`§aThe Habitat Block spawns from ${HABITAT_POOLS[pool]?.name ?? pool}.`);
+        }).catch(() => { });
+}
+// the pool's spawns for the day's phase and the time of day, a bucket by weight, then a spawn by weight
+function habitatPick(pool, day, night) {
+    const spawns = HABITAT_POOLS[pool]?.spawns ?? [];
+    const phases = Math.max(1, ...spawns.flatMap((sp) => sp[5]));
+    const phase = (day % phases) + 1;
+    const open = spawns.filter((sp) => sp[5].includes(phase) && (sp[6] === "any" || (sp[6] === "night") === night) && speciesNamed(sp[0]));
+    if (!open.length) return null;
+    const buckets = [...new Set(open.map((sp) => sp[1]))];
+    const bucketTotal = buckets.reduce((n, b) => n + (HABITAT_BUCKETS[b] ?? 1), 0);
+    let roll = Math.random() * bucketTotal, bucket = buckets[0];
+    for (const b of buckets) { roll -= HABITAT_BUCKETS[b] ?? 1; if (roll <= 0) { bucket = b; break; } }
+    const inBucket = open.filter((sp) => sp[1] === bucket), total = inBucket.reduce((n, sp) => n + sp[2], 0);
+    roll = Math.random() * total;
+    for (const sp of inBucket) { roll -= sp[2]; if (roll <= 0) return sp; }
+    return inBucket[inBucket.length - 1];
+}
+function activateHabitat(key, h, block) {
+    if (Math.random() >= h.chance) return;
+    const alive = (habitatSpawned.get(key) ?? []).filter((id) => { try { return world.getEntity(id)?.isValid; } catch (e) { return false; } });
+    habitatSpawned.set(key, alive);
+    const room = h.max > 0 ? Math.min(h.per, h.max - alive.length) : h.per;
+    const night = (world.getTimeOfDay() % 24000) >= 12000;
+    for (let n = 0; n < room; n++) {
+        const sp = habitatPick(h.pool, world.getDay(), night);
+        if (!sp) return;
+        const typeId = speciesNamed(sp[0]), spot = spawnSpot(block.dimension, block.location, h.range, sp[7] === "grounded" ? "grounded" : "water");
+        if (!typeId || !spot) continue;
+        let pokemon;
+        try { pokemon = block.dimension.spawnEntity(typeId, spot); } catch (e) { continue; }
+        alive.push(pokemon.id);
+        const lo = Math.max(sp[3], h.min), hi = Math.min(sp[4], h.maxLevel), level = lo <= hi ? ri(lo, hi) : ri(sp[3], sp[4]);
+        system.run(() => {
+            try {
+                setProp(pokemon, LEVEL, level); setProp(pokemon, EXP, expFor(POKEMON[typeId].expGroup, level));
+                setProp(pokemon, MOVESET, JSON.stringify(movesAt(POKEMON[typeId], level)));
+                if (sp[8]) applyProps(pokemon, { form: sp[8] });
+            } catch (e) { }
+        });
+    }
+}
+system.runInterval(() => {
+    const all = habitats();
+    let changed = false;
+    for (const [key, h] of Object.entries(all)) {
+        const [dimId, x, y, z] = key.split("|");
+        let block;
+        try { block = world.getDimension(dimId).getBlock({ x: Number(x), y: Number(y), z: Number(z) }); } catch (e) { continue; }   // not loaded
+        if (!block) continue;
+        if (block.typeId !== "cobblemon:habitat_block") { delete all[key]; changed = true; continue; }
+        if (!block.dimension.getPlayers({ location: block.location, maxDistance: 64 }).length) continue;
+        if (h.trigger === "redstone") {
+            let power = 0;
+            try { power = block.getRedstonePower() ?? 0; } catch (e) { }
+            const rising = power > 0 && !(h.power > 0);
+            if ((h.power ?? 0) !== power) { h.power = power; changed = true; }
+            if (rising) activateHabitat(key, h, block);
+        } else if (h.trigger === "tick" || Math.random() < 1 / 68) activateHabitat(key, h, block);
+    }
+    if (changed) saveHabitats(all);
+}, 20);
 
 // PC box wallpapers (PCBox.wallpaper, WallpapersScrollingWidget): each box keeps its own, the default the fifth
 // basic one; the six Cobblemon unlocks come from wallpaper_unlocks.molang (standing in a cave, forest or ocean biome,
@@ -5114,7 +8139,7 @@ function openPc(block, player, state) {
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
-        if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : pcBoxes(player) - 1)) % pcBoxes(player); again(); return; }
         if (pick === 38) { pcRelease(player, state, party, () => again(5)); return; }
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
         if (pick === 41) {
@@ -5168,9 +8193,11 @@ function openPc(block, player, state) {
         const target = pick < 30 ? { kind: "box", box: state.box, slot: pick } : { kind: "party", slot: pick - 30 };
         if (target.kind === "box" && !pcPasses(contents[target.slot], state.filter)) { again(); return; }
         const occupied = target.kind === "box" ? !!contents[target.slot] : !!party[target.slot];
-        if (!sel) { state.sel = occupied ? target : null; again(); return; }
-        if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; again(); return; }
+        // pc.grab as a Pokemon is picked up, pc.drop as it is put down (PCGUI's sounds)
+        if (!sel) { state.sel = occupied ? target : null; if (occupied) try { player.playSound("cobblemon.pc.grab"); } catch (e) { } again(); return; }
+        if (sel.kind === target.kind && sel.slot === target.slot && (sel.kind === "party" || sel.box === target.box)) { state.sel = null; try { player.playSound("cobblemon.pc.drop"); } catch (e) { } again(); return; }
         state.sel = null;
+        try { player.playSound("cobblemon.pc.drop"); } catch (e) { }
         pcMove(player, sel, target);
         again(2);
     }).catch(done);
@@ -5232,7 +8259,7 @@ function deposit(player, done) {
     form.show(player).then((r) => {
         if (r.canceled || !party[r.selection]?.isValid) { done(); return; }
         const entity = party[r.selection];
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(player); n++) {
             const contents = box(player, n), slot = contents.indexOf(null);
             if (slot < 0) continue;
             contents[slot] = snapshot(entity);
@@ -5248,7 +8275,7 @@ function deposit(player, done) {
 
 function pickStored(player, action, then, done) {
     const boxes = [];
-    for (let n = 0; n < PC_BOXES; n++) { const c = box(player, n).filter(Boolean).length; if (c) boxes.push([n, c]); }
+    for (let n = 0; n < pcBoxes(player); n++) { const c = box(player, n).filter(Boolean).length; if (c) boxes.push([n, c]); }
     if (!boxes.length) { player.sendMessage("§7Your PC is empty."); done(); return; }
     const form = new ActionFormData().title(`${action}: which box?`);
     for (const [n, c] of boxes) form.button(`Box ${n + 1}\n§7${c}/${PER_BOX}`);
@@ -5291,6 +8318,15 @@ function release(player, n, slot, done) {
 // as pastured and cannot be withdrawn or released until it is back. Breaking the pasture brings them all back.
 const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture", OWNER_NAME = "cobblemon:owner_name";
 
+// PokemonPastureBlockEntity.canAddPokemon's crowding limit: no more go out while the 32 block square round the pasture
+// (pastureMaxWanderDistance wide, at any height) holds pastureMaxPerChunk (4) Pokemon for each of its 4 by 4 chunks
+const PASTURE_CROWD = 4 * 4 * 4;
+function pastureCrowded(block) {
+    const { x, z } = block.location, { min, max } = block.dimension.heightRange;
+    let near = [];
+    try { near = block.dimension.getEntities({ location: { x: x + 0.5 - 16, y: min, z: z + 0.5 - 16 }, volume: { x: 32, y: max - min, z: 32 } }); } catch (e) { return false; }
+    return near.filter((e) => POKEMON[e.typeId]).length >= PASTURE_CROWD;
+}
 function pastureKey(block) {
     const bottom = block.permutation.getState("cobblemon:part") === "top" ? block.below() : block;
     return keyOf(bottom.dimension, bottom.location);
@@ -5302,7 +8338,7 @@ function pasturedHere(dimension, key, location) {
 
 // a PC slot marked as pastured whose Pokemon is gone (its pasture broken while the player was away) comes back
 function tidyPastured(player) {
-    for (let n = 0; n < PC_BOXES; n++) {
+    for (let n = 0; n < pcBoxes(player); n++) {
         const contents = box(player, n);
         let changed = false;
         contents.forEach((rec, i) => {
@@ -5434,7 +8470,7 @@ function openPasture(block, player, state) {
     if (!state.sel && system.currentTick - (state.tidied ?? -100) > 40) {
         state.tidied = system.currentTick;
         const out = new Set(here.map((e) => prop(e, PASTURE_SLOT)));
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(player); n++) {
             const c = box(player, n);
             let changed = false;
             c.forEach((rec, i) => { if (rec?.p === key && !out.has(`${n}:${i}`)) { delete rec.p; changed = true; } });
@@ -5484,7 +8520,7 @@ function openPasture(block, player, state) {
             }
             again(); return;
         }
-        if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : pcBoxes(player) - 1)) % pcBoxes(player); again(); return; }
         if (pick === 33) {
             for (const e of here) if (prop(e, OWNER) === player.id) recall(player, e, block);
             again(14); return;
@@ -5508,6 +8544,7 @@ function openPasture(block, player, state) {
         }
         if (!send) { again(); return; }
         if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); again(); return; }
+        if (pastureCrowded(block)) { player.onScreenDisplay.setActionBar("§cThere are too many Pokémon nearby."); return; }
         const pcBox = box(player, send.box), rec = pcBox[send.slot];
         state.sel = null;
         if (!rec || rec.p) { again(); return; }
@@ -5577,7 +8614,7 @@ function filterPasses(filter, tags) {
 // ev, typing and egg_group weight the spawns (a species without that EV yield cannot come; a matching type or egg group
 // is weighted by the value), and on the Pokemon caught, each at its chance with alike effects merged (chances summed to
 // at most 1, values summed): nature, iv, shiny_reroll, mark_chance, drops_reroll, gender_chance, level_raise, ha_chance,
-// friendship and size. alpha_chance does nothing, the port having no alphas.
+// friendship and size; alpha_chance makes it an alpha.
 const ROD_BAIT = "cobblemon:bait";
 function rodBait(item) {
     try { const b = JSON.parse(item?.getDynamicProperty(ROD_BAIT) ?? "null"); return b?.id && b.n > 0 ? b : null; } catch (e) { return null; }
@@ -5693,6 +8730,7 @@ function applyBait(pokemon, cast) {
                     if (n >= 0) pokemon.triggerEvent(`cobblemon:set_variant_${n}`);
                 }
             } else if (e.t === "mark_chance") setProp(pokemon, MARK_BOOST, 1 + e.value / 100);
+            else if (e.t === "alpha_chance") makeAlpha(pokemon);
             else if (e.t === "drops_reroll") setProp(pokemon, DROPS_REROLL, true);
             else if (e.t === "gender_chance") {
                 const ratio = info?.maleRatio ?? 0.5;
@@ -5785,9 +8823,32 @@ function spawnAllowed(spawn, cast, bobber, tags) {
         });
         if (!ok) return false;
     }
+    // a fishing spawn's slime chunk, village and nearby blocks (Feebas, Grimer, Skrelp), where the bobber is
+    if (spawn.isSlimeChunk !== undefined && isSlimeChunk(at.x, at.z) !== spawn.isSlimeChunk) return false;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inVillage = () => pokecenterSites().some(([x, z]) => Math.hypot(x - at.x, z - at.z) < VILLAGE_RADIUS);
+    if ((spawn.fishVillage || spawn.fishStructures) && !((spawn.fishVillage && inVillage()) || (spawn.fishStructures && inStructure(at, spawn.fishStructures)))) return false;
+    if (spawn.fishNear) {
+        const x = Math.floor(at.x), y = Math.floor(at.y), z = Math.floor(at.z);
+        try { if (!bobber.dimension.containsBlock(new BlockVolume({ x: x - NEAR_ACROSS, y: y - NEAR_UP, z: z - NEAR_ACROSS }, { x: x + NEAR_ACROSS, y: y + NEAR_UP, z: z + NEAR_ACROSS }), { includeTypes: spawn.fishNear }, false)) return false; }
+        catch (e) { return false; }
+    }
     return true;
 }
 
+// SpawnDetail.weightMultipliers: a spawn's weight times each multiplier whose condition holds where it is drawn (a Poke
+// Snack's draw, thunder, the time of day, the moon, the rod's lure level), port.py's "wm"
+function weightMultiplier(spawn, cast, at, tags, snack) {
+    let m = 1;
+    for (const [mult, cond] of spawn.wm ?? []) {
+        if (cond.isPokeSnack !== undefined && cond.isPokeSnack !== snack) continue;
+        if (cond.isThundering !== undefined && (weatherIn(at.dimension) === "Thunder") !== cond.isThundering) continue;
+        const { isPokeSnack, isThundering, ...rest } = cond;
+        if (Object.keys(rest).length && !spawnAllowed(rest, cast, at, tags)) continue;
+        m *= mult;
+    }
+    return m;
+}
 // SpawnBaitInfluence.affectWeight: a bait's EV effect leaves out a species without that EV yield, and its typing and egg
 // group effects weight a species that matches by their value
 function baitWeight(cast, spawn) {
@@ -5816,7 +8877,7 @@ function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
     const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
     const present = Object.entries(buckets).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
-    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp)]).filter(([, w]) => w > 0);
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, pool === SNACK_SPAWNS)]).filter(([, w]) => w > 0);
     if (!inBucket.length) return undefined;
     return { spawn: pick(inBucket)[0], bucketWeight: buckets[bucket] };
 }
@@ -5882,17 +8943,55 @@ function snackTick(block) {
             if (plan.spawn.event) pokemon.triggerEvent(plan.spawn.event);
             setProp(pokemon, LEVEL, level);
             applyBait(pokemon, cast);
+            setProp(pokemon, SNACK_CRUMBED, true);   // PokeSnackBlockEntity.affectSpawn's poke_snack_crumbed
         } catch (e) { }
     });
     eatSnack(block);
     return `drew ${plan.spawn.entity}`;
 }
+// AspectParticleMap: a Pokemon with crumbs of the snack it ate, or honey from a slathered log, gives them off now and then
+// (each client tick, 0.05 chance of three crumbs, 0.075 of a drop of honey), here checked every 4 ticks for the Pokemon
+// within 32 blocks of a player, its particle box its own size
+const SNACK_CRUMBED = "cobblemon:snack_crumbed";
+const ASPECT_PARTICLES = [[SNACK_CRUMBED, "cobblemon:poke_snack_crumbs", 0.05], ["cobblemon:honey_drenched", "cobblemon:honey_drip", 0.075]];
+system.runInterval(() => {
+    const seen = new Set();
+    for (const player of world.getAllPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ families: ["pokemon"], location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (seen.has(e.id)) continue;
+            seen.add(e.id);
+            for (const [key, particle, chance] of ASPECT_PARTICLES) {
+                if (!prop(e, key) || Math.random() >= 1 - (1 - chance) ** 4) continue;
+                try {
+                    const feet = e.location, head = e.getHeadLocation(), half = Math.max(0.15, (head.y - feet.y) / 2);
+                    const vars = new MolangVariableMap();
+                    vars.setFloat("variable.half_height", half); vars.setFloat("variable.half_width", Math.min(half, 0.6));
+                    e.dimension.spawnParticle(particle, { x: feet.x, y: feet.y + half, z: feet.z }, vars);
+                } catch (err) { }
+            }
+        }
+    }
+}, 4);
 // Herds (PokemonHerdSpawnDetail): a herd's first member spawns naturally and fires cobblemon:herd_seed (port.py's
 // create_spawn_rules); the pass then fills the herd to its size (at most maximumSpawnsPerPass, 8). One herd level is
 // rolled in the herd's range; while the herd has a leader to give and none yet, the next is a leader, otherwise a
 // follower, by weight, none more often than its maxTimes; each member's level is the herd's clamped to its own range and
-// moved by its offset. A member with no room about the first is left out, as Cobblemon's EmptySpawnAction is
+// moved by its offset. A member with no room about the first is left out, as Cobblemon's EmptySpawnAction is. An alpha
+// herd (bucket boss) seeds with cobblemon:herd_seed_alpha and is filled from the alpha herds only; its alpha members
+// (the leader) are made alphas, and a member given an item holds it
 const HERD_RADIUS = 6;
+// the herd a seed event asks for: an alpha one or not, and the form event its first member spawned with
+function herdSeedOf(eventId) {
+    const rest = eventId.slice("cobblemon:herd_seed".length);
+    const alpha = rest === "_alpha" || rest.startsWith("_alpha_"), form = alpha ? rest.slice("_alpha_".length) : rest.slice(1);
+    return { alpha, form: form ? `cobblemon:spawn_form_${form}` : null };
+}
+function dressHerdMember(e, m) {
+    if (m.held && HELD_SET.has(m.held)) setProp(e, HELD, m.held);
+    if (m.alpha) makeAlpha(e, true);
+}
 function herdMemberLevel(m, level) {
     let l = m.level ? Math.min(Math.max(level, m.level[0]), m.level[1]) : level;
     if (m.off) l = ri(l + m.off[0], l + m.off[1]);
@@ -5908,18 +9007,19 @@ function fillHerd(seed, eventId) {
         const near = dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } });
         if (near.filter((e) => e.id !== seed.id).length >= POKEMON_PER_AREA) return;
     } catch (e) { return; }
-    const form = eventId === "cobblemon:herd_seed" ? null : `cobblemon:spawn_form_${eventId.slice("cobblemon:herd_seed_".length)}`;
+    const { alpha, form } = herdSeedOf(eventId);
     let tags = [];
     try { tags = BIOME_TAGS[dim.getBiome(at).id] ?? []; } catch (e) { }
     const fits = (h) => herdFirsts(h).filter((m) => m.entity === seed.typeId && (m.event ?? null) === form);
     const share = (h, ms) => h.weight * ms.reduce((a, m) => a + m.w, 0) / (herdFirsts(h).reduce((a, m) => a + m.w, 0) || 1);
-    let options = HERDS.filter((h) => fits(h).length);
+    let options = HERDS.filter((h) => !!h.boss === alpha && fits(h).length);
     const here = options.filter((h) => spawnAllowed(h, { effects: [], luck: 0, lure: 0 }, seed, tags));
     if (here.length) options = here;
     if (!options.length) return;
     const herd = pick(options.map((h) => [h, share(h, fits(h))]))[0], first = pick(fits(herd).map((m) => [m, m.w]))[0];
     const level = ri(herd.level[0], herd.level[1]), counts = new Map([[first, 1]]);
     setProp(seed, LEVEL, herdMemberLevel(first, level));
+    dressHerdMember(seed, first);
     const centre = { x: Math.floor(at.x), y: Math.floor(at.y) - 1, z: Math.floor(at.z) };
     for (let n = 1; n < herd.size; n++) {
         const valid = herd.members.filter((m) => (counts.get(m) ?? 0) < m.max);
@@ -5933,7 +9033,7 @@ function fillHerd(seed, eventId) {
         let e;
         try { e = dim.spawnEntity(m.entity, spot); } catch (err) { continue; }
         const lv = herdMemberLevel(m, level);
-        system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); } catch (err) { } });
+        system.run(() => { try { if (m.event) e.triggerEvent(m.event); setProp(e, LEVEL, lv); dressHerdMember(e, m); } catch (err) { } });
     }
 }
 // Bedrock's slime chunks: the first number of a Mersenne Twister seeded with chunk x times 0x1f1f1f1f xor chunk z is a
@@ -5965,7 +9065,8 @@ world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
 // these, whose blocks are looked for within 4 blocks across and 2 up or down of the position
 // (maxNearbyBlocksHorizontalRange, maxNearbyBlocksVerticalRange). A natural draw is left to the spawn rules, which spawn those themselves; a draw of one of
 // these spawns it, and a herd's first member has its herd filled about it, unless the 3 by 3 chunks round the spot hold
-// nine Pokemon already. A village is the ground within 48 blocks of a village bell the Pokemon Centers have recorded
+// nine Pokemon already. A village is the ground within 48 blocks of a village bell the Pokemon Centers have recorded, and a
+// Woodland Mansion (Ditto's uncommon spawn, and 95 more species') a dark forest spot on and by its blocks
 const SPECIAL_RANGE = [16, 64], NEAR_ACROSS = 4, NEAR_UP = 2, VILLAGE_RADIUS = 48;
 let specialLog = false;   // the cobblemon:special_spawns scriptevent logs each spawn this makes
 const isWater = (b) => !!b && (b.typeId === "minecraft:water" || b.typeId === "minecraft:flowing_water" || b.isWaterlogged);
@@ -5996,19 +9097,16 @@ function spawnerSpot(dim, c) {
     const [pos, y] = k === 0 ? ["seafloor", floor] : k > deep ? ["surface", surface] : ["submerged", floor + 1 + k];
     return { spot: { x: c.x + 0.5, y: pos === "seafloor" ? floor + 1 : y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos, sky: true };
 }
-function specialSpawn(player) {
-    const dim = player.dimension;
-    if (dim.id !== "minecraft:overworld") return;
-    const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
-    const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
-    if (!where) return;
+// the spawns that may come at one spot: the natural ones (WORLD_SPAWNS) and the special ones whose blocks, base or village
+// are there; with spot and position type
+function spawnsAt(dim, where, naturalToo) {
     const { spot, ground, pos } = where;
     let tags = [];
-    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { return; }
+    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { return null; }
     const at = { dimension: dim, location: spot, sky: where.sky }, cast = { effects: [], luck: 0, lure: 0 };
     const allowed = (sp) => (sp.pos ?? "grounded") === pos && spawnAllowed(sp, cast, at, tags);
     const special = SPECIAL_SPAWNS.filter(allowed);
-    if (!special.length) return;
+    if (!special.length && !naturalToo) return null;
     const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
     const found = new Map();
     const near = (blocks) => {
@@ -6019,31 +9117,179 @@ function specialSpawn(player) {
     let base;
     try { base = dim.getBlock(ground)?.typeId; } catch (e) { return; }
     const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
-    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village) && (!sp.near || near(sp.near)));
-    if (!fits.length) return;
-    const pool = WORLD_SPAWNS.filter(allowed).concat(fits);
-    const bucket = pick(Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b)))[0];
-    const drawn = pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, sp.weight]))[0];
+    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
+    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
+        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
+    if (!fits.length && !naturalToo) return null;
+    return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base, at, tags, cast };
+}
+// Cobblemon's structures a spawn needs (StructureManager.getStructureWithPieceAt): the marked pieces' markers note where
+// each stands on a random tick (port.py's create_structures), kept by 512-block region of the overworld as [piece,
+// x, y, z]; a spot is in that structure within the piece's radius of the marker across, and from the marker's layer
+// (the piece's lowest) up its height
+const SITE_REGION = 512;
+const siteKey = (x, z) => `cobblemon:sites_${Math.floor(x / SITE_REGION)}_${Math.floor(z / SITE_REGION)}`;
+function structureSites(x, z) {
+    try { return JSON.parse(world.getDynamicProperty(siteKey(x, z)) ?? "[]"); } catch (e) { return []; }
+}
+function noteStructureSite(block) {
+    let index;
+    try { index = block.permutation.getState("cobblemon:piece_hi") * 16 + block.permutation.getState("cobblemon:piece_lo"); } catch (e) { return; }
+    const piece = STRUCTURE_PIECES[index];
+    if (!piece) return;
+    const { x, y, z } = block.location, sites = structureSites(x, z);
+    // the piece's other markers note it once
+    if (block.dimension.id === "minecraft:overworld" && !sites.some(([i, sx, sy, sz]) => i === index && Math.hypot(sx - x, sz - z) <= piece.r && Math.abs(sy - y) <= 1)) {
+        sites.push([index, x, y, z]);
+        world.setDynamicProperty(siteKey(x, z), JSON.stringify(sites));
+    }
+    // and the block the marker stands in for goes back
+    try { block.setPermutation(BlockPermutation.resolve(piece.b, piece.st)); } catch (e) { try { block.setType(piece.b); } catch (err) { } }
+}
+// whether a spot in the overworld is inside any of these structures
+function inStructure(location, ids) {
+    const { x, y, z } = location;
+    for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
+        for (const [i, sx, sy, sz] of structureSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
+            const piece = STRUCTURE_PIECES[i];
+            if (piece?.s.some((id) => ids.includes(id)) && Math.hypot(sx + 0.5 - x, sz + 0.5 - z) <= piece.r && y >= sy - 1 && y <= sy + piece.up + 1) return true;
+        }
+    }
+    return false;
+}
+// a bucket by Cobblemon's world bucket weights among those the pool has, then a spawn in it by weight
+function drawSpawn(pool, here) {
+    const buckets = Object.entries(BUCKETS).filter(([b]) => pool.some((sp) => sp.bucket === b));
+    if (!buckets.length) return null;
+    const bucket = pick(buckets)[0];
+    const weight = (sp) => sp.weight * (here ? weightMultiplier(sp, here.cast, here.at, here.tags, false) : 1);
+    return { bucket, drawn: pick(pool.filter((sp) => sp.bucket === bucket).map((sp) => [sp, weight(sp)]))[0] };
+}
+// one spawn of a drawn entry at its spot: its form event, and its herd filled about it
+function spawnDrawn(dim, drawn, spot) {
+    const pokemon = dim.spawnEntity(drawn.entity, spot);
+    system.run(() => {
+        try {
+            if (drawn.event) pokemon.triggerEvent(drawn.event);
+            if (drawn.herd) fillHerd(pokemon, drawn.event ? `cobblemon:herd_seed_${drawn.event.slice("cobblemon:spawn_form_".length)}` : "cobblemon:herd_seed");
+        } catch (e) { }
+    });
+    return pokemon;
+}
+function specialSpawn(player) {
+    const dim = player.dimension;
+    if (dim.id !== "minecraft:overworld") return;
+    const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
+    const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+    if (!where) return;
+    const { spot, ground, pos } = where;
+    const here = spawnsAt(dim, where, false);
+    if (!here) return;
+    const { fits, pool, base } = here;
+    const { bucket, drawn } = drawSpawn(pool, here) ?? {};
     if (!fits.includes(drawn)) return;
     try {
         const cx = Math.floor(spot.x / 16) * 16, cz = Math.floor(spot.z / 16) * 16;
         if (dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } }).length >= POKEMON_PER_AREA) return;
-        const pokemon = dim.spawnEntity(drawn.entity, spot);
-        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
-        system.run(() => {
-            try {
-                if (drawn.event) pokemon.triggerEvent(drawn.event);
-                if (drawn.herd) fillHerd(pokemon, drawn.event ? `cobblemon:herd_seed_${drawn.event.slice("cobblemon:spawn_form_".length)}` : "cobblemon:herd_seed");
-            } catch (e) { }
-        });
+        spawnDrawn(dim, drawn, spot);
+        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""}${drawn.structures ? " in " + drawn.structures[0].split("/").pop() : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
     } catch (e) { }
+}
+// SpawnPokemonFromPool: the spawner run once for the player's area, any spawn it draws coming, the natural ones too; up
+// to twenty spots are tried for one that something can come to. The Pokemon spawned, or nothing
+function spawnFromPool(player) {
+    const dim = player.dimension;
+    for (let n = 0; n < 20; n++) {
+        const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
+        const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+        const here = where && spawnsAt(dim, where, true);
+        const draw = here && drawSpawn(here.pool, here);
+        if (!draw?.drawn?.entity || !POKEMON[draw.drawn.entity]) continue;
+        try { return spawnDrawn(dim, draw.drawn, where.spot); } catch (e) { }
+    }
+    return null;
+}
+// CheckSpawnsCommand: in one bucket, each species' share of what may spawn about the player (spots sampled across
+// Cobblemon's spawning zone round them), coloured as Cobblemon colours them: green from 5%, yellow from 0.1%, red from
+// 0.01%, light purple under it
+function checkSpawns(player, bucket) {
+    const dim = player.dimension, weights = new Map(), seen = new Set();
+    for (let n = 0; n < 48; n++) {
+        const angle = Math.random() * Math.PI * 2, r = Math.random() * SPECIAL_RANGE[0];
+        const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
+        const here = where && spawnsAt(dim, where, true);
+        if (!here) continue;
+        for (const sp of here.pool) {
+            if (sp.bucket !== bucket || seen.has(sp) || !POKEMON[sp.entity]) continue;
+            seen.add(sp);
+            const name = POKEMON[sp.entity].name;
+            weights.set(name, (weights.get(name) ?? 0) + sp.weight * weightMultiplier(sp, here.cast, here.at, here.tags, false));
+        }
+    }
+    const total = [...weights.values()].reduce((a, b) => a + b, 0);
+    if (!total) return null;
+    const colour = (p) => (p < 0.01 ? "§d" : p < 0.1 ? "§c" : p < 5 ? "§e" : "§a");
+    return [...weights.entries()].sort((a, b) => b[1] - a[1]).map(([name, w]) => {
+        const p = (w / total) * 100;
+        return `§f${name}: ${colour(p)}${Number(p.toFixed(2))}%`;
+    }).join("§f, ");
 }
 system.runInterval(() => { for (const player of world.getPlayers()) specialSpawn(player); }, 20);
 // PokeSnackBlock.playerEat: a Poke Cake (not a lure) is eaten a bite at a time like a cake, by a player who is hungry,
 // two hunger a bite (saturation for a tick gives it), gone after its ninth
+// PokeSnackBlock's candle, on the Poke Cake: a candle (any of the 17) goes on top of one without, flint and steel or a
+// fire charge lights it, an empty hand puts a lit one out, and sneaking with an empty hand takes an unlit one back; it
+// drops when the cake is broken (not in creative), and lit it flickers with a candle's flame. CAKE_CANDLES is port.py's
+const CAKE_CANDLES = ["candle", ...["white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple",
+    "blue", "brown", "green", "red", "black"].map((c) => `${c}_candle`)];
+// the candle number, kept in two states (a block state holds at most 16 values)
+const cakeCandleOf = (p) => (p.getState("cobblemon:candle_hi") ?? 0) * 16 + (p.getState("cobblemon:candle_lo") ?? 0);
+const withCakeCandle = (p, n) => p.withState("cobblemon:candle_hi", Math.floor(n / 16)).withState("cobblemon:candle_lo", n % 16);
+function cakeCandle(block, player, hand) {
+    const p = block.permutation, candle = cakeCandleOf(p), lit = p.getState("cobblemon:lit");
+    const kind = hand?.startsWith("minecraft:") ? CAKE_CANDLES.indexOf(hand.slice(10)) : -1;
+    if (kind >= 0) {
+        if (candle) return false;
+        block.setPermutation(withCakeCandle(p, kind + 1));
+        consumeHand(player);
+        try { block.dimension.playSound("cake.add_candle", block.location); } catch (e) { }
+        return true;
+    }
+    if (!candle) return false;
+    if ((hand === "minecraft:flint_and_steel" || hand === "minecraft:fire_charge") && !lit) {
+        block.setPermutation(p.withState("cobblemon:lit", true));
+        if (hand === "minecraft:flint_and_steel") damageHeld(player); else consumeHand(player);
+        try { block.dimension.playSound(hand === "minecraft:flint_and_steel" ? "fire.ignite" : "mob.ghast.fireball", block.location); } catch (e) { }
+        return true;
+    }
+    if (!hand && lit) {
+        block.setPermutation(p.withState("cobblemon:lit", false));
+        try { block.dimension.playSound("extinguish.candle", block.location); } catch (e) { }
+        return true;
+    }
+    if (!hand && player.isSneaking && !lit) {
+        block.setPermutation(withCakeCandle(p, 0));
+        giveOrDrop(player, `minecraft:${CAKE_CANDLES[candle - 1]}`);
+        try { block.dimension.playSound("random.pop", block.location); } catch (e) { }
+        return true;
+    }
+    return false;
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation, player }) => {
+    if (brokenBlockPermutation.type.id !== "cobblemon:poke_cake" || player?.getGameMode?.() === "Creative") return;
+    const candle = cakeCandleOf(brokenBlockPermutation);
+    if (candle) try { block.dimension.spawnItem(new ItemStack(`minecraft:${CAKE_CANDLES[candle - 1]}`, 1), { x: block.x + 0.5, y: block.y + 0.4375, z: block.z + 0.5 }); } catch (e) { }
+});
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
-    if (event.block.typeId !== "cobblemon:poke_cake" || !event.isFirstEvent || event.itemStack?.typeId?.endsWith("candle")) return;
-    const { block, player } = event;
+    if (event.block.typeId !== "cobblemon:poke_cake" || !event.isFirstEvent) return;
+    const { block, player } = event, hand = event.itemStack?.typeId;
+    // the candle first; an item other than a candle, a light or nothing leaves the cake alone
+    const candleUse = CAKE_CANDLES.some((c) => hand === `minecraft:${c}`) || hand === "minecraft:flint_and_steel" || hand === "minecraft:fire_charge"
+        || (!hand && (block.permutation.getState("cobblemon:lit") || (player.isSneaking && cakeCandleOf(block.permutation))));
+    if (candleUse) { event.cancel = true; system.run(() => { try { cakeCandle(block, player, hand); } catch (e) { } }); return; }
     let hunger = 0;
     try { hunger = player.getComponent("minecraft:player.hunger")?.currentValue ?? 0; } catch (e) { }
     if (hunger >= 20 && player.getGameMode?.() !== "Creative") return;
@@ -6277,7 +9523,7 @@ function dexMatches(n, known, search, by) {
 // every Pokemon the player keeps counts as caught (Cobblemon's Pokedex marks what enters the party or the PC), which
 // also catches up a register made before a way of getting a Pokemon registered it
 function registerKept(player) {
-    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
+    for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
     for (const slot of partyOf(player.id)) { if (dexStatus(player, slot.rec.t) < 2) register(player, slot.rec.t, 2); noteVariant(player, slot.rec.t, slot.rec.v ?? 0); }
     try {
         for (const e of player.dimension.getEntities({ families: ["owned"] }))
@@ -6347,7 +9593,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     const ctx = { learned: learnedTms(player), levels: new Map() };
     if (state.filter === 4) {
         const note = (t, lv) => ctx.levels.set(t, Math.max(ctx.levels.get(t) ?? 0, lv ?? 0));
-        for (let b = 0; b < PC_BOXES; b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
+        for (let b = 0; b < pcBoxes(player); b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
         for (const slot of partyOf(player.id)) note(slot.rec.t, slot.rec.lv);
         try { for (const e of player.dimension.getEntities({ families: ["owned"] })) if (prop(e, OWNER) === player.id) note(e.typeId, prop(e, LEVEL)); } catch (e) { }
     }
@@ -6438,7 +9684,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.show(player).then((r) => {
         // PokedexGUI's sounds: close as it shuts, click on an entry (EntriesScrollingWidget), click_short on every other
         // button (ScaledButton)
-        if (r.canceled) { scanSound(player, "close"); return; }
+        if (r.canceled) { scanSound(player, "close"); state.onClose?.(); return; }
         const pick = r.selection, again = () => openDex(player, colour, state);
         if (pick < 50) scanSound(player, pick < 25 ? "click" : "click_short");   // the tree's slots and icons are not buttons on Java
         if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; state.evoPan = 0; } }
@@ -6534,6 +9780,10 @@ function restoreLectern(block) {
     catch (e) { try { block.setPermutation(BlockPermutation.resolve("minecraft:lectern", { "minecraft:cardinal_direction": facing })); } catch (err) { } }
     try { world.structureManager.delete(id); } catch (e) { }
 }
+const lecternReaders = new Map();   // lectern -> the players reading the Pokedex on it
+function setLecternLight(dim, at, on) {
+    try { const b = dim.getBlock(at); if (b?.typeId === LECTERN && b.permutation.getState("cobblemon:emit_light") !== on) b.setPermutation(b.permutation.withState("cobblemon:emit_light", on)); } catch (e) { }
+}
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { block, player, itemStack } = event;
     if (block.typeId === "minecraft:lectern" && itemStack?.typeId.startsWith("cobblemon:pokedex_")) {
@@ -6546,7 +9796,15 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             const colour = block.permutation.getState("cobblemon:pokedex");
             if (!player.isSneaking) {
                 try { block.dimension.playSound("cobblemon.item.pokedex.open", block.center(), { volume: 0.25 }); } catch (e) { }
-                openDex(player, colour);
+                // LecternBlockEntity: it gives light while anyone reads it (EMIT_LIGHT, hasViewer)
+                const key = keyOf(block.dimension, block.location), dim = block.dimension, at = { ...block.location };
+                const readers = lecternReaders.get(key) ?? new Set();
+                readers.add(player.id); lecternReaders.set(key, readers);
+                setLecternLight(dim, at, true);
+                openDex(player, colour, { region: 0, page: 0, filter: 0, chosen: null, tab: "i", onClose: () => {
+                    readers.delete(player.id);
+                    if (!readers.size) { lecternReaders.delete(key); setLecternLight(dim, at, false); }
+                } });
                 return;
             }
             const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;
@@ -6647,6 +9905,11 @@ system.runInterval(() => {
     }
 }, 1);
 
+const GRAINS_WATER_FLOOR = new Set(["minecraft:farmland", "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mycelium",
+    "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots", "minecraft:pale_moss_block", "minecraft:sand",
+    "minecraft:red_sand", "minecraft:suspicious_sand", "minecraft:gravel", "minecraft:suspicious_gravel"]);
+const GRAINS_LAND_FLOOR = new Set(["minecraft:mud", "minecraft:muddy_mangrove_roots", "minecraft:farmland"]);
+function heartyGrainsSurvive(inWater, floor) { return (inWater ? GRAINS_WATER_FLOOR : GRAINS_LAND_FLOOR).has(floor); }
 // Apricorns (ApricornBlock): a fruit ripens a stage on one random tick in five; used when ripe it drops its apricorn,
 // and a sprout one time in ten, and starts again; broken when ripe it drops the same; bone meal ripens it a stage.
 // A sapling grows into a tree on one random tick in seven, or at once from bone meal 45 times in 100, placing one
@@ -6678,10 +9941,67 @@ function growTree(block, kind = "grown") {
 function growSaccharine(block) {
     if (!block.isValid || block.typeId !== "cobblemon:saccharine_sapling") return;
     const name = `saccharine_tree_${Math.floor(Math.random() * SACCHARINE_TREES.variants)}`, [ox, oy, oz] = SACCHARINE_TREES.origins[name];
-    const { x, y, z } = block.location;
+    const { x, y, z } = block.location, dim = block.dimension;
+    const flowers = flowerNear(dim, block.location);   // looked for before the tree stands there
     block.setType("minecraft:air");
-    try { world.structureManager.place(`cobblemon:${name}`, block.dimension, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
-    catch (e) { block.setType("cobblemon:saccharine_sapling"); }
+    try { world.structureManager.place(`cobblemon:${name}`, dim, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
+    catch (e) { block.setType("cobblemon:saccharine_sapling"); return; }
+    // a grown tree with a flower within two blocks of its sapling has a bee nest one time in ten (placeBeeNest after
+    // world generation): at one of its nest spots that is clear with nothing to the south, facing south
+    if (!flowers || Math.random() >= 0.1) return;
+    const spots = (SACCHARINE_TREES.nests[name] ?? []).map(([dx, dy, dz]) => ({ x: x + dx, y: y + dy, z: z + dz }))
+        .filter((at) => { try { return dim.getBlock(at)?.isAir && dim.getBlock({ ...at, z: at.z + 1 })?.isAir; } catch (e) { return false; } });
+    const at = spots[Math.floor(Math.random() * spots.length)];
+    if (!at) return;
+    try { dim.getBlock(at).setPermutation(BlockPermutation.resolve("minecraft:bee_nest", { direction: 0 })); } catch (e) { return; }
+    populateBeeNest(dim, at);
+}
+const FLOWERS = new Set(["minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium", "minecraft:azure_bluet", "minecraft:red_tulip",
+    "minecraft:orange_tulip", "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:lily_of_the_valley",
+    "minecraft:wither_rose", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:torchflower", "minecraft:pitcher_plant",
+    "minecraft:pink_petals", "minecraft:flowering_azalea", "minecraft:flowering_azalea_leaves", "minecraft:cherry_leaves", "minecraft:mangrove_propagule"]);
+// BlockTags.FLOWERS within two blocks every way
+function flowerNear(dim, { x, y, z }) {
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
+        try { if (FLOWERS.has(dim.getBlock({ x: x + dx, y: y + dy, z: z + dz })?.typeId)) return true; } catch (e) { }
+    }
+    return false;
+}
+// populateBeeNest: two or three bees, or one time in two as many Combee (level 5 to 15); a script cannot fill a nest's
+// occupants, so they come out beside it
+function populateBeeNest(dim, at) {
+    const combee = Math.random() < 0.5, n = 2 + Math.floor(Math.random() * 2), spot = { x: at.x + 0.5, y: at.y, z: at.z + 1.5 };
+    for (let i = 0; i < n; i++) {
+        try { const e = dim.spawnEntity(combee ? "cobblemon:p0415_combee" : "minecraft:bee", spot); if (combee) setProp(e, LEVEL, 5 + Math.floor(Math.random() * 11)); } catch (e) { }
+    }
+}
+// a generated saccharine tree's nest fills itself with bees (ShouldSpawnBees); one nest in two is Combee's instead, so
+// its bees come out as Combee, and the nest stays that way (decided by where it stands)
+world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+    if (entity?.typeId !== "minecraft:bee") return;
+    system.run(() => {
+        if (!entity.isValid) return;
+        const dim = entity.dimension, l = entity.location;
+        for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
+            let nest;
+            try { nest = dim.getBlock({ x: Math.floor(l.x) + dx, y: Math.floor(l.y) + dy, z: Math.floor(l.z) + dz }); } catch (e) { continue; }
+            if (nest?.typeId !== "minecraft:bee_nest" || !combeeNest(nest)) continue;
+            try {
+                const c = dim.spawnEntity("cobblemon:p0415_combee", l);
+                setProp(c, LEVEL, 5 + Math.floor(Math.random() * 11));
+                entity.remove();
+            } catch (e) { }
+            return;
+        }
+    });
+});
+// a nest on a saccharine tree (a saccharine log or leaf against it), one in two of them by its position
+function combeeNest(nest) {
+    const { x, y, z } = nest.location;
+    const onTree = [[1, 0, 0], [-1, 0, 0], [0, 0, -1], [0, 1, 0], [0, -1, 0]].some(([dx, dy, dz]) => {
+        try { return (nest.dimension.getBlock({ x: x + dx, y: y + dy, z: z + dz })?.typeId ?? "").startsWith("cobblemon:saccharine_"); } catch (e) { return false; }
+    });
+    return onTree && ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) % 2 === 0;
 }
 function useBoneMeal(player) {
     if (player.getGameMode?.() === "Creative") return;
@@ -6749,6 +10069,36 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
     });
 });
 
+// Fortune on Cobblemon's ores, gem blocks and crops (ApplyBonusCount): the loot table drops the base count, and the
+// script adds Fortune's share (and, for the binomial, its extra tries, which roll at any level) by Minecraft's formulas: ore_drops multiplies the count by 1 to level + 1 (a third of the
+// time, at level I, no bonus), uniform_bonus_count adds up to multiplier times the level, and binomial_with_bonus_count
+// adds a binomial of level + extra tries
+function fortuneExtra(bonus, level) {
+    const base = typeof bonus.base === "object" ? ri(bonus.base.min, bonus.base.max) : bonus.base ?? 1;
+    if (bonus.formula === "ore_drops") return base * Math.max(0, Math.floor(Math.random() * (level + 2)) - 1);
+    if (bonus.formula === "uniform_bonus_count") return Math.floor(Math.random() * ((bonus.params.bonusMultiplier ?? 1) * level + 1));
+    if (bonus.formula === "binomial_with_bonus_count") {
+        let n = 0;
+        for (let i = 0; i < level + (bonus.params.extra ?? 0); i++) if (Math.random() < (bonus.params.probability ?? 0.5)) n++;
+        return n;
+    }
+    return 0;
+}
+function fortuneLevel(item) {
+    try { return item?.getComponent("minecraft:enchantable")?.getEnchantment("fortune")?.level ?? 0; } catch (e) { return 0; }
+}
+world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation, itemStackBeforeBreak, player }) => {
+    const bonuses = FORTUNE[brokenBlockPermutation?.type?.id], level = fortuneLevel(itemStackBeforeBreak);
+    if (!bonuses || silkTouch(itemStackBeforeBreak) || player?.getGameMode?.() === "Creative") return;
+    for (const bonus of bonuses) {
+        // the binomial's own extra tries roll without Fortune too (a ripe Medicinal Leek's leeks)
+        if (!level && bonus.formula !== "binomial_with_bonus_count") continue;
+        const holds = Object.entries(bonus.when ?? {}).every(([k, v]) => { try { return String(brokenBlockPermutation.getState(k)) === String(v); } catch (e) { return false; } });
+        const extra = holds ? fortuneExtra(bonus, level) : 0;
+        if (extra > 0) try { block.dimension.spawnItem(new ItemStack(bonus.item, extra), { x: block.x + 0.5, y: block.y + 0.5, z: block.z + 0.5 }); } catch (e) { }
+    }
+});
+
 // a click on a button does not always reach its component, as with bone meal, so the interaction event presses it too
 function pressButton(block) {
     if (!block?.typeId.endsWith("_button") || !block.typeId.startsWith("cobblemon:") || block.permutation.getState("cobblemon:powered")) return;
@@ -6798,6 +10148,14 @@ function registerModelBlockComponents(registry) {
             let next;
             try { next = block.permutation.withState("cobblemon:amount", amount + 1); } catch (e) { return; }   // already a full stack
             block.setPermutation(next); consumeHand(player);
+        }
+    });
+    // HeartyGrainsBlock.canSurvive: in a water source it needs dirt, sand, gravel or farmland under it
+    // (hearty_grains_land_plantable, which names the water planting), on land mud, muddy mangrove roots or farmland
+    registry.registerCustomComponent("cobblemon:hearty_grains", {
+        beforeOnPlayerPlace(event) {
+            const below = event.block.below()?.typeId ?? "";
+            if (!heartyGrainsSurvive(event.block.typeId === "minecraft:water", below)) event.cancel = true;
         }
     });
     registry.registerCustomComponent("cobblemon:grows", {
@@ -6938,6 +10296,34 @@ function registerWoodComponents(registry) {
 }
 
 world.afterEvents.playerPlaceBlock.subscribe(({ block }) => joinAround(block));
+// DoorBlock.getHinge: a door placed beside a door of its kind whose hinge side it would share takes the other hinge, so
+// the two make a double door; otherwise the solid blocks either side decide (the side with more of them, at the door's
+// height and above, takes the hinge), and failing that where on the block the player clicked
+const DOOR_SIDES = { north: [[-1, 0], [1, 0]], south: [[1, 0], [-1, 0]], east: [[0, -1], [0, 1]], west: [[0, 1], [0, -1]] };   // [counter-clockwise, clockwise] steps
+const doorClicks = new Map();   // player id -> where they last clicked a block holding a door (beforeEvents.playerPlaceBlock is beta)
+world.beforeEvents.playerInteractWithBlock.subscribe(({ player, faceLocation, itemStack }) => {
+    if (/^cobblemon:\w+_door$/.test(itemStack?.typeId ?? "") && faceLocation) doorClicks.set(player.id, faceLocation);   // relative to the block's corner, as the door's own x and z
+});
+function doorHinge(block, click) {
+    const facing = block.permutation.getState("minecraft:cardinal_direction"), [ccw, cw] = DOOR_SIDES[facing] ?? DOOR_SIDES.north;
+    const at = (d, dy) => { try { return block.dimension.getBlock({ x: block.x + d[0], y: block.y + dy, z: block.z + d[1] }); } catch (e) { return undefined; } };
+    const solid = (b) => !!b && !b.isAir && !b.isLiquid && b.typeId !== block.typeId;
+    const count = (solid(at(ccw, 0)) ? -1 : 0) + (solid(at(ccw, 1)) ? -1 : 0) + (solid(at(cw, 0)) ? 1 : 0) + (solid(at(cw, 1)) ? 1 : 0);
+    const isDoor = (b) => b?.typeId === block.typeId && b.permutation.getState("minecraft:multi_block_part") === 0;
+    const leftDoor = isDoor(at(ccw, 0)), rightDoor = isDoor(at(cw, 0));
+    if ((leftDoor && !rightDoor) || count > 0) return "right";
+    if ((rightDoor && !leftDoor) || count < 0) return "left";
+    const dx = (click?.x ?? 0.5) - Math.floor(click?.x ?? 0.5), dz = (click?.z ?? 0.5) - Math.floor(click?.z ?? 0.5);
+    const [sx, sz] = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[facing] ?? [0, -1];
+    return (sx < 0 && dz < 0.5) || (sx > 0 && dz > 0.5) || (sz < 0 && dx > 0.5) || (sz > 0 && dx < 0.5) ? "right" : "left";
+}
+world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
+    if (!/^cobblemon:\w+_door$/.test(block.typeId) || block.permutation.getState("minecraft:multi_block_part") !== 0) return;
+    const click = doorClicks.get(player?.id);
+    doorClicks.delete(player?.id);
+    const hinge = doorHinge(block, click);
+    for (const b of [block, block.above()]) try { if (b?.typeId === block.typeId) b.setPermutation(b.permutation.withState("cobblemon:hinge", hinge)); } catch (e) { }
+});
 world.afterEvents.playerBreakBlock.subscribe(({ block }) => joinAround(block));
 
 function registerApricornComponents(registry) {
@@ -7005,7 +10391,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             useBoneMeal(player);
             try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
             const stage = block.permutation.getState("cobblemon:stage");
-            if (stage < 3 && Math.random() < bush.boneMeal) block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1));
+            if (stage < 3 && Math.random() < bush.boneMeal) { block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1)); scheduleBerry(block, stage + 1); }
         });
         return;
     }
@@ -7093,7 +10479,7 @@ function applyCandy(player, entity, candy) {
 // (two to four of its colour; it grows back when the Pokemon eats grass, EatGrassTask) and a Slowpoke's tail (a Tasty
 // Tail, grown back after slowpoke_tails.json's 1200 seconds); a dye colours Wooloo, Dubwool and Conkeldurr (the color
 // feature) and a water bucket washes it off
-const SHEARABLE = new Set(["cobblemon:p0179_mareep", "cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool"]), SLOWPOKE = "cobblemon:p0079_slowpoke";
+const SHEARABLE = new Set(["cobblemon:p0179_mareep", "cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool"]), SLOWPOKE = "cobblemon:p0079_slowpoke", FURFROU = "cobblemon:p0676_furfrou";
 const COLOURABLE = new Set(["cobblemon:p0831_wooloo", "cobblemon:p0832_dubwool", "cobblemon:p0534_conkeldurr"]), SHEARED = "cobblemon:sheared", TAIL_CUT = "cobblemon:tail_cut";
 function dyeOf(entity) { const form = VARIANT_LOOKS[entity.typeId]?.[variantOf(entity)]?.[0]; return form?.startsWith("color-") ? form.slice(6) : null; }
 function setColour(entity, colour) {
@@ -7102,18 +10488,52 @@ function setColour(entity, colour) {
     if (n >= 0) entity.triggerEvent(`cobblemon:set_variant_${n}`);
     return n >= 0;
 }
+// SlowpokeTailsMechanic: the tail grows back over 1200 seconds of world time, its segments showing as fewer than 700,
+// 200 and 1 seconds are left (the regrown-tail-1 to 3 aspects its poser shows them by), kept as cobblemon:tail
+const TAIL_REGROWTH = 1200, TAIL_THRESHOLDS = [700, 200, 1];
+function tailSegments(entity) {
+    const cut = prop(entity, TAIL_CUT);
+    if (cut === undefined) return 3;
+    const left = TAIL_REGROWTH - (world.getAbsoluteTime() - cut) / 20;
+    return left > TAIL_REGROWTH ? 3 : TAIL_THRESHOLDS.filter((t) => left < t).length;
+}
+system.runInterval(() => {
+    for (const player of world.getPlayers()) {
+        let near = [];
+        try { near = player.dimension.getEntities({ type: SLOWPOKE, location: player.location, maxDistance: 64 }); } catch (e) { continue; }
+        for (const e of near) {
+            if (prop(e, TAIL_CUT) === undefined) continue;
+            try { const n = tailSegments(e); if (e.getProperty("cobblemon:tail") !== n) e.setProperty("cobblemon:tail", n); } catch (err) { }
+        }
+    }
+}, 100);
 function interactTool(player, target, id) {
     const owner = prop(target, OWNER);
     if (owner !== undefined && owner !== player.id) return false;
     if (id === "minecraft:shears") {
         if (prop(target, FAINTED) || battles.has(player.id)) return false;
+        // Furfrou's trim (pokemon_interactions/furfrou.json, action_effects/misc/furfrou_trim): on the owner's own, eight of
+        // the shears' durability, the hair of its dye's colour twice, and half a second later the dye is gone
+        if (target.typeId === FURFROU) {
+            if (owner !== player.id) return false;
+            damageHeld(player, 8);
+            const dye = prop(target, COSMETIC)?.match(/^minecraft:(\w+)_dye$/)?.[1];
+            const hair = dye && `cobblemon:poodle_hair_${dye === "lime" ? "green" : dye}`;
+            const shed = () => { if (hair && target.isValid) try { target.dimension.spawnParticle(hair, { x: target.location.x, y: target.location.y + 0.6, z: target.location.z }); } catch (e) { } };
+            shed(); system.runTimeout(shed, 4);
+            system.runTimeout(() => { if (target.isValid) setProp(target, COSMETIC, undefined); }, 14);
+            try { target.dimension.playSound("mob.sheep.shear", target.location); } catch (e) { }
+            return true;
+        }
         if (target.typeId === SLOWPOKE && variantOf(target) < 2) {
-            if (system.currentTick - (prop(target, TAIL_CUT) ?? -1e9) < 1200 * 20) return false;
-            setProp(target, TAIL_CUT, system.currentTick);
+            if (tailSegments(target) < 3) return false;
+            setProp(target, TAIL_CUT, world.getAbsoluteTime());
+            try { target.setProperty("cobblemon:tail", 0); } catch (e) { }
             target.dimension.spawnItem(new ItemStack("cobblemon:tasty_tail", 1), target.location);
         } else if (SHEARABLE.has(target.typeId)) {
             if (prop(target, SHEARED)) return false;
             setProp(target, SHEARED, true);
+            try { target.setProperty(SHEARED, true); } catch (e) { }
             const wool = `minecraft:${dyeOf(target) ?? "white"}_wool`;
             for (let n = 2 + Math.floor(Math.random() * 3); n > 0; n--) target.dimension.spawnItem(new ItemStack(wool, 1), target.location);
         } else return false;
@@ -7138,12 +10558,12 @@ function interactTool(player, target, id) {
     return false;
 }
 // a tool in the main hand takes a point of wear
-function damageHeld(player) {
+function damageHeld(player, amount = 1) {
     if (player.getGameMode?.() === "Creative") return;
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, item = inv?.getItem(slot);
     const dur = item?.getComponent("minecraft:durability");
     if (!dur) return;
-    if (dur.damage + 1 >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += 1; inv.setItem(slot, item); }
+    if (dur.damage + amount >= dur.maxDurability) inv.setItem(slot, undefined); else { dur.damage += amount; inv.setItem(slot, item); }
 }
 // RootBlock: a big or an energy root (cobblemon:root) on a random tick, in light under 11 (MAX_PROPAGATING_LIGHT_LEVEL)
 // and with fewer than 9 roots (maxRootsInArea) within 4 blocks across and 1 up or down, spreads to a side that is free
@@ -7179,14 +10599,18 @@ function spreadRoot(block) {
 system.runInterval(() => {
     for (const dim of ["overworld", "nether", "the_end"]) {
         let list = [];
-        try { list = world.getDimension(dim).getEntities({ families: ["pokemon"] }).filter((e) => SHEARABLE.has(e.typeId) && prop(e, SHEARED)); } catch (e) { continue; }
+        try { list = world.getDimension(dim).getEntities({ families: ["pokemon"] }).filter((e) => SHEARABLE.has(e.typeId)); } catch (e) { continue; }
         for (const e of list) {
-            if (Math.random() >= 1 / 40) continue;
+            // the model hides its wool by the sheared aspect, kept as an entity property the client reads
+            const sheared = !!prop(e, SHEARED);
+            try { if (e.getProperty(SHEARED) !== sheared) e.setProperty(SHEARED, sheared); } catch (err) { }
+            if (!sheared || Math.random() >= 1 / 40) continue;
             let below;
             try { below = e.dimension.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) }); } catch (err) { continue; }
             if (below?.typeId !== "minecraft:grass_block") continue;
             try { below.setType("minecraft:dirt"); } catch (err) { }
             setProp(e, SHEARED, undefined);
+            try { e.setProperty(SHEARED, false); } catch (err) { }
         }
     }
 }, 20);
@@ -7450,12 +10874,32 @@ function inTimeRange(name) {
     return (TIME_RANGES[name] ?? [[0, 23999]]).some(([a, b]) => t >= a && t <= b);
 }
 const MOON_PHASES = ["FULL_MOON", "WANING_GIBBOUS", "LAST_QUARTER", "WANING_CRESCENT", "NEW_MOON", "WAXING_CRESCENT", "FIRST_QUARTER", "WAXING_GIBBOUS"];
+
+// Cobblemon's evolution progress (UseMoveEvolutionProgress, DefeatEvolutionProgress, LastBattleCriticalHitsEvolutionProgress,
+// DamageTakenEvolutionProgress, RecoilEvolutionProgress), kept on a player's Pokemon as cobblemon:progress: the times it
+// has used each move, the Pokemon it has knocked out (species and held item), its most critical hits in one battle, and
+// the damage and recoil it has taken without fainting (both start again when it faints)
+function progressOf(e) { try { return JSON.parse(prop(e, "cobblemon:progress") ?? "{}"); } catch (err) { return {}; } }
+function countProgress(f, change) {
+    const e = f?.entity;
+    if (!e || f.clone || prop(e, OWNER) === undefined) return;
+    try { const p = progressOf(e); change(p); setProp(e, "cobblemon:progress", JSON.stringify(p)); } catch (err) { }
+}
+// a defeat target: a species and the properties it had, as Cobblemon writes them ("bisharp held_item=cobblemon:kings_rock")
+function defeatsOf(e, target) {
+    const [species, ...props] = target.split(/\s+/), held = props.find((x) => x.startsWith("held_item="))?.slice("held_item=".length);
+    return Object.entries(progressOf(e).defeats ?? {}).filter(([k]) => {
+        const [name, item] = k.split("|");
+        return name.replace(/[^a-z0-9]/g, "") === species.replace(/[^a-z0-9]/g, "") && (!held || item === held);
+    }).reduce((n, [, c]) => n + c, 0);
+}
 function meets(entity, f, r, player) {
     switch (r.t) {
         case "level": return f.level >= r.min;
         case "friendship": return friendshipOf(entity) >= r.min;
         case "steps": return (prop(entity, STEPS) ?? 0) >= r.min;
         case "feature": return (prop(entity, `cobblemon:${r.key}`) ?? 0) === r.value;
+        case "feature_range": { const n = prop(entity, `cobblemon:${r.key}`) ?? 0; return n >= r.lo && n <= r.hi; }
         case "time": return inTimeRange(r.range);
         case "held": return prop(entity, "cobblemon:held") === r.item;
         case "move": return f.moves.some((m) => m.id === r.move);
@@ -7465,6 +10909,18 @@ function meets(entity, f, r, player) {
         case "moon": { let phase = 0; try { phase = world.getMoonPhase(); } catch (e) { } return MOON_PHASES[phase] === r.phase; }
         case "stat_gt": return f.stats[r.hi] > f.stats[r.lo];
         case "stat_eq": return f.stats[r.a] === f.stats[r.b];
+        case "not": return !meets(entity, f, r.r, player);
+        // a regional evolution: the biome it is in now, and its everywhere-else partner's biomes it must not be in
+        case "biome": {
+            let tags = [];
+            try { tags = BIOME_TAGS[entity.dimension.getBiome(entity.location).id] ?? []; } catch (e) { return false; }
+            return (!r.in || filterPasses(r.in, tags)) && (!r.out || !filterPasses(r.out, tags));
+        }
+        case "used": return (progressOf(entity).used?.[r.move] ?? 0) >= r.min;
+        case "defeats": return defeatsOf(entity, r.target) >= r.min;
+        case "crits": return (progressOf(entity).crits ?? 0) >= r.min;
+        case "damage": return (progressOf(entity).damage ?? 0) >= r.min;
+        case "recoil": return (progressOf(entity).recoil ?? 0) >= r.min;
         case "prop":
             if (r.key === "gender") return genderOf(entity) === r.value;
             if (r.key === "nature") return natureOf(entity) === r.value;
@@ -7480,11 +10936,20 @@ function meets(entity, f, r, player) {
     }
 }
 // every evolution ready now, one a species (EvolutionSelectScreen lists them), at most three
+// a region bias (the Hisui starters, region_bias=hisui): the species' bias form's evolutions in place of its own, which
+// make the regional form the everywhere-else one (a Hisui Cyndaquil's Quilava becomes Hisuian Typhlosion outside Johto's
+// biomes)
+const REGION_BIAS = "cobblemon:region_bias";
+function evolutionsOf(entity, kind) {
+    const info = POKEMON[entity.typeId], bias = info?.bias?.[prop(entity, REGION_BIAS)];
+    if (kind === "item") return bias?.item?.length ? bias.item : info?.itemEvos ?? [];
+    return bias ? bias.level : info?.evolutions ?? [];
+}
 function readyEvolutions(entity, player) {
-    const f = fighter(entity), info = POKEMON[entity.typeId];
-    if (!f || !info?.evolutions?.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
+    const f = fighter(entity), evolutions = evolutionsOf(entity, "level");
+    if (!f || !evolutions.length || prop(entity, "cobblemon:held") === "cobblemon:everstone") return [];
     // of two evolutions into one species, the one asking more (Grotle holding a sapling: the tree's Torterra) comes first
-    const seen = new Set(), ordered = [...info.evolutions].sort((a, b) => b.req.length - a.req.length);
+    const seen = new Set(), ordered = [...evolutions].sort((a, b) => b.req.length - a.req.length);
     return ordered.filter((e) => !seen.has(e.to) && e.req.every((r) => meets(entity, f, r, player)) && seen.add(e.to)).slice(0, 3);
 }
 // Evolution.forceEvolve's effect: the Pokemon stops where it is (navigation.stop, here the battle group's movement 0),
@@ -7544,6 +11009,33 @@ function evolve(entity, evolution) {
         entity.triggerEvent(evolution.event);
     }, 224);
 }
+
+// A Pokemon interaction only one gender gives (port.py's write_gendered_interactions: a female Gogoat, Skiddo or
+// Bouffalant milked): the entity's own interaction cannot see the gender, so the script holds it back from the other
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const need = INTERACT_GENDERS[event.target?.typeId]?.[event.itemStack?.typeId];
+    if (need && genderOf(event.target) !== need) event.cancel = true;
+});
+// An evolution item whose result depends on where it is used (a Thunder Stone makes an Alolan Raichu in an Alola biome,
+// and a Raichu elsewhere) or on a region bias: the entity's own interaction leaves these out (port.py's
+// item_evolutions), and the one whose requirements hold is picked here, the one asking more first
+function itemEvolution(entity, player, itemId) {
+    const f = fighter(entity), options = evolutionsOf(entity, "item").filter((e) => e.item === itemId);
+    if (!f || !options.length) return undefined;
+    return [...options].sort((a, b) => b.req.length - a.req.length).find((e) => e.req.every((r) => meets(entity, f, r, player))) ?? null;
+}
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (!itemStack || !POKEMON[target.typeId] || prop(target, OWNER) !== player.id || evolvingNow.has(target.id)) return;
+    if (!evolutionsOf(target, "item").some((e) => e.item === itemStack.typeId)) return;
+    event.cancel = true;
+    system.run(() => {
+        const evolution = itemEvolution(target, player, itemStack.typeId);
+        if (!evolution) { player.onScreenDisplay.setActionBar("§7It won't have any effect."); return; }
+        consumeHand(player);
+        evolve(target, evolution);
+    });
+});
 
 // Fullness (Pokemon.currentFullness): its most is Grass Knot's power for the species' weight, a tenth, halved, plus
 // one; food raises it (feedPokemon, with the eating sound rising as it fills) and Poke food cannot be given once full
@@ -7669,6 +11161,24 @@ function endRide(st) {
     rideStates.delete(st.mount.id);
 }
 // the style the mount rides by where it is
+// RideLoopSound: a style's loops while it is ridden, louder the faster it goes (volume (speed / 1.5)^2, at least a whisper
+// to start), the stereo one for the rider and the mono one for those about; replayed as each loop runs out
+function rideSounds(player, mount, st, settings) {
+    if (!settings.sounds?.length) return;
+    st.soundTick = (st.soundTick ?? 0) + 1;
+    if (st.soundTick % 40 !== 1) return;
+    let v = 0;
+    // in blocks a tick, as q.ride_velocity
+    try { const vel = mount.getVelocity(); v = Math.hypot(vel.x, vel.y, vel.z); } catch (e) { }
+    const volume = Math.min(1, Math.pow(Math.min(v / 1.5, 1), 2)), pitch = Math.max(1, 0.2 + volume);
+    if (volume < 0.02) return;
+    for (const sound of settings.sounds) {
+        try {
+            if (sound.endsWith(".stereo")) player.playSound(sound, { volume, pitch });
+            else for (const other of mount.dimension.getPlayers({ location: mount.location, maxDistance: 32 })) if (other.id !== player.id) other.playSound(sound, { location: mount.location, volume, pitch });
+        } catch (e) { }
+    }
+}
 function rideStyle(ride, mount) {
     const has = (style) => ride.some(([s]) => s === style);
     if (has("liquid") && mount.isInWater) return "liquid";
@@ -7706,6 +11216,7 @@ system.runInterval(() => {
         }
         const kind = RIDE_KINDS[entry[1]] ?? "horse";
         rideHint(player, st, style, kind, settings);
+        rideSounds(player, mount, st, settings);
         let input = { x: 0, y: 0 }, jumping = false;
         try { input = player.inputInfo.getMovementVector(); jumping = player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed; } catch (e) { }
         const forward = input.y > 0.1;
@@ -7913,6 +11424,13 @@ function evolvedVariant(from, variant, to, cosmetic) {
     const dressed = wear ? looks.findIndex(([lf, lg, ls]) => lf === wear && lg === female && ls === shiny) : -1;
     return dressed >= 0 ? dressed : n;
 }
+// the variant a Pokemon becomes by an evolution: the evolution's form where it names one (with the Pokemon's gender
+// and shininess), else the look evolvedVariant carries over
+function evolutionLook(entity, evolution) {
+    const looks = VARIANT_LOOKS[evolution.to], [, female, shiny] = VARIANT_LOOKS[entity.typeId]?.[variantOf(entity)] ?? [null, 0, 0];
+    const formed = evolution.form && looks ? looks.findIndex(([f, g, s]) => f === evolution.form && g === female && s === shiny) : -1;
+    return formed >= 0 ? formed : evolvedVariant(entity.typeId, variantOf(entity), evolution.to, prop(entity, COSMETIC));
+}
 // the ability an evolution gives: the one in the same slot, hidden or not
 function evolvedAbility(from, to, ability) {
     const before = POKEMON[from], after = POKEMON[to];
@@ -8001,7 +11519,7 @@ function memberByKey(key, players) {
 function addRecord(player, rec) {
     const slots = partyOf(player.id);
     if (slots.length < PARTY_SIZE) { const slot = { pid: newPid(), rec, out: null }; slots.push(slot); saveParty(player.id); return { slot }; }
-    for (let n = 0; n < PC_BOXES; n++) {
+    for (let n = 0; n < pcBoxes(player); n++) {
         const contents = box(player, n), i = contents.indexOf(null);
         if (i < 0) continue;
         contents[i] = rec; saveBox(player, n, contents);
@@ -8329,12 +11847,15 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     const canForget = side === "s" && f.moves.length > 1 && f.moves[swapSlot];
     v.side = side;
     for (let n = 0; n < 3; n++) {
-        const e = side === "e" ? evolutions[n] : undefined, into = e && POKEMON[e.to];
+        const e = side === "e" ? evolutions[n] : undefined;
+        // the look it will have (EVO_FORM: Hisuian Typhlosion from a Hisui-biased Quilava) and that look's types, under the
+        // species' name as EvolutionSelectScreen writes it
+        const look = e ? evolutionLook(source, e) : -1, into = e && { ...POKEMON[e.to], ...(POKEMON[e.to]?.variants?.[look] ?? {}) };
         v[`e${n}slot`] = into ? "y" : "n";
-        v[`e${n}name`] = into?.name ?? "";
+        v[`e${n}name`] = e ? POKEMON[e.to].name : "";
         v[`e${n}type1`] = into ? typeCode(into.types[0]) : "x--";
         v[`e${n}type2`] = into?.types[1] ? typeCode(into.types[1]) : "x--";
-        v[`e${n}icon`] = into ? iconOf(e.to) : "i----";
+        v[`e${n}icon`] = into ? iconOf(e.to, Math.max(0, look)) : "i----";
     }
     const party = side === "p" ? summaryParty(player) : [];
     for (let n = 0; n < 6; n++) {
@@ -8596,7 +12117,410 @@ function useBagItem(battle, id) {
 // Blocks. A berry bush moves a stage on each random tick until it is ripe, and a ripe one used by a player
 // drops Cobblemon's base yield of its berry and goes back to flowering. The healing machine restores the
 // Pokemon around it that belong to the player using it.
-system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
+
+// Cobblemon's commands (common/command), as Bedrock custom commands: "/cobblemon:givepokemon pikachu level=5", or without
+// the namespace where no other command has the name. Pokemon properties are Cobblemon's: the species first, then
+// level=, shiny, gender=, nature=, ability=, form=, nickname=, held_item=, each a word (quote a nickname with spaces).
+// A party slot is 1 to 6. A command runs in a read-only moment, so what it changes happens on the next tick
+const COMMAND_PROPS = 6;
+function parseProps(words) {
+    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species", "region_bias"];
+    // Bedrock's command parser takes "level=5" only in quotes, so "level 5" (the key, then its value) works too
+    // and a number alone is no word to Bedrock's parser ("level 5" stops at the 5), so a level can run on: "level5", "lvl5"
+    const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean).map((w) => w.replace(/^(level|lvl|l)(\d+)$/i, "level=$2"));
+    const joined = list.flatMap((w, i) => (KEYS.includes(w.toLowerCase()) && !w.includes("=") && list[i + 1] ? [`${w}=${list[i + 1]}`] : KEYS.includes(list[i - 1]?.toLowerCase()) && !list[i - 1].includes("=") ? [] : [w]));
+    for (const word of joined) {
+        const [k, ...rest] = word.split("="), v = rest.join("=").toLowerCase();
+        const key = k.toLowerCase();
+        if (!rest.length) {
+            if (["shiny", "s"].includes(key)) props.shiny = true;
+            else if (!props.species) props.species = key;
+        } else if (key === "species") props.species = v;
+        else if (key === "level" || key === "lvl" || key === "l") props.level = Math.max(1, Math.min(100, Number(v) || 1));
+        else if (key === "shiny") props.shiny = v !== "no" && v !== "false";
+        else props[key.replace("helditem", "held_item")] = rest.join("=");
+    }
+    return props;
+}
+// a species by its name or id ("mr. mime", "mr_mime", "mrmime", "cobblemon:p0122_mrmime")
+function speciesNamed(name) {
+    if (!name) return undefined;
+    const flat = (t) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const want = flat(name.replace(/^cobblemon:/, ""));
+    return Object.keys(POKEMON).find((id) => id === name || flat(id.split("_").slice(1).join("_")) === want || flat(POKEMON[id].name) === want);
+}
+// the variant for a form and shininess: the base one, or the one whose form aspect matches
+function variantFor(typeId, props) {
+    const looks = VARIANT_LOOKS[typeId];
+    if (!looks) return 0;
+    const form = props.form?.toLowerCase() ?? null, shiny = props.shiny ? 1 : 0;
+    const n = looks.findIndex((l) => (form ? (l[0] ?? "").includes(form) : !l[0]) && l[2] === shiny && !l[1]);
+    return n < 0 ? 0 : n;
+}
+// a record for a new Pokemon of these properties, as the party and PC keep them
+function recordFor(typeId, props) {
+    const info = POKEMON[typeId], level = props.level ?? info.level;
+    const k = { "cobblemon:caught_ball": "cobblemon:poke_ball" };
+    if (props.gender) k["cobblemon:gender"] = props.gender.toLowerCase();
+    if (props.nature) k["cobblemon:nature"] = props.nature.toLowerCase();
+    if (props.ability) k["cobblemon:ability"] = props.ability.toLowerCase().replace(/[^a-z]/g, "");
+    if (props.held_item) k["cobblemon:held"] = props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`;
+    return { t: typeId, v: variantFor(typeId, props), lv: level, xp: expFor(info.expGroup, level), mv: JSON.stringify(movesAt(info, level)), f: false, hp: 1, n: props.nickname ?? null, k };
+}
+// properties put on a Pokemon that exists (pokemonedit, spawnpokemon)
+function applyProps(e, props) {
+    const info = POKEMON[e.typeId];
+    if (props.level) { setProp(e, LEVEL, props.level); setProp(e, EXP, expFor(info.expGroup, props.level)); setProp(e, MOVESET, JSON.stringify(movesAt(info, props.level))); }
+    if (props.gender) setProp(e, "cobblemon:gender", props.gender.toLowerCase());
+    if (props.nature) setProp(e, "cobblemon:nature", props.nature.toLowerCase());
+    if (props.ability) setProp(e, "cobblemon:ability", props.ability.toLowerCase().replace(/[^a-z]/g, ""));
+    if (props.held_item) setProp(e, "cobblemon:held", props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`);
+    if (props.nickname) setProp(e, "cobblemon:nickname", props.nickname);
+    if (props.region_bias) setProp(e, REGION_BIAS, props.region_bias.toLowerCase());
+    if (props.shiny !== undefined || props.form) {
+        const n = variantFor(e.typeId, props);
+        if (e.isProxy) { e.slot.rec.v = n; saveParty(prop(e, OWNER)); }
+        else try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
+    }
+}
+function commandPlayer(origin, players) {
+    if (players?.length) return players[0];
+    const src = origin.sourceEntity ?? origin.initiator;
+    return src?.typeId === "minecraft:player" ? src : undefined;
+}
+const ok = (message) => ({ status: CustomCommandStatus.Success, message });
+const bad = (message) => ({ status: CustomCommandStatus.Failure, message });
+function registerCommands(registry) {
+    const P = CustomCommandParamType, admin = CommandPermissionLevel.GameDirectors;
+    const words = (n) => Array.from({ length: n }, (_, i) => ({ type: P.String, name: `more${i + 1}` }));
+    const later = (fn) => system.run(() => { try { fn(); } catch (e) { console.warn(`[cobblemon] command: ${e}`); } });
+    const add = (name, description, mandatory, optional, run, permissionLevel = admin) => registry.registerCommand(
+        { name: `cobblemon:${name}`, description, permissionLevel, mandatoryParameters: mandatory, optionalParameters: optional }, run);
+    const memberAt = (player, slot) => summaryParty(player)[slot - 1];
+    registry.registerEnum("cobblemon:dexaction", ["grant", "revoke"]);
+    registry.registerEnum("cobblemon:boxcount", ["query", "add", "remove", "set"]);
+    registry.registerEnum("cobblemon:tmaction", ["unlock", "lock"]);
+    registry.registerEnum("cobblemon:bucket", Object.keys(BUCKETS));
+
+    // SpawnPokemonFromPool (alias forcespawn) and CheckSpawnsCommand, on the script's spawner and the port's spawn tables
+    const fromPool = (origin, amount) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run this as a player.");
+        later(() => {
+            for (let n = 0; n < Math.max(1, amount ?? 1); n++) {
+                const e = spawnFromPool(player);
+                player.sendMessage(e ? `§aA ${POKEMON[e.typeId]?.name ?? "Pokemon"} has spawned in the area.` : "§cUnable to spawn a Pokémon.");
+            }
+        });
+        return ok();
+    };
+    add("spawnpokemonfrompool", "Spawns Pokemon from the spawn pool around you, as the spawner would", [], [{ type: P.Integer, name: "amount" }], fromPool);
+    add("forcespawn", "Spawns Pokemon from the spawn pool around you, as the spawner would", [], [{ type: P.Integer, name: "amount" }], fromPool);
+    add("checkspawn", "Lists what may spawn around you in a rarity bucket, and how likely each is", [{ type: P.Enum, name: "cobblemon:bucket" }], [], (origin, bucket) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run this as a player.");
+        later(() => {
+            const list = checkSpawns(player, bucket);
+            if (!list) { player.sendMessage("§cNothing can spawn here right now."); return; }
+            player.sendMessage("§nSpawns§r"); player.sendMessage(list);
+        });
+        return ok();
+    });
+
+    // CobblemonInfoCommand
+    add("cobblemon", "Shows the add-on's version and what it carries", [], [], () => ok(`Cobblemon for Bedrock: ${Object.keys(POKEMON).length} Pokemon, ${Object.keys(MOVES).length} moves`), CommandPermissionLevel.Any);
+    // GivePokemon: to the player, or another player with givepokemonother
+    const give = (player, props) => {
+        const typeId = speciesNamed(props.species);
+        if (!player || !typeId) return bad(`Unknown species ${props.species ?? ""}`);
+        later(() => {
+            const rec = recordFor(typeId, props), where = addRecord(player, rec);
+            if (!where) { player.sendMessage("§cThe party and the PC are full."); return; }
+            register(player, typeId, 2, rec.v);
+            player.sendMessage(`§aYou received ${rec.n || POKEMON[typeId].name} (Lv ${rec.lv})${where.box !== undefined ? ` in Box ${where.box + 1}` : ""}.`);
+        });
+        return ok(`Gave ${POKEMON[typeId].name}`);
+    };
+    add("givepokemon", "Gives the player a Pokemon: species then level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, ...w) => give(commandPlayer(origin), parseProps(w)));
+    add("givepokemonother", "Gives a player a Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, players, ...w) => give(commandPlayer(origin, players), parseProps(w)));
+    // SpawnPokemon: a wild one here, or at a position with spawnpokemonat
+    const spawn = (dim, at, props) => {
+        const typeId = speciesNamed(props.species);
+        if (!typeId || !dim) return bad(`Unknown species ${props.species ?? ""}`);
+        later(() => { const e = dim.spawnEntity(typeId, at); system.run(() => { try { applyProps(e, props); } catch (err) { } }); });
+        return ok(`Spawned ${POKEMON[typeId].name}`);
+    };
+    add("spawnpokemon", "Spawns a wild Pokemon of these properties where the command runs", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, ...w) => { const src = origin.sourceEntity ?? origin.sourceBlock; return spawn(src?.dimension, src?.location, parseProps(w)); });
+    add("spawnpokemonat", "Spawns a wild Pokemon at a position", [{ type: P.Location, name: "position" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+        (origin, at, ...w) => spawn((origin.sourceEntity ?? origin.sourceBlock)?.dimension ?? world.getDimension("overworld"), at, parseProps(w)));
+    // SpawnAllPokemon and GiveAllPokemon: every species from one National Dex number to another
+    const range = (min, max) => NATIONAL.slice(Math.max(0, min - 1), Math.max(min, max)).filter((id) => POKEMON[id]);
+    add("spawnallpokemon", "Spawns one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+        const src = origin.sourceEntity, list = range(min, max);
+        if (!src) return bad("Run it as a player or entity");
+        later(() => list.forEach((id, i) => system.runTimeout(() => { try { src.dimension.spawnEntity(id, { x: src.location.x + (i % 10) * 2, y: src.location.y, z: src.location.z + Math.floor(i / 10) * 2 }); } catch (e) { } }, i)));
+        return ok(`Spawning ${list.length} Pokemon`);
+    });
+    add("giveallpokemon", "Gives the player one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+        const player = commandPlayer(origin), list = range(min, max);
+        if (!player) return bad("Run it as a player");
+        later(() => { for (const id of list) { const rec = recordFor(id, {}); if (!addRecord(player, rec)) break; register(player, id, 2, 0); } });
+        return ok(`Giving ${list.length} Pokemon`);
+    });
+    // HealPokemonCommand
+    add("healpokemon", "Heals a player's party fully", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (const m of summaryParty(player)) { setProp(m, FAINTED, undefined); setProp(m, STATUS, undefined); try { m.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (e) { } if (m.isProxy) { m.slot.rec.f = false; m.slot.rec.hp = 1; } } saveParty(player.id); player.sendMessage("§aYour Pokemon were healed."); });
+        return ok("Healed");
+    });
+    // LevelUp
+    add("levelup", "Raises a party Pokemon a level", [{ type: P.Integer, name: "slot" }], [{ type: P.PlayerSelector, name: "player" }], (origin, slot, players) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        // LevelUp: addExperienceWithPlayer with what the next level needs, so the party overlay's gain and level-up
+        // scroll, new moves and evolutions follow as from a Rare Candy
+        if ((prop(m, LEVEL) ?? POKEMON[m.typeId].level) >= 100) return bad("That Pokemon is already level 100");
+        later(() => { applyCandy(player, m, "level"); saveParty(player.id); });
+        return ok("Levelled up");
+    });
+    // PcCommand: the PC screen anywhere
+    add("pc", "Opens the PC", [], [{ type: P.Integer, name: "box" }], (origin, n) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run it as a player");
+        later(() => openPc(null, player, { box: Math.max(0, Math.min(pcBoxes(player) - 1, (n ?? 1) - 1)), sel: null }));
+        return ok("");
+    });
+    // PokeboxCommand: a party Pokemon into the PC (the first free box, or the one given); pokeboxall for the whole party
+    const toBox = (player, slots, boxN) => later(() => {
+        const party = partyOf(player.id);
+        for (const slot of slots.map((n) => party[n - 1]).filter(Boolean)) {
+            const m = partyMember(player, slot), rec = m.isProxy ? slot.rec : snapshot(m);
+            let placed = false;
+            for (let n = boxN ?? 0; n < pcBoxes(player) && !placed; n++) {
+                const contents = box(player, n), i = contents.indexOf(null);
+                if (i >= 0) { contents[i] = rec; saveBox(player, n, contents); placed = true; }
+                if (boxN !== undefined) break;
+            }
+            if (placed) removeMember(player, slot);
+        }
+        saveParty(player.id);
+    });
+    add("pokebox", "Moves a party Pokemon into the PC", [{ type: P.Integer, name: "slot" }], [{ type: P.Integer, name: "box" }, { type: P.PlayerSelector, name: "player" }], (origin, slot, n, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player || !partyOf(player.id)[slot - 1]) return bad("No Pokemon in that slot");
+        toBox(player, [slot], n ? n - 1 : undefined); return ok("Moved to the PC");
+    });
+    add("pokeboxall", "Moves the whole party into the PC", [], [{ type: P.Integer, name: "box" }, { type: P.PlayerSelector, name: "player" }], (origin, n, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        toBox(player, partyOf(player.id).map((_, i) => i + 1), n ? n - 1 : undefined); return ok("Moved the party to the PC");
+    });
+    // PcTakeCommand: a PC Pokemon into the party
+    add("pctake", "Takes a Pokemon from the PC into the party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.Integer, name: "slot" }], [], (origin, players, b, slot) => {
+        const player = commandPlayer(origin, players), contents = player && box(player, b - 1), rec = contents?.[slot - 1];
+        if (!rec) return bad("Nothing in that slot");
+        if (partyOf(player.id).length >= PARTY_SIZE) return bad("The party is full");
+        later(() => { contents[slot - 1] = null; saveBox(player, b - 1, contents); addRecord(player, rec); });
+        return ok("Taken into the party");
+    });
+    // PcSearchCommand: where in the PC the Pokemon of these properties are
+    add("pcsearch", "Lists where in the PC Pokemon of these properties are", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, ...w) => {
+        const player = commandPlayer(origin), props = parseProps(w), typeId = speciesNamed(props.species);
+        if (!player) return bad("Run it as a player");
+        const found = [];
+        for (let n = 0; n < pcBoxes(player); n++) box(player, n).forEach((rec, i) => {
+            if (rec && (!typeId || rec.t === typeId) && (!props.level || rec.lv === props.level) && (props.shiny === undefined || (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0) === props.shiny)) found.push(`Box ${n + 1} slot ${i + 1}: ${describe(rec)}`);
+        });
+        return ok(found.length ? found.slice(0, 30).join("\n") : "None found");
+    });
+    // ClearPartyCommand and ClearPCCommand
+    add("clearparty", "Removes every Pokemon from a player's party", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (const slot of [...partyOf(player.id)]) removeMember(player, slot); saveParty(player.id); });
+        return ok("Party cleared");
+    });
+    add("clearpc", "Removes every Pokemon from a player's PC", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => { for (let n = 0; n < pcBoxes(player); n++) saveBox(player, n, []); });
+        return ok("PC cleared");
+    });
+    // TakePokemon
+    add("takepokemon", "Takes a Pokemon from a player's party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
+        const player = commandPlayer(origin, players), s = player && partyOf(player.id)[slot - 1];
+        if (!s) return bad("No Pokemon in that slot");
+        later(() => { removeMember(player, s); saveParty(player.id); });
+        return ok("Taken");
+    });
+    // ChangePCBoxesCommand (boxcount query|add|remove|set <player> [amount]): a PC grows by empty boxes at the end, and
+    // shrinks by its empty boxes, the last first, the boxes after each moving down; it will not drop a box holding
+    // Pokemon (Cobblemon offers a forced removal by a click in chat, which Bedrock's chat cannot carry)
+    add("boxcount", "Queries or changes a player's number of PC boxes", [{ type: P.Enum, name: "cobblemon:boxcount" }, { type: P.PlayerSelector, name: "player" }],
+        [{ type: P.Integer, name: "amount" }], (origin, action, players, amount) => {
+            const player = commandPlayer(origin, players);
+            if (!player) return bad("No player");
+            const count = pcBoxes(player);
+            if (action === "query") return ok(`${player.name} has ${count} boxes.`);
+            if (!(amount >= 1 && amount <= 1000)) return bad("The amount must be from 1 to 1000.");
+            const target = action === "add" ? count + amount : action === "remove" ? count - amount : amount;
+            if (target < 1) return bad(`${player.name} only has ${count} boxes.`);
+            const result = resizePc(player, target);
+            if (!result) return bad("Removing those boxes would remove boxes holding Pokémon.");
+            return ok(`${player.name} now has ${target} boxes.`);
+        });
+    // RenameBoxCommand, ChangeBoxWallpaperCommand, UnlockPCBoxWallpaperCommand
+    add("renamebox", "Renames a PC box", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "name" }], [], (origin, players, b, name) => {
+        const player = commandPlayer(origin, players);
+        if (!player || b < 1 || b > pcBoxes(player)) return bad("No such box");
+        later(() => { const names = jsonProp(player, PC_NAMES, {}); names[b - 1] = name; player.setDynamicProperty(PC_NAMES, JSON.stringify(names)); });
+        return ok(`Box ${b} is now ${name}`);
+    });
+    add("changewallpaper", "Sets a PC box's wallpaper", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "wallpaper" }], [], (origin, players, b, wall) => {
+        const player = commandPlayer(origin, players), code = PC_WALLPAPERS.find((w) => w[0] === wall || w[2] === wall || `${w[0]}` === wall)?.[0] ?? wall;
+        if (!player || b < 1 || b > pcBoxes(player)) return bad("No such box");
+        later(() => { const walls = jsonProp(player, WALLS, {}); walls[b - 1] = code; player.setDynamicProperty(WALLS, JSON.stringify(walls)); });
+        return ok(`Box ${b}'s wallpaper set`);
+    });
+    add("unlockpcboxwallpaper", "Unlocks a PC wallpaper for a player", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "wallpaper" }], [], (origin, players, unlock) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => unlockWallpaper(player, unlock.includes(":") ? unlock : `cobblemon:${unlock}`));
+        return ok("Unlocked");
+    });
+    // PokedexCommand: grant or revoke a species, or all
+    add("pokedex", "Grants or revokes Pokedex entries: grant|revoke, player, species or all", [{ type: P.Enum, name: "cobblemon:dexaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "species" }], [], (origin, action, players, species) => {
+        const player = commandPlayer(origin, players), all = species === "all", typeId = all ? null : speciesNamed(species);
+        if (!player || (!all && !typeId)) return bad("No such player or species");
+        later(() => {
+            if (action === "grant") { for (const id of all ? NATIONAL.filter((i) => POKEMON[i]) : [typeId]) register(player, id, 2, 0); return; }
+            let s = dexString(player);
+            for (const id of all ? NATIONAL : [typeId]) { const n = DEX_INDEX.get(id); if (n !== undefined) s = s.slice(0, n) + "0" + s.slice(n + 1); }
+            player.setDynamicProperty(DEX, s);
+        });
+        return ok(`${action === "grant" ? "Granted" : "Revoked"} ${all ? "every entry" : POKEMON[typeId].name}`);
+    });
+    // TeachCommand, QueryLearnsetCommand
+    add("teach", "Teaches a party Pokemon a move", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [], (origin, players, slot, move) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!m || !MOVES[id]) return bad("No such Pokemon or move");
+        later(() => {
+            const ids = fighter(m)?.moves.map((x) => x.id) ?? [];
+            if (ids.includes(id)) return;
+            setProp(m, MOVESET, JSON.stringify(ids.length < 4 ? [...ids, id] : [...ids.slice(0, 3), id])); saveParty(player.id);
+            player.sendMessage(`§a${nicknameOf(m) || POKEMON[m.typeId].name} learned ${MOVES[id].name}!`);
+        });
+        return ok("Taught");
+    });
+    add("querylearnset", "Says whether a party Pokemon can learn a move, and how", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [], (origin, players, slot, move) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!m) return bad("No Pokemon in that slot");
+        const info = POKEMON[m.typeId], how = [];
+        const at = info.learnset?.find(([, mv]) => mv === id);
+        if (at) how.push(`at level ${at[0]}`);
+        if (info.egg?.includes(id)) how.push("as an egg move");
+        if ((TM_SPECIES[m.typeId] ?? []).includes(TM_BY_MOVE.get(id))) how.push("from a TM");
+        return ok(how.length ? `${info.name} can learn ${MOVES[id]?.name ?? id} ${how.join(", ")}` : `${info.name} cannot learn ${MOVES[id]?.name ?? id}`);
+    });
+    // HeldItemCommand
+    add("held_item", "Gives a party Pokemon an item to hold", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.ItemType, name: "item" }], [], (origin, players, slot, item) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, "cobblemon:held", item.id); saveParty(player.id); });
+        return ok("Held item set");
+    });
+    // FriendshipCommand
+    add("friendship", "Shows a party Pokemon's friendship", [{ type: P.Integer, name: "slot" }], [{ type: P.PlayerSelector, name: "player" }], (origin, slot, players) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        return ok(`${nicknameOf(m) || POKEMON[m.typeId].name}'s friendship is ${prop(m, "cobblemon:friendship") ?? POKEMON[m.typeId].friendship ?? 50}`);
+    });
+    // PokemonEditCommand
+    add("pokemonedit", "Changes a party Pokemon's properties: level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.Integer, name: "slot" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, slot, ...w) => {
+        const player = commandPlayer(origin), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { applyProps(m, parseProps(w)); saveParty(player.id); });
+        return ok("Edited");
+    });
+    // MarkGiveCommand, MarkTakeCommand, MarkGiveAllCommand
+    const markId = (name) => `cobblemon:${name.replace(/^cobblemon:/, "")}`;
+    add("givemark", "Gives a party Pokemon a mark", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "mark" }], [], (origin, players, slot, mark) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = markId(mark);
+        if (!m || !MARKS[id]) return bad("No such Pokemon or mark");
+        later(() => { if (!marksOf(m).includes(id)) setProp(m, MARK_LIST, JSON.stringify([...marksOf(m), id])); saveParty(player.id); });
+        return ok(`Gave ${MARKS[id][1]}`);
+    });
+    add("takemark", "Takes a mark from a party Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "mark" }], [], (origin, players, slot, mark) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = markId(mark);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, MARK_LIST, JSON.stringify(marksOf(m).filter((x) => x !== id))); if (prop(m, ACTIVE_MARK) === id) setProp(m, ACTIVE_MARK, undefined); saveParty(player.id); });
+        return ok("Taken");
+    });
+    add("giveallmarks", "Gives a party Pokemon every mark", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
+        const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
+        if (!m) return bad("No Pokemon in that slot");
+        later(() => { setProp(m, MARK_LIST, JSON.stringify(Object.keys(MARKS))); saveParty(player.id); });
+        return ok("Gave every mark");
+    });
+    // GiveTmCommand, TmCommand (unlock or lock a TM for the TM Machine)
+    add("givetm", "Gives TMs of a move", [{ type: P.String, name: "move" }], [{ type: P.Integer, name: "quantity" }, { type: P.PlayerSelector, name: "player" }], (origin, move, quantity, players) => {
+        const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (!player || !TM_BY_MOVE.has(id)) return bad("No such TM");
+        later(() => player.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack(`cobblemon:tm_${id}`, Math.max(1, Math.min(64, quantity ?? 1)))));
+        return ok("Given");
+    });
+    add("technicalmachine", "Unlocks or locks a TM for a player's TM Machine: unlock|lock, player, move or all", [{ type: P.Enum, name: "cobblemon:tmaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "move" }], [], (origin, action, players, move) => {
+        const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, ""), all = id === "all";
+        if (!player || (!all && !TM_BY_MOVE.has(id))) return bad("No such TM");
+        later(() => {
+            const known = learnedTms(player), ids = all ? TMS.map((t) => t[0]) : [id];
+            for (const t of ids) action === "unlock" ? known.add(t) : known.delete(t);
+            player.setDynamicProperty(LEARNED_TMS, JSON.stringify([...known]));
+        });
+        return ok(`${action === "unlock" ? "Unlocked" : "Locked"} ${all ? "every TM" : id}`);
+    });
+    // StopBattleCommand, SpectateBattleCommand
+    add("stopbattle", "Ends a player's battle", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players), battle = player && battles.get(player.id);
+        if (!battle) return bad("Not in a battle");
+        later(() => endBattle(battle, "§7The battle was stopped."));
+        return ok("Stopped");
+    });
+    add("spectatebattle", "Follows another player's battle in chat", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+        const player = commandPlayer(origin), target = players?.[0], battle = target && battles.get(target.id);
+        if (!player || !battle) return bad("That player is not in a battle");
+        later(() => spectateBattle(player, target, battle));
+        return ok("");
+    }, CommandPermissionLevel.Any);
+    // FreezePokemonCommand: the Pokemon looked at stands still for some seconds
+    add("freezepokemon", "Freezes the Pokemon you look at for some seconds", [{ type: P.Integer, name: "seconds" }], [], (origin, seconds) => {
+        const player = commandPlayer(origin), hit = player?.getEntitiesFromViewDirection({ maxDistance: 16 })[0]?.entity;
+        if (!hit || !POKEMON[hit.typeId]) return bad("Look at a Pokemon");
+        later(() => { freeze(hit, true); system.runTimeout(() => { if (hit.isValid && !battles.has(prop(hit, OWNER))) freeze(hit, false); }, Math.max(1, seconds) * 20); });
+        return ok("Frozen");
+    });
+    // HidePartyBinding: a Bedrock pack adds no keys, so a command toggles the party overlay
+    add("hideparty", "Hides or shows the party overlay", [], [], (origin) => {
+        const player = commandPlayer(origin);
+        if (!player) return bad("Run it as a player");
+        later(() => player.setDynamicProperty(HIDE_PARTY, player.getDynamicProperty(HIDE_PARTY) ? undefined : true));
+        return ok("");
+    }, CommandPermissionLevel.Any);
+    // OpenStarterScreenCommand
+    add("openstarterscreen", "Opens the starter screen", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+        const player = commandPlayer(origin, players);
+        if (!player) return bad("No player");
+        later(() => openStarter(player));
+        return ok("");
+    });
+}
+
+system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRegistry }) => {
+    try { registerCommands(customCommandRegistry); } catch (e) { console.warn(`[cobblemon] commands: ${e}`); }
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
@@ -8655,6 +12579,18 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             }
         }
     });
+    blockComponentRegistry.registerCustomComponent("cobblemon:gem_core", { onRandomTick({ block }) { gemCoreTick(block); } });
+    blockComponentRegistry.registerCustomComponent("cobblemon:leaves", {
+        onRandomTick({ block }) { if (block.typeId === "cobblemon:saccharine_leaves") honeyDrip(block); if (block.isValid) decayLeaf(block); },
+        beforeOnPlayerPlace(event) { try { event.permutationToPlace = event.permutationToPlace.withState("cobblemon:persistent", true); } catch (e) { } },
+    });
+    // a lit candle on a Poke Cake flickers with a candle's flame (AbstractCandleBlock.addParticlesAndSound)
+    blockComponentRegistry.registerCustomComponent("cobblemon:poke_cake", {
+        onTick({ block }) {
+            if (!block.permutation.getState("cobblemon:lit")) return;
+            try { block.dimension.spawnParticle("minecraft:candle_flame_particle", { x: block.x + 0.5, y: block.y + 0.4375 + 0.5, z: block.z + 0.5 }); } catch (e) { }
+        }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_snack", {
         beforeOnPlayerPlace({ player, block }) { if (player) placeSnack(player, block); },
         onTick({ block }) { snackTick(block); }
@@ -8662,20 +12598,48 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
     blockComponentRegistry.registerCustomComponent("cobblemon:berry_growth", {
         onRandomTick({ block }) {
             const stage = block.permutation.getState("cobblemon:stage");
-            if (stage < 3) block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1));
+            if (stage >= 3) return;
+            const care = careOf(block);
+            // a bush with no time kept (newly planted, or from before) starts its stage's clock now
+            if (care.due === undefined) { scheduleBerry(block, stage, care); return; }
+            if (world.getAbsoluteTime() < care.due) return;
+            const next = stage + 1;
+            block.setPermutation(block.permutation.withState("cobblemon:stage", next));
+            scheduleBerry(block, next, care);
+            if (next === 3) berryMutation(block);
         },
-        onPlayerInteract({ block }) {
+        onPlayerInteract({ block, player }) {
+            const hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
+            if (hand && applyMulch(block, player, hand.typeId)) return;
             if (block.permutation.getState("cobblemon:stage") !== 3) return;
             const berry = BERRIES[block.typeId];
             if (!berry) return;
-            const count = berry.min + Math.floor(Math.random() * (berry.max - berry.min + 1));
             const { x, y, z } = block.location;
-            block.dimension.spawnItem(new ItemStack(berry.item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
+            for (const [item, count] of berryHarvest(block)) block.dimension.spawnItem(new ItemStack(item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
+            scheduleBerry(block, 2);
             try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
     });
     // a revival herb (RevivalHerbBlock.randomTick): an age on, one random tick in 26, as a dry crop's
+    // a budding tumblestone (TumblestoneBlock, GrowableStoneBlock.randomTick): one random tick in five, with lava or a
+    // magma block (#cobblemon:tumblestone_heat_source) touching it or its corners, it grows to the next stage, small to
+    // medium to large to the cluster, keeping its facing. Bedrock's random ticks come a third as often as Java's, so
+    // each of Bedrock's grows at three in five
+    blockComponentRegistry.registerCustomComponent("cobblemon:tumblestone", {
+        onRandomTick({ block }) {
+            if (Math.random() >= 0.6) return;
+            const m = block.typeId.match(/^cobblemon:(small|medium|large)_budding_(\w+)$/);
+            if (!m) return;
+            let heated = false;
+            for (let x = -1; x <= 1 && !heated; x++) for (let y = -1; y <= 1 && !heated; y++) for (let z = -1; z <= 1 && !heated; z++) {
+                try { heated = /^minecraft:(flowing_)?lava$|^minecraft:magma$/.test(block.offset({ x, y, z })?.typeId ?? ""); } catch (e) { }
+            }
+            if (!heated) return;
+            const next = { small: `cobblemon:medium_budding_${m[2]}`, medium: `cobblemon:large_budding_${m[2]}`, large: `cobblemon:${m[2]}_cluster` }[m[1]];
+            try { block.setPermutation(BlockPermutation.resolve(next, { "minecraft:block_face": block.permutation.getState("minecraft:block_face") })); } catch (e) { }
+        }
+    });
     blockComponentRegistry.registerCustomComponent("cobblemon:revival_herb", {
         onRandomTick({ block }) {
             const age = block.permutation.getState("cobblemon:age");
@@ -8688,6 +12652,9 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry }) => {
             const m = gymMarker(block);
             if (m?.role === "spot") noteGymSite(m.trainer, block.dimension, block.location);
         }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:structure_site", {
+        onRandomTick({ block }) { noteStructureSite(block); }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
         onPlayerInteract({ block, player }) { if (player) useMachine(block, player); }
@@ -8732,6 +12699,33 @@ function timeline(ticks, fn) {
 // Wild shinies (PokemonClientDelegate.playWildShinySounds): a wild shiny within 24 blocks of a player
 // (shinyNoticeParticlesDistance) sparkles every 3.5 seconds, with its ambient chime, unless it is in battle, and the first
 // time that player comes near it, its ring and chime play for them
+// the shiny ring and its chime (shiny_ring.particle.json's particle.shiny_chime), round a shiny's middle
+function shinyRing(e) {
+    if (!e?.isValid || !isShiny(e)) return;
+    try {
+        const head = e.getHeadLocation(), mid = { x: e.location.x, y: (e.location.y + head.y) / 2, z: e.location.z };
+        e.dimension.spawnParticle("cobblemon:shiny_ring", mid); e.dimension.playSound("cobblemon.particle.shiny_chime", mid);
+    } catch (err) { }
+}
+// A shiny a player looks at, owned or wild, sparkles with a chime, at most every 3.5 seconds (CobblemonClient's look
+// check, PokemonClientDelegate.spawnShinyParticle: ambient_shiny_sparkle, whose q.sound is played here since a
+// Bedrock particle cannot play the pack's own sounds)
+const SHINY_GLANCE_COOLDOWN = 70, shinyGlanced = new Map();   // entity id -> tick it last sparkled
+system.runInterval(() => {
+    const now = system.currentTick;
+    for (const player of world.getAllPlayers()) {
+        let hit;
+        try { hit = player.getEntitiesFromViewDirection({ maxDistance: 8 }).find((h) => POKEMON[h.entity.typeId])?.entity; } catch (e) { continue; }
+        if (!hit || !isShiny(hit) || now - (shinyGlanced.get(hit.id) ?? -SHINY_GLANCE_COOLDOWN) < SHINY_GLANCE_COOLDOWN) continue;
+        shinyGlanced.set(hit.id, now);
+        try {
+            const feet = hit.location, head = hit.getHeadLocation(), mid = { x: feet.x, y: (feet.y + head.y) / 2, z: feet.z };
+            hit.dimension.spawnParticle("cobblemon:ambient_shiny_sparkle", mid);
+            hit.dimension.playSound("cobblemon.particle.shiny_ambient_chime", mid, { pitch: 0.8 + Math.random() * 0.4 });
+        } catch (e) { }
+    }
+    if (shinyGlanced.size > 200) for (const [id, at] of shinyGlanced) if (now - at > SHINY_GLANCE_COOLDOWN) shinyGlanced.delete(id);
+}, 5);
 const SHINY_NOTICE = 24, shinyNoticed = new Map();   // player id -> ids of the shinies they have had the ring for
 function isShiny(e) { return (SHINY_VARIANTS[e.typeId] ?? []).includes(variantOf(e)); }
 system.runInterval(() => {
@@ -8864,12 +12858,19 @@ system.runInterval(() => {
 
 const SCALE = "cobblemon:scale", SIZE_MIN = 0.95, SIZE_MAX = 1.05, SIZE_CATEGORIES = ["XS", "S", "M", "L", "XL"];
 function scaleOf(e) {
+    if (isAlpha(e)) return alphaScale(e.typeId);
     let s = prop(e, SCALE);
     if (typeof s !== "number") { s = SIZE_MIN + Math.random() * (SIZE_MAX - SIZE_MIN); setProp(e, SCALE, s); }
     return s;
 }
-function showScale(e) { try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", scaleOf(e)); } catch (err) { } }
+function showScale(e) {
+    try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", Math.min(2, scaleOf(e))); } catch (err) { }
+    try { if (e.getProperty("cobblemon:alpha") !== isAlpha(e)) e.setProperty("cobblemon:alpha", isAlpha(e)); } catch (err) { }   // the alpha eyes' pass
+    // a region_bias spawn's bias (port.py's cobblemon:spawn_bias_<region>), kept with the Pokemon from then on
+    try { const bias = e.getProperty("cobblemon:region_bias"); if (bias && bias !== "none" && prop(e, REGION_BIAS) === undefined) setProp(e, REGION_BIAS, bias); } catch (err) { }
+}
 function sizeCategory(e) {
+    if (isAlpha(e)) return "XL";
     const range = SIZE_MAX - SIZE_MIN, seg = range / SIZE_CATEGORIES.length;
     return SIZE_CATEGORIES[Math.max(0, Math.min(SIZE_CATEGORIES.length - 1, Math.floor(Math.min(range, Math.max(0, scaleOf(e) - SIZE_MIN)) / seg)))];
 }
@@ -8949,7 +12950,7 @@ function captureBall(dim, ballId, at) {
     return entity;
 }
 
-function ballState(entity, state) { try { entity.setProperty("cobblemon:state", { fly: 0, hover: 1, open: 2, shut: 3, shake: 4, critical: 5, capture: 6, break: 7 }[state]); } catch (e) { } }
+function ballState(entity, state) { try { entity.setProperty("cobblemon:state", { fly: 0, hover: 1, open: 2, shut: 3, shake: 4, critical: 5, capture: 6, break: 7, hop: 8 }[state]); } catch (e) { } }
 
 function dropBall(dim, ballId, at, player) {
     if (player?.getGameMode?.() === "Creative") return;
@@ -8970,6 +12971,8 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
         const to = { x: entity.location.x, y: entity.location.y + 0.5, z: entity.location.z };
         if (t < FLIGHT) {
             const k = t / FLIGHT;
+            // PokemonClientDelegate's poke_ball.trail, a sound that follows the ball: here from the ball as it sets off
+            if (t === 1) try { dim.playSound("cobblemon.poke_ball.trail", ball.location, { volume: 0.1 }); } catch (e) { }
             try { ball.teleport({ x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + Math.sin(k * Math.PI) * 0.8, z: from.z + (to.z - from.z) * k }, { facingLocation: to }); } catch (e) { }
         } else if (t === FLIGHT) {
             try { ball.remove(); } catch (e) { }
@@ -9007,9 +13010,17 @@ function captureRoll(player, pokemon, ballId, battle) {
     const highest = Math.max(0, ...findParty(player, player.location).map((e) => fighter(e)?.level ?? 0));
     if (highest && highest < f.level && f.level - highest >= 50) rate *= 0.1;
     const chance = Math.round(65536 / Math.pow(255 / Math.max(rate, 0.0001), 0.1875));
+    // CriticalCaptureProvider: more likely the more the player has caught; a critical capture is one check, one shake
+    if (criticalCapture(player, rate)) return { shakes: 1, caught: Math.floor(Math.random() * 65537) < chance, critical: true };
     let shakes = 0;
     for (let i = 0; i < 4; i++) if (Math.floor(Math.random() * 65537) < chance) shakes++;
     return { shakes: Math.min(shakes, 3), caught: shakes === 4 };
+}
+function criticalCapture(player, rate) {
+    let caught = 0;
+    try { for (const c of dexString(player)) if (c === "2") caught++; } catch (e) { return false; }
+    const mult = caught <= 30 ? 0 : caught <= 150 ? 0.5 : caught <= 300 ? 1 : caught <= 450 ? 1.5 : caught <= 600 ? 2 : 2.5;
+    return Math.floor(Math.random() * 256) < Math.round((rate * mult) / 6);
 }
 
 // the ball's multiplier for a throw in the world: the battle rules where they read the world, Safari's 1.5 outside
@@ -9041,6 +13052,7 @@ function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
     else { freeze(pokemon, true); try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { } }
     register(player, pokemon.typeId, 1, variantOf(pokemon));
     let ball;
+    try { dim.playSound("cobblemon.poke_ball.hit", hit); } catch (e) { }   // EmptyPokeBallEntity.attemptCatch
     try { ball = captureBall(dim, ballId, hit); } catch (e) { capturing.delete(pokemon.id); freeze(pokemon, false); dropBall(dim, ballId, hit, player); return; }
     ballState(ball, "hover");
     // bounce back off the Pokemon: a third of a block a tick up, a tenth back and to one side, under gravity
@@ -9088,11 +13100,30 @@ function fall(ball, pos, player, pokemon, ballId, gone) {
     });
 }
 
-// on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result
+// the hop an ancient ball makes in place of its shakes, by the checks passed (a critical capture counts one, a catch
+// four), as EmptyPokeBallEntity.shakeBall picks it
+function ancientHops(roll) { return roll.critical ? 1 : roll.caught ? 4 : roll.shakes; }
+
+// on the ground: bounce, then after a second a shake every 1.25 s, one per check passed, then the result; an ancient
+// ball hops once instead, and the result follows 1.25 s after the hop
 function land(ball, pos, player, pokemon, ballId, gone) {
     const dim = ball.dimension, roll = captureRoll(player, pokemon, ballId, captureBattles.get(pokemon.id));
     ballState(ball, "shake");
     let shake = 0;
+    if (BALLS[ballId]?.ancient) {
+        const hops = ancientHops(roll);
+        if (hops) system.runTimeout(() => {
+            if (!ball.isValid) return;
+            ballState(ball, "hop");
+            try { ball.setProperty("cobblemon:shake", hops); } catch (e) { }
+        }, 20);
+        system.runTimeout(() => {
+            if (!ball.isValid || !pokemon.isValid) { gone(); return; }
+            if (roll.caught) caught(ball, pos, player, pokemon, ballId, gone);
+            else brokeFree(ball, pos, pokemon, ballId, gone);
+        }, hops ? 45 : 20);
+        return;
+    }
     const steps = roll.shakes + 1;
     for (let i = 0; i < steps; i++) {
         system.runTimeout(() => {
@@ -9111,6 +13142,9 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
         if (pokemon.isValid) {
             try { pokemon.teleport(pos); } catch (e) { }
             player.sendMessage(`§aGotcha! ${name} was caught!`);
+            if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
+            // callbacks/pokemon_captured/remove_aspects
+            setProp(pokemon, "cobblemon:honey_drenched", undefined); setProp(pokemon, SNACK_CRUMBED, undefined);
             const battle = captureBattles.get(pokemon.id);
             captureBattles.delete(pokemon.id);
             keepCaught(player, pokemon, ballId);   // first, so the battle's end does not heal it as a wild one
@@ -9149,6 +13183,28 @@ function potentialMarks(pokemon) {
     if (prop(pokemon, "cobblemon:fished")) out.push("cobblemon:mark_fishing");
     return out.filter((id) => MARKS[id]);
 }
+// callbacks/player_tick_pre/partner_mark: every 10,000 blocks a player travels (walking, swimming, flying, riding),
+// each of their party with 200 friendship or more has the Partner Mark's own chance of it; checked every ten seconds
+const TRAVELLED = "cobblemon:travelled", lastSpot = new Map();
+system.runInterval(() => {
+    for (const player of world.getAllPlayers()) {
+        let here;
+        try { here = { ...player.location, d: player.dimension.id }; } catch (e) { continue; }
+        const last = lastSpot.get(player.id);
+        lastSpot.set(player.id, here);
+        if (!last || last.d !== here.d) continue;
+        const step = Math.hypot(here.x - last.x, here.y - last.y, here.z - last.z);
+        if (step > 200) continue;   // a teleport, not travel
+        const before = player.getDynamicProperty(TRAVELLED) ?? 0, after = before + step;
+        player.setDynamicProperty(TRAVELLED, after);
+        if (Math.floor(after / 10000) <= Math.floor(before / 10000)) continue;
+        const mark = "cobblemon:mark_partner", chance = MARKS[mark]?.[6] ?? 0.01;
+        for (const m of summaryParty(player)) {
+            if (friendshipOf(m) < 200 || marksOf(m).includes(mark) || Math.random() >= chance) continue;
+            setProp(m, MARK_LIST, JSON.stringify([...marksOf(m), mark])); saveParty(player.id);
+        }
+    }
+}, 200);
 function applyPotentialMarks(pokemon) {
     const owned = marksOf(pokemon), potentials = potentialMarks(pokemon).filter((id) => !owned.includes(id));
     const groups = new Map();
@@ -9230,6 +13286,7 @@ function brokeFree(ball, pos, pokemon, ballId, gone) {
     system.runTimeout(() => {
         ballBurst(dim, ballId, { x: pos.x, y: pos.y + 0.3, z: pos.z });
         timeline(BEAM_SHRINK, (t) => { if (pokemon.isValid) setSize(pokemon, t / BEAM_SHRINK); });
+        system.runTimeout(() => shinyRing(pokemon), 10);   // EmptyPokeBallEntity: a shiny out of the ball, half a second on
         capturing.delete(pokemon.id);
         const battle = captureBattles.get(pokemon.id);
         captureBattles.delete(pokemon.id);
@@ -9376,6 +13433,7 @@ function giveStarter(player, chosen) {
             setProp(entity, EXP, expFor(info.expGroup, chosen.level));
             setProp(entity, MOVESET, JSON.stringify(movesAt(info, chosen.level)));
             setProp(entity, "cobblemon:caught_ball", chosen.ball);
+            if (chosen.bias) setProp(entity, REGION_BIAS, chosen.bias);
         } catch (e) { }
         register(player, chosen.id, 2);
         sendOutEffect(player, entity, chosen.ball);
@@ -9494,37 +13552,106 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const type = event.target?.typeId;
     if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse") return;
     event.cancel = true;
-    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player) : openMart(event.player));
+    const target = event.target;
+    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player, target) : openMart(event.player));
 });
 
-// The Nurse's trades (CobblemonTradeOffers, all five levels at once, since an NPC does not level): what she wants for
-// what she gives, an emerald and a glass bottle for a medicine, Medicinal Leeks and Mulch Base bought for emeralds
+// The Nurse's trades (CobblemonTradeOffers) by villager level, Novice to Master: what she wants, what she gives, its
+// maxUses and the villager XP it earns her. She levels as a villager does: two offers drawn from a level's list as she
+// reaches it (VillagerData's two new offers a level), each good for its uses until she restocks at her healing machine
+// (twice a day at most, 2400 ticks apart, in working hours), and XP from each trade taking her up at 10, 70, 150 and
+// 250; the player gains 3 to 6 experience a trade, 5 more when she levels
 const EMERALD = "minecraft:emerald";
-const NURSE_TRADES = [
-    [[[EMERALD, 4]], ["cobblemon:oran_berry", 1]], [[[EMERALD, 4]], ["cobblemon:persim_berry", 1]], [[[EMERALD, 4]], ["cobblemon:energy_root", 1]],
-    [[["cobblemon:medicinal_leek", 24]], [EMERALD, 1]],
-    [[[EMERALD, 8], ["minecraft:glass_bottle", 1]], ["cobblemon:medicinal_brew", 1]],
-    ...["blue", "cyan", "green", "pink", "red", "white"].map((c) => [[[EMERALD, 2]], [`cobblemon:${c}_mint_leaf`, 1]]),
-    [[["cobblemon:mulch_base", 4]], [EMERALD, 2]], [[[EMERALD, 1]], ["minecraft:glass_bottle", 1]],
-    [[[EMERALD, 8]], ["cobblemon:revival_herb", 1]], [[[EMERALD, 24]], ["cobblemon:vivichoke_seeds", 1]],
-    ...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1]]),
-    [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1]]
+const NURSE_LEVELS = [
+    [[[[EMERALD, 4]], ["cobblemon:oran_berry", 1], 16, 1], [[[EMERALD, 4]], ["cobblemon:persim_berry", 1], 16, 1], [[[EMERALD, 4]], ["cobblemon:energy_root", 1], 12, 1],
+     [[["cobblemon:medicinal_leek", 24]], [EMERALD, 1], 12, 2]],
+    [[[[EMERALD, 8], ["minecraft:glass_bottle", 1]], ["cobblemon:medicinal_brew", 1], 8, 5],
+     ...["blue", "cyan", "green", "pink", "red", "white"].map((c) => [[[EMERALD, 2]], [`cobblemon:${c}_mint_leaf`, 1], 8, 5])],
+    [[[["cobblemon:mulch_base", 4]], [EMERALD, 2], 16, 20], [[[EMERALD, 1]], ["minecraft:glass_bottle", 1], 16, 10]],
+    [[[[EMERALD, 8]], ["cobblemon:revival_herb", 1], 16, 15], [[[EMERALD, 24]], ["cobblemon:vivichoke_seeds", 1], 4, 15]],
+    [...["antidote", "awakening", "burn_heal", "ice_heal", "paralyze_heal"].map((m) => [[[EMERALD, 10], ["minecraft:glass_bottle", 1]], [`cobblemon:${m}`, 1], 12, 30]),
+     [[[EMERALD, 22], ["minecraft:bowl", 1]], ["cobblemon:vivichoke_dip", 1], 4, 30]]
 ];
-function openNurse(player) {
-    const form = new ActionFormData().title("Nurse").body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.`);
-    const label = ([id, n]) => id === EMERALD ? `${n} emerald${n === 1 ? "" : "s"}` : `${n > 1 ? `${n} ` : ""}${itemName(id)}`;
-    for (const [wants, gives] of NURSE_TRADES) {
-        const can = wants.every(([id, n]) => countOf(player, id) >= n);
-        form.button(`${label(gives)}\n${can ? "§2" : "§c"}for ${wants.map(label).join(" + ")}`, potIcon(gives[0] === EMERALD ? wants[0][0] : gives[0]));
+const NURSE_LEVEL_XP = [0, 10, 70, 150, 250], NURSE_LEVEL_NAMES = ["Novice", "Apprentice", "Journeyman", "Expert", "Master"];
+const NURSE_STATE = "cobblemon:nurse_trades";
+// her level, XP, the offers she has ([level, index] each) and the uses left of each; drawn afresh for a new Nurse
+function nurseState(nurse) {
+    return drawOffers(jsonProp(nurse, NURSE_STATE, null) ?? { level: 1, xp: 0, offers: [], uses: [], restocks: 0, day: -1, last: -99999 });
+}
+// two offers from each level she has reached and has none from yet
+function drawOffers(state) {
+    for (let lv = 0; lv < state.level; lv++) {
+        if (state.offers.some(([l]) => l === lv)) continue;
+        for (const i of NURSE_LEVELS[lv].map((_, n) => n).sort(() => Math.random() - 0.5).slice(0, 2)) {
+            state.offers.push([lv, i]); state.uses.push(NURSE_LEVELS[lv][i][2]);
+        }
     }
+    return state;
+}
+function saveNurse(nurse, state) { setProp(nurse, NURSE_STATE, JSON.stringify(state)); }
+// a trade made: its use spent, her XP up, and her level when it reaches the next threshold (which draws its two offers)
+function nurseTraded(state, k) {
+    const [lv, i] = state.offers[k];
+    state.uses[k]--;
+    state.xp += NURSE_LEVELS[lv][i][3];
+    let levelled = false;
+    while (state.level < NURSE_LEVELS.length && state.xp >= NURSE_LEVEL_XP[state.level]) { state.level++; levelled = true; }
+    drawOffers(state);
+    return levelled;
+}
+// restocking at her healing machine: every offer back to its full uses, twice a day at most and 2400 ticks apart
+function nurseRestock(state, day, tick) {
+    if (state.day !== day) { state.day = day; state.restocks = 0; }
+    if (state.restocks >= 2 || tick - state.last < 2400 || state.offers.every(([lv, i], k) => state.uses[k] >= NURSE_LEVELS[lv][i][2])) return false;
+    state.offers.forEach(([lv, i], k) => { state.uses[k] = NURSE_LEVELS[lv][i][2]; });
+    state.restocks++; state.last = tick;
+    return true;
+}
+// A villager at work uses its job block now and then through the working day (Minecraft's WorkAtPoi, the profession's
+// work sound): the Nurse's is CobblemonVillagerProfessions' work_nurse, played at her healing machine's side, a third
+// of the checks each ten seconds from 2000 to 9000 ticks into the day
+system.runInterval(() => {
+    const t = world.getTimeOfDay();
+    if (t < 2000 || t > 9000) return;
+    const heard = new Set();
+    for (const player of world.getAllPlayers()) {
+        let nurses = [];
+        try { nurses = player.dimension.getEntities({ type: "cobblemon:nurse", location: player.location, maxDistance: 32 }); } catch (e) { continue; }
+        for (const nurse of nurses) if (!heard.has(nurse.id) && heard.add(nurse.id) && Math.random() < 1 / 3) try {
+            nurse.dimension.playSound("cobblemon.entity.villager.work_nurse", nurse.location);
+            // at work she restocks her offers when they need it
+            const state = nurseState(nurse);
+            if (nurseRestock(state, world.getDay(), system.currentTick)) saveNurse(nurse, state);
+        } catch (e) { }
+    }
+}, 200);
+function openNurse(player, nurse) {
+    if (!nurse?.isValid) return;
+    const state = nurseState(nurse);
+    saveNurse(nurse, state);
+    const next = NURSE_LEVEL_XP[state.level];
+    const form = new ActionFormData().title(`Nurse - ${NURSE_LEVEL_NAMES[state.level - 1]}`)
+        .body(`§7Welcome to the Pokemon Center! You have §a${emeraldsOf(player)} emerald${emeraldsOf(player) === 1 ? "" : "s"}§7.${next !== undefined ? ` §8(${state.xp}/${next} to ${NURSE_LEVEL_NAMES[state.level]})` : ""}`);
+    const label = ([id, n]) => id === EMERALD ? `${n} emerald${n === 1 ? "" : "s"}` : `${n > 1 ? `${n} ` : ""}${itemName(id)}`;
+    state.offers.forEach(([lv, i], k) => {
+        const [wants, gives] = NURSE_LEVELS[lv][i], can = wants.every(([id, n]) => countOf(player, id) >= n);
+        form.button(`${label(gives)}\n${state.uses[k] <= 0 ? "§cout of stock" : `${can ? "§2" : "§c"}for ${wants.map(label).join(" + ")}`}`, potIcon(gives[0] === EMERALD ? wants[0][0] : gives[0]));
+    });
     form.show(player).then((r) => {
-        if (r.canceled || r.selection === undefined) return;
-        const [wants, gives] = NURSE_TRADES[r.selection];
-        if (!wants.every(([id, n]) => countOf(player, id) >= n)) { player.sendMessage(`§cYou need ${wants.map(label).join(" + ")}.`); return openNurse(player); }
+        if (r.canceled || r.selection === undefined || !nurse.isValid) return;
+        const fresh = nurseState(nurse), k = r.selection, [lv, i] = fresh.offers[k] ?? [];
+        if (lv === undefined) return;
+        const [wants, gives] = NURSE_LEVELS[lv][i];
+        if (fresh.uses[k] <= 0) { player.sendMessage("§cShe is out of that until she restocks."); return openNurse(player, nurse); }
+        if (!wants.every(([id, n]) => countOf(player, id) >= n)) { player.sendMessage(`§cYou need ${wants.map(label).join(" + ")}.`); return openNurse(player, nurse); }
         for (const [id, n] of wants) takeOf(player, id, n);
-        for (let i = 0; i < gives[1]; i++) giveOrDrop(player, gives[0]);
-        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
-        openNurse(player);
+        for (let j = 0; j < gives[1]; j++) giveOrDrop(player, gives[0]);
+        const levelled = nurseTraded(fresh, k), after = fresh;
+        saveNurse(nurse, after);
+        try { player.addExperience(ri(3, 6) + (levelled ? 5 : 0)); } catch (e) { }
+        try { player.playSound(levelled ? "random.levelup" : "cobblemon.gui.click"); } catch (e) { }
+        if (levelled) player.sendMessage(`§aThe Nurse is now ${NURSE_LEVEL_NAMES[after.level - 1]}.`);
+        openNurse(player, nurse);
     }).catch(() => { });
 }
 
@@ -9810,14 +13937,25 @@ function tradeDistance(a, b) {
     const p = a.entity.location, q = b.entity.location;
     return a.entity.dimension.id === b.entity.dimension.id ? Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) : Infinity;
 }
+// SpectateBattleCommand and the wheel's Spectate: the player follows the battle in chat, as its player sees it
+function spectateBattle(player, target, battle) {
+    if (!battle) return;
+    (realBattle(battle).spectators ??= new Set()).add(player.id);
+    player.sendMessage(`§7Spectating ${target.name}'s battle.`);
+}
 // the player wheel (createPlayerInteractGui), on a player or the test trader
 function openPlayerWheel(player, target) {
     const me = tradeParticipant(player), other = tradeParticipant(target);
     if (!me || !other) return;
     const pending = tradeRequests.find((r) => r.from.id === other.id && r.to.id === me.id);
+    const challenged = challenges.some((c) => c.from.id === other.id && c.to.id === me.id);
     const options = {
-        north: other.player && !battles.has(me.id) && !battles.has(other.id)
-            ? { icon: challenges.some((c) => c.from.id === other.id && c.to.id === me.id) ? "battle_new" : "battle", on: true, tip: "Battle", act: () => openChallenge(player, target) }
+        // a player already in a battle offers Spectate in Battle's place (InteractWheelGuiFactory's SPECTATE_BATTLE), unless
+        // they have challenged this one
+        north: other.player && battles.has(other.id) && !battles.has(me.id) && !challenged
+            ? { icon: "spectate", on: true, tip: "Spectate", act: () => spectateBattle(player, target, battles.get(other.id)) }
+            : other.player && !battles.has(me.id) && !battles.has(other.id)
+            ? { icon: challenged ? "battle_new" : "battle", on: true, tip: "Battle", act: () => openChallenge(player, target) }
             : { icon: "battle", on: false, tip: "Target is currently unavailable for that action." },
         northeast: { icon: pending ? "trade_new" : "trade", on: !trades.has(other.id), tip: trades.has(other.id) ? "Target is currently unavailable for that action." : "Trade",
                      act: () => requestTrade(me, other) },
@@ -9971,6 +14109,78 @@ function tradeEvolution(entity, tradedFor) {
     if (evolution.held && evolution.use) setProp(entity, HELD, undefined);
     try { entity.triggerEvent(evolution.event); } catch (e) { }
 }
+// CobblemonBoatItem (BoatItem.use): an apricorn or saccharine boat, or chest boat, goes on the water or block looked at
+// within five blocks, facing the way the player looks, the item used up; it is a vanilla boat underneath (port.py's
+// create_boats), so it paddles and floats as one
+const BOAT_ITEMS = new Set(["cobblemon:apricorn_boat", "cobblemon:apricorn_chest_boat", "cobblemon:saccharine_boat", "cobblemon:saccharine_chest_boat"]);
+const boatPlaced = new Map();   // player id -> tick, so a use on a block and in the air place one boat
+function placeBoat(player, id) {
+    if (boatPlaced.get(player.id) === system.currentTick) return;
+    boatPlaced.set(player.id, system.currentTick);
+    let hit;
+    // water counts as passable, so passable blocks are looked through for it
+    try { hit = player.getBlockFromViewDirection({ includeLiquidBlocks: true, includePassableBlocks: true, maxDistance: 5 }); } catch (e) { }
+    if (!hit?.block) return;
+    const b = hit.block, water = b.isLiquid;
+    const at = { x: b.location.x + 0.5, y: b.location.y + (water ? 0.9 : 1), z: b.location.z + 0.5 };
+    let boat;
+    try { boat = player.dimension.spawnEntity(id, at); } catch (e) { return; }
+    try { boat.setRotation({ x: 0, y: player.getRotation().y }); } catch (e) { }
+    consumeHand(player);
+}
+world.afterEvents.itemUse.subscribe(({ source, itemStack }) => {
+    if (source?.typeId === "minecraft:player" && BOAT_ITEMS.has(itemStack?.typeId)) placeBoat(source, itemStack.typeId);
+});
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    if (!event.isFirstEvent || !BOAT_ITEMS.has(event.itemStack?.typeId)) return;
+    event.cancel = true;
+    const { player, itemStack } = event;
+    system.run(() => placeBoat(player, itemStack.typeId));
+});
+
+// FlowerPotBlock: a Cobblemon sapling, berry, mint or flower used on an empty flower pot plants it there (the pot turns
+// into Cobblemon's potted block, port.py's POTTED), and an empty hand takes it out again, the pot left empty; broken, a
+// potted plant drops the pot and the plant (Cobblemon's loot table). Bedrock's script cannot see what a vanilla pot
+// holds, so a pot already holding a vanilla flower is not told apart from an empty one
+const POTTED_PLANT = Object.fromEntries(Object.entries(POTTED).map(([plant, block]) => [block, plant]));
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { block, player, itemStack } = event;
+    if (!event.isFirstEvent) return;
+    if (block.typeId === "minecraft:flower_pot" && POTTED[itemStack?.typeId]) {
+        event.cancel = true;
+        const target = POTTED[itemStack.typeId];
+        system.run(() => {
+            try { block.setType(target); } catch (e) { return; }
+            consumeHand(player);
+            try { block.dimension.playSound("block.flower_pot.place", block.center()); } catch (e) { }
+        });
+    } else if (POTTED_PLANT[block.typeId] && !itemStack) {
+        event.cancel = true;
+        const plant = POTTED_PLANT[block.typeId];
+        system.run(() => {
+            try { block.setType("minecraft:flower_pot"); } catch (e) { return; }
+            const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
+            const left = inv?.addItem(new ItemStack(plant, 1));
+            if (left) block.dimension.spawnItem(left, block.center());
+        });
+    }
+});
+
+// LinkCableItem: used on one of your own Pokemon, it runs a trade evolution whose conditions hold (its held item, no
+// Everstone) and is used up; an evolution that needs a particular partner (Shelmet and Karrablast) is left to a trade
+world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
+    const { player, target, itemStack } = event;
+    if (itemStack?.typeId !== "cobblemon:link_cable" || !POKEMON[target?.typeId] || prop(target, OWNER) !== player.id) return;
+    event.cancel = true;
+    system.run(() => {
+        if (!target.isValid || prop(target, HELD) === "cobblemon:everstone") { player.sendMessage("§7It didn't have any effect..."); return; }
+        const evolution = (TRADE_EVOLUTIONS[target.typeId] ?? []).find((e) => !e.with && (!e.held || prop(target, HELD) === e.held));
+        if (!evolution) { player.sendMessage("§7It didn't have any effect..."); return; }
+        consumeHand(player);
+        if (evolution.held && evolution.use) setProp(target, HELD, undefined);
+        try { target.triggerEvent(evolution.event); } catch (e) { }
+    });
+});
 function cancelTrade(trade) {
     for (const part of trade.parts) {
         if (trades.get(part.id) === trade) trades.delete(part.id);

@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0727_incineroar/incineroar",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0727_incineroar/incineroar",
                 "emissive_0_0": "textures/entity/0727_incineroar/incineroar_emissive__glow__incineroar",
                 "v1": "textures/entity/0727_incineroar/incineroar_shiny",
-                "emissive_1_0": "textures/entity/0727_incineroar/incineroar_emissive_shiny__glow__incineroar_shiny"
+                "emissive_1_0": "textures/entity/0727_incineroar/incineroar_emissive_shiny__glow__incineroar_shiny",
+                "alpha_eyes": "textures/entity/0727_incineroar/incineroar_alpha"
             },
             "geometry": {
                 "g_incineroar": "geometry.incineroar"
@@ -72,7 +74,10 @@
             },
             "render_controllers": [
                 "controller.render.incineroar",
-                "controller.render.incineroar_emissive"
+                "controller.render.incineroar_emissive",
+                {
+                    "controller.render.incineroar_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0727_incineroar_spawn_egg"

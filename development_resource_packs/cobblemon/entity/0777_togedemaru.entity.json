@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0777_togedemaru/togedemaru",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0777_togedemaru/togedemaru",
-                "v1": "textures/entity/0777_togedemaru/togedemaru_shiny"
+                "v1": "textures/entity/0777_togedemaru/togedemaru_shiny",
+                "alpha_eyes": "textures/entity/0777_togedemaru/togedemaru_alpha"
             },
             "geometry": {
                 "g_togedemaru": "geometry.togedemaru"
@@ -52,7 +54,10 @@
                 "evolution": "animation.0777_togedemaru.evolution"
             },
             "render_controllers": [
-                "controller.render.togedemaru"
+                "controller.render.togedemaru",
+                {
+                    "controller.render.togedemaru_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0777_togedemaru_spawn_egg"

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0691_dragalge/dragalge",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0691_dragalge/dragalge",
-                "v1": "textures/entity/0691_dragalge/dragalge_shiny"
+                "v1": "textures/entity/0691_dragalge/dragalge_shiny",
+                "alpha_eyes": "textures/entity/0691_dragalge/dragalge_alpha"
             },
             "geometry": {
                 "g_dragalge": "geometry.dragalge"
@@ -46,7 +48,10 @@
                 "evolution": "animation.0691_dragalge.evolution"
             },
             "render_controllers": [
-                "controller.render.dragalge"
+                "controller.render.dragalge",
+                {
+                    "controller.render.dragalge_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0691_dragalge_spawn_egg"

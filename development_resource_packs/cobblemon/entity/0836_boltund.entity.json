@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0836_boltund/boltund",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0836_boltund/boltund",
-                "v1": "textures/entity/0836_boltund/boltund_shiny"
+                "v1": "textures/entity/0836_boltund/boltund_shiny",
+                "alpha_eyes": "textures/entity/0836_boltund/boltund_alpha"
             },
             "geometry": {
                 "g_boltund": "geometry.boltund"
@@ -54,7 +56,10 @@
                 "evolution": "animation.0836_boltund.evolution"
             },
             "render_controllers": [
-                "controller.render.boltund"
+                "controller.render.boltund",
+                {
+                    "controller.render.boltund_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0836_boltund_spawn_egg"

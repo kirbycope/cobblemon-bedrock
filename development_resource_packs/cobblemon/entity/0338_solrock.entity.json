@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0338_solrock/solrock",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0338_solrock/solrock",
-                "v1": "textures/entity/0338_solrock/solrock_shiny"
+                "v1": "textures/entity/0338_solrock/solrock_shiny",
+                "alpha_eyes": "textures/entity/0338_solrock/solrock_alpha"
             },
             "geometry": {
                 "g_solrock": "geometry.solrock"
@@ -73,7 +75,10 @@
                 "primary_controller": "controller.animation.solrock.primary"
             },
             "render_controllers": [
-                "controller.render.solrock"
+                "controller.render.solrock",
+                {
+                    "controller.render.solrock_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0338_solrock_spawn_egg"

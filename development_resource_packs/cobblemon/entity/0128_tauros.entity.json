@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0128_tauros/tauros",
@@ -18,7 +19,8 @@
                 "v4": "textures/entity/0128_tauros/tauros",
                 "v5": "textures/entity/0128_tauros/tauros_shiny",
                 "v6": "textures/entity/0128_tauros/tauros",
-                "v7": "textures/entity/0128_tauros/tauros_shiny"
+                "v7": "textures/entity/0128_tauros/tauros_shiny",
+                "alpha_eyes": "textures/entity/0128_tauros/tauros_alpha"
             },
             "geometry": {
                 "g_tauros": "geometry.tauros",
@@ -63,7 +65,10 @@
                 "evolution": "animation.0128_tauros.evolution"
             },
             "render_controllers": [
-                "controller.render.tauros"
+                "controller.render.tauros",
+                {
+                    "controller.render.tauros_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0128_tauros_spawn_egg"

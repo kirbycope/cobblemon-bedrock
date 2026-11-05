@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0880_dracozolt/dracozolt",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0880_dracozolt/dracozolt",
-                "v1": "textures/entity/0880_dracozolt/dracozolt_shiny"
+                "v1": "textures/entity/0880_dracozolt/dracozolt_shiny",
+                "alpha_eyes": "textures/entity/0880_dracozolt/dracozolt_alpha"
             },
             "geometry": {
                 "g_dracozolt": "geometry.dracozolt"
@@ -52,7 +54,10 @@
                 "evolution": "animation.0880_dracozolt.evolution"
             },
             "render_controllers": [
-                "controller.render.dracozolt"
+                "controller.render.dracozolt",
+                {
+                    "controller.render.dracozolt_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0880_dracozolt_spawn_egg"

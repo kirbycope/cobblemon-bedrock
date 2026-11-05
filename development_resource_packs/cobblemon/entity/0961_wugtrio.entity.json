@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0961_wugtrio/wugtrio",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0961_wugtrio/wugtrio",
-                "v1": "textures/entity/0961_wugtrio/wugtrio_shiny"
+                "v1": "textures/entity/0961_wugtrio/wugtrio_shiny",
+                "alpha_eyes": "textures/entity/0961_wugtrio/wugtrio_alpha"
             },
             "geometry": {
                 "g_wugtrio": "geometry.wugtrio"
@@ -51,7 +53,10 @@
                 "evolution": "animation.0961_wugtrio.evolution"
             },
             "render_controllers": [
-                "controller.render.wugtrio"
+                "controller.render.wugtrio",
+                {
+                    "controller.render.wugtrio_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0961_wugtrio_spawn_egg"

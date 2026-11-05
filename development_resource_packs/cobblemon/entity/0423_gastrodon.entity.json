@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0423_gastrodon/gastrodon_west",
@@ -16,7 +17,8 @@
                 "v2": "textures/entity/0423_gastrodon/gastrodon_east",
                 "v3": "textures/entity/0423_gastrodon/gastrodon_east_shiny",
                 "v4": "textures/entity/0423_gastrodon/gastrodon_west",
-                "v5": "textures/entity/0423_gastrodon/gastrodon_west_shiny"
+                "v5": "textures/entity/0423_gastrodon/gastrodon_west_shiny",
+                "alpha_eyes": "textures/entity/0423_gastrodon/gastrodon_west_alpha"
             },
             "geometry": {
                 "g_gastrodon_west": "geometry.gastrodon_west",
@@ -97,7 +99,10 @@
                 "primary_controller": "controller.animation.gastrodon.primary"
             },
             "render_controllers": [
-                "controller.render.gastrodon"
+                "controller.render.gastrodon",
+                {
+                    "controller.render.gastrodon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0423_gastrodon_spawn_egg"

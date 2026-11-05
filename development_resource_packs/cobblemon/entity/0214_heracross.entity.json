@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0214_heracross/heracross",
@@ -18,7 +19,8 @@
                 "v2": "textures/entity/0214_heracross/heracross",
                 "wings_2_0": "textures/entity/0214_heracross/heracross_transparency__cut__heracross",
                 "v3": "textures/entity/0214_heracross/heracross_shiny",
-                "wings_3_0": "textures/entity/0214_heracross/heracross_transparency__cut__heracross_shiny"
+                "wings_3_0": "textures/entity/0214_heracross/heracross_transparency__cut__heracross_shiny",
+                "alpha_eyes": "textures/entity/0214_heracross/heracross_alpha"
             },
             "geometry": {
                 "g_heracross_male": "geometry.heracross_male",
@@ -63,7 +65,10 @@
             },
             "render_controllers": [
                 "controller.render.heracross",
-                "controller.render.heracross_wings"
+                "controller.render.heracross_wings",
+                {
+                    "controller.render.heracross_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0214_heracross_spawn_egg"

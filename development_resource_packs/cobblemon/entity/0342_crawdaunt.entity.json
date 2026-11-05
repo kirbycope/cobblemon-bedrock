@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0342_crawdaunt/crawdaunt",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0342_crawdaunt/crawdaunt",
-                "v1": "textures/entity/0342_crawdaunt/crawdaunt_shiny"
+                "v1": "textures/entity/0342_crawdaunt/crawdaunt_shiny",
+                "alpha_eyes": "textures/entity/0342_crawdaunt/crawdaunt_alpha"
             },
             "geometry": {
                 "g_crawdaunt": "geometry.crawdaunt"
@@ -46,7 +48,10 @@
                 "evolution": "animation.0342_crawdaunt.evolution"
             },
             "render_controllers": [
-                "controller.render.crawdaunt"
+                "controller.render.crawdaunt",
+                {
+                    "controller.render.crawdaunt_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0342_crawdaunt_spawn_egg"

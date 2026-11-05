@@ -14,6 +14,10 @@
         "cobblemon:on": [
           false,
           true
+        ],
+        "cobblemon:natural": [
+          false,
+          true
         ]
       },
       "traits": {
@@ -178,6 +182,18 @@
               0
             ]
           }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == false",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/pc_false_bottom.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == true",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/pc_true_bottom.json"
         }
       }
     ]

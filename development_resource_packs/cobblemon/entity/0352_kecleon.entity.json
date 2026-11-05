@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0352_kecleon/kecleon",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0352_kecleon/kecleon",
-                "v1": "textures/entity/0352_kecleon/kecleon_shiny"
+                "v1": "textures/entity/0352_kecleon/kecleon_shiny",
+                "alpha_eyes": "textures/entity/0352_kecleon/kecleon_alpha"
             },
             "geometry": {
                 "g_kecleon": "geometry.kecleon"
@@ -52,7 +54,10 @@
                 "evolution": "animation.0352_kecleon.evolution"
             },
             "render_controllers": [
-                "controller.render.kecleon"
+                "controller.render.kecleon",
+                {
+                    "controller.render.kecleon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0352_kecleon_spawn_egg"

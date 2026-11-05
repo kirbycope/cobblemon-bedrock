@@ -7,7 +7,8 @@
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
                 "translucent": "entity_alphablend",
-                "held": "entity_alphatest"
+                "held": "entity_alphatest",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0039_jigglypuff/jigglypuff",
@@ -286,7 +287,8 @@
                 "held_268": "textures/items/trident",
                 "held_269": "textures/items/shears",
                 "held_270": "textures/blocks/stone",
-                "held_271": "textures/items/glowstone_dust"
+                "held_271": "textures/items/glowstone_dust",
+                "alpha_eyes": "textures/entity/0039_jigglypuff/jigglypuff_alpha"
             },
             "geometry": {
                 "g_jigglypuff": "geometry.jigglypuff",
@@ -340,6 +342,9 @@
                 "controller.render.jigglypuff",
                 {
                     "controller.render.jigglypuff_held": "q.property('cobblemon:held_index') > 0"
+                },
+                {
+                    "controller.render.jigglypuff_alpha": "q.property('cobblemon:alpha')"
                 }
             ],
             "spawn_egg": {

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0702_dedenne/dedenne",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0702_dedenne/dedenne",
-                "v1": "textures/entity/0702_dedenne/dedenne_shiny"
+                "v1": "textures/entity/0702_dedenne/dedenne_shiny",
+                "alpha_eyes": "textures/entity/0702_dedenne/dedenne_alpha"
             },
             "geometry": {
                 "g_dedenne": "geometry.dedenne"
@@ -48,7 +50,10 @@
                 "evolution": "animation.0702_dedenne.evolution"
             },
             "render_controllers": [
-                "controller.render.dedenne"
+                "controller.render.dedenne",
+                {
+                    "controller.render.dedenne_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0702_dedenne_spawn_egg"

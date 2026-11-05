@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0862_obstagoon/obstagoon",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0862_obstagoon/obstagoon",
-                "v1": "textures/entity/0862_obstagoon/obstagoon_shiny"
+                "v1": "textures/entity/0862_obstagoon/obstagoon_shiny",
+                "alpha_eyes": "textures/entity/0862_obstagoon/obstagoon_alpha"
             },
             "geometry": {
                 "g_obstagoon": "geometry.obstagoon"
@@ -55,7 +57,10 @@
                 "evolution": "animation.0862_obstagoon.evolution"
             },
             "render_controllers": [
-                "controller.render.obstagoon"
+                "controller.render.obstagoon",
+                {
+                    "controller.render.obstagoon_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0862_obstagoon_spawn_egg"

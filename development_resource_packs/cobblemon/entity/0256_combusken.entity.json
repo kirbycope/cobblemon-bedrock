@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0256_combusken/combusken",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0256_combusken/combusken",
                 "v1": "textures/entity/0256_combusken/combusken_shiny",
                 "v2": "textures/entity/0256_combusken/combusken",
-                "v3": "textures/entity/0256_combusken/combusken_shiny"
+                "v3": "textures/entity/0256_combusken/combusken_shiny",
+                "alpha_eyes": "textures/entity/0256_combusken/combusken_alpha"
             },
             "geometry": {
                 "g_combusken_male": "geometry.combusken_male",
@@ -52,7 +54,10 @@
                 "evolution": "animation.0256_combusken.evolution"
             },
             "render_controllers": [
-                "controller.render.combusken"
+                "controller.render.combusken",
+                {
+                    "controller.render.combusken_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0256_combusken_spawn_egg"

@@ -54,7 +54,7 @@
                     "type": "float",
                     "range": [
                         0.5,
-                        1.5
+                        2.0
                     ],
                     "default": 1.0,
                     "client_sync": true
@@ -66,6 +66,11 @@
                         1.0
                     ],
                     "default": 0.0,
+                    "client_sync": true
+                },
+                "cobblemon:alpha": {
+                    "type": "bool",
+                    "default": false,
                     "client_sync": true
                 },
                 "cobblemon:primary": {
@@ -257,6 +262,29 @@
                     "cooldown_time": 0.25,
                     "horizontal_momentum": 0.0,
                     "vertical_momentum": 0.0
+                },
+                "minecraft:interact": {
+                    "interactions": [
+                        {
+                            "on_interact": {
+                                "filters": {
+                                    "all_of": [
+                                        {
+                                            "test": "has_equipment",
+                                            "subject": "other",
+                                            "domain": "hand",
+                                            "value": "minecraft:bucket"
+                                        }
+                                    ]
+                                }
+                            },
+                            "swing": true,
+                            "interact_text": "action.interact.use",
+                            "cooldown": 0.0,
+                            "play_sounds": "bucket.fill_water",
+                            "transform_to_item": "minecraft:milk_bucket"
+                        }
+                    ]
                 }
             },
             "cobblemon:pastured": {

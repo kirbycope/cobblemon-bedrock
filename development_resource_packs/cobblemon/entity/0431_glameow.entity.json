@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0431_glameow/glameow",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0431_glameow/glameow",
-                "v1": "textures/entity/0431_glameow/glameow_shiny"
+                "v1": "textures/entity/0431_glameow/glameow_shiny",
+                "alpha_eyes": "textures/entity/0431_glameow/glameow_alpha"
             },
             "geometry": {
                 "g_glameow": "geometry.glameow"
@@ -49,7 +51,10 @@
                 "evolution": "animation.0431_glameow.evolution"
             },
             "render_controllers": [
-                "controller.render.glameow"
+                "controller.render.glameow",
+                {
+                    "controller.render.glameow_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0431_glameow_spawn_egg"

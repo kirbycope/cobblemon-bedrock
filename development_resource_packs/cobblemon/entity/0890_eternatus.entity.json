@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0890_eternatus/eternatus",
@@ -16,7 +17,8 @@
                 "transparency_0_0": "textures/entity/0890_eternatus/eternatus_transparency__cut__eternatus",
                 "v1": "textures/entity/0890_eternatus/eternatus_shiny",
                 "emissive_1_0": "textures/entity/0890_eternatus/eternatus_emissive__glow__eternatus_shiny",
-                "transparency_1_0": "textures/entity/0890_eternatus/eternatus_transparency__cut__eternatus_shiny"
+                "transparency_1_0": "textures/entity/0890_eternatus/eternatus_transparency__cut__eternatus_shiny",
+                "alpha_eyes": "textures/entity/0890_eternatus/eternatus_alpha"
             },
             "geometry": {
                 "g_eternatus": "geometry.eternatus"
@@ -51,7 +53,10 @@
             "render_controllers": [
                 "controller.render.eternatus",
                 "controller.render.eternatus_emissive",
-                "controller.render.eternatus_transparency"
+                "controller.render.eternatus_transparency",
+                {
+                    "controller.render.eternatus_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0890_eternatus_spawn_egg"

@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0778_mimikyu/mimikyu",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0778_mimikyu/mimikyu",
-                "v1": "textures/entity/0778_mimikyu/mimikyu_shiny"
+                "v1": "textures/entity/0778_mimikyu/mimikyu_shiny",
+                "alpha_eyes": "textures/entity/0778_mimikyu/mimikyu_alpha"
             },
             "geometry": {
                 "g_mimikyu": "geometry.mimikyu"
@@ -64,7 +66,10 @@
                 "primary_controller": "controller.animation.mimikyu.primary"
             },
             "render_controllers": [
-                "controller.render.mimikyu"
+                "controller.render.mimikyu",
+                {
+                    "controller.render.mimikyu_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0778_mimikyu_spawn_egg"

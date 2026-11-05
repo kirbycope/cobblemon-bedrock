@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0235_smeargle/smeargle",
@@ -78,7 +79,8 @@
                 "v32": "textures/entity/0235_smeargle/smeargle",
                 "paint_32_0": "textures/entity/0235_smeargle/smeargle_paint_yellow__cut__smeargle",
                 "v33": "textures/entity/0235_smeargle/smeargle_shiny",
-                "paint_33_0": "textures/entity/0235_smeargle/smeargle_paint_yellow__cut__smeargle_shiny"
+                "paint_33_0": "textures/entity/0235_smeargle/smeargle_paint_yellow__cut__smeargle_shiny",
+                "alpha_eyes": "textures/entity/0235_smeargle/smeargle_alpha"
             },
             "geometry": {
                 "g_smeargle": "geometry.smeargle"
@@ -145,7 +147,10 @@
             },
             "render_controllers": [
                 "controller.render.smeargle",
-                "controller.render.smeargle_paint"
+                "controller.render.smeargle_paint",
+                {
+                    "controller.render.smeargle_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0235_smeargle_spawn_egg"

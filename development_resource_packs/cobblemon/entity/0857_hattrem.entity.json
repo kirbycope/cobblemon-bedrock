@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0857_hattrem/hattrem",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0857_hattrem/hattrem",
-                "v1": "textures/entity/0857_hattrem/hattrem_shiny"
+                "v1": "textures/entity/0857_hattrem/hattrem_shiny",
+                "alpha_eyes": "textures/entity/0857_hattrem/hattrem_alpha"
             },
             "geometry": {
                 "g_hattrem": "geometry.hattrem"
@@ -48,7 +50,10 @@
                 "evolution": "animation.0857_hattrem.evolution"
             },
             "render_controllers": [
-                "controller.render.hattrem"
+                "controller.render.hattrem",
+                {
+                    "controller.render.hattrem_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0857_hattrem_spawn_egg"

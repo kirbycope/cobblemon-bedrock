@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0879_copperajah/copperajah",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0879_copperajah/copperajah",
-                "v1": "textures/entity/0879_copperajah/copperajah_shiny"
+                "v1": "textures/entity/0879_copperajah/copperajah_shiny",
+                "alpha_eyes": "textures/entity/0879_copperajah/copperajah_alpha"
             },
             "geometry": {
                 "g_copperajah": "geometry.copperajah"
@@ -74,7 +76,10 @@
                 "primary_controller": "controller.animation.copperajah.primary"
             },
             "render_controllers": [
-                "controller.render.copperajah"
+                "controller.render.copperajah",
+                {
+                    "controller.render.copperajah_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0879_copperajah_spawn_egg"

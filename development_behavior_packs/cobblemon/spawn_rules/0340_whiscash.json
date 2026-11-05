@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 110
+                    "default": 103
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -38,7 +38,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 10
+                    "default": 9
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -96,7 +96,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 110
+                    "default": 103
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -126,6 +126,129 @@
                     "min_size": 1,
                     "max_size": 1,
                     "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 3
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "swamp"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "mangrove_swamp"
+                        }
+                    ]
+                },
+                "minecraft:spawns_underwater": {},
+                "minecraft:spawns_on_surface": {},
+                "minecraft:density_limit": {
+                    "surface": 5
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 2
+                },
+                "minecraft:biome_filter": {
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "caves"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "monster"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "overworld"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "sulfur_caves"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "minecraft:spawns_underwater": {},
+                "minecraft:spawns_on_surface": {},
+                "minecraft:density_limit": {
+                    "surface": 5
+                },
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 3
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "swamp"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "mangrove_swamp"
+                        }
+                    ]
+                },
+                "minecraft:spawns_underwater": {},
+                "minecraft:spawns_on_surface": {},
+                "minecraft:density_limit": {
+                    "surface": 5
+                },
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             }

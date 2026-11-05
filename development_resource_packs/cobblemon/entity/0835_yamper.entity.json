@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0835_yamper/yamper",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0835_yamper/yamper",
-                "v1": "textures/entity/0835_yamper/yamper_shiny"
+                "v1": "textures/entity/0835_yamper/yamper_shiny",
+                "alpha_eyes": "textures/entity/0835_yamper/yamper_alpha"
             },
             "geometry": {
                 "g_yamper": "geometry.yamper"
@@ -53,7 +55,10 @@
                 "evolution": "animation.0835_yamper.evolution"
             },
             "render_controllers": [
-                "controller.render.yamper"
+                "controller.render.yamper",
+                {
+                    "controller.render.yamper_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0835_yamper_spawn_egg"

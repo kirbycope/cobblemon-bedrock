@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0360_wynaut/wynaut",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0360_wynaut/wynaut",
-                "v1": "textures/entity/0360_wynaut/wynaut_shiny"
+                "v1": "textures/entity/0360_wynaut/wynaut_shiny",
+                "alpha_eyes": "textures/entity/0360_wynaut/wynaut_alpha"
             },
             "geometry": {
                 "g_wynaut": "geometry.wynaut"
@@ -51,7 +53,10 @@
                 "evolution": "animation.0360_wynaut.evolution"
             },
             "render_controllers": [
-                "controller.render.wynaut"
+                "controller.render.wynaut",
+                {
+                    "controller.render.wynaut_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0360_wynaut_spawn_egg"

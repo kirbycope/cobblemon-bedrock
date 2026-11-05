@@ -6,7 +6,12 @@
       "menu_category": {
         "category": "construction"
       },
-      "states": {},
+      "states": {
+        "cobblemon:natural": [
+          false,
+          true
+        ]
+      },
       "traits": {
         "minecraft:placement_direction": {
           "enabled_states": [
@@ -31,7 +36,6 @@
           "face_dimming": false
         }
       },
-      "minecraft:loot": "loot_tables/blocks/relic_coin_pouch.json",
       "minecraft:collision_box": {
         "origin": [
           -6,
@@ -86,8 +90,7 @@
               180,
               0
             ]
-          },
-          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch.json"
+          }
         }
       },
       {
@@ -114,8 +117,7 @@
               90,
               0
             ]
-          },
-          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch.json"
+          }
         }
       },
       {
@@ -142,8 +144,7 @@
               0,
               0
             ]
-          },
-          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch.json"
+          }
         }
       },
       {
@@ -170,8 +171,19 @@
               270,
               0
             ]
-          },
-          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch.json"
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == false",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch_false.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:natural') == true",
+        "components": {
+          "minecraft:loot": "loot_tables/blocks/relic_coin_pouch_true.json"
         }
       }
     ]

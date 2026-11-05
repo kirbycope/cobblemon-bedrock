@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 4
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -81,7 +81,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 5
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -98,6 +98,83 @@
                     "min_size": 1,
                     "max_size": 1,
                     "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "forest"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "taiga"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "extreme_hills"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "flower_forest"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "cherry_grove"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "grove"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 2
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "jungle"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             },
@@ -152,7 +229,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             }

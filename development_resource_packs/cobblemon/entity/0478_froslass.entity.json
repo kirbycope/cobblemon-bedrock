@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0478_froslass/froslass",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0478_froslass/froslass",
-                "v1": "textures/entity/0478_froslass/froslass_shiny"
+                "v1": "textures/entity/0478_froslass/froslass_shiny",
+                "alpha_eyes": "textures/entity/0478_froslass/froslass_alpha"
             },
             "geometry": {
                 "g_froslass": "geometry.froslass"
@@ -55,7 +57,10 @@
                 "evolution": "animation.0478_froslass.evolution"
             },
             "render_controllers": [
-                "controller.render.froslass"
+                "controller.render.froslass",
+                {
+                    "controller.render.froslass_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0478_froslass_spawn_egg"

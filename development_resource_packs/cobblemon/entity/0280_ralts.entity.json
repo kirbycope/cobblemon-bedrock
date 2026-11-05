@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0280_ralts/ralts",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0280_ralts/ralts",
-                "v1": "textures/entity/0280_ralts/ralts_shiny"
+                "v1": "textures/entity/0280_ralts/ralts_shiny",
+                "alpha_eyes": "textures/entity/0280_ralts/ralts_alpha"
             },
             "geometry": {
                 "g_ralts": "geometry.ralts"
@@ -63,7 +65,10 @@
                 "evolution": "animation.0280_ralts.evolution"
             },
             "render_controllers": [
-                "controller.render.ralts"
+                "controller.render.ralts",
+                {
+                    "controller.render.ralts_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0280_ralts_spawn_egg"

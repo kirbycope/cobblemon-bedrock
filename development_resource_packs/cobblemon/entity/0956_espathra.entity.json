@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0956_espathra/espathra",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0956_espathra/espathra",
                 "glow_0_0": "textures/entity/0956_espathra/espathra_emissive__glow__espathra",
                 "v1": "textures/entity/0956_espathra/espathra_shiny",
-                "glow_1_0": "textures/entity/0956_espathra/espathra_emissive__glow__espathra_shiny"
+                "glow_1_0": "textures/entity/0956_espathra/espathra_emissive__glow__espathra_shiny",
+                "alpha_eyes": "textures/entity/0956_espathra/espathra_alpha"
             },
             "geometry": {
                 "g_espathra": "geometry.espathra"
@@ -72,7 +74,10 @@
             },
             "render_controllers": [
                 "controller.render.espathra",
-                "controller.render.espathra_glow"
+                "controller.render.espathra_glow",
+                {
+                    "controller.render.espathra_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0956_espathra_spawn_egg"

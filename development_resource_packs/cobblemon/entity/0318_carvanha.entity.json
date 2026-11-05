@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0318_carvanha/carvanha",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0318_carvanha/carvanha",
-                "v1": "textures/entity/0318_carvanha/carvanha_shiny"
+                "v1": "textures/entity/0318_carvanha/carvanha_shiny",
+                "alpha_eyes": "textures/entity/0318_carvanha/carvanha_alpha"
             },
             "geometry": {
                 "g_carvanha": "geometry.carvanha"
@@ -57,7 +59,10 @@
                 "evolution": "animation.0318_carvanha.evolution"
             },
             "render_controllers": [
-                "controller.render.carvanha"
+                "controller.render.carvanha",
+                {
+                    "controller.render.carvanha_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0318_carvanha_spawn_egg"

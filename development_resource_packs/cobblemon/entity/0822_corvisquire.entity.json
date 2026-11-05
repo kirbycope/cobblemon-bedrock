@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0822_corvisquire/corvisquire",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0822_corvisquire/corvisquire",
-                "v1": "textures/entity/0822_corvisquire/corvisquire_shiny"
+                "v1": "textures/entity/0822_corvisquire/corvisquire_shiny",
+                "alpha_eyes": "textures/entity/0822_corvisquire/corvisquire_alpha"
             },
             "geometry": {
                 "g_corvisquire": "geometry.corvisquire"
@@ -59,12 +61,16 @@
                 "evolution": "animation.0822_corvisquire.evolution"
             },
             "render_controllers": [
-                "controller.render.corvisquire"
+                "controller.render.corvisquire",
+                {
+                    "controller.render.corvisquire_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0822_corvisquire_spawn_egg"
             },
             "sound_effects": {
+                "animation.plumage.wing_flap.small": "cobblemon.animation.plumage.wing_flap.small",
                 "pokemon.corvisquire.cry": "cobblemon.corvisquire.cry"
             },
             "particle_effects": {

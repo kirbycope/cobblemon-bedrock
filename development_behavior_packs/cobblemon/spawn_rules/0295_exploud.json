@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 15
+                    "default": 4
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -28,7 +28,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 34
+                    "default": 9
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -93,7 +93,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 18
+                    "default": 5
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -115,7 +115,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 137
+                    "default": 36
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -177,6 +177,95 @@
                     "min_size": 1,
                     "max_size": 1,
                     "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 23
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "deep_dark"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 28
+                },
+                "minecraft:biome_filter": {
+                    "all_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "overworld"
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "deep_dark"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "caves"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "monster"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "overworld"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "sulfur_caves"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:height_filter": {
+                    "min": -64,
+                    "max": 0
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             }

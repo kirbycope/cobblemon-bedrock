@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0438_bonsly/bonsly",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0438_bonsly/bonsly",
-                "v1": "textures/entity/0438_bonsly/bonsly_shiny"
+                "v1": "textures/entity/0438_bonsly/bonsly_shiny",
+                "alpha_eyes": "textures/entity/0438_bonsly/bonsly_alpha"
             },
             "geometry": {
                 "g_bonsly": "geometry.bonsly"
@@ -62,7 +64,10 @@
                 "evolution": "animation.0438_bonsly.evolution"
             },
             "render_controllers": [
-                "controller.render.bonsly"
+                "controller.render.bonsly",
+                {
+                    "controller.render.bonsly_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0438_bonsly_spawn_egg"

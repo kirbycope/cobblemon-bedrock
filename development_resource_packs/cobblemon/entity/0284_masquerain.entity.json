@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0284_masquerain/masquerain",
@@ -14,7 +15,8 @@
                 "v0": "textures/entity/0284_masquerain/masquerain",
                 "wings_0_0": "textures/entity/0284_masquerain/masquerain_wings__cut__masquerain",
                 "v1": "textures/entity/0284_masquerain/masquerain_shiny",
-                "wings_1_0": "textures/entity/0284_masquerain/masquerain_wings_shiny__cut__masquerain_shiny"
+                "wings_1_0": "textures/entity/0284_masquerain/masquerain_wings_shiny__cut__masquerain_shiny",
+                "alpha_eyes": "textures/entity/0284_masquerain/masquerain_alpha"
             },
             "geometry": {
                 "g_masquerain": "geometry.masquerain"
@@ -52,7 +54,10 @@
             },
             "render_controllers": [
                 "controller.render.masquerain",
-                "controller.render.masquerain_wings"
+                "controller.render.masquerain_wings",
+                {
+                    "controller.render.masquerain_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0284_masquerain_spawn_egg"

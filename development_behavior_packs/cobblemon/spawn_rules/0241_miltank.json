@@ -8,6 +8,86 @@
         "conditions": [
             {
                 "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "plains"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "meadow"
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "savanna"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "mooshroom_island"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "mooshroom_island"
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:brightness_filter": {
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
                     "default": 40
                 },
                 "minecraft:biome_filter": {
@@ -44,7 +124,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 200
+                    "default": 198
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -60,7 +140,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:herd_seed_mooshtank-red",
                     "event_skip_count": 0
                 }
             },
@@ -82,7 +162,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:herd_seed_mooshtank-brown",
                     "event_skip_count": 0
                 }
             }

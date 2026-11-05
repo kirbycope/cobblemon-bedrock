@@ -239,6 +239,10 @@ MOLANG_QUERIES = [
     (r"q\.riding_style\s*==\s*'LIQUID'", "q.is_in_water"), (r"q\.riding_style\s*!=\s*'AIR'", "q.is_on_ground"),
     (r"q\.riding_style\s*!=\s*'LAND'", "!q.is_on_ground"), (r"q\.riding_style\s*!=\s*'LIQUID'", "!q.is_in_water"), (r"q\.is_air\b", "!q.is_on_ground"),
     (r"q\.horizontal_velocity\b", "(q.ground_speed / 20)"),   # Cobblemon's is blocks a tick
+    # Slowpoke's regrown tail (slowpoke_tails.json), the segments the script counts back in cobblemon:tail
+    (r"q\.has_aspect\('regrown-tail-(\d)'\)", r"(q.property('cobblemon:tail') >= \1)"),
+    # Mareep's, Wooloo's and Dubwool's wool (DataKeys.HAS_BEEN_SHEARED), which the script keeps in cobblemon:sheared
+    (r"q\.has_aspect\('sheared'\)\s*==\s*false", "!q.property('cobblemon:sheared')"), (r"q\.has_aspect\('sheared'\)", "q.property('cobblemon:sheared')"),
     (r"q\.has_aspect\([^)]*\)", "0"), (r"q\.is_standing_on_blocks\([^)]*\)", f"({SAND} > 0)"),
 ]
 
@@ -301,8 +305,13 @@ def json_parts(parts):
     for t in parts or []:
         visible = t.get("isVisible", t.get("visible"))
         hidden = str(visible).strip().lower() in ("false", "0", "0.0") if visible is not None else False
+        # a visibility Cobblemon works out (Slowpoke's tail by its regrown aspects) becomes a Molang condition on the scale
+        shown_if = None
+        if isinstance(visible, str) and not hidden and visible.strip().lower() not in ("true", "1", "1.0"):
+            shown_if = molang_condition(visible)
+            if shown_if in ("1", "(1)"): shown_if = None
         out.append({"part": t["part"], "position": t.get("position", [0, 0, 0]), "rotation": t.get("rotation", [0, 0, 0]),
-                    "scale": t.get("scale"), "hidden": hidden})
+                    "scale": t.get("scale"), "hidden": hidden, **({"shown_if": shown_if} if shown_if else {})})
     return out
 
 
@@ -424,7 +433,9 @@ def kotlin_animation(text, bones):
     return ("unknown", text)
 
 
-def kotlin_parts(expr, bones):
+def kotlin_parts(expr, bones, exprs=None):
+    """A pose's transformedParts; a visibility given as one of the model's Molang expressions (isNotSheared) becomes a
+    condition on the part's scale, as a JSON poser's isVisible does."""
     out = []
     for m in re.finditer(r"(\w+)\.createTransformation\(\)((?:\s*\.\s*\w+\([^()]*(?:\([^()]*\)[^()]*)*\))*)", expr):
         part = bones.get(m.group(1))
@@ -434,7 +445,10 @@ def kotlin_parts(expr, bones):
             fn, args = c.group(1), split_args(c.group(2))
             pos, kw = named(args)
             axis = lambda s: {"X_AXIS": 0, "Y_AXIS": 1, "Z_AXIS": 2}.get(s.split(".")[-1], 0)
-            if fn == "withVisibility": t["hidden"] = (kw.get("visibility", pos[0] if pos else "true").strip() == "false")
+            if fn == "withVisibility":
+                visible = kw.get("visibility", pos[0] if pos else "true").strip()
+                t["hidden"] = visible == "false"
+                if visible in (exprs or {}): t["shown_if"] = molang_condition(exprs[visible])
             elif fn in ("addPosition", "withPosition") and len(pos) == 2: t["position"][axis(pos[0])] += number(pos[1], 0)
             elif fn in ("addPosition", "withPosition") and len(pos) == 3: t["position"] = [number(v, 0) for v in pos]
             elif fn in ("addRotationDegrees", "withRotationDegrees") and len(pos) == 2: t["rotation"][axis(pos[0])] += number(pos[1], 0)
@@ -462,6 +476,9 @@ def kotlin_poses(path):
     for m in re.finditer(r"(?:override\s+)?va[lr]\s+(\w+)\s*(?::\s*\w+\??)?\s*=\s*(\w+)\s*$", src, re.M):
         if m.group(2) in bones: bones.setdefault(m.group(1), bones[m.group(2)])
     if "rootPart" in bones: bones.setdefault("root", bones["rootPart"])
+    # Molang the model names (val isNotSheared = "q.has_aspect('${DataKeys.HAS_BEEN_SHEARED}') == false".asExpressionLike())
+    exprs = {m.group(1): m.group(2).replace("${DataKeys.HAS_BEEN_SHEARED}", "sheared")
+             for m in re.finditer(r"va[lr]\s+(\w+)\s*=\s*\"([^\"]*)\"\s*\.asExpressionLike\(\)", src)}
     for m in re.finditer(r"va[lr]\s+(\w+)\s*=\s*WaveSegment\(\s*(?:modelPart\s*=\s*)?(\w+)\s*,\s*(?:length\s*=\s*)?([^)]+)\)", src):
         if m.group(2) in bones: bones[f"segment:{m.group(1)}"] = (bones[m.group(2)], number(m.group(3), 0))
     for m in re.finditer(r"va[lr]\s+(\w+)\s*=\s*object\s*:\s*BiWingedFrame\s*\{(.*?)\n\s*\}", src, re.S):
@@ -476,10 +493,13 @@ def kotlin_poses(path):
         cond = kotlin_condition(kw["condition"]) if "condition" in kw else "1"
         anims = []
         aname, aargs = call(kw.get("animations", "arrayOf()"))
-        for a in aargs or []: anims.append((kotlin_animation(a, bones), None))
+        for a in aargs or []:
+            # an animation kept to one of the model's Molang expressions (Mareep's ground_walk_sheared, withCondition(isSheared))
+            when = re.search(r"\.withCondition\(\s*(\w+)\s*\)\s*$", a)
+            anims.append((kotlin_animation(a, bones), molang_condition(exprs[when.group(1)]) if when and when.group(1) in exprs else None))
         poses.append({"name": string(kw.get("poseName")) or m.group(1) or f"pose{len(poses)}", "types": types,
                       "condition": cond if cond is not None else "0", "unreadable_condition": cond is None,
-                      "animations": anims, "parts": kotlin_parts(kw.get("transformedParts", ""), bones),
+                      "animations": anims, "parts": kotlin_parts(kw.get("transformedParts", ""), bones, exprs),
                       "blend": (number(kw.get("transformTicks"), 10) or 10) / 20})
     return {"source": os.path.relpath(path, JAVA).replace("\\", "/"), "poses": poses, "parts": [], "root": bones.get("rootPart")} if poses else None
 
@@ -569,6 +589,7 @@ def static_parts(parts, bones):
         for i, v in enumerate(t["rotation"]):
             if v: add(bones, t["part"], "rotation", i, f"{v:g}")
         if t["hidden"]: bones.setdefault(t["part"], {})["scale"] = [0, 0, 0]
+        elif t.get("shown_if"): bones.setdefault(t["part"], {})["scale"] = [f"({t['shown_if']}) ? 1 : 0"] * 3
         elif t.get("scale") and t["scale"] != [1, 1, 1]: bones.setdefault(t["part"], {})["scale"] = t["scale"]
 
 

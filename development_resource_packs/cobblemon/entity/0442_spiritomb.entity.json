@@ -6,7 +6,8 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0442_spiritomb/spiritomb",
@@ -16,7 +17,8 @@
                 "transparent_emissive_0_0": "textures/entity/0442_spiritomb/spiritomb_transparency__glow__spiritomb",
                 "v1": "textures/entity/0442_spiritomb/spiritomb",
                 "emissive_1_0": "textures/entity/0442_spiritomb/spiritomb_shiny_emissive__glow__spiritomb",
-                "transparent_emissive_1_0": "textures/entity/0442_spiritomb/spiritomb_shiny_transparency__glow__spiritomb"
+                "transparent_emissive_1_0": "textures/entity/0442_spiritomb/spiritomb_shiny_transparency__glow__spiritomb",
+                "alpha_eyes": "textures/entity/0442_spiritomb/spiritomb_alpha"
             },
             "geometry": {
                 "g_spiritomb": "geometry.spiritomb"
@@ -48,7 +50,10 @@
             "render_controllers": [
                 "controller.render.spiritomb",
                 "controller.render.spiritomb_emissive",
-                "controller.render.spiritomb_transparent_emissive"
+                "controller.render.spiritomb_transparent_emissive",
+                {
+                    "controller.render.spiritomb_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0442_spiritomb_spawn_egg"

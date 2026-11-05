@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0955_flittle/flittle",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0955_flittle/flittle",
-                "v1": "textures/entity/0955_flittle/flittle_shiny"
+                "v1": "textures/entity/0955_flittle/flittle_shiny",
+                "alpha_eyes": "textures/entity/0955_flittle/flittle_alpha"
             },
             "geometry": {
                 "g_flittle": "geometry.flittle"
@@ -56,7 +58,10 @@
                 "evolution": "animation.0955_flittle.evolution"
             },
             "render_controllers": [
-                "controller.render.flittle"
+                "controller.render.flittle",
+                {
+                    "controller.render.flittle_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0955_flittle_spawn_egg"

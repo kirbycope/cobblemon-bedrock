@@ -123,7 +123,7 @@ BLOCK_NAMES = {
     "carved_pumpkin": "carved_pumpkin", "frosted_ice": "frosted_ice", "bubble_column": "water",
     # Bedrock's own names, checked against the server with /setblock (the Radical Gyms structures used these)
     "stone_stairs": "normal_stone_stairs", "cobblestone_stairs": "stone_stairs", "dead_bush": "deadbush",
-    "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "prismarine_brick_stairs": "prismarine_bricks_stairs",
+    "end_stone_brick_stairs": "end_brick_stairs", "oak_button": "wooden_button", "oak_pressure_plate": "wooden_pressure_plate", "prismarine_brick_stairs": "prismarine_bricks_stairs",
     "waxed_copper_block": "waxed_copper",
     # Bedrock 1.26's names, from Mojang's own list (bedrock-samples mojang-blocks.json, tools/check_structures.py): a name
     # Bedrock does not know loads as the "?" block
@@ -167,6 +167,9 @@ def convert_states(java_name, name, props):
     """The Bedrock states for the few Java properties that matter to how a ruin looks."""
     states = {}
     if name.startswith("cobblemon:") and name.endswith("_berry_bush"): return {"cobblemon:stage": Tag(INT, 3)}
+    # a block a structure placed is natural (CoinPouchBlock, PCBlock, HealingMachineBlock), which its drops depend on
+    if name in ("cobblemon:relic_coin_pouch", "cobblemon:relic_coin_sack", "cobblemon:pc", "cobblemon:healing_machine") and props and props.get("natural") == "true":
+        return {"cobblemon:natural": Tag(BYTE, 1)}
     if name.startswith("cobblemon:"): return {}   # the pack's blocks keep their default states
     if name.startswith("cobblefurnies:"):
         # a furniture piece keeps the shape it was saved in: its facing, its half and the rest of its properties

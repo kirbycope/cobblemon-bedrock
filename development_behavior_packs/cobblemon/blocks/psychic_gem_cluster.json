@@ -5,6 +5,21 @@
       "identifier": "cobblemon:psychic_gem_cluster",
       "menu_category": {
         "category": "nature"
+      },
+      "traits": {
+        "minecraft:placement_position": {
+          "enabled_states": [
+            "minecraft:block_face"
+          ]
+        }
+      },
+      "states": {
+        "cobblemon:stage": [
+          0,
+          1,
+          2,
+          3
+        ]
       }
     },
     "components": {
@@ -35,6 +50,132 @@
         "seconds_to_destroy": 0.5
       },
       "minecraft:loot": "loot_tables/blocks/psychic_gem_cluster.json"
-    }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'down'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              180,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'up'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'north'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              270,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'south'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              270,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'west'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              270,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:block_face') == 'east'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              270,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 0",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_small_psychic_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_medium_psychic_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_large_psychic_gem_bud",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:stage') == 3",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_type_gems_psychic_gem_cluster",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          }
+        }
+      }
+    ]
   }
 }

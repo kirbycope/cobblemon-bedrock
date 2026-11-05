@@ -7,6 +7,10 @@
         "cobblemon:open": [
           false,
           true
+        ],
+        "cobblemon:hinge": [
+          "left",
+          "right"
         ]
       },
       "traits": {
@@ -72,7 +76,7 @@
     },
     "permutations": [
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == false",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -84,7 +88,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == true",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -96,7 +112,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == false",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'north' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -108,7 +136,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == true",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -120,7 +160,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == false",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'west' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -132,7 +184,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == true",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -144,7 +208,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == false",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'south' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              90,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -156,7 +232,19 @@
         }
       },
       {
-        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == true",
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == false && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              270,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'left'",
         "components": {
           "minecraft:transformation": {
             "rotation": [
@@ -165,6 +253,24 @@
               0
             ]
           }
+        }
+      },
+      {
+        "condition": "q.block_state('minecraft:cardinal_direction') == 'east' && q.block_state('cobblemon:open') == true && q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:transformation": {
+            "rotation": [
+              0,
+              180,
+              0
+            ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:hinge') == 'right'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_door_right"
         }
       },
       {

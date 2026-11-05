@@ -6,13 +6,15 @@
             "materials": {
                 "default": "entity_alphatest_one_sided",
                 "emissive": "entity_emissive_alpha_one_sided",
-                "translucent": "entity_alphablend"
+                "translucent": "entity_alphablend",
+                "alpha_eyes": "entity_emissive_alpha"
             },
             "textures": {
                 "default": "textures/entity/0874_stonjourner/stonjourner",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0874_stonjourner/stonjourner",
-                "v1": "textures/entity/0874_stonjourner/stonjourner_shiny"
+                "v1": "textures/entity/0874_stonjourner/stonjourner_shiny",
+                "alpha_eyes": "textures/entity/0874_stonjourner/stonjourner_alpha"
             },
             "geometry": {
                 "g_stonjourner": "geometry.stonjourner"
@@ -62,7 +64,10 @@
                 "primary_controller": "controller.animation.stonjourner.primary"
             },
             "render_controllers": [
-                "controller.render.stonjourner"
+                "controller.render.stonjourner",
+                {
+                    "controller.render.stonjourner_alpha": "q.property('cobblemon:alpha')"
+                }
             ],
             "spawn_egg": {
                 "texture": "0874_stonjourner_spawn_egg"
