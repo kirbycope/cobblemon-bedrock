@@ -7045,7 +7045,10 @@ def create_berry_groves():
         with open(f"{featuresBedrock}/berry_grove_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:scatter_feature": {
                 "description": {"identifier": f"cobblemon:berry_grove_{berry}"}, "places_feature": f"cobblemon:berry_{berry}",
-                "iterations": f"math.random_integer({least}, {most})",
+                # BerryGroveFeature tries the 24 places round the grove's centre, a block up, level and down, until the
+                # grove's size has grown; a scatter cannot stop on a count, so three tries a bush, two of every three
+                # landing in the ground or the air, leave about the grove's size (one a try left a grove one bush, issue 55)
+                "iterations": f"math.random_integer({3 * least}, {3 * most})",
                 "x": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]},
                 "y": {"distribution": "uniform", "extent": [-1, 1]}}}, indent=2))   # offsets from the grove's centre, as Java's
         biome_filter = biome_filter_for([f"#{t}" for t in tags]) if tags else biome_filter_for(["#cobblemon:is_overworld"])
@@ -7245,12 +7248,15 @@ def create_wild_features():
         ores += 1
     overworld = biome_filter_for(["#cobblemon:is_overworld"])
     surface = "query.heightmap(variable.worldx, variable.worldz)"
-    # Medicinal Leek: a patch of twenty tries 4 across on still water, outside freezing, coast and ocean biomes, two
-    # tries a chunk one chunk in four
+    # Medicinal Leek: a patch of twenty tries 4 across, outside freezing, coast and ocean biomes, two tries a chunk one
+    # chunk in four. Java places each try at the OCEAN_FLOOR heightmap, which water does not count in, and needs air there
+    # with water below, so a leek only generates on a waterlogged block that reaches the surface: a mangrove root, in
+    # practice. Bedrock's heightmap counts water, so the leek takes mangrove roots as its ground, not open water, which
+    # covered every lake and river (issue 54)
     write_feature("medicinal_leek_wild", "minecraft:single_block_feature", {
         "places_block": {"name": "cobblemon:medicinal_leek_block", "states": {"cobblemon:age": 2}},
         "enforce_placement_rules": False, "enforce_survivability_rules": False,
-        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:water"]}, "may_replace": ["minecraft:air"]})
+        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:mangrove_roots"]}, "may_replace": ["minecraft:air"]})
     write_feature("medicinal_leek_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:medicinal_leek_wild", "iterations": 20,
         "x": {"distribution": "uniform", "extent": [-4, 4]}, "y": 0, "z": {"distribution": "uniform", "extent": [-4, 4]}})
     leek_biomes = _all(overworld, {"none_of": [biome_filter_for(["#cobblemon:is_freezing", "#cobblemon:is_coast", "#cobblemon:is_ocean"])]})
