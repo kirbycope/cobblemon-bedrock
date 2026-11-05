@@ -1,5 +1,6 @@
 // Double battles: two Pokemon a side, a move at the chosen target (or the other foe when that one is down), spread moves
 // at three quarters of their damage, turn order across all four, and side conditions and end of turn for every Pokemon
+import { readFileSync } from "node:fs";
 import { M, mon, move, check, flush, battle } from "../harness.mjs";
 
 function doubles(mine, theirs) {
@@ -114,4 +115,45 @@ const lv = { level: 50 };
     const howler = mon("Growlithe", lv), partner = mon("Machamp", lv), b = doubles([howler, partner], [mon("Rattata", lv), mon("Rattata", lv)]);
     fixedTurn(b, [{ f: howler, move: move("howl"), target: 0 }]);
     check("Howl raises the user's and its partner's Attack", howler.stages.atk === 1 && partner.stages.atk === 1, `${howler.stages.atk} ${partner.stages.atk}`);
+}
+{
+    const lure = mon("Clefairy", lv), partner = mon("Pikachu", lv), foe = mon("Machamp", lv), b = doubles([lure, partner], [foe, mon("Rattata", lv)]);
+    fixedTurn(b, [{ f: lure, move: move("followme"), target: 0 }, { f: foe, move: move("tackle"), target: 1 }]);
+    check("Follow Me goes first and draws a foe's move aimed at the partner", lure.hp < lure.stats.hp && partner.hp === partner.stats.hp, `${lure.hp} ${partner.hp}`);
+    const s = battle(mon("Clefairy", lv), mon("Rattata", lv));
+    M.useMove(s, s.ally, s.foe, move("followme"));
+    check("and fails in a single battle", s.log.some((l) => /But it failed/.test(l)));
+}
+{
+    const lure = mon("Paras", lv), partner = mon("Pikachu", lv), grass = mon("Bulbasaur", lv), other = mon("Machamp", lv);
+    const b = doubles([lure, partner], [grass, other]);
+    fixedTurn(b, [{ f: lure, move: move("ragepowder"), target: 0 }, { f: grass, move: move("tackle"), target: 1 }]);
+    check("Rage Powder does not draw a Grass-type's move", partner.hp < partner.stats.hp && lure.hp === lure.stats.hp, `${lure.hp} ${partner.hp}`);
+    partner.hp = partner.stats.hp; b.turn = lure.spotlit.turn + 1;
+    fixedTurn(b, [{ f: lure, move: move("ragepowder"), target: 0 }, { f: other, move: move("tackle"), target: 1 }]);
+    check("but does draw another's", lure.hp < lure.stats.hp && partner.hp === partner.stats.hp, `${lure.hp} ${partner.hp}`);
+}
+{
+    const lure = mon("Clefairy", lv), partner = mon("Pikachu", lv), foe = mon("Duraludon", { ...lv, ability: "stalwart" }), b = doubles([lure, partner], [foe, mon("Rattata", lv)]);
+    fixedTurn(b, [{ f: lure, move: move("followme"), target: 0 }, { f: foe, move: move("tackle"), target: 1 }]);
+    check("Stalwart keeps a move on the Pokemon it was aimed at", partner.hp < partner.stats.hp && lure.hp === lure.stats.hp, `${lure.hp} ${partner.hp}`);
+}
+{
+    const a0 = mon("Abra", lv), a1 = mon("Snorlax", lv), foe = mon("Machamp", lv), b = doubles([a0, a1], [foe, mon("Rattata", lv)]);
+    const first = b.turn;
+    fixedTurn(b, [{ f: a0, move: move("allyswitch"), target: 0 }, { f: foe, move: move("tackle"), target: 0 }]);
+    check("Ally Switch trades the partners' places", b.slots.a[0] === a1 && b.slots.a[1] === a0 && a0.slot === 1 && a1.slot === 0);
+    check("so a move aimed at the user's old place hits its partner", a1.hp < a1.stats.hp && a0.hp === a0.stats.hp, `${a0.hp} ${a1.hp}`);
+    b.turn = first + 1; b.log.length = 0;
+    fixedTurn(b, [{ f: a0, move: move("allyswitch"), target: 0 }]);
+    check("and used again the next turn it can fail (one time in three works)", b.slots.a[1] === a0 && b.log.some((l) => /But it failed/.test(l)));
+    const s = battle(mon("Abra", lv), mon("Rattata", lv));
+    M.useMove(s, s.ally, s.foe, move("allyswitch"));
+    check("Ally Switch fails in a single battle", s.log.some((l) => /But it failed/.test(l)));
+}
+{
+    const text = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/rct_trainers.js", import.meta.url), "utf-8");
+    const marked = (text.match(/"doubles":\s*true/g) ?? []).length;
+    const from = text.indexOf('"elite_four_lorelei_004e":{"name"'), flag = text.indexOf('"doubles":true', from);
+    check("Lorelei is the gym trainer who fights a Double Battle (RCT's GEN_9_DOUBLES)", marked === 1 && from > 0 && !/"\w+":\{"name"/.test(text.slice(from + 10, flag)), String(marked));
 }

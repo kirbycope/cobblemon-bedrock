@@ -833,6 +833,33 @@ function fieldMove(battle, a, d, move) {
             say(battle, `§a${POKEMON[down.typeId]?.name ?? "The Pokemon"} was revived and is ready to fight again!`);
             return true;
         }
+        // Showdown's Follow Me and Rage Powder: the user draws the foes' one-target moves this turn (Rage Powder not
+        // from a Pokemon safe from powder); Spotlight does it to its target. They fail in a single battle
+        case "followme": case "ragepowder":
+            used();
+            if (!battle.doubles) { fail(); return true; }
+            a.spotlit = { turn: battle.turn, powder: move.id === "ragepowder", rank: 1 };
+            say(battle, `§7${name} became the center of attention!`);
+            return true;
+        case "spotlight":
+            used();
+            if (!battle.doubles) { fail(); return true; }
+            d.spotlit = { turn: battle.turn, powder: false, rank: 2 };
+            say(battle, `§7${d.info.name} became the center of attention!`);
+            return true;
+        // Ally Switch: the user and its partner trade places, so a move aimed at a place hits the other; used again
+        // the next turn it works one time in three, then one in nine, and so on, as Protect does
+        case "allyswitch": {
+            used();
+            const again = a.allySwitch?.turn === battle.turn - 1;
+            if (again && Math.random() >= 1 / a.allySwitch.counter) { a.allySwitch = null; fail(); return true; }
+            a.allySwitch = { turn: battle.turn, counter: again ? Math.min(729, a.allySwitch.counter * 3) : 3 };
+            const partner = battle.doubles ? battle.slots[a.sideKey][1 - a.slot] : null;
+            if (!alive(partner)) { fail(); return true; }
+            swapPlaces(battle, a, partner);
+            say(battle, `§7${name} and ${partner.info.name} switched places!`);
+            return true;
+        }
         case "focusenergy":
             used();
             if (a.focusEnergy) { fail(); return true; }
@@ -4665,7 +4692,7 @@ function spawnGymPokemon(npc, spec, player) {
 function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
     if (!data?.team.length) return;
-    startTeamBattle(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
+    (data.doubles ? startDoubleBattle : startTeamBattle)(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
                                              bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin, switchBias: data.switchBias });
 }
 // a trainer's team battle: its first Pokemon comes out, and the rest follow as each faints (gymNextPokemon)
@@ -4918,7 +4945,7 @@ function gymFoeAction(battle) {
         }
     }
     // a switch is weighed with the moves and items (ResponseBuilder.suggestSwitches), unless it is trapped
-    if (!trappedIn(battle, foe)) g.party.forEach((p, i) => { if (!p.down && i !== g.at) options.push({ swap: i, e: gymSwitchRating(battle, p) }); });
+    if (!trappedIn(battle, foe)) g.party.forEach((p, i) => { if (!p.down && !p.out && i !== g.at) options.push({ swap: i, e: gymSwitchRating(battle, p) }); });
     const pick = rctPick(options, g.margin);
     if (pick.swap !== undefined) return gymSwitchTo(pick.swap);
     if (!pick.item) return pick.move;
@@ -5498,12 +5525,29 @@ function moveTargets(battle, a, move, chosen, ally = false) {
     if (target === "allAdjacent") return [...opp, ...partner];
     if (target === "adjacentAlly") return partner.slice(0, 1);
     if (target === "randomNormal") return opp.length ? [opp[Math.floor(Math.random() * opp.length)]] : [];
+    // a foe that is the center of attention draws a one-target move, unless the user's ability keeps it on its target
+    const lure = !["stalwart", "propellertail"].includes(a.ability) && target !== "adjacentAlly"
+        && opp.filter((f) => f.spotlit?.turn === battle.turn && !(f.spotlit.powder && powderSafe(a))).sort((x, y) => y.spotlit.rank - x.spotlit.rank)[0];
+    if (lure && (CHOSEN_TARGETS.has(target) || target === "randomNormal")) return [lure];
     if (CHOSEN_TARGETS.has(target) && ally) return partner.filter((f) => f.slot === chosen);
     if (CHOSEN_TARGETS.has(target)) {
         const picked = battle.slots[otherSide(a.sideKey)][chosen];
         return alive(picked) ? [picked] : opp.length ? [opp[Math.floor(Math.random() * opp.length)]] : [];
     }
     return [opp[0] ?? a];   // the user, its side or the field: the move needs someone facing it
+}
+// Rage Powder's immunity: Grass types, Overcoat and Safety Goggles
+function powderSafe(f) { return f.info.types.includes("grass") || f.ability === "overcoat" || held(f) === "safety_goggles"; }
+// Ally Switch: two partners trade slots, each moving to its new slot's spot worked out for its own size
+function swapPlaces(battle, a, b) {
+    const real = realBattle(battle), [sa, sb] = [a.slot, b.slot];
+    setSlot(real, a.sideKey, sb, a); setSlot(real, b.sideKey, sa, b);
+    for (const f of [a, b]) {
+        const other = opponentOf(real, f)?.entity, own = f.sideKey === "a" ? real.player : real.gym?.npc ?? real.opponent;
+        if (!f.entity?.isValid || !own?.isValid || !other?.isValid) continue;
+        const spot = slotSpot(own.location, other.location, f.slot, widthOf(f.entity), widthOf(other), 0.3);
+        try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other.location }); } catch (e) { }
+    }
 }
 // the turn order: priority, then Quick Claw and the like, then the ones that go last, then speed (each worked out once)
 function actionOrder(battle, picks) {
