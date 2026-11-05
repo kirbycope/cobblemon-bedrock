@@ -1,0 +1,60 @@
+{
+    "format_version": "1.8.0",
+    "minecraft:spawn_rules": {
+        "description": {
+            "identifier": "cobblemon:p0937_ceruledge",
+            "population_control": "animal"
+        },
+        "conditions": [
+            {
+                "minecraft:weight": {
+                    "default": 9
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 3
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            }
+        ]
+    }
+}
