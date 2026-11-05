@@ -7120,10 +7120,11 @@ def height_distribution(height):
     return {"distribution": "triangle" if height.get("type") == "minecraft:trapezoid" else "uniform", "extent": [low, high]}
 
 
-def saccharine_tree(rng):
+def saccharine_tree(rng, nests=None):
     """{(x, y, z): (block, states)} for one tree as SaccharineTreeFeature builds it: a trunk of one or two logs, the top
     trunk, the leaf start, then big and small leaf layers round a log column, the small layers' corners a leaf, air or
-    (at the very top) a leaf, one in four each."""
+    (at the very top) a leaf, one in four each. Where a bee nest may go is added to nests: the four sides of the top
+    trunk and the leaf start's gaps (potentialBeeNestPositions)."""
     log, leaves = ("cobblemon:saccharine_log", {"minecraft:block_face": "up"}), ("cobblemon:saccharine_leaves", {})
     blocks = {}
     def put(pos, block, force=False):
@@ -7141,9 +7142,12 @@ def saccharine_tree(rng):
     trunk = 1 if rng.random() < 0.5 else 2
     for y in range(trunk): put((0, y, 0), log, True)
     y = trunk
-    put((0, y, 0), log, True); y += 1                 # top trunk
+    put((0, y, 0), log, True)                         # top trunk
+    if nests is not None: nests.extend((dx, y, dz) for dx, dz in [(-1, 0), (1, 0), (0, -1), (0, 1)])
+    y += 1
     for dx, dz in [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (1, 1), (-1, 1), (1, -1)]:
         if rng.random() >= 0.25: put((dx, y, dz), leaves)
+        elif nests is not None: nests.append((dx, y, dz))
     put((0, y, 0), log, True); y += 1                 # leaf start
     big(y); y += 1
     small(y, log, leaves); y += 1
@@ -7240,13 +7244,27 @@ def create_wild_features():
     # multiplier times baseApricornTreeGenerationChance (0.1), on dirt; six variants as structures, which a sapling also
     # grows into (scripts/saccharine.js, cobblemon:saccharine_sapling: a random tick in seven)
     import random
-    rng, origins = random.Random(51), {}
+    # a generated tree has a bee nest one time in two (placeBeeNest): a south-facing bee_nest at one of its nest spots
+    # with nothing to the south, as a structure of its own whose nest fills itself with bees when placed
+    # (ShouldSpawnBees, as Bedrock's own generated nests do); the script makes half of those nests Combee's
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import Tag, compound, STRING, BYTE
+    rng, origins, nests = random.Random(51), {}, {}
     for n in range(TREE_VARIANTS):
-        name = f"saccharine_tree_{n}"
-        origins[name] = write_tree(f"{structuresBedrock}/{name}.mcstructure", saccharine_tree(rng))
-        write_feature(f"{name}_wild", "minecraft:structure_template_feature", {"structure_name": f"cobblemon:{name}", "adjustment_radius": 1,
-            "facing_direction": "random", "constraints": {"grounded": {}, "unburied": {}, "block_intersection": {"block_allowlist": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]}}})
-    write_feature("saccharine_tree_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:saccharine_tree_{n}_wild", 1] for n in range(TREE_VARIANTS)]})
+        name, spots = f"saccharine_tree_{n}", []
+        blocks = saccharine_tree(rng, spots)
+        origins[name] = write_tree(f"{structuresBedrock}/{name}.mcstructure", blocks)
+        viable = [p for p in spots if p not in blocks and (p[0], p[1], p[2] + 1) not in blocks]
+        nests[name] = [list(p) for p in viable]
+        nest = rng.choice(viable) if viable else None
+        if nest:
+            write_tree(f"{structuresBedrock}/{name}_bees.mcstructure", {**blocks, nest: ("minecraft:bee_nest", {"direction": 0})},
+                       {nest: compound(id=Tag(STRING, "Beehive"), isMovable=Tag(BYTE, 1), ShouldSpawnBees=Tag(BYTE, 1))})
+        for suffix in ("", "_bees") if nest else ("",):
+            write_feature(f"{name}{suffix}_wild", "minecraft:structure_template_feature", {"structure_name": f"cobblemon:{name}{suffix}", "adjustment_radius": 1,
+                "facing_direction": "random", "constraints": {"grounded": {}, "unburied": {}, "block_intersection": {"block_allowlist": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]}}})
+    write_feature("saccharine_tree_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:saccharine_tree_{n}{suffix}_wild", 1] for n in range(TREE_VARIANTS)
+                                                                                         for suffix in ("", "_bees") if suffix == "" or nests[f"saccharine_tree_{n}"]]})
     sacch = tag_filter("has_feature/saccharine_tree")
     for density, multiplier in (("sparse", 0.1), ("normal", 1.0), ("dense", 10.0)):
         dens = tag_filter(f"has_feature/apricorns_{density}")
@@ -7254,7 +7272,7 @@ def create_wild_features():
         feature_rule(f"saccharine_tree_{density}", "cobblemon:saccharine_tree_wild", _all(sacch, dens), 1, surface, chance=max(1, round(51 / min(1.0, multiplier * 0.1))))
     with open(f"{scriptsBedrock}/saccharine.js", "w", encoding="utf-8", newline=chr(10)) as file:
         file.write("// generated by port.py (create_wild_features): the saccharine tree structures and where each one's sapling stands" + chr(10))
-        file.write("export const SACCHARINE_TREES = " + json.dumps({"variants": TREE_VARIANTS, "origins": origins}) + ";" + chr(10))
+        file.write("export const SACCHARINE_TREES = " + json.dumps({"variants": TREE_VARIANTS, "origins": origins, "nests": nests}) + ";" + chr(10))
     sapling = f"{blocksBedrock}/saccharine_sapling.json"
     if os.path.exists(sapling):
         with open(sapling, encoding="utf-8") as file: block = json.load(file)
@@ -8402,6 +8420,17 @@ def create_leaf_decay():
         block = data["minecraft:block"]
         block["description"].setdefault("states", {})["cobblemon:persistent"] = [False, True]
         block["components"]["cobblemon:leaves"] = {}
+        if name == "saccharine_leaves":
+            # SaccharineLeafBlock's AGE: plain, sticky and dripping with honey (saccharine_leaves, _sticky, _dripping)
+            block["description"]["states"]["cobblemon:age"] = [0, 1, 2]
+            material = block["components"]["minecraft:material_instances"]["*"]
+            perms = [p for p in block.get("permutations", []) if "cobblemon:age" not in p.get("condition", "")]
+            for age, stage in ((1, "sticky"), (2, "dripping")):
+                key = f"cobblemon_block_wood_saccharine_leaves_{stage}"
+                shutil.copyfile(f"{cobblemon}/textures/block/wood/saccharine_leaves_{stage}.png", f"{resourcePack}/textures/blocks/cobblemon/block/wood/saccharine_leaves_{stage}.png")
+                terrain_textures[key] = {"textures": f"textures/blocks/cobblemon/block/wood/saccharine_leaves_{stage}"}
+                perms.append({"condition": f"q.block_state('cobblemon:age') == {age}", "components": {"minecraft:material_instances": {"*": {**material, "texture": key}}}})
+            block["permutations"] = perms
         with open(path, "w") as file: file.write(json.dumps(data, indent=2))
     print("Create leaf decay complete.")
 
@@ -8458,7 +8487,7 @@ def apricorn_tree(rng, colour, generating):
     return blocks
 
 
-def write_tree(path, blocks):
+def write_tree(path, blocks, block_entities=None):
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
     from nbt_to_mcstructure import Tag, compound, int_list, write_nbt, STRING, INT, LIST, COMPOUND
     xs, ys, zs = zip(*blocks)
@@ -8474,7 +8503,9 @@ def write_tree(path, blocks):
         layer[((x - ox) * sy + (y - oy)) * sz + (z - oz)] = keys.index(key)
     root = compound(format_version=Tag(INT, 1), size=int_list([sx, sy, sz]),
                     structure=compound(block_indices=Tag(LIST, [int_list(layer), int_list([-1] * len(layer))], LIST), entities=Tag(LIST, [], COMPOUND),
-                                       palette=compound(default=compound(block_palette=Tag(LIST, palette, COMPOUND), block_position_data=Tag(COMPOUND, {})))),
+                                       palette=compound(default=compound(block_palette=Tag(LIST, palette, COMPOUND), block_position_data=Tag(COMPOUND, {
+                                           str(((x - ox) * sy + (y - oy)) * sz + (z - oz)): compound(block_entity_data=data)
+                                           for (x, y, z), data in (block_entities or {}).items()})))),
                     structure_world_origin=int_list([0, 0, 0]))
     with open(path, "wb") as file: file.write(write_nbt(root))
     return (ox, oy, oz)

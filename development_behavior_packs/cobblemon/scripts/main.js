@@ -7729,6 +7729,46 @@ function gemCoreTick(core) {
 const SLATHERED = "cobblemon:slathered_logs", SLATHER_RANGE = 32;
 function slatheredLogs() { try { return JSON.parse(world.getDynamicProperty(SLATHERED) ?? "[]"); } catch (e) { return []; } }
 function saveSlathered(list) { world.setDynamicProperty(SLATHERED, JSON.stringify(list)); }
+// SaccharineLeafBlock's honey (AGE 0 to 2, sticky then dripping): a honey bottle fills a leaf (back an empty bottle),
+// an empty bottle takes the honey from a dripping one, bone meal adds a stage, and on a random tick one time in two a
+// honeyed leaf passes a stage to the first saccharine leaf below it within ten blocks, through air
+function leafAge(block) { try { return block.permutation.getState("cobblemon:age") ?? 0; } catch (e) { return 0; } }
+function setLeafAge(block, age) { try { block.setPermutation(block.permutation.withState("cobblemon:age", age)); } catch (e) { } }
+function honeyDrip(block) {
+    const age = leafAge(block);
+    if (age <= 0 || Math.random() >= 0.5) return;
+    for (let i = 1; i <= 10; i++) {
+        let below;
+        try { below = block.dimension.getBlock({ x: block.x, y: block.y - i, z: block.z }); } catch (e) { return; }
+        if (!below || below.typeId === "minecraft:air") continue;
+        if (below.typeId === "cobblemon:saccharine_leaves" && leafAge(below) < 2) { setLeafAge(block, age - 1); setLeafAge(below, leafAge(below) + 1); }
+        return;
+    }
+}
+world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
+    const { player, block, itemStack } = event, id = itemStack?.typeId;
+    if (block?.typeId !== "cobblemon:saccharine_leaves" || !["minecraft:glass_bottle", "minecraft:honey_bottle", "minecraft:bone_meal"].includes(id)) return;
+    const age = leafAge(block);
+    if ((id === "minecraft:glass_bottle" && age < 2) || (id !== "minecraft:glass_bottle" && age >= 2)) return;
+    event.cancel = true;
+    system.run(() => {
+        if (!block.isValid) return;
+        const creative = player.getGameMode?.() === "Creative", inv = player.getComponent("minecraft:inventory")?.container;
+        const give = (item) => { try { const left = inv?.addItem(new ItemStack(item, 1)); if (left) player.dimension.spawnItem(left, player.location); } catch (e) { } };
+        if (id === "minecraft:glass_bottle") {
+            consumeHand(player); give("minecraft:honey_bottle"); setLeafAge(block, 0);
+            try { player.dimension.playSound("bottle.fill", block.location); } catch (e) { }
+        } else if (id === "minecraft:honey_bottle") {
+            if (!creative) { consumeHand(player); give("minecraft:glass_bottle"); }
+            setLeafAge(block, 2);
+            try { player.dimension.playSound("place.honey_block", block.location); } catch (e) { }
+        } else {
+            if (!creative) consumeHand(player);
+            setLeafAge(block, age + 1);
+            try { player.dimension.spawnParticle("minecraft:crop_growth_emitter", { x: block.x + 0.5, y: block.y + 0.5, z: block.z + 0.5 }); } catch (e) { }
+        }
+    });
+});
 world.afterEvents.playerInteractWithBlock.subscribe(({ player, block, itemStack }) => {
     if (block?.typeId !== "cobblemon:saccharine_log" || itemStack?.typeId !== "minecraft:honey_bottle") return;
     const dir = ["south", "west", "north", "east"][Math.floor((((player.getRotation().y + 45) % 360) + 360) % 360 / 90)];
@@ -9803,10 +9843,67 @@ function growTree(block, kind = "grown") {
 function growSaccharine(block) {
     if (!block.isValid || block.typeId !== "cobblemon:saccharine_sapling") return;
     const name = `saccharine_tree_${Math.floor(Math.random() * SACCHARINE_TREES.variants)}`, [ox, oy, oz] = SACCHARINE_TREES.origins[name];
-    const { x, y, z } = block.location;
+    const { x, y, z } = block.location, dim = block.dimension;
+    const flowers = flowerNear(dim, block.location);   // looked for before the tree stands there
     block.setType("minecraft:air");
-    try { world.structureManager.place(`cobblemon:${name}`, block.dimension, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
-    catch (e) { block.setType("cobblemon:saccharine_sapling"); }
+    try { world.structureManager.place(`cobblemon:${name}`, dim, { x: x + ox, y: y + oy, z: z + oz }, { includeEntities: false }); }
+    catch (e) { block.setType("cobblemon:saccharine_sapling"); return; }
+    // a grown tree with a flower within two blocks of its sapling has a bee nest one time in ten (placeBeeNest after
+    // world generation): at one of its nest spots that is clear with nothing to the south, facing south
+    if (!flowers || Math.random() >= 0.1) return;
+    const spots = (SACCHARINE_TREES.nests[name] ?? []).map(([dx, dy, dz]) => ({ x: x + dx, y: y + dy, z: z + dz }))
+        .filter((at) => { try { return dim.getBlock(at)?.isAir && dim.getBlock({ ...at, z: at.z + 1 })?.isAir; } catch (e) { return false; } });
+    const at = spots[Math.floor(Math.random() * spots.length)];
+    if (!at) return;
+    try { dim.getBlock(at).setPermutation(BlockPermutation.resolve("minecraft:bee_nest", { direction: 0 })); } catch (e) { return; }
+    populateBeeNest(dim, at);
+}
+const FLOWERS = new Set(["minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium", "minecraft:azure_bluet", "minecraft:red_tulip",
+    "minecraft:orange_tulip", "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:lily_of_the_valley",
+    "minecraft:wither_rose", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:torchflower", "minecraft:pitcher_plant",
+    "minecraft:pink_petals", "minecraft:flowering_azalea", "minecraft:flowering_azalea_leaves", "minecraft:cherry_leaves", "minecraft:mangrove_propagule"]);
+// BlockTags.FLOWERS within two blocks every way
+function flowerNear(dim, { x, y, z }) {
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
+        try { if (FLOWERS.has(dim.getBlock({ x: x + dx, y: y + dy, z: z + dz })?.typeId)) return true; } catch (e) { }
+    }
+    return false;
+}
+// populateBeeNest: two or three bees, or one time in two as many Combee (level 5 to 15); a script cannot fill a nest's
+// occupants, so they come out beside it
+function populateBeeNest(dim, at) {
+    const combee = Math.random() < 0.5, n = 2 + Math.floor(Math.random() * 2), spot = { x: at.x + 0.5, y: at.y, z: at.z + 1.5 };
+    for (let i = 0; i < n; i++) {
+        try { const e = dim.spawnEntity(combee ? "cobblemon:p0415_combee" : "minecraft:bee", spot); if (combee) setProp(e, LEVEL, 5 + Math.floor(Math.random() * 11)); } catch (e) { }
+    }
+}
+// a generated saccharine tree's nest fills itself with bees (ShouldSpawnBees); one nest in two is Combee's instead, so
+// its bees come out as Combee, and the nest stays that way (decided by where it stands)
+world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+    if (entity?.typeId !== "minecraft:bee") return;
+    system.run(() => {
+        if (!entity.isValid) return;
+        const dim = entity.dimension, l = entity.location;
+        for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
+            let nest;
+            try { nest = dim.getBlock({ x: Math.floor(l.x) + dx, y: Math.floor(l.y) + dy, z: Math.floor(l.z) + dz }); } catch (e) { continue; }
+            if (nest?.typeId !== "minecraft:bee_nest" || !combeeNest(nest)) continue;
+            try {
+                const c = dim.spawnEntity("cobblemon:p0415_combee", l);
+                setProp(c, LEVEL, 5 + Math.floor(Math.random() * 11));
+                entity.remove();
+            } catch (e) { }
+            return;
+        }
+    });
+});
+// a nest on a saccharine tree (a saccharine log or leaf against it), one in two of them by its position
+function combeeNest(nest) {
+    const { x, y, z } = nest.location;
+    const onTree = [[1, 0, 0], [-1, 0, 0], [0, 0, -1], [0, 1, 0], [0, -1, 0]].some(([dx, dy, dz]) => {
+        try { return (nest.dimension.getBlock({ x: x + dx, y: y + dy, z: z + dz })?.typeId ?? "").startsWith("cobblemon:saccharine_"); } catch (e) { return false; }
+    });
+    return onTree && ((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) % 2 === 0;
 }
 function useBoneMeal(player) {
     if (player.getGameMode?.() === "Creative") return;
@@ -12354,7 +12451,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:gem_core", { onRandomTick({ block }) { gemCoreTick(block); } });
     blockComponentRegistry.registerCustomComponent("cobblemon:leaves", {
-        onRandomTick({ block }) { decayLeaf(block); },
+        onRandomTick({ block }) { if (block.typeId === "cobblemon:saccharine_leaves") honeyDrip(block); if (block.isValid) decayLeaf(block); },
         beforeOnPlayerPlace(event) { try { event.permutationToPlace = event.permutationToPlace.withState("cobblemon:persistent", true); } catch (e) { } },
     });
     // a lit candle on a Poke Cake flickers with a candle's flame (AbstractCandleBlock.addParticlesAndSound)

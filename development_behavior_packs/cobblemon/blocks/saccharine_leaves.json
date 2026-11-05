@@ -10,6 +10,11 @@
         "cobblemon:persistent": [
           false,
           true
+        ],
+        "cobblemon:age": [
+          0,
+          1,
+          2
         ]
       }
     },
@@ -26,6 +31,30 @@
       },
       "minecraft:loot": "loot_tables/blocks/saccharine_leaves.json",
       "cobblemon:leaves": {}
-    }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:age') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_wood_saccharine_leaves_sticky",
+              "render_method": "alpha_test_single_sided"
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_wood_saccharine_leaves_dripping",
+              "render_method": "alpha_test_single_sided"
+            }
+          }
+        }
+      }
+    ]
   }
 }
