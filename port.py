@@ -9865,7 +9865,10 @@ BATTLE_ACTORS = BATTLE_LOG_FLAG + 1   # the two actors' names, 16 each, in a tra
 BATTLE_DBL = BATTLE_ACTORS + 32
 BATTLE_SIDES2 = BATTLE_DBL + 2
 BATTLE_HPTEXT2 = BATTLE_SIDES2 + 2 * BATTLE_SIDE
-BATTLE_LOG = BATTLE_HPTEXT2 + 13 + 9
+# a triple battle's part: the player's and the foe's third Pokemon and their health texts (blank in other battles)
+BATTLE_SIDES3 = BATTLE_HPTEXT2 + 13 + 9
+BATTLE_HPTEXT3 = BATTLE_SIDES3 + 2 * BATTLE_SIDE
+BATTLE_LOG = BATTLE_HPTEXT3 + 13 + 9
 # BattleTargetSelection's tiles: each button's text carries its Pokemon as fixed-width fields
 TARGET_FIELDS = {"name": (0, 12), "level": (12, 18), "icon": (18, 23)}
 # BattleSwitchPokemonSelection's tiles: each button's text carries its Pokemon as fixed-width fields
@@ -12999,15 +13002,18 @@ def create_battle_ui():
     T = "textures/ui/cobblemon"
     def cut(a, b): return f"(('%.{b}s' * #form_text) - ('%.{a}s' * #form_text))"
     def field(side, name):
-        # sides 0 and 1 after the "~", 2 and 3 in the double battle's part
+        # sides 0 and 1 after the "~", 2 and 3 in the double battle's part, 4 and 5 in the triple battle's
         if name == "hptext":
-            start = BATTLE_HPTEXT if side < 2 else BATTLE_HPTEXT2
+            start = BATTLE_HPTEXT if side < 2 else BATTLE_HPTEXT2 if side < 4 else BATTLE_HPTEXT3
             return cut(start + 12, start + 22) if side % 2 else cut(start, start + 12)
         a, b = BATTLE_FIELDS[name]
-        base = 0 if side < 2 else BATTLE_SIDES2 - 1 - 2 * BATTLE_SIDE
+        base = 0 if side < 2 else BATTLE_SIDES2 - 1 - 2 * BATTLE_SIDE if side < 4 else BATTLE_SIDES3 - 1 - 4 * BATTLE_SIDE
         return cut(base + a + side * BATTLE_SIDE, base + b + side * BATTLE_SIDE)
     # a double battle is told by its title (scripts/main.js's battleTitle): "|d", then the slot choosing
     in_doubles = "(not ((#title_text - '|d') = #title_text))"
+    # a triple battle's title carries "|t" too: its six tiles and its target picker take over from the double battle's
+    in_triples = "(not ((#title_text - '|t') = #title_text))"
+    doubles_only = "((not ((#title_text - '|d') = #title_text)) and ((#title_text - '|t') = #title_text))"
     def choosing_slot(slot): return f"(not ((#title_text - '|d{slot}') = #title_text))"
     def text_label(name, source, offset, anchor="top_left", scale=1.0, color=(1, 1, 1)):
         return {name: {"type": "label", "anchor_from": anchor, "anchor_to": anchor, "offset": offset, "size": [100, 10],
@@ -13073,14 +13079,14 @@ def create_battle_ui():
         return {f"info_{side}": {"type": "panel", "size": [140, 40], "anchor_from": "top_right" if reversed_ else "top_left",
                                  "anchor_to": "top_right" if reversed_ else "top_left", "offset": [-12 if reversed_ else 12, 10], "controls": controls,
                                  "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": f"(not {in_doubles})", "target_property_name": "#visible"}]}}
-    def compact_tile(side):
+    def compact_tile(side, n=2):
         # BattleOverlay.drawTile in a double battle (isCompact): 128 by 28, the player's down the left (slot 0 at the
         # top, 4 further in) and the foe's down the right (its slot 1 at the top), 30 apart; the portrait 19 across at
         # 4, 7, the name 5 down, the health bar 16 down, the status strip 40 wide at 22; the Pokemon choosing its
         # action has its role strip lit
         reversed_ = side % 2 == 1
         slot = side // 2
-        rank = 1 - slot if reversed_ else slot
+        rank = n - 1 - slot if reversed_ else slot
         info_x = 6 if reversed_ else 19 + 4 + 6
         portrait_x = 128 - 19 - 4 if reversed_ else 4
         # the frame and the portrait's underlay are textures named by the slot's gender field, so an empty slot draws none
@@ -13134,11 +13140,11 @@ def create_battle_ui():
                                                   "anchor_from": "top_left", "anchor_to": "top_left", "offset": [65 if reversed_ else 23, 22], "bindings": shown}})
             controls.append({f"status_name_{status}": {"type": "label", "text": f"\u00a7l{names[status]}", "anchor_from": "top_left", "anchor_to": "top_left", "font_scale_factor": 0.5,
                                                        "offset": [87 if reversed_ else 30, 23], "size": [40, 5], "layer": 4, "shadow": True, "bindings": shown}})
-        x = 12 + (2 - rank - 1) * 4
+        x = 12 + (n - rank - 1) * 4   # BattleOverlay.drawTile: HORIZONTAL_INSET plus a step in for each slot below
         # shown in a double battle (the title)
-        return {f"compact_{side}": {"type": "panel", "size": [128, 28], "anchor_from": "top_right" if reversed_ else "top_left",
+        return {f"compact{'' if n == 2 else n}_{side}": {"type": "panel", "size": [128, 28], "anchor_from": "top_right" if reversed_ else "top_left",
                                     "anchor_to": "top_right" if reversed_ else "top_left", "offset": [-x if reversed_ else x, 10 + rank * 30], "controls": controls,
-                                    "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": in_doubles, "target_property_name": "#visible"}]}}
+                                    "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": doubles_only if n == 2 else in_triples, "target_property_name": "#visible"}]}}
 
     def face(state, label_controls):
         return {"type": "image", "size": ["100%", "100%"], "layer": 2,
@@ -13271,26 +13277,44 @@ def create_battle_ui():
         return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
     target_labels = [button_label("level", target_field("level"), [5, 7], scale=0.9), button_label("name", target_field("name"), [5, 16], scale=0.8),
                      tile_image("portrait", [24, 24], [66, 4], f"('{T}/icons/' + {target_field('icon')})", 3)]
-    target_buttons = []
-    for index in range(4):
-        field_pos, ally = index % 2, index >= 2
-        offset = [field_pos * 93, 44 + (34 if ally else 0)]
-        arrow, arrow_size, arrow_at = ("right", [5, 8.5], [-7, 13]) if field_pos == 0 else ("left", [5, 8.5], [93 + 3, 13])
-        arrow_image = {"arrow": {"type": "image", "texture": f"{T}/battle/arrow_{arrow}", "size": arrow_size, "offset": arrow_at, "layer": 5,
-                                 "anchor_from": "top_left", "anchor_to": "top_left"}}
-        tile = button([93, 33], target_labels)
-        tile["controls"] = [{"default": face("", target_labels)}, {"hover": face("_hover", [*target_labels, arrow_image])}, {"pressed": face("_hover", [*target_labels, arrow_image])}]
-        target_buttons.append({f"target_{index}": {**tile, "collection_index": index, "offset": offset, "anchor_from": "top_left", "anchor_to": "top_left",
-                                                   "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}})
-    target_screen = {"target": {"type": "panel", "size": ["100%", "100%"],
-                                "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
-                                             "source_property_name": "(not ((#title_text - 'cbm:battle_target') = #title_text))", "target_property_name": "#visible"}],
-                                "controls": [
-        {"underlay": {"type": "image", "texture": f"{T}/battle/underlay", "size": ["100%", 148], "keep_ratio": False, "layer": 1}},
-        {"tiles": {"type": "collection_panel", "collection_name": "form_buttons", "size": [186, 148], "layer": 2, "controls": target_buttons}},
-        {"back_panel": {"type": "collection_panel", "collection_name": "form_buttons", "size": ["100%", "100%"], "layer": 5, "controls": [
-            {"back": {**button([29, 17], []), "collection_index": 4, "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [9, -5],
-                      "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}}]}}]}}
+    def target_screen(n):
+        # Cobblemon's tiles centred, n a row; an edge tile's arrow points in from the side away from its neighbour, a
+        # middle one's from above (a foe) or below (one of the player's)
+        buttons = []
+        for index in range(2 * n):
+            field_pos, ally = index % n, index >= n
+            offset = [field_pos * 93, 44 + (34 if ally else 0)]
+            if field_pos == 0: arrow, arrow_size, arrow_at = "right", [5, 8.5], [-7, 13]
+            elif field_pos == n - 1: arrow, arrow_size, arrow_at = "left", [5, 8.5], [93 + 3, 13]
+            elif ally: arrow, arrow_size, arrow_at = "up", [8.5, 5], [93 / 2 - 4, 33 + 3]
+            else: arrow, arrow_size, arrow_at = "down", [8.5, 5], [93 / 2 - 4, -7]
+            arrow_image = {"arrow": {"type": "image", "texture": f"{T}/battle/arrow_{arrow}", "size": arrow_size, "offset": arrow_at, "layer": 5,
+                                     "anchor_from": "top_left", "anchor_to": "top_left"}}
+            tile = button([93, 33], target_labels)
+            tile["controls"] = [{"default": face("", target_labels)}, {"hover": face("_hover", [*target_labels, arrow_image])}, {"pressed": face("_hover", [*target_labels, arrow_image])}]
+            buttons.append({f"target_{index}": {**tile, "collection_index": index, "offset": offset, "anchor_from": "top_left", "anchor_to": "top_left",
+                                                "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}})
+        is_target = "(not ((#title_text - 'cbm:battle_target') = #title_text))"
+        visible = f"({is_target} and ((#title_text - '|t') = #title_text))" if n == 2 else f"({is_target} and {in_triples})"
+        return {f"target{'' if n == 2 else n}": {"type": "panel", "size": ["100%", "100%"],
+                                    "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view", "source_property_name": visible, "target_property_name": "#visible"}],
+                                    "controls": [
+            {"underlay": {"type": "image", "texture": f"{T}/battle/underlay", "size": ["100%", 148], "keep_ratio": False, "layer": 1}},
+            {"tiles": {"type": "collection_panel", "collection_name": "form_buttons", "size": [93 * n, 148], "layer": 2, "controls": buttons}},
+            {"back_panel": {"type": "collection_panel", "collection_name": "form_buttons", "size": ["100%", "100%"], "layer": 5, "controls": [
+                {"back": {**button([29, 17], []), "collection_index": 2 * n, "anchor_from": "bottom_left", "anchor_to": "bottom_left", "offset": [9, -5],
+                          "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, text_binding, shown]}}]}}]}}
+    # BattleMoveSelection's Shift button (BattleShiftButton, 36 by 17 at 33.5 right of Back): a triple battle's edge
+    # Pokemon move to the middle; it is the form's button whose texture is battle/shift, after Back
+    shift_panel = {"shift_panel": {"type": "collection_panel", "collection_name": "form_buttons", "size": ["100%", "100%"], "layer": 5,
+                                   "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
+                                                "source_property_name": "(not ((#title_text - 'cbm:battle_moves') = #title_text))", "target_property_name": "#visible"}],
+                                   "controls": [{f"shift_{i}": {**button([36, 17], []), "collection_index": i, "anchor_from": "bottom_left", "anchor_to": "bottom_left",
+                                                                "offset": [36.5, -5],
+                                                                "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
+                                                                             {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
+                                                                             {"binding_type": "view", "source_property_name": f"(#form_button_texture = '{T}/battle/shift')", "target_property_name": "#visible"}]}}
+                                                for i in range(2, 6)]}}
     ui = {
         "namespace": "server_form",
         # the vanilla panel is sized 0 by 0 at the centre; the battle layout anchors to the screen's corners
@@ -13310,7 +13334,8 @@ def create_battle_ui():
         "cobblemon_battle": {"type": "panel", "size": ["100%", "100%"],
                              "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                                           "source_property_name": "(not ((#title_text - 'cbm:battle') = #title_text))", "target_property_name": "#visible"}],
-                             "controls": [info_tile(0), info_tile(1), *[compact_tile(side) for side in range(4)], battle_log, switch_screen, target_screen,
+                             "controls": [info_tile(0), info_tile(1), *[compact_tile(side) for side in range(4)], *[compact_tile(side, 3) for side in range(6)],
+                                          battle_log, switch_screen, target_screen(2), target_screen(3), shift_panel,
                                           battle_tiles("menu_grid", "cobblemon_menu_item", [93, 29], [12, -85], "cbm:battle_menu"),
                                           battle_tiles("move_grid", "cobblemon_move_item", [105, 29], [11, -84], "cbm:battle_moves")]},
         "cobblemon_menu_item": menu_item,
@@ -13320,6 +13345,8 @@ def create_battle_ui():
     # scripts/main.js's HIT: a transparent face for a button that acts, which a controller can focus (FOCUS_BINDINGS)
     # its hover a faint white wash over the button, the one sign of focus a transparent button can give a controller
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/hit.png"); Image.new("RGBA", (1, 1), FOCUS_WASH).save(f"{uiTextures}/hit_hover.png")
+    shift = Image.open(f"{guiMain}/battle/triple_battle_shift.png").convert("RGBA")
+    shift.crop((0, 0, 72, 34)).save(f"{uiTextures}/battle/shift.png"); shift.crop((0, 34, 72, 68)).save(f"{uiTextures}/battle/shift_hover.png")
     frame = Image.new("RGBA", (94, 26), (0, 0, 0, 0))
     ImageDraw.Draw(frame).rectangle((0, 0, 93, 25), outline=(255, 255, 255, 255))
     frame.save(f"{uiTextures}/battle/move_focus.png")

@@ -854,7 +854,8 @@ function fieldMove(battle, a, d, move) {
             const again = a.allySwitch?.turn === battle.turn - 1;
             if (again && Math.random() >= 1 / a.allySwitch.counter) { a.allySwitch = null; fail(); return true; }
             a.allySwitch = { turn: battle.turn, counter: again ? Math.min(729, a.allySwitch.counter * 3) : 3 };
-            const partner = battle.doubles ? battle.slots[a.sideKey][1 - a.slot] : null;
+            // in a triple battle the edges trade with each other and the middle one fails (Showdown's newPosition)
+            const n = battle.doubles ? slotCount(battle) : 0, partner = battle.doubles && !(n === 3 && a.slot === 1) ? battle.slots[a.sideKey][a.slot === 0 ? n - 1 : 0] : null;
             if (!alive(partner)) { fail(); return true; }
             swapPlaces(battle, a, partner);
             say(battle, `§7${name} and ${partner.info.name} switched places!`);
@@ -4168,7 +4169,7 @@ const LOG_TOGGLE = "textures/ui/cobblemon/battle/log_toggle";
 function toggleLog(battle) { battle.logExpanded = !battle.logExpanded; try { battle.player.playSound("cobblemon.gui.click"); } catch (e) { } }
 // a battle screen's title: the layout it takes, and in a double battle "|d" and the slot of the player's Pokemon choosing
 // ("|d0", "|d1"), which the layout tests as a part of the title (a one-byte field of the body did not read back)
-function battleTitle(battle, kind) { return `cbm:battle_${kind}${battle.doubles ? `|d${battle.choosing ?? "-"}` : ""}`; }
+function battleTitle(battle, kind) { return `cbm:battle_${kind}${battle.doubles ? `|d${battle.choosing ?? "-"}${battle.triples ? "|t" : ""}` : ""}`; }
 function battleBody(battle) {
     const ascii = (n) => n.normalize("NFD").replace(/[^ -~]/g, "");   // the layout slices by position, so the body stays one byte a character
     const side = (f) => {
@@ -4184,13 +4185,15 @@ function battleBody(battle) {
     // a double battle: each side's first slot in the usual fields, and the second slots in the double battle's part
     const me = battle.side === 1 ? "b" : "a", them = otherSide(me);   // the second player's view sees side b as its own
     const [a0, b0, a1, b1] = battle.doubles ? [battle.slots[me][0], battle.slots[them][0], battle.slots[me][1], battle.slots[them][1]] : [battle.ally, battle.foe, null, null];
+    const [a2, b2] = battle.doubles ? [battle.slots[me][2], battle.slots[them][2]] : [null, null];   // a triple battle's third slots
     const own = ownHp(a0), theirs = theirHp(b0);
     // the log follows the fixed fields; a lone % would be read as a format there too
     const log = (battle.log ?? []).slice(-40).map((line) => line.replace(/%/g, "%%")).join("\n");
     // BattleOverlay's actorDisplayName: the player's and the trainer's names over the tiles when the foe is a trainer's
     const actors = battle.trainer ? pad(ascii(battle.player.name), 16) + pad(ascii(typeof battle.trainer === "string" ? battle.trainer : "Trainer"), 16) : " ".repeat(32);
     const doubled = (battle.doubles ? "d" : "s") + (battle.doubles ? battle.choosing ?? "-" : "-") + side(a1) + side(b1) + "§f" + pad(ownHp(a1), 10) + "§f" + pad(theirHp(b1), 6);
-    return "~" + side(a0) + side(b0) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + actors + doubled + log;
+    const tripled = side(a2) + side(b2) + "§f" + pad(ownHp(a2), 10) + "§f" + pad(theirHp(b2), 6);
+    return "~" + side(a0) + side(b0) + "§f" + pad(own, 10) + "§f" + pad(theirs, 6) + (battle.logExpanded ? "e" : "c") + actors + doubled + tripled + log;
 }
 
 // BattleGeneralActionSelection (Fight, Bag, Switch, Run) and then BattleMoveSelection; undefined when the player closes it
@@ -4252,10 +4255,14 @@ function pickAction(battle, options) {
             // the PP padded to five: a one-digit "5/5" after the colour code was a JSON UI parse failure on every button
             form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`).padStart(5), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
-        form.button("Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
+        const shift = options.find((o) => o.kind === "shift");
+        form.button("Back", `${UI}/battle/back`);
+        if (shift) form.button("", `${UI}/battle/shift`);   // no text, so the move grid's tile for it stays hidden (shift_panel draws it)
+        form.button("", LOG_TOGGLE);
         return form.show(battle.player).then((m) => {
             if (m.canceled || !battles.has(battle.player.id)) return undefined;
-            if (m.selection === moves.length + 1) { toggleLog(battle); return showMoves(); }
+            if (m.selection === moves.length + (shift ? 2 : 1)) { toggleLog(battle); return showMoves(); }
+            if (shift && m.selection === moves.length + 1) return shift;
             if (m.selection >= moves.length) return pickAction(battle, options);
             return moves[m.selection];
         });
@@ -4754,7 +4761,9 @@ function startNpcBattle(player, npc) {
     const team = npcTrainerParty(npc).filter(([t]) => POKEMON[t]).map(npcSpec);
     const name = npc.nameTag && npc.nameTag !== "NPC" ? npc.nameTag.replace(/§./g, "") : "Trainer";
     if ((gymRest.get(npc.id) ?? 0) > system.currentTick) return;
-    (prop(npc, BATTLE_FORMAT) === "doubles" ? startDoubleBattle : startTeamBattle)(player, npc, team, { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown });
+    const fmt = prop(npc, BATTLE_FORMAT), trainer = { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown };
+    if (fmt === "doubles" || fmt === "triples") startDoubleBattle(player, npc, team, trainer, fmt === "triples" ? 3 : 2);
+    else startTeamBattle(player, npc, team, trainer);
 }
 
 // StrongBattleAI, Cobblemon's NPC battle AI: a skill check (skill 5 always, otherwise skill in 5) or a random move; past
@@ -5471,7 +5480,8 @@ const CHALLENGE_EXPIRY = 20 * 20, PVP_RANGE = 32, LEVEL_RULES = [-1, 50, 100, 5]
 const challenges = [];   // { from, to, level, at }
 const challengeRule = new Map();   // player id -> the level rule chosen on the challenge screen
 const challengeFormat = new Map();   // player id -> the format chosen on the challenge screen, "singles" or "doubles"
-const FORMAT_NAMES = { singles: "Single Battle", doubles: "Double Battle" };   // lang cobblemon.battle.types.*
+const FORMAT_NAMES = { singles: "Single Battle", doubles: "Double Battle", triples: "Triple Battle" };   // lang cobblemon.battle.types.*
+const FORMAT_ORDER = ["singles", "doubles", "triples"];   // BattleConfigureGUI's pages (Multi and Royal are not carried)
 // Double battles (BattleTypes.DOUBLES: one actor a side with two slots each). The move engine is written for one
 // Pokemon a side, battle.ally against battle.foe, so a double battle keeps its four in battle.slots ("a" the player's,
 // "b" the trainer's, each [left, right]) and points ally and foe at the two a move is between before it runs (focus,
@@ -5486,6 +5496,17 @@ const CHOSEN_TARGETS = new Set(["normal", "any", "adjacentFoe"]);
 const BATTLE_FORMAT = "cobblemon:battle_format";
 const otherSide = (key) => (key === "a" ? "b" : "a");
 const alive = (f) => !!f && f.hp > 0 && f.entity?.isValid !== false;
+// a Triple Battle (BattleTypes.TRIPLES) is a double battle with three slots a side; slotCount is a side's slots
+const slotCount = (battle) => (realBattle(battle).triples ? 3 : 2);
+const emptySlots = (n) => Array(n).fill(null);
+// Showdown's Pokemon.isAdjacent: everyone is in reach in a double battle; in a triple, a partner next to it, and a foe
+// across from it or one place to either side of that (the left edge cannot reach the far right edge)
+function adjacent(battle, x, y) {
+    if (!x || !y || x === y) return false;
+    if (!realBattle(battle).triples) return true;
+    if (x.sideKey === y.sideKey) return Math.abs(x.slot - y.slot) === 1;
+    return Math.abs(x.slot + y.slot + 1 - 3) <= 1;
+}
 // the fighters in battle: all four in a double battle (fainted ones too, until replaced), the two otherwise
 // the Pokemon a side's conditions are named after: its first standing one in a double battle
 function sideFront(battle, key) { return battle.doubles ? battle.slots[key].find(alive) ?? battle.slots[key].find(Boolean) : key === "a" ? battle.ally : battle.foe; }
@@ -5494,7 +5515,7 @@ function livingIn(battle, key) { return battle.slots[key].filter(alive); }
 // the first standing Pokemon facing f, for the moves that need one there
 function opponentOf(battle, f) {
     const side = battle.slots[otherSide(f.sideKey)];
-    return side.find(alive) ?? side.find(Boolean);
+    return side.find((o) => alive(o) && adjacent(battle, f, o)) ?? side.find(alive) ?? side.find(Boolean);
 }
 // points battle.ally and battle.foe at f and the Pokemon facing it, so the one-on-one code sees f's side as its own
 function focus(battle, f) {
@@ -5515,18 +5536,20 @@ function setSlot(battle, key, slot, f) {
     battle.slots[key][slot] = f;
 }
 // where each slot stands: the single battle's spot, then a step to the left or right across the line between the sides
-function slotSpot(from, to, slot, w, wOpp, share) {
+function slotSpot(from, to, slot, w, wOpp, share, n = 2) {
     const at = battleSpot(from, to, w, wOpp, share);
-    const ox = to.x - from.x, oz = to.z - from.z, len = Math.hypot(ox, oz) || 1, step = (slot === 0 ? -1 : 1) * (0.9 + w * 0.6);
+    const ox = to.x - from.x, oz = to.z - from.z, len = Math.hypot(ox, oz) || 1, step = (n === 3 ? (slot - 1) * 2 : slot === 0 ? -1 : 1) * (0.9 + w * 0.6);   // a triple's middle slot on the line
     return { x: at.x + (-oz / len) * step, y: at.y, z: at.z + (ox / len) * step };
 }
 // which Pokemon a move goes at: chosen is the slot picked, on the other side or (ally) the user's own, for a move with
 // one target
 function moveTargets(battle, a, move, chosen, ally = false) {
-    const target = move.target ?? "normal", opp = livingIn(battle, otherSide(a.sideKey)), partner = livingIn(battle, a.sideKey).filter((f) => f !== a);
+    const target = move.target ?? "normal", allOpp = livingIn(battle, otherSide(a.sideKey)), near = (f) => adjacent(battle, a, f);
+    // in a triple battle only a move at any Pokemon reaches past the ones beside and across (validTargetLoc)
+    const opp = target === "any" ? allOpp : allOpp.filter(near), partner = livingIn(battle, a.sideKey).filter((f) => f !== a && (target === "any" || near(f)));
     if (target === "allAdjacentFoes") return opp;
     if (target === "allAdjacent") return [...opp, ...partner];
-    if (target === "adjacentAlly") return partner.slice(0, 1);
+    if (target === "adjacentAlly") return ally ? partner.filter((f) => f.slot === chosen).concat(partner).slice(0, 1) : partner.slice(0, 1);
     if (target === "randomNormal") return opp.length ? [opp[Math.floor(Math.random() * opp.length)]] : [];
     // a foe that is the center of attention draws a one-target move, unless the user's ability keeps it on its target
     const lure = !["stalwart", "propellertail"].includes(a.ability) && target !== "adjacentAlly"
@@ -5539,43 +5562,62 @@ function moveTargets(battle, a, move, chosen, ally = false) {
     }
     return [opp[0] ?? a];   // the user, its side or the field: the move needs someone facing it
 }
+// a triple battle's Shift (ShiftActionResponse, Showdown's "shift"): an edge Pokemon trades places with the middle one
+function shiftToCenter(battle, f) {
+    const mid = battle.slots[f.sideKey][1];
+    if (!battle.triples || f.slot === 1) return;
+    if (mid) swapPlaces(battle, f, mid);
+    else { const real = realBattle(battle); real.slots[f.sideKey][f.slot] = null; setSlot(real, f.sideKey, 1, f); swapPlaces(battle, f, f); }
+    say(battle, `§7${f.info.name} moved to the center!`);
+}
+// Showdown's automatic center: with one Pokemon left on each side of a triple battle and the two out of reach, both move
+// to the middle at the start of the turn
+function autoCenter(battle) {
+    if (!battle.triples) return;
+    const real = realBattle(battle), left = (key) => livingIn(real, key).length + (key === "a" || real.pvp ? benchFor(viewOf(real, key)).length : (real.gym?.party ?? []).filter((p) => !p.down && !p.out).length);
+    if (left("a") !== 1 || left("b") !== 1) return;
+    const [x, y] = [livingIn(real, "a")[0], livingIn(real, "b")[0]];
+    if (!x || !y || adjacent(real, x, y)) return;
+    for (const f of [x, y]) if (f.slot !== 1) { const mid = real.slots[f.sideKey][1]; if (mid) swapPlaces(real, f, mid); else { real.slots[f.sideKey][f.slot] = null; setSlot(real, f.sideKey, 1, f); swapPlaces(real, f, f); } }
+    say(real, "§7The Pokémon were moved to the center!");
+}
 // Rage Powder's immunity: Grass types, Overcoat and Safety Goggles
 function powderSafe(f) { return f.info.types.includes("grass") || f.ability === "overcoat" || held(f) === "safety_goggles"; }
 // Ally Switch: two partners trade slots, each moving to its new slot's spot worked out for its own size
 function swapPlaces(battle, a, b) {
     const real = realBattle(battle), [sa, sb] = [a.slot, b.slot];
-    setSlot(real, a.sideKey, sb, a); setSlot(real, b.sideKey, sa, b);
-    for (const f of [a, b]) {
+    if (a !== b) { setSlot(real, a.sideKey, sb, a); setSlot(real, b.sideKey, sa, b); }
+    for (const f of a === b ? [a] : [a, b]) {
         const other = opponentOf(real, f)?.entity, own = f.sideKey === "a" ? real.player : real.gym?.npc ?? real.opponent;
         if (!f.entity?.isValid || !own?.isValid || !other?.isValid) continue;
-        const spot = slotSpot(own.location, other.location, f.slot, widthOf(f.entity), widthOf(other), 0.3);
+        const spot = slotSpot(own.location, other.location, f.slot, widthOf(f.entity), widthOf(other), 0.3, slotCount(real));
         try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other.location }); } catch (e) { }
     }
 }
 // the turn order: priority, then Quick Claw and the like, then the ones that go last, then speed (each worked out once)
 function actionOrder(battle, picks) {
     const last = (f, m) => held(f) === "lagging_tail" || held(f) === "full_incense" || f.ability === "stall" || (f.ability === "myceliummight" && m?.category === "Status");
-    const keyed = picks.map((p) => ({ p, pri: priorityOf(battle, p.f, p.move), claw: goesFirst(battle, p.f, p.move), last: last(p.f, p.move), spe: speedOf(p.f, battle), tie: Math.random() }));
+    const keyed = picks.map((p) => ({ p, pri: p.move ? priorityOf(battle, p.f, p.move) : 0, claw: p.move ? goesFirst(battle, p.f, p.move) : false, last: last(p.f, p.move), spe: speedOf(p.f, battle), tie: Math.random() }));
     const trick = realBattle(battle).trickRoom > 0;
     keyed.sort((x, y) => (y.pri - x.pri) || (y.claw - x.claw) || (x.last - y.last) || (trick ? x.spe - y.spe : y.spe - x.spe) || (x.tie - y.tie));
     return keyed.map((k) => k.p);
 }
 
-function startDoubleBattle(player, npc, team, trainer) {
+function startDoubleBattle(player, npc, team, trainer, n = 2) {
     if (!team.length || battles.has(player.id) || !npc.isValid) return;
     const party = findParty(player);
     if (!party.length) { player.sendMessage("§cYou have no Pokemon that can fight. Claim one with a Poke Ball, or heal yours."); return; }
-    const chosen = selectedMember(player), leads = (chosen && !prop(chosen, FAINTED) ? [chosen, ...party.filter((e) => e.id !== chosen.id)] : party).slice(0, 2);
+    const chosen = selectedMember(player), leads = (chosen && !prop(chosen, FAINTED) ? [chosen, ...party.filter((e) => e.id !== chosen.id)] : party).slice(0, n);
     const foeParty = team.map((spec) => ({ spec, down: false }));
-    const foes = foeParty.slice(0, 2).map((p, i) => {
+    const foes = foeParty.slice(0, n).map((p, i) => {
         const e = spawnGymPokemon(npc, p.spec, player);
-        if (e) { p.out = true; try { e.teleport(slotSpot(npc.location, player.location, i, POKEMON[p.spec.t]?.width ?? 1, 1, 0.3)); } catch (err) { } }
+        if (e) { p.out = true; try { e.teleport(slotSpot(npc.location, player.location, i, POKEMON[p.spec.t]?.width ?? 1, 1, 0.3, n)); } catch (err) { } }
         return e;
     });
     if (!foes[0]) { for (const e of foes) try { e?.remove(); } catch (err) { } return; }
     system.runTimeout(() => {
         if (!player.isValid || foes.some((e) => e && !e.isValid) || battles.has(player.id)) { for (const e of foes) try { e?.remove(); } catch (err) { } return; }
-        const battle = { player, doubles: true, trainer: trainer.name, turn: 0, slots: { a: [null, null], b: [null, null] }, faced: new Set(),
+        const battle = { player, doubles: true, triples: n === 3, trainer: trainer.name, turn: 0, slots: { a: emptySlots(n), b: emptySlots(n) }, faced: new Set(),
                          gym: { npc, party: foeParty, at: 0, turns: 0, itemsLeft: 0, bag: [], margin: 0, ...trainer } };
         holdBattle(battle);
         battleMusic(player, "pvn");
@@ -5590,7 +5632,7 @@ function startDoubleBattle(player, npc, team, trainer) {
         });
         battle.foe = battle.slots.b[0];
         leads.forEach((e, i) => {
-            const spot = slotSpot(player.location, npc.location, i, widthOf(e), widthOf(foes[0]), 0.3);
+            const spot = slotSpot(player.location, npc.location, i, widthOf(e), widthOf(foes[0]), 0.3, n);
             const f = sendOut(battle, e, { x: spot.x, y: e.isProxy ? npc.location.y : e.location.y, z: spot.z });
             if (f) setSlot(battle, "a", i, f);
         });
@@ -5604,7 +5646,7 @@ function startDoubleBattle(player, npc, team, trainer) {
 // was just pointed at, before its slot is set
 function opponentsOf(battle, f, other) {
     if (!battle.doubles) return [other];
-    const key = f.sideKey ?? (f === realBattle(battle).ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter(alive);
+    const key = f.sideKey ?? (f === realBattle(battle).ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter((o) => alive(o) && (f.sideKey === undefined || adjacent(battle, f, o)));
     return opp.length ? opp : [other];
 }
 // Howl, Life Dew and Jungle Healing (Showdown's "allies" target): what they do for the user, done for its partner too
@@ -5630,10 +5672,14 @@ function faceAll(battle) {
 // used on lit; asked when the move has one target and more than one can be picked. A move at any adjacent Pokemon can
 // go at the partner too, as in Cobblemon; Back returns undefined
 function chooseTarget(battle, f, move) {
-    const t = move.target ?? "normal", foeKey = otherSide(f.sideKey);
+    const t = move.target ?? "normal", foeKey = otherSide(f.sideKey), n = slotCount(battle);
     if (!CHOSEN_TARGETS.has(t)) return Promise.resolve({ slot: 0, ally: false });
-    const tiles = [[foeKey, 1], [foeKey, 0], [f.sideKey, 0], [f.sideKey, 1]];   // by field position: the foe's turned round
-    const can = ([key, slot]) => { const g = battle.slots[key][slot]; return alive(g) && g !== f && (key === foeKey || t !== "adjacentFoe"); };
+    // by field position: the foe's row turned round, so the one across from each of the player's is above it
+    const tiles = [...[...Array(n).keys()].reverse().map((i) => [foeKey, i]), ...[...Array(n).keys()].map((i) => [f.sideKey, i])];
+    const can = ([key, slot]) => {
+        const g = battle.slots[key][slot];
+        return alive(g) && g !== f && (key === foeKey || t !== "adjacentFoe") && (t === "any" || adjacent(battle, f, g));
+    };
     const options = tiles.filter(can);
     if (options.length < 2) return Promise.resolve(options[0] ? { slot: options[0][1], ally: options[0][0] === f.sideKey } : { slot: 0, ally: false });
     const form = new ActionFormData().title(battleTitle(battle, "target")).body(battleBody(battle));
@@ -5645,7 +5691,7 @@ function chooseTarget(battle, f, move) {
     }
     form.button("Back", `${UI}/battle/back`);
     return form.show(battle.player).then((r) => {
-        if (r.canceled || r.selection >= 4 || !battles.has(battle.player.id)) return undefined;
+        if (r.canceled || r.selection >= tiles.length || !battles.has(battle.player.id)) return undefined;
         const tile = tiles[r.selection];
         return can(tile) ? { slot: tile[1], ally: tile[0] === f.sideKey } : chooseTarget(battle, f, move);
     });
@@ -5654,6 +5700,7 @@ function chooseTarget(battle, f, move) {
 function doubleTurn(battle) {
     if (!battles.has(battle.player.id)) return;
     battle.turn++;
+    autoCenter(battle);
     faceAll(battle);
     const mine = battle.slots.a.filter(alive);
     battle.picks = [];
@@ -5670,6 +5717,7 @@ function doubleTurn(battle) {
         const options = usable.length ? f.moves.map((m) => ({ kind: "move", move: m, blocked: blockedWhy(f, m) })) : [{ kind: "move", move: STRUGGLE }];
         if (benchFor(battle).length) options.push({ kind: "switch", stuck: trappedIn(battle, f) });
         options.push({ kind: "run", stuck: true });
+        if (battle.triples && f.slot !== 1) options.push({ kind: "shift" });
         if (f.choiceLock && held(f)?.startsWith("choice_")) for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== f.choiceLock) o.locked = true;
         pickAction(battle, options).then((choice) => {
             if (!battles.has(battle.player.id)) return;
@@ -5682,6 +5730,7 @@ function doubleTurn(battle) {
                 return;
             }
             if (choice.kind === "run" || choice.kind === "catch") { say(battle, "§7There's no running from a Trainer battle!"); ask(k); return; }
+            if (choice.kind === "shift") { battle.picks.push({ f, kind: "shift" }); ask(k + 1); return; }
             if (choice.kind === "switch") {
                 if (choice.stuck) { say(battle, `§7${f.info.name} can't escape!`); ask(k); return; }
                 chooseSwitch(battle, false).then((entity) => {
@@ -5718,7 +5767,8 @@ function benchFor(battle) {
 // trainer's switch in a double battle stays a move
 function trainerPicks(battle) {
     for (const g of battle.slots.b.filter(alive)) {
-        const mine = battle.slots.a.map((f, i) => [f, i]).filter(([f]) => alive(f));
+        const all = battle.slots.a.map((f, i) => [f, i]).filter(([f]) => alive(f)), near = all.filter(([f]) => adjacent(battle, g, f));
+        const mine = near.length ? near : all;
         if (!mine.length) return;
         const [target, slot] = mine[Math.floor(Math.random() * mine.length)];
         focusPair(battle, g, target);
@@ -5741,7 +5791,7 @@ function resolveDouble(battle) {
     nextSwitch(0);
 }
 function resolveMoves(battle) {
-    const moves = actionOrder(battle, battle.picks.filter((p) => p.move));
+    const moves = actionOrder(battle, battle.picks.filter((p) => p.move || p.kind === "shift"));
     for (const p of moves) p.f.chosenMove = p.move;
     battle.movedFirst = moves[0]?.f ?? null;
     const step = (i) => {
@@ -5750,6 +5800,7 @@ function resolveMoves(battle) {
         const { f: a, target, ally } = moves[i];
         let m = moves[i].move;
         if (!alive(a) || !battle.slots[a.sideKey].includes(a) || m === GYM_ITEM) { step(i + 1); return; }
+        if (moves[i].kind === "shift") { shiftToCenter(battle, a); step(i + 1); return; }
         if (m === RECHARGE) { a.mustRecharge = false; say(battle, `§7${a.info.name} must recharge!`); step(i + 1); return; }
         if (a.encore && m.id !== a.encore.id && !a.charging && !a.locked && !a.rolling && !a.bide) m = a.moves.find((x) => x.id === a.encore.id && x.left > 0) ?? m;
         const targets = moveTargets(battle, a, m, target, ally);
@@ -5780,7 +5831,7 @@ function switchSlot(battle, leaving, entity) {
     const f = battle.ally;
     if (f === leaving) return;
     setSlot(battle, key, slot, f);
-    const spot = slotSpot(battle.player.location, other?.entity?.location ?? battle.gym?.npc?.location ?? battle.opponent?.location ?? f.entity.location, slot, widthOf(entity), widthOf(other?.entity), 0.3);
+    const spot = slotSpot(battle.player.location, other?.entity?.location ?? battle.gym?.npc?.location ?? battle.opponent?.location ?? f.entity.location, slot, widthOf(entity), widthOf(other?.entity), 0.3, slotCount(battle));
     try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other?.entity?.location }); } catch (e) { }
 }
 // the trainer's next Pokemon into a slot: its best matchup against the player's, or one at random when dragged out
@@ -5800,7 +5851,7 @@ function trainerIn(battle, slot, opts, then) {
     const entity = spawnGymPokemon(g.npc.isValid ? g.npc : leaving?.entity ?? battle.player, next.spec, battle.player);
     if (!entity) { then(); return; }
     next.out = true;
-    try { entity.teleport(slotSpot(g.npc.location, battle.player.location, slot, widthOf(entity), 1, 0.3)); } catch (e) { }
+    try { entity.teleport(slotSpot(g.npc.location, battle.player.location, slot, widthOf(entity), 1, 0.3, slotCount(battle))); } catch (e) { }
     system.runTimeout(() => {
         if (!battles.has(battle.player.id) || !entity.isValid) { try { entity.remove(); } catch (e) { } return; }
         const f = fighter(entity);
@@ -5874,8 +5925,8 @@ function doubleAfterTurn(battle) {
     }
     battle.picks = [];
     if (!battle.slots.a.some(alive) && !benchFor(battle).length) { endBattle(battle, "§cYou have no more Pokemon that can fight!"); return; }
-    const foeSlots = [0, 1].filter((i) => battle.slots.b[i]?.gone);
-    const mineSlots = [0, 1].filter((i) => battle.slots.a[i]?.gone);
+    const foeSlots = battle.slots.b.map((f, i) => i).filter((i) => battle.slots.b[i]?.gone);
+    const mineSlots = battle.slots.a.map((f, i) => i).filter((i) => battle.slots.a[i]?.gone);
     const foeNext = (k) => {
         if (k >= foeSlots.length) { mineNext(0); return; }
         trainerIn(battle, foeSlots[k], {}, () => foeNext(k + 1));
@@ -5896,13 +5947,13 @@ function doubleAfterTurn(battle) {
 // /scriptevent cobblemon:battle_format doubles (or singles), run as a player: sets the format of the NPC trainer
 // they are looking at, or the nearest one within 8 blocks
 function setBattleFormat(player, format) {
-    const fmt = format === "doubles" ? "doubles" : "singles";
+    const fmt = format === "doubles" || format === "triples" ? format : "singles";
     let npc;
     try { npc = player.getEntitiesFromViewDirection({ maxDistance: 16 }).map((h) => h.entity).find((e) => e.typeId.startsWith("cobblemon:npc")); } catch (e) { }
     if (!npc) try { npc = player.dimension.getEntities({ location: player.location, maxDistance: 8 }).find((e) => e.typeId.startsWith("cobblemon:npc")); } catch (e) { }
     if (!npc) { player.sendMessage("§cLook at an NPC trainer, or stand within 8 blocks of one."); return; }
-    setProp(npc, BATTLE_FORMAT, fmt === "doubles" ? fmt : undefined);
-    player.sendMessage(`§7${npc.nameTag || "The NPC"} now fights ${fmt === "doubles" ? "Double" : "Single"} Battles.`);
+    setProp(npc, BATTLE_FORMAT, fmt === "singles" ? undefined : fmt);
+    player.sendMessage(`§7${npc.nameTag || "The NPC"} now fights ${FORMAT_NAMES[fmt]}s.`);
 }
 
 function mirrorOf(battle) {
@@ -5951,22 +6002,22 @@ const widthOf = (e) => POKEMON[e?.typeId]?.width ?? 1;
 // and picks for both each turn, as against a trainer; the turn goes once both have chosen, "Waiting for ..." showing
 // on the side that has. A fainted Pokemon gives the other side's Pokemon in battle experience, its trainer picks the
 // next (both at once), and the side with none left loses
-function startPvpDoubles(p1, p2, level) {
+function startPvpDoubles(p1, p2, level, n = 2) {
     if (battles.has(p1.id) || battles.has(p2.id)) return;
-    const leads = (p) => (level > 0 ? summaryParty(p) : findParty(p)).slice(0, 2);
+    const leads = (p) => (level > 0 ? summaryParty(p) : findParty(p)).slice(0, n);
     const a = leads(p1), b = leads(p2);
     if (!a.length || !b.length) {
         for (const [p, other, has] of [[p1, p2, a.length], [p2, p1, b.length]]) if (!has) { p.sendMessage("§cYou don't have any Pokémon to battle with!"); other.sendMessage(`§b${p.name}§c doesn't have any Pokémon to battle with!`); }
         return;
     }
-    const battle = { pvp: true, doubles: true, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
-                     kept: {}, down: new Set(), choices: [], choiceLock: null, slots: { a: [null, null], b: [null, null] }, picks: [] };
+    const battle = { pvp: true, doubles: true, triples: n === 3, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
+                     kept: {}, down: new Set(), choices: [], choiceLock: null, slots: { a: emptySlots(n), b: emptySlots(n) }, picks: [] };
     const m = mirrorOf(battle);
     battles.set(p1.id, battle); battles.set(p2.id, m);
     battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
     for (const [key, view, party, from, to, wOpp] of [["a", battle, a, p1, p2, widthOf(b[0])], ["b", m, b, p2, p1, widthOf(a[0])]]) {
         party.forEach((e, i) => {
-            const spot = slotSpot(from.location, to.location, i, widthOf(e), wOpp, 0.3);
+            const spot = slotSpot(from.location, to.location, i, widthOf(e), wOpp, 0.3, n);
             const f = battleFighter(battle, e);
             if (!f) return;
             if (f.entity.isProxy) f.entity = materialize(view.player, f.entity, spot);
@@ -5991,6 +6042,7 @@ function pvpDoubleTurn(battle) {
         if (!v.player.isValid || !battle.slots[key].some((f) => alive(f) && f.entity.isValid)) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
     }
     battle.turn++;
+    autoCenter(battle);
     faceAll(battle);
     battle.picks = []; battle.done = { a: false, b: false }; battle.replacing = null;
     pvpDoubleAsk(battle, 0); pvpDoubleAsk(battle.mirror, 0);
@@ -6011,11 +6063,13 @@ function pvpDoubleAsk(view, k) {
     const usable = f.moves.filter((m) => m.left > 0);
     const options = usable.length ? f.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
     if (benchFor(view).length) options.push({ kind: "switch" });
+    if (battle.triples && f.slot !== 1) options.push({ kind: "shift" });
     if (f.choiceLock && held(f)?.startsWith("choice_")) for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== f.choiceLock) o.locked = true;
     pickAction(view, options).then((choice) => {
         if (!pvpLive(battle) || battle.done[key]) return;
         if (!choice) { minimise(view); return; }
         if (choice.kind === "forfeit") { pvpEnd(battle, view, `§7${view.player.name} forfeited the battle!`); return; }
+        if (choice.kind === "shift") { battle.picks.push({ f, kind: "shift" }); pvpDoubleAsk(view, k + 1); return; }
         if (choice.kind === "switch") {
             chooseSwitch(view, false, f).then((entity) => {
                 if (!pvpLive(battle)) return;
@@ -6251,7 +6305,11 @@ function openChallenge(player, target) {
         }
         if (pick === 4 || pick === 5) { click(); challengeRule.set(player.id, (index + (pick === 5 ? 1 : LEVEL_RULES.length - 1)) % LEVEL_RULES.length); openChallenge(player, target); return; }
         // the format arrows page between Single and Double Battle (Triple, Multi and Royal are not carried)
-        if (pick === 2 || pick === 3) { click(); challengeFormat.set(player.id, format === "doubles" ? "singles" : "doubles"); openChallenge(player, target); return; }
+        if (pick === 2 || pick === 3) {
+            click();
+            challengeFormat.set(player.id, FORMAT_ORDER[(FORMAT_ORDER.indexOf(format) + (pick === 3 ? 1 : FORMAT_ORDER.length - 1)) % FORMAT_ORDER.length]);
+            openChallenge(player, target); return;
+        }
         if (pick === 0 || pick === 1) sendChallenge(player, target, level, format);
     }).catch(() => { });
 }
@@ -6275,7 +6333,7 @@ function acceptChallenge(c) {
     c.from.sendMessage(`§b${c.to.name}§a accepted the challenge!`);
     c.to.sendMessage(`§aYou accepted §b${c.from.name}§a's challenge!`);
     if (c.test) return;   // cobblemon:challenge_test's stand-in has no Pokemon to battle
-    if (c.format === "doubles") startPvpDoubles(c.to, c.from, c.level);   // BattleBuilder.pvp(receiver, sender) in GEN_9_DOUBLES
+    if (c.format === "doubles" || c.format === "triples") startPvpDoubles(c.to, c.from, c.level, c.format === "triples" ? 3 : 2);   // BattleBuilder.pvp(receiver, sender) in GEN_9_DOUBLES
     else startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
 }
 system.runInterval(() => {
