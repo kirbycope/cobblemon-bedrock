@@ -2,7 +2,8 @@
 // TM Machine's burn progress in fifteenths, 15 or 0 by whether it is ready, and 8 or 4 while it makes TMs on its own
 import { M, check } from "../harness.mjs";
 
-check("an infinite or unrecorded Healing Machine gives 10", M.healerSignal(null, 0) === 10 && M.healerSignal({ c: 0, t: 0, inf: true }, 0) === 10);
+check("an unrecorded Healing Machine (from a structure) counts as full and gives 10", M.healerSignal(null, 0) === 10);
+check("an infinite one gives its charge, as updateRedstoneSignal overwrites its 10", M.healerSignal({ c: 0, t: 0, inf: true }, 0) === 0);
 check("an empty one gives 0", M.healerSignal({ c: 0, t: 0 }, 0) === 0);
 check("a half-charged one gives 5", M.healerSignal({ c: 3, t: 0 }, 0) === 5);
 check("its charge's whole tenths, rounded down", M.healerSignal({ c: 6 * 0.39, t: 0 }, 0) === 3);

@@ -30,6 +30,9 @@ jobs:
         with:
           python-version: "3.x"
 
+      - name: Install Pillow
+        run: python3 -m pip install pillow
+
       - name: Build cobblemon-bedrock.mcaddon
         run: python3 tools/build_addon.py
 

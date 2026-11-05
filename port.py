@@ -19,6 +19,7 @@ import glob
 import itertools
 import gzip
 import importlib.util
+import hashlib
 import json
 import math
 import os
@@ -2922,10 +2923,23 @@ def species_drops(species, items):
     return [int(lo), int(hi or lo), entries] if entries else None
 
 
-def copy_cries():
-    """Each species' cry and ambient sound from Cobblemon's sounds.json into sounds/pokemon/<pokemon>/."""
-    print("Copying cries...")
-    count = 0
+cry_map = None
+
+
+def has_cry(pokemon, event):
+    """Whether a species has a cry (or ambient sound) in the pack, at its own folder or one it shares (cry_files)."""
+    path = cry_files().get((pokemon, event), (None,))[0]
+    return bool(path) and os.path.exists(f"{resourcePack}/{path}.ogg")
+
+
+def cry_files():
+    """{(pokemon, event): the sound's path in the pack, without .ogg} for each species' cry and ambient sound, from
+    Cobblemon's sounds.json: sounds/pokemon/<pokemon>/<event>, the first species to name a file holding it and every
+    other one whose file is the same bytes pointing there (1,170 species' ambient sounds are one file, each at a path
+    of its own), with the source."""
+    global cry_map
+    if cry_map is not None: return cry_map
+    out, first, digests = {}, {}, {}
     for pokemon in pokemons:
         species = species_for(pokemon)
         if not species: continue
@@ -2937,21 +2951,48 @@ def copy_cries():
             name = sound["name"] if isinstance(sound, dict) else sound
             source = f"{cobblemon}/sounds/{name.split(':', 1)[1]}.ogg"
             if not os.path.exists(source): continue
-            os.makedirs(f"{soundsBedrock}/pokemon/{pokemon}", exist_ok=True)
-            shutil.copyfile(source, f"{soundsBedrock}/pokemon/{pokemon}/{event}.ogg"); count += 1
-    print(f"Copy cries complete: {count} file(s).")
+            if source not in digests:
+                with open(source, "rb") as file: digests[source] = hashlib.sha1(file.read()).hexdigest()
+            out[(pokemon, event)] = (first.setdefault(digests[source], f"sounds/pokemon/{pokemon}/{event}"), source)
+    cry_map = out
+    return out
+
+
+# the cries in mono Vorbis at quality 0 and 32 kHz, about half of Cobblemon's own (48 to 128 kbit/s): they are short
+# and heard over the game, and they were a sixth of the download
+CRY_ENCODE = ["-ac", "1", "-ar", "32000", "-c:a", "libvorbis", "-q:a", "0"]
+
+
+def copy_cries():
+    """Each species' cry and ambient sound from Cobblemon's sounds.json into sounds/pokemon/<pokemon>/, each file once
+    (cry_files), re-encoded smaller (CRY_ENCODE) where that comes out smaller; the folder starts fresh so no sound
+    left from an earlier run stays."""
+    print("Copying cries...")
+    shutil.rmtree(f"{soundsBedrock}/pokemon", ignore_errors=True)
+    ffmpeg = shutil.which("ffmpeg")
+    count = smaller = 0
+    for (pokemon, event), (path, source) in cry_files().items():
+        target = f"{resourcePack}/{path}.ogg"
+        if os.path.exists(target): continue
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        if ffmpeg and subprocess.run([ffmpeg, "-v", "error", "-y", "-i", source, *CRY_ENCODE, target]).returncode == 0 \
+                and os.path.getsize(target) < os.path.getsize(source): smaller += 1
+        else: shutil.copyfile(source, target)
+        count += 1
+    print(f"Copy cries complete: {count} file(s), {smaller} re-encoded smaller{'' if ffmpeg else ' (no ffmpeg: copied as they are)'}.")
 
 
 def create_sounds():
     print("Creating sound definitions...")
-    definitions = {}; entities = {}
+    definitions = {}; entities = {}; cries = cry_files()
     for pokemon in pokemons:
         species = species_for(pokemon)
         if not species: continue
         key = species_key(species); events = {}
         for event in ("cry", "ambient"):
-            if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/{event}.ogg"):
-                definitions[f"cobblemon.{key}.{event}"] = {"category": "neutral", "sounds": [{"name": f"sounds/pokemon/{pokemon}/{event}", "volume": 0.8}]}
+            path = cries.get((pokemon, event), (None,))[0]
+            if path and os.path.exists(f"{resourcePack}/{path}.ogg"):
+                definitions[f"cobblemon.{key}.{event}"] = {"category": "neutral", "sounds": [{"name": path, "volume": 0.8}]}
         if f"cobblemon.{key}.cry" in definitions:
             events.update({"hurt": f"cobblemon.{key}.cry", "death": f"cobblemon.{key}.cry"})
             events["ambient"] = f"cobblemon.{key}.ambient" if f"cobblemon.{key}.ambient" in definitions else f"cobblemon.{key}.cry"
@@ -3603,7 +3644,7 @@ def normalise_weights(pairs):
 
     Cobblemon rolls a rarity bucket first and then picks within it by weight, so a weight only means
     anything among the spawns eligible at one spot: Dratini's two ocean-ruins entries are 4500 where the
-    median entry in the whole game is 18. Bedrock instead makes one weighted pick across the pool, so those
+    median entry in the whole game is 16. Bedrock instead makes one weighted pick across the pool, so those
     raw numbers carried over unchanged let a handful of species own it - Dratini alone was 62 percent of
     water_animal, and the top five 85 percent, which is why the same few Pokemon kept turning up.
 
@@ -3628,6 +3669,7 @@ def biome_filter_for(biome_ids):
                 with open(tag_file, encoding="utf-8") as file: members = [m if isinstance(m, str) else m.get("id", "") for m in json.load(file).get("values", [])]
                 rule = biome_filter_for(members)
         elif biome == "#minecraft:is_deep_ocean": rule = _all(_tag("deep"), _tag("ocean"))
+        elif biome == "#minecraft:is_nether": rule = _tag("nether")   # the Nether Fire Stone ore, Cubone's Nether evolution
         else: rule = BIOME_IDS.get(biome) or (bedrock_biome_filter(biome.split(":")[-1]) if biome.startswith("minecraft:") else None)
         if rule: filters.append(rule)
     if not filters: return None
@@ -4065,7 +4107,7 @@ def animation_effects(pokemon, pokemonName):
             for entry in (keyframe if isinstance(keyframe, list) else [keyframe]):
                 effect = entry.get("effect") if isinstance(entry, dict) else None
                 match = re.match(r"pokemon\.(\w+)\.(cry|ambient)$", effect or "")
-                if match and os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/{match.group(2)}.ogg"): sounds[effect] = f"cobblemon.{match.group(1)}.{match.group(2)}"
+                if match and has_cry(pokemon, match.group(2)): sounds[effect] = f"cobblemon.{match.group(1)}.{match.group(2)}"
                 elif effect and not effect.startswith("pokemon."): sounds[effect] = f"cobblemon.{effect}"   # a timeline's q.sound: the wing flaps, Cinderace's ball
                 elif effect and effect in cobblemon_sounds and not match: sounds[effect] = f"cobblemon.{effect}"   # a species' own other sounds (create_sounds)
     return particles, sounds
@@ -5639,7 +5681,7 @@ def create_battle_data():
             **({"bias": bias} if (bias := bias_evolutions(species)) else {}), **({"itemEvos": ie} if (ie := item_evolutions(species)) else {}),
             "variants": variant_battle_overrides(pokemon, species),
             # the cry the send-out and the Pokedex play, when the pack has one
-            "cry": f"cobblemon.{species_key(species)}.cry" if os.path.exists(f"{soundsBedrock}/pokemon/{pokemon}/cry.ogg") else None,
+            "cry": f"cobblemon.{species_key(species)}.cry" if has_cry(pokemon, "cry") else None,
             # the hitbox height in blocks, where PokemonRenderer draws the label (half a block above it)
             "labelHeight": round(species.get("hitbox", {}).get("height", 1.0) * species.get("baseScale", 1.0), 2)
         }
@@ -6995,8 +7037,9 @@ def berry_bushes():
     return result
 
 
-# Wild berry groves (BerryGroveFeature, placed_feature/berry_groves.json): in about one chunk in 25 (one in 1.4 in
-# Cobblemon's sparse biomes, one in 10 in its dense ones) Cobblemon picks a berry whose preferred biomes hold the
+# Wild berry groves (BerryGroveFeature, placed_feature/berry_groves.json): in one chunk in 25 (the file's other rates,
+# 70 in #cobblemon:is_sparse biomes and 10 in #cobblemon:is_dense ones, name tags Cobblemon does not define, and a
+# ConditionalRarityFilter whose biome does not match lets the spot through, so 25 holds everywhere) Cobblemon picks a berry whose preferred biomes hold the
 # spot, weighted by the berry's weight, and plants a grove of its spawn condition's minGroveSize to maxGroveSize bushes
 # around one block, part grown, on wild soil (cobblemon:berry_wild_soil: dirt, sand, terracotta, snow). Here each
 # berry is a scatter of its bush over its own preferred biomes, at the chunk rate times its share of the weight of
@@ -7006,6 +7049,12 @@ BERRY_WILD_SOIL = ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol"
                    "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium", "minecraft:sand", "minecraft:red_sand",
                    "minecraft:hardened_clay", "minecraft:stained_hardened_clay", "minecraft:snow"]
 BERRY_GROVE_CHUNKS = 25
+# cobblemon:berry_replaceable, what a wild bush takes the place of: air, ferns, tall grass, dead bushes, fire, snow
+# layers, vines, glow lichen, light blocks and leaves (not short grass or flowers)
+BERRY_REPLACEABLE = ["minecraft:air", "minecraft:fern", "minecraft:large_fern", "minecraft:tall_grass", "minecraft:deadbush", "minecraft:fire",
+                     "minecraft:soul_fire", "minecraft:snow_layer", "minecraft:vine", "minecraft:glow_lichen", "minecraft:light_block",
+                     "minecraft:structure_void"] + [f"minecraft:{w}" for w in ("oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves",
+                     "acacia_leaves", "dark_oak_leaves", "mangrove_leaves", "cherry_leaves", "pale_oak_leaves", "azalea_leaves", "azalea_leaves_flowered")]
 
 
 def create_berry_groves():
@@ -7036,8 +7085,7 @@ def create_berry_groves():
                     "places_block": {"name": bush, "states": {"cobblemon:stage": stage}},
                     "enforce_placement_rules": False, "enforce_survivability_rules": False,
                     "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": BERRY_WILD_SOIL},
-                    "may_replace": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern",
-                                    "minecraft:snow_layer", "minecraft:deadbush", "minecraft:vine", "minecraft:glow_lichen"]}}, indent=2))
+                    "may_replace": BERRY_REPLACEABLE}}, indent=2))
         with open(f"{featuresBedrock}/berry_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {
                 "description": {"identifier": f"cobblemon:berry_{berry}"},
@@ -7045,7 +7093,10 @@ def create_berry_groves():
         with open(f"{featuresBedrock}/berry_grove_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:scatter_feature": {
                 "description": {"identifier": f"cobblemon:berry_grove_{berry}"}, "places_feature": f"cobblemon:berry_{berry}",
-                "iterations": f"math.random_integer({least}, {most})",
+                # BerryGroveFeature tries the 24 places round the grove's centre, a block up, level and down, until the
+                # grove's size has grown; a scatter cannot stop on a count, so three tries a bush, two of every three
+                # landing in the ground or the air, leave about the grove's size (one a try left a grove one bush, issue 55)
+                "iterations": f"math.random_integer({3 * least}, {3 * most})",
                 "x": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]},
                 "y": {"distribution": "uniform", "extent": [-1, 1]}}}, indent=2))   # offsets from the grove's centre, as Java's
         biome_filter = biome_filter_for([f"#{t}" for t in tags]) if tags else biome_filter_for(["#cobblemon:is_overworld"])
@@ -7245,12 +7296,15 @@ def create_wild_features():
         ores += 1
     overworld = biome_filter_for(["#cobblemon:is_overworld"])
     surface = "query.heightmap(variable.worldx, variable.worldz)"
-    # Medicinal Leek: a patch of twenty tries 4 across on still water, outside freezing, coast and ocean biomes, two
-    # tries a chunk one chunk in four
+    # Medicinal Leek: a patch of twenty tries 4 across, outside freezing, coast and ocean biomes, two tries a chunk one
+    # chunk in four. Java places each try at the OCEAN_FLOOR heightmap, which water does not count in, and needs air there
+    # with water below, so a leek only generates on a waterlogged block that reaches the surface: a mangrove root, in
+    # practice. Bedrock's heightmap counts water, so the leek takes mangrove roots as its ground, not open water, which
+    # covered every lake and river (issue 54)
     write_feature("medicinal_leek_wild", "minecraft:single_block_feature", {
         "places_block": {"name": "cobblemon:medicinal_leek_block", "states": {"cobblemon:age": 2}},
         "enforce_placement_rules": False, "enforce_survivability_rules": False,
-        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:water"]}, "may_replace": ["minecraft:air"]})
+        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:mangrove_roots"]}, "may_replace": ["minecraft:air"]})
     write_feature("medicinal_leek_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:medicinal_leek_wild", "iterations": 20,
         "x": {"distribution": "uniform", "extent": [-4, 4]}, "y": 0, "z": {"distribution": "uniform", "extent": [-4, 4]}})
     leek_biomes = _all(overworld, {"none_of": [biome_filter_for(["#cobblemon:is_freezing", "#cobblemon:is_coast", "#cobblemon:is_ocean"])]})
@@ -8004,15 +8058,29 @@ def fishing_spawns():
 def snack_spawns():
     """What a Poke Snack can draw (PokeSnackSpawnerFactory: the world spawn pool, non-herd Pokemon): Cobblemon's grounded
     spawns, those only a snack draws (isPokeSnack) among them and those it never does left out, in fishing_spawns' form
-    with the sky light range and the herd event that spawns a form ("rattata alolan")."""
+    with the sky light range and the herd event that spawns a form ("rattata alolan"). One that needs a place carries it
+    as special_spawns' do ("near", "base", "village", "notVillage", "mansion", "structures"), with its presets' conditions,
+    for the script to test at the snack's spot."""
+    presets = {}
+    for path in glob.glob(f"{cobblemonData}/spawn_detail_presets/*.json"):
+        with open(path, encoding="utf-8") as file: presets[os.path.basename(path)[:-len(".json")]] = json.load(file)
     spawns = []
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
             if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
             condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
-            if condition.get("isPokeSnack") is False or condition.get("structures") or condition.get("neededNearbyBlocks") or condition.get("isSlimeChunk"): continue
-            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: continue
+            merged, merged_anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
+            if merged.get("neededNearbyBlocks") or merged.get("neededBaseBlocks") or merged.get("structures"): condition, anti = merged, merged_anti
+            if condition.get("isPokeSnack") is False or condition.get("isSlimeChunk"): continue
+            structures = set(condition.get("structures") or [])
+            own = structure_ids(structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+            if structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES and not own: continue
+            near = bedrock_blocks(condition["neededNearbyBlocks"]) if condition.get("neededNearbyBlocks") else None
+            base = bedrock_blocks(condition["neededBaseBlocks"]) if condition.get("neededBaseBlocks") else None
+            if (condition.get("neededNearbyBlocks") and not near) or (condition.get("neededBaseBlocks") and not base): continue
+            needs = near or base or structures
+            if not needs and spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: continue
             words = spawn.get("pokemon", "").split(" ")
             pokemon = pokemon_for_species_name(words[0])
             biome = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
@@ -8028,6 +8096,12 @@ def snack_spawns():
             events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
             form = spawn_form(words[1:], events)
             if form: entry["event"] = f"cobblemon:spawn_form_{form}"
+            if near: entry["near"] = near
+            if base: entry["base"] = base
+            if VILLAGE_STRUCTURE in structures: entry["village"] = True
+            if structures & MANSION_STRUCTURES: entry["mansion"] = True
+            if own: entry["structures"] = sorted(own)
+            if VILLAGE_STRUCTURE in (anti.get("structures") or []): entry["notVillage"] = True
             spawns.append(entry)
     return spawns
 
@@ -8035,9 +8109,10 @@ def snack_spawns():
 # Spawns that need blocks nearby or a village, which Bedrock's spawn rules cannot test, for scripts/main.js's spawner:
 # AreaSpawningCondition.neededNearbyBlocks (within maxNearbyBlocksHorizontalRange 4 and maxNearbyBlocksVerticalRange 2
 # of the spot), neededBaseBlocks (the block it stands on) and structures #minecraft:village, from a spawn's own
-# condition or its presets' (redstone, urban, saccharine_tree, stronghold, the pyramids). Any other structure (the
-# ruins, the shipwreck coves, the vanilla structures) is left out: the script API cannot tell what structure a block is
-# in without the Beta APIs experiment. The spawner draws from these together with the natural pool they compete in.
+# condition or its presets' (redstone, urban, saccharine_tree, stronghold, the pyramids), a mansion's (a dark forest
+# spot by its blocks) and Cobblemon's own ruins and coves (found by their markers, create_structures). A vanilla
+# structure other than those is left out: the script API cannot tell what structure a block is in without the Beta APIs
+# experiment. The spawner draws from these together with the natural pool they compete in.
 NEARBY_BLOCK_EXTRAS = {"kelp_plant": ["kelp"], "redstone_ore": ["redstone_ore", "lit_redstone_ore"],
                        "deepslate_redstone_ore": ["deepslate_redstone_ore", "lit_deepslate_redstone_ore"]}
 VILLAGE_STRUCTURE = "#minecraft:village"

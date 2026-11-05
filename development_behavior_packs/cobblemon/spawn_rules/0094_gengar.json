@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 34
+                    "default": 23
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -41,7 +41,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 34
+                    "default": 23
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -70,7 +70,22 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 17
+                    "default": 23
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 11
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -105,7 +120,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 17
+                    "default": 11
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -136,7 +151,24 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 27
+                    "default": 11
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 18
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -171,7 +203,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 27
+                    "default": 18
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -193,6 +225,23 @@
                     "max": 15,
                     "adjust_for_weather": false
                 },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:herd_seed_alpha",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 18
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "nether"
+                },
+                "minecraft:spawns_underground": {},
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,

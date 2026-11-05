@@ -2545,11 +2545,13 @@ function untransform(f) {
 }
 // callbacks/battle_ended/burmy_cloak_change: after a battle, a trainer's Burmy that fought takes the cloak of the biome
 // its trainer stands in, by Cobblemon's form_change/bagworm_cloak biome tags: sandy (sand, beaches, caves), trash (the
-// deep dark, the End, snow, taiga, mushrooms, the nether's fungus), else plant
+// deep dark, the End, snow, taiga, mushrooms, the nether's fungus), plant (lush, forests, jungles, bamboo, flowers, plains,
+// swamps); in any other biome its cloak stays as it is
 function cloakFor(biome) {
     if (/desert|beach|badlands|mesa|dripstone|cave|stony_shore|soul_sand/.test(biome)) return "sandy-cloak";
     if (/deep_dark|the_end|end_|snow|frozen|ice|taiga|grove|peaks|mushroom|crimson|warped/.test(biome)) return "trash-cloak";
-    return null;
+    if (/forest|cherry|meadow|plains|swamp|jungle|bamboo|lush|pale_garden/.test(biome)) return null;   // the plant cloak
+    return undefined;
 }
 function burmyCloaks(battle) {
     for (const player of [battle.player, battle.pvp ? battle.opponent : null]) {
@@ -2560,7 +2562,9 @@ function burmyCloaks(battle) {
             const e = memberByKey(key, [player]);
             if (!e?.isValid || prop(e, OWNER) !== player.id || e.typeId !== "cobblemon:p0412_burmy") continue;
             const looks = VARIANT_LOOKS[e.typeId], cur = prop(e, BATTLE_FORM) ?? (e.isProxy ? e.slot.rec.v : variantOf(e)) ?? 0;
-            const shiny = looks[cur]?.[2] ?? 0, cloak = cloakFor(biome), n = looks.findIndex((l) => l[0] === cloak && l[2] === shiny);
+            const cloak = cloakFor(biome);
+            if (cloak === undefined) continue;
+            const shiny = looks[cur]?.[2] ?? 0, n = looks.findIndex((l) => l[0] === cloak && l[2] === shiny);
             if (n < 0 || n === cur) continue;
             if (e.isProxy) { e.slot.rec.v = n; saveParty(player.id); } else try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
             player.sendMessage(`§7${nicknameOf(e) || "Burmy"} changed its cloak!`);
@@ -6485,9 +6489,10 @@ function showHealerCharge(block, rec, now) {
     try { if (block.permutation.getState("cobblemon:charge") !== level) block.setPermutation(block.permutation.withState("cobblemon:charge", level)); } catch (e) { }
     setState(block, "cobblemon:signal", healerSignal(rec, now));
 }
-// HealingMachineBlockEntity.updateRedstoneSignal: the charge's whole tenths, up to MAX_REDSTONE_SIGNAL (10)
+// HealingMachineBlockEntity.updateRedstoneSignal: the charge's whole tenths, up to MAX_REDSTONE_SIGNAL (10); it sets an
+// infinite machine's to 10 and then overwrites that with the charge's, so an infinite one reads its charge too
 function healerSignal(rec, now) {
-    return !rec || rec.inf ? 10 : Math.min(10, Math.floor(Math.floor((healerCharge(rec, now) / HEALER_MAX) * 100) / 10));
+    return !rec ? 10 : Math.min(10, Math.floor(Math.floor((healerCharge(rec, now) / HEALER_MAX) * 100) / 10));
 }
 world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
     if (block.typeId !== "cobblemon:healing_machine") return;
@@ -8382,6 +8387,8 @@ function setPastureLamp(block, on) {
 // Pokemon in a box, then a row of the pasture list, to send it out; choose one of your own rows to bring it back; Recall
 // All brings back all of yours. The list shows four rows at a time; the count above it turns the page.
 const CONFLICT = "cobblemon:pasture_conflict", DEFENDERS_SET = new Set(DEFENDERS);
+// AttackHostileMobsTask leaves out slimes (magma cubes too), piglins and creepers
+const NOT_ATTACKED = ["minecraft:slime", "minecraft:magma_cube", "minecraft:piglin", "minecraft:piglin_brute", "minecraft:creeper"];
 // AttackHostileMobsTask for a pastured Pokemon with the defend toggle on: it takes the nearest hostile mob it can reach
 // within 16 blocks, keeping to the pasture's roaming range (the tether), goes to it and strikes it once a second for its
 // attack damage (its minecraft:attack, Attack / 10). DefendOwnerTask for one with its trainer: it goes for the mob that
@@ -8434,7 +8441,7 @@ system.runInterval(() => {
                 if (!prop(e, CONFLICT)) continue;
                 const [, pos] = String(prop(e, PASTURE_AT)).split("|"), home = (pos ?? "").split(",").map(Number);
                 let foes = [];
-                try { foes = e.dimension.getEntities({ families: ["monster"], location: e.location, maxDistance: 16 }); } catch (err) { continue; }
+                try { foes = e.dimension.getEntities({ families: ["monster"], excludeTypes: NOT_ATTACKED, location: e.location, maxDistance: 16 }); } catch (err) { continue; }
                 const near = (a) => (home.length === 3 ? Math.hypot(a.location.x - home[0], a.location.z - home[2]) <= 32 : true);
                 foe = foes.filter(near).sort((a, b) => dist(a, e) - dist(b, e))[0];
             } else {
@@ -8866,7 +8873,7 @@ function baitWeight(cast, spawn) {
 
 // the Pokemon on the line: a rarity bucket by Cobblemon's weights, then a spawn in it by weight; a Poke Snack draws from
 // its own pool and buckets the same way
-function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
+function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS, snack = false) {
     let tags = [];
     try { tags = BIOME_TAGS[bobber.dimension.getBiome(bobber.location).id] ?? []; } catch (e) { }
     const allowed = pool.filter((sp) => spawnAllowed(sp, cast, bobber, tags));
@@ -8877,7 +8884,7 @@ function planSpawn(cast, bobber, pool = FISHING_SPAWNS, buckets = BUCKETS) {
     const factor = tier > 0 ? 1.29 + 0.2 * (tier - 1) : 1;
     const present = Object.entries(buckets).filter(([b]) => allowed.some((sp) => sp.bucket === b)).map(([b, w]) => [b, Math.pow(w, 1 / factor)]);
     const bucket = pick(present)[0];
-    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, pool === SNACK_SPAWNS)]).filter(([, w]) => w > 0);
+    const inBucket = allowed.filter((sp) => sp.bucket === bucket).map((sp) => [sp, baitWeight(cast, sp) * weightMultiplier(sp, cast, bobber, tags, snack)]).filter(([, w]) => w > 0);
     if (!inBucket.length) return undefined;
     return { spawn: pick(inBucket)[0], bucketWeight: buckets[bucket] };
 }
@@ -8933,7 +8940,13 @@ function snackTick(block) {
     if (wild.length >= 2) return "two wild Pokemon about it already";
     const spot = snackSpot(block);
     if (!spot) return "no spot to spawn on";
-    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, SNACK_SPAWNS, SNACK_BUCKETS);
+    // a snack draws the spawns that need a place too (nearby blocks, the block beneath, a village, a mansion, one of
+    // Cobblemon's structures) where the spot offers it, as the spawner it works through tests every condition
+    let tags = [];
+    try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { }
+    const place = placeTest(dim, spot, { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, tags);
+    const pool = place ? SNACK_SPAWNS.filter(place.fits) : SNACK_SPAWNS.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures));
+    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, pool, SNACK_BUCKETS, true);
     if (!plan) return "nothing in the pool can spawn here";
     let pokemon;
     try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return `spawning ${plan.spawn.entity} failed: ${e}`; }
@@ -9097,6 +9110,27 @@ function spawnerSpot(dim, c) {
     const [pos, y] = k === 0 ? ["seafloor", floor] : k > deep ? ["surface", surface] : ["submerged", floor + 1 + k];
     return { spot: { x: c.x + 0.5, y: pos === "seafloor" ? floor + 1 : y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos, sky: true };
 }
+// what a spot offers a spawn that needs a place: the blocks within 4 across and 2 up or down of the block it stands on,
+// that block, a village, a mansion, one of Cobblemon's structures; fits(spawn) tests one, the blocks looked for once each
+function placeTest(dim, spot, ground, tags) {
+    const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
+    const found = new Map();
+    const near = (blocks) => {
+        const key = blocks.join();
+        if (!found.has(key)) { let yes = false; try { yes = dim.containsBlock(around, { includeTypes: blocks }, false); } catch (e) { } found.set(key, yes); }
+        return found.get(key);
+    };
+    let base;
+    try { base = dim.getBlock(ground)?.typeId; } catch (e) { return undefined; }
+    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
+    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
+    const fits = (sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
+        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near));
+    return { fits, base };
+}
 // the spawns that may come at one spot: the natural ones (WORLD_SPAWNS) and the special ones whose blocks, base or village
 // are there; with spot and position type
 function spawnsAt(dim, where, naturalToo) {
@@ -9107,22 +9141,9 @@ function spawnsAt(dim, where, naturalToo) {
     const allowed = (sp) => (sp.pos ?? "grounded") === pos && spawnAllowed(sp, cast, at, tags);
     const special = SPECIAL_SPAWNS.filter(allowed);
     if (!special.length && !naturalToo) return null;
-    const around = new BlockVolume({ x: ground.x - NEAR_ACROSS, y: ground.y - NEAR_UP, z: ground.z - NEAR_ACROSS }, { x: ground.x + NEAR_ACROSS, y: ground.y + NEAR_UP, z: ground.z + NEAR_ACROSS });
-    const found = new Map();
-    const near = (blocks) => {
-        const key = blocks.join();
-        if (!found.has(key)) { let yes = false; try { yes = dim.containsBlock(around, { includeTypes: blocks }, false); } catch (e) { } found.set(key, yes); }
-        return found.get(key);
-    };
-    let base;
-    try { base = dim.getBlock(ground)?.typeId; } catch (e) { return; }
-    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
-    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
-    // a spawn naming a village and Cobblemon structures comes in any of them
-    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
-    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
-    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
-        && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
+    const place = placeTest(dim, spot, ground, tags);
+    if (!place) return;
+    const { base } = place, fits = special.filter(place.fits);
     if (!fits.length && !naturalToo) return null;
     return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base, at, tags, cast };
 }
@@ -12797,7 +12818,7 @@ const POKEMON_PER_AREA = 9;   // pokemonPerChunk 1.0 over 3 by 3 chunks
 // lately and not in battle, grows drowsy at its drowsyChance and then naps; it rouses at its rouseChance, when its hours
 // end, or when hurt. Nobody walking by wakes it. Greninja, drowsy at 0.0014 a second, naps about once in twelve minutes.
 const drowsy = new Set(), hurtAt = new Map();   // entity ids; entity id -> the tick it was last hurt
-const HURT_MEMORY = 20 * 10;
+const HURT_MEMORY = 40;   // HurtBySensor's HURT_BY lasts while getLastDamageSource does, 40 ticks after the hit
 system.runInterval(() => {
     const now = system.currentTick;
     for (const id of ["overworld", "nether", "the_end"]) {
@@ -12874,7 +12895,21 @@ function sizeCategory(e) {
     const range = SIZE_MAX - SIZE_MIN, seg = range / SIZE_CATEGORIES.length;
     return SIZE_CATEGORIES[Math.max(0, Math.min(SIZE_CATEGORIES.length - 1, Math.floor(Math.min(range, Math.max(0, scaleOf(e) - SIZE_MIN)) / seg)))];
 }
-world.afterEvents.entitySpawn.subscribe(({ entity }) => { if (POKEMON[entity?.typeId]) system.runTimeout(() => { if (entity.isValid) showScale(entity); }, 2); });
+world.afterEvents.entitySpawn.subscribe(({ entity }) => {
+    if (!POKEMON[entity?.typeId]) return;
+    system.runTimeout(() => { if (entity.isValid) showScale(entity); }, 2);
+    system.runTimeout(() => { if (entity.isValid) spawnMarks(entity); }, 6);   // after the spawner has made it an alpha
+});
+// callbacks/pokemon_entity_spawn: a wild Pokemon spawning XS, and no alpha, takes the Mini Mark, one XL or an alpha the
+// Jumbo Mark (apply_marks); its potential marks are worked out now, at the spawn's time, weather and place
+// (apply_potential_marks), and one of them is rolled when it is caught
+function spawnMarks(e) {
+    if (prop(e, OWNER) !== undefined || prop(e, POTENTIAL_MARKS) !== undefined) return;
+    const size = sizeCategory(e), alpha = isAlpha(e), owned = marksOf(e);
+    const add = [size === "XS" && !alpha && "cobblemon:mark_mini", (size === "XL" || alpha) && "cobblemon:mark_jumbo"].filter((id) => id && MARKS[id] && !owned.includes(id));
+    if (add.length) setProp(e, MARK_LIST, JSON.stringify([...owned, ...add]));
+    setProp(e, POTENTIAL_MARKS, JSON.stringify(potentialMarks(e)));
+}
 world.afterEvents.entityLoad.subscribe(({ entity }) => {
     if (!POKEMON[entity?.typeId]) return;
     showScale(entity);
@@ -13158,9 +13193,9 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
 // already there it goes to the first free PC slot. The ball's capture effects apply (CaptureEffects): the Friend Ball
 // starts it at 150 friendship, the Heal Ball restores it fully.
 // Marks (Pokemon.applyPotentialMarks): a caught Pokemon rolls one mark from its potential ones, the rarest chance group
-// first, each group at its own chance; the potential marks are apply_potential_marks.molang's for the moment it is
-// caught (the time of day, the weather where it stands, the rare, uncommon and personality marks) and a fished one's
-const MARK_LIST = "cobblemon:marks", ACTIVE_MARK = "cobblemon:active_mark";
+// first, each group at its own chance; the potential marks are apply_potential_marks.molang's, worked out when it spawned
+// (the time of day, the weather where it stood, the rare, uncommon and personality marks; spawnMarks), and a fished one's
+const MARK_LIST = "cobblemon:marks", ACTIVE_MARK = "cobblemon:active_mark", POTENTIAL_MARKS = "cobblemon:potential_marks";
 function marksOf(e) { try { return JSON.parse(prop(e, MARK_LIST) ?? "[]"); } catch (err) { return []; } }
 function potentialMarks(pokemon) {
     const out = Object.keys(MARKS).filter((id) => ["rare", "uncommon", "personality"].includes(MARKS[id][5]));
@@ -13206,7 +13241,11 @@ system.runInterval(() => {
     }
 }, 200);
 function applyPotentialMarks(pokemon) {
-    const owned = marksOf(pokemon), potentials = potentialMarks(pokemon).filter((id) => !owned.includes(id));
+    let noted = null;
+    try { noted = JSON.parse(prop(pokemon, POTENTIAL_MARKS) ?? "null"); } catch (e) { }
+    // those noted when it spawned (one spawned before they were noted is worked out now), a fished one's mark with them
+    const all = Array.isArray(noted) ? [...noted, ...(prop(pokemon, "cobblemon:fished") ? ["cobblemon:mark_fishing"] : [])] : potentialMarks(pokemon);
+    const owned = marksOf(pokemon), potentials = [...new Set(all)].filter((id) => MARKS[id] && !owned.includes(id));
     const groups = new Map();
     for (const id of potentials) { const [, , , , , group, chance] = MARKS[id]; const key = group ?? String(chance); (groups.get(key) ?? groups.set(key, { chance, ids: [] }).get(key)).ids.push(id); }
     for (const g of [...groups.values()].sort((a, b) => a.chance - b.chance)) {
