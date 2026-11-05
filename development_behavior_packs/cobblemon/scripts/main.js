@@ -10691,6 +10691,7 @@ function meets(entity, f, r, player) {
         case "friendship": return friendshipOf(entity) >= r.min;
         case "steps": return (prop(entity, STEPS) ?? 0) >= r.min;
         case "feature": return (prop(entity, `cobblemon:${r.key}`) ?? 0) === r.value;
+        case "feature_range": { const n = prop(entity, `cobblemon:${r.key}`) ?? 0; return n >= r.lo && n <= r.hi; }
         case "time": return inTimeRange(r.range);
         case "held": return prop(entity, "cobblemon:held") === r.item;
         case "move": return f.moves.some((m) => m.id === r.move);

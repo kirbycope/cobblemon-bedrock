@@ -5533,10 +5533,14 @@ def evolution_requirement(r):
     elif v == "properties":
         target = str(r.get("target", ""))
         m = re.search(r"(gender|nature|nickname|cocoon_species)=(\S+)", target)
-        stash = re.search(r"(gimmighoul_coins)=(\d+)", target)
+        stash = re.search(r"(gimmighoul_coins|gimmighoul_netherite)=(\d+)", target)
         if m: req.append({"t": "prop", "key": m.group(1), "value": m.group(2)})
         elif stash: req.append({"t": "feature", "key": stash.group(1), "value": int(stash.group(2))})
         else: req.append({"t": "never", "why": target})
+    # an integer species feature in a range (PropertyRangeRequirement: Gimmighoul's Scrap Stash for a part-coated Gholdengo)
+    elif v == "property_range" and r.get("feature"):
+        low, _, high = str(r.get("range", "")).partition("-")
+        req.append({"t": "feature_range", "key": r["feature"], "lo": int(low), "hi": int(high or low)})
     # a requirement that must not hold (the bias forms' original evolution, away from the regional biomes)
     elif v == "negate" and isinstance(r.get("inner"), dict): req.append({"t": "not", "r": evolution_requirement(r["inner"])})
     else: req.append({"t": "never", "why": v})
