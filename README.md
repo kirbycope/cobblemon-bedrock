@@ -399,7 +399,7 @@ A party slot is 1 to 6.
 
 `spawnpokemonfrompool [amount]` (alias `forcespawn`) runs the script's spawner for spots 16 to 64 blocks from the player and spawns what it draws, the natural spawns as well as the ones that need blocks or a village ("A Rattata has spawned in the area."); `checkspawn <bucket>` samples spots about the player and lists each species' share of that bucket, coloured as Cobblemon colours it (green from 5%, yellow from 0.1%, red from 0.01%). Both read the port's spawn tables, which mirror the spawn rules.
 
-Not carried: the box count (the PC has a fixed 40), the NPC editor and dialogue commands (the NPCs here are entities of their own,
+`boxcount query|add|remove|set <player> [amount]` (ChangePCBoxesCommand) changes a player's PC from Cobblemon's 40 boxes: it grows by empty boxes at the end and shrinks by its empty boxes, the last first, the boxes after each moving down with their names and wallpapers, and refuses to drop a box holding Pokemon (Cobblemon's forced removal is a click in chat, which Bedrock's chat cannot carry). Not carried: the NPC editor and dialogue commands (the NPCs here are entities of their own,
 with Bedrock's dialogues), multi battles, the config, and the development commands.
 
 ## Testing commands

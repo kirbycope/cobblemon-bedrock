@@ -2768,7 +2768,7 @@ function syncTms(player) {
         try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? []; } catch (err) { }
         for (const m of accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
     }
-    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) {
+    for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) {
         if (!rec?.t) continue;
         let known = [], benched = [];
         try { known = JSON.parse(rec.mv ?? "null") ?? []; benched = JSON.parse(rec.k?.[BENCHED] ?? "[]"); } catch (err) { }
@@ -6780,7 +6780,7 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         if (source.typeId !== "minecraft:player" || !species || !ball) return;
         let taken = 0;
         const counts = {};
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(source); n++) {
             const contents = box(source, n);
             let changed = false;
             contents.forEach((rec, i) => {
@@ -7337,7 +7337,29 @@ system.runInterval(() => {
 // free slot; Withdraw sends one out beside the player, while fewer than six of theirs are out; Release lets one
 // go for good. A stored Pokemon keeps its form, level, experience, moves, health and whether it has fainted.
 const PC_BOXES = 40, PER_BOX = 30, PARTY_SIZE = 6;   // CobblemonConfig.defaultBoxCount, PCBox.POKEMON_PER_BOX
+// a player's PC has defaultBoxCount boxes until the boxcount command changes it (PCStore.resize)
+const PC_BOX_COUNT = "cobblemon:pc_box_count";
+function pcBoxes(player) { return Math.max(1, Number(player?.getDynamicProperty?.(PC_BOX_COUNT) ?? PC_BOXES) || PC_BOXES); }
 
+// PCStore.resize and removeListOfBoxes: more boxes are empty ones at the end; fewer removes empty boxes, the last
+// first, moving the boxes after each down with their names and wallpapers; false when that would take a box in use
+function resizePc(player, target) {
+    const count = pcBoxes(player);
+    if (target >= count) { player.setDynamicProperty(PC_BOX_COUNT, target); return true; }
+    const empties = [];
+    for (let n = 0; n < count; n++) if (!box(player, n).some(Boolean)) empties.push(n);
+    if (empties.length < count - target) return false;
+    const drop = new Set(empties.slice(-(count - target)));
+    const keep = [...Array(count).keys()].filter((n) => !drop.has(n));
+    const names = jsonProp(player, PC_NAMES, {}), walls = jsonProp(player, WALLS, {}), contents = keep.map((n) => box(player, n));
+    const newNames = {}, newWalls = {};
+    keep.forEach((n, i) => { if (names[n] !== undefined) newNames[i] = names[n]; if (walls[n] !== undefined) newWalls[i] = walls[n]; });
+    contents.forEach((c, i) => saveBox(player, i, c));
+    for (let n = target; n < count; n++) player.setDynamicProperty(`cobblemon:pc_${n}`, undefined);
+    player.setDynamicProperty(PC_NAMES, JSON.stringify(newNames)); player.setDynamicProperty(WALLS, JSON.stringify(newWalls));
+    player.setDynamicProperty(PC_BOX_COUNT, target);
+    return true;
+}
 function box(player, n) {
     try { const b = JSON.parse(player.getDynamicProperty(`cobblemon:pc_${n}`) ?? "[]"); return Array.from({ length: PER_BOX }, (_, i) => b[i] ?? null); }
     catch (e) { return Array(PER_BOX).fill(null); }
@@ -8085,7 +8107,7 @@ function openPc(block, player, state) {
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
-        if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : pcBoxes(player) - 1)) % pcBoxes(player); again(); return; }
         if (pick === 38) { pcRelease(player, state, party, () => again(5)); return; }
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
         if (pick === 41) {
@@ -8205,7 +8227,7 @@ function deposit(player, done) {
     form.show(player).then((r) => {
         if (r.canceled || !party[r.selection]?.isValid) { done(); return; }
         const entity = party[r.selection];
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(player); n++) {
             const contents = box(player, n), slot = contents.indexOf(null);
             if (slot < 0) continue;
             contents[slot] = snapshot(entity);
@@ -8221,7 +8243,7 @@ function deposit(player, done) {
 
 function pickStored(player, action, then, done) {
     const boxes = [];
-    for (let n = 0; n < PC_BOXES; n++) { const c = box(player, n).filter(Boolean).length; if (c) boxes.push([n, c]); }
+    for (let n = 0; n < pcBoxes(player); n++) { const c = box(player, n).filter(Boolean).length; if (c) boxes.push([n, c]); }
     if (!boxes.length) { player.sendMessage("§7Your PC is empty."); done(); return; }
     const form = new ActionFormData().title(`${action}: which box?`);
     for (const [n, c] of boxes) form.button(`Box ${n + 1}\n§7${c}/${PER_BOX}`);
@@ -8284,7 +8306,7 @@ function pasturedHere(dimension, key, location) {
 
 // a PC slot marked as pastured whose Pokemon is gone (its pasture broken while the player was away) comes back
 function tidyPastured(player) {
-    for (let n = 0; n < PC_BOXES; n++) {
+    for (let n = 0; n < pcBoxes(player); n++) {
         const contents = box(player, n);
         let changed = false;
         contents.forEach((rec, i) => {
@@ -8416,7 +8438,7 @@ function openPasture(block, player, state) {
     if (!state.sel && system.currentTick - (state.tidied ?? -100) > 40) {
         state.tidied = system.currentTick;
         const out = new Set(here.map((e) => prop(e, PASTURE_SLOT)));
-        for (let n = 0; n < PC_BOXES; n++) {
+        for (let n = 0; n < pcBoxes(player); n++) {
             const c = box(player, n);
             let changed = false;
             c.forEach((rec, i) => { if (rec?.p === key && !out.has(`${n}:${i}`)) { delete rec.p; changed = true; } });
@@ -8466,7 +8488,7 @@ function openPasture(block, player, state) {
             }
             again(); return;
         }
-        if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : PC_BOXES - 1)) % PC_BOXES; again(); return; }
+        if (pick === 30 || pick === 31) { state.box = (state.box + (pick === 31 ? 1 : pcBoxes(player) - 1)) % pcBoxes(player); again(); return; }
         if (pick === 33) {
             for (const e of here) if (prop(e, OWNER) === player.id) recall(player, e, block);
             again(14); return;
@@ -9430,7 +9452,7 @@ function dexMatches(n, known, search, by) {
 // every Pokemon the player keeps counts as caught (Cobblemon's Pokedex marks what enters the party or the PC), which
 // also catches up a register made before a way of getting a Pokemon registered it
 function registerKept(player) {
-    for (let n = 0; n < PC_BOXES; n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
+    for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) if (rec?.t) { if (dexStatus(player, rec.t) < 2) register(player, rec.t, 2); noteVariant(player, rec.t, rec.v ?? 0); }
     for (const slot of partyOf(player.id)) { if (dexStatus(player, slot.rec.t) < 2) register(player, slot.rec.t, 2); noteVariant(player, slot.rec.t, slot.rec.v ?? 0); }
     try {
         for (const e of player.dimension.getEntities({ families: ["owned"] }))
@@ -9500,7 +9522,7 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     const ctx = { learned: learnedTms(player), levels: new Map() };
     if (state.filter === 4) {
         const note = (t, lv) => ctx.levels.set(t, Math.max(ctx.levels.get(t) ?? 0, lv ?? 0));
-        for (let b = 0; b < PC_BOXES; b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
+        for (let b = 0; b < pcBoxes(player); b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
         for (const slot of partyOf(player.id)) note(slot.rec.t, slot.rec.lv);
         try { for (const e of player.dimension.getEntities({ families: ["owned"] })) if (prop(e, OWNER) === player.id) note(e.typeId, prop(e, LEVEL)); } catch (e) { }
     }
@@ -11421,7 +11443,7 @@ function memberByKey(key, players) {
 function addRecord(player, rec) {
     const slots = partyOf(player.id);
     if (slots.length < PARTY_SIZE) { const slot = { pid: newPid(), rec, out: null }; slots.push(slot); saveParty(player.id); return { slot }; }
-    for (let n = 0; n < PC_BOXES; n++) {
+    for (let n = 0; n < pcBoxes(player); n++) {
         const contents = box(player, n), i = contents.indexOf(null);
         if (i < 0) continue;
         contents[i] = rec; saveBox(player, n, contents);
@@ -12100,7 +12122,7 @@ function registerCommands(registry) {
         { name: `cobblemon:${name}`, description, permissionLevel, mandatoryParameters: mandatory, optionalParameters: optional }, run);
     const memberAt = (player, slot) => summaryParty(player)[slot - 1];
     registry.registerEnum("cobblemon:dexaction", ["grant", "revoke"]);
-    registry.registerEnum("cobblemon:boxcount", ["query"]);
+    registry.registerEnum("cobblemon:boxcount", ["query", "add", "remove", "set"]);
     registry.registerEnum("cobblemon:tmaction", ["unlock", "lock"]);
     registry.registerEnum("cobblemon:bucket", Object.keys(BUCKETS));
 
@@ -12190,7 +12212,7 @@ function registerCommands(registry) {
     add("pc", "Opens the PC", [], [{ type: P.Integer, name: "box" }], (origin, n) => {
         const player = commandPlayer(origin);
         if (!player) return bad("Run it as a player");
-        later(() => openPc(null, player, { box: Math.max(0, Math.min(PC_BOXES - 1, (n ?? 1) - 1)), sel: null }));
+        later(() => openPc(null, player, { box: Math.max(0, Math.min(pcBoxes(player) - 1, (n ?? 1) - 1)), sel: null }));
         return ok("");
     });
     // PokeboxCommand: a party Pokemon into the PC (the first free box, or the one given); pokeboxall for the whole party
@@ -12199,7 +12221,7 @@ function registerCommands(registry) {
         for (const slot of slots.map((n) => party[n - 1]).filter(Boolean)) {
             const m = partyMember(player, slot), rec = m.isProxy ? slot.rec : snapshot(m);
             let placed = false;
-            for (let n = boxN ?? 0; n < PC_BOXES && !placed; n++) {
+            for (let n = boxN ?? 0; n < pcBoxes(player) && !placed; n++) {
                 const contents = box(player, n), i = contents.indexOf(null);
                 if (i >= 0) { contents[i] = rec; saveBox(player, n, contents); placed = true; }
                 if (boxN !== undefined) break;
@@ -12231,7 +12253,7 @@ function registerCommands(registry) {
         const player = commandPlayer(origin), props = parseProps(w), typeId = speciesNamed(props.species);
         if (!player) return bad("Run it as a player");
         const found = [];
-        for (let n = 0; n < PC_BOXES; n++) box(player, n).forEach((rec, i) => {
+        for (let n = 0; n < pcBoxes(player); n++) box(player, n).forEach((rec, i) => {
             if (rec && (!typeId || rec.t === typeId) && (!props.level || rec.lv === props.level) && (props.shiny === undefined || (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0) === props.shiny)) found.push(`Box ${n + 1} slot ${i + 1}: ${describe(rec)}`);
         });
         return ok(found.length ? found.slice(0, 30).join("\n") : "None found");
@@ -12246,7 +12268,7 @@ function registerCommands(registry) {
     add("clearpc", "Removes every Pokemon from a player's PC", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
         const player = commandPlayer(origin, players);
         if (!player) return bad("No player");
-        later(() => { for (let n = 0; n < PC_BOXES; n++) saveBox(player, n, []); });
+        later(() => { for (let n = 0; n < pcBoxes(player); n++) saveBox(player, n, []); });
         return ok("PC cleared");
     });
     // TakePokemon
@@ -12256,16 +12278,32 @@ function registerCommands(registry) {
         later(() => { removeMember(player, s); saveParty(player.id); });
         return ok("Taken");
     });
+    // ChangePCBoxesCommand (boxcount query|add|remove|set <player> [amount]): a PC grows by empty boxes at the end, and
+    // shrinks by its empty boxes, the last first, the boxes after each moving down; it will not drop a box holding
+    // Pokemon (Cobblemon offers a forced removal by a click in chat, which Bedrock's chat cannot carry)
+    add("boxcount", "Queries or changes a player's number of PC boxes", [{ type: P.Enum, name: "cobblemon:boxcount" }, { type: P.PlayerSelector, name: "player" }],
+        [{ type: P.Integer, name: "amount" }], (origin, action, players, amount) => {
+            const player = commandPlayer(origin, players);
+            if (!player) return bad("No player");
+            const count = pcBoxes(player);
+            if (action === "query") return ok(`${player.name} has ${count} boxes.`);
+            if (!(amount >= 1 && amount <= 1000)) return bad("The amount must be from 1 to 1000.");
+            const target = action === "add" ? count + amount : action === "remove" ? count - amount : amount;
+            if (target < 1) return bad(`${player.name} only has ${count} boxes.`);
+            const result = resizePc(player, target);
+            if (!result) return bad("Removing those boxes would remove boxes holding Pokémon.");
+            return ok(`${player.name} now has ${target} boxes.`);
+        });
     // RenameBoxCommand, ChangeBoxWallpaperCommand, UnlockPCBoxWallpaperCommand
     add("renamebox", "Renames a PC box", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "name" }], [], (origin, players, b, name) => {
         const player = commandPlayer(origin, players);
-        if (!player || b < 1 || b > PC_BOXES) return bad("No such box");
+        if (!player || b < 1 || b > pcBoxes(player)) return bad("No such box");
         later(() => { const names = jsonProp(player, PC_NAMES, {}); names[b - 1] = name; player.setDynamicProperty(PC_NAMES, JSON.stringify(names)); });
         return ok(`Box ${b} is now ${name}`);
     });
     add("changewallpaper", "Sets a PC box's wallpaper", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.String, name: "wallpaper" }], [], (origin, players, b, wall) => {
         const player = commandPlayer(origin, players), code = PC_WALLPAPERS.find((w) => w[0] === wall || w[2] === wall || `${w[0]}` === wall)?.[0] ?? wall;
-        if (!player || b < 1 || b > PC_BOXES) return bad("No such box");
+        if (!player || b < 1 || b > pcBoxes(player)) return bad("No such box");
         later(() => { const walls = jsonProp(player, WALLS, {}); walls[b - 1] = code; player.setDynamicProperty(WALLS, JSON.stringify(walls)); });
         return ok(`Box ${b}'s wallpaper set`);
     });
