@@ -14,7 +14,7 @@ import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES, NPC_BATTLER } from "./npc_dialogue.js";
-import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT } from "./rct_trainers.js";
+import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT, RCT_LOOT } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { MARKS } from "./marks.js";
 import { HABITAT_POOLS } from "./habitats.js";
@@ -5026,6 +5026,43 @@ function gymWon(battle) {
     if (after > before) say(battle, `§bYour level cap rose to Lv. ${after}.`);
     try { player.playSound("random.levelup"); } catch (e) { }
     giveGymReward(player, g.id);
+    dropRctLoot(g.npc, player, g.id);
+}
+// RCT's battle loot (TrainerMob.dropBattleLoot), dropped at the trainer on every win: its loot table rolled with the
+// player's bonus luck (TrainerPlayerData.getBonusLuck: each completed series' difficulty counted, r += (1 - r) / (8i)),
+// an entry's weight raised by its quality times the luck (LootPoolSingletonContainer), and rctmod:level_range tested
+// against the team's highest level
+function rctLuck(player) {
+    const completed = jsonProp(player, RCT_COMPLETED, {});
+    const n = Object.entries(completed).reduce((sum, [id, count]) => sum + (RCT_SERIES_DATA[id]?.difficulty ?? 0) * count, 0);
+    let r = 0;
+    for (let i = 1; i <= n; i++) r += (1 - r) / (i * 8);
+    return r;
+}
+function rollRctLoot(table, level, luck, out = []) {
+    for (const pool of RCT_LOOT.tables[table] ?? []) {
+        const r = pool.rolls;
+        let rolls = r.c ?? (r.u ? ri(r.u[0], r.u[1]) : [...Array(r.b[0])].filter(() => Math.random() < r.b[1]).length);
+        rolls += Math.floor((pool.bonus ?? 0) * luck);
+        for (let k = 0; k < rolls; k++) {
+            const live = pool.entries.filter((e) => !e.l || (level >= e.l[0] && level <= e.l[1])).map((e) => [e, Math.max(Math.floor(e.w + e.q * luck), 0)]).filter(([, w]) => w > 0);
+            const total = live.reduce((sum, [, w]) => sum + w, 0);
+            if (!total) continue;
+            let roll = Math.floor(Math.random() * total);
+            const [entry] = live.find(([, w]) => (roll -= w) < 0);
+            if (entry.t) rollRctLoot(entry.t, level, luck, out);
+            else out.push([entry.i, entry.n ? ri(entry.n[0], entry.n[1]) : 1]);
+        }
+    }
+    return out;
+}
+function dropRctLoot(npc, player, id) {
+    const table = RCT_LOOT.trainers[id];
+    if (!table || !npc?.isValid) return;
+    const level = Math.max(...(RCT_TRAINERS[id]?.team ?? []).map((m) => m.lv), 0);
+    for (const [item, count] of rollRctLoot(table, level, rctLuck(player))) {
+        try { npc.dimension.spawnItem(new ItemStack(item, count), npc.location); } catch (e) { }
+    }
 }
 // the battle is over, won or lost: the trainer's Pokemon still out goes, and the trainer rests
 function gymEnded(battle) {
@@ -5057,6 +5094,14 @@ function completeLeague(block) {
                 if (at?.typeId === probe) continue;   // placed already
                 world.structureManager.place(id, dim, { x: o.x + dx, y: o.y, z: o.z + dz }, { includeEntities: false });
                 if (dim.getBlock({ x: o.x + px, y: o.y + py, z: o.z + pz })?.typeId !== probe) throw new Error(`${id} did not land`);
+            }
+            // the League's Shopkeeper, a CobbleDollars merchant in RGS's structure: the Poke Mart clerk, held in place as in the hub
+            for (const [x, y, z, name] of GYM_LEAGUE.npcs ?? []) {
+                const at = { x: o.x + x + 0.5, y: o.y + y, z: o.z + z + 0.5 };
+                if (dim.getEntities({ type: "cobblemon:poke_mart_clerk", location: at, maxDistance: 2 }).length) continue;
+                const clerk = dim.spawnEntity("cobblemon:poke_mart_clerk", at);
+                clerk.nameTag = name || "Shopkeeper"; clerk.addTag("poke_mart_clerk");
+                clerk.addEffect("slowness", 20000000, { amplifier: 255, showParticles: false });
             }
         } catch (e) { console.warn(`league at ${key}: ${e}`); }
         try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { }

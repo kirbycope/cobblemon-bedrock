@@ -6096,6 +6096,51 @@ def rct_trainer_data(trainers, items):
     return out
 
 
+def rct_loot(trainers, items):
+    """RCT's battle loot (rct_trainers/loot_table, TrainerMob.dropBattleLoot): each trainer's table, its own
+    trainers/single/<id> or else the longest trainers/groups/<name> its id starts with, and every table those reach,
+    as the script rolls them: a pool's rolls (a number, a uniform range or a binomial), each entry's weight and quality
+    (luck adds quality times luck to the weight), its count range, and rctmod:level_range's levels, tested against the
+    trainer team's highest level. Items the pack does not define are left out; a TM is cobblemon:tm_<move>."""
+    root = f"{pwd}/rct_trainers/loot_table"
+    tables, picks = {}, {}
+    def load(name):
+        if name in tables: return
+        tables[name] = []
+        with open(f"{root}/{name.split(':', 1)[1]}.json", encoding="utf-8") as file: data = json.load(file)
+        for pool in data.get("pools", []):
+            r = pool.get("rolls", 1)
+            rolls = {"c": r} if isinstance(r, (int, float)) else {"b": [r["n"], r["p"]]} if r.get("type") == "minecraft:binomial" else {"u": [r["min"], r["max"]]}
+            entries = []
+            for e in pool.get("entries", []):
+                entry = {"w": e.get("weight", 1), "q": e.get("quality", 0)}
+                levels = next((c["range"] for c in e.get("conditions", []) if c.get("condition") == "rctmod:level_range"), None)
+                if levels: entry["l"] = [levels.get("min", 0), levels.get("max", 1000)]
+                if e["type"] == "minecraft:loot_table":
+                    load(e["value"]); entry["t"] = e["value"]
+                elif e["type"] == "minecraft:item":
+                    item = e["name"]
+                    for f in e.get("functions", []):
+                        if f["function"] == "minecraft:set_components" and "cobblemon:tm_move" in f.get("components", {}):
+                            item = f"cobblemon:tm_{f['components']['cobblemon:tm_move']['move']}"
+                        if f["function"] == "minecraft:set_count":
+                            c = f["count"]
+                            entry["n"] = [c, c] if isinstance(c, (int, float)) else [c["min"], c["max"]]
+                    if item not in items: continue
+                    entry["i"] = item
+                else: continue
+                entries.append(entry)
+            tables[name].append({"rolls": rolls, "bonus": pool.get("bonus_rolls", 0), "entries": entries})
+    groups = [os.path.basename(f)[:-5] for f in glob.glob(f"{root}/trainers/groups/*.json")]
+    for tid in trainers:
+        if os.path.exists(f"{root}/trainers/single/{tid}.json"): name = f"rctmod:trainers/single/{tid}"
+        else:
+            group = max((g for g in groups if tid == g or tid.startswith(g + "_")), key=len, default=None)
+            name = f"rctmod:trainers/groups/{group}" if group else "rctmod:trainers/default"
+        load(name); picks[tid] = name
+    return {"tables": tables, "trainers": picks}
+
+
 def create_trainer_entity(trainers):
     """cobblemon:rct_trainer: the player model in the trainer's RCT skin (TrainerRenderer's PlayerModel, wide arms)."""
     os.makedirs(f"{texturesEntityBedrock}/rct_trainers", exist_ok=True)
@@ -6325,7 +6370,10 @@ def create_gyms():
             # ticking is silently left out), the first tile last, since it covers the anchors
             league = {"tiles": [[f"cobblemon:rgs_{name}_{n}", tx, tz, *tile_probe(template, tile, overrides)] for n, (tx, tz, *_), tile in
                                 sorted(((n, t, t) for n, t in enumerate(tiles)), key=lambda e: e[0] == 0)],
-                      "size": [sx, template["size"][1], sz], "anchors": [[x, y, z, block] for x, y, z, block in anchors]}
+                      "size": [sx, template["size"][1], sz], "anchors": [[x, y, z, block] for x, y, z, block in anchors],
+                      # the League's villagers (its CobbleDollars "Shopkeeper"), which the script stands the Poke Mart clerk in for
+                      "npcs": [[*e["blockPos"], json.loads(str(e["nbt"].get("CustomName", '""')))] for e in template.get("entities", [])
+                               if str(e.get("nbt", {}).get("id", "")) == "minecraft:villager"]}
             here = {**overrides, **{(x, y, z): ("cobblemon:league_anchor", {"cobblemon:anchor": Tag(INT, i)}) for i, (x, y, z, _) in enumerate(anchors)}}
             convert(source, f"{structuresBedrock}/rgs_{name}_seed.mcstructure", invalid, unmapped, overrides=here, region=seed)
         filters = [GYM_BIOMES.get(b) or biome_filter_for([b]) for b in biome_ids]
@@ -6360,6 +6408,7 @@ def create_gyms():
         file.write("export const RCT_TRAINER_IDS = " + json.dumps(trainers) + ";\n")
         file.write("export const RCT_TRAINERS = " + json.dumps(data, separators=(",", ":")) + ";\n")
         file.write(f"export const RCT_INITIAL_CAP = {RCT_INITIAL_CAP};\n")
+        file.write("export const RCT_LOOT = " + json.dumps(rct_loot(trainers, defined_items()), separators=(",", ":")) + ";\n")
         # the Trainer Association's series and text (rct_trainers/association.json): the series whose trainers are
         # ported (Radical Red) and Freeroam, RCT's pause from a series, which needs no trainers of its own
         with open(f"{pwd}/rct_trainers/association.json", encoding="utf-8") as source: association = json.load(source)
