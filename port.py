@@ -3843,7 +3843,7 @@ def create_spawn_rules():
         path = f"{entitiesBedrock}/{pokemon}.behavior.json"
         with open(path, encoding="utf-8") as file: text = file.read()
         data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
-        for weather in kinds:
+        for weather in sorted(kinds):   # sorted, so a run writes the same file (a set's order differs run to run)
             # as Cobblemon's condition reads it: rain is any falling weather, a thunderstorm included, clear is none.
             # (The script's Dimension.getWeather() went on answering Clear well into a thunderstorm, so the entity's
             # own weather_at_position filter decides.)
@@ -13172,8 +13172,15 @@ def create_battle_ui():
                                   "bindings": [{"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                                {"binding_type": "view", "source_property_name": f"('{T}/types/' + ((#form_button_texture - '{T}/battle/move_') - '_off'))", "target_property_name": "#texture"}]}}]
     is_back = f"(not ((#form_button_texture - 'battle/back') = #form_button_texture))"
+    # Cobblemon's move tile only brightens a little under the mouse, which a controller player cannot pick out among
+    # four coloured tiles, so the focused tile also gets a white frame (battle/move_focus)
+    move_frame = {"focus_frame": {"type": "image", "texture": f"{T}/battle/move_focus", "size": [94, 26], "offset": [-1, -1], "layer": 6,
+                                  "anchor_from": "top_left", "anchor_to": "top_left"}}
+    move_button = button([92, 24], move_labels)
+    move_button["controls"] = [{"default": face("", move_labels)}, {"hover": face("_hover", [*move_labels, move_frame])},
+                               {"pressed": face("_hover", [*move_labels, move_frame])}]
     move_item = {"type": "panel", "size": [105, 29], **TILE_DEFAULTS, "bindings": [text_binding, shown], "controls": [
-        {"move": {**button([92, 24], move_labels), "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 0], **TILE_FOCUS,
+        {"move": {**move_button, "anchor_from": "top_left", "anchor_to": "top_left", "offset": [9, 0], **TILE_FOCUS,
                   "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"},
                                {"binding_name": "#form_button_texture", "binding_type": "collection", "binding_collection_name": "form_buttons"},
                                {"binding_type": "view", "source_property_name": f"(not {is_back})", "target_property_name": "#visible"}]}},
@@ -13309,6 +13316,9 @@ def create_battle_ui():
     # scripts/main.js's HIT: a transparent face for a button that acts, which a controller can focus (FOCUS_BINDINGS)
     # its hover a faint white wash over the button, the one sign of focus a transparent button can give a controller
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{uiTextures}/hit.png"); Image.new("RGBA", (1, 1), FOCUS_WASH).save(f"{uiTextures}/hit_hover.png")
+    frame = Image.new("RGBA", (94, 26), (0, 0, 0, 0))
+    ImageDraw.Draw(frame).rectangle((0, 0, 93, 25), outline=(255, 255, 255, 255))
+    frame.save(f"{uiTextures}/battle/move_focus.png")
     ui.update(create_summary_ui())
     ui.update(create_pc_ui())
     ui.update(create_pokedex_ui())

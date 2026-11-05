@@ -4248,7 +4248,8 @@ function pickAction(battle, options) {
             const colour = m === STRUGGLE ? "§f" : m.left === 0 ? "§c" : m.left <= Math.floor(m.pp / 2) ? "§6" : "§f";
             // the category's code after the name (port.py's MOVE_CATEGORY_CODES), for MoveCategoryIcon
             const category = { Physical: "p", Special: "s", Status: "x" }[m.category ?? MOVES[m.id]?.category] ?? "p";
-            form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
+            // the PP padded to five: a one-digit "5/5" after the colour code was a JSON UI parse failure on every button
+            form.button(pad(m.name, 16) + category + colour + (m === STRUGGLE ? "-/-" : `${m.left}/${m.pp}`).padStart(5), `${UI}/battle/move_${m.type ?? "normal"}${off ? "_off" : ""}`);
         }
         form.button("Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
         return form.show(battle.player).then((m) => {
@@ -4519,6 +4520,7 @@ function gainExperience(battle, f, foe, amount) {
     // from the level it has already reached in this battle (the fighter's own is the one it entered with)
     let level = Math.max(f.level, prop(f.entity, LEVEL) ?? f.level), exp = Math.max(prop(f.entity, EXP) ?? 0, expFor(group, level)) + gain;
     const startLevel = level;
+    if (level >= 100) return;   // Pokemon.addExperience: nothing past the top level, and no message (canLevelUpFurther)
     // a player on the gym challenge gains nothing past their level cap (RCT's ModServer, allowOverLeveling false)
     const levelCap = rctLevelCap(battle.player);
     if (levelCap < 100 && exp > expFor(group, levelCap)) {
@@ -6224,12 +6226,14 @@ function openChallenge(player, target) {
     const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + FORMAT_NAMES[format];
     const T = `${UI}/request`, none = `${UI}/request/none`;
     const form = new ActionFormData().title("cbm:challenge").body(body);
+    if (pending) pending.shown = true;
     form.button(pending ? "" : "Challenge", pending ? none : `${T}/battle`);
     form.button(pending ? "decline" : "", pending ? `${T}/decline` : none);   // in a challenge, the Challenge button's right half
     form.button("", pending ? none : `${T}/arrow_left`).button("", pending ? none : `${T}/arrow_right`);
     form.button("", pending ? none : `${T}/label_arrow_left`).button("", pending ? none : `${T}/label_arrow_right`);
     form.button(pending ? "accept" : "", pending ? `${T}/accept` : none);   // Accept beside Decline, its own button for a controller
     form.show(player).then((r) => {
+        if (pending) pending.shown = false;
         if (r.canceled || !target.isValid) return;
         const pick = r.selection;
         const click = () => { try { player.playSound("cobblemon.gui.click"); } catch (e) { } };
@@ -6260,6 +6264,9 @@ function sendChallenge(player, target, level, format = "singles") {
     player.sendMessage(`§aYou challenged §b${target.name}§a to a ${FORMAT_NAMES[format]}.`);
     target.sendMessage(`§b${player.name}§a challenged you to a ${FORMAT_NAMES[format]}! §7(${ruleName(level)})`);
     try { target.playSound("random.orb"); } catch (e) { }
+    // Cobblemon tells the receiver with a toast answered by its respond keybind; a pack can add neither, so the request
+    // screen with Accept and Decline opens for them (the player wheel's Battle still reaches it while it is pending)
+    system.run(() => { if (target.isValid && !battles.has(target.id) && challenges.some((c) => c.from === player && c.to === target)) openChallenge(target, player); });
 }
 function acceptChallenge(c) {
     if (!c.from.isValid || !c.to.isValid) return;
@@ -6277,6 +6284,8 @@ system.runInterval(() => {
         challenges.splice(i, 1);
         if (c.from.isValid) c.from.sendMessage(`§7Your challenge to §b${c.to.isValid ? c.to.name : "them"}§7 has timed out!`);
         if (c.to.isValid) c.to.sendMessage(`§7The challenge from §b${c.from.isValid ? c.from.name : "them"}§7 has timed out!`);
+        // the Battle Request still open on it goes with it, rather than answering "already expired" to a late press
+        if (c.shown && c.to.isValid) try { uiManager.closeAllForms(c.to); } catch (e) { }
     }
 }, 20);
 world.afterEvents.playerLeave.subscribe(({ playerId }) => {

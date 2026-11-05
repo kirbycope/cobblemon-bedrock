@@ -48,3 +48,14 @@ const lv = { level: 50 };
     const { b, m } = pvpDoubles([mon("Pikachu", lv)], [mon("Rattata", lv), mon("Pidgey", lv)]);
     check("a side with no one on the bench has nothing to switch to", M.benchFor(m).length === 0 && M.benchFor(b).length === 0);
 }
+{
+    // Pokemon.addExperience: a Pokemon at the top level gains nothing and nothing is said (canLevelUpFurther)
+    const top = mon("Venusaur", { level: 100 }), foe = mon("Rattata", { level: 50 });
+    const { battle } = await import("../harness.mjs");
+    const b = battle(top, foe);
+    M.gainExperience(b, top, foe);
+    check("a level 100 Pokemon gains no experience and no message", !b.log.some((l) => /Exp\. Points/.test(l)), b.log.join(" | "));
+    const low = mon("Venusaur", { level: 30 }), b2 = battle(low, mon("Rattata", { level: 50 }));
+    M.gainExperience(b2, low, b2.foe);
+    check("one below it still does", b2.log.some((l) => /gained \d+ Exp\. Points/.test(l)), b2.log.join(" | "));
+}
