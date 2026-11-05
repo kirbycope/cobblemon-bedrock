@@ -8490,6 +8490,24 @@ def pillar_block(identifier, side, end, extra=None):
 NATURAL_BLOCKS = ("relic_coin_pouch", "relic_coin_sack", "pc", "healing_machine")
 
 
+def add_comparator_output():
+    """getAnalogOutputSignal on the Healing Machine (its charge in tenths, up to 10) and the TM Machine (its progress
+    while it burns, 15 ready or 0, 8 or 4 when it makes TMs on its own): a cobblemon:signal state the script sets, each
+    level a permutation with Bedrock's redstone_producer at that power. A Bedrock block has no comparator-only output,
+    so this signal also powers redstone dust and the like beside the machine directly, which Java's does not."""
+    for name, top in (("healing_machine", 10), ("tm_machine", 15)):
+        path = f"{blocksBedrock}/{name}.json"
+        with open(path, encoding="utf-8") as file: block = json.load(file)
+        block["format_version"] = "1.21.120"   # redstone_producer is stable from 1.21.120
+        body = block["minecraft:block"]
+        # a Healing Machine with no record (from a structure) counts as full, so its signal starts at the top, as
+        # cobblemon:charge starts full; a state's first value is its default
+        body["description"].setdefault("states", {})["cobblemon:signal"] = list(range(top, -1, -1)) if name == "healing_machine" else list(range(top + 1))
+        body.setdefault("permutations", []).extend({"condition": f"q.block_state('cobblemon:signal') == {n}",
+                                                    "components": {"minecraft:redstone_producer": {"power": n}}} for n in range(1, top + 1))
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
+
+
 def create_natural_blocks():
     """The blocks whose drops Cobblemon ties to the natural property, true where a structure placed them: a ruin's
     Relic Coin Sack breaks into 20 to 64 Relic Coins (a pouch 2 to 9) and a village Pokemon Center's PC and healing
@@ -14617,6 +14635,7 @@ def main():
     create_model_blocks()
     create_leaf_decay()   # after every block is written, the saccharine leaves among the model blocks
     create_natural_blocks()   # the same
+    add_comparator_output()   # after the machines and their natural states
     create_variant_index()
     add_intrinsic_scale()
     add_shoulder_mount()

@@ -51,10 +51,10 @@
                 "walk": {
                     "animations": [
                         {
-                            "ground_walk": "1 - (v.primary_w ?? 0)"
+                            "ground_walk": "(!q.property('cobblemon:sheared')) * (1 - (v.primary_w ?? 0))"
                         },
                         {
-                            "ground_walk_sheared": "1 - (v.primary_w ?? 0)"
+                            "ground_walk_sheared": "(q.property('cobblemon:sheared')) * (1 - (v.primary_w ?? 0))"
                         },
                         {
                             "pose_walk": "1 - (v.primary_w ?? 0)"

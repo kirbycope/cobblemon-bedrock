@@ -2959,9 +2959,10 @@ function burnTm(block, player, move) {
         const left = (burning.get(key) ?? 0) - 1;
         burning.set(key, left);
         if (left % 20 === 0 && left > 14) try { dim.playSound("cobblemon.block.tm_machine.burn_loop", at); } catch (e) { }
-        if (left > 0) return;
+        if (left > 0) { try { setState(dim.getBlock(block.location), "cobblemon:signal", tmBurnSignal(left)); } catch (e) { } return; }
         system.clearRun(loop); burning.delete(key);
         try { setState(dim.getBlock(block.location), "cobblemon:active", false); dim.playSound("cobblemon.block.tm_machine.craft", at); } catch (e) { }
+        try { setState(dim.getBlock(block.location), "cobblemon:signal", 0); } catch (e) { }   // the sites' loop sets the idle one
         try { dim.playSound("cobblemon.block.tm_machine.tm_retrieve", at); } catch (e) { }   // the finished disc comes out
         if (!player) {
             // made by the machine on its own: into its result slot, for a hopper below to take
@@ -3007,6 +3008,14 @@ function tmSlotFor(move, itemId) {
     const tm = TMS[TM_BY_MOVE.get(move)];
     const i = (tm?.[3] ?? []).findIndex((entry) => recipeIds(entry).includes(itemId));
     return i >= 0 && i < 3 ? 2 + i : -1;
+}
+// TMMachineBlock.getAnalogOutputSignal: the progress in fifteenths while it burns; otherwise, when it is not making
+// TMs on its own (here, unpowered), 15 ready to make one or 0, and when it is, 8 with its result slot blocked or 4
+function tmBurnSignal(left) { return Math.max(0, Math.min(15, Math.floor((114 - left) / 114 * 15))); }
+function tmSignal(data, powered, left) {
+    if (left !== undefined) return tmBurnSignal(left);
+    if (!powered) return data.m && tmReady(data.m, data) ? 15 : 0;
+    return data.m && data.s[0] && (data.s[0][0] !== `cobblemon:tm_${data.m}` || data.s[0][1] >= 64) ? 8 : 4;
 }
 function tmReady(move, data) {
     const tm = TMS[TM_BY_MOVE.get(move)];
@@ -3061,6 +3070,7 @@ system.runInterval(() => {
             burnTm(block, null, data.m);
         }
         if (changed) saveTmMachine(block, data);
+        setState(block, "cobblemon:signal", tmSignal(data, powered, burning.get(tmKey(block))));
     }
 }, 8);
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
@@ -6473,6 +6483,11 @@ function missingShare(member) {
 function showHealerCharge(block, rec, now) {
     const level = !rec || rec.inf ? 5 : Math.floor((healerCharge(rec, now) / HEALER_MAX) * 5);
     try { if (block.permutation.getState("cobblemon:charge") !== level) block.setPermutation(block.permutation.withState("cobblemon:charge", level)); } catch (e) { }
+    setState(block, "cobblemon:signal", healerSignal(rec, now));
+}
+// HealingMachineBlockEntity.updateRedstoneSignal: the charge's whole tenths, up to MAX_REDSTONE_SIGNAL (10)
+function healerSignal(rec, now) {
+    return !rec || rec.inf ? 10 : Math.min(10, Math.floor(Math.floor((healerCharge(rec, now) / HEALER_MAX) * 100) / 10));
 }
 world.afterEvents.playerPlaceBlock.subscribe(({ block, player }) => {
     if (block.typeId !== "cobblemon:healing_machine") return;

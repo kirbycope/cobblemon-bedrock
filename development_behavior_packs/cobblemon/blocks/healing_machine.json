@@ -1,5 +1,5 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:healing_machine",
@@ -22,6 +22,19 @@
         "cobblemon:natural": [
           false,
           true
+        ],
+        "cobblemon:signal": [
+          10,
+          9,
+          8,
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
         ]
       },
       "traits": {
@@ -465,6 +478,86 @@
         "condition": "q.block_state('cobblemon:natural') == true",
         "components": {
           "minecraft:loot": "loot_tables/blocks/healing_machine_true.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 1",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 1
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 2",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 2
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 3",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 3
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 4",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 4
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 5",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 5
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 6",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 6
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 7",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 7
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 8",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 8
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 9",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 9
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 10",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 10
+          }
         }
       }
     ]
