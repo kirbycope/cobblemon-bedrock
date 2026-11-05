@@ -2403,7 +2403,7 @@ function endBattle(battle, text) {
         battles.delete(battle.opponent.id);
         for (const p of [battle.player, battle.opponent]) { try { if (p.isValid) uiManager.closeAllForms(p); } catch (e) { } }
     }
-    const sides = battle.pvp ? [battle.ally, battle.foe] : battle.doubles ? battle.slots.a.filter(Boolean) : [battle.ally];
+    const sides = battle.pvp ? (battle.doubles ? allActives(battle) : [battle.ally, battle.foe]) : battle.doubles ? battle.slots.a.filter(Boolean) : [battle.ally];
     for (const f of allActives(battle)) if (f) untransform(f);   // its own moves' PP is what is kept, not the copy's
     burmyCloaks(battle);
     for (const f of sides) if (f?.entity && !f.clone) { keepStatus(f.entity, f.hp > 0 ? f.status : null); if (!(battle.adjustLevel > 0)) keepPp(f.entity, f.moves); }
@@ -2415,7 +2415,8 @@ function endBattle(battle, text) {
     if (battle.pvp && battle.opponent.isValid) system.runTimeout(() => offerLevelEvolutions(battle.opponent), 40);
     for (const f of allActives(battle)) if (f?.entity?.isValid) freeze(f.entity, false);
     // a trainer's Pokemon that fainted goes back into its ball; the rest stay out
-    for (const [owner, f] of battle.pvp ? [[battle.player, battle.ally], [battle.opponent, battle.foe]] : sides.map((f) => [battle.player, f])) {
+    const ownerOf = (f) => (battle.pvp && (battle.doubles ? f.sideKey === "b" : f === battle.foe) ? battle.opponent : battle.player);
+    for (const [owner, f] of (battle.pvp && !battle.doubles ? [battle.ally, battle.foe] : sides).map((f) => [ownerOf(f), f])) {
         if (!f?.entity?.isValid || f.clone || !(f.hp <= 0 || prop(f.entity, FAINTED))) continue;
         const slot = slotOf(owner, f.entity);
         if (slot) recallMember(owner, slot);
@@ -3933,8 +3934,8 @@ function startBattle(player, foeEntity, trainer) {
 
 // Switch: BattleSwitchPokemonSelection's party tiles, laid out by the resource pack (SWITCH_FIELDS in port.py). The one in
 // battle and the fainted show greyed and cannot be picked; the one leaving steps aside and stops fighting
-function switchTile(battle, e) {
-    const f = e.id === battle.ally.entity.id ? battle.ally : battleFighter(battle, e);
+function switchTile(battle, e, leaving = battle.ally) {
+    const f = e.id === leaving.entity.id ? leaving : battleFighter(battle, e);
     const fainted = (!f.clone && !!prop(e, FAINTED)) || f.hp <= 0 || !!battle.down?.has(memberKey(e));
     const step = fainted ? 0 : Math.max(1, Math.round((Math.max(0, f.hp) / f.stats.hp) * 50));
     const name = (nicknameOf(e) || f.info.name).normalize("NFD").replace(/[^ -~]/g, "");
@@ -3943,26 +3944,26 @@ function switchTile(battle, e) {
     return pad(name, 12) + pad(`Lv.${f.level}`, 6) + "h" + String(step).padStart(2, "0") + status.toUpperCase() + iconOf(e.typeId, variantOf(e))
         + "b" + String(ball).padStart(2, "0") + `§f${fainted ? 0 : Math.max(0, f.hp)}/${f.stats.hp}`;   // a colour code first, or it reads as a number
 }
-function chooseSwitch(battle, forced) {
-    const player = battle.player, ally = battle.ally.entity;
-    const ready = battle.pvp ? pvpReady(battle) : battle.doubles ? benchFor(battle) : findParty(player).filter((e) => e.id !== ally.id);
+function chooseSwitch(battle, forced, leaving = battle.ally) {
+    const player = battle.player, ally = leaving.entity;
+    const ready = battle.doubles ? benchFor(battle) : battle.pvp ? pvpReady(battle) : findParty(player).filter((e) => e.id !== ally.id);
     if (!ready.length) return Promise.resolve(undefined);
     const readyKeys = new Set(ready.map(memberKey));
-    const out = new Set(battle.doubles ? battle.slots.a.filter(Boolean).map((f) => f.entity.id) : [ally.id]);
+    const out = new Set(battle.doubles ? battle.slots[battle.side === 1 ? "b" : "a"].filter(Boolean).map((f) => f.entity.id) : [ally.id]);
     const fainted = summaryParty(player).filter((e) => !out.has(e.id) && !readyKeys.has(memberKey(e)));
     const tiles = [...(ally.isValid && !forced ? [ally] : []), ...ready, ...fainted].slice(0, 6);
     const form = new ActionFormData().title(battleTitle(battle, "switch")).body(battleBody(battle));
     for (let i = 0; i < 6; i++) {
         const e = tiles[i];
         const picked = e && ready.includes(e);
-        form.button(e ? switchTile(battle, e) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
+        form.button(e ? switchTile(battle, e, leaving) : "", e ? `${UI}/battle/${picked ? "pselect" : e.id === ally.id ? "pselect_on" : "pselect_off"}` : undefined);
     }
     form.button(forced ? "" : "Back", `${UI}/battle/back`).button("", LOG_TOGGLE);
     return form.show(player).then((r) => {
-        if (r.selection === 7 && battles.has(player.id)) { toggleLog(battle); return chooseSwitch(battle, forced); }
-        if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced) : undefined;
+        if (r.selection === 7 && battles.has(player.id)) { toggleLog(battle); return chooseSwitch(battle, forced, leaving); }
+        if (r.canceled || r.selection >= 6 || !battles.has(player.id)) return forced && !r.canceled ? chooseSwitch(battle, forced, leaving) : undefined;
         const e = tiles[r.selection];
-        return e && ready.includes(e) ? e : chooseSwitch(battle, forced);
+        return e && ready.includes(e) ? e : chooseSwitch(battle, forced, leaving);
     });
 }
 
@@ -4153,7 +4154,8 @@ function battleBody(battle) {
     // Cobblemon shows the player's own Pokemon's health as a number and an opponent's as a share
     const ownHp = (f) => (f ? `${Math.max(0, f.hp)}/${f.stats.hp}` : ""), theirHp = (f) => (f ? `${Math.ceil((Math.max(0, f.hp) / f.stats.hp) * 100)}%%` : "");   // a lone % is read as a format
     // a double battle: each side's first slot in the usual fields, and the second slots in the double battle's part
-    const [a0, b0, a1, b1] = battle.doubles ? [battle.slots.a[0], battle.slots.b[0], battle.slots.a[1], battle.slots.b[1]] : [battle.ally, battle.foe, null, null];
+    const me = battle.side === 1 ? "b" : "a", them = otherSide(me);   // the second player's view sees side b as its own
+    const [a0, b0, a1, b1] = battle.doubles ? [battle.slots[me][0], battle.slots[them][0], battle.slots[me][1], battle.slots[them][1]] : [battle.ally, battle.foe, null, null];
     const own = ownHp(a0), theirs = theirHp(b0);
     // the log follows the fixed fields; a lone % would be read as a format there too
     const log = (battle.log ?? []).slice(-40).map((line) => line.replace(/%/g, "%%")).join("\n");
@@ -4191,7 +4193,7 @@ function restore(battle) {
 world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
     if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed) return;
     const battle = battles.get(player.id);
-    if (battle && restore(battle)) { if (battle.pvp) pvpAsk(battle); else if (battle.doubles) battle.resume?.(); else { battle.turn--; turn(battle); } }
+    if (battle && restore(battle)) { if (battle.doubles) battle.resume?.(); else if (battle.pvp) pvpAsk(battle); else { battle.turn--; turn(battle); } }
 });
 
 // BattleGeneralActionSelection: Fight, Switch, then Catch and Run against a wild Pokemon or Forfeit against a trainer
@@ -4428,6 +4430,7 @@ function endOfTurn(battle) {
 }
 // fainting, the end of the battle, an ejected Pokemon and the next turn, once the turn's effects have played
 function afterTurn(battle) {
+    if (battle.doubles && battle.pvp) { pvpDoubleAfterTurn(battle); return; }
     if (battle.pvp) { pvpAfterTurn(battle); return; }
     if (battle.doubles) { doubleAfterTurn(battle); return; }
     if (battle.foe.hp <= 0) { alphaDrops(battle.foe); faint(battle, battle.foe); return; }
@@ -5437,6 +5440,8 @@ function giveGymReward(player, id) {
 const CHALLENGE_EXPIRY = 20 * 20, PVP_RANGE = 32, LEVEL_RULES = [-1, 50, 100, 5];
 const challenges = [];   // { from, to, level, at }
 const challengeRule = new Map();   // player id -> the level rule chosen on the challenge screen
+const challengeFormat = new Map();   // player id -> the format chosen on the challenge screen, "singles" or "doubles"
+const FORMAT_NAMES = { singles: "Single Battle", doubles: "Double Battle" };   // lang cobblemon.battle.types.*
 // Double battles (BattleTypes.DOUBLES: one actor a side with two slots each). The move engine is written for one
 // Pokemon a side, battle.ally against battle.foe, so a double battle keeps its four in battle.slots ("a" the player's,
 // "b" the trainer's, each [left, right]) and points ally and foe at the two a move is between before it runs (focus,
@@ -5552,7 +5557,7 @@ function startDoubleBattle(player, npc, team, trainer) {
 // was just pointed at, before its slot is set
 function opponentsOf(battle, f, other) {
     if (!battle.doubles) return [other];
-    const key = f.sideKey ?? (f === battle.ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter(alive);
+    const key = f.sideKey ?? (f === realBattle(battle).ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter(alive);
     return opp.length ? opp : [other];
 }
 // Howl, Life Dew and Jungle Healing (Showdown's "allies" target): what they do for the user, done for its partner too
@@ -5565,6 +5570,8 @@ function alliesEffect(battle, a, move) {
         }
     }
 }
+// the view a side's trainer sees: the battle for side a, its mirror for side b in a battle between players
+function viewOf(battle, key) { return key === "b" && battle.mirror ? battle.mirror : battle; }
 function holdBattle(battle) { battles.set(battle.player.id, battle); return battle; }
 function faceAll(battle) {
     for (const f of allActives(battle)) {
@@ -5655,8 +5662,10 @@ function doubleTurn(battle) {
 }
 // the player's party that can come in: able, and not out or already picked to come in this turn
 function benchFor(battle) {
-    const busy = new Set([...battle.slots.a.filter(Boolean).map((f) => f.entity.id), ...(battle.picks ?? []).filter((p) => p.entity).map((p) => p.entity.id)]);
-    return findParty(battle.player).filter((e) => !busy.has(e.id));
+    const key = battle.side === 1 ? "b" : "a";
+    const busy = new Set([...battle.slots[key].filter(Boolean).map((f) => memberKey(f.entity)), ...(battle.picks ?? []).filter((p) => p.entity).map((p) => memberKey(p.entity))]);
+    const party = battle.adjustLevel > 0 ? summaryParty(battle.player) : findParty(battle.player);
+    return party.filter((e) => !busy.has(memberKey(e)) && !battle.down?.has(memberKey(e)));
 }
 // each of the trainer's Pokemon picks a move at one of the player's (its AI sees that one as the player's Pokemon); a
 // trainer's switch in a double battle stays a move
@@ -5717,13 +5726,14 @@ function resolveMoves(battle) {
 }
 // a switch into a slot: the player's goes through switchTo with that slot's Pokemon as battle.ally, then stands in the slot
 function switchSlot(battle, leaving, entity) {
-    focus(battle, leaving);
-    const slot = leaving.slot, other = opponentOf(battle, leaving);
+    battle = viewOf(realBattle(battle), leaving.sideKey);
+    focus(realBattle(battle), leaving);
+    const slot = leaving.slot, key = leaving.sideKey, other = opponentOf(battle, leaving);
     switchTo(battle, entity);
     const f = battle.ally;
     if (f === leaving) return;
-    setSlot(battle, "a", slot, f);
-    const spot = slotSpot(battle.player.location, other?.entity?.location ?? battle.gym?.npc?.location ?? f.entity.location, slot, widthOf(entity), widthOf(other?.entity), 0.3);
+    setSlot(battle, key, slot, f);
+    const spot = slotSpot(battle.player.location, other?.entity?.location ?? battle.gym?.npc?.location ?? battle.opponent?.location ?? f.entity.location, slot, widthOf(entity), widthOf(other?.entity), 0.3);
     try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: other?.entity?.location }); } catch (e) { }
 }
 // the trainer's next Pokemon into a slot: its best matchup against the player's, or one at random when dragged out
@@ -5890,6 +5900,131 @@ function battleSpot(actor, opposing, wMe, wOpp, share) {
     return { x: x + ox * share + (-oz / len) * side, y: actor.y, z: z + oz * share + (ox / len) * side };
 }
 const widthOf = (e) => POKEMON[e?.typeId]?.width ?? 1;
+// A Double Battle between players (BattleBuilder.pvp in GEN_9_DOUBLES): each sends out its first two Pokemon side by side
+// and picks for both each turn, as against a trainer; the turn goes once both have chosen, "Waiting for ..." showing
+// on the side that has. A fainted Pokemon gives the other side's Pokemon in battle experience, its trainer picks the
+// next (both at once), and the side with none left loses
+function startPvpDoubles(p1, p2, level) {
+    if (battles.has(p1.id) || battles.has(p2.id)) return;
+    const leads = (p) => (level > 0 ? summaryParty(p) : findParty(p)).slice(0, 2);
+    const a = leads(p1), b = leads(p2);
+    if (!a.length || !b.length) {
+        for (const [p, other, has] of [[p1, p2, a.length], [p2, p1, b.length]]) if (!has) { p.sendMessage("§cYou don't have any Pokémon to battle with!"); other.sendMessage(`§b${p.name}§c doesn't have any Pokémon to battle with!`); }
+        return;
+    }
+    const battle = { pvp: true, doubles: true, side: 0, player: p1, opponent: p2, trainer: p2.name, adjustLevel: level > 0 ? level : 0, turn: 0, log: [], opponentLog: [],
+                     kept: {}, down: new Set(), choices: [], choiceLock: null, slots: { a: [null, null], b: [null, null] }, picks: [] };
+    const m = mirrorOf(battle);
+    battles.set(p1.id, battle); battles.set(p2.id, m);
+    battleMusic(p1, "pvp"); battleMusic(p2, "pvp");
+    for (const [key, view, party, from, to, wOpp] of [["a", battle, a, p1, p2, widthOf(b[0])], ["b", m, b, p2, p1, widthOf(a[0])]]) {
+        party.forEach((e, i) => {
+            const spot = slotSpot(from.location, to.location, i, widthOf(e), wOpp, 0.3);
+            const f = battleFighter(battle, e);
+            if (!f) return;
+            if (f.entity.isProxy) f.entity = materialize(view.player, f.entity, spot);
+            if (!f.entity) return;
+            setSlot(battle, key, i, f);
+            freeze(f.entity, true);
+            try { f.entity.teleport({ ...spot, y: f.entity.location.y }, { facingLocation: to.location }); } catch (e) { }
+            sendOutEffect(view.player, f.entity);
+            const name = titled(f.entity, nicknameOf(f.entity) || f.info.name);
+            sayEach(view, `§6Go! ${name}! §7(Lv ${f.level})`, `§6${view.player.name} sent out ${name}! §7(Lv ${f.level})`);
+            register(view.opponent, f.entity.typeId, 1, variantOf(f.entity));
+        });
+    }
+    if (!battle.slots.a.some(Boolean) || !battle.slots.b.some(Boolean)) { endBattle(battle, "§cThe battle could not start here."); return; }
+    for (const f of allActives(battle)) { focus(battle, f); enter(battle, f, opponentOf(battle, f)); }
+    system.runTimeout(() => faceAll(battle), 2);
+    system.runTimeout(() => pvpDoubleTurn(battle), 20);
+}
+function pvpDoubleTurn(battle) {
+    if (!pvpLive(battle)) return;
+    for (const [v, key] of [[battle, "a"], [battle.mirror, "b"]]) {
+        if (!v.player.isValid || !battle.slots[key].some((f) => alive(f) && f.entity.isValid)) { pvpEnd(battle, v, `§7${v.player.isValid ? v.player.name : "A player"} forfeited the battle!`); return; }
+    }
+    battle.turn++;
+    faceAll(battle);
+    battle.picks = []; battle.done = { a: false, b: false }; battle.replacing = null;
+    pvpDoubleAsk(battle, 0); pvpDoubleAsk(battle.mirror, 0);
+}
+// one side's choices, Pokemon by Pokemon, as doubleTurn asks the player against a trainer
+function pvpDoubleAsk(view, k) {
+    const battle = realBattle(view), key = view.side === 1 ? "b" : "a";
+    if (!pvpLive(battle) || battle.done[key]) return;
+    view.resume = () => pvpDoubleAsk(view, k);
+    const mine = battle.slots[key].filter(alive);
+    if (k >= mine.length) {
+        view.choosing = "-"; battle.done[key] = true;
+        if (battle.done[otherSide(key)]) resolveDouble(battle);
+        return;
+    }
+    const f = mine[k], again = () => pvpDoubleAsk(view, k);
+    view.choosing = String(f.slot);
+    const usable = f.moves.filter((m) => m.left > 0);
+    const options = usable.length ? f.moves.map((m) => ({ kind: "move", move: m })) : [{ kind: "move", move: STRUGGLE }];
+    if (benchFor(view).length) options.push({ kind: "switch" });
+    if (f.choiceLock && held(f)?.startsWith("choice_")) for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== f.choiceLock) o.locked = true;
+    pickAction(view, options).then((choice) => {
+        if (!pvpLive(battle) || battle.done[key]) return;
+        if (!choice) { minimise(view); return; }
+        if (choice.kind === "forfeit") { pvpEnd(battle, view, `§7${view.player.name} forfeited the battle!`); return; }
+        if (choice.kind === "switch") {
+            chooseSwitch(view, false, f).then((entity) => {
+                if (!pvpLive(battle)) return;
+                if (!entity) { again(); return; }
+                battle.picks.push({ f, kind: "switch", entity });
+                pvpDoubleAsk(view, k + 1);
+            }).catch(() => minimise(view));
+            return;
+        }
+        if (choice.locked) { view.player.sendMessage(`§7${f.info.name} can only use ${MOVES[f.choiceLock]?.name}!`); again(); return; }
+        const move = choice.move;
+        if (move !== STRUGGLE && move.left <= 0) { view.player.sendMessage("§cThere's no PP left for this move!"); again(); return; }
+        chooseTarget(view, f, move).then((target) => {
+            if (!pvpLive(battle) || battle.done[key]) return;
+            if (target === undefined) { again(); return; }
+            if (held(f)?.startsWith("choice_") && move !== STRUGGLE) f.choiceLock = f.choiceLock ?? move.id;
+            battle.picks.push({ f, move, target: target.slot, ally: target.ally });
+            pvpDoubleAsk(view, k + 1);
+        }).catch(() => minimise(view));
+    }).catch(() => minimise(view));
+}
+// after the turn: the fainted (each side's experience going to the other's Pokemon in battle), the side with nothing
+// left losing, then both trainers' replacements at once, and the next turn
+function pvpDoubleAfterTurn(battle) {
+    if (!pvpLive(battle)) return;
+    for (const key of ["a", "b"]) {
+        for (const f of battle.slots[key]) {
+            if (!f || f.hp > 0 || f.gone) continue;
+            f.gone = true;
+            say(battle, `§c${f.info.name} fainted!`);
+            battle.down.add(memberKey(f.entity));
+            if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); countProgress(f, (p) => { p.damage = 0; p.recoil = 0; }); }
+            freeze(f.entity, false);
+            try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
+            const winners = viewOf(battle, otherSide(key));
+            for (const w of battle.slots[otherSide(key)].filter(alive)) if (!w.clone) gainExperience(winners, w, f);
+        }
+    }
+    const out = ["a", "b"].filter((key) => !battle.slots[key].some(alive) && !benchFor(viewOf(battle, key)).length);
+    if (out.length === 2) { pvpEnd(battle, null, "§7Both trainers are out of usable Pokémon!"); return; }
+    if (out.length) { const loser = viewOf(battle, out[0]); pvpEnd(battle, loser, `§c${loser.player.name} is out of usable Pokémon!`); return; }
+    battle.picks = [];
+    const sides = ["a", "b"].map((key) => [key, viewOf(battle, key), battle.slots[key].filter((f) => f?.gone)]).filter(([, view, gone]) => gone.length && benchFor(view).length);
+    if (!sides.length) { system.runTimeout(() => pvpDoubleTurn(battle), 30); return; }
+    battle.replacing = new Set(sides.map(([, view]) => view.side));
+    const replace = (view, gone, k) => {
+        if (!pvpLive(battle) || k >= gone.length || !benchFor(view).length) return Promise.resolve();
+        return chooseSwitch(view, true, gone[k]).then((entity) => {
+            if (entity && pvpLive(battle)) switchSlot(view, gone[k], entity);
+            return replace(view, gone, k + 1);
+        });
+    };
+    Promise.all(sides.map(([, view, gone]) => replace(view, gone, 0).then(() => battle.replacing.delete(view.side)))).then(() => {
+        if (pvpLive(battle)) system.runTimeout(() => pvpDoubleTurn(battle), 20);
+    }).catch((e) => battleFailed(battle, e));
+}
 function startPvp(p1, p2, level) {
     if (battles.has(p1.id) || battles.has(p2.id)) return;
     const a = pvpLead(p1, level), b = pvpLead(p2, level);
@@ -6015,7 +6150,8 @@ system.runInterval(() => {
     for (const view of battles.values()) {
         if (!view.pvp || !view.player.isValid) continue;
         const battle = realBattle(view);
-        const chose = battle.choices?.[view.side] && !battle.choices[1 - view.side];
+        const mine = view.side === 1 ? "b" : "a";
+        const chose = battle.doubles ? battle.done?.[mine] && !battle.done[otherSide(mine)] : battle.choices?.[view.side] && !battle.choices[1 - view.side];
         const replacing = battle.replacing?.has(1 - view.side) && !battle.replacing.has(view.side);
         if (chose || replacing) { try { view.player.onScreenDisplay.setActionBar(`§7Waiting for ${view.opponent.name}...`); } catch (e) { } }
     }
@@ -6040,7 +6176,8 @@ function openChallenge(player, target) {
     const pending = challenges.find((c) => c.from.id === target.id && c.to.id === player.id);
     const index = pending ? Math.max(0, LEVEL_RULES.indexOf(pending.level)) : challengeRule.get(player.id) ?? 0;
     const level = LEVEL_RULES[index];
-    const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + "Single Battle";
+    const format = pending ? pending.format ?? "singles" : challengeFormat.get(player.id) ?? "singles";
+    const body = padBytes(pending ? "r" : "c", 1) + padBytes(ruleName(level), 16) + padBytes(target.name, 16) + FORMAT_NAMES[format];
     const T = `${UI}/request`, none = `${UI}/request/none`;
     const form = new ActionFormData().title("cbm:challenge").body(body);
     form.button(pending ? "" : "Challenge", pending ? none : `${T}/battle`);
@@ -6064,19 +6201,20 @@ function openChallenge(player, target) {
             return;
         }
         if (pick === 4 || pick === 5) { click(); challengeRule.set(player.id, (index + (pick === 5 ? 1 : LEVEL_RULES.length - 1)) % LEVEL_RULES.length); openChallenge(player, target); return; }
-        if (pick === 2 || pick === 3) { click(); openChallenge(player, target); return; }   // the Single Battle is the one format
-        if (pick === 0 || pick === 1) sendChallenge(player, target, level);
+        // the format arrows page between Single and Double Battle (Triple, Multi and Royal are not carried)
+        if (pick === 2 || pick === 3) { click(); challengeFormat.set(player.id, format === "doubles" ? "singles" : "doubles"); openChallenge(player, target); return; }
+        if (pick === 0 || pick === 1) sendChallenge(player, target, level, format);
     }).catch(() => { });
 }
-function sendChallenge(player, target, level) {
+function sendChallenge(player, target, level, format = "singles") {
     if (battles.has(player.id) || battles.has(target.id)) { player.sendMessage("§cTarget is currently unavailable for that action."); return; }
     if (pvpDistance(player, target) > PVP_RANGE) { player.sendMessage("§cTarget is too far away!"); return; }
     if (challenges.some((c) => c.from.id === player.id && c.to.id === target.id)) { player.sendMessage(`§cYou already have a pending battle request sent to §b${target.name}§c.`); return; }
     if (!pvpLead(player, level)) { player.sendMessage("§cYou don't have any Pokémon to battle with!"); return; }
     if (!pvpLead(target, level)) { player.sendMessage(`§b${target.name}§c doesn't have any Pokémon to battle with!`); return; }
-    challenges.push({ from: player, to: target, level, at: system.currentTick });
-    player.sendMessage(`§aYou challenged §b${target.name}§a to a Single Battle.`);
-    target.sendMessage(`§b${player.name}§a challenged you to a Single Battle! §7(${ruleName(level)})`);
+    challenges.push({ from: player, to: target, level, format, at: system.currentTick });
+    player.sendMessage(`§aYou challenged §b${target.name}§a to a ${FORMAT_NAMES[format]}.`);
+    target.sendMessage(`§b${player.name}§a challenged you to a ${FORMAT_NAMES[format]}! §7(${ruleName(level)})`);
     try { target.playSound("random.orb"); } catch (e) { }
 }
 function acceptChallenge(c) {
@@ -6085,7 +6223,8 @@ function acceptChallenge(c) {
     c.from.sendMessage(`§b${c.to.name}§a accepted the challenge!`);
     c.to.sendMessage(`§aYou accepted §b${c.from.name}§a's challenge!`);
     if (c.test) return;   // cobblemon:challenge_test's stand-in has no Pokemon to battle
-    startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
+    if (c.format === "doubles") startPvpDoubles(c.to, c.from, c.level);   // BattleBuilder.pvp(receiver, sender) in GEN_9_DOUBLES
+    else startPvp(c.to, c.from, c.level);   // BattleBuilder.pvp1v1(receiver, sender)
 }
 system.runInterval(() => {
     for (let i = challenges.length - 1; i >= 0; i--) {
