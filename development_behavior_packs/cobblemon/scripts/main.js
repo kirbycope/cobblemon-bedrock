@@ -36,6 +36,7 @@ import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
+import { STRUCTURE_PIECES } from "./structure_sites.js";
 import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF, FORTUNE } from "./silk.js";
@@ -4287,6 +4288,16 @@ function partyNotes(e) {
     // ui.exp.number, "+N EXP", with a colour code first since a leading "+" reads as a number
     return note + padBytes(since < 63 && gain.exp ? `§f+${gain.exp} EXP` : "", 10);
 }
+// the level-up scroll over the portrait (PartyOverlay): after the bar's 17 ticks, fourteen steps over
+// LEVEL_UP_PORTRAIT_TIME's 10 ticks, sent as "a" to "n" ("z" for none)
+function scrollCode(e) {
+    let gain = {};
+    try { gain = JSON.parse(prop(e, GAIN_NOTE) ?? "{}"); } catch (err) { }
+    const t = system.currentTick - (gain.tick ?? -1e9) - 17;
+    if (!gain.up || t < 0 || t >= 10) return "z";
+    const step = Math.ceil(t / 10 * 14);
+    return step ? String.fromCharCode(96 + step) : "z";
+}
 // the held item's HUD icon: "h" and two letters from its HELD_INDEX, "hzz" for none (and for items with no copy there)
 function heldCode(e) {
     const n = HELD_INDEX[prop(e, HELD)] ?? 0;
@@ -4315,21 +4326,25 @@ function partyRecord(e, selected, player) {
     return pad(name, 12) + padBytes(`§r${level}`, 6) + "h" + steps(fainted ? 0 : share) + "e" + steps(level >= 100 ? 1 : (exp - expFor(group, level)) / span)
         + "b" + String(ball).padStart(2, "0") + (fainted ? "x" : "n") + gender + iconOf(e.typeId, variantOf(e))
         + partyNotes(e) + heldCode(e) + (fainted ? "non" : statusOf(e) ?? "non") + (selected ? "a" : "i") + (fainted ? "x" : "n") + (selected ? "a" : "i")
-        + "b" + String(ball).padStart(2, "0") + (e.isProxy ? "c" : "o") + activeCode(e, player) + "Lv.";
+        + "b" + String(ball).padStart(2, "0") + (e.isProxy ? "c" : "o") + activeCode(e, player) + "Lv." + scrollCode(e);
 }
+// players whose party is showing the level-up scroll, sent every tick until it ends
+const scrollUntil = new Map();
 system.runInterval(() => {
+    const now = system.currentTick;
     for (const player of world.getPlayers()) {
+        if (now % 10 && !(scrollUntil.get(player.id) >= now)) continue;
         // Cobblemon hides the party overlay while its battle overlay is up
         // and while the player has hidden it (HidePartyBinding, here /cobblemon:hideparty)
         const mine = battles.has(player.id) || player.getDynamicProperty(HIDE_PARTY) ? [] : summaryParty(player), sel = selIndex(player);
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   ";
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   " + "z";
         const text = PARTY_MARKER + mine.map((e, n) => partyRecord(e, n === sel, player)).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
         partySent.set(player.id, { text, tick: system.currentTick });
         try { player.onScreenDisplay.setTitle(text, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
     }
-}, 10);
+}, 1);
 
 function pickFoeMove(foe) {
     const usable = foe.moves.filter((m) => canPick(foe, m));
@@ -4494,7 +4509,8 @@ function offerLevelEvolutions(player) {
     // PartyOverlayDataControl's pop-ups once the overlay is back: the experience gained, then a new move
     for (const [e, g] of [...gained]) {
         gained.delete(e);
-        if (e.isValid) setProp(e, GAIN_NOTE, JSON.stringify({ tick: system.currentTick, exp: g.exp, move: g.move }));
+        if (e.isValid) setProp(e, GAIN_NOTE, JSON.stringify({ tick: system.currentTick, exp: g.exp, move: g.move, up: g.up }));
+        if (g.up) scrollUntil.set(player.id, system.currentTick + 28);
     }
     let ready = false;
     for (const e of [...leveled]) {
@@ -4556,6 +4572,7 @@ function gainExperience(battle, f, foe, amount) {
             else say(battle, `§7${f.info.name} can learn ${MOVES[id].name}, but already knows four moves. It can be learned later from the Summary.`);
         }
     }
+    if (level > startLevel) note.up = true;
     setProp(f.entity, EXP, exp); setProp(f.entity, LEVEL, level); setProp(f.entity, MOVESET, JSON.stringify(ids));
     // the fighter goes on at its new level, its health rising by what its maximum gained, as Pokemon.levelUp does
     if (level > startLevel && !f.clone && f.level < level) {
@@ -8793,7 +8810,9 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     }
     // a fishing spawn's slime chunk, village and nearby blocks (Feebas, Grimer, Skrelp), where the bobber is
     if (spawn.isSlimeChunk !== undefined && isSlimeChunk(at.x, at.z) !== spawn.isSlimeChunk) return false;
-    if (spawn.fishVillage && !pokecenterSites().some(([x, z]) => Math.hypot(x - at.x, z - at.z) < VILLAGE_RADIUS)) return false;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inVillage = () => pokecenterSites().some(([x, z]) => Math.hypot(x - at.x, z - at.z) < VILLAGE_RADIUS);
+    if ((spawn.fishVillage || spawn.fishStructures) && !((spawn.fishVillage && inVillage()) || (spawn.fishStructures && inStructure(at, spawn.fishStructures)))) return false;
     if (spawn.fishNear) {
         const x = Math.floor(at.x), y = Math.floor(at.y), z = Math.floor(at.z);
         try { if (!bobber.dimension.containsBlock(new BlockVolume({ x: x - NEAR_ACROSS, y: y - NEAR_UP, z: z - NEAR_ACROSS }, { x: x + NEAR_ACROSS, y: y + NEAR_UP, z: z + NEAR_ACROSS }), { includeTypes: spawn.fishNear }, false)) return false; }
@@ -9083,11 +9102,48 @@ function spawnsAt(dim, where, naturalToo) {
     let base;
     try { base = dim.getBlock(ground)?.typeId; } catch (e) { return; }
     const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
-    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test
-    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && (!sp.village || village) && !(sp.notVillage && village)
+    // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
+    // a spawn naming a village and Cobblemon structures comes in any of them
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
+    const fits = special.filter((sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
         && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near)));
     if (!fits.length && !naturalToo) return null;
     return { fits, pool: WORLD_SPAWNS.filter(allowed).concat(fits), base, at, tags, cast };
+}
+// Cobblemon's structures a spawn needs (StructureManager.getStructureWithPieceAt): the marked pieces' markers note where
+// each stands on a random tick (port.py's create_structures), kept by 512-block region of the overworld as [piece,
+// x, y, z]; a spot is in that structure within the piece's radius of the marker across, and from the marker's layer
+// (the piece's lowest) up its height
+const SITE_REGION = 512;
+const siteKey = (x, z) => `cobblemon:sites_${Math.floor(x / SITE_REGION)}_${Math.floor(z / SITE_REGION)}`;
+function structureSites(x, z) {
+    try { return JSON.parse(world.getDynamicProperty(siteKey(x, z)) ?? "[]"); } catch (e) { return []; }
+}
+function noteStructureSite(block) {
+    let index;
+    try { index = block.permutation.getState("cobblemon:piece_hi") * 16 + block.permutation.getState("cobblemon:piece_lo"); } catch (e) { return; }
+    const piece = STRUCTURE_PIECES[index];
+    if (!piece) return;
+    const { x, y, z } = block.location, sites = structureSites(x, z);
+    // the piece's other markers note it once
+    if (block.dimension.id === "minecraft:overworld" && !sites.some(([i, sx, sy, sz]) => i === index && Math.hypot(sx - x, sz - z) <= piece.r && Math.abs(sy - y) <= 1)) {
+        sites.push([index, x, y, z]);
+        world.setDynamicProperty(siteKey(x, z), JSON.stringify(sites));
+    }
+    // and the block the marker stands in for goes back
+    try { block.setPermutation(BlockPermutation.resolve(piece.b, piece.st)); } catch (e) { try { block.setType(piece.b); } catch (err) { } }
+}
+// whether a spot in the overworld is inside any of these structures
+function inStructure(location, ids) {
+    const { x, y, z } = location;
+    for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
+        for (const [i, sx, sy, sz] of structureSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
+            const piece = STRUCTURE_PIECES[i];
+            if (piece?.s.some((id) => ids.includes(id)) && Math.hypot(sx + 0.5 - x, sz + 0.5 - z) <= piece.r && y >= sy - 1 && y <= sy + piece.up + 1) return true;
+        }
+    }
+    return false;
 }
 // a bucket by Cobblemon's world bucket weights among those the pool has, then a spawn in it by weight
 function drawSpawn(pool, here) {
@@ -9124,7 +9180,7 @@ function specialSpawn(player) {
         const cx = Math.floor(spot.x / 16) * 16, cz = Math.floor(spot.z / 16) * 16;
         if (dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } }).length >= POKEMON_PER_AREA) return;
         spawnDrawn(dim, drawn, spot);
-        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
+        if (specialLog) console.warn(`[cobblemon] special spawn ${drawn.entity} at ${ground.x} ${ground.y} ${ground.z} (${pos}): ${drawn.near ? "near " + drawn.near.slice(0, 3).join(" ") : ""}${drawn.base ? " on " + base : ""}${drawn.village ? " in a village" : ""}${drawn.structures ? " in " + drawn.structures[0].split("/").pop() : ""} (${bucket}, ${fits.length} of ${pool.length} could come)`);
     } catch (e) { }
 }
 // SpawnPokemonFromPool: the spawner run once for the player's area, any spawn it draws coming, the natural ones too; up
@@ -10462,6 +10518,7 @@ function interactTool(player, target, id) {
         } else if (SHEARABLE.has(target.typeId)) {
             if (prop(target, SHEARED)) return false;
             setProp(target, SHEARED, true);
+            try { target.setProperty(SHEARED, true); } catch (e) { }
             const wool = `minecraft:${dyeOf(target) ?? "white"}_wool`;
             for (let n = 2 + Math.floor(Math.random() * 3); n > 0; n--) target.dimension.spawnItem(new ItemStack(wool, 1), target.location);
         } else return false;
@@ -10527,14 +10584,18 @@ function spreadRoot(block) {
 system.runInterval(() => {
     for (const dim of ["overworld", "nether", "the_end"]) {
         let list = [];
-        try { list = world.getDimension(dim).getEntities({ families: ["pokemon"] }).filter((e) => SHEARABLE.has(e.typeId) && prop(e, SHEARED)); } catch (e) { continue; }
+        try { list = world.getDimension(dim).getEntities({ families: ["pokemon"] }).filter((e) => SHEARABLE.has(e.typeId)); } catch (e) { continue; }
         for (const e of list) {
-            if (Math.random() >= 1 / 40) continue;
+            // the model hides its wool by the sheared aspect, kept as an entity property the client reads
+            const sheared = !!prop(e, SHEARED);
+            try { if (e.getProperty(SHEARED) !== sheared) e.setProperty(SHEARED, sheared); } catch (err) { }
+            if (!sheared || Math.random() >= 1 / 40) continue;
             let below;
             try { below = e.dimension.getBlock({ x: Math.floor(e.location.x), y: Math.floor(e.location.y) - 1, z: Math.floor(e.location.z) }); } catch (err) { continue; }
             if (below?.typeId !== "minecraft:grass_block") continue;
             try { below.setType("minecraft:dirt"); } catch (err) { }
             setProp(e, SHEARED, undefined);
+            try { e.setProperty(SHEARED, false); } catch (err) { }
         }
     }
 }, 20);
@@ -12205,7 +12266,10 @@ function registerCommands(registry) {
     add("levelup", "Raises a party Pokemon a level", [{ type: P.Integer, name: "slot" }], [{ type: P.PlayerSelector, name: "player" }], (origin, slot, players) => {
         const player = commandPlayer(origin, players), m = player && memberAt(player, slot);
         if (!m) return bad("No Pokemon in that slot");
-        later(() => { const lv = Math.min(100, (prop(m, LEVEL) ?? POKEMON[m.typeId].level) + 1); setProp(m, LEVEL, lv); setProp(m, EXP, expFor(POKEMON[m.typeId].expGroup, lv)); saveParty(player.id); player.sendMessage(`§a${nicknameOf(m) || POKEMON[m.typeId].name} grew to Lv ${lv}!`); });
+        // LevelUp: addExperienceWithPlayer with what the next level needs, so the party overlay's gain and level-up
+        // scroll, new moves and evolutions follow as from a Rare Candy
+        if ((prop(m, LEVEL) ?? POKEMON[m.typeId].level) >= 100) return bad("That Pokemon is already level 100");
+        later(() => { applyCandy(player, m, "level"); saveParty(player.id); });
         return ok("Levelled up");
     });
     // PcCommand: the PC screen anywhere
@@ -12573,6 +12637,9 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
             const m = gymMarker(block);
             if (m?.role === "spot") noteGymSite(m.trainer, block.dimension, block.location);
         }
+    });
+    blockComponentRegistry.registerCustomComponent("cobblemon:structure_site", {
+        onRandomTick({ block }) { noteStructureSite(block); }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:fossil_machine", {
         onPlayerInteract({ block, player }) { if (player) useMachine(block, player); }

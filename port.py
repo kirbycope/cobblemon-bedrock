@@ -2831,6 +2831,8 @@ def create_behavior_entities():
                                    # Slowpoke's tail segments grown back since it was sheared (slowpoke_tails.json's aspect
                                    # thresholds, set by the script), which its poser shows by regrown-tail-1 to 3
                                    **({"cobblemon:tail": {"type": "int", "range": [0, 3], "default": 3, "client_sync": True}} if pokemon.endswith("_slowpoke") else {}),
+                                   # Mareep's, Wooloo's and Dubwool's wool shorn (the sheared aspect their models hide it by)
+                                   **({"cobblemon:sheared": {"type": "bool", "default": False, "client_sync": True}} if pokemon.endswith(("_mareep", "_wooloo", "_dubwool")) else {}),
                                    # PokemonClientDelegate's send-out scale and the red of a Pokemon beamed into a ball
                                    "cobblemon:size": {"type": "float", "range": [0.0, 1.0], "default": 1.0, "client_sync": True},
                                    # Pokemon.scaleModifier, rolled between pokemonIntrinsicSizeMin and Max by the script
@@ -5838,6 +5840,15 @@ GYM_REPLACEABLE = STRUCTURE_REPLACEABLE + [f"minecraft:{n}" for n in (
 GYM_FOUNDATION = 6
 
 
+# blocks a structure marker never takes the place of: anything with a block entity, a shape of its own or a fluid
+SITE_SKIP = ("air", "void", "jigsaw", "water", "lava", "chest", "barrel", "sign", "slab", "stairs", "door", "fence", "wall", "pane", "glass",
+             "torch", "lantern", "carpet", "flower", "grass", "fern", "leaves", "vine", "kelp", "seagrass", "coral", "candle", "pot", "rail",
+             "button", "plate", "bars", "chain", "ladder", "snow", "spawner", "suspicious", "bed", "banner", "head", "skull", "anvil", "bell",
+             "campfire", "sapling", "mushroom", "dripleaf", "azalea", "lily", "cobweb", "scaffolding", "sculk", "amethyst_cluster",
+             "bud", "pointed", "lichen", "roots", "propagule", "sea_pickle", "shulker", "hopper", "furnace", "smoker", "dispenser", "dropper",
+             "lectern", "beehive", "bee_nest", "cauldron", "table", "stand", "stonecutter", "grindstone", "loom", "composter", "jukebox", "note_block")
+
+
 def structure_key(location):
     """'cobblemon:ruins/ancient_dais_ruins' -> 'ruins_ancient_dais_ruins', the flat name a Bedrock structure takes."""
     return re.sub(r"[^a-z0-9_]", "_", location.split(":", 1)[-1].lower())
@@ -5942,6 +5953,42 @@ def create_structures():
             os.makedirs(os.path.dirname(f"{behaviorPack}/loot_tables/{rel}"), exist_ok=True)
             with open(f"{behaviorPack}/loot_tables/{rel}", "w") as file: file.write(json.dumps(table, indent=2))
     placed, skipped = 0, []
+    # the structures a spawn needs carry markers on their lowest layer, near the middle, in place of its commonest
+    # plain block: a random tick of one notes where its structure stands (scripts/main.js, noteStructureSite), so the
+    # spawner can test a spawn's structures as Cobblemon's StructureManager does, and puts that block back
+    from nbt_to_mcstructure import bedrock_name, convert_states, read_nbt, Tag, INT, BYTE
+    need, sites, site_of = structures_spawns_need(), [], {}
+    full_block("cobblemon:structure_marker", {"*": "minecraft:block/stone"}, loot="loot_tables/empty.json",
+               states={"cobblemon:piece_hi": list(range(16)), "cobblemon:piece_lo": list(range(16))}, extra={"cobblemon:structure_site": {}})
+    def site_markers(source, index, count=4):
+        with open(source, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
+        sx, sy, sz = java["size"]
+        palette = java.get("palette", [])
+        layers = {}
+        # a start piece of water alone (the lush and magma coves', which Java grows the cove from) takes them in water
+        only_water = all(palette[b["state"]]["Name"] in ("minecraft:water", "minecraft:jigsaw") for b in java.get("blocks", []))
+        for b in java.get("blocks", []):
+            entry = palette[b["state"]]; java_name, props = entry["Name"], entry.get("Properties", {})
+            if only_water and java_name == "minecraft:water":
+                layers.setdefault(b["pos"][1], []).append((tuple(b["pos"]), java_name, {}, "water"))
+                continue
+            if not java_name.startswith("minecraft:") or any(t in java_name for t in SITE_SKIP): continue
+            name = bedrock_name(java_name, props)
+            if not name or name in invalid: continue
+            layers.setdefault(b["pos"][1], []).append((tuple(b["pos"]), java_name, props, name))
+        if not layers: return {}, None
+        y = min(layers)
+        key = lambda c: (c[1], json.dumps(c[2], sort_keys=True))
+        common = collections.Counter(key(c) for c in layers[y]).most_common(1)[0][0]
+        middle = lambda c: math.hypot(c[0][0] + 0.5 - sx / 2, c[0][2] + 0.5 - sz / 2)
+        spots = sorted((c for c in layers[y] if key(c) == common), key=middle)[:count]
+        _, java_name, props, name = spots[0]
+        plain = {} if name == "water" else {k: (bool(t.value) if t.kind == BYTE else t.value) for k, t in convert_states(java_name, name, props).items()}
+        marker = ("cobblemon:structure_marker", {"cobblemon:piece_hi": Tag(INT, index // 16), "cobblemon:piece_lo": Tag(INT, index % 16)})
+        # the structure's footprint from any marker whatever way it was turned: its half diagonal, and the marker's
+        # distance from the middle
+        info = {"b": name if ":" in name else f"minecraft:{name}", "st": plain, "r": round(math.hypot(sx, sz) / 2 + middle(spots[-1]), 1), "up": sy - y}
+        return {c[0]: marker for c in spots}, info
     for path in sorted(glob.glob(f"{worldgenMain}/structure/**/*.json", recursive=True)):
         with open(path, encoding="utf-8") as file: data = json.load(file)
         structure = "cobblemon:" + os.path.relpath(path, f"{worldgenMain}/structure").replace(os.sep, "/")[:-len(".json")]
@@ -5966,9 +6013,14 @@ def create_structures():
             if isinstance(processors, str):
                 processor_path = f"{worldgenMain}/processor_list/{processors.split(':', 1)[-1]}.json"
                 processors = json.load(open(processor_path, encoding="utf-8")) if os.path.exists(processor_path) else {}
+            overrides = None
+            if structure in need and piece not in site_of and len(sites) < 256:
+                overrides, info = site_markers(source, len(sites))
+                if info: site_of[piece] = len(sites); sites.append({**info, "s": []})
+            if piece in site_of and structure not in sites[site_of[piece]]["s"]: sites[site_of[piece]]["s"].append(structure)
             if not os.path.exists(f"{structuresBedrock}/{piece}.mcstructure"):
                 convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parse_processors((processors or {}).get("processors", [])),
-                        loot_path=structure_loot_path, loot_counts=structure_loot)
+                        loot_path=structure_loot_path, loot_counts=structure_loot, overrides=overrides)
             pieces.append((piece, element.get("weight", 1)))
         if not pieces: skipped.append(name); continue
         in_water = any(w in name for w in ("fishing_boat", "shipwreck", "deep_sea", "iceberg"))
@@ -5994,6 +6046,12 @@ def create_structures():
                                  "y": "query.heightmap(variable.worldx, variable.worldz)",
                                  "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=4))
         placed += 1
+    with open(f"{scriptsBedrock}/structure_sites.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: each marked structure piece, by the marker's piece_hi and piece_lo: the structures it\n"
+                   "// starts, the block the marker stands in for, and its reach from a marker (radius, height)\n")
+        file.write("export const STRUCTURE_PIECES = " + json.dumps(sites) + ";\n")
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("tile.cobblemon:structure_marker.name=Structure Marker\n")
+    print(f"  structure markers: {len(sites)} pieces of {len(need)} structures spawns need")
     formations = create_fossil_formations(convert, parse_processors, invalid, unmapped)
     print(f"Fossil formations: {formations}")
     if unmapped: print("Blocks with no Bedrock equivalent, placed as air:", ", ".join(f"{k} ({v})" for k, v in sorted(unmapped.items())))
@@ -7913,7 +7971,8 @@ def vanilla_biome_tags():
 def fishing_spawns():
     """Cobblemon's fishing spawns as the script tests them: a slime chunk (Feebas, the Goomy line), a village (Grimer and
     Muk in its water) and nearby blocks (Skrelp by kelp) among their conditions, which the script tests where the bobber
-    lands; those that need any other structure (the shipwreck coves) are left out, as the spawn rules leave them out."""
+    lands, and Cobblemon's own structures (the shipwreck coves), found by their markers (create_structures); those that
+    need a vanilla structure other than a village are left out, as the spawn rules leave them out."""
     spawns = []
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
@@ -7921,7 +7980,8 @@ def fishing_spawns():
             if spawn.get("spawnablePositionType") != "fishing": continue
             condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
             structures = set(condition.get("structures") or [])
-            if structures - {VILLAGE_STRUCTURE}: continue
+            own = structure_ids(structures - {VILLAGE_STRUCTURE})
+            if structures - {VILLAGE_STRUCTURE} and not own: continue
             near = bedrock_blocks(condition["neededNearbyBlocks"]) if condition.get("neededNearbyBlocks") else None
             if condition.get("neededNearbyBlocks") and not near: continue
             pokemon = pokemon_for_species_name(spawn.get("pokemon", ""))
@@ -7934,7 +7994,8 @@ def fishing_spawns():
             if not_biome: entry["notBiome"] = not_biome
             for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait", "isSlimeChunk"):
                 if key in condition: entry[key] = condition[key]
-            if structures: entry["fishVillage"] = True
+            if VILLAGE_STRUCTURE in structures: entry["fishVillage"] = True
+            if own: entry["fishStructures"] = sorted(own)
             if near: entry["fishNear"] = near
             spawns.append(entry)
     return spawns
@@ -8023,10 +8084,34 @@ def merged_spawn_conditions(spawn, presets):
     return cond, anti
 
 
+def structure_ids(refs):
+    """The Cobblemon worldgen structures a spawn condition's structures name, each tag (data/cobblemon/tags/worldgen/
+    structure) resolved; vanilla ones, and a tag Cobblemon does not define (#cobblemon:ruins/arch), give none."""
+    out = set()
+    for ref in refs:
+        if not ref.startswith("#"):
+            if ref.startswith("cobblemon:"): out.add(ref)
+            continue
+        ns, _, path = ref[1:].partition(":")
+        tag = f"{cobblemonRepo}/common/src/main/resources/data/{ns}/tags/worldgen/structure/{path}.json"
+        if ns != "cobblemon" or not os.path.exists(tag): continue
+        with open(tag, encoding="utf-8") as file: out |= structure_ids(json.load(file).get("values", []))
+    return out
+
+
+def structures_spawns_need():
+    """Every Cobblemon structure a world spawn names, which the structures mark so the spawner can find them."""
+    need = set()
+    for path in glob.glob(f"{cobblemonData}/spawn_pool_world/*.json"):
+        with open(path, encoding="utf-8") as file:
+            for spawn in json.load(file).get("spawns", []): need |= structure_ids((spawn.get("condition") or {}).get("structures") or [])
+    return need
+
+
 def special_spawns():
     """(world, special): the grounded spawns Bedrock's spawn rules carry, as the competition at a spot (bucket, weight and
-    conditions only), and those that need nearby blocks, a base block or a village, in snack_spawns' form with "near",
-    "base" (Bedrock block lists), "village" and "notVillage", "herd" for a herd's first member, whose spawn fills its
+    conditions only), and those that need nearby blocks, a base block, a village or one of Cobblemon's structures, in
+    snack_spawns' form with "near", "base" (Bedrock block lists), "village" and "notVillage", "structures" (any of them), "herd" for a herd's first member, whose spawn fills its
     herd as a natural one does. The water positions' spawns come too, each with its "pos", and with them the natural
     water spawns of the species the spawn rules keep only on land."""
     presets = {}
@@ -8057,7 +8142,10 @@ def special_spawns():
         if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or spawn.get("bucket") == "boss": return
         if cond.get("fluid") and not (pos in WATER_POSITIONS and cond["fluid"] in WATER_FLUIDS): return
         structures = set(cond.get("structures") or [])
-        if structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES: return
+        # Cobblemon's own ruins and coves are found by their markers (create_structures); a spawn that names only
+        # vanilla structures other than a village or mansion cannot be tested
+        own = structure_ids(structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+        if structures - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES and not own: return
         needs = cond.get("neededNearbyBlocks") or cond.get("neededBaseBlocks") or structures
         if not needs:
             # the natural pool, as spawn_condition carries it: a surface preset, or none
@@ -8080,6 +8168,7 @@ def special_spawns():
             if base: e["base"] = base
             if VILLAGE_STRUCTURE in structures: e["village"] = True
             if structures & MANSION_STRUCTURES: e["mansion"] = True
+            if own: e["structures"] = sorted(own)
             if VILLAGE_STRUCTURE in (anti.get("structures") or []): e["notVillage"] = True
             if spawn.get("type") == "pokemon-herd": e["herd"] = True
             if pos != "grounded": e["pos"] = pos
@@ -13510,8 +13599,9 @@ SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), 
                "reg": (172, 173), "unknown": (173, 174)}
 SCAN_TEXT = 174
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
-                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52), "sel": (52, 53), "slot": (53, 55), "ballx": (55, 59), "active": (59, 60), "lv": (60, 63)}
-PARTY_RECORD = 63   # "slot" (state and selection) and "ballx" (the ball and whether it is open) repeat fields whole, as a binding joins only two strings
+                "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52), "sel": (52, 53), "slot": (53, 55), "ballx": (55, 59), "active": (59, 60), "lv": (60, 63),
+                "scroll": (63, 64)}
+PARTY_RECORD = 64   # "slot" (state and selection) and "ballx" (the ball and whether it is open) repeat fields whole, as a binding joins only two strings
 
 
 def scan_code(n):
@@ -13746,6 +13836,20 @@ def create_party_hud():
     for note, first, second in (("nv", evo, None), ("nm", move, None), ("vm", move, evo), ("nn", None, None)):
         (shutil.copyfile(first, f"{party}/a{note}.png") if first else blank.save(f"{party}/a{note}.png"))
         (shutil.copyfile(second, f"{party}/b{note}.png") if second else blank.save(f"{party}/b{note}.png"))
+    # the level-up scroll over the portrait (party_slot_portrait_level_up, 17 by 43): fourteen steps, "a" to "n", each
+    # the window PartyOverlay blits at that step (growing up from the bottom, sliding up 4 a step, then shrinking off
+    # the top), "z" for none
+    scroll = Image.open(f"{guiMain}/party/party_slot_portrait_level_up.png").convert("RGBA")
+    for step in range(1, 15):
+        if step <= 4: size, at, v = step * 4, 17 - step * 4, 0
+        elif step <= 10: size, at, v = 17, 0, -1 + (step - 4) * 4
+        else: size, at, v = 20 - (step - 10) * 4, 0, 23 + (step - 10) * 4
+        frame = Image.new("RGBA", (17, 17), (0, 0, 0, 0))
+        for y in range(size):
+            if 0 <= at + y < 17 and 0 <= v + y < scroll.height:
+                for x in range(17): frame.putpixel((x, at + y), scroll.getpixel((x, v + y)))
+        frame.save(f"{party}/lu_{chr(96 + step)}.png")
+    blank.save(f"{party}/lu_z.png")
     # the bars, 18 steps tall, filled from the bottom: health in getDepletableRedGreen's colours, experience in Cobblemon's blue
     for step in range(19):
         ratio = step / 18
@@ -13826,6 +13930,8 @@ def create_party_hud():
                 picture("exp", slot, "exp", [1, 18], [49, 5]),
                 picture("ball", slot, "ballx", [9, 11], [43.5, 22], 3),
                 # the state icon over the portrait: sent out, ridden or on a shoulder
+                {"scroll": {"type": "image", "size": [17, 17], "offset": [24, 4], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                            "keep_ratio": False, "bindings": [from_data(f"('{T}/lu_' + {field(slot, 'scroll')})", "#texture")]}},
                 {"active": {"type": "image", "size": [12, 8.5], "offset": [8, 3], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
                             "keep_ratio": False, "bindings": [from_data(f"('{T}/si_' + {field(slot, 'active')})", "#texture")]}},
                 picture("held", slot, "held", [8, 8], [12, 14], 4),

@@ -1,41 +1,35 @@
 area,feature,cobblemon_source,port,status,comment
-README note,`animation_controllers/<id>.animation_co,"`bedrock/pokemon/posers`, the Kotlin models, `ClientMoLangFunctions.kt`, `PosableModel.kt`, `PokemonServerDelegate.updat",README,partial,not carried: Kotlin conditions on aspects
-README note,"`blocks/<berry>_bush.json`, `blocks/heal","`data/cobblemon/berries`, `models/block`, `textures/block`, `textures/berries`, `bedrock/berries`",README,partial,"not carried: the mulch's look on the soil, the growth time (random ticks stand in for it), and the machine's charge"
-README note,"`entities/npc_trainer.behavior.json`, `n","`npcs/standard.json`, `npc_presets/battler_test.json`, `npcs/sacchi.json`, `bedrock/npcs`",README,partial,"not carried: npc_presets parties, NPC battle AI and rewards"
-README note,"`items/<ball>.json`, `entities/<ball>.be","species `catchRate`, `weight`, `labels`; `bedrock/poke_balls` models, animations, variations; `textures/poke_balls`, `te",README,partial,not carried: the ancient balls' hops in place of shakes
-README note,"`scripts/main.js`, `scripts/data.js`: tu","species `moves`, `baseStats`, `catchRate`, `abilities`, `baseExperienceYield`, `experienceGroup`; Showdown `moves.js`, `",README,partial,"not carried: double battles, and the abilities and moves that act only beside an ally"
-README note,`spawn_rules/<id>.json`: where and how o,"`spawn_pool_world`, `spawning/best-spawner-config.json`",README,partial,"not carried: alphas (and their herds, bucket boss), herd weight multipliers, and entries for other properties (a Squawkabilly colour), which spawn as the species; a `region_bias` entry marks the Pokemon with its bias (see evolution)"
+README note,"`blocks/<berry>_bush.json`, `blocks/heal","`data/cobblemon/berries`, `models/block`, `textures/block`, `textures/berries`, `bedrock/berries`",README,partial,not carried: the machine's comparator signal
+README note,`spawn_rules/<id>.json`: where and how o,"`spawn_pool_world`, `spawning/best-spawner-config.json`",README,partial,"not carried: the multipliers on spawns Bedrock's own spawn rules make (they have no weight that changes with the time or the weather), and entries for properties the port has no look of its own for (Arbok's patterns), which spawn as the species; a `region_bias` entry marks the Pokemon with its bias (see evolution)"
 README note,"`structures/cobblemon/*.mcstructure`, `f","`data/cobblemon/structure`, `worldgen/structure`, `worldgen/structure_set`, `worldgen/template_pool`, `worldgen/processo",README,partial,"not carried: the ruins' suspicious sand and gravel finds (Bedrock gives nothing for a suspicious block placed from a structure, and the script's fossil finds only know the fossil formations), and a structure never grows past its start piece"
-README note,`structures/cobblemon/village_*_pokecent,"`structure/village_*/village_*_pokecenter.nbt`, `CobblemonStructures.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonT",README,partial,"not carried: a center inside the village's own street layout, and the Nurse's levels"
-README note,`trading/economy_trades/fisherman_trades,"`CobblemonTradeOffers.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonStructures.kt`",README,partial,not carried: the villages' berry farms and long path
-README note,battles between players,"`BattleConfigureGUI.kt`, `ChallengeManager.kt`, `BattleBuilder.pvp1v1`, `textures/gui/interact/request`, lang `cobblemon",README,partial,"not carried: Double, Triple, Multi and Royal Battles (the format arrows stay on Single)"
-README note,building blocks,"`blockstates`, `models/block`, `loot_table/blocks`",README,partial,"not carried: signs and hanging signs (Bedrock custom blocks cannot hold editable text), door hinges on the right, and apricorn and saccharine leaves drop themselves to shears or Silk Touch, sticks one time in fifty otherwise, and draw one side of each face so neighbours do not z-fight"
+README note,`structures/cobblemon/village_*_pokecent,"`structure/village_*/village_*_pokecenter.nbt`, `CobblemonStructures.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonT",README,partial,not carried: a center inside the village's own street layout
+README note,`trading/economy_trades/fisherman_trades,"`CobblemonTradeOffers.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonStructures.kt`",README,partial,"not carried: the villages' long path, a street piece Cobblemon adds to each village type's streets pool at weight 10, which only fits into a village's own street layout (Bedrock's villages take no new pieces; the berry farms and Pokemon Centers are placed beside them instead, see below)"
+README note,battles between players,"`BattleConfigureGUI.kt`, `ChallengeManager.kt`, `BattleBuilder.pvp1v1`, `textures/gui/interact/request`, lang `cobblemon",README,partial,"not carried: Multi and Royal Battles, which need four players (the arrows skip them)"
+README note,building blocks,"`blockstates`, `models/block`, `loot_table/blocks`",README,partial,"not carried: signs and hanging signs (Bedrock custom blocks cannot hold editable text), and apricorn and saccharine leaves drop themselves to shears or Silk Touch, sticks one time in fifty otherwise, and draw one side of each face so neighbours do not z-fight"
+README note,double battles,"`BattleTypes.kt`, `BattleOverlay.drawTile` (isCompact), `BattleTargetSelection.kt`, `MoveTarget.kt`, `NPCServerDelegate`",README,partial,"not carried: Multi and Royal Battles, which need four players"
 README note,evolution,"species `evolutions`, `LevelUpEvolution`, `FriendshipMutationCalculator`, `TimeRange.kt`",README,partial,"not carried: the evolutions that need a structure or an advancement (two of Vivillon's patterns), and Alolan Marowak's, whose volcanic biome only other mods add (blocks travelled and Gimmighoul's coins are in the species bars row) An evolution brings Evolution.evolve's side effects: the result's form (Grotle holding a sapling becomes that tree's Torterra, Rockruff at night Midnight Lycanroc; of two evolutions into one species the one asking more comes first), the moves it learns into a free slot (Torterra's Earthquake), a held item kept where consumeHeldItem is false, its drops (a Turtle Scute, a Shed Shell), and Nincada's Shedinja into the party if there is room and a Poke Ball to use"
-README note,fishing,"`data/cobblemon/pokerods`, `spawn_pool_world` (fishing spawns), `loot_table/fishing`, `recipe`; `PokeRodFishingBobberEnt",README,partial,"not carried: the fishing line, the bobber's animations, and the fishing spawns that need any other structure (the shipwreck coves)"
-README note,fossils,"`data/cobblemon/fossils`, `natural_materials`, `recipe`, `loot_table/fossils`, `structure/fossils`, `worldgen/configured",README,partial,"not carried: the multiblock's exact layout rules, the machine's animated screens (each shows its first frame), and natural materials that are Cobblemon items not ported here"
-README note,gyms,"`radical_gyms/`, `rct_trainers/`, CobbleFurnies 1.2 `assets/cobblefurnies`, Cobblemon Pokemon Badges 0.1.1",README,partial,"not carried: Pokemon this port has no model for (Groudon, Kyogre, Dialga, Zacian and others in the Elite Four's and Terry's teams, and Magearna in Clair's) are left out of those teams, and nine moves the battle does not know are dropped; Lorelei's double battle is fought as a single battle; the trainer AI does not switch out on its own; RCT's random loot is not given; and the League's villager is not placed"
+README note,fishing,"`data/cobblemon/pokerods`, `spawn_pool_world` (fishing spawns), `loot_table/fishing`, `recipe`; `PokeRodFishingBobberEnt",README,partial,not carried: the fishing line and the bobber's animations
+README note,gyms,"`radical_gyms/`, `rct_trainers/`, CobbleFurnies 1.2 `assets/cobblefurnies`, Cobblemon Pokemon Badges 0.1.1",README,partial,"not carried: Pokemon this port has no model for (Groudon, Kyogre, Dialga, Zacian and others in the Elite Four's and Terry's teams, and Magearna in Clair's) are left out of those teams; every move the teams use is in the battle's move table (port.py adds RCT's movesets to it, so Surging Strikes, Wicked Blow, Seed Flare and Chloroblast, the last costing its user half its maximum HP as Showdown's calcRecoilDamage does, are no longer dropped); the trainer switches out as RCTBattleAI.evalSwitch rates its bench (the leaving Pokemon's stat stages and status, the two's type matchups against the player's Pokemon, their health and the bench Pokemon's stats against the player's, each blurred by a normal spread and pushed up by the trainer's switch bias, 0.5), weighed with its moves and potions in one pick, the switch coming before any move"
 README note,held items on the model,"`HeldItemRenderer.kt`, `tags/item/held`, `PokemonEntity.offerHeldItem`, the models' locators",README,partial,"not carried: other vanilla items (held but not drawn), and the 3D look of block items"
-README note,items,"`models/item`, `textures/item`, `CobblemonItems.kt`, `mechanics/`, Showdown `items.js` behaviour",README,partial,"not carried: the held items that need terrain (the terrain seeds), items with 3D or animated models (the ones not made here), and Poke Puffs, which Cobblemon itself has switched off (its item registration is commented out)"
-README note,items and blocks that act,"`CobblemonBoatItem`, `CobblemonBoatEntity`, `LinkCableItem`, `TumblestoneItem`, `GrowableStoneBlock`, `FlowerPotBlock`, ",README,partial,"not carried: the paddles' rowing (they rest at the sides), and a pot already holding a vanilla flower is not told apart from an empty one, since a script cannot see a vanilla pot's plant"
-README note,lectern,"`LecternBlock.kt`, `LecternBlockMixin.java`, `LecternBlockEntityRenderer.kt`",README,partial,"not carried: the screen lighting up and the lectern giving light while someone reads it (the Pokedex form gives no close event to turn it off), and its constant redstone signal"
+README note,items,"`models/item`, `textures/item`, `CobblemonItems.kt`, `mechanics/`, Showdown `items.js` behaviour",README,partial,"not carried: items with 3D or animated models (the ones not made here), and Poke Puffs, which Cobblemon itself has switched off (its item registration is commented out)"
+README note,items and blocks that act,"`CobblemonBoatItem`, `CobblemonBoatEntity`, `LinkCableItem`, `TumblestoneItem`, `GrowableStoneBlock`, `FlowerPotBlock`, ",README,partial,"not carried: a pot already holding a vanilla flower is not told apart from an empty one, since a script cannot see a vanilla pot's plant"
 README note,model blocks,"`blockstates`, `models/block`",README,partial,"not carried: signs (see building blocks), and the display case's item (a block cannot draw an item; a custom entity draws a held item only on the armor stand's runtime identifier, which brings back gravity and the stand's own placement, so the item would not stay in the case)"
-README note,move effects,"`MoveInstruction.kt`, `ActionEffects.kt`, `ParticleStorm.kt`, `bedrock/particles/moves`",README,partial,"not carried: particles following a bone (a script places them at the feet, body or head), move_to_target walks"
-README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns that need any other structure (Cobblemon's ruins and shipwreck coves, the other vanilla structures), since the script API tells what structure a block is in only with the Beta APIs experiment, and lava's surface spawns"
-README note,ores and wild plants,"`world/feature`, `worldgen/placed_feature`, `loot_table`",README,partial,"not carried: Hearty Grains in the wild (they stand in water, which a Bedrock custom block cannot hold), the saccharine tree's bee nests and honey, and Cobblemon's advancements, which Bedrock add-ons cannot add"
-README note,party,"`PlayerPartyStore.kt`, `PartySendBinding.kt`, `SendOutPokemonPacket`, `PokemonState.kt`, `PokemonEntity.recallWithAnimat",README,partial,"not carried: the keybinds themselves (Bedrock lets a pack add no keys), throwing the ball by hand, and sending out onto water platforms"
-README note,party HUD,"`client/gui/PartyOverlay.kt`, `PokemonState.kt`, `textures/gui/party`, `textures/gui/ball`",README,partial,"not carried: the Pokemon models in the portrait windows, the level-up scroll"
+README note,move effects,"`MoveInstruction.kt`, `ActionEffects.kt`, `ParticleStorm.kt`, `bedrock/particles/moves`",README,partial,"not carried: particles following a bone (a script places them at the feet, body or head)"
+README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns that need a vanilla structure other than a village or mansion (a monument, swamp hut, igloo, shipwreck or desert well), since the script API tells what structure a block is in only with the Beta APIs experiment, those naming `#cobblemon:ruins/arch`, a tag Cobblemon does not define, and lava's surface spawns"
+README note,ores and wild plants,"`world/feature`, `worldgen/placed_feature`, `loot_table`",README,partial,"not carried: Cobblemon's advancements, which Bedrock add-ons cannot add"
+README note,party,"`PlayerPartyStore.kt`, `PartySendBinding.kt`, `SendOutPokemonPacket`, `PokemonState.kt`, `PokemonEntity.recallWithAnimat",README,partial,"not carried: the keybinds themselves (Bedrock lets a pack add no keys), the trainer's arm swinging as the ball is thrown (a script cannot play a player's swing), and the water platforms a Pokemon in battle stands on in water (PlatformType), which Cobblemon 1.8.2 ships as models with no textures (`textures/platforms` is not in its jar), so they draw as the missing texture there"
+README note,party HUD,"`client/gui/PartyOverlay.kt`, `PokemonState.kt`, `textures/gui/party`, `textures/gui/ball`",README,partial,not carried: the Pokemon models in the portrait windows
 README note,PC screen,"`client/gui/pc`, `textures/gui/pc`",README,partial,not carried: dragging
-README note,Poke Snack,"`PokeSnackBlock.kt`, `PokeSnackBlockEntity.kt`, `PokeSnackSpawnerFactory.kt`, `SpawningCondition.isPokeSnack`",README,partial,"not carried: candles, the snack's colour (Bedrock cannot tint a block or item from data), and its bait after it is broken (it drops a plain Poke Snack)"
+README note,Poke Snack,"`PokeSnackBlock.kt`, `PokeSnackBlockEntity.kt`, `PokeSnackSpawnerFactory.kt`, `SpawningCondition.isPokeSnack`",README,partial,not carried: the snack's colour (Bedrock cannot tint a block or item from data)
 README note,Pokedex screen,"`client/gui/pokedex`, `textures/gui/pokedex`",README,partial,not carried: the rotating model
-README note,Pokemon interactions,`data/cobblemon/pokemon_interactions`,README,partial,"not carried: Furfrou's trim script, and the Rotom form files An interaction for one form is kept to that form's variants (a Frost Rotom fills a bucket with powder snow, no other Rotom)"
 README note,Pokemon portraits,"`bedrock/pokemon/posers`, `PosableModel`, `drawProfilePokemon`, `TexturedModel`",README,partial,not carried: posed animation (portraits are still) and Cobblemon's PROFILE sprite overrides
 README note,riding,"species `riding.behaviours`, `riding.seats`; model `seat_*` locators; `ride_*` animations; vanilla `happy_ghast.json`",README,partial,not carried: the fliers' and swimmers' turning and pitch models (Bedrock steers them)
-README note,species bars,"`IntSpeciesFeature`, `StashHandler`, `BlocksTraveledRequirement`",README,partial,not carried: the netherite-coated Gholdengo
 README note,starter selection,"`client/gui/startselection`, `config/starter/StarterConfig.kt`",README,partial,not carried: the rotating model
 README note,Summary,"`client/gui/summary`, `textures/gui/summary`, lang `ability.*.desc` and `move.*.desc`",README,partial,"not carried: the ribbons' sources (Cobblemon's own code grants none, nor the Mini and Jumbo marks, which it defines but never awards)"
 README note,Summary,"`client/gui/summary`, `textures/gui/summary`, lang `ability.*.desc` and `move.*.desc`",README,partial,"not carried: the Pokemon model in the portrait (a still portrait stands in), and the Other page's arrows to a second page (no species has more than four bars) Cobblemon opens it with a key (M); here the Party item does, used while sneaking and looking straight up, for the selected Pokemon in its ball or out"
-README note,TM Machine screen,"`TMMachineScreen`, `TMMachineBlockEntity`, `StartButton`, `TMPartySlotWidget`, `ElementalTypes` colours",README,partial,"not carried: the spinning disc animation, and a comparator's reading of its progress"
-README note,trading,"`TradeGUI.kt`, `TradeManager.kt`, `ActiveTrade.kt`, `TradeEvolution.kt`, `InteractWheelGuiFactory.createPlayerInteractGu",README,partial,"not carried: spectating from the player wheel, and the trade's 3D models (the portraits are the rendered icons)"
+README note,TM Machine screen,"`TMMachineScreen`, `TMMachineBlockEntity`, `StartButton`, `TMPartySlotWidget`, `ElementalTypes` colours",README,partial,not carried: a comparator's reading of its progress
+README note,trading,"`TradeGUI.kt`, `TradeManager.kt`, `ActiveTrade.kt`, `TradeEvolution.kt`, `InteractWheelGuiFactory.createPlayerInteractGu",README,partial,not carried: the trade's 3D models (the portraits are the rendered icons)
+README note,triple battles,"`BattleTypes.kt`, `BattleShiftButton.kt`, `BattleMoveSelection.kt`, `BattleOverlay.drawTile`, Showdown `sim/pokemon.js` ",README,partial,"not carried: Multi and Royal Battles, which need four players"
 ability,Adaptability,showdown data/abilities.js,battle script,done,named in the battle script (heuristic)
 ability,Aerilate,showdown data/abilities.js,battle script,done,no species has it; named in the battle script (heuristic)
 ability,Aftermath,showdown data/abilities.js,battle script,done,named in the battle script (heuristic)
@@ -966,7 +960,7 @@ config,invertYaw,config/CobblemonConfig.kt,,n/a,no config screen; the port runs 
 config,lastSavedVersion,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,luckyEggMultiplier,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,maxDynamaxLevel,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
-config,maxHealerCharge,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
+config,maxHealerCharge,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,maximumSpawningZoneDistanceFromPlayer,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,maximumSpawnsPerPass,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,maxInsertedFossilItems,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
@@ -1001,7 +995,7 @@ config,pokeSnackPokemonPerChunk,config/CobblemonConfig.kt,named in the port,n/a,
 config,preventCompletePartyDeposit,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,rememberRidingCamera,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,savePokemonToWorld,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
-config,secondsToChargeHealingMachine,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
+config,secondsToChargeHealingMachine,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,shinyNoticeParticlesDistance,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,shinyRate,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,shoulderMountArmorOffsetBlacklist,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
@@ -1021,7 +1015,7 @@ config,typeGemMaxConnected,config/CobblemonConfig.kt,,n/a,no config screen; the 
 config,typeGemMinGrowth,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,typeGemTickChance,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,unlockAllMoveDexMovesByDefault,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
-config,walkingInBattleAnimations,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
+config,walkingInBattleAnimations,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,worldSpawningBlocklist,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,xAxisSensitivity,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,yAxisSensitivity,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
@@ -1802,6 +1796,7 @@ move,Barrier,showdown data/moves.js,MOVES.barrier,done,standard fields only
 move,Baton Pass,showdown data/moves.js,MOVES.batonpass,done,standard fields only
 move,Beak Blast,showdown data/moves.js,MOVES.beakblast,done,"its own code, named in the battle script (heuristic): condition, onAfterMove, priorityChargeCallback"
 move,Beat Up,showdown data/moves.js,MOVES.beatup,done,"its own code, named in the battle script (heuristic): basePowerCallback, onModifyMove"
+move,Behemoth Bash,showdown data/moves.js,MOVES.behemothbash,done,no species learns it; standard fields only
 move,Belch,showdown data/moves.js,MOVES.belch,done,"its own code, named in the battle script (heuristic): onDisableMove"
 move,Belly Drum,showdown data/moves.js,MOVES.bellydrum,done,"its own code, named in the battle script (heuristic): onHit"
 move,Bestow,showdown data/moves.js,MOVES.bestow,done,"its own code, named in the battle script (heuristic): onHit"
@@ -1847,6 +1842,7 @@ move,Chatter,showdown data/moves.js,MOVES.chatter,done,"its own code, named in t
 move,Chilling Water,showdown data/moves.js,MOVES.chillingwater,done,standard fields only
 move,Chilly Reception,showdown data/moves.js,MOVES.chillyreception,done,standard fields only
 move,Chip Away,showdown data/moves.js,MOVES.chipaway,done,standard fields only
+move,Chloroblast,showdown data/moves.js,MOVES.chloroblast,done,standard fields only
 move,Circle Throw,showdown data/moves.js,MOVES.circlethrow,done,standard fields only
 move,Clamp,showdown data/moves.js,MOVES.clamp,done,standard fields only
 move,Clanging Scales,showdown data/moves.js,MOVES.clangingscales,done,standard fields only
@@ -1896,6 +1892,7 @@ move,Dive,showdown data/moves.js,MOVES.dive,done,"its own code, named in the bat
 move,Dizzy Punch,showdown data/moves.js,MOVES.dizzypunch,done,standard fields only
 move,Doodle,showdown data/moves.js,MOVES.doodle,done,"its own code, named in the battle script (heuristic): onHit"
 move,Double Hit,showdown data/moves.js,MOVES.doublehit,done,standard fields only
+move,Double Iron Bash,showdown data/moves.js,MOVES.doubleironbash,done,standard fields only
 move,Double Kick,showdown data/moves.js,MOVES.doublekick,done,standard fields only
 move,Double Slap,showdown data/moves.js,MOVES.doubleslap,done,standard fields only
 move,Double Team,showdown data/moves.js,MOVES.doubleteam,done,standard fields only
@@ -1978,6 +1975,7 @@ move,Flare Blitz,showdown data/moves.js,MOVES.flareblitz,done,standard fields on
 move,Flash,showdown data/moves.js,MOVES.flash,done,standard fields only
 move,Flash Cannon,showdown data/moves.js,MOVES.flashcannon,done,standard fields only
 move,Flatter,showdown data/moves.js,MOVES.flatter,done,standard fields only
+move,Fleur Cannon,showdown data/moves.js,MOVES.fleurcannon,done,standard fields only
 move,Fling,showdown data/moves.js,MOVES.fling,done,"its own code, named in the battle script (heuristic): condition, onPrepareHit"
 move,Flip Turn,showdown data/moves.js,MOVES.flipturn,done,standard fields only
 move,Floral Healing,showdown data/moves.js,MOVES.floralhealing,done,"its own code, named in the battle script (heuristic): onHit"
@@ -2160,6 +2158,7 @@ move,Mud Shot,showdown data/moves.js,MOVES.mudshot,done,standard fields only
 move,Mud Sport,showdown data/moves.js,MOVES.mudsport,done,"its own code, named in the battle script (heuristic): condition, pseudoWeather"
 move,Mud-Slap,showdown data/moves.js,MOVES.mudslap,done,standard fields only
 move,Muddy Water,showdown data/moves.js,MOVES.muddywater,done,standard fields only
+move,Multi-Attack,showdown data/moves.js,MOVES.multiattack,done,"its own code, named in the battle script (heuristic): onModifyType"
 move,Mystical Fire,showdown data/moves.js,MOVES.mysticalfire,done,standard fields only
 move,Nasty Plot,showdown data/moves.js,MOVES.nastyplot,done,standard fields only
 move,Natural Gift,showdown data/moves.js,MOVES.naturalgift,done,"its own code, named in the battle script (heuristic): onModifyType, onPrepareHit"
@@ -2172,12 +2171,14 @@ move,Nightmare,showdown data/moves.js,MOVES.nightmare,done,"its own code, named 
 move,No Retreat,showdown data/moves.js,MOVES.noretreat,done,"its own code, named in the battle script (heuristic): condition, onTry, volatileStatus"
 move,Noble Roar,showdown data/moves.js,MOVES.nobleroar,done,standard fields only
 move,Nuzzle,showdown data/moves.js,MOVES.nuzzle,done,standard fields only
+move,Oblivion Wing,showdown data/moves.js,MOVES.oblivionwing,done,standard fields only
 move,Obstruct,showdown data/moves.js,MOVES.obstruct,done,"its own code, named in the battle script (heuristic): condition, onHit, onPrepareHit, stallingMove, volatileStatus"
 move,Octazooka,showdown data/moves.js,MOVES.octazooka,done,standard fields only
 move,Octolock,showdown data/moves.js,MOVES.octolock,done,"its own code, named in the battle script (heuristic): condition, onTryImmunity, volatileStatus"
 move,Odor Sleuth,showdown data/moves.js,MOVES.odorsleuth,done,"its own code, named in the battle script (heuristic): onTryHit, volatileStatus"
 move,Ominous Wind,showdown data/moves.js,MOVES.ominouswind,done,standard fields only
 move,Order Up,showdown data/moves.js,MOVES.orderup,done,"its raise needs a Commander Tatsugiri, a doubles pairing"
+move,Origin Pulse,showdown data/moves.js,MOVES.originpulse,done,standard fields only
 move,Outrage,showdown data/moves.js,MOVES.outrage,done,standard fields only
 move,Overdrive,showdown data/moves.js,MOVES.overdrive,done,standard fields only
 move,Overheat,showdown data/moves.js,MOVES.overheat,done,standard fields only
@@ -2215,6 +2216,7 @@ move,Power Trick,showdown data/moves.js,MOVES.powertrick,done,"its own code, nam
 move,Power Trip,showdown data/moves.js,MOVES.powertrip,done,"its own code, named in the battle script (heuristic): basePowerCallback"
 move,Power Whip,showdown data/moves.js,MOVES.powerwhip,done,standard fields only
 move,Power-Up Punch,showdown data/moves.js,MOVES.poweruppunch,done,standard fields only
+move,Precipice Blades,showdown data/moves.js,MOVES.precipiceblades,done,standard fields only
 move,Present,showdown data/moves.js,MOVES.present,done,"its own code, named in the battle script (heuristic): onModifyMove"
 move,Protect,showdown data/moves.js,MOVES.protect,done,"its own code, named in the battle script (heuristic): condition, onHit, onPrepareHit, stallingMove, volatileStatus"
 move,Psybeam,showdown data/moves.js,MOVES.psybeam,done,standard fields only
@@ -2259,6 +2261,7 @@ move,Reversal,showdown data/moves.js,MOVES.reversal,done,"its own code, named in
 move,Revival Blessing,showdown data/moves.js,MOVES.revivalblessing,done,"its own code, named in the battle script (heuristic): noSketch, slotCondition"
 move,Rising Voltage,showdown data/moves.js,MOVES.risingvoltage,done,"its own code, named in the battle script (heuristic): basePowerCallback"
 move,Roar,showdown data/moves.js,MOVES.roar,done,standard fields only
+move,Roar of Time,showdown data/moves.js,MOVES.roaroftime,done,standard fields only
 move,Rock Blast,showdown data/moves.js,MOVES.rockblast,done,standard fields only
 move,Rock Climb,showdown data/moves.js,MOVES.rockclimb,done,standard fields only
 move,Rock Polish,showdown data/moves.js,MOVES.rockpolish,done,standard fields only
@@ -2288,6 +2291,7 @@ move,Scratch,showdown data/moves.js,MOVES.scratch,done,standard fields only
 move,Screech,showdown data/moves.js,MOVES.screech,done,standard fields only
 move,Secret Power,showdown data/moves.js,MOVES.secretpower,done,"its own code, named in the battle script (heuristic): onModifyMove"
 move,Seed Bomb,showdown data/moves.js,MOVES.seedbomb,done,standard fields only
+move,Seed Flare,showdown data/moves.js,MOVES.seedflare,done,standard fields only
 move,Seismic Toss,showdown data/moves.js,MOVES.seismictoss,done,"its own code, named in the battle script (heuristic): damage"
 move,Self-Destruct,showdown data/moves.js,MOVES.selfdestruct,done,standard fields only
 move,Shadow Ball,showdown data/moves.js,MOVES.shadowball,done,standard fields only
@@ -2339,6 +2343,7 @@ move,Solar Blade,showdown data/moves.js,MOVES.solarblade,done,"its own code, nam
 move,Sonic Boom,showdown data/moves.js,MOVES.sonicboom,done,"its own code, named in the battle script (heuristic): damage"
 move,Spark,showdown data/moves.js,MOVES.spark,done,standard fields only
 move,Sparkling Aria,showdown data/moves.js,MOVES.sparklingaria,done,"its own code, named in the battle script (heuristic): onAfterMove"
+move,Spectral Thief,showdown data/moves.js,MOVES.spectralthief,done,standard fields only
 move,Speed Swap,showdown data/moves.js,MOVES.speedswap,done,"its own code, named in the battle script (heuristic): onHit"
 move,Spicy Extract,showdown data/moves.js,MOVES.spicyextract,done,standard fields only
 move,Spider Web,showdown data/moves.js,MOVES.spiderweb,done,standard fields only
@@ -2380,6 +2385,7 @@ move,Supercell Slam,showdown data/moves.js,MOVES.supercellslam,done,standard fie
 move,Superpower,showdown data/moves.js,MOVES.superpower,done,standard fields only
 move,Supersonic,showdown data/moves.js,MOVES.supersonic,done,standard fields only
 move,Surf,showdown data/moves.js,MOVES.surf,done,standard fields only
+move,Surging Strikes,showdown data/moves.js,MOVES.surgingstrikes,done,standard fields only
 move,Swagger,showdown data/moves.js,MOVES.swagger,done,standard fields only
 move,Swallow,showdown data/moves.js,MOVES.swallow,done,"its own code, named in the battle script (heuristic): onHit, onTry"
 move,Sweet Kiss,showdown data/moves.js,MOVES.sweetkiss,done,standard fields only
@@ -2461,6 +2467,7 @@ move,Wave Crash,showdown data/moves.js,MOVES.wavecrash,done,standard fields only
 move,Weather Ball,showdown data/moves.js,MOVES.weatherball,done,"its own code, named in the battle script (heuristic): onModifyMove, onModifyType"
 move,Whirlpool,showdown data/moves.js,MOVES.whirlpool,done,standard fields only
 move,Whirlwind,showdown data/moves.js,MOVES.whirlwind,done,standard fields only
+move,Wicked Blow,showdown data/moves.js,MOVES.wickedblow,done,standard fields only
 move,Wide Guard,showdown data/moves.js,MOVES.wideguard,done,"its own code, named in the battle script (heuristic): condition, onHitSide, onTry, sideCondition"
 move,Wild Charge,showdown data/moves.js,MOVES.wildcharge,done,standard fields only
 move,Will-O-Wisp,showdown data/moves.js,MOVES.willowisp,done,standard fields only
@@ -2485,7 +2492,6 @@ move,Ally Switch,showdown data/moves.js,MOVES.allyswitch,n/a,"acts on an ally or
 move,Aromatic Mist,showdown data/moves.js,MOVES.aromaticmist,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Astral Barrage,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Baddy Bad,showdown data/moves.js,,n/a,nonstandard
-move,Behemoth Bash,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Behemoth Blade,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Bitter Malice,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Black Hole Eclipse,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2502,7 +2508,6 @@ move,Buzzy Buzz,showdown data/moves.js,,n/a,nonstandard
 move,Catastropika,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Ceaseless Edge,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Celebrate,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Chloroblast,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Clangorous Soulblaze,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Coaching,showdown data/moves.js,MOVES.coaching,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Collision Course,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
@@ -2515,7 +2520,6 @@ move,Decorate,showdown data/moves.js,MOVES.decorate,n/a,"acts on an ally or on t
 move,Devastating Drake,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Diamond Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Doom Desire,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Double Iron Bash,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Double Shock,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Dragon Cheer,showdown data/moves.js,MOVES.dragoncheer,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Eerie Spell,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
@@ -2523,7 +2527,6 @@ move,Electro Drift,showdown data/moves.js,,n/a,"no species the port carries lear
 move,Esper Wing,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Extreme Evoboost,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Fiery Wrath,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Fleur Cannon,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Floaty Fall,showdown data/moves.js,,n/a,nonstandard
 move,Follow Me,showdown data/moves.js,MOVES.followme,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Freeze Shock,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
@@ -2635,20 +2638,16 @@ move,Mighty Cleave,showdown data/moves.js,,n/a,"no species the port carries lear
 move,Mind Blown,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Moongeist Beam,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Mountain Gale,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Multi-Attack,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Mystical Power,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Nature's Madness,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Never-Ending Nightmare,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Noxious Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Oblivion Wing,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Oceanic Operetta,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Origin Pulse,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Paleo Wave,showdown data/moves.js,,n/a,nonstandard
 move,Photon Geyser,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Pika Papow,showdown data/moves.js,,n/a,nonstandard
 move,Plasma Fists,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Power Shift,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Precipice Blades,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Prismatic Laser,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Psycho Boost,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Pulverizing Pancake,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2656,7 +2655,6 @@ move,Quash,showdown data/moves.js,MOVES.quash,n/a,"acts on an ally or on targeti
 move,Rage Powder,showdown data/moves.js,MOVES.ragepowder,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Relic Song,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Revelation Dance,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Roar of Time,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Ruination,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Sandsear Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Sappy Seed,showdown data/moves.js,,n/a,nonstandard
@@ -2664,7 +2662,6 @@ move,Savage Spin-Out,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Searing Shot,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Searing Sunraze Smash,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Secret Sword,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Seed Flare,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Shadow Bone,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Shadow Force,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Shadow Strike,showdown data/moves.js,,n/a,nonstandard
@@ -2677,7 +2674,6 @@ move,Snap Trap,showdown data/moves.js,,n/a,"no species the port carries learns i
 move,Soul-Stealing 7-Star Strike,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Spacial Rend,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Sparkly Swirl,showdown data/moves.js,,n/a,nonstandard
-move,Spectral Thief,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Splintered Stormshards,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Splishy Splash,showdown data/moves.js,,n/a,nonstandard
 move,Spotlight,showdown data/moves.js,MOVES.spotlight,n/a,"acts on an ally or on targeting, which single battles do not have"
@@ -2689,7 +2685,6 @@ move,Struggle,showdown data/moves.js,,n/a,"no species the port carries learns it
 move,Subzero Slammer,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Sunsteel Strike,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Supersonic Skystrike,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Surging Strikes,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Tachyon Cutter,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Take Heart,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Techno Blast,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
@@ -2704,7 +2699,6 @@ move,Twinkle Tackle,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,V-create,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Veevee Volley,showdown data/moves.js,,n/a,nonstandard
 move,Victory Dance,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Wicked Blow,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Wicked Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Wildbolt Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Zippy Zap,showdown data/moves.js,,n/a,nonstandard
@@ -2716,8 +2710,8 @@ screen,AbilitiesWidget,client/gui/pokedex/widgets,,done,"a part of the carried s
 screen,ArrowButton,client/gui/interact/wheel,,done,"a part of the carried screen (InteractWheelButton, InteractWheelGUI, InteractWheelGuiFactory), drawn by it"
 screen,ArrowButton,client/gui/startselection/widgets/preview,,done,the starter screen's arrows
 screen,BarSummarySpeciesFeatureRenderer,client/gui/summary/featurerenderers,"port.py, scripts, README",done,
-screen,BattleActionSelection,client/gui/battle/subscreen,,done,"a part of the carried screen (BattleGeneralActionSelection, BattleMoveSelection, BattleSwitchPokemonSelection), drawn by it"
-screen,BattleBackButton,client/gui/battle/subscreen,,done,"a part of the carried screen (BattleGeneralActionSelection, BattleMoveSelection, BattleSwitchPokemonSelection), drawn by it"
+screen,BattleActionSelection,client/gui/battle/subscreen,,done,"a part of the carried screen (BattleGeneralActionSelection, BattleMoveSelection, BattleShiftButton), drawn by it"
+screen,BattleBackButton,client/gui/battle/subscreen,,done,"a part of the carried screen (BattleGeneralActionSelection, BattleMoveSelection, BattleShiftButton), drawn by it"
 screen,BattleGeneralActionSelection,client/gui/battle/subscreen,"port.py, scripts, README",done,
 screen,BattleGUI,client/gui/battle,,done,"a part of the carried screen (BattleOverlay), drawn by it"
 screen,BattleMessagePane,client/gui/battle/widgets,"port.py, scripts, README",done,
@@ -2726,7 +2720,9 @@ screen,BattleOptionTile,client/gui/battle/widgets,port.py,done,
 screen,BattleOverlay,client/gui/battle,"port.py, scripts, README",done,
 screen,BattleRequestNavigationButton,client/gui/interact/battleRequest,port.py,done,
 screen,BattleResponseButton,client/gui/interact/battleRequest,,done,"a part of the carried screen (BattleConfigureGUI, BattleRequestNavigationButton), drawn by it"
+screen,BattleShiftButton,client/gui/battle/subscreen,"port.py, README",done,
 screen,BattleSwitchPokemonSelection,client/gui/battle/subscreen,"port.py, scripts, README",done,
+screen,BattleTargetSelection,client/gui/battle/subscreen,"port.py, scripts, README",done,
 screen,BatttleRequestButton,client/gui/interact/battleRequest,,done,"a part of the carried screen (BattleConfigureGUI, BattleRequestNavigationButton), drawn by it"
 screen,BoxNameWidget,client/gui/pc,,done,"a part of the carried screen (FilterWidget, IconButton, PCGUI), drawn by it"
 screen,BoxStorageSlot,client/gui/pc,,done,"a part of the carried screen (FilterWidget, IconButton, PCGUI), drawn by it"
@@ -2763,7 +2759,7 @@ screen,InfoWidget,client/gui/summary/widgets/screens/info,"port.py, scripts, REA
 screen,InteractTypePokemon,client/gui/interact/wheel,,done,"a part of the carried screen (InteractWheelButton, InteractWheelGUI, InteractWheelGuiFactory), drawn by it"
 screen,InteractWheelButton,client/gui/interact/wheel,"port.py, README",done,
 screen,InteractWheelGUI,client/gui/interact/wheel,"port.py, scripts, README",done,
-screen,InteractWheelGuiFactory,client/gui/interact/wheel,README,done,
+screen,InteractWheelGuiFactory,client/gui/interact/wheel,"scripts, README",done,
 screen,InteractWheelOption,client/gui/interact/wheel,,done,"a part of the carried screen (InteractWheelButton, InteractWheelGUI, InteractWheelGuiFactory), drawn by it"
 screen,MarkIcon,client/gui/common,,done,the marks' icons in the Summary
 screen,MarkingButton,client/gui/summary/widgets,port.py,done,
@@ -2845,8 +2841,6 @@ screen,VariableObjectSelectionScrollbar,client/gui/.,,done,"a part of the carrie
 screen,WallpapersScrollingWidget,client/gui/pc,"port.py, scripts, README",done,
 screen,BattleConfigureGUI,client/gui/interact/battleRequest,,n/a,a development or settings screen
 screen,BattleGimmickButton,client/gui/battle/subscreen,,n/a,"for Mega Evolution, Z-Moves, Dynamax and Terastallization, none of which battles here have"
-screen,BattleShiftButton,client/gui/battle/subscreen,,n/a,shifting is for triple battles
-screen,BattleTargetSelection,client/gui/battle/subscreen,,n/a,choosing a target is for double and triple battles
 screen,BehaviourEditorScreen,client/gui/behaviour,,n/a,a development or settings screen
 screen,BehaviourOptionsList,client/gui/behaviour,,n/a,a development or settings screen
 screen,CobblemonConfigButtonVariable,client/gui/config/variable,,n/a,a development or settings screen
