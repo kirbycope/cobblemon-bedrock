@@ -4821,6 +4821,23 @@ def boat_geometry(identifier, parts, height):
         "visible_bounds_width": 3, "visible_bounds_height": 2, "visible_bounds_offset": [0, 0.5, 0]}, "bones": bones}]}
 
 
+def write_boat_rowing():
+    """BoatModel.animatePaddle: each paddle's rowing time runs on by pi/8 a tick (450 degrees a second) while it rows,
+    and the paddle swings to xRot lerp(-60, -15, (sin(-t) + 1) / 2) and yRot lerp(-45, 45, (sin(-t + 1) + 1) / 2) degrees,
+    the right one's yRot turned round (pi - yRot). Bedrock's boat paddles in its own code, which a custom boat does not
+    get, so the boats row both paddles while they move with a rider (a controller holds the rest pose otherwise), as
+    the rotations boat_geometry's conversion turns into Bedrock's (x and y negated, the right paddle's yaw already pi)."""
+    x = "-(-60 + 45 * (math.sin(-query.anim_time * 450) + 1) / 2)"
+    y = "(-45 + 90 * (math.sin(-query.anim_time * 450 + 57.2958) + 1) / 2)"
+    with open(f"{animationsBedrock}/cobblemon_boat.animation.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.8.0", "animations": {"animation.cobblemon_boat.row": {"loop": True, "bones": {
+            "left_paddle": {"rotation": [x, f"-{y}", 0]}, "right_paddle": {"rotation": [x, y, 0]}}}}}, indent=2))
+    with open(f"{animationControllersBedrock}/cobblemon_boat.animation_controllers.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "animation_controllers": {"controller.animation.cobblemon_boat.row": {"initial_state": "rest", "states": {
+            "rest": {"transitions": [{"rowing": "query.has_rider && query.is_moving"}]},
+            "rowing": {"animations": ["row"], "transitions": [{"rest": "!query.has_rider || !query.is_moving"}]}}}}}, indent=2))
+
+
 def create_boats():
     """CobblemonBoatEntity and CobblemonChestBoatEntity: the apricorn and saccharine boats and chest boats, each an
     entity on Bedrock's own boat or chest boat (runtime_identifier, so it paddles, floats and carries two, or one and a
@@ -4855,8 +4872,11 @@ def create_boats():
                     file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
                         "identifier": f"cobblemon:{name}", "materials": {"default": "entity_alphatest"},
                         "textures": {"default": f"textures/entity/cobblemon_boat/{name}"},
-                        "geometry": {"default": f"geometry.cobblemon_{kind}"}, "render_controllers": ["controller.render.default"]}}}, indent=2))
+                        "geometry": {"default": f"geometry.cobblemon_{kind}"}, "render_controllers": ["controller.render.default"],
+                        "animations": {"row": "animation.cobblemon_boat.row", "rowing": "controller.animation.cobblemon_boat.row"},
+                        "scripts": {"animate": ["rowing"]}}}}, indent=2))
                 made += 1
+                write_boat_rowing()
                 # vanilla's own words for the boat's name and the hint to get out (resource_pack/texts/en_US.lang)
                 with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
                     file.write(f"entity.cobblemon:{name}.name={lang.get(f'item.cobblemon.{name}', name.replace('_', ' ').title())}" + chr(10))

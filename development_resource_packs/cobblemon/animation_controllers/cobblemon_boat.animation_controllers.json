@@ -1,0 +1,27 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.cobblemon_boat.row": {
+      "initial_state": "rest",
+      "states": {
+        "rest": {
+          "transitions": [
+            {
+              "rowing": "query.has_rider && query.is_moving"
+            }
+          ]
+        },
+        "rowing": {
+          "animations": [
+            "row"
+          ],
+          "transitions": [
+            {
+              "rest": "!query.has_rider || !query.is_moving"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
