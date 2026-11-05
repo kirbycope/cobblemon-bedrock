@@ -7049,6 +7049,12 @@ BERRY_WILD_SOIL = ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol"
                    "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium", "minecraft:sand", "minecraft:red_sand",
                    "minecraft:hardened_clay", "minecraft:stained_hardened_clay", "minecraft:snow"]
 BERRY_GROVE_CHUNKS = 25
+# cobblemon:berry_replaceable, what a wild bush takes the place of: air, ferns, tall grass, dead bushes, fire, snow
+# layers, vines, glow lichen, light blocks and leaves (not short grass or flowers)
+BERRY_REPLACEABLE = ["minecraft:air", "minecraft:fern", "minecraft:large_fern", "minecraft:tall_grass", "minecraft:deadbush", "minecraft:fire",
+                     "minecraft:soul_fire", "minecraft:snow_layer", "minecraft:vine", "minecraft:glow_lichen", "minecraft:light_block",
+                     "minecraft:structure_void"] + [f"minecraft:{w}" for w in ("oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves",
+                     "acacia_leaves", "dark_oak_leaves", "mangrove_leaves", "cherry_leaves", "pale_oak_leaves", "azalea_leaves", "azalea_leaves_flowered")]
 
 
 def create_berry_groves():
@@ -7079,8 +7085,7 @@ def create_berry_groves():
                     "places_block": {"name": bush, "states": {"cobblemon:stage": stage}},
                     "enforce_placement_rules": False, "enforce_survivability_rules": False,
                     "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": BERRY_WILD_SOIL},
-                    "may_replace": ["minecraft:air", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:large_fern",
-                                    "minecraft:snow_layer", "minecraft:deadbush", "minecraft:vine", "minecraft:glow_lichen"]}}, indent=2))
+                    "may_replace": BERRY_REPLACEABLE}}, indent=2))
         with open(f"{featuresBedrock}/berry_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {
                 "description": {"identifier": f"cobblemon:berry_{berry}"},
