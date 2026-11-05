@@ -1,6 +1,6 @@
 // Double battles: two Pokemon a side, a move at the chosen target (or the other foe when that one is down), spread moves
 // at three quarters of their damage, turn order across all four, and side conditions and end of turn for every Pokemon
-import { M, mon, move, check, flush } from "../harness.mjs";
+import { M, mon, move, check, flush, battle } from "../harness.mjs";
 
 function doubles(mine, theirs) {
     const log = [];
@@ -89,4 +89,29 @@ const lv = { level: 50 };
     b.choosing = "1";
     check("a double battle's screen titles carry |d and the slot choosing", M.battleTitle(b, "moves") === "cbm:battle_moves|d1");
     check("and a single battle's are the plain ones", M.battleTitle({ ...b, doubles: false }, "menu") === "cbm:battle_menu");
+}
+{
+    const gyarados = mon("Gyarados", { ...lv, ability: "intimidate" }), r0 = mon("Rattata", lv), r1 = mon("Rattata", lv);
+    const b = doubles([gyarados], [r0, r1]);
+    M.focus(b, gyarados); M.enter(b, gyarados, r0);
+    check("Intimidate lowers both foes' Attack", r0.stages.atk === -1 && r1.stages.atk === -1, `${r0.stages.atk} ${r1.stages.atk}`);
+}
+{
+    const helper = mon("Clefairy", lv), hitter = mon("Machamp", lv), t0 = mon("Snorlax", lv), t1 = mon("Snorlax", lv);
+    const plain = doubles([mon("Clefairy", lv), hitter], [t0, mon("Snorlax", lv)]);
+    fixedTurn(plain, [{ f: hitter, move: move("tackle"), target: 0 }]);
+    const alone = t0.stats.hp - t0.hp;
+    t0.hp = t0.stats.hp;
+    const b = doubles([helper, hitter], [t0, t1]);
+    fixedTurn(b, [{ f: helper, move: move("helpinghand"), target: 1, ally: true }, { f: hitter, move: move("tackle"), target: 0 }]);
+    const helped = t0.stats.hp - t0.hp;
+    check("Helping Hand goes first and powers up the partner's move by half", Math.abs(helped / alone - 1.5) < 0.12, `${helped} against ${alone}`);
+    const s = battle(mon("Clefairy", lv), mon("Rattata", lv));
+    M.useMove(s, s.ally, s.foe, move("aromaticmist"));
+    check("a partner move fails in a single battle rather than boosting the foe", !s.foe.stages.spd && s.log.some((l) => /But it failed/.test(l)));
+}
+{
+    const howler = mon("Growlithe", lv), partner = mon("Machamp", lv), b = doubles([howler, partner], [mon("Rattata", lv), mon("Rattata", lv)]);
+    fixedTurn(b, [{ f: howler, move: move("howl"), target: 0 }]);
+    check("Howl raises the user's and its partner's Attack", howler.stages.atk === 1 && partner.stages.atk === 1, `${howler.stages.atk} ${partner.stages.atk}`);
 }

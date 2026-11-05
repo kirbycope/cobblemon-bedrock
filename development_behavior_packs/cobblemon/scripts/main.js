@@ -387,6 +387,18 @@ const HAZARDS = { stealthrock: 1, spikes: 3, toxicspikes: 2, stickyweb: 1 };
 // the side and field moves, and the status moves that act on HP, stats or types outright: true when the move was one
 function fieldMove(battle, a, d, move) {
     const name = a.info.name, used = () => say(battle, `§e${name} used ${move.name}!`), fail = () => say(battle, "§7But it failed!");
+    // a move at the user's partner (Showdown's adjacentAlly target) needs one: it fails in a single battle
+    if (move.target === "adjacentAlly") {
+        used();
+        if (!battle.doubles || d === a || d.sideKey !== a.sideKey || d.hp <= 0) { fail(); return true; }
+        if (move.id === "helpinghand") { d.helped = battle.turn; say(battle, `§7${name} is ready to help ${d.info.name}!`); return true; }
+        if (move.id === "dragoncheer") {
+            if (d.cheered) { fail(); return true; }
+            d.cheered = d.info.types.includes("dragon") ? 2 : 1; say(battle, `§7${d.info.name} is getting pumped!`); return true;
+        }
+        if (move.boosts) { boost(battle, d, move.boosts, a); return true; }
+        return false;
+    }
     if (SIDE_MOVES[move.id]) {
         const side = sideOf(battle, a);
         used();
@@ -1586,8 +1598,9 @@ function moveFails(battle, a, d, move, firstAction) {
     if ((move.id === "suckerpunch" || move.id === "thunderclap") && !(waiting && chosen.category !== "Status")) return fail();
     if (move.id === "upperhand" && !(waiting && priorityOf(battle, d, chosen) > 0)) return fail();
     if (move.id === "dreameater" && d.status !== "slp" && d.ability !== "comatose") return fail(`${d.info.name} wasn't affected!`);
-    // a move for the user's ally (Coaching, Dragon Cheer, Helping Hand) has none to target in a single battle
-    if (move.target === "adjacentAlly") return fail();
+    // a move for the user's ally (Coaching, Dragon Cheer, Helping Hand) has none to target in a single battle, and in a
+    // double battle only its partner
+    if (move.target === "adjacentAlly" && !(battle.doubles && d !== a && d.sideKey === a.sideKey && d.hp > 0)) return fail();
     // Telekinesis: not on a Pokemon already lifted, rooted, or one Showdown names (Diglett, Dugtrio, Sandygast, Palossand)
     if (move.id === "telekinesis" && (d.telekinesis > 0 || d.ingrain || realBattle(battle).gravity > 0 || TELEKINESIS_IMMUNE.has(d.info.name.toLowerCase()))) return fail();
     // Sky Drop cannot lift a Pokemon of 200 kg or more
@@ -1861,7 +1874,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (side.reflect > 0 || side.lightscreen > 0 || side.auroraveil > 0) { delete side.reflect; delete side.lightscreen; delete side.auroraveil; say(battle, "§7The wall shattered!"); }
         }
         const noCrit = defAb === "shellarmor" || defAb === "battlearmor" || sideOf(battle, defender).luckychant > 0;
-        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0);
+        let critStage = Math.max(0, (move.critRatio ?? 1) - 1) + (atkAb === "superluck" ? 1 : 0) + (attacker.focusEnergy ? 2 : 0) + (attacker.cheered ?? 0);
         for (const [item, [who, n]] of Object.entries(CRIT_ITEMS)) if (holds(attacker, item, who)) critStage += n;
         // Showdown's multihit: each hit rolls its own critical hit and damage, a gem or a resist berry is used on the
         // first, Sturdy and Focus Sash hold only against the first, and what follows the hit (drain, recoil, the
@@ -1981,6 +1994,7 @@ function runMove(battle, attacker, defender, move, called = false) {
             if (item === "expert_belt" && eff > 1) dmg = Math.floor(dmg * 1.2);
             if ((item === "muscle_band" && physical) || (item === "wise_glasses" && !physical)) dmg = Math.floor(dmg * 1.1);
             if (battle.spread) dmg = Math.floor(dmg * 0.75);   // a move hitting more than one Pokemon (Showdown's spread modifier)
+            if (attacker.helped === battle.turn) dmg = Math.floor(dmg * 1.5);   // Helping Hand
             dmg = Math.max(1, Math.floor(dmg * (0.85 + Math.random() * 0.15)));
             if ((defAb === "disguise" && !defender.busted && !defender.transformed) || (defAb === "iceface" && physical && defender.form !== "noice_face" && !defender.transformed)) {
                 say(battle, h === 0 ? `§e${name} used ${move.name}!§r §7${defAb === "disguise" ? "Its disguise served it as a decoy!" : `${defender.info.name}'s Ice Face took the hit!`}` : "§7The hit was blocked!");
@@ -2535,12 +2549,13 @@ function entryAbility(battle, f, other) {
     if (f.ability === "unnerve" || f.ability === "asoneglastrier" || f.ability === "asonespectrier") says(`${other.info.name} is too nervous to eat Berries!`);
     if (f.ability === "slowstart") { f.slowStart = battle.turn + 5; says(`${name} can't get it going!`); }
     if (f.ability === "download") {
-        const def = other.stats.def * stage(other.stages.def), spd = other.stats.spd * stage(other.stages.spd);
+        const foes = opponentsOf(battle, f, other);
+        const def = foes.reduce((n, o) => n + o.stats.def * stage(o.stages.def), 0), spd = foes.reduce((n, o) => n + o.stats.spd * stage(o.stages.spd), 0);
         boost(battle, f, def < spd ? { atk: 1 } : { spa: 1 });
     }
     if (f.ability === "intrepidsword" && !f.swordDone) { f.swordDone = true; boost(battle, f, { atk: 1 }); }
     if (f.ability === "dauntlessshield" && !f.shieldDone) { f.shieldDone = true; boost(battle, f, { def: 1 }); }
-    if (f.ability === "supersweetsyrup" && !f.syrupDone) { f.syrupDone = true; says(`A supersweet aroma is wafting from ${name}!`); boost(battle, other, { evasion: -1 }, f); }
+    if (f.ability === "supersweetsyrup" && !f.syrupDone) { f.syrupDone = true; says(`A supersweet aroma is wafting from ${name}!`); for (const o of opponentsOf(battle, f, other)) boost(battle, o, { evasion: -1 }, f); }
     if (f.ability === "screencleaner") {
         const real = realBattle(battle);
         for (const side of Object.values(real.sides ?? {})) for (const k of ["reflect", "lightscreen", "auroraveil"]) delete side[k];
@@ -2555,7 +2570,7 @@ function entryAbility(battle, f, other) {
     if (f.ability === "imposter" && other.hp > 0) transform(battle, f, other, `${f.info.name} transformed into ${other.info.name}!`);
     // Zero to Hero: a Palafin that has switched out once this battle comes back in its Hero Form
     if (f.ability === "zerotohero" && realBattle(battle).heroes?.has(f.entity?.id)) changeForm(battle, f, "hero-form", `${f.info.name} underwent a heroic transformation!`);
-    if (f.ability === "frisk" && other.held) says(`${name} frisked ${other.info.name} and found its ${itemName(other.held)}!`);
+    if (f.ability === "frisk") for (const o of opponentsOf(battle, f, other)) if (o.held) says(`${name} frisked ${o.info.name} and found its ${itemName(o.held)}!`);
     if ((f.ability === "protosynthesis" || f.ability === "quarkdrive") && !paradoxStat(battle, f) && held(f) === "booster_energy") {
         useUp(battle, f, `§7${name} used its Booster Energy!`); f.boosterEnergy = true;
     }
@@ -2567,8 +2582,10 @@ function entryAbility(battle, f, other) {
     roomService(battle, f);
     if (f.ability === "intimidate") {
         say(battle, `§7${f.info.name}'s Intimidate!`);
-        if (INTIMIDATE_GUARD.has(other.ability)) say(battle, `§7${other.info.name}'s ${abilityName(other.ability)} prevents it!`);
-        else boost(battle, other, { atk: -1 }, f);
+        for (const o of opponentsOf(battle, f, other)) {
+            if (INTIMIDATE_GUARD.has(o.ability)) say(battle, `§7${o.info.name}'s ${abilityName(o.ability)} prevents it!`);
+            else boost(battle, o, { atk: -1 }, f);
+        }
     }
 }
 
@@ -3959,7 +3976,7 @@ function switchTo(battle, entity) {
     leaving.encore = null; leaving.disabled = null; leaving.rolling = null; leaving.bide = null; leaving.furyCutter = null; leaving.curled = false;
     leaving.bound = null; leaving.trappedBy = null; leaving.charged = false; leaving.protean = false; leaving.attracted = null; leaving.truant = false;
     leaving.acted = false; leaving.noRetreat = false; leaving.ingrain = false; leaving.aquaring = false; leaving.cursed = false; leaving.healBlock = 0;
-    leaving.stockpile = 0; leaving.embargo = 0;
+    leaving.stockpile = 0; leaving.embargo = 0; leaving.cheered = 0;
     for (const k of ["identified", "laserFocus", "lockOn", "magnetRise", "telekinesis", "nightmare", "octolock", "torment", "imprison", "grudge", "tarShot", "saltCure", "syrup", "throatChop", "raging"]) leaving[k] = null;
     if (leaving.ability === "zerotohero" && leaving.hp > 0) (realBattle(battle).heroes ??= new Set()).add(leaving.entity.id);
     if (leaving.blade) { leaving.blade = false; leaving.info = { ...leaving.info, stats: POKEMON[leaving.entity.typeId]?.stats ?? leaving.info.stats }; leaving.stats = { ...statsOf(leaving.entity, leaving.info, leaving.level), hp: leaving.stats.hp }; }
@@ -5531,6 +5548,23 @@ function startDoubleBattle(player, npc, team, trainer) {
         system.runTimeout(() => doubleTurn(battle), 20);
     }, 5);
 }
+// every standing Pokemon facing f, for the entry abilities that reach them all; one coming in is on the side battle.ally
+// was just pointed at, before its slot is set
+function opponentsOf(battle, f, other) {
+    if (!battle.doubles) return [other];
+    const key = f.sideKey ?? (f === battle.ally ? "a" : "b"), opp = battle.slots[otherSide(key)].filter(alive);
+    return opp.length ? opp : [other];
+}
+// Howl, Life Dew and Jungle Healing (Showdown's "allies" target): what they do for the user, done for its partner too
+function alliesEffect(battle, a, move) {
+    for (const p of livingIn(battle, a.sideKey).filter((f) => f !== a)) {
+        if (move.boosts) boost(battle, p, move.boosts, a);
+        if (move.id === "junglehealing" && p.status) { p.status = null; say(battle, `§a${p.info.name}'s status returned to normal!`); }
+        if ((move.heal || move.id === "junglehealing") && p.hp < p.stats.hp && !p.healBlock) {
+            p.hp = Math.min(p.stats.hp, p.hp + Math.round(p.stats.hp / 4)); syncHealth(p); say(battle, `§a${p.info.name} restored its HP.`);
+        }
+    }
+}
 function holdBattle(battle) { battles.set(battle.player.id, battle); return battle; }
 function faceAll(battle) {
     for (const f of allActives(battle)) {
@@ -5633,6 +5667,7 @@ function trainerPicks(battle) {
         const [target, slot] = mine[Math.floor(Math.random() * mine.length)];
         focusPair(battle, g, target);
         let move = forcedMove(g) ?? (battle.gym ? gymFoeAction(battle) : pickFoeMove(g));
+        if (move?.gymSwitch && !battle.picks.some((p) => p.to === move.to) && !battle.gym.party[move.to]?.out) { battle.picks.push({ f: g, kind: "trainerSwitch", to: move.to }); continue; }
         if (move?.gymSwitch || !move) move = pickFoeMove(g);
         battle.picks.push({ f: g, move, target: slot });
     }
@@ -5640,6 +5675,16 @@ function trainerPicks(battle) {
 function resolveDouble(battle) {
     battle.swap = null;
     for (const p of battle.picks.filter((p) => p.kind === "switch")) if (p.entity?.isValid && alive(p.f)) switchSlot(battle, p.f, p.entity);
+    // the trainer's switches, one after another (each new Pokemon takes a moment to come out), then the moves
+    const trainerSwitches = battle.picks.filter((p) => p.kind === "trainerSwitch");
+    const nextSwitch = (k) => {
+        if (!battles.has(battle.player.id)) return;
+        if (k >= trainerSwitches.length) { resolveMoves(battle); return; }
+        trainerIn(battle, trainerSwitches[k].f.slot, { swap: true, to: trainerSwitches[k].to }, () => nextSwitch(k + 1));
+    };
+    nextSwitch(0);
+}
+function resolveMoves(battle) {
     const moves = actionOrder(battle, battle.picks.filter((p) => p.move));
     for (const p of moves) p.f.chosenMove = p.move;
     battle.movedFirst = moves[0]?.f ?? null;
@@ -5663,6 +5708,7 @@ function resolveDouble(battle) {
                 useMove(battle, a, d, m, n > 0);
                 if (battle.swap && !swap) { swap = battle.swap; swapFrom = swap.drag ? d : a; }
             });
+            if (m.target === "allies" && battle.lastOutcome?.used && !battle.lastOutcome.missed) alliesEffect(battle, a, m);
         } finally { battle.spread = false; battle.swap = null; }
         if (!swap || !alive(swapFrom)) { step(i + 1); return; }
         afterFx(battle, () => pivotSlot(battle, swapFrom, swap, () => step(i + 1)));
@@ -5684,7 +5730,7 @@ function switchSlot(battle, leaving, entity) {
 function trainerIn(battle, slot, opts, then) {
     const g = battle.gym, bench = g.party.map((p, i) => [p, i]).filter(([p]) => !p.down && !p.out);
     if (!bench.length) { then(); return; }
-    const [next, index] = opts.random ? bench[Math.floor(Math.random() * bench.length)] : bench[0];
+    const [next, index] = (opts.to !== undefined && bench.find(([, i]) => i === opts.to)) || (opts.random ? bench[Math.floor(Math.random() * bench.length)] : bench[0]);
     const leaving = battle.slots.b[slot];
     if (opts.swap && leaving) {
         g.party[leaving.partyIndex].kept = { hp: leaving.hp, status: leaving.status, sleep: leaving.sleep, toxic: leaving.toxic, moves: leaving.moves };
