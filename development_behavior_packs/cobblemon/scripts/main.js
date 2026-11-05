@@ -2099,9 +2099,10 @@ function runMove(battle, attacker, defender, move, called = false) {
             const heal = Math.max(1, Math.floor((dealt * move.drain[0]) / move.drain[1] * (held(attacker) === "big_root" ? 1.3 : 1)));
             attacker.hp = Math.min(attacker.stats.hp, attacker.hp + heal); say(battle, `§a${name} drained ${heal} HP.`); syncHealth(attacker);
         }
-        if (move.recoil && atkAb !== "rockhead") {
+        // Chloroblast's recoil is half the user's maximum HP once it deals damage (Showdown's calcRecoilDamage)
+        if ((move.recoil || (move.id === "chloroblast" && dealt > 0)) && atkAb !== "rockhead") {
             const hpBefore = attacker.hp;
-            hurt(battle, attacker, (dealt * move.recoil[0]) / move.recoil[1], `${name} is damaged by recoil!`);
+            hurt(battle, attacker, move.recoil ? (dealt * move.recoil[0]) / move.recoil[1] : Math.round(attacker.stats.hp / 2), `${name} is damaged by recoil!`);
             if (attacker.hp > 0) countProgress(attacker, (p) => { p.recoil = (p.recoil ?? 0) + hpBefore - attacker.hp; });
         }
         if (dealt && held(attacker) === "shell_bell" && attacker.hp > 0 && attacker.hp < attacker.stats.hp) {
