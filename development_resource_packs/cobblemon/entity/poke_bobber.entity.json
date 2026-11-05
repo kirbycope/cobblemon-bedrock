@@ -61,8 +61,24 @@
         "poke_ball": "geometry.poke_ball",
         "ancient_poke_ball": "geometry.ancient_poke_ball"
       },
+      "animations": {
+        "spin": "animation.cobblemon_bobber.spin"
+      },
       "scripts": {
-        "scale": "0.5"
+        "scale": "0.5",
+        "initialize": [
+          "v.yaw = math.random(-180, 180);",
+          "v.pitch = math.random(-40, 40);",
+          "v.spin = 0;"
+        ],
+        "pre_animation": [
+          "v.age = q.life_time * 20;",
+          "v.spin = (v.age < 220 && !q.is_on_ground) ? math.mod(v.age * 20 / (1 + v.age / (q.is_in_water ? 15 : 100)), 360) : v.spin;",
+          "v.pitch = (q.is_in_water && !q.is_on_ground) ? math.lerp(v.pitch, 0, 0.04) : v.pitch;"
+        ],
+        "animate": [
+          "spin"
+        ]
       },
       "render_controllers": [
         "controller.render.poke_bobber"

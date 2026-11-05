@@ -30,14 +30,14 @@ import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
-import { MOVE_FX, FX_ANIMS, FX_PRIMARY } from "./move_fx.js";
+import { MOVE_FX, FX_ANIMS, FX_PRIMARY, FX_BONES } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { STRUCTURE_PIECES } from "./structure_sites.js";
-import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
+import { RODS, ROD_LINES, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF, FORTUNE } from "./silk.js";
 import { POTTED } from "./potted.js";
@@ -1047,6 +1047,12 @@ function fxEvent(e, user, target, move, outcome) {
         } else if (e.k === "s") {
             entity.dimension.playSound(fxFill(e.s, move), entity.location);
         } else if (e.k === "p") {
+            // a particle tied to a bone that moves (a hand, the mouth) the Pokemon's own animation emits at the bone, so
+            // it follows it, where its model has that locator (port.py's add_bone_particles)
+            if (!e.aim && FX_BONES?.[entity.typeId]?.includes(e.l)) {
+                entity.playAnimation(`animation.cobblemon_fx.${fxFill(e.p, move).split(":")[1]}.${e.l}`);
+                return;
+            }
             const other = (e.w === "t" ? user : target)?.entity, toward = other?.isValid ? other.location : undefined;
             const at = fxLocator(entity, e.l, toward);
             const vars = new MolangVariableMap();
@@ -3093,6 +3099,28 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 const POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"];
 const potColour = (id) => (id?.startsWith("cobblemon:campfire_") ? POT_COLOURS.find((c) => id === `cobblemon:campfire_${c}`) : undefined);
 const potKey = (block) => `cobblemon:pot|${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+// Direction.fromYRot: south at 0 degrees, west at 90, north at 180, east at 270; the item direction is its opposite
+const POT_STEPS = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+function potItemDirection(yaw) {
+    const faced = ["south", "west", "north", "east"][Math.floor(((((yaw + 45) % 360) + 360) % 360) / 90)];
+    return { south: "north", north: "south", east: "west", west: "east" }[faced];
+}
+// CampfireBlockEntity's remainder items (a milk recipe's bucket): into the container on the pot's item direction side, as
+// a hopper would put it in, else dropped 0.7 blocks out that way, drifting off at 0.05
+function potLeftover(block, item) {
+    const dir = world.getDynamicProperty(`${potKey(block)}|d`) ?? "north", [sx, sz] = POT_STEPS[dir] ?? [0, -1];
+    const { x, y, z } = block.location;
+    let left = new ItemStack(item, 1);
+    try {
+        const container = block.dimension.getBlock({ x: x + sx, y, z: z + sz })?.getComponent("minecraft:inventory")?.container;
+        if (container) left = container.addItem(left);
+    } catch (e) { }
+    if (!left) return;
+    try {
+        const dropped = block.dimension.spawnItem(left, { x: x + 0.5 + sx * 0.7, y: y + 0.5, z: z + 0.5 + sz * 0.7 });
+        dropped.clearVelocity(); dropped.applyImpulse({ x: sx * 0.05, y: 0, z: sz * 0.05 });
+    } catch (e) { }
+}
 function potData(block) {
     try { return JSON.parse(world.getDynamicProperty(potKey(block)) ?? "null") ?? { s: Array(13).fill(null), p: 0 }; } catch (e) { return { s: Array(13).fill(null), p: 0 }; }
 }
@@ -3143,6 +3171,9 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
             block.setPermutation(BlockPermutation.resolve(`cobblemon:campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
             savePot(block, null); potSite(block, true);
+            // CampfirePotItem: the pot's item direction points back at the player who set it (Direction.fromYRot(head
+            // yaw).opposite), the side its leftovers go to
+            world.setDynamicProperty(`${potKey(block)}|d`, potItemDirection(player.getRotation().y));
             consumeHand(player);
             playAt(block, "cobblemon.block.campfire_pot.set");
         });
@@ -3698,7 +3729,7 @@ system.runInterval(() => {
                 for (let n = 1; n <= 9; n++) {
                     const s = data.s[n];
                     if (!s) continue;
-                    if (REMAINDERS[s[0]]) try { block.dimension.spawnItem(new ItemStack(REMAINDERS[s[0]], 1), { x: x + 0.5, y: y + 1, z: z + 0.5 }); } catch (e) { }
+                    if (REMAINDERS[s[0]]) potLeftover(block, REMAINDERS[s[0]]);
                     data.s[n] = s[1] > 1 ? [s[0], s[1] - 1] : null;
                 }
                 savePot(block, data); showPotContents(block, data);
@@ -9357,6 +9388,38 @@ function castRod(player, item) {
 function endCast(cast) {
     fishing.delete(cast.player.id);
     try { if (cast.bobber.isValid) cast.bobber.remove(); } catch (e) { }
+    for (const segment of cast.line ?? []) try { if (segment.isValid) segment.remove(); } catch (e) { }
+}
+// PokeBobberEntityRenderer's line, as others see it: 16 segments from the bobber to the rod hand (0.35 to the side and
+// 0.8 ahead of the body, 0.45 under the eyes, the other hand when the rod is in the off hand), sagging as (t * t + t) / 2
+// of the drop, in the rod's colour
+const LINE_SEGMENTS = 16;
+function lineHand(player) {
+    const yaw = (player.getRotation().y * Math.PI) / 180, side = 0.35, head = player.getHeadLocation(), p = player.location;
+    return { x: p.x - Math.cos(yaw) * side - Math.sin(yaw) * 0.8, y: head.y - 0.45, z: p.z - Math.sin(yaw) * side + Math.cos(yaw) * 0.8 };
+}
+function linePoint(b, hand, t) {
+    const dx = hand.x - b.x, dy = hand.y - (b.y + 0.25), dz = hand.z - b.z;
+    return { x: b.x + dx * t, y: b.y + dy * (t * t + t) * 0.5 + 0.25, z: b.z + dz * t };
+}
+function drawLine(cast) {
+    const { player, bobber } = cast;
+    if (!cast.line) {
+        cast.line = [];
+        for (let n = 0; n < LINE_SEGMENTS; n++) {
+            try {
+                const segment = bobber.dimension.spawnEntity("cobblemon:fishing_line", bobber.location);
+                segment.setProperty("cobblemon:colour", ROD_LINES[cast.rod] ?? 0);
+                cast.line.push(segment);
+            } catch (e) { }
+        }
+    }
+    const b = bobber.location, hand = lineHand(player);
+    cast.line.forEach((segment, n) => {
+        if (!segment.isValid) return;
+        const a = linePoint(b, hand, n / LINE_SEGMENTS), c = linePoint(b, hand, (n + 1) / LINE_SEGMENTS);
+        drawBeam(segment, a, c, 0, 1);
+    });
 }
 
 function damageRod(player) {
@@ -9426,6 +9489,7 @@ system.runInterval(() => {
         if (!player.isValid || !bobber.isValid || held !== cast.rod || cast.age > 20 * 300) { endCast(cast); continue; }
         const b = bobber.location, p = player.location;
         if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) > 32) { endCast(cast); continue; }
+        drawLine(cast);
         if (cast.phase === "flying") { if (bobber.isInWater) { cast.phase = "waiting"; try { bobber.dimension.playSound("cobblemon.fishing.bobber_land", b); } catch (e) { } } else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
         if (cast.phase === "waiting") {
             cast.wait -= 1 + cast.lure;
@@ -13396,10 +13460,10 @@ world.afterEvents.projectileHitBlock.subscribe((event) => {
     dropBall(event.dimension, ballId, event.location, player);
 });
 
-// every ball entity and beam is the script's; none outlives a restart
+// every ball entity, beam, bobber and fishing line is the script's; none outlives a restart
 world.afterEvents.worldLoad?.subscribe?.(() => {
     for (const dim of ["overworld", "nether", "the_end"].map((d) => world.getDimension(d))) {
-        for (const type of ["cobblemon:capture_ball", "cobblemon:capture_ball_ancient", "cobblemon:beam"]) {
+        for (const type of ["cobblemon:capture_ball", "cobblemon:capture_ball_ancient", "cobblemon:beam", "cobblemon:poke_bobber", "cobblemon:fishing_line"]) {
             try { for (const e of dim.getEntities({ type })) e.remove(); } catch (e) { }
         }
     }
