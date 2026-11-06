@@ -7,6 +7,7 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus } from "@minecraft/server";
+import { BlockTypes } from "@minecraft/server";
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
@@ -46,6 +47,7 @@ import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
+import { DISPLAY_INDEX } from "./display_case.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
 
@@ -7378,7 +7380,37 @@ function pick(weighted) {
     return weighted[weighted.length - 1];
 }
 
+// the marked piece of Cobblemon's structures a spot is in, whose suspicious blocks roll its own loot tables (the ruins'
+// archaeology), or undefined; its markers within 24 blocks are noted first, since a random tick may not have yet
+function ruinPieceAt(dimension, location) {
+    if (dimension.id !== "minecraft:overworld") return undefined;
+    const find = () => {
+        const { x, y, z } = location;
+        for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
+            for (const [i, sx, sy, sz] of structureSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
+                const piece = STRUCTURE_PIECES[i];
+                if (piece?.t && Math.hypot(sx + 0.5 - x, sz + 0.5 - z) <= piece.r && y >= sy - 1 && y <= sy + piece.up + 1) return piece;
+            }
+        }
+    };
+    let piece = find();
+    if (piece) return piece;
+    try {
+        const { x, y, z } = location;
+        const near = dimension.getBlocks(new BlockVolume({ x: x - 24, y: y - 24, z: z - 24 }, { x: x + 24, y: y + 24, z: z + 24 }), { includeTypes: ["cobblemon:structure_marker"] }, false);
+        for (const at of near.getBlockLocationIterator()) noteStructureSite(dimension.getBlock(at));
+    } catch (e) { }
+    return find();
+}
 function brushLoot(dimension, location) {
+    // in a ruin, its own tables, each as likely as its share of the piece's suspicious blocks
+    const ruin = ruinPieceAt(dimension, location);
+    if (ruin) {
+        const entries = BRUSH_LOOT[pick(Object.entries(ruin.t))[0]];
+        if (!entries?.length) return undefined;
+        const [item, , least, most] = pick(entries);
+        return item ? new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1))) : undefined;
+    }
     let biome = "";
     try { biome = dimension.getBiome(location).id; } catch (e) { }
     const here = FORMATIONS.filter((f) => new RegExp(f.biomes).test(biome));
@@ -7387,7 +7419,7 @@ function brushLoot(dimension, location) {
     const entries = BRUSH_LOOT[table];
     if (!entries?.length) return undefined;
     const [item, , least, most] = pick(entries);
-    return new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1)));
+    return item ? new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1))) : undefined;
 }
 
 system.runInterval(() => {
@@ -9158,8 +9190,24 @@ const isWater = (b) => !!b && (b.typeId === "minecraft:water" || b.typeId === "m
 // the column has positions of it, as Cobblemon's selector weighs them; otherwise the ground. The spot to spawn at, the
 // block the position is (whose surroundings and base are checked), its type, and whether it sees the sky: water does
 // not hide it (canSeeSkyFromBelowWater), nor does it count for getTopmostBlock, which gives the block under it
+// A lava surface within 16 blocks up or down of the player (SurfaceSpawnablePositionCalculator with the lava preset:
+// lava under air) is the position "lava", where Slugma and Magcargo come
+const LAVA_REACH = 16;
+const isLava = (b) => !!b && (b.typeId === "minecraft:lava" || b.typeId === "minecraft:flowing_lava");
+function lavaSurface(dim, c) {
+    let above;
+    for (let y = c.y + LAVA_REACH; y >= c.y - LAVA_REACH; y--) {
+        let b;
+        try { b = dim.getBlock({ x: c.x, y, z: c.z }); } catch (e) { return; }
+        if (!b) return;
+        if (isLava(b) && above?.isAir) return { spot: { x: c.x + 0.5, y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos: "lava" };
+        above = b;
+    }
+}
 function spawnerSpot(dim, c) {
     let surface, floor, below;
+    const lava = lavaSurface(dim, c);
+    if (lava) return lava;
     try {
         const top = dim.getTopmostBlock({ x: c.x, z: c.z });
         if (!top) return;
@@ -9192,10 +9240,12 @@ function placeTest(dim, spot, ground, tags) {
     };
     let base;
     try { base = dim.getBlock(ground)?.typeId; } catch (e) { return undefined; }
-    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
+    // villages and Cobblemon's structures are recorded in the overworld only
+    const overworld = dim.id === "minecraft:overworld";
+    const village = overworld && pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
     // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
     // a spawn naming a village and Cobblemon structures comes in any of them
-    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, overworld && inStructure(spot, ids)); return inside.get(k); };
     // a vanilla structure (port.py's VANILLA_STRUCTURE_SIGNS): one of its biomes, and one of its own blocks within 6
     // across and 3 up or down
     const signs = new BlockVolume({ x: ground.x - 6, y: ground.y - 3, z: ground.z - 6 }, { x: ground.x + 6, y: ground.y + 3, z: ground.z + 6 });
@@ -9283,7 +9333,6 @@ function spawnDrawn(dim, drawn, spot) {
 }
 function specialSpawn(player) {
     const dim = player.dimension;
-    if (dim.id !== "minecraft:overworld") return;
     const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
     const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
     if (!where) return;
@@ -10270,6 +10319,75 @@ function plateCheck(block) {
     block.setPermutation(block.permutation.withState("cobblemon:powered", on));
     try { block.dimension.playSound(on ? "click_on.wooden_pressure_plate" : "click_off.wooden_pressure_plate", block.location); } catch (e) { }
 }
+
+// DisplayCaseBlockEntity.updateItem: the case holds one item. An empty hand takes it out, an item goes in (one of the
+// stack), and another item swaps with it (in Creative the hand keeps its item and gets nothing back); the same item
+// does nothing. A click on a side turns the item to face that side (DisplayCaseBlock.useWithoutItem). The item lives
+// in a cobblemon:display_case_item entity at the case's middle, which draws its icon (port.py's create_display_case)
+const DISPLAY_ITEM = "cobblemon:display_case_item";
+// the way the item's icon faces as a yaw: toward the side clicked, and at first toward whoever placed the case
+const FACE_YAW = { South: 0, West: 90, North: 180, East: -90 };
+const PLACED_YAW = { north: 0, east: 90, south: 180, west: -90 };
+function displayCaseItem(block) {
+    const at = { x: block.location.x + 0.5, y: block.location.y + 0.315, z: block.location.z + 0.5 };
+    try { return block.dimension.getEntities({ type: DISPLAY_ITEM, location: at, maxDistance: 0.3 })[0]; } catch (e) { return undefined; }
+}
+// getAnalogOutputSignal: 0 empty, 3 a Poke Ball, 2 a block (Cobblemon's placed items are blocks too), 1 anything else
+function displaySignal(id) {
+    if (!id) return 0;
+    if (BALLS[id]) return 3;
+    return BlockTypes.get(id) || BlockTypes.get(`${id}_block`) ? 2 : 1;
+}
+function setCaseItem(block, item, yaw) {
+    let holder = displayCaseItem(block);
+    if (item) {
+        if (!holder) {
+            holder = block.dimension.spawnEntity(DISPLAY_ITEM, { x: block.location.x + 0.5, y: block.location.y + 0.315, z: block.location.z + 0.5 });
+            if (yaw === undefined) { let dir = "north"; try { dir = block.permutation.getState("minecraft:cardinal_direction"); } catch (e) { } yaw = PLACED_YAW[dir] ?? 0; }
+        }
+        const one = item.clone(); one.amount = 1;
+        holder.getComponent(EntityComponentTypes.Inventory)?.container?.setItem(0, one);
+        try { holder.setProperty("cobblemon:display_index", DISPLAY_INDEX[item.typeId] ?? 0); } catch (e) { }
+        if (yaw !== undefined) holder.setRotation({ x: 0, y: yaw });
+        try { block.dimension.playSound("cobblemon.block.display_case.add_item", block.location); } catch (e) { }
+    } else if (holder) {
+        holder.remove();
+        try { block.dimension.playSound("cobblemon.block.display_case.remove_item", block.location); } catch (e) { }
+    }
+    setState(block, "cobblemon:signal", displaySignal(item?.typeId));
+}
+function useDisplayCase(block, player, face) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;
+    const hand = inv?.getItem(slot), holder = displayCaseItem(block);
+    const kept = holder?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(0);
+    const creative = player.getGameMode?.() === "Creative", yaw = FACE_YAW[face];
+    if (hand?.typeId === kept?.typeId && hand) return;
+    if (!hand && !kept) return;
+    if (!hand) {
+        if (!creative) inv.setItem(slot, kept);
+        setCaseItem(block, undefined);
+        return;
+    }
+    setCaseItem(block, hand, yaw);
+    if (creative) return;
+    if (hand.amount > 1) { hand.amount--; inv.setItem(slot, hand); } else inv.setItem(slot, undefined);
+    if (kept) { const left = inv.addItem(kept); if (left) player.dimension.spawnItem(left, player.location); }
+}
+// DisplayCaseBlock.onRemove: a case that is gone (broken, blown up, replaced) drops its item where it stood
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let holders = [];
+        try { holders = world.getDimension(dim).getEntities({ type: DISPLAY_ITEM }); } catch (e) { continue; }
+        for (const holder of holders) {
+            let block;
+            try { block = holder.dimension.getBlock(holder.location); } catch (e) { continue; }
+            if (!block || block.typeId === "cobblemon:display_case") continue;
+            const kept = holder.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(0);
+            if (kept) try { holder.dimension.spawnItem(kept, holder.location); } catch (e) { }
+            holder.remove();
+        }
+    }
+}, 10);
 
 // Model blocks: a stack of placed items grows when the same item is used on it (up to the blockstate's amounts),
 // a crop grows a stage on random ticks as Cobblemon's mints and grains do, and an open state toggles on a click
@@ -12665,6 +12783,7 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
+    blockComponentRegistry.registerCustomComponent("cobblemon:display_case", { onPlayerInteract({ block, player, face }) { if (player) useDisplayCase(block, player, face); } });
     // NutBushBlock: grows one random tick in eight where the light above is 9 or more, bone meal a stage; used fully
     // grown it gives one or two Galarica Nuts and goes back to age 1
     // SaccharineSaplingBlock: grows into one of the tree structures one random tick in seven where the light is 9 or

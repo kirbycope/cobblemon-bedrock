@@ -306,7 +306,7 @@ def sign(nbt):
 
 
 def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None, overrides=None, region=None,
-            foundation=0):
+            foundation=0, brush_counts=None):
     """Write one .mcstructure; returns the set of Bedrock names it uses. Unmapped Java names are counted into
     `unmapped` (a dict) when given; `processors` (from parse_processors) run over every block first, with a
     random seed fixed by the file name so a rebuild gives the same result. air_as_void leaves the world's own
@@ -317,7 +317,8 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
     and a fifth number keeps only that many layers from the bottom. foundation adds that many layers under the
     template, each column of its floor carried down in the floor's own block (stone bricks where the floor is a slab,
     stairs, glass or the like), so a building placed that much lower stands on a plinth where the ground falls away
-    rather than floating over a slope, as Java's terrain adaptation would have it."""
+    rather than floating over a slope, as Java's terrain adaptation would have it. brush_counts, a dict, counts the
+    suspicious blocks' loot tables alone."""
     invalid = load_invalid() if invalid is None else invalid
     with open(src, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
     sx, sy, sz = java["size"]
@@ -382,6 +383,7 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
         if loot and loot_path and key[0] in ("suspicious_sand", "suspicious_gravel"):
             position_data[str(index)] = brushable(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
+            if brush_counts is not None: brush_counts[loot_path(loot)] = brush_counts.get(loot_path(loot), 0) + 1
     if foundation:
         thin = ("_slab", "_stairs", "glass", "_pane", "fence", "door", "carpet", "torch", "sign", "button", "plate", "lantern",
                 "_wall", "bars", "chain", "ladder", "rail", "candle", "flower", "air",
