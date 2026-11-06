@@ -416,11 +416,12 @@ COMMAND_NA = {"AbandonMultiTeam": "multi battles (teams of players) are not carr
 def commands():
     for path in sorted(glob.glob(f"{KT}/command/*.kt")):
         cls = os.path.basename(path)[:-3]
-        if re.match(r"Test|Get|Run|Transform|Change(EyeHeight|ScaleAndSize|WalkSpeed)|BedrockParticle|BehaviourEdit|ApplyPlayerTexture|ReloadShowdown|ClickText|PokemonRestart", cls):
+        if re.match(r"Test|Get|Run|Transform|Change(EyeHeight|ScaleAndSize|WalkSpeed)|BedrockParticle|BehaviourEdit|ApplyPlayerTexture|ReloadShowdown|ClickText", cls):
             row("command", cls, "command/", "", "n/a", "a development command"); continue
         if cls in COMMAND_NA: row("command", cls, "command/", "", "n/a", COMMAND_NA[cls]); continue
         literals = [n.lower() for n in re.findall(r'(?:literal\(|NAME = )"([A-Za-z_]+)"', read(path))]
-        names = [n for n in literals if re.search(rf'add\("{n}"', battle_js)]   # registerCommands' add("name", ...)
+        # registerCommands' add("name", ...), or add(["name", "alias"], ...) with Cobblemon's aliases (main.js and rules.js)
+        names = [n for n in literals if re.search(rf'add\((?:"{n}"|\[[^\]]*"{n}"[^\]]*\])', battle_js)]
         if names: row("command", cls, "command/", ", ".join(f"/cobblemon:{n}" for n in names), "done", "a Bedrock custom command")
         else: row("command", cls, "command/", "", "missing", "")
 
