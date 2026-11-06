@@ -32,6 +32,37 @@
                 "Array.skin[query.variant]"
             ]
         },
+        "controller.render.vikavolt_transparency": {
+            "materials": [
+                {
+                    "*": "Material.default"
+                }
+            ],
+            "arrays": {
+                "textures": {
+                    "Array.transparency": [
+                        "Texture.transparency_0_0",
+                        "Texture.transparency_1_0"
+                    ]
+                },
+                "geometries": {
+                    "Array.geo": [
+                        "Geometry.g_vikavolt",
+                        "Geometry.g_vikavolt"
+                    ]
+                }
+            },
+            "textures": [
+                "Array.transparency[query.variant * 1]"
+            ],
+            "overlay_color": {
+                "r": 1.0,
+                "g": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "b": "q.property('cobblemon:red') > 0 ? 0.1 : 1.0",
+                "a": "math.max(q.property('cobblemon:red'), v.evo_glow ?? 0)"
+            },
+            "geometry": "Array.geo[query.variant]"
+        },
         "controller.render.vikavolt_held": {
             "materials": [
                 {

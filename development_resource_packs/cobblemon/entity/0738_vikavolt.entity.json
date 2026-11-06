@@ -14,7 +14,9 @@
                 "default": "textures/entity/0738_vikavolt/vikavolt",
                 "blank": "textures/entity/blank",
                 "v0": "textures/entity/0738_vikavolt/vikavolt",
+                "transparency_0_0": "textures/entity/0738_vikavolt/vikavolt_transparency__cut__vikavolt",
                 "v1": "textures/entity/0738_vikavolt/vikavolt_shiny",
+                "transparency_1_0": "textures/entity/0738_vikavolt/vikavolt_transparency__cut__vikavolt_shiny",
                 "held_1": "textures/items/ability_shield",
                 "held_2": "textures/items/absorb_bulb",
                 "held_3": "textures/items/aguav_berry",
@@ -474,20 +476,27 @@
             },
             "scripts": {
                 "initialize": [
-                    "v.clip_roll = math.random(0, 1);"
+                    "v.clip_roll = math.random(0, 1);",
+                    "v.primary_last = 0; v.primary_t = 0;"
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (((1) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4)) ? 3 : (0))));",
+                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && ((!(!q.is_on_ground && !q.is_in_water))))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (q.property('cobblemon:battle'))) ? 1 : (((v.pose_type == 1 || v.pose_type == 6) && ((!(!q.is_on_ground && !q.is_in_water) && q.is_on_ground))) ? 2 : (((v.pose_type == 3) && (!q.property('cobblemon:battle'))) ? 3 : (((v.pose_type == 3) && (q.property('cobblemon:battle'))) ? 4 : (((v.pose_type == 4)) ? 5 : (((v.pose_type == 0 || v.pose_type == 3) && (!q.property('cobblemon:battle') && ((q.has_rider && !q.is_on_ground)))) ? 6 : (((v.pose_type == 1 || v.pose_type == 4) && (!q.property('cobblemon:battle') && ((q.has_rider && !q.is_on_ground)))) ? 7 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (!q.is_on_ground))) ? 8 : (((v.pose_type == 2) && (!q.property('cobblemon:battle') && (q.is_on_ground))) ? 9 : (((v.pose_type == 2) && (q.property('cobblemon:battle'))) ? 10 : (0)))))))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
-                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;",
+                    "v.primary_t = q.property('cobblemon:primary') == v.primary_last ? v.primary_t + q.delta_time : 0;",
+                    "v.primary_last = q.property('cobblemon:primary');",
+                    "v.primary_len = (q.property('cobblemon:primary') == 1 ? 3.0 : (q.property('cobblemon:primary') == 2 ? 3.0 : (q.property('cobblemon:primary') == 3 ? 3.0 : (q.property('cobblemon:primary') == 4 ? 3.0 : 0)))); v.primary_fade = (q.property('cobblemon:primary') == 1 ? 0.3 : (q.property('cobblemon:primary') == 2 ? 0.3 : (q.property('cobblemon:primary') == 3 ? 0.3 : (q.property('cobblemon:primary') == 4 ? 0.3 : 0))));",
+                    "v.primary = q.property('cobblemon:primary') > 0 && v.primary_t < v.primary_len;",
+                    "v.primary_w = v.primary ? math.clamp(math.min(v.primary_t, v.primary_len - v.primary_t) / v.primary_fade, 0, 1) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
                     {
                         "evolution": "q.property('cobblemon:evolving')"
-                    }
+                    },
+                    "primary_controller"
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
@@ -495,20 +504,43 @@
                 "pose": "controller.animation.vikavolt.pose",
                 "blink_quirk": "controller.animation.vikavolt.blink",
                 "look_at_target": "animation.0738_vikavolt.look",
-                "ground_idle": "animation.vikavolt.ground_idle",
                 "ground_walk": "animation.vikavolt.ground_walk",
+                "ground_idle": "animation.vikavolt.ground_idle",
                 "air_idle": "animation.vikavolt.air_idle",
                 "air_fly": "animation.vikavolt.air_fly",
+                "ride_air_fly": "animation.vikavolt.ride_air_fly",
+                "battle_idle": "animation.vikavolt.battle_idle",
+                "battle_idle_air": "animation.vikavolt.battle_idle_air",
+                "physical": "animation.vikavolt.physical",
+                "special": "animation.vikavolt.special",
+                "status": "animation.vikavolt.status",
+                "battle_cry": "animation.vikavolt.battle_cry",
+                "sleep": "animation.vikavolt.sleep",
+                "air_sleep": "animation.vikavolt.air_sleep",
+                "battle_sleep": "animation.vikavolt.battle_sleep",
                 "blink": "animation.vikavolt.blink",
-                "air_transition": "animation.vikavolt.air_transition",
+                "cry": "animation.vikavolt.cry",
+                "air_cry": "animation.vikavolt.air_cry",
+                "recoil": "animation.vikavolt.recoil",
+                "air_recoil": "animation.vikavolt.air_recoil",
                 "ditto_face": "animation.vikavolt.ditto_face",
-                "hold_item": "animation.vikavolt.hold_item",
+                "air_transition": "animation.vikavolt.air_transition",
+                "ground_transition": "animation.vikavolt.ground_transition",
+                "elytra_opening": "animation.vikavolt.elytra_opening",
                 "pose_hover": "animation.0738_vikavolt.pose_hover",
+                "pose_battle_hover": "animation.0738_vikavolt.pose_battle_hover",
                 "pose_fly": "animation.0738_vikavolt.pose_fly",
-                "evolution": "animation.0738_vikavolt.evolution"
+                "pose_mount_fly": "animation.0738_vikavolt.pose_mount_fly",
+                "evolution": "animation.0738_vikavolt.evolution",
+                "primary_1": "animation.vikavolt.battle_cry",
+                "primary_2": "animation.vikavolt.physical",
+                "primary_3": "animation.vikavolt.special",
+                "primary_4": "animation.vikavolt.status",
+                "primary_controller": "controller.animation.vikavolt.primary"
             },
             "render_controllers": [
                 "controller.render.vikavolt",
+                "controller.render.vikavolt_transparency",
                 {
                     "controller.render.vikavolt_held": "q.property('cobblemon:held_index') > 0"
                 },
@@ -518,6 +550,9 @@
             ],
             "spawn_egg": {
                 "texture": "0738_vikavolt_spawn_egg"
+            },
+            "sound_effects": {
+                "pokemon.vikavolt.cry": "cobblemon.vikavolt.cry"
             },
             "particle_effects": {
                 "evo": "cobblemon:evo_particles",

@@ -4,6 +4,25 @@
         "controller.animation.marshtomp.pose": {
             "initial_state": "spawn",
             "states": {
+                "battle_standing": {
+                    "animations": [
+                        {
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "standing": {
                     "animations": [
                         {
@@ -15,7 +34,10 @@
                     ],
                     "transitions": [
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -31,7 +53,10 @@
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
                         }
                     ],
                     "blend_transition": 0.5
@@ -39,10 +64,13 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "walking": "v.pose == 1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
                         }
                     ]
                 }

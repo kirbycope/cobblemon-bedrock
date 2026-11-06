@@ -478,12 +478,13 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (((1) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
-                    "v.pose = ((v.pose_type == 0) && (!q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4)) ? 3 : (0))));",
+                    "v.pose = ((v.pose_type == 0)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (((v.pose_type == 3)) ? 2 : (((v.pose_type == 4) && ((!0))) ? 3 : (((v.pose_type == 2)) ? 4 : (((v.pose_type == 4) && ((0))) ? 5 : (0))))));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
                 "animate": [
                     "pose",
+                    "blink_quirk",
                     {
                         "evolution": "q.property('cobblemon:evolving')"
                     }
@@ -492,19 +493,28 @@
             },
             "animations": {
                 "pose": "controller.animation.fearow.pose",
+                "blink_quirk": "controller.animation.fearow.blink",
                 "look_at_target": "animation.0022_fearow.look",
                 "ground_idle": "animation.fearow.ground_idle",
                 "cry": "animation.fearow.cry",
+                "ground_walk": "animation.fearow.ground_walk",
+                "ride_ground_walk": "animation.fearow.ride_ground_walk",
                 "air_idle": "animation.fearow.air_idle",
+                "air_fly": "animation.fearow.air_fly",
+                "ride_air_fly": "animation.fearow.ride_air_fly",
+                "air_glide": "animation.fearow.air_glide",
+                "ride_dive": "animation.fearow.ride_dive",
+                "sleep": "animation.fearow.sleep",
                 "new": "animation.fearow.new",
                 "unamused": "animation.fearow.unamused",
                 "sad": "animation.fearow.sad",
                 "happy": "animation.fearow.happy",
-                "hurt": "animation.fearow.hurt",
+                "blink": "animation.fearow.blink",
                 "pose_standing": "animation.0022_fearow.pose_standing",
                 "pose_walking": "animation.0022_fearow.pose_walking",
                 "pose_hover": "animation.0022_fearow.pose_hover",
                 "pose_fly": "animation.0022_fearow.pose_fly",
+                "pose_glide": "animation.0022_fearow.pose_glide",
                 "evolution": "animation.0022_fearow.evolution"
             },
             "render_controllers": [
@@ -520,7 +530,8 @@
                 "texture": "0022_fearow_spawn_egg"
             },
             "sound_effects": {
-                "pokemon.fearow.cry": "cobblemon.fearow.cry"
+                "pokemon.fearow.cry": "cobblemon.fearow.cry",
+                "animation.plumage.wing_flap.medium": "cobblemon.animation.plumage.wing_flap.medium"
             },
             "particle_effects": {
                 "evo": "cobblemon:evo_particles",

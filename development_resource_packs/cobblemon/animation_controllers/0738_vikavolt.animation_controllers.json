@@ -12,13 +12,74 @@
                     ],
                     "transitions": [
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "hover": "v.pose == 2"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "fly": "v.pose == 3"
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_standing": {
+                    "animations": [
+                        {
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
                         }
                     ],
                     "blend_transition": 0.5
@@ -34,10 +95,31 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "hover": "v.pose == 2"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "fly": "v.pose == 3"
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
                         }
                     ],
                     "blend_transition": 0.5
@@ -48,9 +130,6 @@
                             "air_idle": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "hold_item": "(q.property('cobblemon:holding')) * (1 - (v.primary_w ?? 0))"
-                        },
-                        {
                             "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
@@ -59,10 +138,74 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "fly": "v.pose == 3"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_hover": {
+                    "animations": [
+                        {
+                            "battle_idle_air": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_battle_hover": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
                         }
                     ],
                     "blend_transition": 0.5
@@ -73,9 +216,6 @@
                             "air_fly": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "hold_item": "(q.property('cobblemon:holding')) * (1 - (v.primary_w ?? 0))"
-                        },
-                        {
                             "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
@@ -84,10 +224,240 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "hover": "v.pose == 2"
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_hover": {
+                    "animations": [
+                        {
+                            "air_idle": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "ride_air_fly": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "mount_fly": {
+                    "animations": [
+                        {
+                            "air_fly": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "ride_air_fly": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_mount_fly": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "air_sleep": {
+                    "animations": [
+                        {
+                            "air_sleep": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "sleep": {
+                    "animations": [
+                        {
+                            "sleep": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
+                "battle_sleep": {
+                    "animations": [
+                        {
+                            "battle_sleep": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 0"
+                        },
+                        {
+                            "battle_standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        },
+                        {
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
                         }
                     ],
                     "blend_transition": 0.5
@@ -98,13 +468,34 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 1"
                         },
                         {
-                            "hover": "v.pose == 2"
+                            "walking": "v.pose == 2"
                         },
                         {
-                            "fly": "v.pose == 3"
+                            "hover": "v.pose == 3"
+                        },
+                        {
+                            "battle_hover": "v.pose == 4"
+                        },
+                        {
+                            "fly": "v.pose == 5"
+                        },
+                        {
+                            "mount_hover": "v.pose == 6"
+                        },
+                        {
+                            "mount_fly": "v.pose == 7"
+                        },
+                        {
+                            "air_sleep": "v.pose == 8"
+                        },
+                        {
+                            "sleep": "v.pose == 9"
+                        },
+                        {
+                            "battle_sleep": "v.pose == 10"
                         }
                     ]
                 }
@@ -127,6 +518,111 @@
                     "transitions": [
                         {
                             "open": "q.all_animations_finished || q.is_sleeping"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.vikavolt.primary": {
+            "initial_state": "off",
+            "states": {
+                "off": {
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        }
+                    ]
+                },
+                "clip_1": {
+                    "animations": [
+                        {
+                            "primary_1": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_2": {
+                    "animations": [
+                        {
+                            "primary_2": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_3": {
+                    "animations": [
+                        {
+                            "primary_3": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_4": {
+                    "animations": [
+                        {
+                            "primary_4": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "off": "!v.primary"
                         }
                     ]
                 }

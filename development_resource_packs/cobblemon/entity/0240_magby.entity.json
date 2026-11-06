@@ -474,38 +474,67 @@
             },
             "scripts": {
                 "initialize": [
-                    "v.clip_roll = math.random(0, 1);"
+                    "v.clip_roll = math.random(0, 1);",
+                    "v.primary_last = 0; v.primary_t = 0;"
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (((0) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle') && !q.is_in_water)) ? 0 : (((v.pose_type == 0 || v.pose_type == 5) && (!q.property('cobblemon:battle') && !q.is_in_water)) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (0)));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
-                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
+                    "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;",
+                    "v.primary_t = q.property('cobblemon:primary') == v.primary_last ? v.primary_t + q.delta_time : 0;",
+                    "v.primary_last = q.property('cobblemon:primary');",
+                    "v.primary_len = (q.property('cobblemon:primary') == 1 ? 3.0 : (q.property('cobblemon:primary') == 2 ? 9999 : (q.property('cobblemon:primary') == 3 ? 3.0 : (q.property('cobblemon:primary') == 4 ? 3.0 : (q.property('cobblemon:primary') == 5 ? 3.0 : 0))))); v.primary_fade = (q.property('cobblemon:primary') == 1 ? 0.3 : (q.property('cobblemon:primary') == 2 ? 0.3 : (q.property('cobblemon:primary') == 3 ? 0.3 : (q.property('cobblemon:primary') == 4 ? 0.3 : (q.property('cobblemon:primary') == 5 ? 0.3 : 0)))));",
+                    "v.primary = q.property('cobblemon:primary') > 0 && v.primary_t < v.primary_len;",
+                    "v.primary_w = v.primary ? math.clamp(math.min(v.primary_t, v.primary_len - v.primary_t) / v.primary_fade, 0, 1) : 0;"
                 ],
                 "animate": [
                     "pose",
                     "blink_quirk",
+                    "quirk",
                     {
                         "evolution": "q.property('cobblemon:evolving')"
-                    }
+                    },
+                    "primary_controller"
                 ],
                 "scale": "q.property('cobblemon:size') * q.property('cobblemon:intrinsic')"
             },
             "animations": {
                 "pose": "controller.animation.magby.pose",
                 "blink_quirk": "controller.animation.magby.blink",
+                "quirk": "controller.animation.magby.quirk",
+                "quirk_0": "animation.magby.quirk_noot",
                 "look_at_target": "animation.0240_magby.look",
                 "ground_idle": "animation.magby.ground_idle",
-                "cry": "animation.magby.cry",
+                "ground_walk": "animation.magby.ground_walk",
+                "battle_pose": "animation.magby.battle_pose",
+                "battle_idle": "animation.magby.battle_idle",
+                "battle_cry": "animation.magby.battle_cry",
+                "status": "animation.magby.status",
+                "physical": "animation.magby.physical",
+                "special": "animation.magby.special",
+                "faint": "animation.magby.faint",
                 "blink": "animation.magby.blink",
-                "angry": "animation.magby.angry",
+                "cry": "animation.magby.cry",
+                "recoil": "animation.magby.recoil",
+                "quirk_noot": "animation.magby.quirk_noot",
                 "sad": "animation.magby.sad",
+                "angry": "animation.magby.angry",
                 "surprised": "animation.magby.surprised",
                 "happy": "animation.magby.happy",
                 "bored": "animation.magby.bored",
+                "walk_speed": "animation.magby.walk_speed",
+                "OLD_faint": "animation.magby.OLD_faint",
+                "pose_battle_standing": "animation.0240_magby.pose_battle_standing",
                 "pose_standing": "animation.0240_magby.pose_standing",
                 "pose_walking": "animation.0240_magby.pose_walking",
-                "evolution": "animation.0240_magby.evolution"
+                "evolution": "animation.0240_magby.evolution",
+                "primary_1": "animation.magby.battle_cry",
+                "primary_2": "animation.magby.faint",
+                "primary_3": "animation.magby.physical",
+                "primary_4": "animation.magby.special",
+                "primary_5": "animation.magby.status",
+                "primary_controller": "controller.animation.magby.primary"
             },
             "render_controllers": [
                 "controller.render.magby",

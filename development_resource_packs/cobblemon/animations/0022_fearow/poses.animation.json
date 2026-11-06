@@ -11,7 +11,7 @@
             "0"
           ]
         },
-        "head": {
+        "head_ai": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -45, 70)",
             "1 * math.clamp(q.target_y_rotation, -45, 45)",
@@ -44,24 +44,10 @@
             "0"
           ]
         },
-        "head": {
+        "head_ai": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -45, 70)",
             "1 * math.clamp(q.target_y_rotation, -45, 45)",
-            "0"
-          ]
-        },
-        "leg_right": {
-          "rotation": [
-            "math.cos(q.modified_distance_moved * 57.2958 + 180) * q.modified_move_speed * 57.2958",
-            "0",
-            "0"
-          ]
-        },
-        "leg_left": {
-          "rotation": [
-            "math.cos(q.modified_distance_moved * 57.2958) * q.modified_move_speed * 57.2958",
-            "0",
             "0"
           ]
         },
@@ -91,20 +77,6 @@
             "0"
           ]
         },
-        "wing_open_left": {
-          "rotation": [
-            "0",
-            "0",
-            "(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
-          ]
-        },
-        "wing_open_right": {
-          "rotation": [
-            "0",
-            "0",
-            "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
-          ]
-        },
         "neck": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -10, 70)",
@@ -112,7 +84,7 @@
             "0"
           ]
         },
-        "head": {
+        "head_ai": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -45, 70)",
             "1 * math.clamp(q.target_y_rotation, -45, 45)",
@@ -131,6 +103,13 @@
             0,
             0,
             0
+          ]
+        },
+        "fearow": {
+          "position": [
+            "0",
+            "(q.has_rider ? 5.09 : 0)",
+            "(q.has_rider ? 0.22 : 0)"
           ]
         }
       }
@@ -145,20 +124,6 @@
             "0"
           ]
         },
-        "wing_open_left": {
-          "rotation": [
-            "0",
-            "0",
-            "(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
-          ]
-        },
-        "wing_open_right": {
-          "rotation": [
-            "0",
-            "0",
-            "-(math.sin((q.life_time - 0) * 400.0000) * 0.90000 + 25.00000) * 57.2958"
-          ]
-        },
         "neck": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -10, 70)",
@@ -166,7 +131,7 @@
             "0"
           ]
         },
-        "head": {
+        "head_ai": {
           "rotation": [
             "1 * math.clamp(q.target_x_rotation, -45, 70)",
             "1 * math.clamp(q.target_y_rotation, -45, 45)",
@@ -185,6 +150,39 @@
             0,
             0,
             0
+          ]
+        },
+        "fearow": {
+          "position": [
+            "0",
+            "(q.has_rider ? 4.69 : 0)",
+            "(q.has_rider ? 3.59 : 0)"
+          ]
+        }
+      }
+    },
+    "animation.0022_fearow.pose_glide": {
+      "loop": true,
+      "bones": {
+        "neck": {
+          "rotation": [
+            "1 * math.clamp(q.target_x_rotation, -10, 70)",
+            "1 * math.clamp(q.target_y_rotation, -20, 20)",
+            "0"
+          ]
+        },
+        "head_ai": {
+          "rotation": [
+            "1 * math.clamp(q.target_x_rotation, -45, 70)",
+            "1 * math.clamp(q.target_y_rotation, -45, 45)",
+            "0"
+          ]
+        },
+        "fearow": {
+          "position": [
+            "0",
+            "(q.has_rider ? 2.67 : 0)",
+            "(q.has_rider ? 3.1 : 0)"
           ]
         }
       }
