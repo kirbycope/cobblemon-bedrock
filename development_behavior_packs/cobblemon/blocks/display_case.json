@@ -1,12 +1,19 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:display_case",
       "menu_category": {
         "category": "construction"
       },
-      "states": {},
+      "states": {
+        "cobblemon:signal": [
+          0,
+          1,
+          2,
+          3
+        ]
+      },
       "traits": {
         "minecraft:placement_direction": {
           "enabled_states": [
@@ -83,7 +90,8 @@
         "seconds_to_destroy": 0.5
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/display_case.json"
+      "minecraft:loot": "loot_tables/blocks/display_case.json",
+      "cobblemon:display_case": {}
     },
     "permutations": [
       {
@@ -287,6 +295,30 @@
               90,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 1",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 1
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 2",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 2
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 3",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 3
           }
         }
       }

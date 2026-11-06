@@ -1,6 +1,6 @@
 area,feature,cobblemon_source,port,status,comment
 README note,`spawn_rules/<id>.json`: where and how o,"`spawn_pool_world`, `spawning/best-spawner-config.json`",README,partial,"not carried: the multipliers on spawns Bedrock's own spawn rules make (they have no weight that changes with the time or the weather), and entries for properties the port has no look of its own for (Arbok's patterns), which spawn as the species; a `region_bias` entry marks the Pokemon with its bias (see evolution)"
-README note,"`structures/cobblemon/*.mcstructure`, `f","`data/cobblemon/structure`, `worldgen/structure`, `worldgen/structure_set`, `worldgen/template_pool`, `worldgen/processo",README,partial,"not carried: the ruins' suspicious sand and gravel finds (Bedrock gives nothing for a suspicious block placed from a structure, and the script's fossil finds only know the fossil formations), and a structure never grows past its start piece"
+README note,"`structures/cobblemon/*.mcstructure`, `f","`data/cobblemon/structure`, `worldgen/structure`, `worldgen/structure_set`, `worldgen/template_pool`, `worldgen/processo",README,partial,"not carried: a terrain-matching piece (a path, a flower bed) following the ground column by column (it sits flat on the ground at its jigsaw), and terrain adaptation (Java's beard and bury round the pieces)"
 README note,`structures/cobblemon/village_*_pokecent,"`structure/village_*/village_*_pokecenter.nbt`, `CobblemonStructures.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonT",README,partial,not carried: a center inside the village's own street layout
 README note,`trading/economy_trades/fisherman_trades,"`CobblemonTradeOffers.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonStructures.kt`",README,partial,"not carried: the villages' long path, a street piece Cobblemon adds to each village type's streets pool at weight 10, which only fits into a village's own street layout (Bedrock's villages take no new pieces; the berry farms and Pokemon Centers are placed beside them instead, see below)"
 README note,battles between players,"`BattleConfigureGUI.kt`, `ChallengeManager.kt`, `BattleBuilder.pvp1v1`, `textures/gui/interact/request`, lang `cobblemon",README,partial,"not carried: Multi and Royal Battles, which need four players (the arrows skip them)"
@@ -11,8 +11,8 @@ README note,gyms,"`radical_gyms/`, `rct_trainers/`, CobbleFurnies 1.2 `assets/co
 README note,held items on the model,"`HeldItemRenderer.kt`, `tags/item/held`, `PokemonEntity.offerHeldItem`, the models' locators",README,partial,not carried: the 3D look of block items and the vanilla items without a flat icon of their own
 README note,items,"`models/item`, `textures/item`, `CobblemonItems.kt`, `mechanics/`, Showdown `items.js` behaviour",README,partial,"not carried: items with 3D or animated models (the ones not made here), and Poke Puffs, which Cobblemon itself has switched off (its item registration is commented out)"
 README note,items and blocks that act,"`CobblemonBoatItem`, `CobblemonBoatEntity`, `LinkCableItem`, `TumblestoneItem`, `GrowableStoneBlock`, `FlowerPotBlock`, ",README,partial,"not carried: a pot already holding a vanilla flower is not told apart from an empty one, since a script cannot see a vanilla pot's plant"
-README note,model blocks,"`blockstates`, `models/block`",README,partial,"not carried: signs (see building blocks), and the display case's item (a block cannot draw an item; a custom entity draws a held item only on the armor stand's runtime identifier, which brings back gravity and the stand's own placement, so the item would not stay in the case)"
-README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns naming only other mods' structures, those naming `#cobblemon:ruins/arch`, a tag Cobblemon does not define, and lava's surface spawns"
+README note,model blocks,"`blockstates`, `models/block`",README,partial,"not carried: signs (see building blocks), and the 3D look of a block item in the case (a block with no flat icon is kept but not drawn)"
+README note,nearby-block,"`spawn_pool_world`, `spawn_detail_presets`, `AreaSpawningCondition.kt`, `CobblemonConfig.kt`",README,partial,"not carried: the spawns naming only other mods' structures, those naming `#cobblemon:ruins/arch`, a tag Cobblemon does not define, Lava's surface spawns (the lava preset: Slugma and Magcargo, and their herds) come from the script, on lava under air within 16 blocks up or down of the player, in the Overworld and the Nether, since Bedrock's spawn rules have no lava surface"
 README note,ores and wild plants,"`world/feature`, `worldgen/placed_feature`, `loot_table`",README,partial,"not carried: Cobblemon's advancements, which Bedrock add-ons cannot add"
 README note,party,"`PlayerPartyStore.kt`, `PartySendBinding.kt`, `SendOutPokemonPacket`, `PokemonState.kt`, `PokemonEntity.recallWithAnimat",README,partial,"not carried: the keybinds themselves (Bedrock lets a pack add no keys), the trainer's arm swinging as the ball is thrown (a script cannot play a player's swing)"
 README note,party HUD,"`client/gui/PartyOverlay.kt`, `PokemonState.kt`, `textures/gui/party`, `textures/gui/ball`",README,partial,not carried: the Pokemon models in the portrait windows
@@ -2867,8 +2867,6 @@ screen,RidingStatsDebugGUI,client/gui/debug/riding,,n/a,debug only
 screen,SimpleNPCTextInputWidget,client/gui/npc/widgets,,n/a,a development or settings screen
 screen,SnapshotWarningScreen,client/gui/snapshots,,n/a,a development or settings screen
 sound,block.bright_powder.use,sounds.json,cobblemon.block.bright_powder.use,partial,defined but nothing plays it
-sound,block.display_case.add_item,sounds.json,cobblemon.block.display_case.add_item,partial,defined but nothing plays it
-sound,block.display_case.remove_item,sounds.json,cobblemon.block.display_case.remove_item,partial,defined but nothing plays it
 sound,animation.chitin.wing_flap.large,sounds.json,cobblemon.animation.chitin.wing_flap.large,done,
 sound,animation.chitin.wing_flap.medium,sounds.json,cobblemon.animation.chitin.wing_flap.medium,done,
 sound,animation.chitin.wing_flap.small,sounds.json,cobblemon.animation.chitin.wing_flap.small,done,
@@ -2898,9 +2896,11 @@ sound,block.campfire_pot.retrieve,sounds.json,cobblemon.block.campfire_pot.retri
 sound,block.campfire_pot.set,sounds.json,cobblemon.block.campfire_pot.set,done,
 sound,block.campfire_pot.step,sounds.json,cobblemon.block.campfire_pot.step,done,
 sound,block.campfire_pot.take_item,sounds.json,cobblemon.block.campfire_pot.take_item,done,
+sound,block.display_case.add_item,sounds.json,cobblemon.block.display_case.add_item,done,
 sound,block.display_case.break,sounds.json,cobblemon.block.display_case.break,done,
 sound,block.display_case.hit,sounds.json,cobblemon.block.display_case.hit,done,
 sound,block.display_case.place,sounds.json,cobblemon.block.display_case.place,done,
+sound,block.display_case.remove_item,sounds.json,cobblemon.block.display_case.remove_item,done,
 sound,block.display_case.step,sounds.json,cobblemon.block.display_case.step,done,
 sound,block.energy_root.place,sounds.json,cobblemon.block.energy_root.place,done,
 sound,block.evolution_stone_block.break,sounds.json,cobblemon.block.evolution_stone_block.break,done,

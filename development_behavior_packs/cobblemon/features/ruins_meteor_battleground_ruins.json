@@ -1,22 +1,25 @@
 {
     "format_version": "1.13.0",
-    "minecraft:weighted_random_feature": {
+    "minecraft:single_block_feature": {
         "description": {
             "identifier": "cobblemon:ruins_meteor_battleground_ruins"
         },
-        "features": [
-            [
-                "cobblemon:ruins_meteor_battleground_ruins_floor1a_piece",
-                1
-            ],
-            [
-                "cobblemon:ruins_meteor_battleground_ruins_floor1b_piece",
-                1
-            ],
-            [
-                "cobblemon:ruins_meteor_battleground_ruins_floor1c_piece",
-                1
-            ]
+        "places_block": {
+            "name": "cobblemon:jigsaw_start",
+            "states": {
+                "cobblemon:jigsaw_hi": 2,
+                "cobblemon:jigsaw_lo": 9
+            }
+        },
+        "enforce_placement_rules": false,
+        "enforce_survivability_rules": false,
+        "may_replace": [
+            "minecraft:air",
+            "minecraft:water",
+            "minecraft:short_grass",
+            "minecraft:tall_grass",
+            "minecraft:fern",
+            "minecraft:snow_layer"
         ]
     }
 }

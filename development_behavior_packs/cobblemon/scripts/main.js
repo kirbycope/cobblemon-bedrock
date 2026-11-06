@@ -7,6 +7,7 @@
 // the Pokemon as dynamic properties, and a fainted Pokemon sits out until a healing machine or the
 // professor heals it.
 import { CommandPermissionLevel, CustomCommandParamType, CustomCommandStatus } from "@minecraft/server";
+import { BlockTypes } from "@minecraft/server";
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX } from "./pot.js";
@@ -37,6 +38,7 @@ import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { STRUCTURE_PIECES } from "./structure_sites.js";
+import { JIGSAW_STRUCTURES, JIGSAW_POOLS, JIGSAW_PIECES } from "./jigsaw.js";
 import { RODS, ROD_LINES, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS, VANILLA_STRUCTURE_SIGNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF, FORTUNE } from "./silk.js";
@@ -46,6 +48,7 @@ import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
+import { DISPLAY_INDEX } from "./display_case.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
 
@@ -6950,6 +6953,17 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         const kind = POKECENTER_DOOR_Y[event.message.trim()] !== undefined ? event.message.trim() : "plains", at = source.location;
         if (event.message.trim() === "nurse") console.warn(`[cobblemon] pokecenter nurse: ${!!pokecenterNurse(source.dimension, { x: at.x - 16, y: at.y - 8, z: at.z - 16 }, { x: at.x + 16, y: at.y + 8, z: at.z + 16 })}`);
         else console.warn(`[cobblemon] pokecenter test: ${placePokecenter(source.dimension, at, kind)}`);
+    } else if (event.id === "cobblemon:jigsaw") {
+        // testing: "/execute as <player> run scriptevent cobblemon:jigsaw <structure>" grows that jigsaw structure (its id
+        // without "cobblemon:", or its index) at the player, and logs each structure grown from then on
+        jigsawLog = true;
+        const name = event.message.trim(), at = source.location;
+        const index = /^\d+$/.test(name) ? Number(name) : JIGSAW_STRUCTURES.findIndex((st) => st.id === `cobblemon:${name}`);
+        if (JIGSAW_STRUCTURES[index]) {
+            const block = source.dimension.getBlock({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) });
+            block?.setPermutation(BlockPermutation.resolve("cobblemon:jigsaw_start", { "cobblemon:jigsaw_hi": Math.floor(index / 16), "cobblemon:jigsaw_lo": index % 16 }));
+            if (block) growJigsaw(block);
+        } else console.warn(`[cobblemon] jigsaw: no structure ${name}; ${JIGSAW_STRUCTURES.map((st) => st.id.slice(10)).join(" ")}`);
     } else if (event.id === "cobblemon:special_spawns") {
         // testing: "/scriptevent cobblemon:special_spawns on|off" logs each nearby-block and village spawn the spawner makes
         specialLog = event.message.trim() !== "off";
@@ -7378,7 +7392,241 @@ function pick(weighted) {
     return weighted[weighted.length - 1];
 }
 
+// Cobblemon's jigsaw structures (JigsawPlacement): the habitats and most ruins are a start piece and the pieces its
+// jigsaw blocks lead to, pool by pool, up to the structure's size in steps. Bedrock's own jigsaw structures need an
+// experiment, so world generation places a start block (port.py's create_structures) and the script grows the whole
+// structure from it once every chunk it covers is loaded: a start piece from the start pool by weight, turned at random,
+// its middle on the block and its lowest layer the ground's top block plus the start height (the ocean floor's for an
+// OCEAN_FLOOR_WG one); then, breadth first, each piece's jigsaws by selection priority, each trying its pool's pieces in
+// a weighted shuffle (none past the size) and then its fallback's, each turned four ways at random, against each of
+// their jigsaws that fits (facing back at it, its name the source's target, and for an aligned joint the same top), the
+// piece placed so that jigsaw sits in front of the source's. A piece must stay within the structure's reach and clear of
+// every other piece, or, when it starts inside its parent, inside the parent and clear of its other children; an empty
+// element stops that jigsaw. A rigid piece keeps the height its jigsaw gives; a terrain-matching one (paths, flower
+// beds) sits on the ground at its jigsaw. Not carried: terrain-matching pieces following the ground column by column,
+// and terrain adaptation (beard and bury) under and around the pieces
+const JIGSAW_DIRS = { north: [0, 0, -1], south: [0, 0, 1], east: [1, 0, 0], west: [-1, 0, 0], up: [0, 1, 0], down: [0, -1, 0] };
+const JIGSAW_OPPOSITE = { north: "south", south: "north", east: "west", west: "east", up: "down", down: "up" };
+const JIGSAW_CW = { north: "east", east: "south", south: "west", west: "north", up: "up", down: "down" };
+const JIGSAW_ROTATIONS = ["None", "Rotate90", "Rotate180", "Rotate270"];
+const turnDir = (dir, r) => { for (let i = 0; i < r; i++) dir = JIGSAW_CW[dir]; return dir; };
+// a piece turned r quarter turns clockwise (seen from above), its corner at 0: its size and its jigsaws
+function turnedPiece(piece, r) {
+    const [sx, sy, sz] = piece.size;
+    const at = ([x, y, z]) => (r === 0 ? [x, y, z] : r === 1 ? [sz - 1 - z, y, x] : r === 2 ? [sx - 1 - x, y, sz - 1 - z] : [z, y, sx - 1 - x]);
+    return { size: r % 2 ? [sz, sy, sx] : [sx, sy, sz],
+             jigsaws: piece.j.map(([x, y, z, front, top, name, target, pool, rollable, priority]) => ({ at: at([x, y, z]), front: turnDir(front, r), top: turnDir(top, r), name, target, pool, rollable, priority })) };
+}
+const shuffled = (list) => { const out = [...list]; for (let i = out.length - 1; i > 0; i--) { const k = Math.floor(Math.random() * (i + 1)); [out[i], out[k]] = [out[k], out[i]]; } return out; };
+// StructureTemplatePool.getShuffledTemplates: each element as many times as its weight, shuffled
+const poolTemplates = (pool) => shuffled((JIGSAW_POOLS[pool]?.e ?? []).flatMap((e) => Array(Math.max(1, e[1])).fill(e)));
+// JigsawBlock.canAttach: facing each other, the source's target the candidate's name, the same top unless rollable
+function jigsawFits(source, candidate) { return source.front === JIGSAW_OPPOSITE[candidate.front] && source.target === candidate.name && (source.rollable || source.top === candidate.top); }
+const boxOf = (x, y, z, size) => ({ x0: x, y0: y, z0: z, x1: x + size[0] - 1, y1: y + size[1] - 1, z1: z + size[2] - 1 });
+function boxesMeet(a, b) { return a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1 && a.z0 <= b.z1 && b.z0 <= a.z1; }
+const boxHolds = (a, b) => b.x0 >= a.x0 && b.x1 <= a.x1 && b.y0 >= a.y0 && b.y1 <= a.y1 && b.z0 >= a.z0 && b.z1 <= a.z1;
+const boxHas = (a, p) => p.x >= a.x0 && p.x <= a.x1 && p.y >= a.y0 && p.y <= a.y1 && p.z >= a.z0 && p.z <= a.z1;
+// the ground's top block at a column, as the worldgen heightmaps see it before trees: leaves, logs, plants and snow
+// left out, and water too for the ocean floor; undefined where the column is not loaded
+const NOT_GROUND = /leaves|_log$|_wood$|vine|flower|grass$|fern|bush|mushroom|snow_layer|sapling|bamboo|cactus|sugar_cane|kelp|seagrass|lily|dripleaf|azalea|mangrove_roots|propagule|tulip|dandelion|poppy|orchid|allium|bluet|daisy|lilac|rose|peony|cornflower|torchflower|pitcher|berry|pumpkin|melon|beehive|bee_nest|moss_carpet|cobblemon:/;
+function groundTop(dim, x, z, ocean) {
+    let b;
+    try { b = dim.getTopmostBlock({ x, z }); } catch (e) { return undefined; }
+    if (!b) return undefined;
+    for (let n = 0; n < 64 && b; n++) {
+        if (!(b.isAir || NOT_GROUND.test(b.typeId) || (ocean && (b.isLiquid || b.typeId.includes("water"))))) return b.location.y;
+        try { b = b.below(); } catch (e) { return undefined; }
+    }
+    return b?.location.y;
+}
+// the pieces of one structure grown from (x, z), or null while a column it needs is not loaded
+function layoutJigsaw(dim, x, z, structure) {
+    const startEl = poolTemplates(structure.pool).find((e) => e[0]);
+    if (!startEl) return [];
+    const ground = groundTop(dim, x, z, structure.ocean);
+    if (ground === undefined) return null;
+    const r = Math.floor(Math.random() * 4), turned = turnedPiece(JIGSAW_PIECES[startEl[0]], r);
+    const [lo, hi] = structure.h;
+    const box = boxOf(x - Math.floor(turned.size[0] / 2), ground + lo + Math.floor(Math.random() * (hi - lo + 1)), z - Math.floor(turned.size[2] / 2), turned.size);
+    const start = { key: startEl[0], r, box, rigid: !startEl[2], turned, parent: null, inside: false };
+    const pieces = [start], queue = [[start, 0]], reach = structure.dist;
+    const inReach = (b) => b.x0 >= x - reach && b.x1 <= x + reach && b.z0 >= z - reach && b.z1 <= z + reach && b.y0 >= box.y0 - reach && b.y1 <= box.y0 + reach;
+    while (queue.length) {
+        const [piece, depth] = queue.shift();
+        const jigsaws = shuffled(piece.turned.jigsaws).sort((a, b) => b.priority - a.priority);
+        for (const j of jigsaws) {
+            if (!JIGSAW_POOLS[j.pool]) continue;
+            const d = JIGSAW_DIRS[j.front];
+            const source = { x: piece.box.x0 + j.at[0], y: piece.box.y0 + j.at[1], z: piece.box.z0 + j.at[2] };
+            const target = { x: source.x + d[0], y: source.y + d[1], z: source.z + d[2] };
+            const inside = boxHas(piece.box, target);
+            const candidates = (depth !== structure.depth ? poolTemplates(j.pool) : []).concat(JIGSAW_POOLS[j.pool].f ? poolTemplates(JIGSAW_POOLS[j.pool].f) : []);
+            let placed = false;
+            for (const el of candidates) {
+                if (!el[0]) break;   // an empty element: nothing goes here
+                for (const r2 of shuffled([0, 1, 2, 3])) {
+                    const turned2 = turnedPiece(JIGSAW_PIECES[el[0]], r2);
+                    for (const cj of shuffled(turned2.jigsaws)) {
+                        if (!jigsawFits(j, cj)) continue;
+                        let y0;
+                        if (!el[2] && piece.rigid) y0 = target.y - cj.at[1];
+                        else {
+                            // ground not loaded yet (a cove wider than the loaded area): the jigsaw's own height
+                            const g = groundTop(dim, target.x, target.z, false) ?? target.y - 1;
+                            y0 = el[2] ? g : g + 1 - cj.at[1];
+                        }
+                        const b = boxOf(target.x - cj.at[0], y0, target.z - cj.at[2], turned2.size);
+                        if (!inReach(b)) continue;
+                        if (inside ? !boxHolds(piece.box, b) || pieces.some((o) => o.parent === piece && o.inside && boxesMeet(o.box, b))
+                                   : pieces.some((o) => boxesMeet(o.box, b))) continue;
+                        const child = { key: el[0], r: r2, box: b, rigid: !el[2], turned: turned2, parent: piece, inside };
+                        pieces.push(child);
+                        if (depth + 1 <= structure.depth) queue.push([child, depth + 1]);
+                        placed = true; break;
+                    }
+                    if (placed) break;
+                }
+                if (placed) break;
+            }
+        }
+    }
+    return pieces;
+}
+// a piece is placed once every column it covers is loaded; one that is not yet waits in cobblemon:jigsaw_pending,
+// [dimension, piece, turns, x, y, z], placed by the check below when a player comes near
+function boxLoaded(dim, b) {
+    for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1]]) {
+        try { if (!dim.getBlock({ x, y: b.y0, z })) return false; } catch (e) { return false; }
+    }
+    return true;
+}
+// a jigsaw structure placed: its box kept by 512-block region of the Overworld as [structure, x0, y0, z0, x1, y1, z1],
+// for the spawns that need it and its suspicious blocks' finds
+const jigsawKey = (x, z) => `cobblemon:jigsaws_${Math.floor(x / SITE_REGION)}_${Math.floor(z / SITE_REGION)}`;
+function jigsawSites(x, z) {
+    try { return JSON.parse(world.getDynamicProperty(jigsawKey(x, z)) ?? "[]"); } catch (e) { return []; }
+}
+function noteJigsawSite(index, b) {
+    const sites = jigsawSites(b.x0, b.z0);
+    sites.push([index, b.x0, b.y0, b.z0, b.x1, b.y1, b.z1]);
+    world.setDynamicProperty(jigsawKey(b.x0, b.z0), JSON.stringify(sites));
+}
+// the jigsaw structure a spot in the Overworld is in, as its JIGSAW_STRUCTURES entry, or undefined
+function jigsawAt(location) {
+    const { x, y, z } = location;
+    for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
+        for (const [i, x0, y0, z0, x1, y1, z1] of jigsawSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
+            if (x >= x0 && x <= x1 + 1 && z >= z0 && z <= z1 + 1 && y >= y0 - 1 && y <= y1 + 1) return JIGSAW_STRUCTURES[i];
+        }
+    }
+    return undefined;
+}
+function growJigsaw(block) {
+    let index;
+    try { index = block.permutation.getState("cobblemon:jigsaw_hi") * 16 + block.permutation.getState("cobblemon:jigsaw_lo"); } catch (e) { return; }
+    const structure = JIGSAW_STRUCTURES[index], dim = block.dimension, { x, z } = block.location;
+    try { block.setType("minecraft:air"); } catch (e) { return; }
+    if (!structure) return;
+    const pieces = layoutJigsaw(dim, x, z, structure);
+    if (pieces === null || (pieces.length && !boxLoaded(dim, pieces[0].box))) {
+        // not all loaded yet: the start block goes back and tries again on its next tick
+        try { block.setPermutation(BlockPermutation.resolve("cobblemon:jigsaw_start", { "cobblemon:jigsaw_hi": Math.floor(index / 16), "cobblemon:jigsaw_lo": index % 16 })); } catch (e) { }
+        return false;
+    }
+    if (!pieces.length) return;
+    const all = { x0: Infinity, y0: Infinity, z0: Infinity, x1: -Infinity, y1: -Infinity, z1: -Infinity }, waiting = [];
+    for (const p of pieces) {
+        if (boxLoaded(dim, p.box)) placeJigsawPiece(dim, p.key, p.r, p.box);
+        else waiting.push([dim.id, p.key, p.r, p.box.x0, p.box.y0, p.box.z0]);
+        for (const k of ["x0", "y0", "z0"]) all[k] = Math.min(all[k], p.box[k]);
+        for (const k of ["x1", "y1", "z1"]) all[k] = Math.max(all[k], p.box[k]);
+    }
+    if (waiting.length) {
+        // a dynamic property holds 32,767 characters: past that the oldest waiting pieces go
+        const queued = jigsawPending().concat(waiting);
+        while (queued.length && JSON.stringify(queued).length > 32000) queued.shift();
+        world.setDynamicProperty(JIGSAW_PENDING, JSON.stringify(queued));
+    }
+    if (dim.id === "minecraft:overworld") noteJigsawSite(index, all);
+    if (jigsawLog) console.warn(`[cobblemon] jigsaw ${structure.id} at ${x} ${all.y0} ${z}: ${pieces.length} pieces`);
+}
+let jigsawLog = false;
+// a start block world generation placed gets no scheduled tick, so each chunk within 4 of a player (the simulation
+// distance) is looked through once for one, a few chunks a second
+const JIGSAW_SCAN_REACH = 4, jigsawScanned = new Set();
+function scanForJigsaws(player) {
+    const dim = player.dimension, cx = Math.floor(player.location.x / 16), cz = Math.floor(player.location.z / 16);
+    let budget = 3;
+    for (let r = 0; r <= JIGSAW_SCAN_REACH && budget > 0; r++) {
+        for (let dx = -r; dx <= r && budget > 0; dx++) for (let dz = -r; dz <= r && budget > 0; dz++) {
+            if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+            const key = `${dim.id}:${cx + dx}:${cz + dz}`;
+            if (jigsawScanned.has(key)) continue;
+            const x0 = (cx + dx) * 16, z0 = (cz + dz) * 16;
+            const volume = new BlockVolume({ x: x0, y: dim.heightRange.min, z: z0 }, { x: x0 + 15, y: dim.heightRange.max - 1, z: z0 + 15 });
+            let found = false;
+            try { found = dim.containsBlock(volume, { includeTypes: ["cobblemon:jigsaw_start"] }, false); } catch (e) { continue; }   // not loaded yet
+            jigsawScanned.add(key); budget--;
+            if (!found) continue;
+            // one that waits for its neighbours to load has its chunk looked through again
+            try { for (const at of dim.getBlocks(volume, { includeTypes: ["cobblemon:jigsaw_start"] }, false).getBlockLocationIterator()) if (growJigsaw(dim.getBlock(at)) === false) jigsawScanned.delete(key); } catch (e) { }
+        }
+    }
+}
+system.runInterval(() => { for (const player of world.getPlayers()) scanForJigsaws(player); }, 20);
+const JIGSAW_PENDING = "cobblemon:jigsaw_pending";
+function jigsawPending() { try { return JSON.parse(world.getDynamicProperty(JIGSAW_PENDING) ?? "[]"); } catch (e) { return []; } }
+function placeJigsawPiece(dim, key, r, box) {
+    try { world.structureManager.place(`cobblemon:${key}`, dim, { x: box.x0, y: box.y0, z: box.z0 }, { rotation: StructureRotation[JIGSAW_ROTATIONS[r]] }); }
+    catch (e) { console.warn(`[cobblemon] jigsaw piece ${key}: ${e}`); }
+}
+system.runInterval(() => {
+    const pending = jigsawPending();
+    if (!pending.length) return;
+    const left = pending.filter(([dimId, key, r, x, y, z]) => {
+        let dim;
+        try { dim = world.getDimension(dimId); } catch (e) { return false; }
+        const piece = JIGSAW_PIECES[key];
+        if (!piece) return false;
+        const box = boxOf(x, y, z, r % 2 ? [piece.size[2], piece.size[1], piece.size[0]] : piece.size);
+        if (!boxLoaded(dim, box)) return true;
+        placeJigsawPiece(dim, key, r, box);
+        return false;
+    });
+    if (left.length !== pending.length) world.setDynamicProperty(JIGSAW_PENDING, left.length ? JSON.stringify(left) : undefined);
+}, 100);
+
+// the marked piece of Cobblemon's structures a spot is in, whose suspicious blocks roll its own loot tables (the ruins'
+// archaeology), or undefined; its markers within 24 blocks are noted first, since a random tick may not have yet
+function ruinPieceAt(dimension, location) {
+    if (dimension.id !== "minecraft:overworld") return undefined;
+    const find = () => {
+        const { x, y, z } = location;
+        for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
+            for (const [i, sx, sy, sz] of structureSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
+                const piece = STRUCTURE_PIECES[i];
+                if (piece?.t && Math.hypot(sx + 0.5 - x, sz + 0.5 - z) <= piece.r && y >= sy - 1 && y <= sy + piece.up + 1) return piece;
+            }
+        }
+    };
+    let piece = find();
+    if (piece) return piece;
+    try {
+        const { x, y, z } = location;
+        const near = dimension.getBlocks(new BlockVolume({ x: x - 24, y: y - 24, z: z - 24 }, { x: x + 24, y: y + 24, z: z + 24 }), { includeTypes: ["cobblemon:structure_marker"] }, false);
+        for (const at of near.getBlockLocationIterator()) noteStructureSite(dimension.getBlock(at));
+    } catch (e) { }
+    return find();
+}
 function brushLoot(dimension, location) {
+    // in a ruin, its own tables, each as likely as its share of the piece's suspicious blocks
+    const ruin = (dimension.id === "minecraft:overworld" && jigsawAt(location)?.t ? jigsawAt(location) : undefined) ?? ruinPieceAt(dimension, location);
+    if (ruin) {
+        const entries = BRUSH_LOOT[pick(Object.entries(ruin.t))[0]];
+        if (!entries?.length) return undefined;
+        const [item, , least, most] = pick(entries);
+        return item ? new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1))) : undefined;
+    }
     let biome = "";
     try { biome = dimension.getBiome(location).id; } catch (e) { }
     const here = FORMATIONS.filter((f) => new RegExp(f.biomes).test(biome));
@@ -7387,7 +7635,7 @@ function brushLoot(dimension, location) {
     const entries = BRUSH_LOOT[table];
     if (!entries?.length) return undefined;
     const [item, , least, most] = pick(entries);
-    return new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1)));
+    return item ? new ItemStack(item, least + Math.floor(Math.random() * (most - least + 1))) : undefined;
 }
 
 system.runInterval(() => {
@@ -9158,8 +9406,24 @@ const isWater = (b) => !!b && (b.typeId === "minecraft:water" || b.typeId === "m
 // the column has positions of it, as Cobblemon's selector weighs them; otherwise the ground. The spot to spawn at, the
 // block the position is (whose surroundings and base are checked), its type, and whether it sees the sky: water does
 // not hide it (canSeeSkyFromBelowWater), nor does it count for getTopmostBlock, which gives the block under it
+// A lava surface within 16 blocks up or down of the player (SurfaceSpawnablePositionCalculator with the lava preset:
+// lava under air) is the position "lava", where Slugma and Magcargo come
+const LAVA_REACH = 16;
+const isLava = (b) => !!b && (b.typeId === "minecraft:lava" || b.typeId === "minecraft:flowing_lava");
+function lavaSurface(dim, c) {
+    let above;
+    for (let y = c.y + LAVA_REACH; y >= c.y - LAVA_REACH; y--) {
+        let b;
+        try { b = dim.getBlock({ x: c.x, y, z: c.z }); } catch (e) { return; }
+        if (!b) return;
+        if (isLava(b) && above?.isAir) return { spot: { x: c.x + 0.5, y, z: c.z + 0.5 }, ground: { x: c.x, y, z: c.z }, pos: "lava" };
+        above = b;
+    }
+}
 function spawnerSpot(dim, c) {
     let surface, floor, below;
+    const lava = lavaSurface(dim, c);
+    if (lava) return lava;
     try {
         const top = dim.getTopmostBlock({ x: c.x, z: c.z });
         if (!top) return;
@@ -9192,10 +9456,12 @@ function placeTest(dim, spot, ground, tags) {
     };
     let base;
     try { base = dim.getBlock(ground)?.typeId; } catch (e) { return undefined; }
-    const village = pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
+    // villages and Cobblemon's structures are recorded in the overworld only
+    const overworld = dim.id === "minecraft:overworld";
+    const village = overworld && pokecenterSites().some(([x, z]) => Math.hypot(x - spot.x, z - spot.z) < VILLAGE_RADIUS);
     // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
     // a spawn naming a village and Cobblemon structures comes in any of them
-    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
+    const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, overworld && inStructure(spot, ids)); return inside.get(k); };
     // a vanilla structure (port.py's VANILLA_STRUCTURE_SIGNS): one of its biomes, and one of its own blocks within 6
     // across and 3 up or down
     const signs = new BlockVolume({ x: ground.x - 6, y: ground.y - 3, z: ground.z - 6 }, { x: ground.x + 6, y: ground.y + 3, z: ground.z + 6 });
@@ -9253,6 +9519,8 @@ function noteStructureSite(block) {
 }
 // whether a spot in the overworld is inside any of these structures
 function inStructure(location, ids) {
+    const grown = jigsawAt(location);
+    if (grown && ids.includes(grown.id)) return true;
     const { x, y, z } = location;
     for (const dx of [-1, 0, 1]) for (const dz of [-1, 0, 1]) {
         for (const [i, sx, sy, sz] of structureSites(x + dx * SITE_REGION, z + dz * SITE_REGION)) {
@@ -9283,7 +9551,6 @@ function spawnDrawn(dim, drawn, spot) {
 }
 function specialSpawn(player) {
     const dim = player.dimension;
-    if (dim.id !== "minecraft:overworld") return;
     const angle = Math.random() * Math.PI * 2, r = SPECIAL_RANGE[0] + Math.random() * (SPECIAL_RANGE[1] - SPECIAL_RANGE[0]);
     const where = spawnerSpot(dim, { x: Math.floor(player.location.x + Math.cos(angle) * r), y: Math.floor(player.location.y), z: Math.floor(player.location.z + Math.sin(angle) * r) });
     if (!where) return;
@@ -10270,6 +10537,75 @@ function plateCheck(block) {
     block.setPermutation(block.permutation.withState("cobblemon:powered", on));
     try { block.dimension.playSound(on ? "click_on.wooden_pressure_plate" : "click_off.wooden_pressure_plate", block.location); } catch (e) { }
 }
+
+// DisplayCaseBlockEntity.updateItem: the case holds one item. An empty hand takes it out, an item goes in (one of the
+// stack), and another item swaps with it (in Creative the hand keeps its item and gets nothing back); the same item
+// does nothing. A click on a side turns the item to face that side (DisplayCaseBlock.useWithoutItem). The item lives
+// in a cobblemon:display_case_item entity at the case's middle, which draws its icon (port.py's create_display_case)
+const DISPLAY_ITEM = "cobblemon:display_case_item";
+// the way the item's icon faces as a yaw: toward the side clicked, and at first toward whoever placed the case
+const FACE_YAW = { South: 0, West: 90, North: 180, East: -90 };
+const PLACED_YAW = { north: 0, east: 90, south: 180, west: -90 };
+function displayCaseItem(block) {
+    const at = { x: block.location.x + 0.5, y: block.location.y + 0.315, z: block.location.z + 0.5 };
+    try { return block.dimension.getEntities({ type: DISPLAY_ITEM, location: at, maxDistance: 0.3 })[0]; } catch (e) { return undefined; }
+}
+// getAnalogOutputSignal: 0 empty, 3 a Poke Ball, 2 a block (Cobblemon's placed items are blocks too), 1 anything else
+function displaySignal(id) {
+    if (!id) return 0;
+    if (BALLS[id]) return 3;
+    return BlockTypes.get(id) || BlockTypes.get(`${id}_block`) ? 2 : 1;
+}
+function setCaseItem(block, item, yaw) {
+    let holder = displayCaseItem(block);
+    if (item) {
+        if (!holder) {
+            holder = block.dimension.spawnEntity(DISPLAY_ITEM, { x: block.location.x + 0.5, y: block.location.y + 0.315, z: block.location.z + 0.5 });
+            if (yaw === undefined) { let dir = "north"; try { dir = block.permutation.getState("minecraft:cardinal_direction"); } catch (e) { } yaw = PLACED_YAW[dir] ?? 0; }
+        }
+        const one = item.clone(); one.amount = 1;
+        holder.getComponent(EntityComponentTypes.Inventory)?.container?.setItem(0, one);
+        try { holder.setProperty("cobblemon:display_index", DISPLAY_INDEX[item.typeId] ?? 0); } catch (e) { }
+        if (yaw !== undefined) holder.setRotation({ x: 0, y: yaw });
+        try { block.dimension.playSound("cobblemon.block.display_case.add_item", block.location); } catch (e) { }
+    } else if (holder) {
+        holder.remove();
+        try { block.dimension.playSound("cobblemon.block.display_case.remove_item", block.location); } catch (e) { }
+    }
+    setState(block, "cobblemon:signal", displaySignal(item?.typeId));
+}
+function useDisplayCase(block, player, face) {
+    const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex;
+    const hand = inv?.getItem(slot), holder = displayCaseItem(block);
+    const kept = holder?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(0);
+    const creative = player.getGameMode?.() === "Creative", yaw = FACE_YAW[face];
+    if (hand?.typeId === kept?.typeId && hand) return;
+    if (!hand && !kept) return;
+    if (!hand) {
+        if (!creative) inv.setItem(slot, kept);
+        setCaseItem(block, undefined);
+        return;
+    }
+    setCaseItem(block, hand, yaw);
+    if (creative) return;
+    if (hand.amount > 1) { hand.amount--; inv.setItem(slot, hand); } else inv.setItem(slot, undefined);
+    if (kept) { const left = inv.addItem(kept); if (left) player.dimension.spawnItem(left, player.location); }
+}
+// DisplayCaseBlock.onRemove: a case that is gone (broken, blown up, replaced) drops its item where it stood
+system.runInterval(() => {
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let holders = [];
+        try { holders = world.getDimension(dim).getEntities({ type: DISPLAY_ITEM }); } catch (e) { continue; }
+        for (const holder of holders) {
+            let block;
+            try { block = holder.dimension.getBlock(holder.location); } catch (e) { continue; }
+            if (!block || block.typeId === "cobblemon:display_case") continue;
+            const kept = holder.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(0);
+            if (kept) try { holder.dimension.spawnItem(kept, holder.location); } catch (e) { }
+            holder.remove();
+        }
+    }
+}, 10);
 
 // Model blocks: a stack of placed items grows when the same item is used on it (up to the blockstate's amounts),
 // a crop grows a stage on random ticks as Cobblemon's mints and grains do, and an open state toggles on a click
@@ -12665,6 +13001,8 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
+    blockComponentRegistry.registerCustomComponent("cobblemon:jigsaw_start", { onTick({ block }) { growJigsaw(block); }, onRandomTick({ block }) { growJigsaw(block); } });
+    blockComponentRegistry.registerCustomComponent("cobblemon:display_case", { onPlayerInteract({ block, player, face }) { if (player) useDisplayCase(block, player, face); } });
     // NutBushBlock: grows one random tick in eight where the light above is 9 or more, bone meal a stage; used fully
     // grown it gives one or two Galarica Nuts and goes back to age 1
     // SaccharineSaplingBlock: grows into one of the tree structures one random tick in seven where the light is 9 or

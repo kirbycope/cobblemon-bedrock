@@ -6022,6 +6022,57 @@ def structure_key(location):
     return re.sub(r"[^a-z0-9_]", "_", location.split(":", 1)[-1].lower())
 
 
+def jigsaw_layout(start_pool, convert, parse_processors, invalid, unmapped, loot_path, structure_loot, brush):
+    """Every pool a jigsaw structure reaches from its start pool and every piece in them (JigsawPlacement's inputs), the
+    pieces converted to .mcstructure with their processors: (pools, pieces), or None when the start pool's pieces have no
+    jigsaw leading on, or a piece is wider than the 64 blocks a Bedrock structure can be. pools is {pool: {"e": [[piece
+    or None (empty_pool_element), weight, 1 when terrain_matching]], "f": fallback}}; pieces is {piece: {"size": [x, y,
+    z], "j": [[x, y, z, front, top, name, target, pool, rollable, selection_priority]]}}, a jigsaw's orientation
+    ("up_south") split into its front and top; brush counts the suspicious blocks' loot tables of every piece."""
+    from nbt_to_mcstructure import read_nbt
+    pools, pieces, queue, onward = {}, {}, [start_pool], False
+    while queue:
+        pool_id = queue.pop(0)
+        if pool_id in pools or pool_id in (None, "", "minecraft:empty"): continue
+        path = f"{worldgenMain}/template_pool/{pool_id.split(':', 1)[-1]}.json"
+        if not os.path.exists(path): continue
+        with open(path, encoding="utf-8") as file: pool = json.load(file)
+        entry = pools[pool_id] = {"e": [], **({"f": pool["fallback"]} if pool.get("fallback") not in (None, "minecraft:empty") else {})}
+        if "f" in entry: queue.append(entry["f"])
+        for element in pool.get("elements", []):
+            inner = element.get("element", {})
+            if inner.get("element_type") == "minecraft:empty_pool_element":
+                entry["e"].append([None, element.get("weight", 1), 0]); continue
+            location = inner.get("location")
+            source = f"{structuresMain}/{(location or '').split(':', 1)[-1]}.nbt"
+            if not location or not os.path.exists(source): continue
+            piece = structure_key(location)
+            entry["e"].append([piece, element.get("weight", 1), 1 if inner.get("projection") == "terrain_matching" else 0])
+            if piece in pieces: continue
+            with open(source, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
+            if java["size"][0] > 64 or java["size"][2] > 64: return None
+            palette, jigsaws = java.get("palette", []), []
+            for b in java.get("blocks", []):
+                if palette[b["state"]]["Name"] != "minecraft:jigsaw": continue
+                nbt = b.get("nbt") or {}
+                front, top = palette[b["state"]].get("Properties", {}).get("orientation", "north_up").split("_")
+                jigsaws.append([*b["pos"], front, top, nbt.get("name", "minecraft:empty"), nbt.get("target", "minecraft:empty"),
+                                nbt.get("pool", "minecraft:empty"), 0 if nbt.get("joint", "rollable" if front not in ("up", "down") else "aligned") == "aligned" else 1,
+                                nbt.get("selection_priority", 0)])
+                if nbt.get("pool", "minecraft:empty") != "minecraft:empty":
+                    queue.append(nbt["pool"])
+                    if pool_id == start_pool: onward = True
+            pieces[piece] = {"size": java["size"], "j": jigsaws}
+            processors = inner.get("processors")
+            if isinstance(processors, str):
+                processor_path = f"{worldgenMain}/processor_list/{processors.split(':', 1)[-1]}.json"
+                processors = json.load(open(processor_path, encoding="utf-8")) if os.path.exists(processor_path) else {}
+            if not os.path.exists(f"{structuresBedrock}/{piece}.mcstructure"):
+                convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parse_processors((processors or {}).get("processors", [])),
+                        loot_path=loot_path, loot_counts=structure_loot, brush_counts=brush)
+    return (pools, pieces) if onward else None
+
+
 def structure_spacing():
     """Each worldgen structure's share of chunks: spacing squared times its set's total weight over its own."""
     odds = {}
@@ -6126,6 +6177,11 @@ def create_structures():
     # spawner can test a spawn's structures as Cobblemon's StructureManager does, and puts that block back
     from nbt_to_mcstructure import bedrock_name, convert_states, read_nbt, Tag, INT, BYTE
     need, sites, site_of = structures_spawns_need(), [], {}
+    # the jigsaw structures (the habitats, most ruins): a start block the script grows the whole structure from
+    jigsaw = {"pieces": {}, "pools": {}, "structures": []}
+    full_block("cobblemon:jigsaw_start", {"*": "minecraft:block/stone"}, loot="loot_tables/empty.json",
+               states={"cobblemon:jigsaw_hi": list(range(16)), "cobblemon:jigsaw_lo": list(range(16))},
+               extra={"cobblemon:jigsaw_start": {}, "minecraft:tick": {"interval_range": [20, 40], "looping": True}})
     full_block("cobblemon:structure_marker", {"*": "minecraft:block/stone"}, loot="loot_tables/empty.json",
                states={"cobblemon:piece_hi": list(range(16)), "cobblemon:piece_lo": list(range(16))}, extra={"cobblemon:structure_site": {}})
     def site_markers(source, index, count=4):
@@ -6168,6 +6224,36 @@ def create_structures():
         if data.get("type") != "minecraft:jigsaw" or not os.path.exists(pool_path) or biome_filter is None:
             skipped.append(name); continue
         with open(pool_path, encoding="utf-8") as file: pool = json.load(file)
+        brush = {}
+        layout = jigsaw_layout(data["start_pool"], convert, parse_processors, invalid, unmapped, structure_loot_path, structure_loot, brush) if len(jigsaw["structures"]) < 256 else None
+        if layout:
+            pools, layout_pieces = layout
+            jigsaw["pools"].update(pools); jigsaw["pieces"].update(layout_pieces)
+            height = data.get("start_height", {})
+            low = high = height.get("absolute", 0)
+            if height.get("type") == "minecraft:uniform":
+                low, high = height["min_inclusive"].get("absolute", 0), height["max_inclusive"].get("absolute", 0)
+            index = len(jigsaw["structures"])
+            jigsaw["structures"].append({"id": structure, "pool": data["start_pool"], "depth": data.get("size", 7),
+                                         "dist": data.get("max_distance_from_center", 80) if isinstance(data.get("max_distance_from_center", 80), int) else data["max_distance_from_center"].get("horizontal", 80),
+                                         "h": [low, high], "ocean": data.get("project_start_to_heightmap") == "OCEAN_FLOOR_WG",
+                                         **({"t": brush} if brush else {})})
+            with open(f"{featuresBedrock}/{name}.json", "w") as file:
+                file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
+                    "description": {"identifier": f"cobblemon:{name}"},
+                    "places_block": {"name": "cobblemon:jigsaw_start", "states": {"cobblemon:jigsaw_hi": index // 16, "cobblemon:jigsaw_lo": index % 16}},
+                    "enforce_placement_rules": False, "enforce_survivability_rules": False,
+                    "may_replace": ["minecraft:air", "minecraft:water", "minecraft:short_grass", "minecraft:tall_grass", "minecraft:fern", "minecraft:snow_layer"]}}, indent=4))
+            with open(f"{featureRulesBedrock}/{name}_rule.json", "w") as file:
+                file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
+                    "description": {"identifier": f"cobblemon:{name}_rule", "places_feature": f"cobblemon:{name}"},
+                    "conditions": {"placement_pass": "surface_pass", "minecraft:biome_filter": biome_filter},
+                    "distribution": {"iterations": 1, "scatter_chance": {"numerator": 1, "denominator": max(64, odds.get(structure, 1024))},
+                                     "x": {"distribution": "uniform", "extent": [0, 15]},
+                                     "y": "query.heightmap(variable.worldx, variable.worldz)",
+                                     "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=4))
+            placed += 1
+            continue
         pieces = []
         for element in pool.get("elements", []):
             inner = element.get("element", {})
@@ -6181,14 +6267,20 @@ def create_structures():
             if isinstance(processors, str):
                 processor_path = f"{worldgenMain}/processor_list/{processors.split(':', 1)[-1]}.json"
                 processors = json.load(open(processor_path, encoding="utf-8")) if os.path.exists(processor_path) else {}
-            overrides = None
-            if structure in need and piece not in site_of and len(sites) < 256:
-                overrides, info = site_markers(source, len(sites))
-                if info: site_of[piece] = len(sites); sites.append({**info, "s": []})
-            if piece in site_of and structure not in sites[site_of[piece]]["s"]: sites[site_of[piece]]["s"].append(structure)
+            overrides, brush = None, {}
+            parsed = parse_processors((processors or {}).get("processors", []))
             if not os.path.exists(f"{structuresBedrock}/{piece}.mcstructure"):
-                convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parse_processors((processors or {}).get("processors", [])),
-                        loot_path=structure_loot_path, loot_counts=structure_loot, overrides=overrides)
+                # a piece whose suspicious sand or gravel gives from a loot table is marked too, so the script can tell
+                # a brushed block is in it and roll that table (Bedrock rolls none for a block a structure placed)
+                convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parsed,
+                        loot_path=structure_loot_path, loot_counts=structure_loot, brush_counts=brush)
+            if (structure in need or brush) and piece not in site_of and len(sites) < 256:
+                overrides, info = site_markers(source, len(sites))
+                if info:
+                    site_of[piece] = len(sites); sites.append({**info, "s": [], **({"t": brush} if brush else {})})
+                    convert(source, f"{structuresBedrock}/{piece}.mcstructure", invalid, unmapped, parsed,
+                            loot_path=structure_loot_path, overrides=overrides)
+            if piece in site_of and structure not in sites[site_of[piece]]["s"]: sites[site_of[piece]]["s"].append(structure)
             pieces.append((piece, element.get("weight", 1)))
         if not pieces: skipped.append(name); continue
         in_water = any(w in name for w in ("fishing_boat", "shipwreck", "deep_sea", "iceberg"))
@@ -6214,12 +6306,25 @@ def create_structures():
                                  "y": "query.heightmap(variable.worldx, variable.worldz)",
                                  "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=4))
         placed += 1
+    with open(f"{scriptsBedrock}/jigsaw.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: Cobblemon's jigsaw structures for scripts/main.js to assemble (JigsawPlacement): each\n"
+                   "// structure's start pool, size (depth), reach, start height and heightmap; every pool's pieces by weight; every\n"
+                   "// piece's size and jigsaws [x, y, z, front, top, name, target, pool, rollable, selection priority]\n")
+        for key in ("structures", "pools", "pieces"):
+            file.write(f"export const JIGSAW_{key.upper()} = " + json.dumps(jigsaw[key], separators=(",", ":")) + ";\n")
+    for table in sorted({t for st in jigsaw["structures"] for t in st.get("t", {})}):
+        brush_loot.setdefault("tables", {})[table] = brush_entries(json.load(open(f"{behaviorPack}/{table}", encoding="utf-8")))
+    print(f"  jigsaw structures: {len(jigsaw['structures'])}, {len(jigsaw['pools'])} pools, {len(jigsaw['pieces'])} pieces")
     with open(f"{scriptsBedrock}/structure_sites.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: each marked structure piece, by the marker's piece_hi and piece_lo: the structures it\n"
                    "// starts, the block the marker stands in for, and its reach from a marker (radius, height)\n")
         file.write("export const STRUCTURE_PIECES = " + json.dumps(sites) + ";\n")
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("tile.cobblemon:structure_marker.name=Structure Marker\n")
     print(f"  structure markers: {len(sites)} pieces of {len(need)} structures spawns need")
+    # the ruins' archaeology tables for the script, beside the fossils' (create_fossil_formations writes them out)
+    for table in sorted({t for site in sites for t in site.get("t", {})}):
+        brush_loot.setdefault("tables", {})[table] = brush_entries(json.load(open(f"{behaviorPack}/{table}", encoding="utf-8")))
+    print(f"  suspicious finds: {sum(1 for site in sites if site.get('t'))} marked pieces roll their own loot tables")
     formations = create_fossil_formations(convert, parse_processors, invalid, unmapped)
     print(f"Fossil formations: {formations}")
     if unmapped: print("Blocks with no Bedrock equivalent, placed as air:", ", ".join(f"{k} ({v})" for k, v in sorted(unmapped.items())))
@@ -8052,6 +8157,14 @@ def convert_loot_table(data, items, state=None, silk=False):
     return {"pools": pools}
 
 
+def brush_entries(table):
+    """A Bedrock loot table as the script rolls a brushed block's find: [item, weight, least, most] per entry, the item
+    null for an empty one, which finds nothing."""
+    return [[e.get("name"), e.get("weight", 1)] + next(([f["count"]["min"], f["count"]["max"]] if isinstance(f["count"], dict) else [f["count"], f["count"]]
+                                                    for f in e.get("functions", []) if f["function"] == "set_count"), [1, 1])
+            for pool in table.get("pools", []) for e in pool.get("entries", []) if e.get("type") in ("item", "empty")]
+
+
 def create_fossil_formations(convert, parse_processors, invalid, unmapped):
     """Loot tables, templates, features and feature rules for the fossil formations; returns how many."""
     items = defined_items()
@@ -8061,11 +8174,8 @@ def create_fossil_formations(convert, parse_processors, invalid, unmapped):
         with open(path, encoding="utf-8") as file: table = convert_loot_table(json.load(file), items)
         os.makedirs(os.path.dirname(f"{lootFossilsBedrock}/{rel}"), exist_ok=True)
         with open(f"{lootFossilsBedrock}/{rel}", "w") as file: file.write(json.dumps(table, indent=2))
-        # the same table for the script: [item, weight, least, most]
-        brush_loot.setdefault("tables", {})[f"loot_tables/fossils/{rel}"] = [
-            [e["name"], e["weight"]] + next(([f["count"]["min"], f["count"]["max"]] if isinstance(f["count"], dict) else [f["count"], f["count"]]
-                                              for f in e.get("functions", []) if f["function"] == "set_count"), [1, 1])
-            for pool in table["pools"] for e in pool["entries"]]
+        # the same table for the script
+        brush_loot.setdefault("tables", {})[f"loot_tables/fossils/{rel}"] = brush_entries(table)
     loot_path = lambda name: f"loot_tables/{name.split(':', 1)[-1]}.json"
     count = 0
     brush_loot["formations"] = []
@@ -8268,9 +8378,11 @@ VANILLA_STRUCTURE_SIGNS = {
     "minecraft:igloo": (["cold", "frozen"], ["minecraft:white_carpet", "minecraft:packed_ice"]),
 }
 # the water positions the spawner takes as well as the ground: a solid block under water, water with water above and
-# below, water with air above (Seafloor, Submerged and SurfaceSpawnablePositionCalculator); lava's are left out
+# below, water with air above (Seafloor, Submerged and SurfaceSpawnablePositionCalculator); a surface spawn of lava
+# (the lava preset: Slugma and Magcargo) takes lava under air, as the position type "lava", which the script spawns
 WATER_POSITIONS = {"seafloor", "submerged", "surface"}
 WATER_FLUIDS = {"#minecraft:water", "minecraft:water"}
+LAVA_FLUIDS = {"#minecraft:lava", "minecraft:lava"}
 
 
 def bedrock_blocks(names):
@@ -8382,7 +8494,8 @@ def special_spawns():
         cond, anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
         pos = spawn.get("spawnablePositionType", "grounded")
         if cond.get("isPokeSnack") or cond.get("isSlimeChunk") or spawn.get("bucket") == "boss": return
-        if cond.get("fluid") and not (pos in WATER_POSITIONS and cond["fluid"] in WATER_FLUIDS): return
+        if pos == "surface" and cond.get("fluid") in LAVA_FLUIDS: pos = "lava"
+        elif cond.get("fluid") and not (pos in WATER_POSITIONS and cond["fluid"] in WATER_FLUIDS): return
         structures = structure_leaves(cond.get("structures") or [])
         if cond.get("structures") and not structures: return   # only other mods' structures
         # Cobblemon's own ruins and coves are found by their markers (create_structures); a spawn that names only
@@ -8393,13 +8506,16 @@ def special_spawns():
         needs = cond.get("neededNearbyBlocks") or cond.get("neededBaseBlocks") or structures
         if not needs:
             # the natural pool, as spawn_condition carries it: a surface preset, or none
-            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS: return
+            if spawn.get("presets") and not set(spawn["presets"]) & SURFACE_PRESETS and pos != "lava": return
             for words, level, weight in entries:
                 e = entry_for(pokemon_for_species_name(words[0]), words[1:], {**spawn, "weight": weight}, cond, anti, level)
                 if not e: continue
                 # the species too, for spawnpokemonfrompool and checkspawn, which draw from the natural pool as well
-                world.append({**e, **({"pos": pos} if pos != "grounded" else {}), **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
+                # (a lava spawn only once, among the special ones)
+                if pos != "lava": world.append({**e, **({"pos": pos} if pos != "grounded" else {}), **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
                 if pos == "grounded": on_land.add(e["entity"])
+                # Bedrock's spawn rules have no lava surface, so the script spawns all of these
+                elif pos == "lava": special.append({**e, "pos": pos, **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
                 else: in_water.append({**e, "pos": pos, **({"herd": True} if spawn.get("type") == "pokemon-herd" else {})})
             return
         near = bedrock_blocks(cond.get("neededNearbyBlocks")) if cond.get("neededNearbyBlocks") else None
@@ -10047,6 +10163,65 @@ def vanilla_held_icons():
     named = {item for item, _ in out}
     out += [(f"minecraft:{name}", path) for name, path in sorted(vanilla_item_icons().items()) if f"minecraft:{name}" not in named]
     return out
+
+
+def create_display_case():
+    """DisplayCaseBlockEntity: the case holds one item, put in or swapped by a click and taken out by an empty hand,
+    with DISPLAY_CASE_ADD_ITEM or DISPLAY_CASE_REMOVE_ITEM as setCaseStack plays them. A Bedrock custom block holds no
+    item and draws none, so the item is kept in a small entity at the case's middle (cobblemon:display_case_item, one
+    slot), which DisplayCaseRenderer's GROUND item draws as its flat icon, half a block across and centred 0.565 up,
+    turned to the face last clicked; the icon is picked by the cobblemon:display_index property the script sets, from
+    every pack item with an icon and every vanilla item with a flat one. getAnalogOutputSignal is a cobblemon:signal
+    state, 0 empty, 3 a Poke Ball, 2 a block, 1 anything else."""
+    defined = defined_items()
+    order = [i for i in sorted(defined) if item_icon_path(i)]
+    vanilla = [v for v in vanilla_held_icons() if v[0] not in defined]
+    paths = [item_icon_path(i) for i in order] + [t for _, t in vanilla]
+    order += [i for i, _ in vanilla]
+    with open(f"{scriptsBedrock}/display_case.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the index of each item's icon in a display case (0 shows nothing)" + chr(10))
+        file.write("export const DISPLAY_INDEX = " + json.dumps({i: n + 1 for n, i in enumerate(order)}) + ";" + chr(10))
+    os.makedirs(f"{modelsBedrock}/display_case_item", exist_ok=True)
+    face = {"uv": [0, 0], "uv_size": [16, 16]}
+    with open(f"{modelsBedrock}/display_case_item/display_case_item.geo.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+            "description": {"identifier": "geometry.cobblemon_display_case_item", "texture_width": 16, "texture_height": 16,
+                            "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
+            "bones": [{"name": "item", "pivot": [0, 0, 0], "cubes": [{"origin": [-4, 0, 0], "size": [8, 8, 0], "uv": {"north": face, "south": face}}]}]}]}, indent=2))
+    index = "q.property('cobblemon:display_index')"
+    with open(f"{renderControllersBedrock}/display_case_item.render_controllers.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_display_case_item": {
+            "arrays": {"textures": {"Array.item": ["Texture.blank"] + [f"Texture.i{n + 1}" for n in range(len(paths))]}},
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": [f"Array.item[{index}]"]}}}, indent=2))
+    with open(f"{entityBedrock}/display_case_item.entity.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:display_case_item", "materials": {"default": "entity_alphatest"},
+            "textures": {"blank": "textures/entity/blank", **{f"i{n + 1}": t for n, t in enumerate(paths)}},
+            "geometry": {"default": "geometry.cobblemon_display_case_item"},
+            "render_controllers": [{"controller.render.cobblemon_display_case_item": f"{index} > 0"}]}}}, indent=2))
+    with open(f"{entitiesBedrock}/display_case_item.behavior.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:display_case_item", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
+                            "properties": {"cobblemon:display_index": {"type": "int", "range": [0, len(paths)], "default": 0, "client_sync": True}}},
+            "components": {
+                "minecraft:type_family": {"family": ["display_case_item", "inanimate"]},
+                "minecraft:inventory": {"container_type": "container", "inventory_size": 1, "private": True},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}, "minecraft:persistent": {}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:display_case_item.name=Display Case" + chr(10))
+    path = f"{blocksBedrock}/display_case.json"
+    with open(path, encoding="utf-8") as file: block = json.load(file)
+    block["format_version"] = "1.21.120"   # redstone_producer is stable from 1.21.120
+    body = block["minecraft:block"]
+    body["description"].setdefault("states", {})["cobblemon:signal"] = [0, 1, 2, 3]
+    body["components"]["cobblemon:display_case"] = {}
+    body["permutations"] = [p for p in body.get("permutations", []) if "cobblemon:signal" not in p["condition"]]
+    body["permutations"] += [{"condition": f"q.block_state('cobblemon:signal') == {n}", "components": {"minecraft:redstone_producer": {"power": n}}} for n in (1, 2, 3)]
+    with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
+    print(f"Create display case complete: {len(paths)} item icons.")
 
 
 def create_held_display():
@@ -15113,6 +15288,7 @@ def main():
     create_ride_glyphs()
     create_party_item()
     add_cobblemon_food()   # after every item is written
+    create_display_case()   # after every item is written, whose icons it shows
     create_boats()   # after every item is written, whose boat items it gives their entity
     add_bait_offhand()   # after every item is written
     add_party_select_use()   # after every item is written, and items.js

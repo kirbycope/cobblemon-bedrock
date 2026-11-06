@@ -8,8 +8,9 @@ import { readFileSync } from "node:fs";
 const generated = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/structure_sites.js", import.meta.url), "utf-8");
 const STRUCTURE_PIECES = JSON.parse(generated.match(/STRUCTURE_PIECES = (.*);/)[1]);
 
-const gimmi = STRUCTURE_PIECES.findIndex((p) => p.s.includes("cobblemon:ruins/temperate_gimmi_tower"));
-check("the Gimmighoul tower's piece is marked", gimmi >= 0);
+// a structure placed whole by world generation (a fishing boat) is found by its markers
+const gimmi = STRUCTURE_PIECES.findIndex((p) => p.s.length);
+check("a placed structure's piece is marked", gimmi >= 0);
 const piece = STRUCTURE_PIECES[gimmi];
 check("with the block its markers stand in for and its reach", typeof piece.b === "string" && piece.r > 0 && piece.up > 0, JSON.stringify(piece));
 
@@ -25,11 +26,19 @@ M.noteStructureSite(marker(1001, 64, 2000));
 const sites = JSON.parse(world.getDynamicProperty("cobblemon:sites_1_3") ?? "[]");
 check("and notes the structure once, however many of its markers tick", sites.length === 1, JSON.stringify(sites));
 
-const ids = ["cobblemon:ruins/temperate_gimmi_tower"];
+const ids = piece.s;
 check("a spot in the tower is in it", M.inStructure({ x: 1002, y: 66, z: 2001 }, ids));
 check("a spot past its reach is not", !M.inStructure({ x: 1000 + piece.r + 3, y: 66, z: 2000 }, ids));
 check("nor one above it", !M.inStructure({ x: 1000, y: 64 + piece.up + 3, z: 2000 }, ids));
 check("nor another structure's spawn", !M.inStructure({ x: 1002, y: 66, z: 2001 }, ["cobblemon:ruins/sol_henge_ruins"]));
+
+// a jigsaw structure the script grew is found by the box it noted (the Gimmighoul tower's spawns)
+const generatedJigsaw = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/jigsaw.js", import.meta.url), "utf-8");
+const JIGSAW_STRUCTURES = JSON.parse(generatedJigsaw.match(/JIGSAW_STRUCTURES = (.*);/)[1]);
+const tower = JIGSAW_STRUCTURES.findIndex((st) => st.id === "cobblemon:ruins/temperate_gimmi_tower");
+M.noteJigsawSite(tower, { x0: 5000, y0: 60, z0: 5000, x1: 5012, y1: 90, z1: 5012 });
+check("a spot in a grown Gimmighoul tower is in it", M.inStructure({ x: 5006, y: 70, z: 5006 }, ["cobblemon:ruins/temperate_gimmi_tower"]));
+check("one outside it is not", !M.inStructure({ x: 5030, y: 70, z: 5006 }, ["cobblemon:ruins/temperate_gimmi_tower"]));
 M.noteStructureSite(marker(2046, 64, 2000));   // the last column of a region
 check("a site at a region's edge is found from the next region", M.inStructure({ x: 2050, y: 66, z: 2000 }, ids));
 

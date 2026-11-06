@@ -44,3 +44,6 @@ export const EntityComponentTypes = new Proxy({}, { get: (t, k) => String(k) });
 export const EntityInitializationCause = anything(), InputButton = anything(), ButtonState = anything(), EntityDamageCause = anything();
 export const EquipmentSlot = anything(), BlockVolume = class { }, StructureRotation = anything(), StructureSaveMode = anything();
 export const CommandPermissionLevel = anything(), CustomCommandParamType = anything(), CustomCommandStatus = anything();
+// BlockTypes.get: the block ids a test names, as a set it fills
+export const blockIds = new Set();
+export const BlockTypes = { get: (id) => (blockIds.has(id) ? { id } : undefined) };
