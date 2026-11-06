@@ -42,7 +42,7 @@ export const BlockPermutation = { resolve: (id, states = {}) => ({ type: { id },
 export const MolangVariableMap = class { setFloat() { } setVector3() { } setColorRGB() { } setColorRGBA() { } };
 export const EntityComponentTypes = new Proxy({}, { get: (t, k) => String(k) });
 export const EntityInitializationCause = anything(), InputButton = anything(), ButtonState = anything(), EntityDamageCause = anything();
-export const EquipmentSlot = anything(), BlockVolume = class { }, StructureRotation = anything(), StructureSaveMode = anything();
+export const EquipmentSlot = anything(), BlockVolume = class { constructor(from, to) { this.from = from; this.to = to; } }, StructureRotation = anything(), StructureSaveMode = anything();
 export const CommandPermissionLevel = anything(), CustomCommandParamType = anything(), CustomCommandStatus = anything();
 // BlockTypes.get: the block ids a test names, as a set it fills
 export const blockIds = new Set();

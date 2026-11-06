@@ -37,3 +37,29 @@ check("its pieces stay in reach and clear of each other", clean);
 check("each piece joins its parent", joined);
 check("its start sits on the ground", M.layoutJigsaw(dim, 100, 200, dais)[0].box.y0 === 64 + dais.h[0]);
 check("an unloaded column waits", M.layoutJigsaw({ getTopmostBlock: () => undefined, getBlock: () => undefined }, 0, 0, dais) === null);
+
+// fitting the ground: a terrain-matching piece follows it column by column, and a rigid piece of a structure Java
+// adapts the terrain to has the ground raised under it
+import { world } from "../stub_server.mjs";
+const blocks = new Map(), at = (x, y, z) => `${x},${y},${z}`;
+const fake = { setBlockType: (p, id) => blocks.set(at(p.x, p.y, p.z), id),
+    getBlock: (p) => ({ get permutation() { return blocks.get(at(p.x, p.y, p.z)); }, setPermutation: (v) => blocks.set(at(p.x, p.y, p.z), v) }),
+    fillBlocks: (volume, id) => { for (let y = volume.from.y; y <= volume.to.y; y++) blocks.set(at(volume.from.x, y, volume.from.z), id); } };
+world.structureManager = { get: () => ({ size: { x: 3, y: 1, z: 1 }, getBlockPermutation: () => "path" }) };
+const box = { x0: 0, y0: 64, z0: 0, x1: 2, y1: 64, z1: 0 };
+for (let x = 0; x <= 2; x++) blocks.set(at(x, 64, 0), "path");   // as placed, flat at the jigsaw's height
+M.followGround(fake, "path", 0, box, new Map([["0,0", [64, "minecraft:dirt"]], ["1,0", [66, "minecraft:dirt"]], ["2,0", [61, "minecraft:dirt"]]]));
+check("a column on level ground stays", blocks.get(at(0, 64, 0)) === "path");
+check("one where the ground is higher goes up to it, and the ground fills where it was",
+      blocks.get(at(1, 66, 0)) === "path" && blocks.get(at(1, 64, 0)) === "minecraft:dirt");
+check("one where the ground falls away goes down, leaving air", blocks.get(at(2, 61, 0)) === "path" && blocks.get(at(2, 64, 0)) === "minecraft:air");
+// fillBlocks takes a BlockVolume, which the stand-in keeps as from and to
+blocks.clear();
+const beard = { fillBlocks: (v, id) => { for (let y = v.from.y; y <= v.to.y; y++) blocks.set(at(v.from.x, y, v.from.z), id); } };
+M.beardUnder(beard, { x0: 0, y0: 70, z0: 0, x1: 0, y1: 75, z1: 0 }, new Map([["0,0", [60, "minecraft:stone"]]]));
+check("the ground is raised under a rigid piece to its floor", blocks.get(at(0, 69, 0)) === "minecraft:stone" && blocks.get(at(0, 61, 0)) === "minecraft:stone" && !blocks.has(at(0, 60, 0)));
+blocks.clear();
+M.beardUnder(beard, { x0: 0, y0: 70, z0: 0, x1: 0, y1: 75, z1: 0 }, new Map([["0,0", [40, "minecraft:stone"]]]));
+check("at most 12 blocks deep", blocks.has(at(0, 58, 0)) && !blocks.has(at(0, 57, 0)));
+const adapted = JSON.parse(generated.match(/JIGSAW_STRUCTURES = (.*);/)[1]).filter((s) => s.adapt);
+check("the structures that adapt the terrain say how", adapted.length > 20 && adapted.every((s) => ["beard_thin", "beard_box", "bury"].includes(s.adapt)), `${adapted.length}`);
