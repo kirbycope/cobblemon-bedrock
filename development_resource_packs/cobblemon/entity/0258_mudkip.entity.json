@@ -25,7 +25,7 @@
                 ],
                 "pre_animation": [
                     "v.moving = (q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5); v.pose_type = q.property('cobblemon:shoulder') > 0 ? 6 + q.property('cobblemon:shoulder') : (q.is_riding ? 0 : (q.is_sleeping ? 2 : (q.property('cobblemon:submerged') ? (v.moving ? 6 : 5) : (((0) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : (v.moving ? 1 : 0)))));",
-                    "v.pose = ((v.pose_type == 0 || v.pose_type == 5)) ? 0 : (((v.pose_type == 1 || v.pose_type == 6)) ? 1 : (0));",
+                    "v.pose = ((v.pose_type == 0) && (q.property('cobblemon:battle'))) ? 0 : (((v.pose_type == 0 || v.pose_type == 5)) ? 1 : (((v.pose_type == 1 || v.pose_type == 6)) ? 2 : (0)));",
                     "v.evo_t = q.property('cobblemon:evolving') ? (v.evo_t ?? 0) + q.delta_time : 0;",
                     "v.evo_glow = (v.evo_t > 5.25 && v.evo_t < 10.33) ? math.clamp(math.min(v.evo_t - 5.25, 10.33 - v.evo_t) / 0.25, 0, 0.85) : 0;"
                 ],
@@ -43,6 +43,7 @@
                 "blink_quirk": "controller.animation.mudkip.blink",
                 "look_at_target": "animation.0258_mudkip.look",
                 "ground_idle": "animation.mudkip.ground_idle",
+                "battle_idle": "animation.mudkip.battle_idle",
                 "cry": "animation.mudkip.cry",
                 "blink": "animation.mudkip.blink",
                 "shock": "animation.mudkip.shock",
@@ -51,6 +52,8 @@
                 "happy": "animation.mudkip.happy",
                 "hurt": "animation.mudkip.hurt",
                 "render": "animation.mudkip.render",
+                "WALKSPEED_TEST": "animation.mudkip.WALKSPEED_TEST",
+                "pose_battle_standing": "animation.0258_mudkip.pose_battle_standing",
                 "pose_standing": "animation.0258_mudkip.pose_standing",
                 "pose_walking": "animation.0258_mudkip.pose_walking",
                 "evolution": "animation.0258_mudkip.evolution"

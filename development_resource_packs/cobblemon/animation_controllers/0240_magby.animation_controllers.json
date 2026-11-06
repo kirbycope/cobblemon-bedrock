@@ -4,6 +4,25 @@
         "controller.animation.magby.pose": {
             "initial_state": "spawn",
             "states": {
+                "battle_standing": {
+                    "animations": [
+                        {
+                            "battle_idle": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_battle_standing": "1 - (v.primary_w ?? 0)"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        }
+                    ],
+                    "blend_transition": 0.5
+                },
                 "standing": {
                     "animations": [
                         {
@@ -15,7 +34,10 @@
                     ],
                     "transitions": [
                         {
-                            "walking": "v.pose == 1"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "walking": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -23,7 +45,7 @@
                 "walking": {
                     "animations": [
                         {
-                            "ground_idle": "1 - (v.primary_w ?? 0)"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
                             "pose_walking": "1 - (v.primary_w ?? 0)"
@@ -31,7 +53,10 @@
                     ],
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
+                        },
+                        {
+                            "standing": "v.pose == 1"
                         }
                     ],
                     "blend_transition": 0.5
@@ -39,10 +64,44 @@
                 "spawn": {
                     "transitions": [
                         {
-                            "standing": "v.pose == 0"
+                            "battle_standing": "v.pose == 0"
                         },
                         {
-                            "walking": "v.pose == 1"
+                            "standing": "v.pose == 1"
+                        },
+                        {
+                            "walking": "v.pose == 2"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.magby.quirk": {
+            "initial_state": "wait",
+            "states": {
+                "wait": {
+                    "transitions": [
+                        {
+                            "play": "!q.is_sleeping && !q.property('cobblemon:battle') && q.modified_move_speed < 0.1 && math.random(0, 900) < 1"
+                        }
+                    ]
+                },
+                "play": {
+                    "animations": [
+                        {
+                            "quirk_0": "v.quirk == 0 && (1)"
+                        }
+                    ],
+                    "on_entry": [
+                        "v.quirk = math.floor(math.random(0, 1));",
+                        "v.quirking = 1;"
+                    ],
+                    "on_exit": [
+                        "v.quirking = 0;"
+                    ],
+                    "transitions": [
+                        {
+                            "wait": "q.all_animations_finished || q.is_sleeping"
                         }
                     ]
                 }
@@ -65,6 +124,150 @@
                     "transitions": [
                         {
                             "open": "q.all_animations_finished || q.is_sleeping"
+                        }
+                    ]
+                }
+            }
+        },
+        "controller.animation.magby.primary": {
+            "initial_state": "off",
+            "states": {
+                "off": {
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "clip_5": "v.primary && q.property('cobblemon:primary') == 5"
+                        }
+                    ]
+                },
+                "clip_1": {
+                    "animations": [
+                        {
+                            "primary_1": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "clip_5": "v.primary && q.property('cobblemon:primary') == 5"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_2": {
+                    "animations": [
+                        {
+                            "primary_2": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "clip_5": "v.primary && q.property('cobblemon:primary') == 5"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_3": {
+                    "animations": [
+                        {
+                            "primary_3": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "clip_5": "v.primary && q.property('cobblemon:primary') == 5"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_4": {
+                    "animations": [
+                        {
+                            "primary_4": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_5": "v.primary && q.property('cobblemon:primary') == 5"
+                        },
+                        {
+                            "off": "!v.primary"
+                        }
+                    ]
+                },
+                "clip_5": {
+                    "animations": [
+                        {
+                            "primary_5": "v.primary_w"
+                        }
+                    ],
+                    "transitions": [
+                        {
+                            "clip_1": "v.primary && q.property('cobblemon:primary') == 1"
+                        },
+                        {
+                            "clip_2": "v.primary && q.property('cobblemon:primary') == 2"
+                        },
+                        {
+                            "clip_3": "v.primary && q.property('cobblemon:primary') == 3"
+                        },
+                        {
+                            "clip_4": "v.primary && q.property('cobblemon:primary') == 4"
+                        },
+                        {
+                            "off": "!v.primary"
                         }
                     ]
                 }

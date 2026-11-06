@@ -15,30 +15,24 @@
                     ],
                     "transitions": [
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         },
                         {
-                            "hovering": "v.pose == 2"
+                            "hover": "v.pose == 2"
                         },
                         {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
+                            "fly": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "walk": {
+                "walking": {
                     "animations": [
                         {
-                            "ground_idle": "1 - (v.primary_w ?? 0)"
+                            "ground_walk": "1 - (v.primary_w ?? 0)"
                         },
                         {
-                            "pose_walk": "1 - (v.primary_w ?? 0)"
+                            "pose_walking": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -46,24 +40,21 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "hovering": "v.pose == 2"
+                            "hover": "v.pose == 2"
                         },
                         {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
+                            "fly": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "hovering": {
+                "hover": {
                     "animations": [
                         {
-                            "pose_hovering": "1 - (v.primary_w ?? 0)"
+                            "air_idle": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_hover": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -71,24 +62,21 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         },
                         {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
+                            "fly": "v.pose == 3"
                         }
                     ],
                     "blend_transition": 0.5
                 },
-                "flying": {
+                "fly": {
                     "animations": [
                         {
-                            "pose_flying": "1 - (v.primary_w ?? 0)"
+                            "air_fly": "1 - (v.primary_w ?? 0)"
+                        },
+                        {
+                            "pose_fly": "1 - (v.primary_w ?? 0)"
                         }
                     ],
                     "transitions": [
@@ -96,72 +84,10 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         },
                         {
-                            "hovering": "v.pose == 2"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
-                        }
-                    ],
-                    "blend_transition": 0.5
-                },
-                "shoulderleft": {
-                    "animations": [
-                        {
-                            "ground_idle": "1 - (v.primary_w ?? 0)"
-                        },
-                        {
-                            "pose_shoulderleft": "1 - (v.primary_w ?? 0)"
-                        }
-                    ],
-                    "transitions": [
-                        {
-                            "standing": "v.pose == 0"
-                        },
-                        {
-                            "walk": "v.pose == 1"
-                        },
-                        {
-                            "hovering": "v.pose == 2"
-                        },
-                        {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
-                        }
-                    ],
-                    "blend_transition": 0.5
-                },
-                "shoulderright": {
-                    "animations": [
-                        {
-                            "ground_idle": "1 - (v.primary_w ?? 0)"
-                        },
-                        {
-                            "pose_shoulderright": "1 - (v.primary_w ?? 0)"
-                        }
-                    ],
-                    "transitions": [
-                        {
-                            "standing": "v.pose == 0"
-                        },
-                        {
-                            "walk": "v.pose == 1"
-                        },
-                        {
-                            "hovering": "v.pose == 2"
-                        },
-                        {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
+                            "hover": "v.pose == 2"
                         }
                     ],
                     "blend_transition": 0.5
@@ -172,19 +98,13 @@
                             "standing": "v.pose == 0"
                         },
                         {
-                            "walk": "v.pose == 1"
+                            "walking": "v.pose == 1"
                         },
                         {
-                            "hovering": "v.pose == 2"
+                            "hover": "v.pose == 2"
                         },
                         {
-                            "flying": "v.pose == 3"
-                        },
-                        {
-                            "shoulderleft": "v.pose == 4"
-                        },
-                        {
-                            "shoulderright": "v.pose == 5"
+                            "fly": "v.pose == 3"
                         }
                     ]
                 }

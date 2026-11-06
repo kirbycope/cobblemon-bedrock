@@ -23,21 +23,21 @@ import { TMS, TM_SPECIES } from "./tms.js";
 import { INTERACT_GENDERS } from "./interactions.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
-import { DEFENDERS } from "./defenders.js";
+import { DEFENDERS, PREDATORS } from "./defenders.js";
 import { SHOULDER } from "./shoulder.js";
 import { DEX_VARIATIONS } from "./dex_variations.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
-import { MOVE_FX, FX_ANIMS, FX_PRIMARY } from "./move_fx.js";
+import { MOVE_FX, FX_ANIMS, FX_PRIMARY, FX_BONES } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { STRUCTURE_PIECES } from "./structure_sites.js";
-import { RODS, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS } from "./fishing.js";
+import { RODS, ROD_LINES, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS, VANILLA_STRUCTURE_SIGNS } from "./fishing.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF, FORTUNE } from "./silk.js";
 import { POTTED } from "./potted.js";
@@ -1047,6 +1047,12 @@ function fxEvent(e, user, target, move, outcome) {
         } else if (e.k === "s") {
             entity.dimension.playSound(fxFill(e.s, move), entity.location);
         } else if (e.k === "p") {
+            // a particle tied to a bone that moves (a hand, the mouth) the Pokemon's own animation emits at the bone, so
+            // it follows it, where its model has that locator (port.py's add_bone_particles)
+            if (!e.aim && FX_BONES?.[entity.typeId]?.includes(e.l)) {
+                entity.playAnimation(`animation.cobblemon_fx.${fxFill(e.p, move).split(":")[1]}.${e.l}`);
+                return;
+            }
             const other = (e.w === "t" ? user : target)?.entity, toward = other?.isValid ? other.location : undefined;
             const at = fxLocator(entity, e.l, toward);
             const vars = new MolangVariableMap();
@@ -1074,11 +1080,17 @@ function playMoveFx(battle, user, target, move, outcome) {
     const species = user.entity?.typeId?.replace(/^cobblemon:p\d+_/, "");
     const fx = MOVE_FX[`${move.id}_${species}`] ?? MOVE_FX[move.id] ?? MOVE_FX.generic_move;
     if (!fx) return;
-    const events = [...fx.e];
+    // q.target_fainted (1.8.4): a pause kept only for a target that did not faint is left out when it did, the effect's
+    // later beats and its end coming that much sooner
+    const fainted = (target?.hp ?? 1) <= 0;
+    const skips = fainted ? fx.e.filter((e) => e.k === "pf") : [];
+    const sooner = (t) => t - skips.filter((p) => p.t < t).reduce((n, p) => n + p.d, 0);
+    const events = fx.e.filter((e) => e.k !== "pf").map((e) => (skips.length ? { ...e, t: sooner(e.t) } : e));
+    const hold = sooner(fx.h);
     // DamageInstruction: a Pokemon hit flinches with its recoil animation as the hit lands, unless the effect animates it
-    if (move.category !== "Status" && !outcome.missed && !events.some((e) => e.k === "a" && e.w === "t")) events.push({ t: fx.h, k: "a", a: ["battle_recoil", "recoil"], w: "t" });
+    if (move.category !== "Status" && !outcome.missed && !events.some((e) => e.k === "a" && e.w === "t")) events.push({ t: hold, k: "a", a: ["battle_recoil", "recoil"], w: "t" });
     for (const e of events) system.runTimeout(() => fxEvent(e, user, target, move, outcome), start - now + Math.round(e.t * 20));
-    clock.fxUntil = start + Math.round(fx.h * 20) + 4;
+    clock.fxUntil = start + Math.round(hold * 20) + 4;
 }
 // a line for each side of a battle between players (the other side's own form of it), each into that side's log
 function sayEach(battle, own, other) {
@@ -3093,6 +3105,28 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 const POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"];
 const potColour = (id) => (id?.startsWith("cobblemon:campfire_") ? POT_COLOURS.find((c) => id === `cobblemon:campfire_${c}`) : undefined);
 const potKey = (block) => `cobblemon:pot|${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
+// Direction.fromYRot: south at 0 degrees, west at 90, north at 180, east at 270; the item direction is its opposite
+const POT_STEPS = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
+function potItemDirection(yaw) {
+    const faced = ["south", "west", "north", "east"][Math.floor(((((yaw + 45) % 360) + 360) % 360) / 90)];
+    return { south: "north", north: "south", east: "west", west: "east" }[faced];
+}
+// CampfireBlockEntity's remainder items (a milk recipe's bucket): into the container on the pot's item direction side, as
+// a hopper would put it in, else dropped 0.7 blocks out that way, drifting off at 0.05
+function potLeftover(block, item) {
+    const dir = world.getDynamicProperty(`${potKey(block)}|d`) ?? "north", [sx, sz] = POT_STEPS[dir] ?? [0, -1];
+    const { x, y, z } = block.location;
+    let left = new ItemStack(item, 1);
+    try {
+        const container = block.dimension.getBlock({ x: x + sx, y, z: z + sz })?.getComponent("minecraft:inventory")?.container;
+        if (container) left = container.addItem(left);
+    } catch (e) { }
+    if (!left) return;
+    try {
+        const dropped = block.dimension.spawnItem(left, { x: x + 0.5 + sx * 0.7, y: y + 0.5, z: z + 0.5 + sz * 0.7 });
+        dropped.clearVelocity(); dropped.applyImpulse({ x: sx * 0.05, y: 0, z: sz * 0.05 });
+    } catch (e) { }
+}
 function potData(block) {
     try { return JSON.parse(world.getDynamicProperty(potKey(block)) ?? "null") ?? { s: Array(13).fill(null), p: 0 }; } catch (e) { return { s: Array(13).fill(null), p: 0 }; }
 }
@@ -3143,6 +3177,9 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
             const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
             block.setPermutation(BlockPermutation.resolve(`cobblemon:campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
             savePot(block, null); potSite(block, true);
+            // CampfirePotItem: the pot's item direction points back at the player who set it (Direction.fromYRot(head
+            // yaw).opposite), the side its leftovers go to
+            world.setDynamicProperty(`${potKey(block)}|d`, potItemDirection(player.getRotation().y));
             consumeHand(player);
             playAt(block, "cobblemon.block.campfire_pot.set");
         });
@@ -3351,7 +3388,7 @@ const REMAINDERS = { "minecraft:milk_bucket": "minecraft:bucket", "minecraft:wat
 // settings are. Every recipe shows, as if the book had them all.
 const RB_ALL = [...POT_SHAPED, ...POT_SHAPELESS].sort((a, b) => (a.id < b.id ? -1 : 1));
 const RB_TABS = [["foods", "misc", "medicines", "complex_dishes"], ["foods"], ["medicines"], ["complex_dishes"], ["misc"]];
-const RB_TAB_ICONS = ["minecraft:compass", "cobblemon:leek_and_potato_stew", "cobblemon:potion", "cobblemon:aprijuice_red", "cobblemon:protein"];
+const RB_TAB_ICONS = ["minecraft:compass", "cobblemon:leek_and_potato_stew", "cobblemon:potion", "cobblemon:aprijuice_red", "cobblemon:health_candy"];   // the Misc tab's Health Candy since 1.8.3 (RecipeBookCategoriesMixin)
 const RB_FIRST = 51, RB_SETTINGS = "cobblemon:pot_book";
 // The recipe book's known recipes (its recipe advancements, advancement/recipes/campfire_pot): one is learnt the first
 // time the player holds one of the items its advancement names (inventory_changed), and the book shows only those; a
@@ -3698,7 +3735,7 @@ system.runInterval(() => {
                 for (let n = 1; n <= 9; n++) {
                     const s = data.s[n];
                     if (!s) continue;
-                    if (REMAINDERS[s[0]]) try { block.dimension.spawnItem(new ItemStack(REMAINDERS[s[0]], 1), { x: x + 0.5, y: y + 1, z: z + 0.5 }); } catch (e) { }
+                    if (REMAINDERS[s[0]]) potLeftover(block, REMAINDERS[s[0]]);
                     data.s[n] = s[1] > 1 ? [s[0], s[1] - 1] : null;
                 }
                 savePot(block, data); showPotContents(block, data);
@@ -8453,21 +8490,54 @@ system.runInterval(() => {
                 const attacker = world.getEntity(hit.id);
                 if (attacker?.isValid && attacker.dimension.id === e.dimension.id && dist(attacker, e) <= 16) foe = attacker;
             }
-            if (!foe) continue;
-            const d = dist(foe, e);
-            if (d > 1.8) {
-                // a step toward it, turned to face it
-                const k = Math.min(0.45, d - 1.5) / d;
-                try { e.tryTeleport({ x: e.location.x + (foe.location.x - e.location.x) * k, y: e.location.y, z: e.location.z + (foe.location.z - e.location.z) * k },
-                                    { facingLocation: foe.location, checkForBlocks: true, keepVelocity: true }); } catch (err) { }
-            } else if (system.currentTick - (lastStrike.get(e.id) ?? -99) >= 20) {
-                lastStrike.set(e.id, system.currentTick);
-                const damage = Math.max(1, Math.round((POKEMON[e.typeId]?.stats?.atk ?? 40) / 10));
-                try { foe.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: e }); } catch (err) { }
+            if (foe) chaseAndStrike(e, foe);
+        }
+    }
+    predation();
+}, 4);
+// a step toward the foe, turned to face it, and within reach a strike once a second for its attack damage
+function chaseAndStrike(e, foe) {
+    const d = dist(foe, e);
+    if (d > 1.8) {
+        const k = Math.min(0.45, d - 1.5) / d;
+        try { e.tryTeleport({ x: e.location.x + (foe.location.x - e.location.x) * k, y: e.location.y, z: e.location.z + (foe.location.z - e.location.z) * k },
+                            { facingLocation: foe.location, checkForBlocks: true, keepVelocity: true }); } catch (err) { }
+    } else if (system.currentTick - (lastStrike.get(e.id) ?? -99) >= 20) {
+        lastStrike.set(e.id, system.currentTick);
+        const damage = Math.max(1, Math.round((POKEMON[e.typeId]?.stats?.atk ?? 40) / 10));
+        try { foe.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: e }); } catch (err) { }
+    }
+}
+// HateEntityTaskConfig (Cobblemon 1.8.3, Zangoose against Seviper and Seviper against Zangoose): out of battle, a
+// Pokemon takes the nearest Pokemon it hates within its range as its attack target, always at chance 1 and otherwise on
+// that chance each check, and goes for it (move_to_attack_target, melee_attack) until the target is gone, out of range
+// or in battle. Off while doPokemonPredation is false (the cobblemon:dopokemonpredation command, as a pack can add no
+// game rule)
+const PREDATION = "cobblemon:do_pokemon_predation", hunting = new Map();   // entity id -> target id
+function predationOn() { return world.getDynamicProperty(PREDATION) !== false; }
+function predation() {
+    if (!predationOn()) { hunting.clear(); return; }
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        for (const [type, [targets, range, chance]] of Object.entries(PREDATORS)) {
+            let hunters = [];
+            try { hunters = world.getDimension(dim).getEntities({ type }); } catch (e) { continue; }
+            for (const e of hunters) {
+                if (!e.isValid || prop(e, FAINTED) || battling(e)) { hunting.delete(e.id); continue; }
+                let foe = hunting.has(e.id) ? world.getEntity(hunting.get(e.id)) : undefined;
+                if (!foe?.isValid || battling(foe) || prop(foe, FAINTED) || dist(foe, e) > range) {
+                    hunting.delete(e.id);
+                    let near = [];
+                    try { near = e.dimension.getEntities({ location: e.location, maxDistance: range, families: ["pokemon"] }).filter((o) => targets.includes(o.typeId) && !battling(o)); } catch (err) { }
+                    foe = near.sort((a, b) => dist(a, e) - dist(b, e))[0];
+                    if (!foe || (chance < 1 && Math.random() >= chance)) continue;
+                    hunting.set(e.id, foe.id);
+                }
+                chaseAndStrike(e, foe);
             }
         }
     }
-}, 4);
+}
+function battling(e) { try { return !!e.getProperty("cobblemon:battle"); } catch (err) { return false; } }
 function dist(a, b) { return Math.hypot(a.location.x - b.location.x, a.location.y - b.location.y, a.location.z - b.location.z); }
 function openPasture(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a pasture while in battle!"); return; }
@@ -8945,7 +9015,7 @@ function snackTick(block) {
     let tags = [];
     try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { }
     const place = placeTest(dim, spot, { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, tags);
-    const pool = place ? SNACK_SPAWNS.filter(place.fits) : SNACK_SPAWNS.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures));
+    const pool = place ? SNACK_SPAWNS.filter(place.fits) : SNACK_SPAWNS.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures || sp.vanilla));
     const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, pool, SNACK_BUCKETS, true);
     if (!plan) return "nothing in the pool can spawn here";
     let pokemon;
@@ -9126,7 +9196,18 @@ function placeTest(dim, spot, ground, tags) {
     // a Woodland Mansion stands only in a dark forest; the mansion preset's floors and walls are the rest of the test;
     // a spawn naming a village and Cobblemon structures comes in any of them
     const inside = new Map(), within = (ids) => { const k = ids.join(); if (!inside.has(k)) inside.set(k, inStructure(spot, ids)); return inside.get(k); };
-    const placed = (sp) => !(sp.village || sp.structures) || (sp.village && village) || (sp.structures && within(sp.structures));
+    // a vanilla structure (port.py's VANILLA_STRUCTURE_SIGNS): one of its biomes, and one of its own blocks within 6
+    // across and 3 up or down
+    const signs = new BlockVolume({ x: ground.x - 6, y: ground.y - 3, z: ground.z - 6 }, { x: ground.x + 6, y: ground.y + 3, z: ground.z + 6 });
+    const vanillaHere = (id) => {
+        const [biomes, blocks] = VANILLA_STRUCTURE_SIGNS?.[id] ?? [[], []];
+        if (biomes && !biomes.some((t) => tags.includes(t))) return false;
+        const key = `v:${id}`;
+        if (!found.has(key)) { let yes = false; try { yes = dim.containsBlock(signs, { includeTypes: blocks }, false); } catch (e) { } found.set(key, yes); }
+        return found.get(key);
+    };
+    const placed = (sp) => !(sp.village || sp.structures || sp.vanilla) || (sp.village && village) || (sp.structures && within(sp.structures))
+        || (sp.vanilla && sp.vanilla.some(vanillaHere));
     const fits = (sp) => (!sp.base || sp.base.includes(base)) && placed(sp) && !(sp.notVillage && village)
         && (!sp.mansion || tags.includes("roofed")) && (!sp.near || near(sp.near));
     return { fits, base };
@@ -9357,6 +9438,38 @@ function castRod(player, item) {
 function endCast(cast) {
     fishing.delete(cast.player.id);
     try { if (cast.bobber.isValid) cast.bobber.remove(); } catch (e) { }
+    for (const segment of cast.line ?? []) try { if (segment.isValid) segment.remove(); } catch (e) { }
+}
+// PokeBobberEntityRenderer's line, as others see it: 16 segments from the bobber to the rod hand (0.35 to the side and
+// 0.8 ahead of the body, 0.45 under the eyes, the other hand when the rod is in the off hand), sagging as (t * t + t) / 2
+// of the drop, in the rod's colour
+const LINE_SEGMENTS = 16;
+function lineHand(player) {
+    const yaw = (player.getRotation().y * Math.PI) / 180, side = 0.35, head = player.getHeadLocation(), p = player.location;
+    return { x: p.x - Math.cos(yaw) * side - Math.sin(yaw) * 0.8, y: head.y - 0.45, z: p.z - Math.sin(yaw) * side + Math.cos(yaw) * 0.8 };
+}
+function linePoint(b, hand, t) {
+    const dx = hand.x - b.x, dy = hand.y - (b.y + 0.25), dz = hand.z - b.z;
+    return { x: b.x + dx * t, y: b.y + dy * (t * t + t) * 0.5 + 0.25, z: b.z + dz * t };
+}
+function drawLine(cast) {
+    const { player, bobber } = cast;
+    if (!cast.line) {
+        cast.line = [];
+        for (let n = 0; n < LINE_SEGMENTS; n++) {
+            try {
+                const segment = bobber.dimension.spawnEntity("cobblemon:fishing_line", bobber.location);
+                segment.setProperty("cobblemon:colour", ROD_LINES[cast.rod] ?? 0);
+                cast.line.push(segment);
+            } catch (e) { }
+        }
+    }
+    const b = bobber.location, hand = lineHand(player);
+    cast.line.forEach((segment, n) => {
+        if (!segment.isValid) return;
+        const a = linePoint(b, hand, n / LINE_SEGMENTS), c = linePoint(b, hand, (n + 1) / LINE_SEGMENTS);
+        drawBeam(segment, a, c, 0, 1);
+    });
 }
 
 function damageRod(player) {
@@ -9426,6 +9539,7 @@ system.runInterval(() => {
         if (!player.isValid || !bobber.isValid || held !== cast.rod || cast.age > 20 * 300) { endCast(cast); continue; }
         const b = bobber.location, p = player.location;
         if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) > 32) { endCast(cast); continue; }
+        drawLine(cast);
         if (cast.phase === "flying") { if (bobber.isInWater) { cast.phase = "waiting"; try { bobber.dimension.playSound("cobblemon.fishing.bobber_land", b); } catch (e) { } } else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
         if (cast.phase === "waiting") {
             cast.wait -= 1 + cast.lure;
@@ -12525,6 +12639,12 @@ function registerCommands(registry) {
         return ok("Frozen");
     });
     // HidePartyBinding: a Bedrock pack adds no keys, so a command toggles the party overlay
+    // the doPokemonPredation game rule (CobblemonGameRules, on by default), as a command since a pack adds no game rule
+    add("dopokemonpredation", "Whether Pokemon that hate others (Zangoose and Seviper) attack them", [], [{ type: P.Boolean, name: "value" }], (origin, value) => {
+        if (value === undefined) return ok(`doPokemonPredation = ${predationOn()}`);
+        later(() => world.setDynamicProperty(PREDATION, value ? undefined : false));
+        return ok(`doPokemonPredation is now ${value}`);
+    });
     add("hideparty", "Hides or shows the party overlay", [], [], (origin) => {
         const player = commandPlayer(origin);
         if (!player) return bad("Run it as a player");
@@ -13396,10 +13516,49 @@ world.afterEvents.projectileHitBlock.subscribe((event) => {
     dropBall(event.dimension, ballId, event.location, player);
 });
 
-// every ball entity and beam is the script's; none outlives a restart
+// PokemonEntity's battle platform (PlatformType, textured from 1.8.3): an owned Pokemon in battle that is in water but
+// not under it, and neither breathes under water nor walks on it, stands on a raft sized by its width (to 0.511 XS,
+// under 1.01 S, 1.8 M, 2.875 L, else XL) at the water's surface, turned as it faces; the raft goes when the battle does
+// or the water under it is gone. The Pokemon is kept on top of it, a quarter block up as PokemonRenderer lifts it
+const rafts = new Map();   // Pokemon id -> its raft
+function raftSize(width) { return width <= 0.511 ? 0 : width < 1.01 ? 1 : width < 1.8 ? 2 : width < 2.875 ? 3 : 4; }
+function waterTop(dim, at) {
+    let y = Math.floor(at.y);
+    try {
+        if (!isWater(dim.getBlock({ x: Math.floor(at.x), y, z: Math.floor(at.z) }))) return undefined;
+        while (isWater(dim.getBlock({ x: Math.floor(at.x), y: y + 1, z: Math.floor(at.z) }))) y++;
+    } catch (e) { return undefined; }
+    return y + 1;   // the surface: the top of the highest water block
+}
+system.runInterval(() => {
+    for (const [id, raft] of [...rafts]) {
+        const e = world.getEntity(id);
+        const top = e?.isValid && battling(e) ? waterTop(raft.dimension, raft.location) : undefined;
+        if (top === undefined) { try { raft.remove(); } catch (err) { } rafts.delete(id); continue; }
+        try { e.teleport({ x: raft.location.x, y: top + 0.25, z: raft.location.z }, { keepVelocity: false }); } catch (err) { }
+    }
+    for (const dim of ["overworld", "nether", "the_end"]) {
+        let owned = [];
+        try { owned = world.getDimension(dim).getEntities({ families: ["owned"] }); } catch (e) { continue; }
+        for (const e of owned) {
+            if (rafts.has(e.id) || !battling(e) || POKEMON[e.typeId]?.noRaft || !e.isInWater) continue;
+            let under = false;
+            try { under = isWater(e.dimension.getBlock(e.getHeadLocation())); } catch (err) { }
+            const top = under ? undefined : waterTop(e.dimension, e.location);
+            if (top === undefined) continue;
+            try {
+                const raft = e.dimension.spawnEntity("cobblemon:water_platform", { x: e.location.x, y: top, z: e.location.z });
+                raft.triggerEvent(`cobblemon:size_${raftSize(POKEMON[e.typeId]?.width ?? 0.6)}`);
+                raft.setRotation({ x: 0, y: e.getRotation().y });
+                rafts.set(e.id, raft);
+            } catch (err) { }
+        }
+    }
+}, 2);
+// every ball entity, beam, bobber and fishing line is the script's; none outlives a restart
 world.afterEvents.worldLoad?.subscribe?.(() => {
     for (const dim of ["overworld", "nether", "the_end"].map((d) => world.getDimension(d))) {
-        for (const type of ["cobblemon:capture_ball", "cobblemon:capture_ball_ancient", "cobblemon:beam"]) {
+        for (const type of ["cobblemon:capture_ball", "cobblemon:capture_ball_ancient", "cobblemon:beam", "cobblemon:poke_bobber", "cobblemon:fishing_line", "cobblemon:water_platform"]) {
             try { for (const e of dim.getEntities({ type })) e.remove(); } catch (e) { }
         }
     }
