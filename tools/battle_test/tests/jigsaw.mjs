@@ -63,3 +63,20 @@ M.beardUnder(beard, { x0: 0, y0: 70, z0: 0, x1: 0, y1: 75, z1: 0 }, new Map([["0
 check("at most 12 blocks deep", blocks.has(at(0, 58, 0)) && !blocks.has(at(0, 57, 0)));
 const adapted = JSON.parse(generated.match(/JIGSAW_STRUCTURES = (.*);/)[1]).filter((s) => s.adapt);
 check("the structures that adapt the terrain say how", adapted.length > 20 && adapted.every((s) => ["beard_thin", "beard_box", "bury"].includes(s.adapt)), `${adapted.length}`);
+
+// the beard's skirt: the ground round a raised piece rises toward its floor, a block lower for each block out
+blocks.clear();
+const flat = { getTopmostBlock: () => ({ location: { y: 60 }, isAir: false, typeId: "minecraft:stone", below() { return this; } }),
+               getBlock: () => ({ typeId: "minecraft:stone" }), ...beard };
+M.beardSkirt(flat, { x0: 0, y0: 70, z0: 0, x1: 2, y1: 75, z1: 2 });
+const skirtTop = (x, z) => Math.max(...[...blocks.keys()].filter((k) => k.startsWith(`${x},`) && k.endsWith(`,${z}`)).map((k) => Number(k.split(",")[1])));
+check("one block out the ground comes up to a block under the floor", skirtTop(3, 1) === 68);
+check("four out, four lower", skirtTop(6, 1) === 65 && !blocks.has(at(7, 64, 1)));
+check("nothing is filled inside the footprint", ![...blocks.keys()].some((k) => k === at(1, 69, 1)));
+// beard_box's carving: ground left inside a piece where its template keeps the world's block is cut away
+const carved = new Map([[at(0, 71, 0), "minecraft:dirt"], [at(0, 72, 0), "minecraft:oak_planks"]]);
+world.structureManager = { get: () => ({ size: { x: 1, y: 3, z: 1 }, getBlockPermutation: ({ y }) => (y === 0 ? "floor" : undefined) }) };
+M.carveBox({ getBlock: (p) => ({ get typeId() { return carved.get(at(p.x, p.y, p.z)) ?? "minecraft:air"; }, get isAir() { return !carved.has(at(p.x, p.y, p.z)); },
+                                setType: (id) => carved.set(at(p.x, p.y, p.z), id) }) }, "piece", 0, { x0: 0, y0: 70, z0: 0, x1: 0, y1: 72, z1: 0 });
+check("the hill inside a piece's voids is cut away", carved.get(at(0, 71, 0)) === "minecraft:air");
+check("a block that is not ground stays", carved.get(at(0, 72, 0)) === "minecraft:oak_planks");

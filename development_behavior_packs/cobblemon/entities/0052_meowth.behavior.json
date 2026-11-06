@@ -1118,7 +1118,62 @@
                     }
                 ]
             },
-            "cobblemon:spawn_mult_0": {},
+            "cobblemon:spawn_mult_0": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_mult_1": {},
+            "cobblemon:spawn_mult_2": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_5"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_4"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_4"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_5"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [

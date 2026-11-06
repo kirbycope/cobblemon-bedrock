@@ -19,7 +19,7 @@ function scene(handItem, caseItem, mode = "Survival") {
         const slot = [item];
         holder = { yaw: null, index: 0, removed: false,
                    getComponent: () => ({ container: { getItem: () => slot[0], setItem: (n, v) => { slot[0] = v; } } }),
-                   setProperty: (k, v) => { holder.index = v; }, setRotation: (r) => { holder.yaw = r.y; },
+                   setProperty: (k, v) => { holder[k === "cobblemon:display_block" ? "block" : "index"] = v; }, setRotation: (r) => { holder.yaw = r.y; },
                    remove: () => { holder.removed = true; holder = null; } };
         return holder;
     };
@@ -45,6 +45,11 @@ check("with the add sound", s.sounds.includes("cobblemon.block.display_case.add_
 check("turned to the side clicked", s.holder().yaw === 90);
 check("and the case's signal is 1", s.signal() === 1);
 check("its icon is shown", s.holder().index > 0);
+check("as its flat icon, not a cube", !s.holder().block);
+// a block item is the small cube Java draws it as, its sides, top and bottom with their own textures
+s = scene(stack("minecraft:oak_log", 2), null);
+M.useDisplayCase(s.block, s.player, "West");
+check("a block item shows as a cube, with no flat icon", s.holder().block > 0 && s.holder().index === 0);
 
 s = scene(undefined, stack("cobblemon:poke_ball"));
 M.useDisplayCase(s.block, s.player, "Up");

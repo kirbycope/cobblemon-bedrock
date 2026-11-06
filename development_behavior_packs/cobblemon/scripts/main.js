@@ -49,7 +49,7 @@ import { NATIONAL, REGIONS, DEX_INFO } from "./dex.js";
 import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
-import { DISPLAY_INDEX } from "./display_case.js";
+import { DISPLAY_INDEX, DISPLAY_BLOCK } from "./display_case.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
 
@@ -7548,8 +7548,8 @@ function growJigsaw(block) {
     const all = { x0: Infinity, y0: Infinity, z0: Infinity, x1: -Infinity, y1: -Infinity, z1: -Infinity }, waiting = [];
     for (const p of pieces) {
         const fit = p.rigid ? (structure.adapt ? JIGSAW_BEARD_FIT : 0) : JIGSAW_TERRAIN_FIT;
-        if (boxLoaded(dim, p.box)) placeJigsawPiece(dim, p.key, p.r, p.box, fit);
-        else waiting.push([dim.id, p.key, p.r, p.box.x0, p.box.y0, p.box.z0, fit]);
+        if (boxLoaded(dim, p.box)) placeJigsawPiece(dim, p.key, p.r, p.box, fit, structure.adapt === "beard_box");
+        else waiting.push([dim.id, p.key, p.r, p.box.x0, p.box.y0, p.box.z0, fit + (structure.adapt === "beard_box" ? JIGSAW_CARVE : 0)]);
         for (const k of ["x0", "y0", "z0"]) all[k] = Math.min(all[k], p.box[k]);
         for (const k of ["x1", "y1", "z1"]) all[k] = Math.max(all[k], p.box[k]);
     }
@@ -7590,18 +7590,51 @@ const JIGSAW_PENDING = "cobblemon:jigsaw_pending";
 function jigsawPending() { try { return JSON.parse(world.getDynamicProperty(JIGSAW_PENDING) ?? "[]"); } catch (e) { return []; } }
 // how a piece meets the ground (the pending list's last field): a rigid piece of a structure Java adapts the terrain to
 // (beard_thin, beard_box, bury) has the ground raised to its floor, and a terrain-matching piece follows the ground
-const JIGSAW_TERRAIN_FIT = 1, JIGSAW_BEARD_FIT = 2, JIGSAW_BEARD = 12;
-function placeJigsawPiece(dim, key, r, box, fit = 0) {
+const JIGSAW_TERRAIN_FIT = 1, JIGSAW_BEARD_FIT = 2, JIGSAW_CARVE = 4, JIGSAW_BEARD = 12, JIGSAW_SKIRT = 4;
+function placeJigsawPiece(dim, key, r, box, fit = 0, carve = false) {
     const ground = fit ? new Map() : undefined;
     // each column's ground and the block to fill with, read before the piece goes in
     if (fit) for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) {
         const g = groundTop(dim, x, z, false);
         if (g !== undefined) ground.set(`${x},${z}`, [g, groundFill(dim, x, g, z)]);
     }
-    if (fit === JIGSAW_BEARD_FIT) beardUnder(dim, box, ground);
+    if (fit === JIGSAW_BEARD_FIT) { beardUnder(dim, box, ground); beardSkirt(dim, box); }
     try { world.structureManager.place(`cobblemon:${key}`, dim, { x: box.x0, y: box.y0, z: box.z0 }, { rotation: StructureRotation[JIGSAW_ROTATIONS[r]] }); }
     catch (e) { console.warn(`[cobblemon] jigsaw piece ${key}: ${e}`); return; }
     if (fit === JIGSAW_TERRAIN_FIT) followGround(dim, key, r, box, ground);
+    if (fit === JIGSAW_BEARD_FIT && carve) carveBox(dim, key, r, box);
+}
+// the beard's falloff round a raised piece: the ground within JIGSAW_SKIRT blocks of its footprint rises toward its
+// floor, a block lower for each block out, so the plinth beardUnder makes slopes into the hill instead of standing
+// sheer; only ground lower than that is raised
+function beardSkirt(dim, box) {
+    for (let x = box.x0 - JIGSAW_SKIRT; x <= box.x1 + JIGSAW_SKIRT; x++) for (let z = box.z0 - JIGSAW_SKIRT; z <= box.z1 + JIGSAW_SKIRT; z++) {
+        const out = Math.max(box.x0 - x, x - box.x1, box.z0 - z, z - box.z1, 0);
+        if (out === 0) continue;
+        const target = box.y0 - 1 - out, g = groundTop(dim, x, z, false);
+        if (g === undefined || g >= target) continue;
+        try { dim.fillBlocks(new BlockVolume({ x, y: Math.max(g + 1, target - JIGSAW_BEARD), z }, { x, y: target, z }), groundFill(dim, x, g, z)); } catch (e) { }
+    }
+}
+// beard_box's carving: the ground left inside a piece where its template keeps the world's block (a structure void)
+// is cut away above its floor, so a ruin set into a hillside is not filled with the hill
+const CARVED = /dirt|grass_block|stone|deepslate|granite|diorite|andesite|tuff|gravel|sand|clay|terracotta|podzol|mycelium|snow|ice|mud|moss_block|netherrack|calcite/;
+function carveBox(dim, key, r, box) {
+    let template;
+    try { template = world.structureManager.get(`cobblemon:${key}`); } catch (e) { }
+    if (!template) return;
+    const { x: sx, y: sy, z: sz } = template.size;
+    const local = (dx, dz) => (r === 0 ? [dx, dz] : r === 1 ? [dz, sz - 1 - dx] : r === 2 ? [sx - 1 - dx, sz - 1 - dz] : [sx - 1 - dz, dx]);
+    for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) {
+        const [lx, lz] = local(x - box.x0, z - box.z0);
+        for (let ly = 1; ly < sy; ly++) {
+            try {
+                if (template.getBlockPermutation({ x: lx, y: ly, z: lz })) continue;
+                const block = dim.getBlock({ x, y: box.y0 + ly, z });
+                if (block && !block.isAir && CARVED.test(block.typeId)) block.setType("minecraft:air");
+            } catch (e) { return; }
+        }
+    }
 }
 // the block that fills under or beside a piece: the ground's own, its grass, podzol or mycelium as dirt
 function groundFill(dim, x, y, z) {
@@ -7656,7 +7689,7 @@ system.runInterval(() => {
         if (!piece) return false;
         const box = boxOf(x, y, z, r % 2 ? [piece.size[2], piece.size[1], piece.size[0]] : piece.size);
         if (!boxLoaded(dim, box)) return true;
-        placeJigsawPiece(dim, key, r, box, fit ?? 0);
+        placeJigsawPiece(dim, key, r, box, (fit ?? 0) & 3, !!((fit ?? 0) & JIGSAW_CARVE));
         return false;
     });
     if (left.length !== pending.length) world.setDynamicProperty(JIGSAW_PENDING, left.length ? JSON.stringify(left) : undefined);
@@ -9447,10 +9480,12 @@ function isSlimeChunk(x, z) {
     return (v >>> 0) % 10 === 0;
 }
 // SpawnDetail.weightMultipliers on the natural spawns (SPAWN_MULTIPLIERS, port.py's create_spawn_rules): a condition
-// whose multipliers follow the time, the weather or the moon spawns as often as they can make it (its weight times
-// "top", every multiplier over 1 at once) and fires cobblemon:spawn_mult_<n>; here it stays in the share the multipliers
-// that hold now give of that, so Vulpix (2.5 at twilight) comes two and a half times as often at twilight as otherwise
-function timedHolds(cond, dimension) {
+// with multipliers spawns as often as they can make it (its weight times "top", every multiplier over 1 at once) and
+// fires cobblemon:spawn_mult_<n>; here it stays in the share the multipliers that hold where and when it came give of
+// that, so Vulpix (2.5 at twilight) comes two and a half times as often at twilight as otherwise. A multiplier tests
+// the time, the weather, the moon, the biome, blocks nearby (as the special spawns look for them), the light and a
+// village or one of Cobblemon's structures
+function timedHolds(cond, dimension, at) {
     if (cond.timeRange !== undefined && ![].concat(cond.timeRange).some((r) => inTimeRange(r))) return false;
     const w = weatherIn(dimension);
     if (cond.isRaining !== undefined && (w !== "Clear") !== cond.isRaining) return false;
@@ -9461,22 +9496,45 @@ function timedHolds(cond, dimension) {
         const ok = String(cond.moonPhase).split(",").some((part) => { const [a, b] = part.split("-").map(Number); return b === undefined ? phase === a : phase >= a && phase <= b; });
         if (!ok) return false;
     }
+    if (!at) return !(cond.biome || cond.near || cond.minLight !== undefined || cond.village || cond.structures);
+    if (cond.biome) {
+        let tags = [];
+        try { tags = BIOME_TAGS[dimension.getBiome(at).id] ?? []; } catch (e) { return false; }
+        if (!filterPasses(cond.biome, tags)) return false;
+    }
+    if (cond.near) {
+        const x = Math.floor(at.x), y = Math.floor(at.y), z = Math.floor(at.z);
+        try { if (!dimension.containsBlock(new BlockVolume({ x: x - NEAR_ACROSS, y: y - NEAR_UP, z: z - NEAR_ACROSS }, { x: x + NEAR_ACROSS, y: y + NEAR_UP, z: z + NEAR_ACROSS }), { includeTypes: cond.near }, true)) return false; }
+        catch (e) { return false; }
+    }
+    if (cond.minLight !== undefined) {
+        let light;
+        try { light = dimension.getLightLevel({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) }); } catch (e) { }
+        if (light === undefined || light < cond.minLight) return false;
+    }
+    if ((cond.village || cond.structures) && !((cond.village && villageAt(dimension, at)) || (cond.structures && inStructure(at, cond.structures)))) return false;
     return true;
 }
-function multipliedSpawn(entry, dimension) {
-    const now = entry.wm.reduce((m, [mult, cond]) => (timedHolds(cond, dimension) ? m * mult : m), 1);
+function multipliedSpawn(entry, dimension, at) {
+    const now = entry.wm.reduce((m, [mult, cond]) => (timedHolds(cond, dimension, at) ? m * mult : m), 1);
     return now / entry.top;
 }
-world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => {
+world.afterEvents.dataDrivenEntityTrigger.subscribe(({ entity, eventId }) => spawnEvent(entity, eventId));
+function spawnEvent(entity, eventId) {
     if (eventId.startsWith("cobblemon:spawn_mult_")) {
         const entry = SPAWN_MULTIPLIERS[entity.typeId]?.[Number(eventId.slice("cobblemon:spawn_mult_".length))];
-        if (entry && Math.random() >= multipliedSpawn(entry, entity.dimension)) system.run(() => { try { if (entity.isValid) entity.remove(); } catch (e) { } });
+        if (!entry) return;
+        let at;
+        try { at = entity.location; } catch (e) { return; }
+        if (Math.random() >= multipliedSpawn(entry, entity.dimension, at)) system.run(() => { try { if (entity.isValid) entity.remove(); } catch (e) { } });
+        // kept: what the condition's own event asked of the script (a herd seed's herd, a slime chunk's check)
+        else if (entry.was) spawnEvent(entity, entry.was);
     }
     else if (eventId.startsWith("cobblemon:herd_seed")) system.run(() => fillHerd(entity, eventId));
     else if (eventId === "cobblemon:spawn_slime_chunk") system.run(() => {
         try { if (entity.isValid && !isSlimeChunk(entity.location.x, entity.location.z)) entity.remove(); } catch (e) { }
     });
-});
+}
 // Spawns that need blocks nearby, a block beneath or a village (port.py's special_spawns: Aron by iron ore, Bidoof by
 // water, Applin by oak leaves, Audino in a village), which Bedrock's spawn rules cannot test, and the water spawns of a
 // species that also spawns on land (Psyduck, Krabby), which the spawn rules leave out. Once a second
@@ -10697,7 +10755,9 @@ function setCaseItem(block, item, yaw) {
         }
         const one = item.clone(); one.amount = 1;
         holder.getComponent(EntityComponentTypes.Inventory)?.container?.setItem(0, one);
-        try { holder.setProperty("cobblemon:display_index", DISPLAY_INDEX[item.typeId] ?? 0); } catch (e) { }
+        // a block item is the small cube Java draws it as (DISPLAY_BLOCK), anything else its flat icon
+        const cube = DISPLAY_BLOCK[item.typeId] ?? 0;
+        try { holder.setProperty("cobblemon:display_block", cube); holder.setProperty("cobblemon:display_index", cube ? 0 : DISPLAY_INDEX[item.typeId] ?? 0); } catch (e) { }
         if (yaw !== undefined) holder.setRotation({ x: 0, y: yaw });
         try { block.dimension.playSound("cobblemon.block.display_case.add_item", block.location); } catch (e) { }
     } else if (holder) {
@@ -13593,6 +13653,8 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
     let ball;
     try { ball = captureBall(dim, ballId, from); } catch (e) { setSize(entity, 1); return; }
     try { dim.playSound("cobblemon.poke_ball.throw", from); } catch (e) { }
+    // the trainer's arm swings as the ball leaves it (port.py's create_trainer_throw)
+    if (player?.isValid) try { player.playAnimation("animation.cobblemon.trainer_throw", { blendOutTime: 0.1 }); } catch (e) { }
     const FLIGHT = 10;
     timeline(FLIGHT + BEAM_SHRINK, (t) => {
         if (!entity.isValid) { try { ball.remove(); } catch (e) { } return false; }

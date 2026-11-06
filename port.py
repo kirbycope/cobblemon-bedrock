@@ -3748,8 +3748,34 @@ def biome_filter_for(biome_ids):
 WEIGHT_CONDITIONS = ("isPokeSnack", "isThundering", "isRaining", "timeRange", "moonPhase", "minLureLevel", "maxLureLevel", "canSeeSky")
 
 
-# the multiplier conditions the script tests when a natural spawn arrives: the time, the weather and the moon
+# the multiplier conditions the script tests when a natural spawn arrives: the time, the weather and the moon as they
+# are, and the biome, nearby blocks, light and structures converted as the special spawns' are
 TIMED_MULTIPLIERS = {"timeRange", "isRaining", "isThundering", "moonPhase"}
+
+
+def natural_multipliers(spawn):
+    """A natural spawn's weightMultipliers the script can test where it arrives, [[multiplier, condition]]: a Poke
+    Snack's and a rod's left to their own draws, and one naming anything the port cannot test left out."""
+    out = []
+    for key in ("weightMultiplier", "weightMultipliers"):
+        v = spawn.get(key)
+        for m in (v if isinstance(v, list) else [v] if v else []):
+            cond, test = m.get("condition", {}) or {}, {}
+            if m.get("anticondition") or not cond or set(cond) & {"isPokeSnack", "minLureLevel", "maxLureLevel"}: continue
+            for k, value in cond.items():
+                if k in TIMED_MULTIPLIERS: test[k] = value
+                elif k == "biomes" and (biome := biome_filter_for(value)): test["biome"] = biome
+                elif k == "neededNearbyBlocks" and (near := bedrock_blocks(value)): test["near"] = near
+                elif k == "minLight": test["minLight"] = value
+                elif k == "structures":
+                    leaves = structure_leaves(value or [])
+                    own = structure_ids(leaves - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+                    if VILLAGE_STRUCTURE in leaves: test["village"] = True
+                    if own: test["structures"] = sorted(own)
+                    if not test.get("village") and not own: test = None; break
+                else: test = None; break
+            if test: out.append([m.get("multiplier", 1), test])
+    return out
 
 
 def weight_multipliers(spawn):
@@ -3863,6 +3889,22 @@ def create_spawn_rules():
         pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
         legendary += 1
     weather_events, slime_events, bias_events, mult_table = {}, set(), {}, {}
+
+    def multiplied(rule, spawn, pokemon):
+        """A multiplier (SpawnDetail.weightMultipliers: Vulpix 2.5 times as likely at twilight) a Bedrock weight cannot
+        follow: the condition spawns as often as its multipliers can make it, and its spawn fires
+        cobblemon:spawn_mult_<n>, on which the script keeps it in the share the multipliers that hold there give
+        (main.js, multipliedSpawn). The event does what the condition's own did (a form's, a weather check's, a herd
+        seed's, which the script then fills, "then")."""
+        wm = natural_multipliers(spawn)
+        if not rule or not wm: return
+        top = math.prod(m for m, _ in wm if m > 1)
+        if top <= 1 and not any(m < 1 for m, _ in wm): return
+        own = rule["minecraft:herd"].get("event")
+        n = len(mult_table.setdefault(entity_id(pokemon), []))
+        mult_table[entity_id(pokemon)].append({"top": top, "wm": wm, **({"was": own} if own else {})})
+        rule["minecraft:herd"]["event"] = f"cobblemon:spawn_mult_{n}"; rule["minecraft:herd"]["event_skip_count"] = 0
+        rule["cobblemon:top"] = top
     # A herd (PokemonHerdSpawnDetail) starts with one member, a leader where the herd has one and otherwise a follower,
     # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
     # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
@@ -3906,6 +3948,7 @@ def create_spawn_rules():
                 key = ("alpha_" + form if form else "alpha") if spawn.get("bucket") == "boss" else form
                 rule["minecraft:herd"]["event"] = f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"; rule["minecraft:herd"]["event_skip_count"] = 0
                 seed_events.setdefault(pokemon, set()).add(key)
+                multiplied(rule, spawn, pokemon)
                 if rule: conditions.append((rule, spawn))
                 continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
@@ -3927,18 +3970,7 @@ def create_spawn_rules():
             if rule and bias and not form and not weather and bias in bias_evolutions(species):
                 rule["minecraft:herd"]["event"] = f"cobblemon:spawn_bias_{bias}"; rule["minecraft:herd"]["event_skip_count"] = 0
                 bias_events.setdefault(pokemon, set()).add(bias)
-            # a time, weather or moon multiplier (SpawnDetail.weightMultipliers: Vulpix 2.5 times as likely at twilight),
-            # which a Bedrock weight cannot follow: the condition spawns as often as its multipliers can make it, and its
-            # spawn fires cobblemon:spawn_mult_<n>, on which the script keeps it in the share the time and weather give
-            # (main.js, multipliedSpawn); a condition whose spawn already fires an event of its own keeps its weight
-            timed = [[m, c] for m, c in weight_multipliers(spawn).get("wm", []) if set(c) <= TIMED_MULTIPLIERS]
-            if rule and timed and not rule["minecraft:herd"].get("event"):
-                top = math.prod(m for m, _ in timed if m > 1)
-                if top > 1 or any(m < 1 for m, _ in timed):
-                    n = len(mult_table.setdefault(entity_id(pokemon), []))
-                    mult_table[entity_id(pokemon)].append({"top": top, "wm": timed})
-                    rule["minecraft:herd"]["event"] = f"cobblemon:spawn_mult_{n}"; rule["minecraft:herd"]["event_skip_count"] = 0
-                    rule["cobblemon:top"] = top
+            multiplied(rule, spawn, pokemon)
             if rule: conditions.append((rule, spawn))
             else: skipped += 1
         if not conditions: continue
@@ -3983,18 +4015,6 @@ def create_spawn_rules():
                                                                            "add": {"component_groups": ["cobblemon:gone"]}}]}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
-    for entity, entries in mult_table.items():
-        path = f"{entitiesBedrock}/{entity.split(':p', 1)[1]}.behavior.json"
-        with open(path, encoding="utf-8") as file: text = file.read()
-        data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
-        for n in range(len(entries)): events[f"cobblemon:spawn_mult_{n}"] = {}
-        second = text.split(chr(10))[1]
-        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
-    with open(f"{scriptsBedrock}/spawn_multipliers.js", "w", encoding="utf-8", newline="\n") as file:
-        file.write("// generated by port.py (create_spawn_rules): each species' spawn conditions with a time, weather or moon multiplier,\n"
-                   "// by the n of their cobblemon:spawn_mult_<n> event: the most the multipliers make (its weight here) and the multipliers\n")
-        file.write("export const SPAWN_MULTIPLIERS = " + json.dumps(mult_table, separators=(",", ":")) + ";\n")
-    print(f"Spawn multipliers: {sum(len(v) for v in mult_table.values())} conditions of {len(mult_table)} species follow the time and weather.")
     for pokemon in slime_events:
         path = f"{entitiesBedrock}/{pokemon}.behavior.json"
         with open(path, encoding="utf-8") as file: text = file.read()
@@ -4011,6 +4031,20 @@ def create_spawn_rules():
             events[f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    for entity, entries in mult_table.items():
+        path = f"{entitiesBedrock}/{entity.split(':p', 1)[1]}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
+        # each does what the condition's own event did (a herd seed's is answered by the script, after the check)
+        for n, entry in enumerate(entries): events[f"cobblemon:spawn_mult_{n}"] = json.loads(json.dumps(events.get(entry.get("was"), {})))
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    with open(f"{scriptsBedrock}/spawn_multipliers.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// generated by port.py (create_spawn_rules): each species' spawn conditions with weight multipliers, by the n of their\n"
+                   "// cobblemon:spawn_mult_<n> event: the most the multipliers make (top, its weight here), the multipliers and the event\n"
+                   "// the condition fired before (was)\n")
+        file.write("export const SPAWN_MULTIPLIERS = " + json.dumps(mult_table, separators=(",", ":")) + ";\n")
+    print(f"Spawn multipliers: {sum(len(v) for v in mult_table.values())} conditions of {len(mult_table)} species follow their weight multipliers.")
     with open(f"{scriptsBedrock}/herds.js", "w", encoding="utf-8", newline="\n") as file:
         file.write("// generated by port.py (create_spawn_rules): Cobblemon's herd spawns, alpha herds (boss) among them, each member's entity, form event, weight, levels and most\n")
         file.write("export const HERDS = " + json.dumps(herd_table, separators=(",", ":")) + ";\n")
@@ -10219,6 +10253,112 @@ def vanilla_held_icons():
     return out
 
 
+# the vanilla blocks whose item is not a cube, left out of block_cube_textures (they have no flat icon either, and a cube
+# would draw them wrong)
+NOT_CUBE = re.compile(r"slab|stairs|fence|_wall$|door|pane|button|pressure_plate|sign|torch|rail|carpet|_bed$|banner|lantern|chain|candle"
+                      r"|sapling|vine|fern|_bush|kelp|seagrass|coral_fan|coral$|pickle|lever|ladder|scaffolding|anvil|bell|cake|cauldron"
+                      r"|hopper|brewing|enchant|lectern|grindstone|stonecutter|campfire|chest|shulker|skull|head|pot$|dripleaf|cluster"
+                      r"|_bud$|pointed|end_rod|lightning_rod|hanging|shelf|bars|web|frame|repeater|comparator|daylight|piston|portal"
+                      r"|fire$|water|lava|air$|cactus|bamboo|reeds|cocoa|beetroot|wheat|carrots|potatoes|stem|wart|egg|frog|vein|lichen"
+                      r"|snow_layer|tripwire|redstone_wire|structure|jigsaw|light_block|barrier|chorus_plant|conduit|beacon|azalea$"
+                      r"|grass$|short_grass|tall_|large_|double_|flower|tulip|rose|daisy|orchid|allium|bluet|poppy|dandelion|lilac"
+                      r"|peony|cornflower|lily|mushroom$|roots|sprouts|spore|propagule|petals|trial_spawner|vault|decorated|crafter"
+                      r"|heavy_core|bed$|moving|unknown|info_update|reserved|element|chalkboard|camera|border|allow|deny|compound"
+                      r"|material|lab_table|underwater|colored_torch|hard_|clump")
+
+
+# blocks.json's legacy names for blocks whose item is named otherwise
+BLOCK_ITEM_NAMES = {"grass": "grass_block", "snow": "snow_block", "brick_block": "bricks", "quartz_ore": "nether_quartz_ore",
+                    "lit_pumpkin": "jack_o_lantern", "melon_block": "melon_block", "web": "cobweb", "slime": "slime_block", "magma": "magma_block"}
+
+
+CARRIED_SIDES = {"textures/blocks/grass_side": "textures/blocks/grass_side_carried"}
+
+
+def block_cube_textures():
+    """{item id: [side, top, bottom texture path]} for the block items Java draws as a small cube and Bedrock's item list
+    has no flat icon for (stone, logs, ores, wool), which a display case and a Pokemon's hand draw as that cube: the
+    vanilla blocks from Mojang's blocks.json and terrain_texture.json (a block's carried textures first, which hold
+    the grass and leaves' own colour), and the pack's own full blocks from their material instances."""
+    folder = os.path.join(pwd, "java", "bedrock-samples")
+    path = f"{folder}/blocks.json"
+    if not os.path.exists(path):
+        try: urllib.request.urlretrieve("https://raw.githubusercontent.com/Mojang/bedrock-samples/main/resource_pack/blocks.json", path)
+        except Exception as error: print(f"  no blocks.json: {error}"); return {}
+    with open(path, encoding="utf-8") as file: blocks = json.loads(re.sub(r"//.*", "", file.read()))
+    with open(f"{folder}/terrain_texture.json", encoding="utf-8") as file: terrain = json.loads(re.sub(r"//.*", "", file.read()))["texture_data"]
+    def texture(key):
+        textures = terrain.get(key, {}).get("textures")
+        if isinstance(textures, list): textures = textures[0] if textures else None
+        if isinstance(textures, dict): textures = textures.get("path")
+        return textures if isinstance(textures, str) else None
+    flat = set(vanilla_item_icons())
+    out = {}
+    for name, entry in blocks.items():
+        item = BLOCK_ITEM_NAMES.get(name, name)
+        if item in flat or name == "format_version" or not isinstance(entry, dict) or NOT_CUBE.search(item): continue
+        faces = entry.get("carried_textures") or entry.get("textures")
+        if isinstance(faces, str): faces = {"up": faces, "down": faces, "side": faces}
+        if not isinstance(faces, dict): continue
+        side = faces.get("side") or faces.get("north") or faces.get("south")
+        paths = [texture(side) or texture(name), texture(faces.get("up", side)) or texture(name), texture(faces.get("down", side)) or texture(name)]
+        # a side the game tints by biome (the grass block's) has a coloured copy for the item
+        paths = [CARRIED_SIDES.get(t, t) for t in paths]
+        if all(paths): out[f"minecraft:{item}"] = paths
+    # the pack's full blocks with no icon of their own (apricorn planks and logs, the gem blocks)
+    with open(f"{resourcePack}/textures/terrain_texture.json", encoding="utf-8") as file: own = json.load(file)["texture_data"]
+    def own_texture(instance):
+        textures = own.get((instance or {}).get("texture"), {}).get("textures")
+        return textures if isinstance(textures, str) else None
+    for block_path in glob.glob(f"{blocksBedrock}/*.json"):
+        with open(block_path, encoding="utf-8") as file: block = json.load(file).get("minecraft:block", {})
+        identifier, components = block.get("description", {}).get("identifier"), block.get("components", {})
+        if not identifier or item_icon_path(identifier) or components.get("minecraft:geometry", "minecraft:geometry.full_block") != "minecraft:geometry.full_block": continue
+        instances = components.get("minecraft:material_instances", {})
+        star = instances.get("*")
+        paths = [own_texture(instances.get("north", instances.get("side", star))), own_texture(instances.get("up", star)), own_texture(instances.get("down", star))]
+        if all(paths): out[identifier] = paths
+    return out
+
+
+def write_cube_geometry(path, identifier, size, origin_y, bone_pivot=None, extra=None):
+    """A small cube's geometry: its four sides, its top and its bottom as bones of their own (side, top, bottom), so a
+    render pass each draws its face with that face's texture."""
+    full = {"uv": [0, 0], "uv_size": [16, 16]}
+    half = size / 2
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+            "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
+                            "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
+            "bones": [{"name": "side", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y, -half], "size": [size, size, size],
+                                                                      "uv": {f: full for f in ("north", "south", "east", "west")}}]},
+                      {"name": "top", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y + size, -half], "size": [size, 0, size], "uv": {"up": full}}]},
+                      {"name": "bottom", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y, -half], "size": [size, 0, size], "uv": {"down": full}}]}]}]}, indent=2))
+
+
+def cube_render_controllers(prefix, index, count, geometry):
+    """Three render passes for a cube block item, its sides, top and bottom, each picking its texture from the face's
+    array (textures cube_<face>_<n>) by the index property."""
+    out = {}
+    for face in ("side", "top", "bottom"):
+        out[f"{prefix}_{face}"] = {
+            "arrays": {"textures": {"Array.cube": ["Texture.blank"] + [f"Texture.cube_{face}_{k + 1}" for k in range(count)]}},
+            "geometry": geometry, "materials": [{"*": "Material.cube"}], "textures": [f"Array.cube[{index}]"],
+            "part_visibility": [{"*": False}, {face: True}]}
+    return out
+
+
+def create_trainer_throw():
+    """The trainer's arm swinging as a Pokemon is sent out (PartySendOutPacket's handler swings the player's hand): a
+    short animation of the player's right arm, which scripts/main.js plays on the player with playAnimation, as a script
+    cannot call the vanilla swing."""
+    os.makedirs(f"{resourcePack}/animations", exist_ok=True)
+    swing = {"format_version": "1.8.0", "animations": {"animation.cobblemon.trainer_throw": {
+        "animation_length": 0.35, "bones": {"rightArm": {"rotation": {
+            "0.0": [0, 0, 0], "0.12": [-150, 10, 15], "0.25": [-30, 0, 5], "0.35": [0, 0, 0]}}}}}}
+    with open(f"{resourcePack}/animations/cobblemon_trainer_throw.animation.json", "w", encoding="utf-8") as file: file.write(json.dumps(swing, indent=2))
+
+
 def create_display_case():
     """DisplayCaseBlockEntity: the case holds one item, put in or swapped by a click and taken out by an empty hand,
     with DISPLAY_CASE_ADD_ITEM or DISPLAY_CASE_REMOVE_ITEM as setCaseStack plays them. A Bedrock custom block holds no
@@ -10242,21 +10382,33 @@ def create_display_case():
             "description": {"identifier": "geometry.cobblemon_display_case_item", "texture_width": 16, "texture_height": 16,
                             "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
             "bones": [{"name": "item", "pivot": [0, 0, 0], "cubes": [{"origin": [-4, 0, 0], "size": [8, 8, 0], "uv": {"north": face, "south": face}}]}]}]}, indent=2))
-    index = "q.property('cobblemon:display_index')"
+    # a block item with no flat icon is the cube Java's GROUND transform draws, a quarter block across and 3 pixels up
+    cubes = block_cube_textures()
+    flat = dict(zip(order, paths))
+    cube_order = [i for i in sorted(cubes) if i not in flat or flat[i].startswith("textures/blocks/")]
+    write_cube_geometry(f"{modelsBedrock}/display_case_item/display_case_cube.geo.json", "geometry.cobblemon_display_case_cube", 4, 2)
+    index, block_index = "q.property('cobblemon:display_index')", "q.property('cobblemon:display_block')"
     with open(f"{renderControllersBedrock}/display_case_item.render_controllers.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_display_case_item": {
             "arrays": {"textures": {"Array.item": ["Texture.blank"] + [f"Texture.i{n + 1}" for n in range(len(paths))]}},
-            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": [f"Array.item[{index}]"]}}}, indent=2))
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": [f"Array.item[{index}]"]},
+            **cube_render_controllers("controller.render.cobblemon_display_case_cube", block_index, len(cube_order), "Geometry.cube")}}, indent=2))
+    with open(f"{scriptsBedrock}/display_case.js", "a", encoding="utf-8") as file:
+        file.write("// the index of each block item drawn as a cube (0 none), whose sides, top and bottom have their own textures" + chr(10))
+        file.write("export const DISPLAY_BLOCK = " + json.dumps({i: n + 1 for n, i in enumerate(cube_order)}) + ";" + chr(10))
     with open(f"{entityBedrock}/display_case_item.entity.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
-            "identifier": "cobblemon:display_case_item", "materials": {"default": "entity_alphatest"},
-            "textures": {"blank": "textures/entity/blank", **{f"i{n + 1}": t for n, t in enumerate(paths)}},
-            "geometry": {"default": "geometry.cobblemon_display_case_item"},
-            "render_controllers": [{"controller.render.cobblemon_display_case_item": f"{index} > 0"}]}}}, indent=2))
+            "identifier": "cobblemon:display_case_item", "materials": {"default": "entity_alphatest", "cube": "entity_alphatest"},
+            "textures": {"blank": "textures/entity/blank", **{f"i{n + 1}": t for n, t in enumerate(paths)},
+                         **{f"cube_{face}_{n + 1}": cubes[i][k] for n, i in enumerate(cube_order) for k, face in enumerate(("side", "top", "bottom"))}},
+            "geometry": {"default": "geometry.cobblemon_display_case_item", "cube": "geometry.cobblemon_display_case_cube"},
+            "render_controllers": [{"controller.render.cobblemon_display_case_item": f"{index} > 0"}]
+                                  + [{f"controller.render.cobblemon_display_case_cube_{face}": f"{block_index} > 0"} for face in ("side", "top", "bottom")]}}}, indent=2))
     with open(f"{entitiesBedrock}/display_case_item.behavior.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
             "description": {"identifier": "cobblemon:display_case_item", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
-                            "properties": {"cobblemon:display_index": {"type": "int", "range": [0, len(paths)], "default": 0, "client_sync": True}}},
+                            "properties": {"cobblemon:display_index": {"type": "int", "range": [0, len(paths)], "default": 0, "client_sync": True},
+                                           "cobblemon:display_block": {"type": "int", "range": [0, max(1, len(cube_order))], "default": 0, "client_sync": True}}},
             "components": {
                 "minecraft:type_family": {"family": ["display_case_item", "inanimate"]},
                 "minecraft:inventory": {"container_type": "container", "inventory_size": 1, "private": True},
@@ -10275,7 +10427,7 @@ def create_display_case():
     body["permutations"] = [p for p in body.get("permutations", []) if "cobblemon:signal" not in p["condition"]]
     body["permutations"] += [{"condition": f"q.block_state('cobblemon:signal') == {n}", "components": {"minecraft:redstone_producer": {"power": n}}} for n in (1, 2, 3)]
     with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
-    print(f"Create display case complete: {len(paths)} item icons.")
+    print(f"Create display case complete: {len(paths)} item icons, {len(cube_order)} block cubes.")
 
 
 def create_held_display():
@@ -15417,6 +15569,7 @@ def main():
     create_party_item()
     add_cobblemon_food()   # after every item is written
     create_display_case()   # after every item is written, whose icons it shows
+    create_trainer_throw()
     create_boats()   # after every item is written, whose boat items it gives their entity
     add_bait_offhand()   # after every item is written
     add_party_select_use()   # after every item is written, and items.js

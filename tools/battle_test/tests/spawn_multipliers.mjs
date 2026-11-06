@@ -1,7 +1,7 @@
 // SpawnDetail.weightMultipliers on the natural spawns: a condition whose multipliers follow the time, the weather or
 // the moon spawns as often as they can make it, fires cobblemon:spawn_mult_<n>, and the script keeps it in the share
 // the multipliers that hold now give
-import { M, check } from "../harness.mjs";
+import { M, F, check } from "../harness.mjs";
 import { readFileSync } from "node:fs";
 
 const pack = (path) => new URL(`../../../development_behavior_packs/cobblemon/${path}`, import.meta.url);
@@ -25,3 +25,13 @@ check("out of it, half", M.multipliedSpawn(wet, clear) === 0.5);
 const dry = { top: 1, wm: [[0.25, { isThundering: true }]] };
 check("a multiplier under 1 thins its spawns when it holds", M.multipliedSpawn(dry, thunder) === 0.25 && M.multipliedSpawn(dry, clear) === 1);
 check("thunder counts as rain", M.timedHolds({ isRaining: true }, thunder) && !M.timedHolds({ isRaining: false }, thunder));
+
+// the multipliers on biomes and on a condition that fires its own event (a herd's seed, a weather check)
+const all = Object.values(TABLE).flat();
+check("light and nearby-block multipliers are tested too", all.some((e) => e.wm.some(([, c]) => c.minLight !== undefined)) && all.some((e) => e.wm.some(([, c]) => c.near)));
+check("a herd's seed keeps its own event to pass on", all.some((e) => e.was?.startsWith("cobblemon:herd_seed")));
+const plains = { id: "test:plains", getWeather: () => "Clear", getBiome: () => ({ id: "minecraft:plains" }) };
+const tags = F.BIOME_TAGS["minecraft:plains"] ?? [];
+const inPlains = { top: 3, wm: [[3, { biome: { test: "has_biome_tag", operator: "==", value: tags[0] } }]] };
+check("in the biome a biome multiplier keeps every spawn", tags.length && M.multipliedSpawn(inPlains, plains, { x: 0, y: 64, z: 0 }) === 1);
+check("without a place it does not hold", M.multipliedSpawn(inPlains, plains) === 1 / 3);
