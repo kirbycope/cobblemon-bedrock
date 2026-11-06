@@ -70,9 +70,12 @@ def check(bridge, player=PLAYER):
 
 
 def protect(bridge, player=PLAYER):
-    """Effects that keep a test player alive: no damage, no fall damage, drowning healed."""
+    """Effects that keep a test player alive: no damage, no fall damage, drowning healed. The player is named through a
+    selector and the result checked: a dead player matches @a[name=] but not a bare name, so a bare-name effect on one
+    fails quietly (6 Nov 2026: the player had died on joining at night, and every bare-name command "failed")."""
     for effect in ("resistance 99999 255 true", "slow_falling 99999 1 true", "regeneration 99999 5 true", "water_breathing 99999 1 true"):
-        bridge.command(f"effect {player} {effect}")
+        result = bridge.command(f"effect @a[name={player}] {effect}")
+        if "success_count: 1" not in result: raise RuntimeError(f"protect failed: {result}")
 
 
 def stage(bridge, entity, spot=TEST_SPOT, player=PLAYER):

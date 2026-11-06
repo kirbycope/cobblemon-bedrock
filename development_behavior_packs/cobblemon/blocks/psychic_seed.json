@@ -5,6 +5,18 @@
       "identifier": "cobblemon:psychic_seed",
       "menu_category": {
         "category": "nature"
+      },
+      "states": {
+        "cobblemon:age": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cobblemon:half": [
+          "lower",
+          "upper"
+        ]
       }
     },
     "components": {
@@ -17,6 +29,7 @@
           "ambient_occlusion": false
         }
       },
+      "minecraft:loot": "loot_tables/blocks/psychic_seed_lower.json",
       "minecraft:collision_box": false,
       "minecraft:selection_box": {
         "origin": [
@@ -26,15 +39,141 @@
         ],
         "size": [
           12,
-          13,
+          16,
           12
         ]
       },
       "minecraft:light_dampening": 0,
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 0.5
+        "seconds_to_destroy": 0
       },
-      "minecraft:loot": "loot_tables/blocks/psychic_seed.json"
-    }
+      "minecraft:placement_filter": {
+        "conditions": [
+          {
+            "allowed_faces": [
+              "up"
+            ],
+            "block_filter": [
+              "minecraft:farmland"
+            ]
+          }
+        ]
+      },
+      "cobblemon:terrain_seed": {}
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:age') == 0 && q.block_state('cobblemon:half') == 'lower'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_stage0",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/psychic_seed_lower.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 0 && q.block_state('cobblemon:half') == 'upper'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_stage0",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 1 && q.block_state('cobblemon:half') == 'lower'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_stage1",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/psychic_seed_lower.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 1 && q.block_state('cobblemon:half') == 'upper'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_stage1",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2 && q.block_state('cobblemon:half') == 'lower'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_bottom_stage2",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/psychic_seed_lower.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 2 && q.block_state('cobblemon:half') == 'upper'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_top_stage2",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 3 && q.block_state('cobblemon:half') == 'lower'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_bottom_stage3",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/psychic_seed_lower.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:age') == 3 && q.block_state('cobblemon:half') == 'upper'",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_psychic_seed_top_stage3",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json"
+        }
+      }
+    ]
   }
 }

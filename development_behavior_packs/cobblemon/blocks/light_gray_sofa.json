@@ -16,6 +16,10 @@
           "outer_left",
           "outer_right",
           "right"
+        ],
+        "cobblemon:signal": [
+          0,
+          15
         ]
       },
       "traits": {
@@ -70,7 +74,11 @@
         "seconds_to_destroy": 1.0
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/cobblefurnies_light_gray_sofa.json"
+      "minecraft:loot": "loot_tables/blocks/cobblefurnies_light_gray_sofa.json",
+      "cobblemon:seat": {},
+      "minecraft:redstone_producer": {
+        "power": 0
+      }
     },
     "permutations": [
       {
@@ -1702,6 +1710,14 @@
               0,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 15",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15
           }
         }
       }

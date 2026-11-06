@@ -1,0 +1,89 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:habitats_quartz_spikes_rule",
+      "places_feature": "cobblemon:habitats_quartz_spikes"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "all_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "nether"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "nether_wastes"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawn_endermen"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawn_few_piglins"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawn_ghast"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawn_magma_cubes"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawn_zombified_piglin"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_nether_mobs"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_warm_variant_farm_animals"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 120
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      },
+      "y": {
+        "distribution": "uniform",
+        "extent": [
+          35,
+          90
+        ]
+      },
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          0,
+          15
+        ]
+      }
+    }
+  }
+}

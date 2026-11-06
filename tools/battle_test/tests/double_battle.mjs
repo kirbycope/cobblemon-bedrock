@@ -1,7 +1,7 @@
 // Double battles: two Pokemon a side, a move at the chosen target (or the other foe when that one is down), spread moves
 // at three quarters of their damage, turn order across all four, and side conditions and end of turn for every Pokemon
 import { readFileSync } from "node:fs";
-import { M, mon, move, check, flush, battle } from "../harness.mjs";
+import { M, mon, move, check, flush, battle, mod } from "../harness.mjs";
 
 function doubles(mine, theirs) {
     const log = [];
@@ -152,8 +152,9 @@ const lv = { level: 50 };
     check("Ally Switch fails in a single battle", s.log.some((l) => /But it failed/.test(l)));
 }
 {
-    const text = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/rct_trainers.js", import.meta.url), "utf-8");
-    const marked = (text.match(/"doubles":\s*true/g) ?? []).length;
-    const from = text.indexOf('"elite_four_lorelei_004e":{"name"'), flag = text.indexOf('"doubles":true', from);
-    check("Lorelei is the gym trainer who fights a Double Battle (RCT's GEN_9_DOUBLES)", marked === 1 && from > 0 && !/"\w+":\{"name"/.test(text.slice(from + 10, flag)), String(marked));
+    // the trainer table is port.py's compact form, decoded by rct_trainers.js itself ("dbl" becomes doubles)
+    const { RCT_TRAINERS } = await mod("rct_trainers.js"), { GYM_TRAINER_IDS } = await mod("gyms.js");
+    // RCT's full set has 50 doubles trainers; among the 14 gym and League trainers Lorelei is the one
+    const marked = GYM_TRAINER_IDS.filter((id) => RCT_TRAINERS[id]?.doubles).length;
+    check("Lorelei is the gym trainer who fights a Double Battle (RCT's GEN_9_DOUBLES)", marked === 1 && RCT_TRAINERS.elite_four_lorelei_004e?.doubles === true, String(marked));
 }

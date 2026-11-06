@@ -3,10 +3,12 @@
 import { readFileSync } from "node:fs";
 import { M, D, mon, move, battle, check } from "../harness.mjs";
 
+// the table is compact (port.py's RCT_DECODER): a team member is an array whose fifth entry is its moves
 const text = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/rct_trainers.js", import.meta.url), "utf-8");
-const used = new Set([...text.matchAll(/"moves":\[([^\]]*)\]/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((x) => x[1])));
+const raw = JSON.parse(text.match(/export const RCT_TRAINERS = decodeTrainers\(([\s\S]*?)\);\n/)[1]);
+const used = new Set(Object.values(raw).flatMap((t) => (t.team ?? []).flatMap((m) => m[4])));
 const unknown = [...used].filter((m) => !D.MOVES[m]);
-check("every move in a gym trainer's team is one the battle knows", used.size > 100 && !unknown.length, unknown.join(","));
+check("every move in an RCT trainer's team is one the battle knows", used.size > 100 && !unknown.length, `${unknown.length}: ${unknown.slice(0, 12).join(",")}`);
 const lv = { level: 50 };
 function fixed(fn) { const random = Math.random; Math.random = () => 0.5; try { return fn(); } finally { Math.random = random; } }
 {

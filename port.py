@@ -187,6 +187,11 @@ def load_species_features():
         default_aspect = form.replace("{{choice}}", default) if isinstance(default, str) and default in choices else None
         for choice in choices:
             feature_aspects[form.replace("{{choice}}", choice)] = {"feature": name, "random": default == "random", "default": default_aspect}
+    # Smeargle's tail paint (PokemonAspects.CHARACTERISTIC_RAINBOW_ASPECT, for behaviour.characteristicRainbow): a rainbow-<colour>
+    # aspect from its nature and characteristic, drawn by its resolver, becomes a form scripts/world.js picks (light-blue is
+    # spelt rainbow-light_blue in the resolver and never matches, as in Cobblemon)
+    for colour in ("red", "orange", "yellow", "lime", "green", "cyan", "blue", "purple", "magenta", "pink", "light-blue"):
+        feature_aspects[f"rainbow-{colour}"] = {"feature": "rainbow", "random": False, "default": None}
 
 
 LEGENDARY_POOLS = f"{pwd}/legendary_encounters/spawn_pool_world"
@@ -227,6 +232,7 @@ def load_cobblemon_data():
                 if name.endswith(".json"):
                     with open(os.path.join(root, name), encoding="utf-8") as file: yield json.load(file)
         yield from legendary_spawn_pools().values()
+    natural_range = {}
     if True:
         for data in every_pool():
             for spawn in data.get("spawns", []):
@@ -237,6 +243,14 @@ def load_cobblemon_data():
                 # the widest level range any of the species' wild spawns gives, for PlayerLevelRangeInfluence in main.js
                 old = spawn_range_by_name.get(pokemon)
                 spawn_range_by_name[pokemon] = [min(low, old[0]), max(high, old[1])] if old else [low, high]
+                # the range a spawn rule's Pokemon rolls in is its natural entries' own (PlayerLevelRangeInfluence narrows the
+                # chosen entry's levelRange, and a species' natural entries all share one): a herd's default of 5, a fishing
+                # or snack-only entry's levels must not widen it
+                cond = spawn.get("condition") or {}
+                if spawn.get("type", "pokemon") == "pokemon" and spawn.get("spawnablePositionType") != "fishing" and not cond.get("isPokeSnack") and not cond.get("structures") and not cond.get("neededNearbyBlocks"):
+                    old = natural_range.get(pokemon)
+                    natural_range[pokemon] = [min(low, old[0]), max(high, old[1])] if old else [low, high]
+    spawn_range_by_name.update(natural_range)
     with open(f"{cobblemon}/lang/en_us.json", encoding="utf-8") as file: lang = json.load(file)
     with open(f"{cobblemon}/sounds.json", encoding="utf-8") as file: cobblemon_sounds = json.load(file)
     print(f"Loaded {len(species_by_number)} species, {len(spawn_level_by_name)} spawn levels.")
@@ -490,7 +504,9 @@ def add_pasture_conflict():
 def predators():
     """HateEntityTaskConfig (cobblemon:hate_entity in a species' ai, 1.8.3): {entity: [[the species it hunts], range,
     chance]} from each hate_entity's entityCondition (q.entity.species.identifier == 'cobblemon:seviper'), its range (24)
-    and its chance (predationChance, 0.05, unless the task gives one)."""
+    and its chance (predationChance, 0.05, unless the task gives one). TargetEntityTaskConfig (cobblemon:target_entity,
+    Pidgeotto's Magikarp) hunts without a roll, and one whose condition asks for air above the prey (a beached Magikarp)
+    carries "air_above" as a fourth entry, which scripts/main.js's predation tests."""
     out, folder = {}, {p.split("_", 1)[1]: p for p in (pokemons or [])}
     pokemon_for = lambda name: folder.get(re.sub(r"[^a-z0-9]", "", name.lower()))
     for path in glob.glob(f"{cobblemonData}/species/**/*.json", recursive=True):
@@ -498,11 +514,13 @@ def predators():
         for config in species.get("ai", []) or []:
             for tasks in (config.get("tasksByPriority") or {}).values():
                 for task in tasks:
-                    if not isinstance(task, dict) or task.get("type") != "cobblemon:hate_entity": continue
+                    if not isinstance(task, dict) or task.get("type") not in ("cobblemon:hate_entity", "cobblemon:target_entity"): continue
                     targets = [entity_id(f) for name in re.findall(r"species\.identifier\s*==\s*'cobblemon:(\w+)'", task.get("entityCondition", ""))
                                if (f := pokemon_for(name))]
                     me = pokemon_for(os.path.basename(path)[:-len(".json")])
-                    if targets and me: out[entity_id(me)] = [targets, float(task.get("range", 24)), float(task.get("chance", 0.05))]
+                    hunts = task.get("type") == "cobblemon:target_entity"
+                    beached = ["air_above"] if hunts and "is_air(" in str(task.get("entityCondition", "")) else []
+                    if targets and me: out[entity_id(me)] = [targets, float(task.get("range", 24)), 1.0 if hunts else float(task.get("chance", 0.05))] + beached
     return out
 
 
@@ -528,13 +546,14 @@ BEDROCK_FOODS = ["minecraft:apple", "minecraft:appleEnchanted", "minecraft:baked
                  "minecraft:mushroom_stew", "minecraft:muttonCooked", "minecraft:muttonRaw", "minecraft:poisonous_potato", "minecraft:porkchop",
                  "minecraft:potato", "minecraft:pufferfish", "minecraft:pumpkin_pie", "minecraft:rabbit", "minecraft:rabbit_stew", "minecraft:rotten_flesh",
                  "minecraft:salmon", "minecraft:spider_eye", "minecraft:suspicious_stew"]
-WILD_AI_GROUPS = ["cobblemon:panics", "cobblemon:fleeing", "cobblemon:retaliates", "cobblemon:herd_follower", "cobblemon:picks_up_items"]
+WILD_AI_GROUPS = ["cobblemon:panics", "cobblemon:fleeing", "cobblemon:retaliates", "cobblemon:herd_follower", "cobblemon:picks_up_items",
+                  "cobblemon:alpha_retaliates", "cobblemon:wary"]
 
 
 def combat_flags(species):
     """CombatBehaviour's defaults (willFlee true, willDefendSelf false, fightsMelee true) under the species' own values,
     and which of pokemon_non_party.json's behaviours they apply: panics for willFlee without willDefendSelf, retaliates
-    for willDefendSelf (or an alpha, which the port has none of)."""
+    for willDefendSelf (an alpha retaliates whatever its species does: alpha_retaliate_group, turned on by makeAlpha)."""
     combat = (species.get("behaviour") or {}).get("combat") or {}
     flee, defend = combat.get("willFlee", True), combat.get("willDefendSelf", False)
     return flee and not defend, defend and combat.get("fightsMelee", True)
@@ -640,7 +659,7 @@ def mirror_wild(node, groups):
     for verb in ("add", "remove"):
         names = node.get(verb, {}).get("component_groups", [])
         if "cobblemon:wild" not in names: continue
-        mine = [g for g in WILD_AI_GROUPS if g in groups and (verb == "remove" or g not in ("cobblemon:herd_follower", "cobblemon:fleeing"))]
+        mine = [g for g in WILD_AI_GROUPS if g in groups and (verb == "remove" or g not in ("cobblemon:herd_follower", "cobblemon:fleeing", "cobblemon:alpha_retaliates", "cobblemon:wary"))]
         node[verb]["component_groups"] = [n for n in names if n not in WILD_AI_GROUPS] + mine
     for key in ("sequence", "randomize"):
         if key in node: mirror_wild(node[key], groups)
@@ -698,6 +717,14 @@ def add_wild_behaviours():
         if pickup:
             groups.update(pickup)
             counts["picks up items"] += 1
+        # an alpha retaliates whatever its species does (pokemon_non_party.json: will_defend_self || is_alpha), in a group
+        # of its own that scripts/main.js's makeAlpha turns on, taking the panic away
+        groups.update(alpha_retaliate_group())
+        events["cobblemon:alpha_retaliate"] = {"add": {"component_groups": ["cobblemon:alpha_retaliates"]}, "remove": {"component_groups": ["cobblemon:panics", "cobblemon:fleeing"]}}
+        # PokemonBrain.onCaptureFailed: one that breaks out of a ball out of battle avoids its thrower for 5 to 20 seconds
+        groups.update(wary_group())
+        events["cobblemon:wary"] = {"add": {"component_groups": ["cobblemon:wary"]}}
+        events["cobblemon:calm_wary"] = {"remove": {"component_groups": ["cobblemon:wary"]}}
         mirror_wild(events, list(groups))
         if leaders:
             # a spawned Pokemon of a herding species leads or follows, even odds; a leader never moves to follow
@@ -711,13 +738,13 @@ def add_wild_behaviours():
         # in battle it follows nobody and looks at no player (the battling activity: look_at_targeted_battle_pokemon);
         # the script turns both sides to face each other, and gives the following back to a Pokemon not told to stay
         events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]},
-                                            "remove": {"component_groups": ["cobblemon:following"] + (["cobblemon:retaliates"] if retaliates else [])}}
+                                            "remove": {"component_groups": ["cobblemon:following", "cobblemon:alpha_retaliates"] + (["cobblemon:retaliates"] if retaliates else [])}}
         looks = ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True)
         events["cobblemon:battle_end"] = {"sequence": [{"remove": {"component_groups": ["cobblemon:in_battle"]}}]
                                           + ([{"add": {"component_groups": ["cobblemon:looks_around"]}}] if looks else []) + ([{
             "filters": {"all_of": [{"test": "has_component", "subject": "self", "value": "minecraft:despawn"},
                                    {"test": "is_family", "subject": "self", "operator": "!=", "value": "owned"}]},
-            "add": {"component_groups": ["cobblemon:retaliates"]}}] if retaliates else [])}
+            "add": {"component_groups": ["cobblemon:retaliates"]}}] if retaliates else []) + [ALPHA_BATTLE_END]}
         # looks_around (pokemon_core.json, for moving.canLook, true unless said): look_at_entities at see_distance 15,
         # held by look_at_target for 80 to 160 ticks, every time nothing else is being looked at
         if ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True):
@@ -730,6 +757,102 @@ def add_wild_behaviours():
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     print("Wild behaviours: " + ", ".join(f"{n} {k}" for k, n in counts.items()) + f" of {len(files)} species.")
+
+
+def alpha_retaliate_group():
+    """cobblemon:alpha_retaliates: retaliate_group's goals under a name of their own, for an alpha of a species that would
+    otherwise panic; mirror_wild never adds it with cobblemon:wild, only makeAlpha's cobblemon:alpha_retaliate does, and a
+    battle takes it away and gives it back to a wild alpha (ALPHA_BATTLE_END) as it does the species' own."""
+    return {"cobblemon:alpha_retaliates": retaliate_group()["cobblemon:retaliates"]}
+
+
+ALPHA_BATTLE_END = {"filters": {"all_of": [{"test": "has_component", "subject": "self", "value": "minecraft:despawn"},
+                                           {"test": "bool_property", "subject": "self", "domain": "cobblemon:alpha", "value": True}]},
+                    "add": {"component_groups": ["cobblemon:alpha_retaliates"]}}
+
+
+def wary_group():
+    """cobblemon:wary (PokemonBrain.onCaptureFailed): out of battle, a Pokemon that broke out of a ball avoids the player for
+    5 to 20 seconds (AVOID_MEMORY_DURATION), walking 15 blocks off at 0.55 (the avoid activity's SetWalkTargetAwayFrom);
+    the ball's thrower in Cobblemon, any player here, since avoid_mob_type knows no thrower."""
+    speed = round(0.55 / WANDER_SPEED, 2)
+    return {"cobblemon:wary": {
+        "minecraft:behavior.avoid_mob_type": {"priority": 1, "max_dist": 15, "max_flee": 15, "entity_types": [
+            {"filters": {"test": "is_family", "subject": "other", "value": "player"}, "max_dist": 15, "max_flee": 15,
+             "walk_speed_multiplier": speed, "sprint_speed_multiplier": speed}]},
+        "minecraft:timer": {"time": [5, 20], "looping": False, "time_down_event": {"event": "cobblemon:calm_wary", "target": "self"}}}}
+
+
+def add_world_rules():
+    """PokemonEntity's immunities and fluids as components, a pass over every species file after the groups are written:
+    canFreeze (Pokemon.isFreezeImmune): an Ice type or a freezeImmune species takes no powder snow freezing; thunderHit: a
+    Ground type takes no lightning, nor a Pokemon whose ability is Lightning Rod, Motor Drive or Volt Absorb (the
+    cobblemon:lightning_immune property, which scripts/world.js keeps with the ability, and whose effects it plays);
+    canStandOnFluid and updatePathfindingPenalties: a canWalkOnLava species walks the lava's surface (the strider's
+    lava_movement and can_path_over_lava) and a canSwimInLava one paths through lava, neither hurt by it."""
+    counts = collections.Counter()
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        name = os.path.basename(path)[:-len(".behavior.json")]
+        if not re.match(r"\d{4}_", name): continue
+        species = species_for(name)
+        if not species: continue
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); entity = data["minecraft:entity"]; components = entity["components"]
+        no = "no" if str(data.get("format_version", "")).startswith("1.26") else False
+        behaviour = species.get("behaviour") or {}
+        swim = (behaviour.get("moving") or {}).get("swim") or {}
+        types = [t for t in (species.get("primaryType"), species.get("secondaryType")) if t]
+        sensor = components.setdefault("minecraft:damage_sensor", {"triggers": []})
+        if isinstance(sensor.get("triggers"), dict): sensor["triggers"] = [sensor["triggers"]]
+        sensor["triggers"] = [t for t in sensor["triggers"] if t.get("cause") not in ("freezing", "lightning")]
+        if "ice" in types or behaviour.get("freezeImmune", False):
+            sensor["triggers"].insert(0, {"cause": "freezing", "deals_damage": no}); counts["freeze immune"] += 1
+        if "ground" in types:
+            sensor["triggers"].insert(0, {"cause": "lightning", "deals_damage": no}); counts["lightning immune"] += 1
+        else:
+            sensor["triggers"].insert(0, {"cause": "lightning", "deals_damage": no, "on_damage": {"filters": {
+                "test": "bool_property", "subject": "self", "domain": "cobblemon:lightning_immune", "value": True}}})
+        entity["description"].setdefault("properties", {})["cobblemon:lightning_immune"] = {"type": "bool", "default": False}
+        walk = components.get("minecraft:navigation.walk")
+        if walk is not None and swim.get("canSwimInLava", False):
+            walk["can_walk_in_lava"] = True
+            components.pop("minecraft:hurt_on_condition", None)
+            counts["lava swimmers"] += 1
+        if walk is not None and swim.get("canWalkOnLava", False):
+            walk["can_path_over_lava"] = True
+            components["minecraft:lava_movement"] = {"value": (components.get("minecraft:movement") or {}).get("value", 0.25)}
+            counts["lava walkers"] += 1
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    print("World rules: " + ", ".join(f"{n} {k}" for k, n in counts.items()) + ".")
+
+
+def create_world_rules():
+    """scripts/world_rules.js for scripts/world.js: the species that sleep on their trainer's bed (resting.willSleepOnBed,
+    pokemon_sleeps_on_trainer_bed.json), and how each is placed when sent out over water (PokemonEntity.
+    getAdjustedSendoutPosition): 'f' a flier, a block above the surface; 's' a swimmer, half its height under it; 'w' a
+    water walker, on it with no raft; any other species stands on its raft at the surface."""
+    sleepers, sendout = [], {}
+    for path in glob.glob(f"{entitiesBedrock}/*.behavior.json"):
+        name = os.path.basename(path)[:-len(".behavior.json")]
+        if not re.match(r"\d{4}_", name): continue
+        species = species_for(name)
+        if not species: continue
+        behaviour = species.get("behaviour") or {}
+        moving = behaviour.get("moving") or {}
+        swim = moving.get("swim") or {}
+        key = entity_id(name)
+        if (behaviour.get("resting") or {}).get("willSleepOnBed", False): sleepers.append(key)
+        if (moving.get("fly") or {}).get("canFly", False): sendout[key] = "f"
+        elif swim.get("canBreatheUnderwater", False) and not swim.get("canWalkOnWater", False): sendout[key] = "s"
+        elif swim.get("canWalkOnWater", False): sendout[key] = "w"
+    os.makedirs(scriptsBedrock, exist_ok=True)
+    with open(f"{scriptsBedrock}/world_rules.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py (create_world_rules): the species that sleep on their trainer's bed (resting.willSleepOnBed), and how\n"
+                   "// each is placed when sent out over water (getAdjustedSendoutPosition: f a flier above it, s a swimmer under it, w a water walker on it)\n")
+        file.write("export const BED_SLEEPERS = " + json.dumps(sorted(sleepers), separators=(",", ":")) + ";\n")
+        file.write("export const SENDOUT_WATER = " + json.dumps(dict(sorted(sendout.items())), separators=(",", ":")) + ";\n")
+    print(f"World rules: {len(sleepers)} species sleep on a bed, {len(sendout)} placed over water.")
 
 
 def entity_id(pokemon):
@@ -1636,13 +1759,67 @@ def create_pokecenters():
     nurse = json.loads(json.dumps(POKE_MART_CLERK).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse").replace('"poke_mart_clerk"', '"nurse"'))
     client = json.loads(json.dumps(POKE_MART_CLERK_CLIENT).replace("cobblemon:poke_mart_clerk", "cobblemon:nurse"))
     textures = client["minecraft:client_entity"]["description"]["textures"]
+    # Nurse Joy (CobblemonVillagerProfessions.getNameTagOverride, VillagerProfessionLayerMixin): a Nurse whose name ends
+    # with "Joy", "Joelle", "Joëlle" or another of the list wears nurse_joy.png in place of the nurse texture. The villager
+    # render controller draws the profession texture of the variant's slot, so every slot but the unskilled one (0, the
+    # nurse's) holds the Joy texture, and scripts/storage_npc.js moves a nurse so named to variant 1 through these events
     for key in ("armorer", "butcher", "cartographer", "cleric", "farmer", "fisherman", "fletcher", "leatherworker", "librarian", "shepherd",
-                "tool_smith", "weapon_smith", "stonemason", "nitwit", "unskilled"):
-        textures[key] = "textures/entity/villager/nurse"
+                "tool_smith", "weapon_smith", "stonemason", "nitwit"):
+        textures[key] = "textures/entity/villager/nurse_joy"
+    textures["unskilled"] = "textures/entity/villager/nurse"
+    nurse["minecraft:entity"]["components"]["minecraft:nameable"]["allow_name_tag_renaming"] = True   # a Name Tag names her
+    nurse["minecraft:entity"].setdefault("component_groups", {}).update({"cobblemon:joy": {"minecraft:variant": {"value": 1}}, "cobblemon:plain": {"minecraft:variant": {"value": 0}}})
+    nurse["minecraft:entity"].setdefault("events", {}).update({
+        "cobblemon:joy_on": {"add": {"component_groups": ["cobblemon:joy"]}, "remove": {"component_groups": ["cobblemon:plain"]}},
+        "cobblemon:joy_off": {"add": {"component_groups": ["cobblemon:plain"]}, "remove": {"component_groups": ["cobblemon:joy"]}}})
     with open(f"{entitiesBedrock}/nurse.behavior.json", "w", encoding="utf-8") as file: file.write(json.dumps(nurse, indent=4))
     with open(f"{entityBedrock}/nurse.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(client, indent=4))
     os.makedirs(f"{resourcePack}/textures/entity/villager", exist_ok=True)
     shutil.copy(f"{cobblemonRepo}/common/src/main/resources/assets/cobblemon/textures/entity/villager/profession/nurse.png", f"{resourcePack}/textures/entity/villager/nurse.png")
+    shutil.copy(f"{cobblemonRepo}/common/src/main/resources/assets/cobblemon/textures/entity/villager/profession/nurse_joy.png", f"{resourcePack}/textures/entity/villager/nurse_joy.png")
+
+
+# VillagerGatherableItems: the items EntityVillagerMixin lets a Farmer villager pick up (wantsToPickUp)
+VILLAGER_GATHERABLE_ITEMS = ("blue_mint_seeds", "cyan_mint_seeds", "green_mint_seeds", "pink_mint_seeds", "red_mint_seeds", "white_mint_seeds",
+                             "revival_herb", "vivichoke_seeds", "hearty_grains")
+
+
+def strip_json_comments(text):
+    """The text of a vanilla JSON file without its // comments (which sit after values too), quoted strings kept whole."""
+    out, i, n, quoted = [], 0, len(text), False
+    while i < n:
+        c = text[i]
+        if quoted:
+            out.append(c)
+            if c == "\\" and i + 1 < n: out.append(text[i + 1]); i += 1
+            elif c == '"': quoted = False
+        elif c == '"': quoted = True; out.append(c)
+        elif c == "/" and text[i:i + 2] == "//":
+            j = text.find("\n", i); i = n if j < 0 else j; continue
+        else: out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def create_villager_gathering():
+    """Farmer villagers gather Cobblemon's crops: EntityVillagerMixin.wantsToPickUp lets a Farmer pick up the six Mint Seeds,
+    Revival Herb, Vivichoke Seeds and Hearty Grains (VillagerGatherableItems). A Bedrock villager picks up what its
+    minecraft:shareables list, so the newest vanilla villager_v2 is written into the pack with those items on the farmer's
+    lists (behavior_peasant and work_schedule_farmer, the ones holding wheat seeds), wanted and kept as its seeds are."""
+    print("Creating the farmer villager's gathering...")
+    found = glob.glob(f"{vanillaBehaviorPacks}/vanilla*/entities/villager_v2.json")
+    if not found: print("  no vanilla villager_v2.json"); return
+    newest = max(found, key=lambda path: tuple(int(n) for n in re.findall(r"\d+", os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0])))
+    with open(newest, encoding="utf-8") as file: villager = json.loads(strip_json_comments(file.read()))
+    added = 0
+    for group in villager["minecraft:entity"].get("component_groups", {}).values():
+        items = group.get("minecraft:shareables", {}).get("items", [])
+        seeds = next((i for i in items if i.get("item") == "minecraft:wheat_seeds"), None)
+        if not seeds: continue
+        for name in VILLAGER_GATHERABLE_ITEMS:
+            items.append({**{k: v for k, v in seeds.items() if k != "item"}, "item": f"cobblemon:{name}"}); added += 1
+    if not added: print("  no farmer shareables found in villager_v2.json"); return
+    with open(f"{entitiesBedrock}/villager_v2.json", "w", encoding="utf-8") as file: file.write(json.dumps(villager, indent=4))
 
 
 def create_cosmetics():
@@ -2814,7 +2991,14 @@ def create_behavior_entities():
         combat = behaviour.get("combat", {})
         health = health_at(stats.get("hp", 40), level)
         components = {
-            "minecraft:nameable": {},
+            # a Name Tag is refused on a Pokemon (NameTagItem's CANNOT_HAVE_NAME_TAG holds cobblemon:pokemon), so no renaming
+            "minecraft:nameable": {"allow_name_tag_renaming": False},
+            # PokemonEntity.canBeLeashed: any Pokemon takes a lead (scripts/world.js drops a stranger's from an owned one)
+            "minecraft:leashable": {},
+            # PokemonEntity.getAmbientSoundInterval: ambientPokemonCryTicks, 1080 (54 seconds), before each ambient sound
+            "minecraft:ambient_sound_interval": {"value": 54, "range": 4, "event_name": "ambient"},
+            # PokemonEntity.dropExperience: a wild Pokemon a player kills drops an animal's orbs, 1 to 3 (doPokemonLoot)
+            "minecraft:experience_reward": {"on_death": "query.last_hit_by_player ? 1 + math.random_integer(0, 2) : 0"},
             "minecraft:type_family": {"family": ["mob", "pokemon", "npc"] + types},
             # Cobblemon's hitbox times baseScale, as PokemonEntity.getDimensions has it: Bedrock's minecraft:scale scales the
             # collision box too, so the box is the unscaled hitbox
@@ -2829,7 +3013,9 @@ def create_behavior_entities():
             "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 6, "probability": 0.02}
         }
         components.update(movement_components(species, kind))
-        if behaviour.get("fireImmune", False): components["minecraft:fire_immune"] = {}
+        # Pokemon.isFireImmune: a Fire type, a lava swimmer or the species' fireImmune (Scovillain is Grass/Fire with no flag)
+        if behaviour.get("fireImmune", False) or "fire" in types or behaviour.get("moving", {}).get("swim", {}).get("canSwimInLava", False):
+            components["minecraft:fire_immune"] = {}
         if combat.get("willFlee", False):
             components["minecraft:behavior.panic"] = {"priority": 1, "speed_multiplier": 1.25}
         if combat.get("willDefendSelf", False):
@@ -3652,7 +3838,7 @@ BIOME_IDS = {
 }
 
 # Java's names for the vanilla biomes Bedrock calls something else (the rest are the same in both)
-JAVA_BIOMES = {"badlands": "mesa", "eroded_badlands": "mesa_bryce", "wooded_badlands": "mesa_plateau_stone",
+JAVA_BIOMES = {"nether_wastes": "hell", "badlands": "mesa", "eroded_badlands": "mesa_bryce", "wooded_badlands": "mesa_plateau_stone",
                "ice_spikes": "ice_plains_spikes", "snowy_plains": "ice_plains", "snowy_beach": "cold_beach",
                "soul_sand_valley": "soulsand_valley", "sparse_jungle": "jungle_edge", "old_growth_birch_forest": "birch_forest_mutated",
                "old_growth_pine_taiga": "mega_taiga", "old_growth_spruce_taiga": "redwood_taiga_mutated",
@@ -3748,6 +3934,121 @@ def biome_filter_for(biome_ids):
 WEIGHT_CONDITIONS = ("isPokeSnack", "isThundering", "isRaining", "timeRange", "moonPhase", "minLureLevel", "maxLureLevel", "canSeeSky")
 
 
+# the multiplier conditions the script tests when a natural spawn arrives: the time, the weather and the moon as they
+# are, and the biome, nearby blocks, light and structures converted as the special spawns' are
+TIMED_MULTIPLIERS = {"timeRange", "isRaining", "isThundering", "moonPhase"}
+
+
+def natural_multipliers(spawn):
+    """A natural spawn's weightMultipliers the script can test where it arrives, [[multiplier, condition]]: a Poke
+    Snack's and a rod's left to their own draws, and one naming anything the port cannot test left out."""
+    out = []
+    for key in ("weightMultiplier", "weightMultipliers"):
+        v = spawn.get(key)
+        for m in (v if isinstance(v, list) else [v] if v else []):
+            cond, test = m.get("condition", {}) or {}, {}
+            if m.get("anticondition") or not cond or set(cond) & {"isPokeSnack", "minLureLevel", "maxLureLevel"}: continue
+            for k, value in cond.items():
+                if k in TIMED_MULTIPLIERS: test[k] = value
+                elif k == "biomes" and (biome := biome_filter_for(value)): test["biome"] = biome
+                elif k == "neededNearbyBlocks" and (near := bedrock_blocks(value)): test["near"] = near
+                elif k == "minLight": test["minLight"] = value
+                elif k == "structures":
+                    leaves = structure_leaves(value or [])
+                    own = structure_ids(leaves - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+                    if VILLAGE_STRUCTURE in leaves: test["village"] = True
+                    if own: test["structures"] = sorted(own)
+                    if not test.get("village") and not own: test = None; break
+                else: test = None; break
+            if test: out.append([m.get("multiplier", 1), test])
+    return out
+
+
+_spawn_presets = None
+def spawn_presets():
+    """Cobblemon's spawn detail presets (data/spawn_detail_presets) by name, read once."""
+    global _spawn_presets
+    if _spawn_presets is None:
+        _spawn_presets = {}
+        for path in glob.glob(f"{cobblemonData}/spawn_detail_presets/*.json"):
+            with open(path, encoding="utf-8") as file: _spawn_presets[os.path.basename(path)[:-len(".json")]] = json.load(file)
+    return _spawn_presets
+
+
+_anti_blocks = {}   # an anticondition's block list as Bedrock names it, by the list
+
+
+def natural_anticonditions(spawn):
+    """A natural spawn's anticonditions (SpawnDetail.anticonditions: its own and one from each of its presets, any one of
+    which holding whole, every field at once, takes the spawn away) as tests the script makes where the Pokemon arrives
+    (main.js, antiHolds): a village (the wild preset's, with its concrete about), Cobblemon's own structures, blocks nearby
+    or beneath, the time, weather, moon, light, sky light and height. One naming biomes is the spawn rule's biome filter
+    already; one naming anything the script cannot test, or only other mods' structures, never holds here and is left out."""
+    out = []
+    for source in [spawn_presets().get(p, {}) for p in spawn.get("presets", [])] + [spawn]:
+        anti = source.get("anticondition") or {}
+        if not anti or "biomes" in anti: continue
+        test = {}
+        for key, value in anti.items():
+            if key in ("timeRange", "isRaining", "isThundering", "moonPhase", "canSeeSky", "minY", "maxY", "minLight", "maxLight", "minSkyLight", "maxSkyLight"): test[key] = value
+            elif key in ("neededNearbyBlocks", "neededBaseBlocks"):
+                # bedrock_blocks reads every pack block each time, and the wild preset's concrete comes 293 times
+                blocks_key = json.dumps(value, sort_keys=True)
+                if blocks_key not in _anti_blocks: _anti_blocks[blocks_key] = bedrock_blocks(value)
+                blocks = _anti_blocks[blocks_key]
+                if not blocks: test = None; break
+                test["near" if key == "neededNearbyBlocks" else "base"] = blocks
+            elif key == "structures":
+                leaves = structure_leaves(value or [])
+                own = structure_ids(leaves - {VILLAGE_STRUCTURE} - MANSION_STRUCTURES)
+                if VILLAGE_STRUCTURE in leaves: test["village"] = True
+                if own: test["structures"] = sorted(own)
+                if not test.get("village") and not own: test = None; break
+            else: test = None; break
+        # the natural preset's farmland (neededBaseBlocks) is kept out by the rule's spawns_on_block_filter already
+        if test and set(test) == {"base"} and "natural" in spawn.get("presets", []) and not set(test["base"]) & set(natural_base_blocks()): continue
+        if test: out.append(test)
+    return out
+
+
+class _AnyItem:
+    """Stands for the pack's items before create_items has written them: a spawn's drop table names only Cobblemon's own
+    items and the game's, which the pack has."""
+    def __contains__(self, item): return True
+
+
+def entry_drops(table):
+    """A spawn entry's own drop table (PokemonSpawnDetail.drops, a herd member's dropTable) in data.js's form (species_drops);
+    None without one."""
+    return species_drops({"drops": table}, _AnyItem()) if table else None
+
+
+def entry_checks(spawn):
+    """What a natural spawn's condition asks that a spawn rule cannot test, for the script on the condition's spawn event
+    (main.js, entryHolds): its anticonditions ("anti"), its block light ("light": minLight, maxLight; Venonat by a light at
+    night, Misdreavus in the dark), its x bounds ("x": minX, maxX; Shellos' East Sea from x 0, the West Sea west of it) and
+    its own drop table ("drops": the Nether's Gastly drops ghast tears and spell tags, the End's Elgyem ender pearls)."""
+    cond = spawn.get("condition") or {}
+    out = {}
+    anti = natural_anticonditions(spawn)
+    if anti: out["anti"] = anti
+    if "minLight" in cond or "maxLight" in cond: out["light"] = [cond.get("minLight"), cond.get("maxLight")]
+    if "minX" in cond or "maxX" in cond: out["x"] = [cond.get("minX"), cond.get("maxX")]
+    drops = entry_drops(spawn.get("drops"))
+    if drops: out["drops"] = drops
+    return out
+
+
+_natural_blocks = None
+def natural_base_blocks():
+    """The blocks the natural preset lets a Pokemon spawn on (its neededBaseBlocks, #cobblemon:natural: grass, dirt, sand,
+    stone and deepslate, the ores, snow, ice, terracotta, moss, nylium and the rest; never farmland, its anticondition), as
+    Bedrock names them, for a spawn rule's spawns_on_block_filter; read once."""
+    global _natural_blocks
+    if _natural_blocks is None: _natural_blocks = [b for b in (bedrock_blocks(["#cobblemon:natural"]) or []) if b != "minecraft:farmland"]
+    return _natural_blocks
+
+
 def weight_multipliers(spawn):
     """A spawn's weightMultiplier(s) (SpawnDetail.weightMultipliers) for the script's draws: {"wm": [[multiplier,
     condition]]}, each condition kept to what the script can test (a Poke Snack's draw, thunder, rain, the time, the
@@ -3789,6 +4090,10 @@ def spawn_condition(spawn, species, kind):
         elsewhere = bool(tags - NETHER_TAGS) or not tags
         if nether or underground: rule["minecraft:spawns_underground"] = {}
         if elsewhere and not underground: rule["minecraft:spawns_on_surface"] = {}
+        # the block beneath (GroundedTypeSpawningCondition.neededBaseBlocks): the entry's own, or the natural preset's
+        # #cobblemon:natural, grass to deepslate and never farmland, so nothing comes on a built floor
+        base = bedrock_blocks(condition["neededBaseBlocks"]) if condition.get("neededBaseBlocks") else natural_base_blocks() if "natural" in spawn.get("presets", []) else None
+        if base: rule["minecraft:spawns_on_block_filter"] = base
     if "minSkyLight" in condition or "maxSkyLight" in condition or "timeRange" in condition:
         low = condition.get("minSkyLight", 0); high = condition.get("maxSkyLight", 15)
         time_range = condition.get("timeRange", "")
@@ -3836,7 +4141,7 @@ def herd_spawns():
                 members.append({"folder": folder, "pokemon": m["pokemon"], "form": form, "weight": m.get("weight", 1.0),
                                 "level": int_range(m.get("levelRange")), "offset": int_range(m.get("levelRangeOffset")),
                                 "max": m.get("maxTimes", 10), "leader": bool(m.get("isLeader")), "follower": m.get("isFollower", True),
-                                "alpha": "alpha=true" in words[1:],
+                                "alpha": "alpha=true" in words[1:], "drops": entry_drops(m.get("dropTable")),
                                 "held": next((w.split("=", 1)[1] for w in words[1:] if w.startswith("held_item=")), None)})
             if members: herds.append((spawn, members))
     return herds
@@ -3858,7 +4163,26 @@ def create_spawn_rules():
         if not pokemon: continue
         pools.setdefault(pokemon, {"spawns": []})["spawns"] = pools.get(pokemon, {}).get("spawns", []) + pool.get("spawns", [])
         legendary += 1
-    weather_events, slime_events, bias_events = {}, set(), {}
+    weather_events, slime_events, bias_events, mult_table = {}, set(), {}, {}
+
+    def multiplied(rule, spawn, pokemon):
+        """A multiplier (SpawnDetail.weightMultipliers: Vulpix 2.5 times as likely at twilight) a Bedrock weight cannot
+        follow: the condition spawns as often as its multipliers can make it, and its spawn fires
+        cobblemon:spawn_mult_<n>, on which the script keeps it in the share the multipliers that hold there give
+        (main.js, multipliedSpawn). The event does what the condition's own did (a form's, a weather check's, a herd
+        seed's, which the script then fills, "then")."""
+        wm = natural_multipliers(spawn)
+        # and, on the same event, the checks a rule cannot make (entry_checks: the anticonditions, the block light, the x
+        # bounds) with the entry's own drop table
+        checks = entry_checks(spawn) if rule else {}
+        if not rule or not (wm or checks): return
+        top = math.prod(m for m, _ in wm if m > 1)
+        if top <= 1 and not any(m < 1 for m, _ in wm) and not checks: return
+        own = rule["minecraft:herd"].get("event")
+        n = len(mult_table.setdefault(entity_id(pokemon), []))
+        mult_table[entity_id(pokemon)].append({"top": top, "wm": wm, **checks, **({"was": own} if own else {})})
+        rule["minecraft:herd"]["event"] = f"cobblemon:spawn_mult_{n}"; rule["minecraft:herd"]["event_skip_count"] = 0
+        rule["cobblemon:top"] = top
     # A herd (PokemonHerdSpawnDetail) starts with one member, a leader where the herd has one and otherwise a follower,
     # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
     # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
@@ -3877,7 +4201,7 @@ def create_spawn_rules():
                  "level": int_range(herd.get("levelRange"), [1, 100]), "weight": herd.get("weight", 1.0), "biome": biome,
                  "members": [{"entity": entity_id(m["folder"]), "event": f"cobblemon:spawn_form_{m['form']}" if m["form"] else None, "w": m["weight"],
                               "level": m["level"], "off": m["offset"], "max": m["max"], "leader": m["leader"], "follower": m["follower"],
-                              **({"alpha": True} if m["alpha"] else {}), **({"held": m["held"]} if m["held"] else {})} for m in members]}
+                              **({"alpha": True} if m["alpha"] else {}), **({"held": m["held"]} if m["held"] else {}), **({"drops": m["drops"]} if m.get("drops") else {})} for m in members]}
         if herd.get("bucket") == "boss": entry["boss"] = True
         if anti.get("biomes") and biome_filter_for(anti["biomes"]): entry["notBiome"] = biome_filter_for(anti["biomes"])
         for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
@@ -3902,6 +4226,7 @@ def create_spawn_rules():
                 key = ("alpha_" + form if form else "alpha") if spawn.get("bucket") == "boss" else form
                 rule["minecraft:herd"]["event"] = f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"; rule["minecraft:herd"]["event_skip_count"] = 0
                 seed_events.setdefault(pokemon, set()).add(key)
+                multiplied(rule, spawn, pokemon)
                 if rule: conditions.append((rule, spawn))
                 continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
@@ -3923,6 +4248,7 @@ def create_spawn_rules():
             if rule and bias and not form and not weather and bias in bias_evolutions(species):
                 rule["minecraft:herd"]["event"] = f"cobblemon:spawn_bias_{bias}"; rule["minecraft:herd"]["event_skip_count"] = 0
                 bias_events.setdefault(pokemon, set()).add(bias)
+            multiplied(rule, spawn, pokemon)
             if rule: conditions.append((rule, spawn))
             else: skipped += 1
         if not conditions: continue
@@ -3935,6 +4261,8 @@ def create_spawn_rules():
         # after the split, so a species keeps the whole of its share in the pool it actually spawns in
         normalise_weights(conditions)
         conditions = [rule for rule, _ in conditions]
+        for rule in conditions:
+            if "cobblemon:top" in rule: rule["minecraft:weight"]["default"] = max(1, round(rule["minecraft:weight"]["default"] * rule.pop("cobblemon:top")))
         data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
         with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
         written += 1
@@ -3981,6 +4309,20 @@ def create_spawn_rules():
             events[f"cobblemon:herd_seed_{key}" if key else "cobblemon:herd_seed"] = json.loads(json.dumps(events[f"cobblemon:spawn_form_{form}"])) if form else {}
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    for entity, entries in mult_table.items():
+        path = f"{entitiesBedrock}/{entity.split(':p', 1)[1]}.behavior.json"
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); events = data["minecraft:entity"].setdefault("events", {})
+        # each does what the condition's own event did (a herd seed's is answered by the script, after the check)
+        for n, entry in enumerate(entries): events[f"cobblemon:spawn_mult_{n}"] = json.loads(json.dumps(events.get(entry.get("was"), {})))
+        second = text.split(chr(10))[1]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
+    with open(f"{scriptsBedrock}/spawn_multipliers.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// generated by port.py (create_spawn_rules): each species' spawn conditions with weight multipliers, by the n of their\n"
+                   "// cobblemon:spawn_mult_<n> event: the most the multipliers make (top, its weight here), the multipliers and the event\n"
+                   "// the condition fired before (was); and what else a rule cannot test (anti, light, x) with the entry's own drops\n")
+        file.write("export const SPAWN_MULTIPLIERS = " + json.dumps(mult_table, separators=(",", ":")) + ";\n")
+    print(f"Spawn multipliers: {sum(len(v) for v in mult_table.values())} conditions of {len(mult_table)} species follow their weight multipliers.")
     with open(f"{scriptsBedrock}/herds.js", "w", encoding="utf-8", newline="\n") as file:
         file.write("// generated by port.py (create_spawn_rules): Cobblemon's herd spawns, alpha herds (boss) among them, each member's entity, form event, weight, levels and most\n")
         file.write("export const HERDS = " + json.dumps(herd_table, separators=(",", ":")) + ";\n")
@@ -4421,6 +4763,21 @@ def interaction_item_texture(name):
     return None
 
 
+def interaction_count(amount):
+    """A drop_item amount as the loot table's set_count: Cobblemon's IntRange "1-2" is {"min": 1, "max": 2}, "2-2" or 2 is
+    2, and none is 1 (DropItemEffect drops one when the file gives no amount)."""
+    if amount is None or amount == "": return 1
+    parts = [int(p) for p in str(amount).split("-")] if "-" in str(amount) else [int(amount)]
+    low, high = parts[0], parts[-1]
+    return low if low == high else {"min": low, "max": high}
+
+
+def interaction_wear(effects):
+    """shrink_item's amount on a tool: the durability it loses (ShrinkItemEffect's hurtAndBreak, a brush 8, 16 or 32), 1
+    when the file gives none."""
+    return next((int(e.get("amount", 1) or 1) for e in effects if e.get("variant") == "shrink_item"), 1)
+
+
 GENDERED_INTERACTIONS = {}   # entity id -> {item: the gender the interaction needs}
 
 
@@ -4459,14 +4816,16 @@ def add_pokemon_interactions(entity, species, pokemon):
         if interaction.get("_gender"): GENDERED_INTERACTIONS.setdefault(entity_id(pokemon), {})[item] = interaction["_gender"]
         if give and (give.startswith("minecraft:") or interaction_item_texture(give.split(":")[1])): entry["transform_to_item"] = give
         elif any(e.get("variant") == "shrink_item" for e in effects):
-            if item in TOOLS: entry["hurt_item"] = 1
+            if item in TOOLS: entry["hurt_item"] = interaction_wear(effects)
             else: entry["use_item"] = True
-        drops = [e["item"] for e in effects if e.get("variant") == "drop_item" and (e["item"].startswith("minecraft:") or interaction_item_texture(e["item"].split(":")[1]))]
+        drops = [(e["item"], interaction_count(e.get("amount"))) for e in effects
+                 if e.get("variant") == "drop_item" and (e["item"].startswith("minecraft:") or interaction_item_texture(e["item"].split(":")[1]))]
         if drops:
             os.makedirs(lootInteractionsBedrock, exist_ok=True)
             table = f"{pokemon}_{index}.json"
+            loot_entries = [{"type": "item", "name": d, "weight": 1, **({"functions": [{"function": "set_count", "count": count}]} if count != 1 else {})} for d, count in drops]
             with open(f"{lootInteractionsBedrock}/{table}", "w") as file:
-                file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": d, "weight": 1} for d in drops]}]}, indent=4))
+                file.write(json.dumps({"pools": [{"rolls": 1, "entries": loot_entries}]}, indent=4))
             entry["spawn_items"] = {"table": f"loot_tables/interactions/{table}"}
         if "spawn_items" in entry or "transform_to_item" in entry: entries.append(entry)
     if not entries: return
@@ -4490,9 +4849,10 @@ def create_interaction_items():
         if not icon: continue
         shutil.copyfile(icon, f"{texturesItemsBedrock}/{name}.png")
         itemTextureData["texture_data"][name] = {"textures": [f"textures/items/{name}"]}
+        # Moomoo Milk stacks to 16 (CobblemonItems.kt stacksTo(16)); it is a bag item in battle, not a drink
         item = {"format_version": "1.20.50", "minecraft:item": {
             "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": "items"}},
-            "components": {"minecraft:icon": name, "minecraft:display_name": {"value": f"item.cobblemon:{name}.name"}, "minecraft:max_stack_size": 64}}}
+            "components": {"minecraft:icon": name, "minecraft:display_name": {"value": f"item.cobblemon:{name}.name"}, "minecraft:max_stack_size": 16 if name == "moomoo_milk" else 64}}}
         with open(f"{itemsBedrock}/{name}.json", "w") as file: file.write(json.dumps(item, indent=4))
         made.append(name)
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
@@ -4530,24 +4890,39 @@ FLY_TIERS = [round(0.05 * (1.2 / 0.05) ** (n / 15), 4) for n in range(16)]
 
 
 def air_riding_groups(groups, events):
-    """The ridden flier's groups: flight (no gravity, the free camera's climb on jump, ridden_air) at one of FLY_TIERS'
-    speeds (cobblemon:fly_<n>, switched by cobblemon:fly_<n>), and tired, when its stamina is gone, which falls and
-    cannot climb (BirdBehaviour's depletion force) until it lands and has stamina again."""
-    groups["cobblemon:ridden_air"] = {"minecraft:physics": {"has_gravity": False}, "minecraft:vertical_movement_action": {"vertical_velocity": 0.5},
-                                      "minecraft:navigation.float": {"can_path_over_water": True},
-                                      "minecraft:body_rotation_always_follows_head": {}}
-    groups["cobblemon:ridden_tired"] = {"minecraft:physics": {}, "minecraft:flying_speed": {"value": 0.01},
-                                        "minecraft:body_rotation_always_follows_head": {}}
+    """The ridden flier's groups, one on at a time, swapped by scripts/riding.js: flight (ridden_air: no gravity, the
+    free camera controls that move it where the rider looks and climb on jump, the happy ghast's ride-tamed behaviour)
+    at one of FLY_TIERS' speeds (cobblemon:fly_<n>, switched by cobblemon:fly_<n>); land (ridden_land: gravity and the
+    ground controls, with the dash of nothing that takes the jump press, so a flier on the ground rides by
+    HorseBehaviour until a double jump, RidingController.canTransitionToAir); falling (ridden_fall: the flight under
+    gravity, RocketBehaviour's between lifts); and tired (ridden_tired: gravity and no climb, BirdBehaviour's
+    depletion force) until it lands and has stamina again. cobblemon:ride_flight, ride_land, ride_fall and ride_tired
+    each put one on and take the others away; the land and tired groups drop the speed tiers with them."""
+    camera = {"minecraft:free_camera_controlled": {"strafe_speed_modifier": 1.0, "backwards_movement_modifier": 0.5},
+              "minecraft:behavior.player_ride_tamed": {"priority": 1}, "minecraft:body_rotation_always_follows_head": {}}
+    flying = {"minecraft:vertical_movement_action": {"vertical_velocity": 0.5}, "minecraft:navigation.float": {"can_path_over_water": True}, **camera}
+    groups["cobblemon:ridden_air"] = {"minecraft:physics": {"has_gravity": False}, **flying}
+    groups["cobblemon:ridden_fall"] = {"minecraft:physics": {}, **flying}
+    groups["cobblemon:ridden_tired"] = {"minecraft:physics": {}, "minecraft:flying_speed": {"value": 0.01}, **camera}
+    groups["cobblemon:ridden_land"] = {"minecraft:physics": {}, "minecraft:input_ground_controlled": {}, "minecraft:movement.basic": {},
+                                       "minecraft:navigation.walk": {"can_path_over_water": True, "avoid_damage_blocks": True},
+                                       "minecraft:dash_action": {"cooldown_time": 0.25, "horizontal_momentum": 0.0, "vertical_momentum": 0.0}}
+    flight = ["cobblemon:ridden_air", "cobblemon:ridden_fall", "cobblemon:ridden_tired", "cobblemon:ridden_land"]
+    others = lambda keep: [g for g in flight if g != keep]
     tiers = [f"cobblemon:fly_{n}" for n in range(len(FLY_TIERS))]
     for n, speed in enumerate(FLY_TIERS):
         groups[tiers[n]] = {"minecraft:flying_speed": {"value": round(speed / 5.5, 5)}}
         events[tiers[n]] = {"remove": {"component_groups": [t for t in tiers if t != tiers[n]]}, "add": {"component_groups": [tiers[n]]}}
-    # riding starts at the slowest tier, and leaving takes every tier away
+    # riding starts in flight at the slowest tier (scripts/main.js puts a flier on the ground into the land group on its
+    # first tick), and leaving takes every group and tier away
     start = 0   # the slowest, which scripts/main.js speeds up from as the rider holds forward
-    events["cobblemon:ride_air_on"] = {"remove": {"component_groups": ["cobblemon:gravity", "cobblemon:ridden_tired"]}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
-    events["cobblemon:ride_air_off"] = {"remove": {"component_groups": ["cobblemon:ridden_air", "cobblemon:ridden_tired"] + tiers}, "add": {"component_groups": ["cobblemon:gravity"]}}
-    events["cobblemon:ride_tired"] = {"remove": {"component_groups": ["cobblemon:ridden_air"] + tiers}, "add": {"component_groups": ["cobblemon:ridden_tired"]}}
-    events["cobblemon:ride_rested"] = {"remove": {"component_groups": ["cobblemon:ridden_tired"]}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
+    events["cobblemon:ride_air_on"] = {"remove": {"component_groups": ["cobblemon:gravity"] + others("cobblemon:ridden_air")}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
+    events["cobblemon:ride_air_off"] = {"remove": {"component_groups": flight + tiers}, "add": {"component_groups": ["cobblemon:gravity"]}}
+    events["cobblemon:ride_flight"] = {"remove": {"component_groups": others("cobblemon:ridden_air")}, "add": {"component_groups": ["cobblemon:ridden_air"]}}
+    events["cobblemon:ride_fall"] = {"remove": {"component_groups": others("cobblemon:ridden_fall")}, "add": {"component_groups": ["cobblemon:ridden_fall"]}}
+    events["cobblemon:ride_tired"] = {"remove": {"component_groups": others("cobblemon:ridden_tired") + tiers}, "add": {"component_groups": ["cobblemon:ridden_tired"]}}
+    events["cobblemon:ride_land"] = {"remove": {"component_groups": others("cobblemon:ridden_land") + tiers}, "add": {"component_groups": ["cobblemon:ridden_land"]}}
+    events["cobblemon:ride_rested"] = {"remove": {"component_groups": others("cobblemon:ridden_air")}, "add": {"component_groups": ["cobblemon:ridden_air", tiers[start]]}}
 
 
 def seat_shift(pokemon, pose):
@@ -4697,8 +5072,8 @@ def add_riding(entity, species, pokemon):
         return
     minecraft = entity["minecraft:entity"]
     entity["format_version"] = "1.26.30"
-    owned["minecraft:free_camera_controlled"] = {"strafe_speed_modifier": 1.0, "backwards_movement_modifier": 0.5}
-    owned["minecraft:behavior.player_ride_tamed"] = {"priority": 1}
+    # the free camera controls and the ride-tamed behaviour live in the flight groups (air_riding_groups), since on the
+    # ground a flier with a land behaviour rides by the ground controls instead (its ridden_land group)
     # a flier lands or is left in the air by its rider without a fall hurting it, as the happy ghast is
     minecraft["components"].setdefault("minecraft:damage_sensor", {"triggers": []})["triggers"].insert(0, {"cause": "fall", "deals_damage": False})
     # gravity lives in its own group, so a rider can take it away rather than a second physics component trying to override it
@@ -4827,7 +5202,7 @@ def create_items():
         "components": {
             "minecraft:icon": "poke_ball",
             "minecraft:display_name": {"value": "item.cobblemon:poke_ball.name"},
-            "minecraft:max_stack_size": 16,
+            "minecraft:max_stack_size": 64,   # PokeBallItem keeps Item.Properties' default stack
             "minecraft:throwable": {"do_swing_animation": True, "launch_power_scale": 1.0, "max_launch_power": 1.0},
             "minecraft:projectile": {"projectile_entity": "cobblemon:ball_poke_ball"},
             "minecraft:tags": {"tags": ["minecraft:transform_materials"]}
@@ -5191,6 +5566,202 @@ def create_water_platform():
     print("  water platforms: the five sizes of Cobblemon's raft")
 
 
+def create_water_platform():
+    """PlatformType: the raft an owned Pokemon in battle stands on in water, drawn under it as PokemonRenderer.drawPlatform
+    does, in five sizes by the Pokemon's width (hitbox width times base scale: XS to 0.511, S under 1.01, M under 1.8,
+    L under 2.875, XL past it). Cobblemon's own models (bedrock/misc/models) and their textures, which only the
+    published jar has (1.8.3 on). One entity, its size the variant."""
+    jar = cobblemon_jar()
+    sizes = ["xs", "s", "m", "l", "xl"]
+    if not jar: print("  water platforms: no jar, left out"); return
+    import zipfile
+    os.makedirs(f"{texturesEntityBedrock}/water_platform", exist_ok=True)
+    os.makedirs(f"{modelsBedrock}/water_platform", exist_ok=True)
+    geometries = {}
+    with zipfile.ZipFile(jar) as z:
+        for size in sizes:
+            try:
+                texture = z.read(f"assets/cobblemon/textures/platforms/water_platform_{size}.png")
+                geo = json.loads(z.read(f"assets/cobblemon/bedrock/misc/models/water_platform_{size}.geo.json"))
+            except KeyError: print(f"  water platforms: no {size} in the jar, left out"); return
+            with open(f"{texturesEntityBedrock}/water_platform/water_platform_{size}.png", "wb") as file: file.write(texture)
+            g = geo["minecraft:geometry"][0]
+            g["description"]["identifier"] = f"geometry.cobblemon_water_platform_{size}"
+            with open(f"{modelsBedrock}/water_platform/water_platform_{size}.geo.json", "w") as file: file.write(json.dumps(geo, indent=2))
+            geometries[size] = g["description"]["identifier"]
+    with open(f"{renderControllersBedrock}/water_platform.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_water_platform": {
+            "arrays": {"textures": {"Array.skin": [f"Texture.{z_}" for z_ in sizes]}, "geometries": {"Array.geo": [f"Geometry.{z_}" for z_ in sizes]}},
+            "geometry": "Array.geo[q.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[q.variant]"]}}}, indent=2))
+    with open(f"{entityBedrock}/water_platform.entity.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:water_platform", "materials": {"default": "entity_alphatest"},
+            "textures": {z_: f"textures/entity/water_platform/water_platform_{z_}" for z_ in sizes},
+            "geometry": {z_: geometries[z_] for z_ in sizes},
+            "render_controllers": ["controller.render.cobblemon_water_platform"]}}}, indent=2))
+    groups = {f"cobblemon:size_{n}": {"minecraft:variant": {"value": n}} for n in range(len(sizes))}
+    with open(f"{entitiesBedrock}/water_platform.behavior.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:water_platform", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "component_groups": groups, "events": {f"cobblemon:size_{n}": {"add": {"component_groups": [f"cobblemon:size_{n}"]}} for n in range(len(sizes))},
+            "components": {
+                "minecraft:type_family": {"family": ["water_platform", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}, "minecraft:variant": {"value": 0}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:water_platform.name=Water Platform\n")
+    print("  water platforms: the five sizes of Cobblemon's raft")
+
+
+def create_water_platform():
+    """PlatformType: the raft an owned Pokemon in battle stands on in water, drawn under it as PokemonRenderer.drawPlatform
+    does, in five sizes by the Pokemon's width (hitbox width times base scale: XS to 0.511, S under 1.01, M under 1.8,
+    L under 2.875, XL past it). Cobblemon's own models (bedrock/misc/models) and their textures, which only the
+    published jar has (1.8.3 on). One entity, its size the variant."""
+    jar = cobblemon_jar()
+    sizes = ["xs", "s", "m", "l", "xl"]
+    if not jar: print("  water platforms: no jar, left out"); return
+    import zipfile
+    os.makedirs(f"{texturesEntityBedrock}/water_platform", exist_ok=True)
+    os.makedirs(f"{modelsBedrock}/water_platform", exist_ok=True)
+    geometries = {}
+    with zipfile.ZipFile(jar) as z:
+        for size in sizes:
+            try:
+                texture = z.read(f"assets/cobblemon/textures/platforms/water_platform_{size}.png")
+                geo = json.loads(z.read(f"assets/cobblemon/bedrock/misc/models/water_platform_{size}.geo.json"))
+            except KeyError: print(f"  water platforms: no {size} in the jar, left out"); return
+            with open(f"{texturesEntityBedrock}/water_platform/water_platform_{size}.png", "wb") as file: file.write(texture)
+            g = geo["minecraft:geometry"][0]
+            g["description"]["identifier"] = f"geometry.cobblemon_water_platform_{size}"
+            with open(f"{modelsBedrock}/water_platform/water_platform_{size}.geo.json", "w") as file: file.write(json.dumps(geo, indent=2))
+            geometries[size] = g["description"]["identifier"]
+    with open(f"{renderControllersBedrock}/water_platform.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_water_platform": {
+            "arrays": {"textures": {"Array.skin": [f"Texture.{z_}" for z_ in sizes]}, "geometries": {"Array.geo": [f"Geometry.{z_}" for z_ in sizes]}},
+            "geometry": "Array.geo[q.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[q.variant]"]}}}, indent=2))
+    with open(f"{entityBedrock}/water_platform.entity.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:water_platform", "materials": {"default": "entity_alphatest"},
+            "textures": {z_: f"textures/entity/water_platform/water_platform_{z_}" for z_ in sizes},
+            "geometry": {z_: geometries[z_] for z_ in sizes},
+            "render_controllers": ["controller.render.cobblemon_water_platform"]}}}, indent=2))
+    groups = {f"cobblemon:size_{n}": {"minecraft:variant": {"value": n}} for n in range(len(sizes))}
+    with open(f"{entitiesBedrock}/water_platform.behavior.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:water_platform", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "component_groups": groups, "events": {f"cobblemon:size_{n}": {"add": {"component_groups": [f"cobblemon:size_{n}"]}} for n in range(len(sizes))},
+            "components": {
+                "minecraft:type_family": {"family": ["water_platform", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}, "minecraft:variant": {"value": 0}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:water_platform.name=Water Platform\n")
+    print("  water platforms: the five sizes of Cobblemon's raft")
+
+
+def create_water_platform():
+    """PlatformType: the raft an owned Pokemon in battle stands on in water, drawn under it as PokemonRenderer.drawPlatform
+    does, in five sizes by the Pokemon's width (hitbox width times base scale: XS to 0.511, S under 1.01, M under 1.8,
+    L under 2.875, XL past it). Cobblemon's own models (bedrock/misc/models) and their textures, which only the
+    published jar has (1.8.3 on). One entity, its size the variant."""
+    jar = cobblemon_jar()
+    sizes = ["xs", "s", "m", "l", "xl"]
+    if not jar: print("  water platforms: no jar, left out"); return
+    import zipfile
+    os.makedirs(f"{texturesEntityBedrock}/water_platform", exist_ok=True)
+    os.makedirs(f"{modelsBedrock}/water_platform", exist_ok=True)
+    geometries = {}
+    with zipfile.ZipFile(jar) as z:
+        for size in sizes:
+            try:
+                texture = z.read(f"assets/cobblemon/textures/platforms/water_platform_{size}.png")
+                geo = json.loads(z.read(f"assets/cobblemon/bedrock/misc/models/water_platform_{size}.geo.json"))
+            except KeyError: print(f"  water platforms: no {size} in the jar, left out"); return
+            with open(f"{texturesEntityBedrock}/water_platform/water_platform_{size}.png", "wb") as file: file.write(texture)
+            g = geo["minecraft:geometry"][0]
+            g["description"]["identifier"] = f"geometry.cobblemon_water_platform_{size}"
+            with open(f"{modelsBedrock}/water_platform/water_platform_{size}.geo.json", "w") as file: file.write(json.dumps(geo, indent=2))
+            geometries[size] = g["description"]["identifier"]
+    with open(f"{renderControllersBedrock}/water_platform.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_water_platform": {
+            "arrays": {"textures": {"Array.skin": [f"Texture.{z_}" for z_ in sizes]}, "geometries": {"Array.geo": [f"Geometry.{z_}" for z_ in sizes]}},
+            "geometry": "Array.geo[q.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[q.variant]"]}}}, indent=2))
+    with open(f"{entityBedrock}/water_platform.entity.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:water_platform", "materials": {"default": "entity_alphatest"},
+            "textures": {z_: f"textures/entity/water_platform/water_platform_{z_}" for z_ in sizes},
+            "geometry": {z_: geometries[z_] for z_ in sizes},
+            "render_controllers": ["controller.render.cobblemon_water_platform"]}}}, indent=2))
+    groups = {f"cobblemon:size_{n}": {"minecraft:variant": {"value": n}} for n in range(len(sizes))}
+    with open(f"{entitiesBedrock}/water_platform.behavior.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:water_platform", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "component_groups": groups, "events": {f"cobblemon:size_{n}": {"add": {"component_groups": [f"cobblemon:size_{n}"]}} for n in range(len(sizes))},
+            "components": {
+                "minecraft:type_family": {"family": ["water_platform", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}, "minecraft:variant": {"value": 0}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:water_platform.name=Water Platform\n")
+    print("  water platforms: the five sizes of Cobblemon's raft")
+
+
+def create_water_platform():
+    """PlatformType: the raft an owned Pokemon in battle stands on in water, drawn under it as PokemonRenderer.drawPlatform
+    does, in five sizes by the Pokemon's width (hitbox width times base scale: XS to 0.511, S under 1.01, M under 1.8,
+    L under 2.875, XL past it). Cobblemon's own models (bedrock/misc/models) and their textures, which only the
+    published jar has (1.8.3 on). One entity, its size the variant."""
+    jar = cobblemon_jar()
+    sizes = ["xs", "s", "m", "l", "xl"]
+    if not jar: print("  water platforms: no jar, left out"); return
+    import zipfile
+    os.makedirs(f"{texturesEntityBedrock}/water_platform", exist_ok=True)
+    os.makedirs(f"{modelsBedrock}/water_platform", exist_ok=True)
+    geometries = {}
+    with zipfile.ZipFile(jar) as z:
+        for size in sizes:
+            try:
+                texture = z.read(f"assets/cobblemon/textures/platforms/water_platform_{size}.png")
+                geo = json.loads(z.read(f"assets/cobblemon/bedrock/misc/models/water_platform_{size}.geo.json"))
+            except KeyError: print(f"  water platforms: no {size} in the jar, left out"); return
+            with open(f"{texturesEntityBedrock}/water_platform/water_platform_{size}.png", "wb") as file: file.write(texture)
+            g = geo["minecraft:geometry"][0]
+            g["description"]["identifier"] = f"geometry.cobblemon_water_platform_{size}"
+            with open(f"{modelsBedrock}/water_platform/water_platform_{size}.geo.json", "w") as file: file.write(json.dumps(geo, indent=2))
+            geometries[size] = g["description"]["identifier"]
+    with open(f"{renderControllersBedrock}/water_platform.render_controllers.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_water_platform": {
+            "arrays": {"textures": {"Array.skin": [f"Texture.{z_}" for z_ in sizes]}, "geometries": {"Array.geo": [f"Geometry.{z_}" for z_ in sizes]}},
+            "geometry": "Array.geo[q.variant]", "materials": [{"*": "Material.default"}], "textures": ["Array.skin[q.variant]"]}}}, indent=2))
+    with open(f"{entityBedrock}/water_platform.entity.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:water_platform", "materials": {"default": "entity_alphatest"},
+            "textures": {z_: f"textures/entity/water_platform/water_platform_{z_}" for z_ in sizes},
+            "geometry": {z_: geometries[z_] for z_ in sizes},
+            "render_controllers": ["controller.render.cobblemon_water_platform"]}}}, indent=2))
+    groups = {f"cobblemon:size_{n}": {"minecraft:variant": {"value": n}} for n in range(len(sizes))}
+    with open(f"{entitiesBedrock}/water_platform.behavior.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:water_platform", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "component_groups": groups, "events": {f"cobblemon:size_{n}": {"add": {"component_groups": [f"cobblemon:size_{n}"]}} for n in range(len(sizes))},
+            "components": {
+                "minecraft:type_family": {"family": ["water_platform", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1}, "minecraft:variant": {"value": 0}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:water_platform.name=Water Platform\n")
+    print("  water platforms: the five sizes of Cobblemon's raft")
+
+
 def create_beam():
     """PokemonRenderer.renderBeam: a red beacon-style beam, a 0.03 block core in a 0.07 block glow at 0.4 alpha.
     One entity per beam, pointed and stretched by the properties the script sets each tick."""
@@ -5321,6 +5892,33 @@ def npc_battler(texts):
             "isStatic": bool(party.get("isStatic")), "pool": pool, "cooldown": int(float(texts.get("challenge_cooldown", 5)))}
 
 
+STAT_KEYS = {"hp": "hp", "attack": "atk", "defence": "def", "special_attack": "spa", "special_defence": "spd", "speed": "spe"}
+
+
+def npc_standard(standard):
+    """npcs/standard.json as the trainer: its names (one is picked when it spawns, as NPCEntity does), the static party its
+    SimplePartyProvider gives it (six PokemonProperties strings: species, level, ball, held item, ability, nature, moves,
+    IVs and EVs, the gym trainers' spec shape), its skill, whether it heals its party after a battle (autoHealParty) and
+    the doubles format its dialogue's start_battle asks for."""
+    party = []
+    for text in standard.get("party", {}).get("pokemon", []) if standard.get("party", {}).get("type", "simple") == "simple" else []:
+        words = text.split()
+        folder = pokemon_for_species_name(words[0])
+        if not folder: continue
+        props = dict(w.split("=", 1) for w in words[1:] if "=" in w)
+        ivs = {short: 31 for short in STAT_KEYS.values()}; evs = {short: 0 for short in STAT_KEYS.values()}
+        for key, short in STAT_KEYS.items():
+            if f"{key}_iv" in props: ivs[short] = int(props[f"{key}_iv"])
+            if f"{key}_ev" in props: evs[short] = int(props[f"{key}_ev"])
+        held = props.get("held_item")
+        party.append({"t": entity_id(folder), "lv": int(props.get("level", 1)), "nature": props.get("nature"), "ability": props.get("ability"),
+                      "moves": [m for m in props.get("moves", "").split(",") if m], "ivs": ivs, "evs": evs,
+                      "held": held if not held or ":" in held else f"cobblemon:{held}", "female": props.get("gender") == "female", "shiny": props.get("shiny") == "true",
+                      "form": props.get("form"), "ball": f"cobblemon:{props['pokeball']}" if "pokeball" in props else None})
+    return {"names": [n for n in standard.get("names", []) if not n.startswith("npc.")] or ["Trainer"], "party": party,
+            "skill": int(standard.get("skill", 5)), "autoHealParty": bool(standard.get("autoHealParty", False)), "format": "doubles"}
+
+
 def render_npc_faces():
     """Each NPC's head and shoulders, from its model rendered the way the Pokemon portraits are, for the dialogue's
     portrait frame (DialoguePortraitWidget draws the speaker's face there)."""
@@ -5399,23 +5997,46 @@ def create_npcs():
     # dialogue: the trainer's config text from npcs/standard.json, the professor's lines from her dialogue file
     with open(f"{cobblemonData}/npcs/standard.json", encoding="utf-8") as file: standard = json.load(file)
     texts = {c["variableName"]: c.get("defaultValue", "") for c in standard.get("config", []) if isinstance(c, dict)}
-    # the challenge fights the trainer's own party, drawn from its preset (npc_presets/battler_test.json) by the script
-    scenes.append({"scene_tag": "cobblemon:npc_trainer", "npc_name": "Trainer", "text": texts.get("intro_text", "Would you like to challenge me?"),
-                   "buttons": [{"name": "Battle", "commands": ["/scriptevent cobblemon:trainer"]}, {"name": "Not now", "commands": []}]})
+    # The standard trainer's dialogue is dialogues/npc-example.json: the player speaks first ("Hello, I'm <player>!"), then
+    # the trainer refuses a player who hit it (q.npc.was_hurt_by) or greets them by name with Battle (a doubles battle,
+    # q.npc.start_battle(q.player, 'double')), Trade (isSelectable false) and Cancel. A scene's "speaker" names who talks,
+    # "next" the page a click on the box goes to ("@<hook>" asks scripts/storage_npc.js, which knows who was hit), and
+    # "/scriptevent cobblemon:scene <action>" runs an action of that script for the player who pressed the option
+    scenes.append({"scene_tag": "cobblemon:npc_trainer", "npc_name": "Trainer", "speaker": "player", "text": "Hello, I'm {player}!", "buttons": [], "next": "@trainer_greeting"})
+    scenes.append({"scene_tag": "cobblemon:npc_trainer.hurt", "npc_name": "Trainer", "text": "Do you think I'd talk to you after you attacked me!? Get out of here!", "buttons": []})
+    scenes.append({"scene_tag": "cobblemon:npc_trainer.chat", "npc_name": "Trainer", "text": "Hello, {player}! I'm {npc}!",
+                   "buttons": [{"name": "Battle", "commands": ["/scriptevent cobblemon:scene trainer_battle"]}, {"name": "Trade", "commands": [], "enabled": False},
+                               {"name": "Cancel", "commands": []}]})
     scenes.append({"scene_tag": "cobblemon:npc_trainer.battle", "npc_name": "Trainer", "text": "Go! Show them what you've got!", "buttons": []})
-    scenes.append({"scene_tag": "cobblemon:npc_sacchi", "npc_name": "Professor Sacchi",
-                   "text": "Hello! You can call me Professor Sacchi, or just 'the professor' as many do!\nWould you like me to heal your Pokémon?",
-                   "buttons": [{"name": "Yes please", "commands": ["/effect @e[family=pokemon,r=8] instant_health 1 3 true", "/effect @e[family=pokemon,r=8] regeneration 5 2 true", "/scriptevent cobblemon:heal go", "/dialogue open @s @initiator cobblemon:npc_sacchi.healed"]}, {"name": "No thanks", "commands": []}]})
-    scenes.append({"scene_tag": "cobblemon:npc_sacchi.healed", "npc_name": "Professor Sacchi", "text": "There! Your Pokémon are fighting fit. Take care out there!", "buttons": []})
+    # Professor Sacchi's dialogue (dialogues/sacchi_interaction.json, sacchi_healed.json): the greeting, then the page her
+    # initializationAction picks: no healing machine within her reach (c.npc.find_nearby_block, 10 blocks), the party
+    # healthy (c.player.is_party_at_full_health), the machine busy or short of charge (q.player.can_heal_at_healer), or
+    # the offer; Yes is npc_heal_player_pokemon (she turns to the machine, the party goes into it, and 2.5 seconds
+    # later sacchi_healed), No her goodbye
+    with open(f"{cobblemonData}/dialogues/sacchi_interaction.json", encoding="utf-8") as file: sacchi = json.load(file)
+    with open(f"{cobblemonData}/dialogues/sacchi_healed.json", encoding="utf-8") as file: sacchi_healed = json.load(file)
+    sacchi_lines = {page["id"]: "\n".join(page["lines"]) for page in sacchi["pages"]}
+    sacchi_lines["healed"] = "\n".join(sacchi_healed["pages"][0]["lines"])
+    prof = "Professor Sacchi"
+    scenes.append({"scene_tag": "cobblemon:npc_sacchi", "npc_name": prof, "text": sacchi_lines["greeting"], "buttons": [], "next": "@sacchi_landing"})
+    for page in ("no_healer", "full_health", "no_charge", "okbye", "healed"):
+        scenes.append({"scene_tag": f"cobblemon:npc_sacchi.{page}", "npc_name": prof, "text": sacchi_lines[page], "buttons": []})
+    scenes.append({"scene_tag": "cobblemon:npc_sacchi.has_charge", "npc_name": prof, "text": sacchi_lines["has_charge"],
+                   "buttons": [{"name": "Yes", "commands": ["/scriptevent cobblemon:scene sacchi_heal"]}, {"name": "No", "commands": ["/dialogue open @s @initiator cobblemon:npc_sacchi.okbye"]}]})
+    # Bedrock's own dialogue file, the fallback for a world builder, takes only its own keys
+    fallback = [{"scene_tag": sc["scene_tag"], "npc_name": sc["npc_name"], "text": sc["text"].replace("{player}", "friend").replace("{npc}", sc["npc_name"]),
+                 "buttons": [{"name": b["name"], "commands": b["commands"]} for b in sc["buttons"] if b.get("enabled", True)]} for sc in scenes]
     with open(f"{dialogueBedrock}/npcs.dialogue.json", "w", encoding="utf-8") as file:
-        file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": scenes}}, indent=4, ensure_ascii=False))
+        file.write(json.dumps({"format_version": "1.17", "minecraft:npc_dialogue": {"scenes": fallback}}, indent=4, ensure_ascii=False))
     # main.js shows these scenes on Cobblemon's DialogueScreen (the NPC panel stays as the fallback for a world
     # builder); each NPC's face, rendered offline as the portraits are, fills the dialogue's portrait frame
     with open(f"{scriptsBedrock}/npc_dialogue.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the NPCs' dialogue scenes, by scene tag\n")
         file.write("export const NPC_SCENES = " + json.dumps({sc["scene_tag"]: sc for sc in scenes}, ensure_ascii=False) + ";\n")
-        file.write("// the trainer's battle: its preset's skill and pool party (PoolPartyProvider), and the challenge cooldown in ticks\n")
-        file.write("export const NPC_BATTLER = " + json.dumps(npc_battler(texts)) + ";\n")
+        file.write("// the trainer's battle: npcs/standard.json's names, its static party of six (SimplePartyProvider), the doubles format\n"
+                   "// its dialogue starts, its skill and challenge cooldown in ticks; the pool party of npc_presets/battler_test.json (PoolPartyProvider)\n"
+                   "// stands in for a trainer whose class has no party of its own\n")
+        file.write("export const NPC_BATTLER = " + json.dumps({**npc_battler(texts), **npc_standard(standard)}) + ";\n")
     render_npc_faces()
     # a trainer sends out a Pokemon that fights the player for a minute, then leaves
     # each NPC points itself at its own scene
@@ -5730,8 +6351,31 @@ def evolution_requirement(r):
         req.append({"t": "feature_range", "key": r["feature"], "lo": int(low), "hi": int(high or low)})
     # a requirement that must not hold (the bias forms' original evolution, away from the regional biomes)
     elif v == "negate" and isinstance(r.get("inner"), dict): req.append({"t": "not", "r": evolution_requirement(r["inner"])})
+    # inside a village (StructureRequirement on #minecraft:village: Vivillon's Modern pattern, and the others' not), which
+    # the script tells by the villages it has found
+    elif v == "structure" and r.get("structureCondition") == "#minecraft:village": req.append({"t": "village"})
+    # an advancement whose criteria are all aspects_collected (collect_all_vivillon, for the Poke Ball pattern): every
+    # one of those aspects of the species caught, which the script keeps per player since Bedrock has no advancements
+    elif v == "advancement" and (collected := collected_aspects(r.get("requiredAdvancement", ""))): req.append({"t": "collected", **collected})
     else: req.append({"t": "never", "why": v})
     return req[0]
+
+
+def collected_aspects(advancement):
+    """An advancement made only of aspects_collected criteria for one species, as {"species": entity id, "aspects":
+    [...]}; None for any other advancement."""
+    space, _, path = advancement.partition(":")
+    file = f"{cobblemonResources}/data/{space}/advancement/{path}.json"
+    if not os.path.exists(file): return None
+    with open(file, encoding="utf-8") as handle: criteria = json.load(handle).get("criteria", {})
+    if not criteria or any(c.get("trigger") != "cobblemon:aspects_collected" for c in criteria.values()): return None
+    species = {c.get("conditions", {}).get("species") for c in criteria.values()}
+    pokemon = pokemon_for_species_name(species.pop().split(":")[-1]) if len(species) == 1 else None
+    if not pokemon: return None
+    aspects = [a for c in criteria.values() for a in c.get("conditions", {}).get("aspects", [])]
+    # the feature's default (meadow), which a Pokemon with no form of its own shows
+    default = next((feature_aspects[a]["default"] for a in aspects if feature_aspects.get(a, {}).get("default")), None)
+    return {"species": entity_id(pokemon), "aspects": aspects, **({"default": default} if default else {})}
 
 
 def natures():
@@ -5803,6 +6447,18 @@ def create_battle_data():
             # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
             **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
                 ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
+            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
+            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
+                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
+            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
+            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
+                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
+            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
+            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
+                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
+            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
+            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
+                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
             "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
             **({"bias": bias} if (bias := bias_evolutions(species)) else {}), **({"itemEvos": ie} if (ie := item_evolutions(species)) else {}),
             "variants": variant_battle_overrides(pokemon, species),
@@ -5811,8 +6467,9 @@ def create_battle_data():
             # the hitbox height in blocks, where PokemonRenderer draws the label (half a block above it)
             "labelHeight": round(species.get("hitbox", {}).get("height", 1.0) * species.get("baseScale", 1.0), 2)
         }
-    # and the moves the gym trainers' teams use (RCT's movesets), which no ported species may learn otherwise
-    for path in glob.glob(f"{rctTrainers}/*.json"):
+    # and the moves RCT's trainers' teams use (every trainer's, from the mod's clone when it is there, else the gym
+    # trainers' copies), which no ported species may learn otherwise
+    for path in glob.glob(f"{rctData}/data/rctmod/trainers/*.json") or glob.glob(f"{rctTrainers}/*.json"):
         with open(path, encoding="utf-8") as trainer:
             used.update(m.split(":")[-1] for member in json.load(trainer).get("team", []) for m in member.get("moveset", []) if m.split(":")[-1] in moves)
     with open(f"{scriptsBedrock}/data.js", "w", encoding="utf-8") as file:
@@ -6030,6 +6687,7 @@ def jigsaw_layout(start_pool, convert, parse_processors, invalid, unmapped, loot
     z], "j": [[x, y, z, front, top, name, target, pool, rollable, selection_priority]]}}, a jigsaw's orientation
     ("up_south") split into its front and top; brush counts the suspicious blocks' loot tables of every piece."""
     from nbt_to_mcstructure import read_nbt
+    from port_worldgen import piece_fit
     pools, pieces, queue, onward = {}, {}, [start_pool], False
     while queue:
         pool_id = queue.pop(0)
@@ -6047,7 +6705,10 @@ def jigsaw_layout(start_pool, convert, parse_processors, invalid, unmapped, loot
             source = f"{structuresMain}/{(location or '').split(':', 1)[-1]}.nbt"
             if not location or not os.path.exists(source): continue
             piece = structure_key(location)
-            entry["e"].append([piece, element.get("weight", 1), 1 if inner.get("projection") == "terrain_matching" else 0])
+            # the third field: 1 for terrain_matching, a gravity processor's offset (negative) for a rigid piece draped onto the
+            # ground at it, else 0; a piece's height range over sea level (cobblemon:height_range) goes on the piece as "hr"
+            flag, height_range = piece_fit(inner)
+            entry["e"].append([piece, element.get("weight", 1), flag])
             if piece in pieces: continue
             with open(source, "rb") as file: java = read_nbt(gzip.decompress(file.read()))
             if java["size"][0] > 64 or java["size"][2] > 64: return None
@@ -6062,7 +6723,7 @@ def jigsaw_layout(start_pool, convert, parse_processors, invalid, unmapped, loot
                 if nbt.get("pool", "minecraft:empty") != "minecraft:empty":
                     queue.append(nbt["pool"])
                     if pool_id == start_pool: onward = True
-            pieces[piece] = {"size": java["size"], "j": jigsaws}
+            pieces[piece] = {"size": java["size"], "j": jigsaws, **({"hr": height_range} if height_range else {})}
             processors = inner.get("processors")
             if isinstance(processors, str):
                 processor_path = f"{worldgenMain}/processor_list/{processors.split(':', 1)[-1]}.json"
@@ -6158,12 +6819,16 @@ def create_structures():
     from nbt_to_mcstructure import convert, load_invalid, parse_processors, PACK_BLOCKS, CHEST_LOOT
     PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
     # the folders start fresh in create_blocks, which writes the apricorn trees into them first
-    invalid = load_invalid(); unmapped = {}; odds = structure_spacing()
+    from port_worldgen import structure_odds, create_feature_structures
+    # each structure's share of its set's cells as Java rolls them: a cell goes to a member whose biomes hold there
+    invalid = load_invalid(); unmapped = {}; odds = structure_odds(structure_spacing())
     # the structures' chest and barrel loot (loot_table/ruins, shipwreck_coves, villages) as Bedrock loot tables at the
     # same paths, which a container's block entity names and fills from when first opened
     items = defined_items(); structure_loot = {}
     CHEST_LOOT[:] = gilded_chest_loot_tables()
     structure_loot_path = lambda name: f"loot_tables/{name.split(':', 1)[-1]}.json"
+    # a decorated pot a processor fills from a table (ruins/pots/ruins) holds one stack rolled from the converted table
+    import nbt_to_mcstructure; nbt_to_mcstructure.POT_LOOT_PATH = lambda name: f"{behaviorPack}/{structure_loot_path(name)}"
     # and the alphas' rewards (loot_table/alpha), which the script spawns where a wild alpha faints in battle
     for folder in ("ruins", "shipwreck_coves", "villages", "alpha"):
         for source in glob.glob(f"{cobblemonData}/loot_table/{folder}/**/*.json", recursive=True):
@@ -6237,6 +6902,7 @@ def create_structures():
             jigsaw["structures"].append({"id": structure, "pool": data["start_pool"], "depth": data.get("size", 7),
                                          "dist": data.get("max_distance_from_center", 80) if isinstance(data.get("max_distance_from_center", 80), int) else data["max_distance_from_center"].get("horizontal", 80),
                                          "h": [low, high], "ocean": data.get("project_start_to_heightmap") == "OCEAN_FLOOR_WG",
+                                         **({"adapt": data["terrain_adaptation"]} if data.get("terrain_adaptation", "none") != "none" else {}),
                                          **({"t": brush} if brush else {})})
             with open(f"{featuresBedrock}/{name}.json", "w") as file:
                 file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
@@ -6315,6 +6981,9 @@ def create_structures():
     for table in sorted({t for st in jigsaw["structures"] for t in st.get("t", {})}):
         brush_loot.setdefault("tables", {})[table] = brush_entries(json.load(open(f"{behaviorPack}/{table}", encoding="utf-8")))
     print(f"  jigsaw structures: {len(jigsaw['structures'])}, {len(jigsaw['pools'])} pools, {len(jigsaw['pieces'])} pieces")
+    # the structures Cobblemon places as features rather than jigsaws (tools/port_worldgen.py): the feature habitats and
+    # the arch and crypt ruins, their suspicious blocks marked like a jigsaw piece's
+    placed += create_feature_structures(convert, parse_processors, invalid, unmapped, structure_loot_path, structure_loot, site_markers, sites, site_of)
     with open(f"{scriptsBedrock}/structure_sites.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: each marked structure piece, by the marker's piece_hi and piece_lo: the structures it\n"
                    "// starts, the block the marker stands in for, and its reach from a marker (radius, height)\n")
@@ -6390,7 +7059,7 @@ def gym_commands(data, trainers):
     for b in data["blocks"]:
         m = re.match(r"fill .* (\S+) replace minecraft:chain_command_block", command(b))
         if m: filler = m.group(1).split(":")[-1]
-    overrides, gems = {}, {}
+    overrides, gems, sites = {}, {}, {}
     for b in data["blocks"]:
         if name_of(b) == "minecraft:chain_command_block": overrides[tuple(b["pos"])] = (filler, {})
     for b in data["blocks"]:
@@ -6403,6 +7072,9 @@ def gym_commands(data, trainers):
             p, trainer, rise = summons[0]
             overrides[pos] = marker("entrance", trainers.index(trainer))
             overrides[p] = marker("spot", trainers.index(trainer), rise)
+            # where the building's door plate and trainer spot are in the template, which the script turns the
+            # building's display cases by (GYM_CASES)
+            sites[trainers.index(trainer)] = {"entrance": list(pos), "spot": list(p)}
         elif text.startswith("clear @p ") and summons:
             p, trainer, rise = summons[0]
             overrides[pos] = marker("rematch", trainers.index(trainer))
@@ -6412,43 +7084,92 @@ def gym_commands(data, trainers):
             overrides[pos] = marker("lift", 0, int(lift.group(1)))
         else:
             overrides[pos] = (filler, {})
-    return overrides, gems
+    return overrides, gems, sites
 
 
-def rct_trainer_data(trainers, items):
-    """RCT's teams, bags and order, as the script reads them: species as this pack's entities, moves the battle knows."""
-    with open(f"{rctTrainers}/../progression.json", encoding="utf-8") as file: requires = json.load(file)
-    out, levels = {}, {}
-    for tid in trainers:
-        with open(f"{rctTrainers}/{tid}.json", encoding="utf-8") as file: data = json.load(file)
+def gym_cases(data):
+    """The items in a building's display cases (cobblemon:display_case block entities with Items), as [x, y, z, item]
+    in the template, which the script puts in once the building is found (a converted structure carries no entities)."""
+    out = []
+    for b in data["blocks"]:
+        nbt = b.get("nbt") or {}
+        if str(nbt.get("id", "")) != "cobblemon:display_case": continue
+        for item in nbt.get("Items", []) or []:
+            if str(item.get("id", "")): out.append([*b["pos"], str(item["id"])])
+    return out
+
+
+STATS6 = ("hp", "atk", "def", "spa", "spd", "spe")
+# the decoder rct_trainers.js carries, which turns the compact table below back into the records the script reads
+RCT_DECODER = """const S6 = ["hp", "atk", "def", "spa", "spd", "spe"], six = (a) => Object.fromEntries(S6.map((k, i) => [k, a[i]]));
+function decodeTrainers(raw) {
+    const out = {};
+    for (const [id, r] of Object.entries(raw)) {
+        out[id] = { name: r.n, type: r.ty ?? "normal", series: r.se ?? [], level: r.lv, requires: r.req ?? [], optional: !r.key, swf: r.swf ?? 1,
+            maxWins: r.mw ?? -1, maxDefeats: r.md ?? 1, cooldown: r.cd ?? 240, sig: r.sig ?? null, biomes: r.bw ?? [], noBiomes: r.bb ?? [], identity: r.idn ?? r.n,
+            bag: r.bag ?? [], maxItemUses: r.miu ?? -1, margin: r.mg ?? 0.25, switchBias: r.sb ?? 0.5, doubles: !!r.dbl,
+            team: (r.team ?? []).map((m) => ({ t: m[0], lv: m[1], nature: m[2], ability: m[3], moves: m[4], ivs: six(m[5]), evs: six(m[6]), held: m[7], female: !!m[8], shiny: !!m[9], form: m[10] })) };
+    }
+    return out;
+}
+"""
+
+
+def rct_trainer_data(items):
+    """Every RCT trainer (data/rctmod/trainers, 1559 of them) as the script reads them, compactly (RCT_DECODER expands
+    it): the team (species as this pack's entities, moves the battle knows), bag, battle rules, format and AI margin
+    from the team file (TrainerTeam); the type, series, required defeats, optional flag, spawn weight factor, biome tag
+    lists, signature item, win and defeat limits and cooldown from its mob data (TrainerMobData, rct_mob_files).
+    LevelUtils: a trainer's level is its strongest Pokemon's, or a required trainer's where that is higher."""
+    get_rct()
+    mob_of = rct_mob_files()
+    raw, levels, missing = {}, {}, {}
+    for tid in rct_all_ids():
+        data, mob = rct_json(f"{rctData}/data/rctmod/trainers/{tid}.json"), mob_of(tid)
         team = []
         for member in data.get("team", []):
             species = member["species"].split(":")[-1]
             pokemon = pokemon_for_species_name(species)
-            if not pokemon: print(f"  {tid}: no {species}"); continue
+            if not pokemon: missing[species] = missing.get(species, 0) + 1; continue
             held = member.get("heldItem", [])
             held = [held] if isinstance(held, str) else held
             held = next((f"cobblemon:{h.split(':')[-1]}" for h in held if f"cobblemon:{h.split(':')[-1]}" in items), None)
-            team.append({"t": entity_id(pokemon), "lv": member.get("level", 1), "nature": (member.get("nature") or "").split(":")[-1] or None,
-                         "ability": member.get("ability"), "moves": [m.split(":")[-1] for m in member.get("moveset", [])],
-                         "ivs": {k: member.get("ivs", {}).get(k, 0) for k in ("hp", "atk", "def", "spa", "spd", "spe")},
-                         "evs": {k: member.get("evs", {}).get(k, 0) for k in ("hp", "atk", "def", "spa", "spd", "spe")},
-                         "held": held, "female": member.get("gender") == "FEMALE", "shiny": bool(member.get("shiny")),
-                         "form": next(iter(member.get("aspects", [])), None)})
-        out[tid] = {"name": data.get("name", tid), "team": team, "requires": requires.get(tid, []),
-                    "bag": [[f"cobblemon:{b['item'].split(':')[-1]}", b.get("quantity", 1)] for b in data.get("bag", [])],
-                    "maxItemUses": data.get("battleRules", {}).get("maxItemUses", -1),
-                    "margin": data.get("ai", {}).get("data", {}).get("maxSelectMargin", 0.25),
-                    "switchBias": data.get("ai", {}).get("data", {}).get("switchBias", 0.5),
-                    "doubles": data.get("battleFormat") == "GEN_9_DOUBLES"}
-    # LevelUtils: a trainer's level is its strongest Pokemon's, or a required trainer's where that is higher
-    def level_of(tid):
+            aspects = member.get("aspects", [])
+            team.append([entity_id(pokemon), member.get("level", 1), (member.get("nature") or "").split(":")[-1] or None, member.get("ability"),
+                         [m.split(":")[-1] for m in member.get("moveset", [])], [member.get("ivs", {}).get(k, 0) for k in STATS6],
+                         [member.get("evs", {}).get(k, 0) for k in STATS6], held, 1 if member.get("gender") == "FEMALE" else 0,
+                         1 if member.get("shiny") or "shiny" in aspects else 0, next((a for a in aspects if a != "shiny"), None)])
+        entry = {"n": data.get("name", tid), "team": team, "lv": max((m[1] for m in team), default=1)}
+        if data.get("identity"): entry["idn"] = data["identity"]
+        bag = [[f"cobblemon:{b['item'].split(':')[-1]}", b.get("quantity", 1)] for b in data.get("bag", [])]
+        if bag: entry["bag"] = bag
+        if data.get("battleRules", {}).get("maxItemUses") is not None: entry["miu"] = data["battleRules"]["maxItemUses"]
+        ai = data.get("ai", {}).get("data", {})
+        if "maxSelectMargin" in ai: entry["mg"] = ai["maxSelectMargin"]
+        if "switchBias" in ai: entry["sb"] = ai["switchBias"]
+        if data.get("battleFormat") == "GEN_9_DOUBLES": entry["dbl"] = 1
+        if rct_requires(mob.get("requiredDefeats")): entry["req"] = rct_requires(mob.get("requiredDefeats"))
+        if mob.get("type", "normal") != "normal": entry["ty"] = mob["type"]
+        if mob.get("series"): entry["se"] = list(mob["series"])
+        if not mob.get("optional", True): entry["key"] = 1
+        if mob.get("spawnWeightFactor", 1) != 1: entry["swf"] = mob["spawnWeightFactor"]
+        if mob.get("maxTrainerWins", -1) != -1: entry["mw"] = mob["maxTrainerWins"]
+        if mob.get("maxTrainerDefeats", 1) != 1: entry["md"] = mob["maxTrainerDefeats"]
+        if mob.get("battleCooldownTicks", 240) != 240: entry["cd"] = mob["battleCooldownTicks"]
+        if mob.get("signatureItem"): entry["sig"] = mob["signatureItem"] if ":" in mob["signatureItem"] else f"minecraft:{mob['signatureItem']}"
+        for key, field in (("bw", "biomeTagWhitelist"), ("bb", "biomeTagBlacklist")):
+            tags = [t.split(":", 1)[-1] for t in mob.get(field, []) if t != "is_void"]
+            if tags: entry[key] = tags
+        raw[tid] = entry
+    # LevelUtils.trainerLevel: a trainer's own strongest, or a required trainer's level where that is higher
+    def level_of(tid, seen=()):
         if tid not in levels:
-            own = max((m["lv"] for m in out[tid]["team"]), default=1)
-            levels[tid] = max([own] + [level_of(r) for group in out[tid]["requires"] for r in group if r in out])
+            own = raw[tid]["lv"]
+            levels[tid] = max([own] + [level_of(r, seen + (tid,)) for group in raw[tid].get("req", []) for r in group if r in raw and r not in seen])
         return levels[tid]
-    for tid in trainers: out[tid]["level"] = level_of(tid)
-    return out
+    for tid in raw: raw[tid]["lv"] = level_of(tid)
+    if missing: print(f"  RCT teams: {sum(missing.values())} Pokemon of {len(missing)} species with no model left out ({', '.join(sorted(missing)[:12])}...)")
+    return raw
 
 
 def rct_loot(trainers, items):
@@ -6457,12 +7178,15 @@ def rct_loot(trainers, items):
     as the script rolls them: a pool's rolls (a number, a uniform range or a binomial), each entry's weight and quality
     (luck adds quality times luck to the weight), its count range, and rctmod:level_range's levels, tested against the
     trainer team's highest level. Items the pack does not define are left out; a TM is cobblemon:tm_<move>."""
-    root = f"{pwd}/rct_trainers/loot_table"
+    # RCT's own loot tables (every group's and single's) when the clone is there, else the 14 trainers' copies
+    root = f"{rctData}/data/rctmod/loot_table" if os.path.isdir(f"{rctData}/data/rctmod/loot_table") else f"{pwd}/rct_trainers/loot_table"
     tables, picks = {}, {}
     def load(name):
         if name in tables: return
         tables[name] = []
-        with open(f"{root}/{name.split(':', 1)[1]}.json", encoding="utf-8") as file: data = json.load(file)
+        path = f"{root}/{name.split(':', 1)[1]}.json"
+        if not os.path.exists(path): return
+        with open(path, encoding="utf-8") as file: data = json.load(file)
         for pool in data.get("pools", []):
             r = pool.get("rolls", 1)
             rolls = {"c": r} if isinstance(r, (int, float)) else {"b": [r["n"], r["p"]]} if r.get("type") == "minecraft:binomial" else {"u": [r["min"], r["max"]]}
@@ -6471,6 +7195,10 @@ def rct_loot(trainers, items):
                 entry = {"w": e.get("weight", 1), "q": e.get("quality", 0)}
                 levels = next((c["range"] for c in e.get("conditions", []) if c.get("condition") == "rctmod:level_range"), None)
                 if levels: entry["l"] = [levels.get("min", 0), levels.get("max", 1000)]
+                # rctmod:defeat_count (DefeatCountCondition): the player's defeats of this trainer, counting this one,
+                # against a count by a comparator (an Ancient Origin Ball on the first defeat only)
+                defeats = next((c for c in e.get("conditions", []) if c.get("condition") == "rctmod:defeat_count"), None)
+                if defeats: entry["d"] = [defeats.get("comparator", "=="), defeats.get("count", 1)]
                 if e["type"] == "minecraft:loot_table":
                     load(e["value"]); entry["t"] = e["value"]
                 elif e["type"] == "minecraft:item":
@@ -6497,31 +7225,58 @@ def rct_loot(trainers, items):
 
 
 def create_trainer_entity(trainers):
-    """cobblemon:rct_trainer: the player model in the trainer's RCT skin (TrainerRenderer's PlayerModel, wide arms)."""
+    """cobblemon:rct_trainer: the player model in the trainer's RCT skin (TrainerRenderer's PlayerModel, wide arms), one
+    skin per trainer picked by the cobblemon:trainer property. TrainerMob: 30 health that can be hurt (a trainer's death
+    ends its battle), regenerating a point about every 20 seconds (aiStep, in scripts/rct_world.js). A gym trainer
+    (cobblemon:gym, the default, as the buildings' Slowness 100 left it) stands where it was summoned and is persistent;
+    a wild one (cobblemon:wild, scripts/rct_world.js's spawner) walks RCT's goals: it keeps clear of zombies, pillagers
+    and the other mobs TrainerMob avoids, follows a player holding a Trainer Card (TrainerCardTemptGoal), strolls about
+    (WaterAvoidingRandomStrollGoal at 0.35 of its 0.5 speed) and looks at players, and is gone when no player is within
+    128 blocks (shouldDespawn); a spawner's trainer (cobblemon:home) stands on its block (MoveToHomePosGoal)."""
     os.makedirs(f"{texturesEntityBedrock}/rct_trainers", exist_ok=True)
     faces = f"{uiTextures}/dialogue"; os.makedirs(faces, exist_ok=True)
     for n, tid in enumerate(trainers):
-        source = f"{pwd}/rct_trainers/skins/{tid}.png"
+        source = rct_skin(tid)
         shutil.copyfile(source, f"{texturesEntityBedrock}/rct_trainers/{tid}.png")
         # the dialogue's portrait: the skin's face with its hat layer, as the face of a player head
         skin = Image.open(source).convert("RGBA")
         face = skin.crop((8, 8, 16, 16)); face.alpha_composite(skin.crop((40, 8, 48, 16)))
         face.resize((64, 64), Image.NEAREST).save(f"{faces}/face_rct_{n}.png")
+    avoid = [{"type": "zombie", "max_dist": 8}, {"type": "evoker", "max_dist": 12}, {"type": "vindicator", "max_dist": 8}, {"type": "vex", "max_dist": 8},
+             {"type": "pillager", "max_dist": 15}, {"type": "illusioner", "max_dist": 12}, {"type": "zoglin", "max_dist": 10}]
     behavior = {"format_version": "1.21.0", "minecraft:entity": {
         "description": {"identifier": "cobblemon:rct_trainer", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
                         "properties": {"cobblemon:trainer": {"type": "int", "range": [0, len(trainers) - 1], "default": 0, "client_sync": True}}},
+        "component_groups": {
+            "cobblemon:gym": {"minecraft:persistent": {}, "minecraft:movement": {"value": 0}},
+            "cobblemon:home": {"minecraft:persistent": {}, "minecraft:movement": {"value": 0}},
+            "cobblemon:wild": {
+                "minecraft:movement": {"value": 0.5},
+                "minecraft:despawn": {"despawn_from_distance": {"min_distance": RCT_SPAWN["despawnDistance"], "max_distance": RCT_SPAWN["despawnDistance"]},
+                                      "despawn_from_chance": False, "despawn_from_inactivity": False, "despawn_from_simulation_edge": True},
+                "minecraft:behavior.avoid_mob_type": {"priority": 2, "entity_types": [{"filters": {"any_of": [{"test": "is_family", "subject": "other", "value": a["type"]} for a in avoid]}, "max_dist": 12}],
+                                                      "walk_speed_multiplier": 1.0, "sprint_speed_multiplier": 1.0},
+                "minecraft:behavior.tempt": {"priority": 3, "speed_multiplier": 0.9, "within_radius": 10, "items": ["rctmod:trainer_card", "rctmod:trainer_card_glint"], "can_get_scared": False},
+                "minecraft:behavior.random_stroll": {"priority": 6, "speed_multiplier": 0.7, "interval": 100},
+                "minecraft:behavior.random_look_around": {"priority": 8}}},
         "components": {
             "minecraft:type_family": {"family": ["npc", "rct_trainer", "cobblemon_npc"]},
             "minecraft:nameable": {"always_show": True, "allow_name_tag_renaming": False},
             "minecraft:collision_box": {"width": 0.6, "height": 1.8},
-            "minecraft:health": {"value": 20, "max": 20},
-            "minecraft:persistent": {}, "minecraft:physics": {},
+            "minecraft:health": {"value": 30, "max": 30},
+            "minecraft:physics": {}, "minecraft:jump.static": {},
+            "minecraft:navigation.walk": {"can_path_over_water": True, "avoid_water": True, "can_open_doors": True, "avoid_damage_blocks": True},
             "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
-            "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": False}]},
+            # fire and falls are the trainer's own risk, as a player's are (no damage sensor: a trainer can be hurt)
             "minecraft:knockback_resistance": {"value": 1},
-            # the buildings give their trainers Slowness 100, so they stand where they were summoned
             "minecraft:movement": {"value": 0}, "minecraft:movement.basic": {},
-            "minecraft:behavior.look_at_player": {"priority": 1, "look_distance": 10, "probability": 0.8}}}}
+            "minecraft:behavior.float": {"priority": 0},
+            "minecraft:behavior.look_at_player": {"priority": 1, "look_distance": 10, "probability": 0.8}},
+        "events": {
+            "minecraft:entity_spawned": {"add": {"component_groups": ["cobblemon:gym"]}},
+            "cobblemon:wild": {"remove": {"component_groups": ["cobblemon:gym", "cobblemon:home"]}, "add": {"component_groups": ["cobblemon:wild"]}},
+            "cobblemon:home": {"remove": {"component_groups": ["cobblemon:wild", "cobblemon:gym"]}, "add": {"component_groups": ["cobblemon:home"]}},
+            "cobblemon:gym": {"remove": {"component_groups": ["cobblemon:wild", "cobblemon:home"]}, "add": {"component_groups": ["cobblemon:gym"]}}}}}
     with open(f"{entitiesBedrock}/rct_trainer.behavior.json", "w") as file: file.write(json.dumps(behavior, indent=4))
     client = {"format_version": "1.10.0", "minecraft:client_entity": {"description": {
         "identifier": "cobblemon:rct_trainer", "materials": {"default": "entity_alphatest"},
@@ -6664,6 +7419,12 @@ def create_trainer_card():
         "components": {"minecraft:icon": "rct_trainer_card", "minecraft:display_name": {"value": "Trainer Card"}, "minecraft:max_stack_size": 1,
                        "minecraft:use_modifiers": {"use_duration": 0.05, "movement_modifier": 1.0}, "minecraft:use_animation": "none"}}}
     with open(f"{itemsBedrock}/trainer_card.json", "w") as file: file.write(json.dumps(item, indent=2))
+    # TrainerCard.isFoil: the card glints while it has something to point at. A Bedrock item's glint is fixed, so the
+    # script swaps the held card for this twin (and back) as its target comes and goes; it is not craftable
+    glint = {"format_version": "1.21.90", "minecraft:item": {
+        "description": {"identifier": "rctmod:trainer_card_glint", "menu_category": {"category": "none"}},
+        "components": {**item["minecraft:item"]["components"], "minecraft:glint": True}}}
+    with open(f"{itemsBedrock}/trainer_card_glint.json", "w") as file: file.write(json.dumps(glint, indent=2))
     recipe = {"format_version": "1.20.10", "minecraft:recipe_shaped": {
         "description": {"identifier": "rctmod:trainer_card"}, "tags": ["crafting_table"], "pattern": ["PPP", "NGR", "PPP"],
         "key": {"P": {"item": "minecraft:paper"}, "N": {"item": "minecraft:name_tag"}, "G": {"item": "minecraft:glass_pane"}, "R": {"item": "minecraft:redstone"}},
@@ -6677,6 +7438,207 @@ def write_terrain_textures():
                                "texture_data": terrain_textures}, indent=2))
 
 
+# ---------------------------------------------------------------------------
+# Radical Cobblemon Trainers' own data, from a git-ignored clone of the mod (java_rct, the 1.21.1 branch): every one of
+# its 1559 trainers' teams and mob files (type, series, required defeats, spawning), the trainers' dialogue, the series,
+# the trainer types and its two blocks. The 14 gym and League trainers in rct_trainers/ stay the gym markers' list.
+# ---------------------------------------------------------------------------
+
+rctRepo = f"{pwd}/java_rct"
+RCT_COMMIT = "80260c6"   # RCT 0.19.2-beta, the 1.21.1 branch (rct_trainers/README.md)
+rctData = f"{rctRepo}/common/src/main/resources"
+# TrainerSpawner's and TrainerMob's numbers, RCT's defaults (IServerConfig, TrainerSpawner.java, ForceIntoBattleGoal)
+RCT_SPAWN = {"interval": 180, "intervalMax": 2400, "chance": 0.85, "chanceMin": 0.1, "minDistance": 25, "maxDistance": 70, "vertical": 30,
+             "perPlayer": 12, "total": 60, "maxLevelDiff": 25, "minLevelDiff": 4, "uniqueRadius": 500, "directChance": 0.42, "nonKeyDiv": 4,
+             "keyWeight": 64, "retries": 8, "repelChunks": 3, "despawnUnseen": 6000, "despawnTicks": 600, "despawnDistance": 128,
+             "forceDistance": 8, "forceLookTicks": 60, "forceLevelDiff": 16, "spawnerInterval": 80, "spawnerMin": 2, "spawnerMax": 16}
+# RCT's biome tags (Fabric's c: and Minecraft's own, by path) as the Bedrock biome tags that stand for them
+RCT_BIOME_RULES = {
+    "is_overworld": ["overworld"], "is_nether": ["nether"], "is_end": ["the_end"], "is_void": [],
+    "is_spooky": ["roofed", "pale_garden", "deep_dark"], "is_cave": ["caves"], "is_underground": ["caves"], "is_plateau": ["plateau"],
+    "is_mountain": ["mountain", "mountains", "extreme_hills", "jagged_peaks", "frozen_peaks", "snowy_slopes", "grove"], "is_hill": ["hills"],
+    "is_peak": ["jagged_peaks", "frozen_peaks", "stony_peaks"], "is_hot": ["desert", "mesa", "savanna", "nether"], "is_cold": ["cold", "frozen", "ice", "ice_plains", "taiga"],
+    "is_wet": ["swamp", "jungle", "lush_caves", "mangrove_swamp", "mooshroom_island"], "is_water": ["ocean", "river"], "is_river": ["river"], "is_beach": ["beach", "shore"],
+    "is_dense_vegetation": ["jungle", "roofed", "pale_garden"], "is_lush": ["lush_caves", "flower_forest", "cherry_grove", "meadow"],
+    "is_swamp": ["swamp", "mangrove_swamp"], "is_jungle": ["jungle"], "is_plains": ["plains"], "is_sparse_vegetation": ["savanna", "extreme_hills"],
+    "is_badlands": ["mesa"], "is_wasteland": ["mesa", "nether_wastes"], "is_savanna": ["savanna"], "is_forest": ["forest", "birch", "roofed", "taiga", "flower_forest", "cherry_grove"],
+    "is_rare": ["rare", "mooshroom_island"], "has_structure/end_city": ["the_end"], "has_structure/ancient_city": ["deep_dark"],
+    "has_structure/desert_pyramid": ["desert"], "has_structure/jungle_temple": ["jungle"], "has_structure/nether_fortress": ["nether_wastes", "soulsand_valley", "crimson_forest", "warped_forest"]}
+BEDROCK_COLOURS = {"0": (0, 0, 0), "1": (0, 0, 170), "2": (0, 170, 0), "3": (0, 170, 170), "4": (170, 0, 0), "5": (170, 0, 170), "6": (255, 170, 0), "7": (170, 170, 170),
+                   "8": (85, 85, 85), "9": (85, 85, 255), "a": (85, 255, 85), "b": (85, 255, 255), "c": (255, 85, 85), "d": (255, 85, 255), "e": (255, 255, 85), "f": (255, 255, 255)}
+# the League's CobbleDollars prices as emeralds: the hub clerk's scale, a Potion for one
+RCT_SHOP_RATE = 250
+
+
+def get_rct():
+    """RCT's source at RCT_COMMIT; its data and skins are MCOML, so the clone stays out of git (as java_cobblefurnies does)."""
+    if os.path.isdir(rctData): return
+    print("Cloning Radical Cobblemon Trainers...")
+    os.system(f'git clone -q -b 1.21.1 https://gitlab.com/srcmc/rct/mod.git "{rctRepo}"')
+    os.system(f'git -C "{rctRepo}" checkout -q {RCT_COMMIT}')
+
+
+def rct_json(path):
+    with open(path, encoding="utf-8") as file: return json.load(file)
+
+
+def rct_groups_key(tid, names):
+    """DataPackManager.findGroupsKey: the longest group name the trainer id starts with."""
+    best = ""
+    for name in names:
+        if tid.startswith(name) and len(name) > len(best): best = name
+    return best or None
+
+
+def rct_requires(value):
+    """TrainerMobData.requiredDefeats in any form #379 accepts (an id, a list of ids, a list of lists), as groups of
+    ids, one of each to be beaten."""
+    if not value: return []
+    if isinstance(value, str): return [[value]]
+    return [[g] if isinstance(g, str) else list(g) for g in value]
+
+
+def rct_mob_files():
+    """A trainer's mob data (data/rctmod/mobs/trainers): its own single file, else the longest group whose name starts
+    its id, else default.json; Radical Gyms' own versions of the eight leaders over RCT's."""
+    base = f"{rctData}/data/rctmod/mobs/trainers"
+    default = rct_json(f"{base}/default.json")
+    singles = {os.path.basename(f)[:-5]: rct_json(f) for f in glob.glob(f"{base}/single/*.json")}
+    for f in glob.glob(f"{gymsData}/rctmod/mobs/trainers/single/*.json"): singles[os.path.basename(f)[:-5]] = rct_json(f)
+    groups = {os.path.basename(f)[:-5]: rct_json(f) for f in glob.glob(f"{base}/groups/*.json")}
+    def of(tid):
+        if tid in singles: return singles[tid]
+        key = rct_groups_key(tid, groups)
+        return groups[key] if key else default
+    return of
+
+
+def rct_biomes():
+    """RCT_BIOME_RULES as the Bedrock biomes (by id) each of RCT's biome tags stands for, from the server's own tags
+    (tools/bedrock_biome_tags.json); a rule may name a biome itself (stony_peaks has no tag of its own)."""
+    with open(f"{pwd}/tools/bedrock_biome_tags.json", encoding="utf-8") as file: tags = json.load(file)
+    return {rct: sorted(f"minecraft:{b}" for b, t in tags.items() if any(x in t or x == b for x in bedrock)) for rct, bedrock in RCT_BIOME_RULES.items()}
+
+
+def rct_lang():
+    with open(f"{rctData}/assets/rctmod/lang/en_us.json", encoding="utf-8") as file: return json.load(file)
+
+
+def rct_text_of(value, lang):
+    """A Text: a string, or {translatable, literal} looked up in RCT's English."""
+    if isinstance(value, dict): return lang.get(value.get("translatable", ""), value.get("literal")) or ""
+    return str(value) if value else ""
+
+
+def rct_dialog(lang):
+    """The trainers' lines by context (data/rctmod/dialogs/trainers/default.json, every trainer's since no other dialog
+    file exists), in English."""
+    out = {}
+    for context, lines in rct_json(f"{rctData}/data/rctmod/dialogs/trainers/default.json").items():
+        out[context] = [t for t in (rct_text_of(l, lang) for l in lines) if t]
+    return out
+
+
+def bedrock_colour(hex6):
+    """The nearest of Bedrock's sixteen text colours to a TrainerType's rrggbb colour, as its code."""
+    if not hex6: return "f"
+    rgb = tuple(int(hex6[i:i + 2], 16) for i in (0, 2, 4))
+    return min(BEDROCK_COLOURS, key=lambda c: sum((a - b) ** 2 for a, b in zip(BEDROCK_COLOURS[c], rgb)))
+
+
+def rct_types(lang):
+    """TrainerType (data/rctmod/trainer_types): each type's name, symbol and colour (as a Bedrock colour code)."""
+    out = {}
+    for path in sorted(glob.glob(f"{rctData}/data/rctmod/trainer_types/*.json")):
+        data, tid = rct_json(path), os.path.basename(path)[:-5]
+        out[tid] = {"name": rct_text_of(data.get("name"), lang) or tid.replace("_", " ").title(), "symbol": data.get("symbol", ""), "colour": bedrock_colour(data.get("color"))}
+    return out
+
+
+def rct_series(lang):
+    """SeriesMetaData (data/rctmod/series): title, description, difficulty and the series to complete first, and
+    Freeroam, RCT's pause from a series, which needs no trainers of its own."""
+    out = {}
+    for path in sorted(glob.glob(f"{rctData}/data/rctmod/series/*.json")):
+        data, sid = rct_json(path), os.path.basename(path)[:-5]
+        out[sid] = {"title": rct_text_of(data.get("title"), lang) or sid, "description": rct_text_of(data.get("description"), lang),
+                    "difficulty": data.get("difficulty", 0), "requiredSeries": rct_requires(data.get("requiredSeries"))}
+    out["freeroam"] = {"title": lang["series.rctmod.freeroam.title"], "description": lang["series.rctmod.freeroam.description"], "difficulty": 0, "requiredSeries": []}
+    return out
+
+
+def rct_all_ids():
+    """Every trainer RCT defines (data/rctmod/trainers), the entity's skin index."""
+    get_rct()
+    return sorted(os.path.basename(f)[:-5] for f in glob.glob(f"{rctData}/data/rctmod/trainers/*.json"))
+
+
+def rct_skin(tid):
+    """A trainer's skin: RCT's own (textures/trainers/single/<id>.png), else the copy in rct_trainers/, else RCT's default."""
+    for path in (f"{rctData}/assets/rctmod/textures/trainers/single/{tid}.png", f"{pwd}/rct_trainers/skins/{tid}.png"):
+        if os.path.exists(path): return path
+    return f"{rctData}/assets/rctmod/textures/trainers/default.png"
+
+
+def rct_shop(entities):
+    """The League's CobbleDollars Shopkeeper (a villager with CobbleMerchantShop in Radical Gyms' structure): what it
+    sells, as [item, emeralds], its prices divided by RCT_SHOP_RATE and rounded up."""
+    out = []
+    for e in entities:
+        for shop in e.get("nbt", {}).get("CobbleMerchantShop", []) or []:
+            for offer in shop.get("Offers", []):
+                item = str(offer.get("Item", {}).get("id", ""))
+                if item: out.append([item, max(1, -(-int(str(offer.get("Price", "0")).strip('"') or 0) // RCT_SHOP_RATE))])
+    return out
+
+
+def create_rct_blocks():
+    """RCT's two blocks (world/blocks): the Trainer Spawner, stone bricks in the shape of its Java model, which a
+    signature item attunes to a trainer and the script spawns from (cobblemon:trainer_spawner), and the Trainer Repel
+    Rod, a lightning rod in RCT's texture that keeps trainers from spawning in the 7 by 7 chunks about it
+    (cobblemon:repel_rod), each with RCT's recipe (data/rctmod/recipe)."""
+    ASSET_ROOTS["rctmod"] = f"{rctData}/assets/rctmod"
+    model = rct_json(f"{rctData}/assets/rctmod/models/block/trainer_spawner.json")
+    model["textures"] = {"all": "minecraft:block/stonebrick"}   # Bedrock's name for Java's stone_bricks
+    cubes, instances = java_model_cubes(model)
+    write_block_geometry("geometry.rctmod_trainer_spawner", cubes)
+    def loot(name):
+        with open(f"{lootBlocksBedrock}/rctmod_{name}.json", "w") as file:
+            file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"rctmod:{name}"}]}]}))
+        return f"loot_tables/blocks/rctmod_{name}.json"
+    spawner = {"format_version": "1.21.90", "minecraft:block": {
+        "description": {"identifier": "rctmod:trainer_spawner", "menu_category": {"category": "items"}},
+        "components": {"minecraft:geometry": "geometry.rctmod_trainer_spawner", "minecraft:material_instances": material_instances(instances),
+                       "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 16, 16]}, "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 16, 16]},
+                       "minecraft:destructible_by_mining": {"seconds_to_destroy": 2.0}, "minecraft:destructible_by_explosion": {"explosion_resistance": 6},
+                       "minecraft:light_dampening": 0, "minecraft:loot": loot("trainer_spawner"), "minecraft:tick": {"interval_range": [RCT_SPAWN["spawnerInterval"], RCT_SPAWN["spawnerInterval"]], "looping": True},
+                       "cobblemon:trainer_spawner": {}}}}
+    with open(f"{blocksBedrock}/trainer_spawner.json", "w") as file: file.write(json.dumps(spawner, indent=2))
+    # the rod: Java's lightning_rod shape, a 4 by 12 post with a 6 by 4 head, turned to the face it was placed on
+    write_bone_geometry("geometry.rctmod_trainer_repel_rod", {"rod": [([-2, 0, -2], [4, 12, 4]), ([-3, 12, -3], [6, 4, 6])]})
+    texture = java_texture("rctmod:block/trainer_repel_rod")
+    faces = {"up": [0, 0, 0], "down": [180, 0, 0], "north": [-90, 0, 0], "south": [90, 0, 0], "east": [0, 0, 90], "west": [0, 0, -90]}
+    rod = {"format_version": "1.21.90", "minecraft:block": {
+        "description": {"identifier": "rctmod:trainer_repel_rod", "menu_category": {"category": "items"},
+                        "traits": {"minecraft:placement_position": {"enabled_states": ["minecraft:block_face"]}}},
+        "components": {"minecraft:geometry": "geometry.rctmod_trainer_repel_rod", "minecraft:material_instances": {"*": {"texture": texture, "render_method": "alpha_test"}},
+                       "minecraft:collision_box": {"origin": [-2, 0, -2], "size": [4, 16, 4]}, "minecraft:selection_box": {"origin": [-3, 0, -3], "size": [6, 16, 6]},
+                       "minecraft:destructible_by_mining": {"seconds_to_destroy": 1.5}, "minecraft:light_dampening": 0, "minecraft:loot": loot("trainer_repel_rod"),
+                       "cobblemon:repel_rod": {}},
+        "permutations": [{"condition": f"q.block_state('minecraft:block_face') == '{face}'", "components": {"minecraft:transformation": {"rotation": rotation}}}
+                         for face, rotation in faces.items() if face != "up"]}}
+    with open(f"{blocksBedrock}/trainer_repel_rod.json", "w") as file: file.write(json.dumps(rod, indent=2))
+    for name in ("trainer_spawner", "trainer_repel_rod"):
+        recipe = rct_json(f"{rctData}/data/rctmod/recipe/{name}.json")
+        key = {k: {"item": v["item"]} for k, v in recipe["key"].items()}
+        with open(f"{behaviorPack}/recipes/rctmod_{name}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.20.10", "minecraft:recipe_shaped": {
+                "description": {"identifier": f"rctmod:{name}"}, "tags": ["crafting_table"], "pattern": recipe["pattern"], "key": key,
+                "result": {"item": f"rctmod:{name}"}, "unlock": [{"item": next(iter(key.values()))["item"]}]}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        file.write("tile.rctmod:trainer_spawner.name=Trainer Spawner\ntile.rctmod:trainer_repel_rod.name=Trainer Repel Rod\n")
+
+
 def create_gyms():
     """Radical Gyms' buildings and worldgen, the marker block, the trainer entity and the trainers' data."""
     print("Creating gyms...")
@@ -6686,8 +7648,9 @@ def create_gyms():
     nbt_to_mcstructure.FURNITURE.update(FURNITURE_STATES)
     league = None
     nbt_to_mcstructure.PACK_BLOCKS.update(os.path.basename(f)[:-len(".json")] for f in glob.glob(f"{blocksBedrock}/*.json"))
-    trainers = rct_trainer_ids()
-    invalid, unmapped, gems, placed = load_invalid(), {}, {}, []
+    trainers = rct_trainer_ids()   # the 14 the buildings summon, the markers' index
+    every = rct_all_ids()          # all of RCT's, the entity's skin index
+    invalid, unmapped, gems, placed, cases = load_invalid(), {}, {}, [], {}
     # the marker: a plain block under the floor, where the command block was
     # a random tick of a spot marker records where its trainer stands, for the Trainer Card's arrow (scripts/main.js)
     full_block("cobblemon:gym_marker", {"*": "minecraft:block/stone"}, states={
@@ -6703,8 +7666,12 @@ def create_gyms():
         with open(f"{gymsData}/rgs/tags/worldgen/biome/{data['biomes'].split(':')[-1]}.json", encoding="utf-8") as file: biome_ids = json.load(file)["values"]
         source = f"{gymsData}/rgs/structure/{pool['elements'][0]['element']['location'].split(':')[-1]}.nbt"
         with open(source, "rb") as file: template = read_nbt(gzip.decompress(file.read()))
-        overrides, its_gems = gym_commands(template, trainers)
+        overrides, its_gems, its_sites = gym_commands(template, trainers)
         gems.update(its_gems)
+        # a gym's display cases, found by its door plate and trainer spot (the building faces any way); the League's
+        # lie at fixed offsets from its origin, which the script knows
+        for trainer, site in its_sites.items():
+            if len(template["size"]) == 3 and max(template["size"]) <= 64: cases[str(trainer)] = {**site, "size": list(template["size"]), "cases": gym_cases(template)}
         # a building wider than 64 blocks (the League, 73 by 78) is cut into tiles that fit. Worldgen places only a seed,
         # the bottom LEAGUE_SEED layers of a gym-sized corner, facing one way, with LEAGUE_ANCHORS of its bottom blocks
         # swapped for cobblemon:league_anchor; the first random tick of an anchor has scripts/main.js place every tile
@@ -6728,7 +7695,9 @@ def create_gyms():
                       "size": [sx, template["size"][1], sz], "anchors": [[x, y, z, block] for x, y, z, block in anchors],
                       # the League's villagers (its CobbleDollars "Shopkeeper"), which the script stands the Poke Mart clerk in for
                       "npcs": [[*e["blockPos"], json.loads(str(e["nbt"].get("CustomName", '""')))] for e in template.get("entities", [])
-                               if str(e.get("nbt", {}).get("id", "")) == "minecraft:villager"]}
+                               if str(e.get("nbt", {}).get("id", "")) == "minecraft:villager"],
+                      # the Shopkeeper's CobbleDollars stock as emeralds, and the League's display cases with their items
+                      "shop": rct_shop(template.get("entities", [])), "cases": gym_cases(template)}
             here = {**overrides, **{(x, y, z): ("cobblemon:league_anchor", {"cobblemon:anchor": Tag(INT, i)}) for i, (x, y, z, _) in enumerate(anchors)}}
             convert(source, f"{structuresBedrock}/rgs_{name}_seed.mcstructure", invalid, unmapped, overrides=here, region=seed)
         filters = [GYM_BIOMES.get(b) or biome_filter_for([b]) for b in biome_ids]
@@ -6754,34 +7723,38 @@ def create_gyms():
                                  "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=4))
         placed.append(name)
     if unmapped: print("  Gym blocks with no Bedrock equivalent, placed as air:", ", ".join(f"{k} ({v})" for k, v in sorted(unmapped.items())))
+    create_rct_blocks()   # before the terrain textures are written, which the rod's and the spawner's join
     write_terrain_textures()   # the marker's texture, after create_model_blocks wrote the rest
-    data = rct_trainer_data(trainers, defined_items())
+    data, lang = rct_trainer_data(defined_items()), rct_lang()
     with open(f"{scriptsBedrock}/rct_trainers.js", "w", encoding="utf-8", newline="\n") as file:
-        file.write("// Generated by port.py from rct_trainers/ (Radical Cobblemon Trainers by HDainester, https://gitlab.com/srcmc/rct/mod).\n"
+        file.write("// Generated by port.py from Radical Cobblemon Trainers by HDainester (https://gitlab.com/srcmc/rct/mod): every trainer's team\n"
+                   "// and mob data, the series, the trainer types, the dialogue and the English text, read from a clone of the mod (java_rct).\n"
                    "// This file is licensed under the Mod Community License (MCOML) v1, the licence of the work it derives from; the\n"
                    "// licence text ships as RCT_LICENSE.txt in this behavior pack. Changes: see rct_trainers/README.md.\n")
-        file.write("export const RCT_TRAINER_IDS = " + json.dumps(trainers) + ";\n")
-        file.write("export const RCT_TRAINERS = " + json.dumps(data, separators=(",", ":")) + ";\n")
+        file.write("export const RCT_TRAINER_IDS = " + json.dumps(every) + ";\n")
+        file.write(RCT_DECODER)
+        file.write("export const RCT_TRAINERS = decodeTrainers(" + json.dumps(data, separators=(",", ":")) + ");\n")
         file.write(f"export const RCT_INITIAL_CAP = {RCT_INITIAL_CAP};\n")
-        file.write("export const RCT_LOOT = " + json.dumps(rct_loot(trainers, defined_items()), separators=(",", ":")) + ";\n")
-        # the Trainer Association's series and text (rct_trainers/association.json): the series whose trainers are
-        # ported (Radical Red) and Freeroam, RCT's pause from a series, which needs no trainers of its own
-        with open(f"{pwd}/rct_trainers/association.json", encoding="utf-8") as source: association = json.load(source)
-        text = association["text"]
-        series = {sid: {"title": text.get(f"series.rctmod.{sid}.title", sid), "description": text.get(f"series.rctmod.{sid}.description", ""),
-                        "difficulty": meta.get("difficulty", 0), "requiredSeries": meta.get("requiredSeries", [])}
-                  for sid, meta in association["series"].items() if sid == "radicalred"}
-        series["freeroam"] = {"title": text["series.rctmod.freeroam.title"], "description": text["series.rctmod.freeroam.description"], "difficulty": 0, "requiredSeries": []}
-        file.write("export const RCT_SERIES_DATA = " + json.dumps(series, ensure_ascii=False) + ";\n")
-        file.write("export const RCT_TEXT = " + json.dumps({k: v for k, v in text.items() if not k.startswith("series.")}, ensure_ascii=False) + ";\n")
+        file.write("export const RCT_LOOT = " + json.dumps(rct_loot(every, defined_items()), separators=(",", ":")) + ";\n")
+        # the series (SeriesMetaData), RCT's English (its gui, dialogue, series and type text), the trainers' lines by
+        # context, the types and the spawner's numbers
+        file.write("export const RCT_SERIES_DATA = " + json.dumps(rct_series(lang), ensure_ascii=False) + ";\n")
+        file.write("export const RCT_TEXT = " + json.dumps({k: v for k, v in lang.items() if k.startswith(("gui.", "entity.", "trainer_type.", "item.", "block."))}, ensure_ascii=False) + ";\n")
+        file.write("export const RCT_DIALOG = " + json.dumps(rct_dialog(lang), ensure_ascii=False) + ";\n")
+        file.write("export const RCT_TYPES = " + json.dumps(rct_types(lang), ensure_ascii=False) + ";\n")
+        file.write("export const RCT_BIOMES = " + json.dumps(rct_biomes(), separators=(",", ":")) + ";\n")
+        file.write("export const RCT_SPAWN = " + json.dumps(RCT_SPAWN) + ";\n")
     with open(f"{scriptsBedrock}/gyms.js", "w", encoding="utf-8", newline="\n") as file:
         file.write("// generated by port.py: the Radical Gyms markers' states and the gem each building's rematch button takes\n")
         file.write("export const GYM_ROLES = " + json.dumps(GYM_ROLES) + ";\n")
+        file.write("export const GYM_TRAINER_IDS = " + json.dumps(trainers) + ";\n")
         file.write("export const GYM_GEMS = " + json.dumps({str(k): v for k, v in sorted(gems.items())}) + ";\n")
         file.write("export const GYM_BADGES = " + json.dumps({k: f"cobblemonpokemonbadges:{v}" for k, v in GYM_BADGES.items()}) + ";\n")
+        file.write("// each gym's door plate, trainer spot and size in its template, and its display cases' items, by its trainer's marker index\n")
+        file.write("export const GYM_CASES = " + json.dumps(cases) + ";\n")
         file.write("// the League's other tiles by their offset from the first, and the first tile's anchors with the block each stands for\n")
         file.write("export const GYM_LEAGUE = " + json.dumps(league) + ";\n")
-    create_trainer_entity(trainers)
+    create_trainer_entity(every)
     create_badges()
     create_trainer_card()
     create_trainer_association()
@@ -6791,8 +7764,8 @@ def create_gyms():
     shutil.copyfile(f"{pwd}/rct_trainers/LICENSE.txt", f"{behaviorPack}/RCT_LICENSE.txt")
     for tid in trainers:
         caps = data[tid]
-        print(f"  {caps['name']}: {len(caps['team'])} Pokemon, level {caps['level']}, requires {caps['requires']}")
-    print(f"Create gyms complete: {len(placed)} buildings ({', '.join(placed)}), {len(trainers)} trainers, rematch gems {len(gems)}.")
+        print(f"  {caps['n']}: {len(caps['team'])} Pokemon, level {caps['lv']}, requires {caps.get('req', [])}")
+    print(f"Create gyms complete: {len(placed)} buildings ({', '.join(placed)}), {len(trainers)} gym trainers of RCT's {len(every)}, rematch gems {len(gems)}.")
 
 
 # ---------------------------------------------------------------------------
@@ -6819,8 +7792,17 @@ VANILLA_TEXTURES = {"block/farmland_moist": "textures/blocks/farmland_wet", "blo
                     **{f"block/{c}": f"textures/blocks/candles/{c}" for c in ["candle"] + [f"{d}_candle" for d in (
                         "white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue",
                         "brown", "green", "red", "black")]}}
-BERRY_SOILS = ["minecraft:grass_block", "minecraft:dirt", "minecraft:farmland", "minecraft:podzol", "minecraft:coarse_dirt",
-               "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots"]
+# BerryBlock.canSurvive: a planted bush stands on farmland (tags/block/berry_soil); only a generated wild one keeps to
+# the grass and dirt of berry_wild_soil, which worldgen places without this filter
+BERRY_SOILS = ["minecraft:farmland"]
+# NutBushBlock's galarica_nut_may_place_on: the sand and dirt tags (red sand, mycelium, rooted dirt, moss, mud and the
+# muddy mangrove roots among them) and farmland
+GALARICA_SOILS = ["minecraft:sand", "minecraft:red_sand", "minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:mycelium",
+                  "minecraft:dirt_with_roots", "minecraft:moss_block", "minecraft:pale_moss_block", "minecraft:mud", "minecraft:muddy_mangrove_roots", "minecraft:farmland"]
+# CropBlock's farmland, for MintBlock and VivichokeBlock, and MedicinalLeekBlock's medicinal_leek_plantable: the block
+# below is a water source, or a waterlogged mangrove root, slab, trapdoor or leaf block (its fluid must be full water)
+CROPS_ON_FARMLAND = {"red_mint", "blue_mint", "cyan_mint", "pink_mint", "green_mint", "white_mint", "vivichoke_seeds"}
+LEEK_FLOORS = ["minecraft:water", "minecraft:mangrove_roots"] + [f"minecraft:{w}_leaves" for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "azalea", "flowering_azalea", "pale_oak")]
 terrain_textures = {}
 
 
@@ -7166,6 +8148,9 @@ def create_campfire_blocks():
     if not template: print("  no Minecraft jar to read template_campfire from"); return []
     with open(f"{resourcePack}/textures/terrain_texture.json", encoding="utf-8") as file: terrain = json.load(file)
     textures = {"log": "minecraft:block/campfire_log", "lit_log": "minecraft:block/campfire_log_lit", "fire": "cobblemon:block/campfire_pot/campfire_fire"}
+    # CampfirePotItem's isSoul: a pot set on a soul campfire makes CobblemonBlocks.SOUL_CAMPFIRE, the same model on the
+    # soul campfire's lit logs and Cobblemon's soul fire, cobblemon:soul_campfire_<colour>, giving a soul campfire back
+    soul_textures = {**textures, "lit_log": "minecraft:block/soul_campfire_log_lit", "fire": "cobblemon:block/campfire_pot/soul_campfire_fire"}
     campfire = {"textures": textures, "elements": template["elements"]}
     # the broth, Cobblemon's greyscale texture in BASE_BROTH_COLOR (the renderer tints it)
     broth = Image.open(f"{cobblemon}/textures/block/campfire_pot/campfire_pot_broth.png").convert("RGBA")
@@ -7185,7 +8170,8 @@ def create_campfire_blocks():
         img.save(f"{texturesBlocksBedrock}/block/campfire_pot/broth_{n}.png")
         key = f"cobblemon_campfire_broth_{n}"; terrain_textures[key] = {"textures": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}"}; broth_keys.append(key)
     made = []
-    for colour in CAMPFIRE_POT_COLOURS:
+    for soul, colour in [(s, c) for s in (False, True) for c in CAMPFIRE_POT_COLOURS]:
+        kind = "soul_campfire" if soul else "campfire"
         permutations, geometries = [], {}
         for lid in (True, False):
             for occupied in (False, True):
@@ -7194,10 +8180,10 @@ def create_campfire_blocks():
                 elements = [dict(e, **{"from": [e["from"][0], e["from"][1] + 7, e["from"][2]], "to": [e["to"][0], e["to"][1] + 7, e["to"][2]]},
                                  **({"rotation": dict(e["rotation"], origin=[e["rotation"]["origin"][0], e["rotation"]["origin"][1] + 7, e["rotation"]["origin"][2]])} if e.get("rotation") else {}))
                             for e in pot.get("elements", [])]
-                model = {"textures": {**textures, **pot.get("textures", {}), "pot": f"cobblemon:block/campfire_pot/campfire_pot_{colour}"},
+                model = {"textures": {**(soul_textures if soul else textures), **pot.get("textures", {}), "pot": f"cobblemon:block/campfire_pot/campfire_pot_{colour}"},
                          "elements": campfire["elements"] + elements}
                 cubes, instances = java_model_cubes(model)
-                gid = f"geometry.cobblemon_campfire_{colour}_{'closed' if lid else 'open'}{'_broth' if occupied else ''}"
+                gid = f"geometry.cobblemon_{kind}_{colour}_{'closed' if lid else 'open'}{'_broth' if occupied else ''}"
                 write_block_geometry(gid, cubes)
                 for d, ry in (("south", 0), ("west", 90), ("north", 180), ("east", 270)):
                     for n in (range(len(mixes)) if occupied else [None]):
@@ -7210,25 +8196,27 @@ def create_campfire_blocks():
                                              "components": {"minecraft:geometry": gid, "minecraft:material_instances": materials,
                                                             "minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}})
         block = {"format_version": "1.21.90", "minecraft:block": {
-            "description": {"identifier": f"cobblemon:campfire_{colour}", "menu_category": {"category": "none"},
+            "description": {"identifier": f"cobblemon:{kind}_{colour}", "menu_category": {"category": "none"},
                             "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True], "cobblemon:cooking": [False, True],
                                        # the broth's colour in two states, since a state holds at most 16 values
                                        "cobblemon:broth_hi": {"values": {"min": 0, "max": (len(mixes) - 1) // 16}}, "cobblemon:broth_lo": {"values": {"min": 0, "max": 15}}},
                             "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
             "components": {**permutations[0]["components"], "minecraft:collision_box": {"origin": [-8, 0, -8], "size": [16, 7, 16]},
-                           "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]}, "minecraft:light_emission": 15, "minecraft:light_dampening": 0,
-                           "minecraft:destructible_by_mining": {"seconds_to_destroy": 2}, "minecraft:loot": block_loot("campfire"),
+                           "minecraft:selection_box": {"origin": [-8, 0, -8], "size": [16, 14, 16]}, "minecraft:light_emission": 10 if soul else 15, "minecraft:light_dampening": 0,
+                           "minecraft:destructible_by_mining": {"seconds_to_destroy": 2}, "minecraft:loot": block_loot(kind),
                            "minecraft:map_color": "#816131"},
             "permutations": permutations}}
-        with open(f"{blocksBedrock}/campfire_{colour}.json", "w") as file: file.write(json.dumps(block, indent=2))
-        made.append(f"campfire_{colour}")
+        with open(f"{blocksBedrock}/{kind}_{colour}.json", "w") as file: file.write(json.dumps(block, indent=2))
+        made.append(f"{kind}_{colour}")
     broth.save(f"{texturesBlocksBedrock}/block/campfire_pot/campfire_pot_broth.png")   # over the copy java_texture made
     terrain["texture_data"].update(terrain_textures)
     with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file: file.write(json.dumps(terrain, indent=2))
     # the animated textures: Cobblemon's fire (2 ticks a frame) and broth (3), and Minecraft's lit logs
     flipbooks = [{"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_fire", "atlas_tile": "cobblemon_block_campfire_pot_campfire_fire", "ticks_per_frame": 2},
                  {"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/campfire_pot_broth", "atlas_tile": "cobblemon_block_campfire_pot_campfire_pot_broth", "ticks_per_frame": 3},
-                 {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2}] \
+                 {"flipbook_texture": "textures/blocks/campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_campfire_log_lit", "ticks_per_frame": 2},
+                 {"flipbook_texture": "textures/blocks/cobblemon/block/campfire_pot/soul_campfire_fire", "atlas_tile": "cobblemon_block_campfire_pot_soul_campfire_fire", "ticks_per_frame": 2},
+                 {"flipbook_texture": "textures/blocks/soul_campfire_log_lit", "atlas_tile": "cobblemon_vanilla_block_soul_campfire_log_lit", "ticks_per_frame": 2}] \
         + [{"flipbook_texture": f"textures/blocks/cobblemon/block/campfire_pot/broth_{n}", "atlas_tile": key, "ticks_per_frame": 3} for n, key in enumerate(broth_keys)] \
         + HEALING_FLIPBOOKS
     with open(f"{resourcePack}/textures/flipbook_textures.json", "w") as file: file.write(json.dumps(flipbooks, indent=2))
@@ -7236,6 +8224,7 @@ def create_campfire_blocks():
     with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
         for colour in CAMPFIRE_POT_COLOURS:
             if f"tile.cobblemon:campfire_{colour}.name=" not in written: file.write(f"tile.cobblemon:campfire_{colour}.name={lang.get('block.cobblemon.campfire', 'Campfire')}" + chr(10))
+            if f"tile.cobblemon:soul_campfire_{colour}.name=" not in written: file.write(f"tile.cobblemon:soul_campfire_{colour}.name={lang.get('block.cobblemon.soul_campfire', 'Soul Campfire')}" + chr(10))
     print(f"Create campfire pots complete: {len(made)} blocks.")
     return made
 
@@ -7347,10 +8336,40 @@ def create_berry_groves():
 # chunk, each a patch of five within 4 blocks across and 1 up or down, on a floor of dirt or moss with air or a moss
 # carpet over it. A random tick grows it one age one time in 26 (Cobblemon's 25 / moisture + 1, dry); bone meal two to
 # five (CropBlock.getBonemealAgeIncrease). Broken, it drops what loot_table/blocks/revival_herb.json gives: the herb,
-# one or two more at age 7, two or three more and one or two Pep-Up Flowers at age 8. Not carried: the surprise mulch
-# mutations (mental, mirror, power and white herbs), since mulch is not ported.
+# one or two more at age 7, two or three more and one or two Pep-Up Flowers at age 8. Surprise Mulch on a herb at age 6
+# or under gives it a mutation (RevivalHerbBlock.applyMulch: Mental, Power, White or Mirror; scripts/decor_blocks.js,
+# cobblemon:herb_mutation), and the herb drops that herb besides, at any age (the table's mutation pool).
+HERB_MUTATIONS = ["none", "mental", "power", "white", "mirror"]
 HERB_SOILS = ["minecraft:dirt", "minecraft:grass_block", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots",
               "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium"]
+
+
+def create_mint_seeds():
+    """CobblemonItems.mintSeed: the six mint seeds (<colour>_mint_seeds, named by their crop's block.cobblemon.<colour>_mint),
+    each planting its MintBlock crop on farmland (a CropBlock) and compostable at 0.30. Written after the general items and
+    before refresh_block_loot, so the mints' loot tables (a seed at every age, more at age 7, leaves at age 7) name them."""
+    itemTexturePath = f"{resourcePack}/textures/item_texture.json"
+    with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
+    lines, made = [], 0
+    for colour in ("red", "blue", "cyan", "pink", "green", "white"):
+        name = f"{colour}_mint_seeds"
+        icon = f"{cobblemon}/textures/item/mints/{name}.png"
+        if not os.path.exists(icon): continue   # the crop block itself is written later, by create_model_blocks
+        shutil.copyfile(icon, f"{texturesItemsBedrock}/{name}.png")
+        itemTextureData["texture_data"][name] = {"textures": [f"textures/items/{name}"]}
+        with open(f"{itemsBedrock}/general/{name}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
+                "description": {"identifier": f"cobblemon:{name}", "menu_category": {"category": "nature"}},
+                "components": {"minecraft:icon": name, "minecraft:display_name": {"value": f"item.cobblemon:{name}.name"}, "minecraft:max_stack_size": 64,
+                               "minecraft:block_placer": {"block": f"cobblemon:{colour}_mint", "use_on": ["minecraft:farmland"]}}}}, indent=2))
+        lines.append(f"item.cobblemon:{name}.name={lang.get(f'block.cobblemon.{colour}_mint', name.replace('_', ' ').title())}")
+        made += 1
+    with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
+    with open(f"{textsBedrock}/en_US.lang", encoding="utf-8") as file: written = file.read()
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for line in lines:
+            if line.split("=")[0] + "=" not in written: file.write(line + chr(10))
+    print(f"  mint seeds: {made} items planting their crop")
 
 
 def create_revival_herb():
@@ -7360,27 +8379,34 @@ def create_revival_herb():
         cubes, instances = java_model_cubes(java_model(f"cobblemon:block/revival_herb_stage_{age}") or {})
         geometry = f"geometry.cobblemon_revival_herb_{age}"
         write_block_geometry(geometry, cubes)
-        loot = "loot_tables/blocks/revival_herb_8.json" if age == 8 else "loot_tables/blocks/revival_herb_7.json" if age == 7 else "loot_tables/blocks/revival_herb.json"
+        stage = "revival_herb_8" if age == 8 else "revival_herb_7" if age == 7 else "revival_herb"
         permutations.append({"condition": f"q.block_state('cobblemon:age') == {age}", "components": {
-            "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances), "minecraft:loot": loot}})
+            "minecraft:geometry": geometry, "minecraft:material_instances": material_instances(instances), "minecraft:loot": f"loot_tables/blocks/{stage}.json"}})
+        # a mutated herb drops its mutation's herb besides (the table's last pool), a table an age and mutation
+        for mutation in HERB_MUTATIONS[1:]:
+            permutations.append({"condition": f"q.block_state('cobblemon:age') == {age} && q.block_state('cobblemon:mutation') == '{mutation}'",
+                                 "components": {"minecraft:loot": f"loot_tables/blocks/{stage}_{mutation}.json"}})
     one = {"type": "item", "name": herb}
     def extra(least, most): return {"rolls": 1, "entries": [{"type": "item", "name": herb, "functions": [{"function": "set_count", "count": {"min": least, "max": most}}]}]}
     tables = {"revival_herb": [{"rolls": 1, "entries": [one]}],
               "revival_herb_7": [{"rolls": 1, "entries": [one]}, extra(1, 2)],
               "revival_herb_8": [{"rolls": 1, "entries": [one]}, extra(2, 3),
                                  {"rolls": 1, "entries": [{"type": "item", "name": "cobblemon:pep_up_flower", "functions": [{"function": "set_count", "count": {"min": 1, "max": 2}}]}]}]}
+    for name, pools in list(tables.items()):
+        for mutation in HERB_MUTATIONS[1:]:
+            tables[f"{name}_{mutation}"] = pools + [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{mutation}_herb"}]}]
     for name, pools in tables.items():
         with open(f"{lootBlocksBedrock}/{name}.json", "w") as file: file.write(json.dumps({"pools": pools}, indent=2))
     with open(f"{blocksBedrock}/revival_herb.json", "w") as file:
         file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
-            "description": {"identifier": herb, "states": {"cobblemon:age": list(range(9))}},
+            "description": {"identifier": herb, "states": {"cobblemon:age": list(range(9)), "cobblemon:mutation": HERB_MUTATIONS}},
             "components": {"minecraft:geometry": "geometry.cobblemon_revival_herb_0",
                            "minecraft:material_instances": permutations[0]["components"]["minecraft:material_instances"],
                            "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 12, 12]},
                            "minecraft:destructible_by_mining": {"seconds_to_destroy": 0}, "minecraft:destructible_by_explosion": {"explosion_resistance": 0},
                            "minecraft:light_dampening": 0, "minecraft:loot": "loot_tables/blocks/revival_herb.json",
                            "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:farmland"] + HERB_SOILS}]},
-                           "cobblemon:revival_herb": {}},
+                           "cobblemon:revival_herb": {}, "cobblemon:herb_mutation": {}},
             "permutations": permutations}}, indent=2))
     # the Revival Herb plants it on farmland, as a crop's seed does
     path = f"{itemsBedrock}/revival_herb.json"
@@ -7414,12 +8440,18 @@ def create_revival_herb():
             "description": {"identifier": "cobblemon:revival_herb_patch"}, "places_feature": "cobblemon:revival_herb_snap", "iterations": 5,
             "x": {"distribution": "uniform", "extent": [-4, 4]}, "y": {"distribution": "uniform", "extent": [-1, 1]},
             "z": {"distribution": "uniform", "extent": [-4, 4]}}}, indent=2))
+    # placed_feature/revival_herb: two columns a chunk, each tried at every cave floor under the surface (beneath_heightmap
+    # from OCEAN_FLOOR with no reach), so a search down each column puts a herb on every floor it finds
+    with open(f"{featuresBedrock}/revival_herb_column.json", "w") as file:
+        file.write(json.dumps({"format_version": "1.13.0", "minecraft:search_feature": {
+            "description": {"identifier": "cobblemon:revival_herb_column"}, "places_feature": "cobblemon:revival_herb_wild",
+            "search_volume": {"min": [0, -120, 0], "max": [0, -1, 0]}, "search_axis": "-y", "required_successes": 1}}, indent=2))
     with open(f"{featureRulesBedrock}/revival_herb_rule.json", "w") as file:
         file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
-            "description": {"identifier": "cobblemon:revival_herb_rule", "places_feature": "cobblemon:revival_herb_patch"},
+            "description": {"identifier": "cobblemon:revival_herb_rule", "places_feature": "cobblemon:revival_herb_column"},
             "conditions": {"placement_pass": "underground_pass", "minecraft:biome_filter": biome_filter_for(["#cobblemon:is_lush"])},
             "distribution": {"iterations": 2, "x": {"distribution": "uniform", "extent": [0, 15]},
-                             "y": {"distribution": "uniform", "extent": [-56, 60]}, "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=2))
+                             "y": "query.heightmap(variable.worldx, variable.worldz)", "z": {"distribution": "uniform", "extent": [0, 15]}}}}, indent=2))
     print("  revival herbs: a crop of 9 ages, planted on farmland and found in lush caves; Pep-Up Flower item")
 
 
@@ -7563,10 +8595,13 @@ def create_wild_features():
         "x": {"distribution": "uniform", "extent": [-1, 1]}, "y": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]}})
     feature_rule("big_root", "cobblemon:big_root_patch", overworld, 2, f"{surface} - math.random_integer(4, 32)", chance=2, placement="underground_pass")
     # Galarica nut bushes: a patch of twenty tries 5 across on beaches, one chunk in six
-    write_feature("galarica_bush_wild", "minecraft:single_block_feature", {
-        "places_block": {"name": "cobblemon:galarica_nut_bush", "states": {"cobblemon:age": 3}}, "enforce_placement_rules": False, "enforce_survivability_rules": False,
-        "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:gravel"]},
-        "may_replace": WILD_GROUND})
+    # each bush at galarica_bushes' ages: grown at 8, ages 2, 1 and 0 at 3, 3 and 2
+    for age, weight in ((3, 8), (2, 3), (1, 3), (0, 2)):
+        write_feature(f"galarica_bush_{age}_wild", "minecraft:single_block_feature", {
+            "places_block": {"name": "cobblemon:galarica_nut_bush", "states": {"cobblemon:age": age}}, "enforce_placement_rules": False, "enforce_survivability_rules": False,
+            "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": ["minecraft:sand", "minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:gravel"]},
+            "may_replace": WILD_GROUND})
+    write_feature("galarica_bush_wild", "minecraft:weighted_random_feature", {"features": [[f"cobblemon:galarica_bush_{age}_wild", weight] for age, weight in ((3, 8), (2, 3), (1, 3), (0, 2))]})
     write_feature("galarica_bush_snap", "minecraft:snap_to_surface_feature", {"feature_to_snap": "cobblemon:galarica_bush_wild", "vertical_search_range": 5, "surface": "floor"})
     write_feature("galarica_patch", "minecraft:scatter_feature", {"places_feature": "cobblemon:galarica_bush_snap", "iterations": 20,
         "x": {"distribution": "uniform", "extent": [-5, 5]}, "y": 0, "z": {"distribution": "uniform", "extent": [-5, 5]}})
@@ -7641,7 +8676,7 @@ def create_wild_features():
     item_path = f"{itemsBedrock}/general/galarica_nuts.json"
     if os.path.exists(item_path):
         with open(item_path, encoding="utf-8") as file: item = json.load(file)
-        item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": "cobblemon:galarica_nut_bush", "use_on": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:farmland", "minecraft:sand"]}
+        item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": "cobblemon:galarica_nut_bush", "use_on": GALARICA_SOILS}
         with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
     print(f"  wild features: {ores} evolution stone ore placements, Medicinal Leek, mints, big roots, Galarica bushes")
 
@@ -7893,9 +8928,16 @@ def create_fossil_blocks():
     tank = [("q.block_state('cobblemon:part') == 'top'", ["restoration_tank_upper"])]
     tank += [(f"q.block_state('cobblemon:part') == 'bottom' && q.block_state('cobblemon:fill') == {n}", ["restoration_tank_lower"] + ([fills[n - 1]] if n else [])) for n in range(9)]
     machine_block("restoration_tank", "Restoration Tank", {"cobblemon:part": ["bottom", "top"], "cobblemon:fill": list(range(9))}, tank)
-    screens = ["off", "grid", "music", "locked"] + [f"scanning_{n}" for n in range(9)]
-    machine_block("monitor", "Monitor", {"cobblemon:screen": screens},
-                  [(f"q.block_state('cobblemon:screen') == '{sc}'", ["monitor" if sc == "off" else f"monitor_{sc}"]) for sc in screens])
+    # the fossil screens, and PORYGON_GLITCHING for a Dubious Disc in a Monitor on its own (the Upgrade's PORYGON_GRID
+    # is the grid); FossilMultiblockEntity's disc screens (TM_<type>, MUSIC) over two more states, since a state holds at
+    # most 16 values, and a music disc showing the fossil machine's MUSIC, the same texture; block_logic.js sets them
+    screens = ["off", "grid", "music", "locked", "glitching"] + [f"scanning_{n}" for n in range(9)]
+    disc_a = ["none", "normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon"]
+    disc_b = ["none", "dark", "steel", "fairy"]
+    variants = [(f"q.block_state('cobblemon:screen') == '{sc}'", ["monitor" if sc == "off" else f"monitor_{sc}"]) for sc in screens]
+    variants += [(f"q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == '{t}'", [f"monitor_tm_{t}"]) for t in disc_a[1:]]
+    variants += [(f"q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc_b') == '{t}'", [f"monitor_tm_{t}"]) for t in disc_b[1:]]
+    machine_block("monitor", "Monitor", {"cobblemon:screen": screens, "cobblemon:disc": disc_a, "cobblemon:disc_b": disc_b}, variants)
     # fossil items
     itemTexturePath = f"{resourcePack}/textures/item_texture.json"
     with open(itemTexturePath, encoding="utf-8") as file: itemTextureData = json.load(file)
@@ -8283,11 +9325,12 @@ def fishing_spawns():
             entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
                      "level": [int(low), int(high or low)], "biome": biome, **weight_multipliers(spawn)}
             if not_biome: entry["notBiome"] = not_biome
-            for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait", "isSlimeChunk"):
+            for key in ("canSeeSky", "minLureLevel", "maxLureLevel", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "rodType", "bait", "isSlimeChunk", "minX", "maxX", "minLight", "maxLight"):
                 if key in condition: entry[key] = condition[key]
             if VILLAGE_STRUCTURE in structures: entry["fishVillage"] = True
             if own: entry["fishStructures"] = sorted(own)
             if near: entry["fishNear"] = near
+            if (drops := entry_drops(spawn.get("drops"))): entry["drops"] = drops
             spawns.append(entry)
     return spawns
 
@@ -8305,8 +9348,11 @@ def snack_spawns():
     for path in sorted(glob.glob(f"{cobblemonData}/spawn_pool_world/*.json")):
         with open(path, encoding="utf-8") as file: pool = json.load(file)
         for spawn in pool.get("spawns", []):
-            if spawn.get("type", "pokemon") != "pokemon" or spawn.get("spawnablePositionType", "grounded") != "grounded": continue
+            # grounded and the water positions (a snack's zone, 8 blocks each way, resolves whatever positions it holds), lava's left
+            pos = spawn.get("spawnablePositionType", "grounded")
+            if spawn.get("type", "pokemon") != "pokemon" or pos not in WATER_POSITIONS | {"grounded"}: continue
             condition, anti = spawn.get("condition", {}) or {}, spawn.get("anticondition", {}) or {}
+            if condition.get("fluid") and condition["fluid"] not in WATER_FLUIDS: continue
             merged, merged_anti = merged_spawn_conditions(spawn, {k: v for k, v in presets.items() if k not in SURFACE_PRESETS})
             if merged.get("neededNearbyBlocks") or merged.get("neededBaseBlocks") or merged.get("structures"): condition, anti = merged, merged_anti
             if condition.get("isPokeSnack") is False or condition.get("isSlimeChunk"): continue
@@ -8329,8 +9375,10 @@ def snack_spawns():
             entry = {"entity": entity_id(pokemon), "bucket": spawn.get("bucket", "common"), "weight": spawn.get("weight", 1),
                      "level": [int(low), int(high or low)], "biome": biome, **weight_multipliers(spawn)}
             if not_biome: entry["notBiome"] = not_biome
-            for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
+            for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "minX", "maxX", "minLight", "maxLight"):
                 if key in condition: entry[key] = condition[key]
+            if pos != "grounded": entry["pos"] = pos
+            if (drops := entry_drops(spawn.get("drops"))): entry["drops"] = drops
             behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
             events = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
             form = spawn_form(words[1:], events)
@@ -8479,8 +9527,9 @@ def special_spawns():
                  **weight_multipliers(spawn)}
         not_biome = biome_filter_for(anti.get("biomes", [])) if anti.get("biomes") else None
         if not_biome: entry["notBiome"] = not_biome
-        for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY"):
+        for key in ("canSeeSky", "minSkyLight", "maxSkyLight", "timeRange", "moonPhase", "isRaining", "minY", "maxY", "minX", "maxX", "minLight", "maxLight"):
             if key in cond: entry[key] = cond[key]
+        if (drops := entry_drops(spawn.get("drops"))): entry["drops"] = drops
         if pokemon not in events_of:
             behavior = f"{entitiesBedrock}/{pokemon}.behavior.json"
             events_of[pokemon] = json.load(open(behavior, encoding="utf-8"))["minecraft:entity"].get("events", {}) if os.path.exists(behavior) else {}
@@ -8592,7 +9641,8 @@ def add_cobblemon_food():
     """CobblemonItems' foodItem(nutrition, saturation) items (the seven sweets, Alcremie's held items) are food as well:
     any of them the pack makes without a food component gets one, eaten as Java eats it (32 ticks)."""
     with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/CobblemonItems.kt", encoding="utf-8") as file: text = file.read()
-    foods = {name: (int(n), float(s)) for name, n, s in re.findall(r'create\("(\w+)",\s*foodItem\((\d+),\s*([\d.]+)f\)\)', text)}
+    # create("whipped_dream", foodItem(8, 0.3f)) and compostableItem("sweet_apple", foodItem(4, 0.3f), 0.65f) alike
+    foods = {name: (int(n), float(s)) for name, n, s in re.findall(r'(?:create|compostableItem)\("(\w+)",\s*foodItem\((\d+),\s*([\d.]+)f\)', text)}
     done = 0
     for path in glob.glob(f"{itemsBedrock}/**/*.json", recursive=True):
         with open(path, encoding="utf-8") as file: item = json.load(file)
@@ -8704,7 +9754,7 @@ def create_fishing():
             "components": {
                 "minecraft:icon": rod, "minecraft:display_name": {"value": f"item.cobblemon:{rod}.name"},
                 "minecraft:max_stack_size": 1, "minecraft:hand_equipped": True,
-                "minecraft:durability": {"max_durability": 64},
+                "minecraft:durability": {"max_durability": 256},   # pokerodItem's durability(256)
                 "minecraft:enchantable": {"slot": "fishing_rod", "value": 1},
                 # a long use that the script cuts short, so a click registers as a use (Bedrock ignores use on a plain item)
                 "minecraft:use_modifiers": {"use_duration": 3600, "movement_modifier": 1.0},
@@ -9046,7 +10096,9 @@ def add_comparator_output():
     while it burns, 15 ready or 0, 8 or 4 when it makes TMs on its own): a cobblemon:signal state the script sets, each
     level a permutation with Bedrock's redstone_producer at that power. A Bedrock block has no comparator-only output,
     so this signal also powers redstone dust and the like beside the machine directly, which Java's does not."""
-    for name, top in (("healing_machine", 10), ("tm_machine", 15)):
+    # and the fossil machine's (FossilMultiblockStructure.getAnalogOutputSignal: the tank's material in fifteenths of
+    # 128, the monitor's progress to 15) and the Disc Shelf's (DiscShelfBlock: its filled slots, to 14), set by block_logic.js
+    for name, top in (("healing_machine", 10), ("tm_machine", 15), ("monitor", 15), ("restoration_tank", 15), ("disc_shelf", 14)):
         path = f"{blocksBedrock}/{name}.json"
         with open(path, encoding="utf-8") as file: block = json.load(file)
         block["format_version"] = "1.21.120"   # redstone_producer is stable from 1.21.120
@@ -9057,6 +10109,189 @@ def add_comparator_output():
         body.setdefault("permutations", []).extend({"condition": f"q.block_state('cobblemon:signal') == {n}",
                                                     "components": {"minecraft:redstone_producer": {"power": n}}} for n in range(1, top + 1))
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Decor and redstone blocks, whose behaviour is scripts/decor_blocks.js: the Terrain Seeds and their plants, the
+# Metronome, Eject Button and Ring Target, the Damaged Monitor's screen, Wistensu, Pauvillea, the honeyed log's
+# wash-off, the campfire pot's lid under redstone; and the waterlogging and light levels CobblemonBlocks.kt gives.
+# ---------------------------------------------------------------------------
+
+TERRAIN_SEEDS = {"electric_seed": "voltaconia", "psychic_seed": "lucibell", "misty_seed": "mistleaf", "grassy_seed": "verdroot"}
+TERRAIN_PLANT_LIGHT = {"voltaconia": 8, "verdroot": 5, "lucibell": 8}   # CobblemonBlocks' terrainPlant lightLevel while glowing; Mistleaf's is glowing + 2
+PLANT_BOX = {"minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 16, 12]}, "minecraft:light_dampening": 0,
+             "minecraft:destructible_by_mining": {"seconds_to_destroy": 0}}
+
+
+def cross_material(model_ref):
+    """The material of a block/cross model: its cross texture, alpha tested and unshaded as a plant's is."""
+    model = java_model(model_ref) or {}
+    return {"*": {"texture": java_texture((model.get("textures") or {}).get("cross", "")), "render_method": "alpha_test", "face_dimming": False, "ambient_occlusion": False}}
+
+
+def create_terrain_seeds():
+    """Terrain Seeds and the plants they grow (TerrainSeedBlock, TerrainPlantBlock), over the plain cross blocks
+    create_building_blocks made of them. A seed planted on farmland is a crop of ages 0 to 3 (cobblemon:age) two
+    blocks tall from age 2 (cobblemon:half), each age and half on Cobblemon's own cross texture, that at age 4 becomes
+    Voltaconia, Lucibell, Mistleaf or Verdroot (scripts/decor_blocks.js, cobblemon:terrain_seed); its item plants it.
+    Each plant is two blocks (half) and glows (cobblemon:glowing: false or true, Mistleaf 0 to 8 by the moon) on its
+    glowing textures with its lightLevel, Mistleaf's glowing + 2 and a comparator reading its glowing
+    (cobblemon:terrain_plant). Only the lower half drops, as Cobblemon's tables give (half=lower)."""
+    print("Creating terrain seeds...")
+    for seed, plant in TERRAIN_SEEDS.items():
+        variants = {(p.get("age"), p.get("half")): m for p, m, *_ in blockstate_variants(seed) or []}
+        if not variants: print(f"  {seed}: no blockstate"); continue
+        permutations = []
+        for age in range(4):
+            for half in ("lower", "upper"):
+                model = variants.get((str(age), half))
+                if not model: continue
+                permutations.append({"condition": f"q.block_state('cobblemon:age') == {age} && q.block_state('cobblemon:half') == '{half}'",
+                                     "components": {"minecraft:material_instances": cross_material(model),
+                                                    "minecraft:loot": block_loot(seed, {"age": str(age), "half": half}) if half == "lower" else "loot_tables/empty.json"}})
+        with open(f"{blocksBedrock}/{seed}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.90", "minecraft:block": {
+                "description": {"identifier": f"cobblemon:{seed}", "menu_category": {"category": "nature"}, "states": {"cobblemon:age": [0, 1, 2, 3], "cobblemon:half": ["lower", "upper"]}},
+                "components": {"minecraft:geometry": "minecraft:geometry.cross", **permutations[0]["components"], **PLANT_BOX,
+                               "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:farmland"]}]},
+                               "cobblemon:terrain_seed": {}},
+                "permutations": permutations}}, indent=2))
+        # the seed plants its crop on farmland (ItemNameBlockItem)
+        for item_path in glob.glob(f"{itemsBedrock}/**/{seed}.json", recursive=True):
+            with open(item_path, encoding="utf-8") as file: item = json.load(file)
+            item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": f"cobblemon:{seed}", "use_on": ["minecraft:farmland"]}
+            with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+        variants = {(p.get("half"), p.get("glowing")): m for p, m, *_ in blockstate_variants(plant) or []}
+        glows = sorted({state_value(g) for _, g in variants}, key=lambda v: (v is not False, v))
+        permutations = []
+        for half in ("lower", "upper"):
+            for glow in glows:
+                model = variants.get((half, str(glow).lower()))
+                if not model: continue
+                components = {"minecraft:material_instances": cross_material(model),
+                              "minecraft:loot": block_loot(plant, {"half": half}) if half == "lower" else "loot_tables/empty.json"}
+                light = (glow + 2 if plant == "mistleaf" else TERRAIN_PLANT_LIGHT[plant]) if glow else 0
+                if light: components["minecraft:light_emission"] = light
+                if plant == "mistleaf" and glow: components["minecraft:redstone_producer"] = {"power": glow}
+                permutations.append({"condition": f"q.block_state('cobblemon:half') == '{half}' && q.block_state('cobblemon:glowing') == {str(glow).lower()}", "components": components})
+        with open(f"{blocksBedrock}/{plant}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.21.120", "minecraft:block": {
+                "description": {"identifier": f"cobblemon:{plant}", "menu_category": {"category": "nature"}, "states": {"cobblemon:half": ["lower", "upper"], "cobblemon:glowing": glows}},
+                "components": {"minecraft:geometry": "minecraft:geometry.cross", **{k: v for k, v in permutations[0]["components"].items() if k != "minecraft:light_emission"}, **PLANT_BOX,
+                               "cobblemon:terrain_plant": {}, "minecraft:tick": {"interval_range": [10, 20], "looping": True},
+                               **({"minecraft:redstone_producer": {"power": 0}} if plant == "mistleaf" else {})},
+                "permutations": permutations}}, indent=2))
+    print(f"Create terrain seeds complete: {len(TERRAIN_SEEDS)} seeds and their plants.")
+
+
+def add_decor_components():
+    """The states and components of the decor and redstone blocks that scripts/decor_blocks.js runs, on the blocks as
+    create_model_blocks and the rest wrote them. The Metronome (ActivatableDecorationBlock) toggles cobblemon:active on a
+    click and a comparator reads 4 while it swings; the Eject Button (EjectButtonBlock, an iron button) stays pressed 40
+    ticks, powering 15 and strongly powering what it is on; the Ring Target (RingTargetBlock, a TargetBlock) takes
+    cobblemon:power 1 to 15 from a projectile's hit by how near the centre it struck; the Damaged Monitor's screen
+    glitches (light 10) under redstone power; the Galarica nut bush slows what stands in it; Wistensu roots and grows;
+    Pauvillea sits on the face clicked and bone meal pops a copy; a honeyed Saccharine log is washed by water touching
+    its honeyed side; and redstone power shuts a campfire pot's lid. A Bedrock block has no comparator-only output, so
+    the Metronome's and Mistleaf's signals also power redstone beside them, as the machines' do."""
+    def patch(name, change, version=None, quiet=False):
+        path = f"{blocksBedrock}/{name}.json"
+        if not os.path.exists(path):
+            if not quiet: print(f"  {name}: no block to give its components")
+            return
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        if version: data["format_version"] = version   # redstone_producer is stable from 1.21.120
+        block = data["minecraft:block"]
+        block.setdefault("permutations", []); block["description"].setdefault("states", {})
+        change(block)
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+    def ticking(block, low, high): block["components"]["minecraft:tick"] = {"interval_range": [low, high], "looping": True}
+    def metronome(block):
+        block["components"].update({"cobblemon:activatable": {}, "minecraft:redstone_producer": {"power": 0}})
+        block["permutations"].append({"condition": "q.block_state('cobblemon:active')", "components": {"minecraft:redstone_producer": {"power": 4}}})
+    patch("metronome_block", metronome, "1.21.120")
+    def eject_button(block):
+        block["components"].update({"cobblemon:eject_button": {}, "minecraft:redstone_producer": {"power": 0}})
+        block["permutations"].append({"condition": "q.block_state('cobblemon:powered')", "components": {"minecraft:redstone_producer": {"power": 15, "strongly_powered_face": "down", "transform_relative": True}}})
+    patch("eject_button_block", eject_button, "1.21.120")
+    def ring_target(block):
+        block["description"]["states"]["cobblemon:power"] = list(range(16))
+        # no custom component: the script answers projectileHitBlock for it (a block naming one no script registers fails to load)
+        block["components"].update({"minecraft:redstone_producer": {"power": 0}})
+        block["permutations"].extend({"condition": f"q.block_state('cobblemon:power') == {n}", "components": {"minecraft:redstone_producer": {"power": n}}} for n in range(1, 16))
+    patch("ring_target_block", ring_target, "1.21.120")
+    def damaged_monitor(block):
+        block["components"]["cobblemon:damaged_monitor"] = {}; ticking(block, 10, 10)
+        block["permutations"].append({"condition": "q.block_state('cobblemon:screen') == 'glitching'", "components": {"minecraft:light_emission": 10}})
+    patch("damaged_monitor", damaged_monitor)
+    patch("galarica_nut_bush", lambda block: ticking(block, 10, 10))
+    patch("wistensu", lambda block: block["components"].update({"cobblemon:wistensu": {}}))
+    patch("pauvillea", lambda block: block["components"].update({"cobblemon:pauvillea": {}}))
+    def slathered(block): block["components"]["cobblemon:slathered_log"] = {}; ticking(block, 20, 40)
+    patch("saccharine_log_slathered", slathered)
+    def campfire_pot(block):
+        block["description"]["states"]["cobblemon:powered"] = [False, True]
+        block["components"]["cobblemon:campfire_pot"] = {}; ticking(block, 10, 10)
+    for colour in CAMPFIRE_POT_COLOURS:
+        patch(f"campfire_{colour}", campfire_pot)
+        patch(f"soul_campfire_{colour}", campfire_pot, quiet=True)
+    print("Add decor components complete.")
+
+
+def add_waterlogging():
+    """SimpleWaterloggedBlock: every block CobblemonBlocks.kt makes from a class that is one, or extends one (the PC,
+    Pasture and TM Machine, plaques, orbs, the magnet and wreath, every placed medicine and held item, the Eject Button,
+    Ring Target and Metronome, the decorative items, coin pouches, tumblestone buds and clusters, the campfire pots,
+    Lobaila, the saccharine leaves, and the slabs, stairs, walls, fences and trapdoors Minecraft's own classes make so),
+    stands in a water source: Bedrock's liquid_detection with can_contain_liquid, as the Hearty Grains have. The gilded
+    chests are entities here and have no need of it."""
+    with open(f"{kotlinMain}/CobblemonBlocks.kt", encoding="utf-8") as file: blocks_kt = file.read()
+    parents = {}
+    for path in glob.glob(f"{kotlinMain}/block/**/*.kt", recursive=True):
+        with open(path, encoding="utf-8") as file: text = file.read()
+        for m in re.finditer(r"class (\w+)\s*(?:<[^>]*>)?\s*\([^)]*\)\s*:\s*([^{]*)\{", text, re.S): parents[m.group(1)] = m.group(2)
+    # Minecraft's own waterloggable bases Cobblemon builds on: leaves, slabs, stairs, walls, fences and trapdoors
+    water, grew = {"SimpleWaterloggedBlock", "LeavesBlock", "SlabBlock", "StairBlock", "WallBlock", "FenceBlock", "TrapDoorBlock"}, True
+    while grew:
+        grew = False
+        for cls, bases in parents.items():
+            if cls not in water and any(b in water for b in re.findall(r"\b(\w+)\b", bases)): water.add(cls); grew = True
+    names = {m.group(1) for m in re.finditer(r'create\(\s*"(\w+)",\s*(\w+)[.(]', blocks_kt) if m.group(2) in water}
+    # stairs and trapdoors come through the mixin invokers of Minecraft's own classes
+    names |= {m.group(1) for m in re.finditer(r'create\(\s*"(\w+)",\s*(?:StairsBlockInvoker|TrapdoorBlockInvoker)\.', blocks_kt)}
+    names |= {m.group(1) for m in re.finditer(r'tumblestoneBlock\(\s*"(\w+)"', blocks_kt)}   # TumblestoneBlocks, made by a helper
+    rule = {"detection_rules": [{"liquid_type": "water", "can_contain_liquid": True, "on_liquid_touches": "no_reaction"}]}
+    done = 0
+    for name in sorted(names):
+        if name.endswith("_chest"): continue
+        for block in (name, f"{name}_block"):
+            path = f"{blocksBedrock}/{block}.json"
+            if not os.path.exists(path): continue
+            with open(path, encoding="utf-8") as file: data = json.load(file)
+            data["minecraft:block"]["components"]["minecraft:liquid_detection"] = rule
+            with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+            done += 1
+    print(f"Add waterlogging complete: {done} blocks stand in water ({len(water)} waterloggable classes).")
+
+
+def add_light_levels():
+    """CobblemonBlocks.kt's lightLevel on each block whose light is constant (the Flame Orb 15, Light Ball 13, Life Orb
+    7, Luminous Moss 5, Bright Powder 3, Wistensu 11, the Fire, Thunder, Sun, Shiny and Dawn Stone blocks and the ores
+    with a light of their own), as minecraft:light_emission. A light that depends on a state (the machines, the Poke
+    Cake, the terrain plants, the Damaged Monitor) is set where that block is made."""
+    with open(f"{kotlinMain}/CobblemonBlocks.kt", encoding="utf-8") as file: blocks_kt = file.read()
+    levels = {m.group(1): int(m.group(2)) for m in re.finditer(r'create\(\s*"(\w+)",[^\n]*?lightLevel\s*\{\s*(\d+)\s*\}', blocks_kt)}
+    levels.update({m.group(1): int(m.group(2)) for m in re.finditer(r'[eE]volutionStoneOre\(\s*"(\w+)",\s*(\d+)\s*\)', blocks_kt)})
+    done = 0
+    for name, level in sorted(levels.items()):
+        for block in (name, f"{name}_block"):
+            path = f"{blocksBedrock}/{block}.json"
+            if not os.path.exists(path): continue
+            with open(path, encoding="utf-8") as file: data = json.load(file)
+            data["minecraft:block"]["components"]["minecraft:light_emission"] = level
+            with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+            done += 1
+    print(f"Add light levels complete: {done} blocks lit of {len(levels)} named.")
 
 
 def create_natural_blocks():
@@ -9462,8 +10697,33 @@ MEDICINE = {"potion": {"heal": "potionRestoreAmount"}, "super_potion": {"heal": 
             # PortionHealingBerryItem: a third of max HP (berries.json portionHealRatio), as Sitrus does
             **{f"{b}_berry": {"heal": "third"} for b in ("figy", "wiki", "mago", "aguav", "iapapa")},
             "lum_berry": {"cure": True}, "cheri_berry": {"cure": ["par"]}, "chesto_berry": {"cure": ["slp"]}, "pecha_berry": {"cure": ["psn", "tox"]},
-            "rawst_berry": {"cure": ["brn"]}, "aspear_berry": {"cure": ["frz"]}, "leppa_berry": {"pp": 10}}
+            "rawst_berry": {"cure": ["brn"]}, "aspear_berry": {"cure": ["frz"]}, "leppa_berry": {"pp": 10},
+            # PPRestoringBerryItem's other berry, the Hopo Berry: 10 PP to a chosen move (berries.json ppRestoreAmount)
+            "hopo_berry": {"pp": 10}}
 CANDIES = {"exp_candy_xs": 100, "exp_candy_s": 800, "exp_candy_m": 3000, "exp_candy_l": 10000, "exp_candy_xl": 30000, "rare_candy": "level"}
+
+# CobblemonItems.kt's compostable factories and the chance each gives a composter when none is written out
+COMPOSTABLE_FACTORIES = {"compostableItem": (0.65, ""), "compostableBlockItem": (0.85, ""), "compostableItemNameBlockItem": (0.30, ""),
+                         "compostableHeldItem": (0.65, ""), "berryItem": (0.65, "_berry"), "mintItem": (0.95, ""), "apricornItem": (0.65, "_apricorn"),
+                         "apricornSeedItem": (0.30, "_apricorn_seed"), "mintSeed": (0.30, "_mint_seeds"), "mintLeaf": (0.50, "_mint_leaf")}
+
+
+def compostables():
+    """{item id: chance} for every item CobblemonItems.kt registers as compostable (Cobblemon.implementation.registerCompostable):
+    the compostable* factories with the chance they are given or their default, the berries, mints, apricorns and their
+    sprouts, and the three item classes that register themselves (HealPowderItem, MedicinalLeekItem, RevivalHerbItem)."""
+    with open(f"{kotlinMain}/CobblemonItems.kt", encoding="utf-8") as file: text = re.sub(r"//.*", "", file.read())
+    out = {}
+    for statement in re.split(r"\n    (?=val |private fun |fun |@JvmField)", text):
+        match = re.match(r"(?:@JvmField\s+)?val \w+\s*(?::[^=]+)?=\s*(\w+)\(\s*\"([a-z0-9_]+)\"", statement)
+        if not match or match.group(1) not in COMPOSTABLE_FACTORIES: continue
+        factory, name = match.groups()
+        default, suffix = COMPOSTABLE_FACTORIES[factory]
+        # an explicit chance is the call's last argument: compostableItem("vivichoke", CobblemonItem(Item.Properties()), 0.80f)
+        given = re.search(r",\s*([\d.]+)[fF]\)\s*$", statement.strip().split("\n")[-1]) if factory.startswith("compostable") else None
+        out[f"cobblemon:{name}{suffix}"] = float(given.group(1)) if given else default
+    for name, chance in (("heal_powder", 0.75), ("medicinal_leek", 0.65), ("revival_herb", 0.65)): out[f"cobblemon:{name}"] = chance
+    return out
 
 
 def item_registry():
@@ -9473,10 +10733,16 @@ def item_registry():
     with open(path, encoding="utf-8") as file: text = file.read()
     registry = {}
     for statement in re.split(r"\n    (?=val |private fun |fun |@JvmField)", text):
-        match = re.match(r"val \w+\s*(?::[^=]+)?=\s*(\w+)\(\s*\"([a-z0-9_]+)\"", statement)
+        # a one-line "@JvmField val X = ..." is split before its annotation (the apples, the evolution items)
+        match = re.match(r"(?:@JvmField\s+)?val \w+\s*(?::[^=]+)?=\s*(\w+)\(\s*\"([a-z0-9_]+)\"", statement)
         if not match: continue
         factory, name = match.groups()
         entry = {"factory": factory}
+        # FoodProperties' usingConvertsTo (a bowl or stick back), alwaysEdible, and fast (eaten in 16 ticks, like dried kelp)
+        converts = re.search(r"usingConvertsTo\(Items\.(\w+)\)", statement)
+        if converts: entry["converts"] = f"minecraft:{converts.group(1).lower()}"
+        if ".alwaysEdible()" in statement: entry["always"] = True
+        if ".fast()" in statement: entry["fast"] = True
         nutrition = re.search(r"nutrition\((\d+)\)", statement); saturation = re.search(r"saturationModifier\(([\d.]+)[fF]?\)", statement)
         regional = re.match(r"val \w+\s*(?::[^=]+)?=\s*regionalFoodItem\(\s*\"[a-z0-9_]+\",\s*(\d+),\s*(\d+),\s*([\d.]+)[fF]?", statement)
         food_item = re.search(r"foodItem\((\d+),\s*([\d.]+)[fF]?\)", statement)
@@ -9539,6 +10805,10 @@ def create_aprijuice_qualities():
             item["minecraft:item"]["description"]["menu_category"] = {"category": "items", "is_hidden_in_commands": False}
             item["minecraft:item"]["components"]["minecraft:icon"] = item_id
             item["minecraft:item"]["components"]["minecraft:display_name"] = {"value": f"item.cobblemon:{item_id}.name"}
+            # a Tasty or Delicious juice always carries boosts, so it is never drunk: a short use instead, for the party select
+            item["minecraft:item"]["components"].pop("minecraft:food", None)
+            item["minecraft:item"]["components"]["minecraft:use_modifiers"] = {"use_duration": 0.05, "movement_modifier": 1.0}
+            item["minecraft:item"]["components"]["minecraft:use_animation"] = "none"
             with open(f"{itemsBedrock}/general/{item_id}.json", "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
             lines.append(f"item.cobblemon:{item_id}.name={label} {colour.replace('_', ' ').title()} Aprijuice")
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
@@ -9595,8 +10865,9 @@ WEARABLE_HELD_SCALE = 0.5
 
 
 def wearable_names():
-    """CobblemonItems.kt's wearableItem names (the WearableHatItems)."""
-    with open(f"{kotlinMain}/CobblemonItems.kt", encoding="utf-8") as file: return re.findall(r'wearableItem\("(\w+)"', file.read())
+    """CobblemonItems.kt's wearableItem and wearableBlockItem names (the WearableHatItems, and the WearableBlockItems:
+    King's Rock, Never-Melt Ice, the Galarica Wreath, the Cleanse and Spell Tags, worn from the helmet slot as well as placed)."""
+    with open(f"{kotlinMain}/CobblemonItems.kt", encoding="utf-8") as file: return re.findall(r'wearable(?:Block)?Item\("(\w+)"', file.read())
 
 
 def create_wearables():
@@ -9616,7 +10887,10 @@ def create_wearables():
             with open(f"{cobblemon}/models/{parent.split(':', 1)[1]}.json", encoding="utf-8") as file: base = json.load(file)
             display, parent = base.get("display", {}).get("head"), base.get("parent", "")
         refs = [v for k, v in (model or {}).get("textures", {}).items() if k != "particle" and not str(v).startswith("#")]
-        if not model or not model.get("elements") or not refs or not display: continue
+        # a block wearable's model (WearableBlockItem: King's Rock, Never-Melt Ice) may give no head display, and Java then
+        # draws it as it is, the block's centre at the head's, which an empty display puts it at here
+        if display is None: display = {}
+        if not model or not model.get("elements") or not refs: continue
         texture = f"{cobblemon}/textures/{refs[0].split(':', 1)[1]}.png"
         if not os.path.exists(texture): continue
         image = Image.open(texture)
@@ -9697,9 +10971,18 @@ def create_general_items():
                       "minecraft:max_stack_size": info.get("stack", 64)}
         if info.get("food"):
             nutrition, saturation = info["food"]
-            components["minecraft:food"] = {"nutrition": nutrition, "saturation_modifier": saturation, "can_always_eat": False}
-            components["minecraft:use_modifiers"] = {"use_duration": 1.6, "movement_modifier": 0.35}
+            components["minecraft:food"] = {"nutrition": nutrition, "saturation_modifier": saturation, "can_always_eat": bool(info.get("always"))}
+            # usingConvertsTo: the Vivichoke Dip's and stew's bowl, a Candied Apple's stick; fast(): the leeks, eaten in 16 ticks
+            if info.get("converts"): components["minecraft:food"]["using_converts_to"] = info["converts"]
+            components["minecraft:use_modifiers"] = {"use_duration": 0.8 if info.get("fast") else 1.6, "movement_modifier": 0.35}
             components["minecraft:use_animation"] = "eat"
+        if name.startswith("aprijuice_"):
+            # AprijuiceItem: stacks to 16, and one with no ride boosts is drunk over 32 ticks for 4 hunger at 1.2 (finishUsingItem);
+            # a boosted one is kept from the drink by item_behaviours.js, which asks which rideable party member it is for
+            components["minecraft:max_stack_size"] = 16
+            components["minecraft:food"] = {"nutrition": 4, "saturation_modifier": 1.2, "can_always_eat": False}
+            components["minecraft:use_modifiers"] = {"use_duration": 1.6, "movement_modifier": 0.35}
+            components["minecraft:use_animation"] = "drink"
         category = "equipment" if "eldItem" in info.get("factory", "") or name in MEDICINE else "items"
         if name in wearables: components["minecraft:wearable"] = {"slot": "slot.armor.head"}
         with open(f"{itemsBedrock}/general/{name}.json", "w") as file:
@@ -9750,7 +11033,14 @@ def create_general_items():
             texts = ([lang[key]] if key in lang else []) + [lang[f"{key}_{i}"] for i in range(1, 20) if f"{key}_{i}" in lang]
             lines = [line for text in texts for line in textwrap.wrap(text, 46)][:20]
             if lines: tooltips[item] = lines
+        # SmithingTemplateItem's lines on the Poke Rod template (CobblemonItems.POKEROD_SMITHING_TEMPLATE): the upgrade's
+        # name, what it applies to and its ingredients, the values in blue as Minecraft shows them
+        if "cobblemon:pokerod_smithing_template" in defined:
+            tooltips["cobblemon:pokerod_smithing_template"] = [lang.get("upgrade.cobblemon.pokerod", "Poké Rod Upgrade"), "Applies to:", " §9Fishing Rod",
+                                                               "Ingredients:", " §9" + lang.get("item.cobblemon.smithing_template.pokerod.ingredients", "Poké Balls")]
         file.write("export const TOOLTIPS = " + json.dumps(tooltips, ensure_ascii=False) + ";" + chr(10))
+        # registerCompostable: each compostable item's chance of raising a composter a level (item_behaviours.js composts them)
+        file.write("export const COMPOSTABLES = " + json.dumps(compostables()) + ";" + chr(10))   # the mint seeds among them are written after this
     print(f"Create items complete: {len(made)} items, {len(held)} held items, {len(medicine)} medicines.")
     return made
 
@@ -9826,17 +11116,27 @@ def fortune_bonuses(name, data):
             if c.get("condition", "").endswith("block_state_property"):
                 when.update({f"cobblemon:{k}": v for k, v in (c.get("properties") or {}).items()})
         return when
-    def walk(entry, when):
+    def walk(entry, when, chance=1):
         when = {**when, **states_of(entry.get("conditions"))}
         if any("silk_touch" in json.dumps(c) for c in entry.get("conditions", [])): return
-        for child in entry.get("children", []): walk(child, when)
+        for child in entry.get("children", []): walk(child, when, chance)
+        # a drop only Fortune gives (match_tool with the enchantment, from a least level: the mints' extra seeds), at
+        # its pool's chance; the loot conversion leaves such a pool out, so the script rolls it (fortune_levels)
+        tool = next((c for c in entry.get("conditions", []) if c.get("condition", "").endswith("match_tool") and "fortune" in json.dumps(c)), None)
+        if tool and entry.get("name") and not any(f.get("function", "").endswith("apply_bonus") for f in entry.get("functions", [])):
+            least = re.search(r'"min":\s*(\d+)', json.dumps(tool))
+            count = next((loot_number(f.get("count")) for f in entry.get("functions", []) if f.get("function", "").endswith("set_count") and not f.get("add")), 1)
+            out.append({"item": entry["name"], "formula": "fortune_levels", "params": {"min": int(least.group(1)) if least else 1, "chance": chance},
+                        "base": count, **({"when": when} if when else {})})
+            return
         bonus = next((f for f in entry.get("functions", []) if f.get("function", "").endswith("apply_bonus") and f.get("enchantment", "").endswith("fortune")), None)
         if bonus and entry.get("name"):
             count = next((loot_number(f.get("count")) for f in entry.get("functions", []) if f.get("function", "").endswith("set_count") and not f.get("add")), 1)
             out.append({"item": entry["name"], "formula": bonus.get("formula", "").split(":")[-1], "params": bonus.get("parameters", {}),
                         "base": count, **({"when": when} if when else {})})
     for pool in data.get("pools", []):
-        for entry in pool.get("entries", []): walk(entry, states_of(pool.get("conditions")))
+        chance = next((c.get("chance", 1) for c in pool.get("conditions", []) if c.get("condition", "").endswith("random_chance")), 1)
+        for entry in pool.get("entries", []): walk(entry, states_of(pool.get("conditions")), chance)
     # the seed plants' two halves are one block here, which gives the one half's share
     halves = [b for b in out if set(b.get("when", {})) == {"cobblemon:half"}]
     if halves: out = [b for b in out if b not in halves] + [{k: v for k, v in halves[0].items() if k != "when"}]
@@ -10165,6 +11465,139 @@ def vanilla_held_icons():
     return out
 
 
+# the vanilla blocks whose item is not a cube, left out of block_cube_textures (they have no flat icon either, and a cube
+# would draw them wrong)
+NOT_CUBE = re.compile(r"slab|stairs|fence|_wall$|door|pane|button|pressure_plate|sign|torch|rail|carpet|_bed$|banner|lantern|chain|candle"
+                      r"|sapling|vine|fern|_bush|kelp|seagrass|coral_fan|coral$|pickle|lever|ladder|scaffolding|anvil|bell|cake|cauldron"
+                      r"|hopper|brewing|enchant|lectern|grindstone|stonecutter|campfire|chest|shulker|skull|head|pot$|dripleaf|cluster"
+                      r"|_bud$|pointed|end_rod|lightning_rod|hanging|shelf|bars|web|frame|repeater|comparator|daylight|piston|portal"
+                      r"|fire$|water|lava|air$|cactus|bamboo|reeds|cocoa|beetroot|wheat|carrots|potatoes|stem|wart|egg|frog|vein|lichen"
+                      r"|snow_layer|tripwire|redstone_wire|structure|jigsaw|light_block|barrier|chorus_plant|conduit|beacon|azalea$"
+                      r"|grass$|short_grass|tall_|large_|double_|flower|tulip|rose|daisy|orchid|allium|bluet|poppy|dandelion|lilac"
+                      r"|peony|cornflower|lily|mushroom$|roots|sprouts|spore|propagule|petals|trial_spawner|vault|decorated|crafter"
+                      r"|heavy_core|bed$|moving|unknown|info_update|reserved|element|chalkboard|camera|border|allow|deny|compound"
+                      r"|material|lab_table|underwater|colored_torch|hard_|clump")
+
+
+# blocks.json's legacy names for blocks whose item is named otherwise
+BLOCK_ITEM_NAMES = {"grass": "grass_block", "snow": "snow_block", "brick_block": "bricks", "quartz_ore": "nether_quartz_ore",
+                    "lit_pumpkin": "jack_o_lantern", "melon_block": "melon_block", "web": "cobweb", "slime": "slime_block", "magma": "magma_block"}
+
+
+CARRIED_SIDES = {"textures/blocks/grass_side": "textures/blocks/grass_side_carried"}
+
+
+def block_cube_textures():
+    """{item id: [side, top, bottom texture path]} for the block items Java draws as a small cube and Bedrock's item list
+    has no flat icon for (stone, logs, ores, wool), which a display case and a Pokemon's hand draw as that cube: the
+    vanilla blocks from Mojang's blocks.json and terrain_texture.json (a block's carried textures first, which hold
+    the grass and leaves' own colour), and the pack's own full blocks from their material instances."""
+    folder = os.path.join(pwd, "java", "bedrock-samples")
+    path = f"{folder}/blocks.json"
+    if not os.path.exists(path):
+        try: urllib.request.urlretrieve("https://raw.githubusercontent.com/Mojang/bedrock-samples/main/resource_pack/blocks.json", path)
+        except Exception as error: print(f"  no blocks.json: {error}"); return {}
+    with open(path, encoding="utf-8") as file: blocks = json.loads(re.sub(r"//.*", "", file.read()))
+    with open(f"{folder}/terrain_texture.json", encoding="utf-8") as file: terrain = json.loads(re.sub(r"//.*", "", file.read()))["texture_data"]
+    def texture(key):
+        textures = terrain.get(key, {}).get("textures")
+        if isinstance(textures, list): textures = textures[0] if textures else None
+        if isinstance(textures, dict): textures = textures.get("path")
+        return textures if isinstance(textures, str) else None
+    flat = set(vanilla_item_icons())
+    out = {}
+    for name, entry in blocks.items():
+        item = BLOCK_ITEM_NAMES.get(name, name)
+        if item in flat or name == "format_version" or not isinstance(entry, dict) or NOT_CUBE.search(item): continue
+        faces = entry.get("carried_textures") or entry.get("textures")
+        if isinstance(faces, str): faces = {"up": faces, "down": faces, "side": faces}
+        if not isinstance(faces, dict): continue
+        side = faces.get("side") or faces.get("north") or faces.get("south")
+        paths = [texture(side) or texture(name), texture(faces.get("up", side)) or texture(name), texture(faces.get("down", side)) or texture(name)]
+        # a side the game tints by biome (the grass block's) has a coloured copy for the item
+        paths = [CARRIED_SIDES.get(t, t) for t in paths]
+        if all(paths): out[f"minecraft:{item}"] = paths
+    # the pack's full blocks with no icon of their own (apricorn planks and logs, the gem blocks)
+    with open(f"{resourcePack}/textures/terrain_texture.json", encoding="utf-8") as file: own = json.load(file)["texture_data"]
+    def own_texture(instance):
+        textures = own.get((instance or {}).get("texture"), {}).get("textures")
+        return textures if isinstance(textures, str) else None
+    for block_path in glob.glob(f"{blocksBedrock}/*.json"):
+        with open(block_path, encoding="utf-8") as file: block = json.load(file).get("minecraft:block", {})
+        identifier, components = block.get("description", {}).get("identifier"), block.get("components", {})
+        if not identifier or item_icon_path(identifier) or components.get("minecraft:geometry", "minecraft:geometry.full_block") != "minecraft:geometry.full_block": continue
+        instances = components.get("minecraft:material_instances", {})
+        star = instances.get("*")
+        paths = [own_texture(instances.get("north", instances.get("side", star))), own_texture(instances.get("up", star)), own_texture(instances.get("down", star))]
+        if all(paths): out[identifier] = paths
+    return out
+
+
+def write_cube_geometry(path, identifier, size, origin_y, bone_pivot=None, extra=None):
+    """A small cube's geometry: its four sides, its top and its bottom as bones of their own (side, top, bottom), so a
+    render pass each draws its face with that face's texture."""
+    full = {"uv": [0, 0], "uv_size": [16, 16]}
+    half = size / 2
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+            "description": {"identifier": identifier, "texture_width": 16, "texture_height": 16,
+                            "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
+            "bones": [{"name": "side", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y, -half], "size": [size, size, size],
+                                                                      "uv": {f: full for f in ("north", "south", "east", "west")}}]},
+                      {"name": "top", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y + size, -half], "size": [size, 0, size], "uv": {"up": full}}]},
+                      {"name": "bottom", "pivot": [0, 0, 0], "cubes": [{"origin": [-half, origin_y, -half], "size": [size, 0, size], "uv": {"down": full}}]}]}]}, indent=2))
+
+
+def cube_render_controllers(prefix, index, count, geometry):
+    """Three render passes for a cube block item, its sides, top and bottom, each picking its texture from the face's
+    array (textures cube_<face>_<n>) by the index property."""
+    out = {}
+    for face in ("side", "top", "bottom"):
+        out[f"{prefix}_{face}"] = {
+            "arrays": {"textures": {"Array.cube": ["Texture.blank"] + [f"Texture.cube_{face}_{k + 1}" for k in range(count)]}},
+            "geometry": geometry, "materials": [{"*": "Material.cube"}], "textures": [f"Array.cube[{index}]"],
+            "part_visibility": [{"*": False}, {face: True}]}
+    return out
+
+
+def create_trainer_throw():
+    """The trainer's arm swinging as a Pokemon is sent out (PartySendOutPacket's handler swings the player's hand): a
+    short animation of the player's right arm, which scripts/main.js plays on the player with playAnimation, as a script
+    cannot call the vanilla swing."""
+    os.makedirs(f"{resourcePack}/animations", exist_ok=True)
+    swing = {"format_version": "1.8.0", "animations": {"animation.cobblemon.trainer_throw": {
+        "animation_length": 0.35, "bones": {"rightArm": {"rotation": {
+            "0.0": [0, 0, 0], "0.12": [-150, 10, 15], "0.25": [-30, 0, 5], "0.35": [0, 0, 0]}}}}}}
+    with open(f"{resourcePack}/animations/cobblemon_trainer_throw.animation.json", "w", encoding="utf-8") as file: file.write(json.dumps(swing, indent=2))
+
+
+def create_trainer_recall():
+    """The trainer's arm held out as a Pokemon is recalled (RecallArmAnimationTracker: the arm rises over 0.15 s, holds
+    the ball for 0.8 s in all and comes down over 0.15 s, PlayerRecallBallRenderer drawing the ball in the hand), as an
+    animation scripts/main.js plays on the player; the ball in the hand is a capture_ball entity the script keeps there."""
+    os.makedirs(f"{resourcePack}/animations", exist_ok=True)
+    raise_ = {"format_version": "1.8.0", "animations": {"animation.cobblemon.trainer_recall": {
+        "animation_length": 0.8, "bones": {"rightArm": {"rotation": {
+            "0.0": [0, 0, 0], "0.15": [-85, 0, 10], "0.65": [-85, 0, 10], "0.8": [0, 0, 0]}}}}}}
+    with open(f"{resourcePack}/animations/cobblemon_trainer_recall.animation.json", "w", encoding="utf-8") as file: file.write(json.dumps(raise_, indent=2))
+
+
+def create_request_icon_particle():
+    """ClientPlayerIcon's exclamation over the head of a player with a battle challenge or trade offer pending for you
+    (textures/particle/request/icon_exclamation, 0.75 of a block, Y_OFFSET 1.5): a short-lived billboard particle
+    scripts/request_icons.js shows the receiver alone, every other tick, its alpha passed in as it fades toward expiry."""
+    data = {"format_version": "1.10.0", "particle_effect": {
+        "description": {"identifier": "cobblemon:request_icon",
+                        "basic_render_parameters": {"material": "particles_blend", "texture": "textures/particles/request/icon_exclamation"}},
+        "components": {"minecraft:emitter_rate_instant": {"num_particles": 1}, "minecraft:emitter_lifetime_once": {"active_time": 0.05},
+                       "minecraft:emitter_shape_point": {"offset": [0, 0, 0]},
+                       "minecraft:particle_lifetime_expression": {"max_lifetime": 0.15}, "minecraft:particle_initial_speed": 0,
+                       "minecraft:particle_appearance_billboard": {"size": [0.75, 0.75], "facing_camera_mode": "rotate_y",
+                                                                   "uv": {"texture_width": 32, "texture_height": 32, "uv": [0, 0], "uv_size": [32, 32]}},
+                       "minecraft:particle_appearance_tinting": {"color": ["1", "1", "1", "v.alpha ?? 1"]}}}}
+    with open(f"{particlesBedrock}/request_icon.particle.json", "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+
+
 def create_display_case():
     """DisplayCaseBlockEntity: the case holds one item, put in or swapped by a click and taken out by an empty hand,
     with DISPLAY_CASE_ADD_ITEM or DISPLAY_CASE_REMOVE_ITEM as setCaseStack plays them. A Bedrock custom block holds no
@@ -10188,21 +11621,33 @@ def create_display_case():
             "description": {"identifier": "geometry.cobblemon_display_case_item", "texture_width": 16, "texture_height": 16,
                             "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
             "bones": [{"name": "item", "pivot": [0, 0, 0], "cubes": [{"origin": [-4, 0, 0], "size": [8, 8, 0], "uv": {"north": face, "south": face}}]}]}]}, indent=2))
-    index = "q.property('cobblemon:display_index')"
+    # a block item with no flat icon is the cube Java's GROUND transform draws, a quarter block across and 3 pixels up
+    cubes = block_cube_textures()
+    flat = dict(zip(order, paths))
+    cube_order = [i for i in sorted(cubes) if i not in flat or flat[i].startswith("textures/blocks/")]
+    write_cube_geometry(f"{modelsBedrock}/display_case_item/display_case_cube.geo.json", "geometry.cobblemon_display_case_cube", 4, 2)
+    index, block_index = "q.property('cobblemon:display_index')", "q.property('cobblemon:display_block')"
     with open(f"{renderControllersBedrock}/display_case_item.render_controllers.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.10.0", "render_controllers": {"controller.render.cobblemon_display_case_item": {
             "arrays": {"textures": {"Array.item": ["Texture.blank"] + [f"Texture.i{n + 1}" for n in range(len(paths))]}},
-            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": [f"Array.item[{index}]"]}}}, indent=2))
+            "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": [f"Array.item[{index}]"]},
+            **cube_render_controllers("controller.render.cobblemon_display_case_cube", block_index, len(cube_order), "Geometry.cube")}}, indent=2))
+    with open(f"{scriptsBedrock}/display_case.js", "a", encoding="utf-8") as file:
+        file.write("// the index of each block item drawn as a cube (0 none), whose sides, top and bottom have their own textures" + chr(10))
+        file.write("export const DISPLAY_BLOCK = " + json.dumps({i: n + 1 for n, i in enumerate(cube_order)}) + ";" + chr(10))
     with open(f"{entityBedrock}/display_case_item.entity.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
-            "identifier": "cobblemon:display_case_item", "materials": {"default": "entity_alphatest"},
-            "textures": {"blank": "textures/entity/blank", **{f"i{n + 1}": t for n, t in enumerate(paths)}},
-            "geometry": {"default": "geometry.cobblemon_display_case_item"},
-            "render_controllers": [{"controller.render.cobblemon_display_case_item": f"{index} > 0"}]}}}, indent=2))
+            "identifier": "cobblemon:display_case_item", "materials": {"default": "entity_alphatest", "cube": "entity_alphatest"},
+            "textures": {"blank": "textures/entity/blank", **{f"i{n + 1}": t for n, t in enumerate(paths)},
+                         **{f"cube_{face}_{n + 1}": cubes[i][k] for n, i in enumerate(cube_order) for k, face in enumerate(("side", "top", "bottom"))}},
+            "geometry": {"default": "geometry.cobblemon_display_case_item", "cube": "geometry.cobblemon_display_case_cube"},
+            "render_controllers": [{"controller.render.cobblemon_display_case_item": f"{index} > 0"}]
+                                  + [{f"controller.render.cobblemon_display_case_cube_{face}": f"{block_index} > 0"} for face in ("side", "top", "bottom")]}}}, indent=2))
     with open(f"{entitiesBedrock}/display_case_item.behavior.json", "w", encoding="utf-8") as file:
         file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
             "description": {"identifier": "cobblemon:display_case_item", "is_spawnable": False, "is_summonable": True, "is_experimental": False,
-                            "properties": {"cobblemon:display_index": {"type": "int", "range": [0, len(paths)], "default": 0, "client_sync": True}}},
+                            "properties": {"cobblemon:display_index": {"type": "int", "range": [0, len(paths)], "default": 0, "client_sync": True},
+                                           "cobblemon:display_block": {"type": "int", "range": [0, max(1, len(cube_order))], "default": 0, "client_sync": True}}},
             "components": {
                 "minecraft:type_family": {"family": ["display_case_item", "inanimate"]},
                 "minecraft:inventory": {"container_type": "container", "inventory_size": 1, "private": True},
@@ -10221,7 +11666,7 @@ def create_display_case():
     body["permutations"] = [p for p in body.get("permutations", []) if "cobblemon:signal" not in p["condition"]]
     body["permutations"] += [{"condition": f"q.block_state('cobblemon:signal') == {n}", "components": {"minecraft:redstone_producer": {"power": n}}} for n in (1, 2, 3)]
     with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
-    print(f"Create display case complete: {len(paths)} item icons.")
+    print(f"Create display case complete: {len(paths)} item icons, {len(cube_order)} block cubes.")
 
 
 def create_held_display():
@@ -10375,9 +11820,50 @@ def create_aspect_particles():
     print("Create aspect particles complete.")
 
 
+def create_alpha_eye_particle():
+    """AlphaEyeRenderer's bloom and trail as a particle (cobblemon:alpha_eye_bloom): a soft red glow emitted at an eye
+    locator and left where it was, shrinking and fading over the trail's 400 ms, so a moving alpha leaves the trail
+    behind its eyes; two a burst, a burst every other tick from the entity's own looping animation. The off-angle
+    shrinking is left out, since a particle cannot read the camera."""
+    os.makedirs(f"{resourcePack}/textures/particles", exist_ok=True)
+    glow = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+    for x in range(32):
+        for y in range(32):
+            d = math.hypot(x + 0.5 - 16, y + 0.5 - 16) / 16
+            if d < 1: glow.putpixel((x, y), (255, 255, 255, int(255 * (1 - d) ** 2)))
+    glow.save(f"{resourcePack}/textures/particles/alpha_eye_bloom.png")
+    fade = "(1 - v.particle_age / v.particle_lifetime)"
+    data = {"format_version": "1.10.0", "particle_effect": {
+        "description": {"identifier": "cobblemon:alpha_eye_bloom",
+                        "basic_render_parameters": {"material": "particles_add", "texture": "textures/particles/alpha_eye_bloom"}},
+        "components": {"minecraft:emitter_rate_instant": {"num_particles": 2}, "minecraft:emitter_lifetime_once": {"active_time": 0.05},
+                       "minecraft:emitter_shape_point": {"offset": [0, 0, 0]},
+                       "minecraft:particle_lifetime_expression": {"max_lifetime": 0.4}, "minecraft:particle_initial_speed": 0,
+                       "minecraft:particle_appearance_billboard": {"size": [f"0.35 * {fade}", f"0.35 * {fade}"], "facing_camera_mode": "lookat_xyz",
+                                                                   "uv": {"texture_width": 32, "texture_height": 32, "uv": [0, 0], "uv_size": [32, 32]}},
+                       "minecraft:particle_appearance_tinting": {"color": ["0.7", "0.0", "0.0", f"0.6 * {fade}"]}}}}
+    with open(f"{particlesBedrock}/alpha_eye_bloom.particle.json", "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+
+
+def alpha_eye_locators(pokemon):
+    """The eye locators (AlphaEyeRenderer: any locator with "eye" in its name) every geometry of the Pokemon shares."""
+    shared = None
+    for path in glob.glob(f"{modelsBedrock}/{pokemon}/*.geo.json"):
+        if path.endswith(".held.geo.json"): continue
+        try:
+            with open(path, encoding="utf-8") as file: geometry = json.load(file)
+        except (OSError, ValueError): continue
+        for geo in geometry.get("minecraft:geometry", []):
+            if geo.get("description", {}).get("identifier", "").endswith(".held"): continue
+            found = {name for bone in geo.get("bones", []) for name in (bone.get("locators") or {}) if "eye" in name.lower()}
+            shared = found if shared is None else shared & found
+    return sorted(shared or [])
+
+
 def create_alpha_eyes():
     """An alpha's glowing eyes: the species' alpha_eyes layer (its resolver's emissive <name>_alpha texture, which the
     Alpha Mark's aspect shows) as a second render pass over the same geometry, shown while cobblemon:alpha is set."""
+    create_alpha_eye_particle()
     made = 0
     for path in glob.glob(f"{entityBedrock}/*.entity.json"):
         pokemon = os.path.basename(path)[:-len(".entity.json")]
@@ -10400,6 +11886,17 @@ def create_alpha_eyes():
         desc["materials"]["alpha_eyes"] = "entity_emissive_alpha"
         controllers = [c for c in desc["render_controllers"] if (c if isinstance(c, str) else next(iter(c))) != name]
         desc["render_controllers"] = controllers + [{name: "q.property('cobblemon:alpha')"}]
+        # AlphaEyeRenderer's bloom and trail: alpha_eye_bloom at every eye locator, every other tick, while it is an alpha
+        locators = alpha_eye_locators(pokemon)
+        if locators:
+            anim = f"animation.cobblemon.alpha_eyes.{pokemon}"
+            os.makedirs(f"{animationsBedrock}/alpha_eyes", exist_ok=True)
+            with open(f"{animationsBedrock}/alpha_eyes/{pokemon}.animation.json", "w", encoding="utf-8") as file:
+                file.write(json.dumps({"format_version": "1.8.0", "animations": {anim: {"loop": True, "animation_length": 0.1,
+                           "particle_effects": {"0.0": [{"effect": "alpha_eye", "locator": locator} for locator in locators]}}}}, indent=2))
+            desc.setdefault("particle_effects", {})["alpha_eye"] = "cobblemon:alpha_eye_bloom"
+            desc.setdefault("animations", {})["alpha_eyes"] = anim
+            desc.setdefault("scripts", {}).setdefault("animate", []).append({"alpha_eyes": "q.property('cobblemon:alpha')"})
         with open(rc_path, "w", encoding="utf-8") as file: file.write(json.dumps(rc, indent=4))
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(entity, indent=4))
         made += 1
@@ -10471,6 +11968,60 @@ CAKE_CANDLES = ["candle"] + [f"{c}_candle" for c in ("white", "orange", "magenta
 CAKE_HEIGHT = 7   # PokeSnackBlock.CAKE_HEIGHT, 0.4375 of a block, in pixels
 
 
+def snack_palette():
+    """The colours a Poke Snack or Poke Cake can be tinted (PokeSnackBlockEntity's tint, getColourMixFromColors over its
+    seasonings' dye colours, FoodColourComponent.COLORS: the first 70%, the rest sharing 30%), quantised to
+    SNACK_TINTS colours, since Bedrock tints a block from no data and each colour is a set of textures. Every mix up to
+    the campfire pot's three seasonings is a candidate; the palette is the 16 dyes, white first (an unseasoned snack,
+    which looks as it is), then the candidate farthest from those chosen, until it is full. Returns (dyes, palette)."""
+    with open(f"{kotlinMain}/item/components/FoodColourComponent.kt", encoding="utf-8") as file: text = file.read()
+    dyes = {m.group(1).lower(): [int(m.group(3)), int(m.group(4)), int(m.group(5))]
+            for m in re.finditer(r"DyeColor\.(\w+) to FastColor\.ARGB32\.color\((\d+), (\d+), (\d+), (\d+)\)", text)}
+    names = list(dyes)
+    def mix(colours):
+        if len(colours) == 1: return list(colours[0])
+        weights = [0.7] + [0.3 / (len(colours) - 1)] * (len(colours) - 1)
+        return [int(sum(c[i] * w for c, w in zip(colours, weights))) for i in range(3)]
+    candidates = {tuple(mix([dyes[a]] + [dyes[o] for o in others])) for a in names for n in range(3)
+                  for others in itertools.combinations_with_replacement(names, n)}
+    palette = [dyes["white"]] + [dyes[n] for n in names if n != "white"]
+    distance = {c: min(sum((c[i] - p[i]) ** 2 for i in range(3)) for p in palette) for c in candidates}
+    while len(palette) < SNACK_TINTS:
+        far = max(sorted(distance), key=distance.get)
+        palette.append(list(far))
+        for c in distance: distance[c] = min(distance[c], sum((c[i] - far[i]) ** 2 for i in range(3)))
+    return dyes, palette
+
+
+SNACK_TINTS = 64   # the palette's size: cobblemon:tint_hi (0 to 3) * 16 + cobblemon:tint_lo
+
+
+def snack_tint_materials(materials):
+    """The snack's or cake's material instances for each palette colour after the first: its tinted faces (the
+    textures that are not an _overlay, as the Java models give tintindex to all but the overlays) on a texture
+    multiplied by the colour, as Minecraft's tint is, the overlays and candles as they are."""
+    _, palette = snack_palette()
+    out = []
+    for k, colour in enumerate(palette):
+        tinted = {}
+        for name, instance in materials.items():
+            key = instance["texture"]
+            if not key.startswith("cobblemon_block_food_poke_snack_") or key.endswith("_overlay") or k == 0:
+                tinted[name] = instance; continue
+            face = key[len("cobblemon_block_food_"):]
+            path = f"textures/blocks/cobblemon/block/food/tint/{face}_{k}"
+            if not os.path.exists(f"{resourcePack}/{path}.png"):
+                base = Image.open(f"{resourcePack}/textures/blocks/cobblemon/block/food/{face}.png").convert("RGBA")
+                r, g, b, a = base.split()
+                r, g, b = (band.point(lambda v, c=c: v * c // 255) for band, c in zip((r, g, b), colour))
+                os.makedirs(os.path.dirname(f"{resourcePack}/{path}.png"), exist_ok=True)
+                Image.merge("RGBA", (r, g, b, a)).save(f"{resourcePack}/{path}.png")
+            terrain_textures[f"{key}_{k}"] = {"textures": path}
+            tinted[name] = {**instance, "texture": f"{key}_{k}"}
+        out.append(tinted)
+    return out
+
+
 def cake_candle_bones():
     """One bone a candle, Minecraft's template_candle on top of the cake, its faces on that candle's Bedrock texture."""
     template = vanilla_jar_model("block/template_candle") or {}
@@ -10495,29 +12046,43 @@ def model_block(name, identifier, items, category="items"):
     props = sorted({k for p, *_ in variants for k in p})
     horizontal = "facing" in props and all(p.get("facing") in ("north", "south", "east", "west") for p, *_ in variants)
     placed_on_face = "face" in props
-    custom = [k for k in props if k not in ("facing", "face") or (k == "facing" and not horizontal)]
+    # a waterlogged variant is no state here: the block stands in water through Bedrock's liquid_detection (add_waterlogging)
+    custom = [k for k in props if k not in ("facing", "face", "waterlogged") or (k == "facing" and not horizontal)]
     states = {}
     for k in custom:
         values = sorted({state_value(p[k]) for p, *_ in variants if k in p}, key=lambda v: (str(type(v)), v))
         if k in ("waterlogged", "powered", "lit", "open", "occupied", "active", "dispensed", "empty"):
             values = sorted(values, key=lambda v: v is not False)
+        if k == "screen": values = sorted(values, key=lambda v: v != "off")   # a monitor's screen starts off (DamagedMonitorBlock's default)
         states[f"cobblemon:{k}"] = values
     geometries, permutations, base = {}, [], None
     candle_bones, candle_instances = cake_candle_bones() if name == "poke_cake" else ([], {})
     # two states, as one may hold at most 16 values: the candle is candle_hi * 16 + candle_lo
     if candle_bones: states.update({"cobblemon:candle_hi": [0, 1], "cobblemon:candle_lo": {"values": {"min": 0, "max": 15}}, "cobblemon:lit": [False, True]})
+    # the snack's tint, a palette colour (snack_palette) as tint_hi * 16 + tint_lo, set by the script when it is placed
+    # (the cake's candles, bites, facing and light leave it 4 bits of Bedrock's 16, so it takes the 16 dyes, tint_lo alone)
+    if name == "poke_snack": states.update({"cobblemon:tint_hi": list(range(SNACK_TINTS // 16)), "cobblemon:tint_lo": {"values": {"min": 0, "max": 15}}})
+    if name == "poke_cake": states.update({"cobblemon:tint_lo": {"values": {"min": 0, "max": 15}}})
     for props_v, model_ref, rx, ry in variants:
         model = java_model(model_ref)
         if not model or not model.get("elements"): continue
         if model_ref not in geometries:
             cubes, instances = java_model_cubes(model)
             if not cubes: continue
+            if name in ("poke_snack", "poke_cake"):
+                # each face's instance named for its texture (side, top_overlay), so the tint's instances fit every bite
+                short = {inst: key.rsplit("poke_snack_", 1)[-1] for inst, key in instances.items()}
+                for cube in cubes:
+                    for face in cube.get("uv", {}).values():
+                        if face.get("material_instance") in short: face["material_instance"] = short[face["material_instance"]]
+                instances = {short[inst]: key for inst, key in instances.items()}
             gid = f"geometry.cobblemon_{name}_{len(geometries)}"
             write_block_geometry(gid, cubes, candle_bones)
             materials_here = {**material_instances(instances), **candle_instances}
             if candle_bones: gid = {"identifier": gid, "bone_visibility": {f"candle_{n}": f"q.block_state('cobblemon:candle_hi') == {(n + 1) // 16} && q.block_state('cobblemon:candle_lo') == {(n + 1) % 16}" for n in range(len(CAKE_CANDLES))}}
             geometries[model_ref] = (gid, materials_here)
         gid, materials = geometries[model_ref]
+        if props_v.get("waterlogged") == "true": continue   # the same model as the dry variant
         conds = []
         for k, v in props_v.items():
             if k == "facing" and horizontal:
@@ -10526,6 +12091,7 @@ def model_block(name, identifier, items, category="items"):
             elif k == "face":
                 if v == "wall": conds.append("q.block_state('minecraft:block_face') != 'up' && q.block_state('minecraft:block_face') != 'down'")
                 else: conds.append(f"q.block_state('minecraft:block_face') == '{'up' if v == 'floor' else 'down'}'")
+            elif k == "waterlogged": continue   # no state of the port's (add_waterlogging's liquid_detection stands in)
             else:
                 sv = state_value(v)
                 conds.append(f"q.block_state('cobblemon:{k}') == {json.dumps(sv) if isinstance(sv, str) else str(sv).lower()}".replace('"', "'"))
@@ -10546,6 +12112,9 @@ def model_block(name, identifier, items, category="items"):
     extra = {}
     if "amount" in props: extra["cobblemon:stackable"] = {}
     if "age" in props: extra["cobblemon:grows"] = {}
+    # where a player may plant it: a crop (the mints, Vivichoke) on farmland, the Medicinal Leek over water
+    if name in CROPS_ON_FARMLAND: extra["minecraft:placement_filter"] = {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:farmland"]}]}
+    if name == "medicinal_leek": extra["minecraft:placement_filter"] = {"conditions": [{"allowed_faces": ["up"], "block_filter": LEEK_FLOORS}]}
     # HeartyGrainsBlock is waterloggable: it stands in a water source (Bedrock's liquid_detection, can_contain_liquid),
     # and the script checks where it may be planted (canSurvive: in water on dirt, sand, gravel or farmland, on land on
     # mud, muddy mangrove roots or farmland)
@@ -10578,6 +12147,11 @@ def model_block(name, identifier, items, category="items"):
                        "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, "minecraft:light_dampening": 0,
                        "minecraft:loot": block_loot(name) if "amount" not in props else base["minecraft:loot"], **extra},
         "permutations": ([pm for pm in permutations if pm["condition"] != "1"] or permutations)
+                        + ([{"condition": (f"q.block_state('cobblemon:tint_hi') == {k // 16} && " if name == "poke_snack" else "") + f"q.block_state('cobblemon:tint_lo') == {k % 16}",
+                              "components": {"minecraft:material_instances": tinted}}
+                             for k, tinted in enumerate(snack_tint_materials({n: m for pm in permutations for n, m in pm["components"]["minecraft:material_instances"].items()}))
+                             if k and (name == "poke_snack" or k < 16)]
+                            if name in ("poke_snack", "poke_cake") else [])
                         + ([{"condition": "q.block_state('cobblemon:lit')", "components": {"minecraft:light_emission": 3}}] if name == "poke_cake" else [])}}
     if name in ROOT_SHAPES:
         low, high = ROOT_SHAPES[name]
@@ -10762,7 +12336,7 @@ SUMMARY_LAYOUT = [("tab", 1), ("size", 1), ("level", 6), ("name", 16), ("gender"
     + [("desc", 120), ("evolve", 6), ("portrait", 5), ("side", 1)]     + [(f"e{n}{k}", w) for n in range(3) for k, w in (("slot", 1), ("name", 12), ("type1", 3), ("type2", 3), ("icon", 5))]     + [("ksel", 3), ("ktitle", 48), ("kdesc", 120)] + [(f"k{i}", 3) for i in range(30)] \
     + [("stab", 1), ("hex", 7)] + [(f"ln{i}", 12) for i in range(6)] + [(f"lv{i}", 12) for i in range(6)] + [(f"hm{i}", 1) for i in range(6)] \
     + [(f"b{n}{k}", w) for n in range(4) for k, w in (("un", 2), ("val", 6), ("bar", 4), ("ov", 3), ("pct", 8))] \
-    + [("rtabs", 1), ("rsty", 1), ("pent", 6), ("rico", 2)] + [(f"rv{i}", 6) for i in range(5)] + [("ilabel", 13), ("item", 0)]
+    + [("rtabs", 1), ("rsty", 1), ("pent", 6), ("rico", 2)] + [(f"rv{i}", 6) for i in range(5)] + [("shiny", 1), ("ilabel", 13), ("item", 0)]
 SWAP_SLOTS = 20   # MoveSwapScreen's list: the moves it can relearn, and Forget
 STAT_ROWS = [("hp", "HP"), ("atk", "Attack"), ("def", "Defence"), ("spa", "Sp. Atk"), ("spd", "Sp. Def"), ("spe", "Speed")]
 
@@ -10799,6 +12373,33 @@ def stat_wedges(folder, sides=6):
                 img = Image.new("RGBA", (size * k, size * k), (0, 0, 0, 0))
                 ImageDraw.Draw(img).polygon(pts, fill=(255, 255, 255, 153))
                 img.save(f"{folder}/w{i}_{chr(97 + s0)}{chr(97 + s1)}.png", optimize=True)
+
+
+def create_progression_data():
+    """scripts/progression_data.js, for scripts/progression.js: the season each has_season biome tag gives
+    (data/cobblemon/tags/worldgen/biome/has_season, TagSeasonResolver), as Bedrock biome filters the script tests where a
+    Deerling spawns or is sent out; the species with the season feature (species_feature_assignments/season.json); and
+    move_weights.json's weights for the moveset builders (MoveTemplate.getSelectionWeight, 50 for a move it does not name)."""
+    filters = {}
+    for season in ("winter", "spring", "autumn", "summer"):
+        with open(f"{cobblemonData}/tags/worldgen/biome/has_season/{season}.json", encoding="utf-8") as file:
+            members = [m if isinstance(m, str) else m.get("id", "") for m in json.load(file).get("values", [])]
+        # the other mods' biomes the tags name (terralith, biomesoplenty) are not in Bedrock; Cobblemon's own tags are
+        filters[season] = biome_filter_for([m for m in members if m.startswith("#cobblemon:") or m.startswith("minecraft:")])
+    with open(f"{cobblemonData}/species_feature_assignments/season.json", encoding="utf-8") as file: names = json.load(file).get("pokemon", [])
+    species = []
+    for name in names:
+        for generation in sorted(os.listdir(f"{cobblemonData}/species")):
+            path = f"{cobblemonData}/species/{generation}/{name}.json"
+            if not os.path.exists(path): continue
+            with open(path, encoding="utf-8") as file: species.append(entity_id(f"{json.load(file)['nationalPokedexNumber']:04d}_{name}"))
+    with open(f"{cobblemonData}/move_weights.json", encoding="utf-8") as file: weights = json.load(file)
+    with open(f"{scriptsBedrock}/progression_data.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: the has_season biome tags as Bedrock biome filters (TagSeasonResolver's order: winter, spring,\n")
+        file.write("// autumn, summer), the species with the season feature, and move_weights.json for the moveset builders\n")
+        file.write("export const SEASON_FILTERS = " + json.dumps(filters) + ";\n")
+        file.write("export const SEASON_SPECIES = " + json.dumps(species) + ";\n")
+        file.write("export const MOVE_WEIGHTS = " + json.dumps(weights) + ";\n")
 
 
 def cobblemon_marks():
@@ -11044,7 +12645,11 @@ def create_summary_ui():
             seat = {"seat": True} if ride_seats(pokemon) else {}
             # and its ride sounds (RideSoundSettings): each loop, the rider's (stereo) and the others' (mono)
             sounds = [x.get("soundLocation", "").replace("cobblemon:", "cobblemon.") for x in b.get("rideSounds", []) if x.get("soundLocation")]
-            out.append([style.lower(), icon, ranges, {"walk": walk, "jump": flag("canJump"), "sprint": flag("canSprint"), **seat, **({"sounds": sounds} if sounds else {})}])
+            # and its baseScale, which with the Pokemon's own size makes the effective scale minimumRidingScale (0.75) is held against
+            scale = {"scale": species["baseScale"]} if species.get("baseScale", 1.0) != 1.0 else {}
+            # and its seat count, for the Pokedex's Ride Stats page (StatsWidget's "Seats: N")
+            out.append([style.lower(), icon, ranges, {"walk": walk, "jump": flag("canJump"), "sprint": flag("canSprint"), **seat, **scale, **({"sounds": sounds} if sounds else {}),
+                                                     "seats": len((species.get("riding") or {}).get("seats") or [{"locator": "seat_1"}])}])
         if out: rides[entity_id(pokemon)] = out
     with open(f"{scriptsBedrock}/rides.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: each rideable species' riding behaviours (style, icon index, stat ranges), for the Summary's Ride page\n")
@@ -11056,6 +12661,13 @@ def create_summary_ui():
     for key, name in (("c", "icon_item_cosmetic"), ("h", "icon_item_held")):
         sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
         sheet.crop((0, 0, 12, 12)).save(f"{S}/itog_{key}.png"); sheet.crop((0, 12, 12, 24)).save(f"{S}/itog_{key}_hover.png")
+    # the shiny icon by the portrait (Summary and PCGUI draw icon_shiny at 62.5 across, 16 square at half scale)
+    shutil.copyfile(f"{src}/icon_shiny.png", f"{S}/shiny_y.png"); blank.save(f"{S}/shiny_n.png"); blank.save(f"{S}/shiny_.png")
+    # the held item's visibility toggle (Summary's heldItemVisibilityButton: item_visible while the model shows it,
+    # item_hidden while it does not; 32 square sheets, the hovered frame under)
+    for key, name in (("v", "item_visible"), ("h", "item_hidden")):
+        sheet = Image.open(f"{src}/{name}.png").convert("RGBA")
+        sheet.crop((0, 0, 32, 32)).save(f"{S}/itv_{key}.png"); sheet.crop((0, 32, 32, 64)).save(f"{S}/itv_{key}_hover.png")
     slot = Image.open(f"{src}/summary_mark_slot.png").convert("RGBA")
     slot.crop((0, 0, 16, 16)).save(f"{S}/mkslot.png"); slot.crop((0, 16, 16, 32)).save(f"{S}/mkslot_hover.png")
     for mark in cobblemon_marks():
@@ -11470,6 +13082,11 @@ def create_summary_ui():
     stat_tab_buttons.append(button(83 + SWAP_SLOTS, (67, 113), (6, 6)))
     # PartyWidget's swap button, 80 across and 9 up from the party (216, 24)
     stat_tab_buttons.append(button(84 + SWAP_SLOTS, (216 + 80, 24 - 9), (26, 14)))
+    # the held item's visibility toggle (Summary's heldItemVisibilityButton sits over the slot, which here gives and
+    # takes the item, so it stands beside it, 7 square) and the portrait (ModelWidget, 66 square at 6, 32), whose
+    # click plays the cry
+    stat_tab_buttons.append(button(85 + SWAP_SLOTS, (20, 104), (7, 7)))
+    stat_tab_buttons.append(button(86 + SWAP_SLOTS, (6, 32), (66, 66)))
     for b in buttons + stat_tab_buttons:
         name, body = next(iter(b.items()))
         index = body["collection_index"]
@@ -11564,6 +13181,7 @@ def create_summary_ui():
             picture("ball", field("ball"), (3.5, 15), (8, 8)),
             picture("gender", field("gender"), (69, 15), (5, 7), prefix="g"),
             picture("status", field("status"), (34, 4), (39, 7), prefix="st"),
+            picture("shiny", field("shiny"), (62.5, 33.5), (8, 8), 5, prefix="shiny_"),   # Summary's shiny icon
             image("types_bg", "type_spacer_double", (5.5, 126), (67, 12)),
             picture("type1", field("type1"), (21, 123), (18, 18), 5), picture("type2", field("type2"), (39, 123), (18, 18), 5),
             {"item_icon": {"type": "image", "offset": [3, 104], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
@@ -11597,7 +13215,7 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
     + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] \
-    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1), ("ilabel", 13)] + [("item", 0)]
+    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1), ("shiny", 1), ("status", 3), ("ilabel", 13)] + [("item", 0)]
 # PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
 # six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
 PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
@@ -11747,6 +13365,9 @@ def create_pc_ui():
                 label("name", field("name"), (12, 11.5), 0.75, size=(76, 10)),
                 picture("ball", "summary/", field("ball"), (3.5, 12), (8, 8)),
                 picture("gender", "summary/g", field("gender"), (69, 11.5), (5, 7)),
+                # PCGUI's shiny icon (62.5, 28.5 at half scale) and the chosen Pokemon's status bar (battle_status at 34, 1)
+                picture("shiny", "summary/shiny_", field("shiny"), (62.5, 28.5), (8, 8), 5),
+                picture("status", "summary/st", field("status"), (34, 1), (39, 7), 5),
                 image("types_bg", "pc/type_spacer_double", (9, 118.5), (63, 6)),
                 picture("type1", "summary/", field("type1"), (22.5, 112), (18, 18), 5), picture("type2", "summary/", field("type2"), (40.5, 112), (18, 18), 5),
                 {"item_icon": {"type": "image", "offset": [3, 98], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
@@ -12253,13 +13874,21 @@ DEX_TAB_X = [345 // 2 + 18.5 + n * ((345 // 2 - 18.5 * 2) / len(DEX_TABS)) for n
 # middle a view shows, each cell's slot (state, box icon, number), the edge into it, the fork stub out of it, and the
 # fork's vertical between two rows
 DEX_EVO_ROWS = range(-4, 5)
+# MovesLearnsetWidget, StatsWidget's Ride Stats page and SizeWidget's height grid (create_pokedex_ui): the viewport and
+# Poke Ball shown or hidden ("y" or "n"), the learnset's category label and four rows (name, "Lv. N", "TM" or "Egg", the
+# type, the TM disc's state and whether it is selected), the chosen move's name, PP, category, power, accuracy, effect
+# and description, the lower panel's two titles (Stats and Seats, or Weight and Height), the ride behaviour line and
+# the portrait's size step on the height grid
+DEX_MOVES_ROWS = 4
+DEX_MOVES_LAYOUT = [("vp", 1), ("mcat", 10)] + [(f"r{r}{k}", w) for r in range(DEX_MOVES_ROWS) for k, w in (("name", 20), ("cat", 10), ("type", 3), ("tm", 1), ("sel", 1))] \
+    + [("mname", 20), ("mpp", 10), ("mcatc", 3), ("mpow", 6), ("macc", 8), ("meff", 8), ("mdesc", 120), ("ltitle", 24), ("rtitle", 18), ("sstyle", 24), ("hsz", 1)]
 DEX_LAYOUT = [("colour", 1), ("region", 12), ("seen", 8), ("caught", 8), ("filter", 22), ("search", 30)] \
     + [(f"e{n}{k}", w) for n in range(25) for k, w in (("icon", 5), ("num", 7), ("state", 1), ("sel", 1))] \
     + [("num", 7), ("name", 16), ("caughtmark", 1), ("type1", 3), ("type2", 3), ("portrait", 5), ("platform", 3), ("tab", 1),
        ("line1", 40), ("line2", 40)] + [(f"stat{k}", 14) for k in ("hp", "atk", "def", "spa", "spd", "spe")] \
     + [("evomode", 1)] + [(f"v{c}{r + 4}{k}", w) for r in DEX_EVO_ROWS for c in range(5) for k, w in (("s", 1), ("i", 5), ("n", 7))] \
     + [(f"v{c}{r + 4}e", 1) for r in DEX_EVO_ROWS for c in range(2, 5)] + [(f"v{c}{r + 4}k", 1) for r in DEX_EVO_ROWS for c in range(3)] \
-    + [(f"g{c}{r + 5}", 1) for r in range(-5, 5) for c in range(3)] + [("desc", 0)]
+    + [(f"g{c}{r + 5}", 1) for r in range(-5, 5) for c in range(3)] + DEX_MOVES_LAYOUT + [("desc", 0)]
 
 
 def create_pokedex_ui():
@@ -12358,6 +13987,27 @@ def create_pokedex_ui():
     for name in ("tooltip_background", "tooltip_edge"): shutil.copyfile(f"{guiMain}/pokedex/{name}.png", f"{D}/{name}.png")
     bar = Image.open(f"{src}/pokedex_screen_bar_category.png").convert("RGBA")
     Image.new("RGBA", bar.size, (0, 0, 0, 0)).save(f"{D}/filter.png"); Image.new("RGBA", bar.size, (255, 255, 255, 40)).save(f"{D}/filter_hover.png")
+    # MovesLearnsetWidget's pieces: the viewport and Poke Ball as pictures the Moves tab blanks, the move slot and its
+    # selected frame, the TM disc (discovered) and tm_undiscovered, the four sort buttons' sheets (the face, the hovered
+    # one under it; the active one shows the hovered face), the move info box and the power, accuracy and effect icons
+    shutil.copyfile(f"{src}/pokedex_screen_info_viewport.png", f"{D}/vp_y.png"); blank.save(f"{D}/vp_n.png")
+    Image.open(f"{src}/pokedex_screen_poke_ball.png").convert("RGBA").crop((0, 0, 109, 68)).save(f"{D}/pb_y.png"); blank.save(f"{D}/pb_n.png")
+    shutil.copyfile(f"{src}/move_slot.png", f"{D}/mslot.png")
+    Image.open(f"{src}/move_slot_select.png").convert("RGBA").crop((0, 0, 134, 13)).save(f"{D}/msel_y.png"); blank.save(f"{D}/msel_n.png")
+    shutil.copyfile(f"{cobblemon}/textures/item/tms/blank_disc.png", f"{D}/tmd_d.png"); shutil.copyfile(f"{src}/tm_undiscovered.png", f"{D}/tmd_u.png"); blank.save(f"{D}/tmd_n.png")
+    for kind in ("level", "name", "type", "discovered"):
+        sheet = Image.open(f"{src}/button_sort_move_{kind}.png").convert("RGBA")
+        sheet.crop((0, 0, 20, 20)).save(f"{D}/sort_{kind}.png")
+        for suffix in ("_hover", "_on", "_on_hover"): sheet.crop((0, 20, 20, 40)).save(f"{D}/sort_{kind}{suffix}.png")
+    shutil.copyfile(f"{src}/info_move_background.png", f"{D}/move_info_bg.png")
+    for kind in ("power", "accuracy", "effect"): shutil.copyfile(f"{guiMain}/summary/summary_moves_icon_{kind}.png", f"{D}/mi_{kind}.png")
+    # StatsWidget's page arrows and the Ride page's behaviour arrows (7 by 10 sheets, the hovered frame under), and
+    # SizeWidget's height grid with its player silhouette
+    for name, out_name in (("info_arrow", "sarrow"), ("info_sub_arrow", "subarrow")):
+        for side in ("left", "right"):
+            sheet = Image.open(f"{src}/{name}_{side}.png").convert("RGBA")
+            sheet.crop((0, 0, 7, 10)).save(f"{D}/{out_name}_{side[0]}.png"); sheet.crop((0, 10, 7, 20)).save(f"{D}/{out_name}_{side[0]}_hover.png")
+    shutil.copyfile(f"{src}/height_grid.png", f"{D}/hgrid.png"); shutil.copyfile(f"{src}/height_grid_player.png", f"{D}/hplayer.png")
 
     T = "textures/ui/cobblemon"
     offsets, at = {}, 0
@@ -12402,8 +14052,8 @@ def create_pokedex_ui():
                  picture("caught_mark", "pokedex/cm_", field("caughtmark"), (ix + 129, iy + 2), (7, 7), 5),
                  image("type_bar", "pokedex/type_bar_double", (ix, iy + 14), (139, 25), 4),
                  picture("type1", "summary/", field("type1"), (ix + 3, iy + 17), (18, 18), 5), picture("type2", "summary/", field("type2"), (ix + 21, iy + 17), (18, 18), 5),
-                 image("viewport", "pokedex/screen_info_viewport", (ix, iy + 24), (139, 70), 3),
-                 image("poke_ball", "pokedex/poke_ball", (ix + 15, iy + 25), (109, 68), 4),
+                 picture("viewport", "pokedex/vp_", field("vp"), (ix, iy + 24), (139, 70), 3),
+                 picture("poke_ball", "pokedex/pb_", field("vp"), (ix + 15, iy + 25), (109, 68), 4),
                  picture("platform", "pokedex/", field("platform"), (ix + 13, iy + 66), (113, 27), 5),
                  picture("portrait", "icons/", field("portrait"), (ix + 40, iy + 30), (60, 48), 6, True),
                  label("line1", field("line1"), (ix + 7, iy + 109), 0.5, size=(125, 5), shadow=False, layer=7, color=GREY),
@@ -12422,6 +14072,53 @@ def create_pokedex_ui():
         return bound(f"({source} = '{value}')", "#visible")
     controls.append({"evo_overlay": {**image("evo_overlay", "pokedex/screen_info_overlay_expanded", (ix, iy), (139, 163), 7)["evo_overlay"],
                                      "bindings": shown(field("evomode"), "x")}})
+    # MovesLearnsetWidget over the info widget while the Moves tab shows (main.js blanks the viewport, ball, portrait
+    # and platform): the category label at 13, 27 with its arrows at 84, the sort buttons from 93, 26, four move slots
+    # from 36 (13 high; Cobblemon's list scrolls, this one pages), the Moves title at 9, 97, the move info box at 3, 109
+    # with the chosen move's name, PP, category icon, power, accuracy and effect, and its description at 66, 119
+    def tab_panel(name, letter, children):
+        return {name: {"type": "panel", "size": [345, 207], "layer": 7, "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": shown(field("tab"), letter), "controls": children}}
+    def fixed(name, text, offset, scale=1.0, size=(100, 10), shadow=True, layer=8, color=(1, 1, 1)):
+        return {name: {"type": "label", "text": text, "offset": list(offset), "size": list(size), "layer": layer, "font_scale_factor": scale,
+                       "anchor_from": "top_left", "anchor_to": "top_left", "shadow": shadow, "color": list(color)}}
+    BLUE = (0x3A / 255, 0x96 / 255, 0xB6 / 255)   # StatsWidget's value colour
+    moves = [label("mcat", field("mcat"), (ix + 13, iy + 27), 1.0, size=(70, 10), layer=8),
+             fixed("moves_title", "§lMoves", (ix + 9, iy + 97), size=(60, 10)),
+             image("move_info_bg", "pokedex/move_info_bg", (ix + 3, iy + 109), (133, 38), 7),
+             label("mname", field("mname"), (ix + 5, iy + 111), 0.5, size=(70, 5), shadow=False, layer=8, color=GREY),
+             label("mpp", field("mpp"), (ix + 80, iy + 111), 0.5, size=(40, 5), align="right", shadow=False, layer=8, color=GREY),
+             picture("mcatc", "summary/", field("mcatc"), (ix + 122, iy + 110), (12, 8), 8),
+             label("mdesc", field("mdesc"), (ix + 66, iy + 119), 0.5, size=(68, 28), shadow=False, layer=8, color=GREY)]
+    for kind, key, y in (("power", "mpow", 120.5), ("accuracy", "macc", 130.5), ("effect", "meff", 140.5)):
+        moves += [image(f"mi_{kind}", f"pokedex/mi_{kind}", (ix + 5, iy + y), (5, 5), 8),
+                  fixed(f"ml_{kind}", kind.capitalize(), (ix + 12, iy + y + 0.5), 0.5, size=(30, 5), shadow=False, color=GREY),
+                  label(f"mv_{kind}", field(key), (ix + 36, iy + y + 0.5), 0.5, size=(24.5, 5), align="right", shadow=False, layer=8, color=GREY)]
+    for r in range(DEX_MOVES_ROWS):
+        y = iy + 36 + 13 * r
+        moves += [image(f"mslot{r}", "pokedex/mslot", (ix, y), (134, 13), 7),
+                  picture(f"msel{r}", "pokedex/msel_", field(f"r{r}sel"), (ix, y), (134, 13), 8),
+                  picture(f"mtype{r}", "summary/", field(f"r{r}type"), (ix + 3, y + 2), (9, 9), 9),
+                  label(f"mname{r}", field(f"r{r}name"), (ix + 14, y + 2), 1.0, size=(74, 10), layer=9),
+                  picture(f"mtm{r}", "pokedex/tmd_", field(f"r{r}tm"), (ix + 90, y + 2.5), (8, 8), 9),
+                  label(f"mcat{r}", field(f"r{r}cat"), (ix + 99, y + 2), 1.0, size=(32, 10), align="right", layer=9)]
+    controls.append(tab_panel("moves_panel", "m", moves))
+    # StatsWidget's title row (9, 97: "Stats" or "Ride Stats", "Seats: N" right-justified at 130) and the Ride page's
+    # behaviour line under the stats; on the Size tab the row carries SizeWidget's weight, and the height at the right
+    controls += [label("ltitle", field("ltitle"), (ix + 9, iy + 97), 1.0, size=(80, 10), layer=8),
+                 label("rtitle", field("rtitle"), (ix + 50, iy + 97), 1.0, size=(80, 10), align="right", layer=8),
+                 label("sstyle", field("sstyle"), (ix + 7, iy + 133), 0.5, size=(125, 5), align="center", shadow=False, layer=8, color=BLUE)]
+    # SizeWidget: the height grid (137 by 42 at 1, 0 of the widget at 180, 135), the player silhouette at 85, 23.5 and
+    # the portrait standing on the grid's floor at 50, scaled by the species' height in twelve steps (a to l, 8 to 52)
+    size_panel = [image("hgrid", "pokedex/hgrid", (1, 0), (137, 42), 8), image("hplayer", "pokedex/hplayer", (85, 23.5), (8, 16), 9)]
+    for k in range(12):
+        s = 8 + 4 * k
+        size_panel.append({f"hport{k}": {"type": "image", "offset": [50 - s / 2, 39.5 - s], "size": [s, s], "layer": 9, "keep_ratio": True,
+                                        "anchor_from": "top_left", "anchor_to": "top_left",
+                                        "bindings": bound(f"('{T}/icons/' + {field('portrait')})", "#texture")
+                                        + [{"binding_type": "view", "source_property_name": f"({field('hsz')} = '{chr(97 + k)}')", "target_property_name": "#visible"}]}})
+    controls.append({"size_panel": {"type": "panel", "size": [139, 42], "offset": [ix, iy + 107], "layer": 7, "clips_children": True,
+                                    "anchor_from": "top_left", "anchor_to": "top_left", "bindings": shown(field("tab"), "z"), "controls": size_panel}})
     for mode, top, height, rows in (("x", 53, 125, DEX_EVO_ROWS), ("m", 135, 42, range(-1, 2))):
         middle = int(height / 2 - 12.5)
         cells = []
@@ -12531,6 +14228,20 @@ def create_pokedex_ui():
         evo_buttons[mode] = {f"evo_buttons_{mode}": {"type": "collection_panel", "size": [345, 207], "collection_name": "form_buttons", "layer": 9,
                                                      "bindings": shown(field("evomode"), mode), "controls": controls_mode}}
     buttons.append(button(46, (DEX_TAB_X[6], 181.5), (8, 8)))
+    # MovesLearnsetWidget's category arrows (84, 27 and 32), sort buttons (93 + 12n, 26, 20 square at half scale, their
+    # tooltips "Sort by ..."), the four move slots and the list's page arrows, on the Moves tab; StatsWidget's page
+    # arrows (2.5 and 133, 8 above the widget) and the Ride page's behaviour arrows beside its line, on the Stats tab
+    def on_tab(b, letter):
+        name, body = next(iter(b.items()))
+        body["bindings"] = body["bindings"] + [{"binding_name": "#form_text"},
+                                               {"binding_type": "view", "source_property_name": f"({field('tab')} = '{letter}')", "target_property_name": "#visible"}]
+        return b
+    extra = [button(106, (ix + 84, iy + 27), (5, 4)), button(107, (ix + 84, iy + 32), (5, 4))]
+    extra += [dex_tooltip(button(108 + n, (ix + 93 + 12 * n, iy + 26), (10, 10)), -14) for n in range(4)]
+    extra += [button(112 + r, (ix, iy + 36 + 13 * r), (134, 13)) for r in range(DEX_MOVES_ROWS)]
+    extra += [button(116, (ix + 134, iy + 37), (4, 6)), button(117, (ix + 134, iy + 90), (4, 6))]
+    buttons += [on_tab(b, "m") for b in extra]
+    buttons += [on_tab(button(118 + n, (ix + (2.5 if n % 2 == 0 else 133), iy + (99 if n < 2 else 133)), (4, 6)), "s") for n in range(4)]
     dex = {"type": "panel", "size": [345, 207], "anchor_from": "center", "anchor_to": "center",
            "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                         "source_property_name": "(not ((#title_text - 'cbm:pokedex') = #title_text))", "target_property_name": "#visible"}],
@@ -12707,6 +14418,8 @@ def create_dialogue_ui():
         frames = Image.open(f"{src}/{name}.png").convert("RGBA")
         h = frames.height // 3
         frames.crop((0, 0, frames.width, h)).save(f"{D}/{out}.png"); frames.crop((0, h, frames.width, h * 2)).save(f"{D}/{out}_hover.png")
+        # the third frame is DialogueOptionWidget's unselectable look (vOffset height * 2), for an option whose isSelectable is false
+        frames.crop((0, h * 2, frames.width, h * 3)).save(f"{D}/{out}_off.png"); frames.crop((0, h * 2, frames.width, h * 3)).save(f"{D}/{out}_off_hover.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{D}/none.png"); Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{D}/none_hover.png")
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{D}/face_.png")
 
@@ -12984,6 +14697,10 @@ def create_pot_ui():
         file.write("export const POT_SHAPED = " + json.dumps(shaped, separators=(",", ":")) + ";\n")
         file.write("export const POT_SHAPELESS = " + json.dumps(shapeless, separators=(",", ":")) + ";\n")
         file.write("export const SEASONINGS = " + json.dumps(seasonings, separators=(",", ":")) + ";\n")
+        # the snack's tint: each dye's colour (FoodColourComponent.COLORS) and the palette its blocks are drawn in
+        dyes, palette = snack_palette()
+        file.write("export const DYE_COLOURS = " + json.dumps({k.upper(): v for k, v in dyes.items()}, separators=(",", ":")) + ";\n")
+        file.write("export const SNACK_PALETTE = " + json.dumps(palette, separators=(",", ":")) + ";\n")
         file.write("export const SEASONING_FILTERS = " + json.dumps(filters, separators=(",", ":")) + ";\n")
         with open(f"{cobblemonData}/mechanics/aprijuices.json", encoding="utf-8") as mech: file.write("export const APRIJUICES = " + json.dumps(json.load(mech)) + ";\n")
         file.write("export const BROTH_INDEX = " + json.dumps({f"{first}|{','.join(rest)}": n for n, (first, rest, _) in enumerate(broth_mixes()) if first}) + ";\n")
@@ -14247,8 +15964,8 @@ PARTY_MARKER = "cbm:party"
 SCAN_MARKER = "cbm:scan"
 SCAN_FIELDS = {"state": (0, 2), "outer": (2, 4), "ring": (4, 6), "seg": (6, 8), **{f"f{k}": (8 + k, 9 + k) for k in range(4)},
                **{f"t{k}{side}": (12 + 40 * k + (20 if side == "r" else 0), 32 + 40 * k + (20 if side == "r" else 0)) for k in range(4) for side in "lr"},
-               "reg": (172, 173), "unknown": (173, 174)}
-SCAN_TEXT = 174
+               "reg": (172, 173), "unknown": (173, 174), "own": (174, 188), "cght": (188, 189)}
+SCAN_TEXT = 189
 PARTY_FIELDS = {"name": (0, 12), "level": (12, 18), "hp": (18, 21), "exp": (21, 24), "ball": (24, 27), "state": (27, 28), "gender": (28, 29), "icon": (29, 34),
                 "note": (34, 36), "exp_text": (36, 46), "held": (46, 49), "status": (49, 52), "sel": (52, 53), "slot": (53, 55), "ballx": (55, 59), "active": (59, 60), "lv": (60, 63),
                 "scroll": (63, 64)}
@@ -14359,6 +16076,17 @@ def create_scan_hud():
             text_x = x + (((120 - 28) / 2 + (0 if side == "l" else 28)) if inner else 92 / 2)
             text_y = y + {0: 5, 1: 4, 2: 8, 3: 42}[k]
             controls.append(text(f"text{k}{side}", field(f"t{k}{side}"), (text_x, text_y + 5)))
+    # the name frame's extras (renderInfoFrames' second frame): "Trainer Owned" small above the name of another
+    # trainer's Pokemon, and the caught indicator before the name, each on whichever side frame 1 took
+    Image.open(f"{guiMain}/battle/battle_owned_indicator.png").convert("RGBA").save(f"{out}/caught_y.png"); blank.save(f"{out}/caught_n.png")
+    for side in "lr":
+        x = -177 + (0 if side == "l" else 234) + (120 - 28) / 2 + (0 if side == "l" else 28)
+        own = text(f"own{side}", field("own"), (x, -26 + 4 + 5 - 6), size=(60, 5), scale=0.5)
+        mark = part(f"cght{side}", "caught_", "cght", [5, 5], "center", (x - 30, -26 + 4 + 5 + 1), layer=6)
+        for control in (own, mark):
+            body = next(iter(control.values()))
+            body["bindings"] = body.get("bindings", []) + [from_data(f"({field('f1')} = '{side}')", "#visible")]
+            controls.append(control)
     # every part draws only while the kept title is an open scan's record. The title can be kept from another layer's
     # record, and the closing record ("of") stays kept after the scan: while that kept the layer drawn, the scanlines'
     # blank, a 1 by 1 tile, covered the screen pixel by pixel every frame until the world was left (issue 44's lag
@@ -14466,6 +16194,8 @@ def create_party_hud():
     Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/non.png")
     # an empty slot's record (state "e", ball "bxx") draws nothing: a view binding cannot hide these parts
     for name in ("slot_ea", "slot_ei", "portrait_e", "bxxc", "bxxo"): Image.new("RGBA", (1, 1), (0, 0, 0, 0)).save(f"{party}/{name}.png")
+    # PartyOverlay draws party_slot_collapsed for an empty slot of a party holding any Pokemon (state "e", slot "ec")
+    shutil.copyfile(f"{guiMain}/party/party_slot_collapsed.png", f"{party}/slot_ec.png")
     # named by the record's gender field, which the texture binding appends to the folder
     shutil.copyfile(f"{guiMain}/party/party_gender_male.png", f"{party}/m.png")
     shutil.copyfile(f"{guiMain}/party/party_gender_female.png", f"{party}/f.png")
@@ -14650,6 +16380,10 @@ def create_model_blocks():
                 components = item["minecraft:item"]["components"]
                 if "minecraft:block_placer" in components: continue
                 components["minecraft:block_placer"] = {"block": identifier}
+                # VivichokeItem plants on farmland; MedicinalLeekItem.use plants into a water source the player aims at
+                # (liquid_clipped, as a lily pad targets water) and is eaten anywhere else, by its food
+                if name == "vivichoke_seeds": components["minecraft:block_placer"]["use_on"] = ["minecraft:farmland"]
+                if name == "medicinal_leek": components["minecraft:block_placer"]["use_on"] = LEEK_FLOORS; components["minecraft:liquid_clipped"] = True
                 with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
                 placers += 1
     with open(f"{resourcePack}/textures/terrain_texture.json", "w") as file:
@@ -15014,7 +16748,7 @@ def create_furniture():
     get_cobblefurnies()
     with open(f"{cobblefurnies}/lang/en_us.json", encoding="utf-8") as file: names = json.load(file)
     made = []
-    for name in gym_block_names("cobblefurnies"):
+    for name in gym_block_names("cobblefurnies") + ["furnicrafter"]:   # the Furni Crafter stands in no gym, but makes the rest
         variants, state = furniture_variants(name)
         model = java_model(variants[0][1]) if len(variants) == 1 else None
         FURNITURE_STATES[name] = {}
@@ -15022,6 +16756,12 @@ def create_furniture():
         elif os.path.exists(f"{cobblefurnies}/geo/{name}.geo.json"): statue_furniture(name)
         elif model and model.get("textures", {}).get("all") and not model.get("elements"):
             full_block(f"cobblefurnies:{name}", {"*": model["textures"]["all"]}, extra={"minecraft:loot": furniture_loot(name)})
+        elif model and len(model.get("elements", [])) == 1 and model["elements"][0].get("from") == [0, 0, 0] and model["elements"][0].get("to") == [16, 16, 16] and {"up", "down", "north"} <= set(model.get("textures", {})):
+            # a block/cube with a face each way (the Furni Crafter's top, bottom and sides, the vanilla mosaic) is a full block
+            tex = model["textures"]
+            # a face that names another texture ("#all", the vanilla mosaic's) takes that one
+            face = lambda key: tex.get(tex[key][1:], tex[key]) if str(tex[key]).startswith("#") else tex[key]
+            full_block(f"cobblefurnies:{name}", {"*": face("north"), "up": face("up"), "down": face("down")}, extra={"minecraft:loot": furniture_loot(name)})
         elif not model_furniture(name, variants):
             del FURNITURE_STATES[name]; print(f"  {name}: no element models"); continue
         made.append(name)
@@ -15029,11 +16769,185 @@ def create_furniture():
         for name in made: file.write(f"tile.cobblefurnies:{name}.name={names.get('block.cobblefurnies.' + name, name.replace('_', ' ').title())}" + chr(10))
     with open(f"{furniRepo}/LICENSE", encoding="utf-8") as file: licence = file.read()
     with open(f"{behaviorPack}/COBBLEFURNIES_CREDITS.txt", "w", encoding="utf-8", newline="\n") as file:
-        file.write("The furniture blocks in this add-on (the cobblefurnies: blocks) are converted from CobbleFurnies by LunazStudios\n"
+        file.write("The furniture blocks in this add-on (the cobblefurnies: blocks), their recipes and the Furni Crafter are converted from CobbleFurnies by LunazStudios\n"
                    "(https://modrinth.com/mod/cobblefurnies, https://github.com/gifluana/CobbleFurnies), version 1.2, and remain\n"
                    "LunazStudios' work, credited as CobbleFurnies' README asks. CobbleFurnies' licence follows.\n\n" + licence)
     print(f"Create furniture complete: {len(made)} blocks.")
     return made
+
+
+# ---------------------------------------------------------------------------
+# Furniture behaviour (CobbleFurnies, scripts/furniture.js): the seats a player sits on (SeatBlock and its SeatEntity),
+# the lamps' switch and redstone (LampBlock), the TV's channels (TVBlock), the Furni Crafter (FurniCrafterBlock,
+# FurniCrafterMenu) with its furni_crafting recipes, and CobbleFurnies' crafting table recipes. This gives the furniture
+# blocks the states and custom components the script works through, writes the seat entity, the recipe table the
+# crafter's screen lists and the table recipes, for the pieces this pack has.
+# ---------------------------------------------------------------------------
+
+SEAT_HEIGHTS = {"StoolBlock": 0.35, "SofaBlock": 0.35, "ChairBlock": 0.35, "ArmchairBlock": 0.35, "WoodChairBlock": 0.35,
+                "PokeChairBlock": 0.5, "ToiletBlock": 0.45}   # each SeatBlock class's seatHeight
+
+
+def furniture_classes():
+    """Each CobbleFurnies block's Java class, from CFBlocks.java's registrations."""
+    path = f"{furniRepo}/common/src/main/java/com/lunazstudios/cobblefurnies/registry/CFBlocks.java"
+    if not os.path.exists(path): return {}
+    with open(path, encoding="utf-8") as file: java = file.read()
+    return dict(re.findall(r'registerBlock(?:Only)?\("([a-z0-9_]+)",\s*\(\)\s*->\s*new\s+(\w+)\(', java))
+
+
+def furniture_blocks():
+    """The cobblefurnies: blocks the pack has, by name."""
+    out = set()
+    for path in glob.glob(f"{blocksBedrock}/*.json"):
+        with open(path, encoding="utf-8") as file: identifier = json.load(file)["minecraft:block"]["description"]["identifier"]
+        if identifier.startswith("cobblefurnies:"): out.add(identifier.split(":", 1)[1])
+    return out
+
+
+def furniture_seats(classes, blocks):
+    """Each seat block's seatHeight, by id."""
+    return {f"cobblefurnies:{name}": SEAT_HEIGHTS[classes[name]] for name in sorted(blocks) if classes.get(name) in SEAT_HEIGHTS}
+
+
+def furniture_icon(name):
+    """The pack path of a furniture block's main texture, the crafter's screen's icon for it."""
+    with open(f"{blocksBedrock}/{name}.json", encoding="utf-8") as file: instances = json.load(file)["minecraft:block"]["components"].get("minecraft:material_instances", {})
+    keys = sorted((k for k in instances if k != "*"), key=lambda k: (len(k), k))
+    key = instances.get(keys[-1] if keys else "*", instances.get("*", {})).get("texture")
+    if not key: return None
+    if key not in terrain_textures:   # run on its own, after a port: the written atlas
+        try:
+            with open(f"{resourcePack}/textures/terrain_texture.json", encoding="utf-8") as file: terrain_textures.update(json.load(file)["texture_data"])
+        except Exception: return None
+    return terrain_textures.get(key, {}).get("textures")
+
+
+def furniture_behaviour_blocks(classes, blocks, seats):
+    """A seat gets cobblemon:seat, a cobblemon:signal state and the comparator's 15 (redstone_producer) while it is sat on;
+    a lamp cobblemon:lamp, a cobblemon:powered state and a tick every ten to watch its redstone; the TV cobblemon:tv."""
+    for name in sorted(blocks):
+        kind = classes.get(name)
+        path = f"{blocksBedrock}/{name}.json"
+        with open(path, encoding="utf-8") as file: data = json.load(file)
+        body = data["minecraft:block"]
+        states = body["description"].setdefault("states", {})
+        permutations = body.setdefault("permutations", [])
+        if f"cobblefurnies:{name}" in seats:
+            states["cobblemon:signal"] = [0, 15]
+            body["components"]["cobblemon:seat"] = {}
+            # a block of format 1.26.20 or later may raise redstone_producer in a permutation only over a base one
+            body["components"]["minecraft:redstone_producer"] = {"power": 0}
+            permutations[:] = [p for p in permutations if "cobblemon:signal" not in p["condition"]]
+            permutations.append({"condition": "q.block_state('cobblemon:signal') == 15", "components": {"minecraft:redstone_producer": {"power": 15}}})
+        elif kind == "LampBlock":
+            states["cobblemon:powered"] = [False, True]
+            body["components"]["cobblemon:lamp"] = {}
+            body["components"]["minecraft:tick"] = {"interval_range": [10, 10], "looping": True}
+        elif kind == "TVBlock": body["components"]["cobblemon:tv"] = {}
+        else: continue
+        if not body["description"]["states"]: del body["description"]["states"]
+        if not permutations: del body["permutations"]
+        with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=2))
+
+
+def write_seat_entity():
+    """SeatEntity: an invisible entity at a seat's middle that the sitter rides, 0.35 up (seatHeight), with nothing to see,
+    hurt or push; scripts/furniture.js spawns it at a click and removes it when the sitter gets off."""
+    os.makedirs(f"{modelsBedrock}/seat", exist_ok=True)
+    with open(f"{modelsBedrock}/seat/seat.geo.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.12.0", "minecraft:geometry": [{
+            "description": {"identifier": "geometry.cobblemon_seat", "texture_width": 16, "texture_height": 16, "visible_bounds_width": 1, "visible_bounds_height": 1, "visible_bounds_offset": [0, 0.5, 0]},
+            "bones": [{"name": "seat", "pivot": [0, 0, 0]}]}]}, indent=2))
+    with open(f"{entityBedrock}/seat.entity.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.10.0", "minecraft:client_entity": {"description": {
+            "identifier": "cobblemon:seat", "materials": {"default": "entity_alphatest"}, "textures": {"default": "textures/entity/blank"},
+            "geometry": {"default": "geometry.cobblemon_seat"}, "render_controllers": ["controller.render.default"]}}}, indent=2))
+    with open(f"{entitiesBedrock}/seat.behavior.json", "w", encoding="utf-8") as file:
+        file.write(json.dumps({"format_version": "1.21.50", "minecraft:entity": {
+            "description": {"identifier": "cobblemon:seat", "is_spawnable": False, "is_summonable": True, "is_experimental": False},
+            "components": {
+                "minecraft:type_family": {"family": ["seat", "inanimate"]},
+                "minecraft:collision_box": {"width": 0.01, "height": 0.01},
+                "minecraft:physics": {"has_gravity": False, "has_collision": False},
+                "minecraft:pushable": {"is_pushable": False, "is_pushable_by_piston": False},
+                "minecraft:damage_sensor": {"triggers": [{"cause": "all", "deals_damage": "no"}]},
+                "minecraft:health": {"value": 1, "max": 1},
+                "minecraft:rideable": {"seat_count": 1, "family_types": ["player", "mob"], "crouching_skip_interact": True, "pull_in_entities": False,
+                                       "seats": [{"position": [0, 0.35, 0], "min_rider_count": 0, "max_rider_count": 1}]}}}}, indent=2))
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file: file.write("entity.cobblemon:seat.name=Seat" + chr(10))
+
+
+def furniture_recipe_table(blocks, names):
+    """FurniCraftingRecipe (recipe/furni_crafting/*.json): [result, count, name, icon, [[material, count], ...]] for each
+    recipe whose result and materials the pack has, in recipe id order as FurniCrafterMenu lists them; a material is one
+    item (CountedIngredient), a pack item, a pack block or a vanilla one."""
+    items = defined_items() | {f"cobblemon:{os.path.basename(p)[:-5]}" for p in glob.glob(f"{blocksBedrock}/*.json")} | {f"cobblefurnies:{b}" for b in blocks}
+    out, dropped, seen = [], 0, set()
+    for path in sorted(glob.glob(f"{furniRepo}/common/src/main/resources/data/cobblefurnies/recipe/furni_crafting/*.json")):
+        with open(path, encoding="utf-8") as file: recipe = json.load(file)
+        result = recipe["result"]["id"]
+        materials = [[m["item"] if isinstance(m["item"], str) else m["item"].get("item"), m["count"]] for m in recipe["materials"]]
+        if result not in items or not all(m and (m.startswith("minecraft:") or m in items) for m, _ in materials): dropped += 1; continue
+        # a dark stool's recipe (<colour>_dark_stool.json) makes the plain stool, the same as the stool's own; one listing is enough
+        if json.dumps([result, recipe["result"], materials]) in seen: continue
+        seen.add(json.dumps([result, recipe["result"], materials]))
+        name = result.split(":", 1)[1]
+        out.append([result, recipe["result"].get("count", 1), names.get(f"block.cobblefurnies.{name}", name.replace("_", " ").title()), furniture_icon(name), materials])
+    return out, dropped
+
+
+def furniture_table_recipes(blocks):
+    """CobbleFurnies' crafting table recipes (recipe/*.json: the Poke Wool carpets, the fridges and toilets, and the Furni
+    Crafter from shears and an iron axe over two planks) as Bedrock recipes, for the pieces the pack has."""
+    items = defined_items() | {f"cobblemon:{os.path.basename(p)[:-5]}" for p in glob.glob(f"{blocksBedrock}/*.json")} | {f"cobblefurnies:{b}" for b in blocks}
+    def ingredient(entry):
+        if "tag" in entry: return {"tag": entry["tag"]} if entry["tag"] in BEDROCK_TAGS else None
+        item = entry.get("item")
+        return {"item": item} if item and (item.startswith("minecraft:") or item in items) else None
+    made = 0
+    for path in sorted(glob.glob(f"{furniRepo}/common/src/main/resources/data/cobblefurnies/recipe/*.json")):
+        name = os.path.basename(path)[:-5]
+        with open(path, encoding="utf-8") as file: recipe = json.load(file)
+        result = recipe.get("result", {})
+        if result.get("id") not in items: continue
+        out = {"item": result["id"], **({"count": result["count"]} if result.get("count", 1) > 1 else {})}
+        description = {"identifier": f"cobblefurnies:{name}"}
+        if recipe.get("type") == "minecraft:crafting_shaped":
+            key = {k: ingredient(v) for k, v in recipe["key"].items()}
+            if not all(key.values()): continue
+            body = {"minecraft:recipe_shaped": {"description": description, "tags": ["crafting_table"], "pattern": recipe["pattern"], "key": key, "result": out,
+                                                "unlock": [v for v in key.values() if "item" in v][:1] or [{"context": "AlwaysUnlocked"}]}}
+        elif recipe.get("type") == "minecraft:crafting_shapeless":
+            parts = [ingredient(v) for v in recipe["ingredients"]]
+            if not all(parts): continue
+            body = {"minecraft:recipe_shapeless": {"description": description, "tags": ["crafting_table"], "ingredients": parts, "result": out,
+                                                   "unlock": [v for v in parts if "item" in v][:1] or [{"context": "AlwaysUnlocked"}]}}
+        else: continue
+        with open(f"{behaviorPack}/recipes/cobblefurnies_{name}.json", "w") as file: file.write(json.dumps({"format_version": "1.20.10", **body}, indent=2))
+        made += 1
+    return made
+
+
+def write_furniture_data(seats, recipes):
+    with open(f"{scriptsBedrock}/furniture_data.js", "w", encoding="utf-8") as file:
+        file.write("// generated by port.py: CobbleFurnies' seats (each block's seatHeight) and the Furni Crafter's recipes this pack can make" + chr(10))
+        file.write("export const FURNI_SEATS = " + json.dumps(seats) + ";" + chr(10))
+        file.write("export const FURNI_RECIPES = " + json.dumps(recipes) + ";" + chr(10))
+
+
+def create_furniture_behaviours():
+    """The seats, lamps, TV and Furni Crafter of the furniture blocks, after create_furniture wrote them."""
+    print("Creating furniture behaviours...")
+    classes, blocks = furniture_classes(), furniture_blocks()
+    seats = furniture_seats(classes, blocks)
+    furniture_behaviour_blocks(classes, blocks, seats)
+    write_seat_entity()
+    with open(f"{cobblefurnies}/lang/en_us.json", encoding="utf-8") as file: names = json.load(file)
+    recipes, dropped = furniture_recipe_table(blocks, names)
+    write_furniture_data(seats, recipes)
+    table = furniture_table_recipes(blocks)
+    print(f"Create furniture behaviours complete: {len(seats)} seats, {len(recipes)} Furni Crafter recipes ({dropped} for pieces the pack lacks left out), {table} crafting table recipes.")
 
 
 def create_building_blocks():
@@ -15075,7 +16989,7 @@ def create_building_blocks():
                         "components": {"minecraft:geometry": "minecraft:geometry.cross", **{k: v for k, v in permutations[0]["components"].items() if k != "minecraft:loot"},
                                        "minecraft:collision_box": False, "minecraft:selection_box": {"origin": [-6, 0, -6], "size": [12, 13, 12]},
                                        "minecraft:light_dampening": 0, **base, "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5},
-                                       "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:farmland", "minecraft:sand"]}]},
+                                       "minecraft:placement_filter": {"conditions": [{"allowed_faces": ["up"], "block_filter": GALARICA_SOILS}]},
                                        "cobblemon:nut_bush": {}},
                         "permutations": permutations}}, indent=2))
             elif parent == "block/cross" and "cross" in tex:
@@ -15255,6 +17169,7 @@ def main():
     general_items = create_general_items()
     create_aprijuice_qualities()
     create_revival_herb()   # after the items, whose Revival Herb it makes plantable
+    create_mint_seeds()   # after the mint crops (create_blocks) and before refresh_block_loot, whose mint tables name them
     create_wild_features()   # after the blocks it places
     create_tms()
     create_held_display()
@@ -15267,6 +17182,7 @@ def main():
     create_lectern()   # the same
     create_model_blocks()
     create_leaf_decay()   # after every block is written, the saccharine leaves among the model blocks
+    create_terrain_seeds()   # over the plain cross blocks the building blocks made of the seeds and plants
     create_natural_blocks()   # the same
     add_comparator_output()   # after the machines and their natural states
     create_variant_index()
@@ -15280,23 +17196,34 @@ def main():
     add_owned_protection()
     add_pasture_conflict()
     add_wild_behaviours()
+    add_world_rules()   # after the groups, on the files as written
+    create_world_rules()
     create_campfire_blocks()
+    add_decor_components()   # after every block they touch, the campfire pots the last
+    add_waterlogging()   # the same
+    add_light_levels()   # the same
     create_cooking_items()
     create_cosmetics()   # after the cooking items, whose icons some cosmetic items use (Sinister Tea)
+    create_progression_data()
     create_dex_evolution()   # after every item is written, whose icons its requirements show
     create_book_glyphs()
     create_ride_glyphs()
     create_party_item()
     add_cobblemon_food()   # after every item is written
     create_display_case()   # after every item is written, whose icons it shows
+    create_trainer_throw()
+    create_trainer_recall()
+    create_request_icon_particle()
     create_boats()   # after every item is written, whose boat items it gives their entity
     add_bait_offhand()   # after every item is written
     add_party_select_use()   # after every item is written, and items.js
     refresh_block_loot()   # after every item is written
     create_recipes()
+    create_furniture_behaviours()   # after the furniture blocks and the recipes folder
     add_chest_loot_states()   # after the blocks, before the structures that set the states
     create_structures()
     create_pokecenters()   # after the blocks it places and the entity folders
+    create_villager_gathering()
     create_loot_injections()
     create_trade_injections()
     create_gyms()   # after the furniture and the structures' folders

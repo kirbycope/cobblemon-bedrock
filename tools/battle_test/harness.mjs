@@ -19,6 +19,9 @@ writeFileSync(join(copy, "main.js"), `${main}\nexport { ${[...new Set(names)].jo
 export const M = await import(pathToFileURL(join(copy, "main.js")).href);
 export const D = await import(pathToFileURL(join(copy, "data.js")).href);
 export const F = await import(pathToFileURL(join(copy, "fishing.js")).href);   // BIOME_TAGS and the spawn tables
+// one of the hand-written modules beside main.js (block_logic.js, riding.js...), from the same ES-module copy, since a
+// .js module cannot be imported straight from the scripts folder (no package.json there marks it a module)
+export const mod = (name) => import(pathToFileURL(join(copy, name)).href);
 queue.length = 0;   // what loading queued (world setup) is not the battle's
 
 // runs what system.run and runTimeout queued, the battle's delayed lines among them

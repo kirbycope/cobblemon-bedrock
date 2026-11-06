@@ -1,5 +1,5 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:monitor",
@@ -12,6 +12,7 @@
           "grid",
           "music",
           "locked",
+          "glitching",
           "scanning_0",
           "scanning_1",
           "scanning_2",
@@ -21,6 +22,48 @@
           "scanning_6",
           "scanning_7",
           "scanning_8"
+        ],
+        "cobblemon:disc": [
+          "none",
+          "normal",
+          "fire",
+          "water",
+          "grass",
+          "electric",
+          "ice",
+          "fighting",
+          "poison",
+          "ground",
+          "flying",
+          "psychic",
+          "bug",
+          "rock",
+          "ghost",
+          "dragon"
+        ],
+        "cobblemon:disc_b": [
+          "none",
+          "dark",
+          "steel",
+          "fairy"
+        ],
+        "cobblemon:signal": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
         ]
       },
       "traits": {
@@ -220,7 +263,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_0'",
+        "condition": "q.block_state('cobblemon:screen') == 'glitching'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_4",
           "minecraft:material_instances": {
@@ -237,13 +280,7 @@
               "face_dimming": false
             },
             "v4_t2": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_scanning",
-              "render_method": "alpha_test",
-              "ambient_occlusion": false,
-              "face_dimming": false
-            },
-            "v4_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_0",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_glitching",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -258,7 +295,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_1'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_0'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_5",
           "minecraft:material_instances": {
@@ -281,7 +318,7 @@
               "face_dimming": false
             },
             "v5_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_1",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_0",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -296,7 +333,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_2'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_1'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_6",
           "minecraft:material_instances": {
@@ -319,7 +356,7 @@
               "face_dimming": false
             },
             "v6_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_2",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_1",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -334,7 +371,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_3'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_2'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_7",
           "minecraft:material_instances": {
@@ -357,7 +394,7 @@
               "face_dimming": false
             },
             "v7_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_3",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_2",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -372,7 +409,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_4'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_3'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_8",
           "minecraft:material_instances": {
@@ -395,7 +432,7 @@
               "face_dimming": false
             },
             "v8_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_4",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_3",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -410,7 +447,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_5'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_4'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_9",
           "minecraft:material_instances": {
@@ -433,7 +470,7 @@
               "face_dimming": false
             },
             "v9_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_5",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_4",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -448,7 +485,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_6'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_5'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_10",
           "minecraft:material_instances": {
@@ -471,7 +508,7 @@
               "face_dimming": false
             },
             "v10_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_6",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_5",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -486,7 +523,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_7'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_6'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_11",
           "minecraft:material_instances": {
@@ -509,7 +546,7 @@
               "face_dimming": false
             },
             "v11_t3": {
-              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_7",
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_6",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -524,7 +561,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:screen') == 'scanning_8'",
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_7'",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_monitor_12",
           "minecraft:material_instances": {
@@ -547,7 +584,621 @@
               "face_dimming": false
             },
             "v12_t3": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_7",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'scanning_8'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_13",
+          "minecraft:material_instances": {
+            "v13_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v13_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v13_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_scanning",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v13_t3": {
               "texture": "cobblemon_block_functional_monitor_monitor_screen_progress_8",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'normal'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_14",
+          "minecraft:material_instances": {
+            "v14_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v14_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v14_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_normal",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'fire'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_15",
+          "minecraft:material_instances": {
+            "v15_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v15_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v15_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_fire",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'water'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_16",
+          "minecraft:material_instances": {
+            "v16_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v16_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v16_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_water",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'grass'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_17",
+          "minecraft:material_instances": {
+            "v17_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v17_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v17_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_grass",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'electric'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_18",
+          "minecraft:material_instances": {
+            "v18_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v18_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v18_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_electric",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'ice'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_19",
+          "minecraft:material_instances": {
+            "v19_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v19_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v19_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_ice",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'fighting'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_20",
+          "minecraft:material_instances": {
+            "v20_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v20_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v20_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_fighting",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'poison'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_21",
+          "minecraft:material_instances": {
+            "v21_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v21_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v21_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_poison",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'ground'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_22",
+          "minecraft:material_instances": {
+            "v22_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v22_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v22_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_ground",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'flying'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_23",
+          "minecraft:material_instances": {
+            "v23_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v23_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v23_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_flying",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'psychic'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_24",
+          "minecraft:material_instances": {
+            "v24_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v24_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v24_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_psychic",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'bug'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_25",
+          "minecraft:material_instances": {
+            "v25_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v25_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v25_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_bug",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'rock'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_26",
+          "minecraft:material_instances": {
+            "v26_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v26_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v26_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_rock",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'ghost'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_27",
+          "minecraft:material_instances": {
+            "v27_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v27_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v27_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_ghost",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc') == 'dragon'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_28",
+          "minecraft:material_instances": {
+            "v28_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v28_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v28_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_dragon",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc_b') == 'dark'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_29",
+          "minecraft:material_instances": {
+            "v29_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v29_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v29_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_dark",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc_b') == 'steel'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_30",
+          "minecraft:material_instances": {
+            "v30_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v30_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v30_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_steel",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "*": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            }
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:screen') == 'off' && q.block_state('cobblemon:disc_b') == 'fairy'",
+        "components": {
+          "minecraft:geometry": "geometry.cobblemon_monitor_31",
+          "minecraft:material_instances": {
+            "v31_t0": {
+              "texture": "cobblemon_block_functional_monitor_monitor",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v31_t1": {
+              "texture": "cobblemon_block_functional_monitor_monitor_side",
+              "render_method": "alpha_test",
+              "ambient_occlusion": false,
+              "face_dimming": false
+            },
+            "v31_t2": {
+              "texture": "cobblemon_block_functional_monitor_monitor_screen_type_fairy",
               "render_method": "alpha_test",
               "ambient_occlusion": false,
               "face_dimming": false
@@ -606,6 +1257,126 @@
               270,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 1",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 1
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 2",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 2
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 3",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 3
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 4",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 4
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 5",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 5
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 6",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 6
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 7",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 7
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 8",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 8
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 9",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 9
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 10",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 10
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 11",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 11
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 12",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 12
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 13",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 13
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 14",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 14
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 15",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15
           }
         }
       }

@@ -6,7 +6,12 @@
       "menu_category": {
         "category": "construction"
       },
-      "states": {},
+      "states": {
+        "cobblemon:signal": [
+          0,
+          15
+        ]
+      },
       "traits": {
         "minecraft:placement_direction": {
           "enabled_states": [
@@ -59,7 +64,11 @@
         "seconds_to_destroy": 1.0
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/cobblefurnies_yellow_stool.json"
+      "minecraft:loot": "loot_tables/blocks/cobblefurnies_yellow_stool.json",
+      "cobblemon:seat": {},
+      "minecraft:redstone_producer": {
+        "power": 0
+      }
     },
     "permutations": [
       {
@@ -263,6 +272,14 @@
               90,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:signal') == 15",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15
           }
         }
       }

@@ -1,10 +1,27 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:mistleaf",
       "menu_category": {
         "category": "nature"
+      },
+      "states": {
+        "cobblemon:half": [
+          "lower",
+          "upper"
+        ],
+        "cobblemon:glowing": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ]
       }
     },
     "components": {
@@ -17,6 +34,7 @@
           "ambient_occlusion": false
         }
       },
+      "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
       "minecraft:collision_box": false,
       "minecraft:selection_box": {
         "origin": [
@@ -26,15 +44,343 @@
         ],
         "size": [
           12,
-          13,
+          16,
           12
         ]
       },
       "minecraft:light_dampening": 0,
       "minecraft:destructible_by_mining": {
-        "seconds_to_destroy": 0.5
+        "seconds_to_destroy": 0
       },
-      "minecraft:loot": "loot_tables/blocks/mistleaf.json"
-    }
+      "cobblemon:terrain_plant": {},
+      "minecraft:tick": {
+        "interval_range": [
+          10,
+          20
+        ],
+        "looping": true
+      },
+      "minecraft:redstone_producer": {
+        "power": 0
+      }
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 0",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 3,
+          "minecraft:redstone_producer": {
+            "power": 1
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 4,
+          "minecraft:redstone_producer": {
+            "power": 2
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 3",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 5,
+          "minecraft:redstone_producer": {
+            "power": 3
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 4",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 6,
+          "minecraft:redstone_producer": {
+            "power": 4
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 5",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 7,
+          "minecraft:redstone_producer": {
+            "power": 5
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 6",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 8,
+          "minecraft:redstone_producer": {
+            "power": 6
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 7",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 9,
+          "minecraft:redstone_producer": {
+            "power": 7
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'lower' && q.block_state('cobblemon:glowing') == 8",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_bottom_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/blocks/mistleaf_lower.json",
+          "minecraft:light_emission": 10,
+          "minecraft:redstone_producer": {
+            "power": 8
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 0",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json"
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 1",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 3,
+          "minecraft:redstone_producer": {
+            "power": 1
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 2",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 4,
+          "minecraft:redstone_producer": {
+            "power": 2
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 3",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 5,
+          "minecraft:redstone_producer": {
+            "power": 3
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 4",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 6,
+          "minecraft:redstone_producer": {
+            "power": 4
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 5",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 7,
+          "minecraft:redstone_producer": {
+            "power": 5
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 6",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 8,
+          "minecraft:redstone_producer": {
+            "power": 6
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 7",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 9,
+          "minecraft:redstone_producer": {
+            "power": 7
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:half') == 'upper' && q.block_state('cobblemon:glowing') == 8",
+        "components": {
+          "minecraft:material_instances": {
+            "*": {
+              "texture": "cobblemon_block_flowers_mistleaf_top_glowing",
+              "render_method": "alpha_test",
+              "face_dimming": false,
+              "ambient_occlusion": false
+            }
+          },
+          "minecraft:loot": "loot_tables/empty.json",
+          "minecraft:light_emission": 10,
+          "minecraft:redstone_producer": {
+            "power": 8
+          }
+        }
+      }
+    ]
   }
 }

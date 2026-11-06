@@ -11,10 +11,105 @@
                     "type": "int",
                     "range": [
                         0,
-                        13
+                        1558
                     ],
                     "default": 0,
                     "client_sync": true
+                }
+            }
+        },
+        "component_groups": {
+            "cobblemon:gym": {
+                "minecraft:persistent": {},
+                "minecraft:movement": {
+                    "value": 0
+                }
+            },
+            "cobblemon:home": {
+                "minecraft:persistent": {},
+                "minecraft:movement": {
+                    "value": 0
+                }
+            },
+            "cobblemon:wild": {
+                "minecraft:movement": {
+                    "value": 0.5
+                },
+                "minecraft:despawn": {
+                    "despawn_from_distance": {
+                        "min_distance": 128,
+                        "max_distance": 128
+                    },
+                    "despawn_from_chance": false,
+                    "despawn_from_inactivity": false,
+                    "despawn_from_simulation_edge": true
+                },
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 2,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "any_of": [
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "zombie"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "evoker"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "vindicator"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "vex"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "pillager"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "illusioner"
+                                    },
+                                    {
+                                        "test": "is_family",
+                                        "subject": "other",
+                                        "value": "zoglin"
+                                    }
+                                ]
+                            },
+                            "max_dist": 12
+                        }
+                    ],
+                    "walk_speed_multiplier": 1.0,
+                    "sprint_speed_multiplier": 1.0
+                },
+                "minecraft:behavior.tempt": {
+                    "priority": 3,
+                    "speed_multiplier": 0.9,
+                    "within_radius": 10,
+                    "items": [
+                        "rctmod:trainer_card",
+                        "rctmod:trainer_card_glint"
+                    ],
+                    "can_get_scared": false
+                },
+                "minecraft:behavior.random_stroll": {
+                    "priority": 6,
+                    "speed_multiplier": 0.7,
+                    "interval": 100
+                },
+                "minecraft:behavior.random_look_around": {
+                    "priority": 8
                 }
             }
         },
@@ -35,22 +130,20 @@
                 "height": 1.8
             },
             "minecraft:health": {
-                "value": 20,
-                "max": 20
+                "value": 30,
+                "max": 30
             },
-            "minecraft:persistent": {},
             "minecraft:physics": {},
+            "minecraft:jump.static": {},
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true,
+                "can_open_doors": true,
+                "avoid_damage_blocks": true
+            },
             "minecraft:pushable": {
                 "is_pushable": false,
                 "is_pushable_by_piston": false
-            },
-            "minecraft:damage_sensor": {
-                "triggers": [
-                    {
-                        "cause": "all",
-                        "deals_damage": false
-                    }
-                ]
             },
             "minecraft:knockback_resistance": {
                 "value": 1
@@ -59,10 +152,61 @@
                 "value": 0
             },
             "minecraft:movement.basic": {},
+            "minecraft:behavior.float": {
+                "priority": 0
+            },
             "minecraft:behavior.look_at_player": {
                 "priority": 1,
                 "look_distance": 10,
                 "probability": 0.8
+            }
+        },
+        "events": {
+            "minecraft:entity_spawned": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gym"
+                    ]
+                }
+            },
+            "cobblemon:wild": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:gym",
+                        "cobblemon:home"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:wild"
+                    ]
+                }
+            },
+            "cobblemon:home": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:gym"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:home"
+                    ]
+                }
+            },
+            "cobblemon:gym": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wild",
+                        "cobblemon:home"
+                    ]
+                },
+                "add": {
+                    "component_groups": [
+                        "cobblemon:gym"
+                    ]
+                }
             }
         }
     }
