@@ -5457,6 +5457,9 @@ def bump_pack_versions():
     for module in bp.get("modules", []): module["version"] = list(version)
     for dependency in bp.get("dependencies", []):
         if dependency.get("uuid") == rp["header"]["uuid"]: dependency["version"] = list(version)
+    # the version in the description, which the import and pack lists show, so an old copy can be told from a new one
+    rp["header"]["description"] = f"Cobblemon Resource Pack {'.'.join(map(str, version))}"
+    bp["header"]["description"] = f"Cobblemon Behavior Pack {'.'.join(map(str, version))}"
     with open(f"{resourcePack}/manifest.json", "w", encoding="utf-8") as file: file.write(json.dumps(rp, indent="\t"))
     with open(f"{behaviorPack}/manifest.json", "w", encoding="utf-8") as file: file.write(json.dumps(bp, indent="\t"))
     print(f"Pack version {'.'.join(map(str, version))}; run tools/deploy.py to point the server world at it.")

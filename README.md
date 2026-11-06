@@ -8,6 +8,9 @@ An open-source Pokémon mod ported to Minecraft Bedrock Edition.
 1. Double-click the file; Minecraft imports both packs
 1. In a world's settings, turn on the Cobblemon behavior pack (it brings the resource pack with it) and load the world
 
+Each pack's description ends with its version ("Cobblemon Behavior Pack 1.0.541"), so an older copy can be told from
+the new one in the import and pack lists; delete the old ones under Settings, Storage before importing an update.
+
 No experiments are needed: the scripts use the stable `@minecraft/server` 2.6.0 and `@minecraft/server-ui` 2.0.0,
 and the packs load on a world with none turned on. The battle music is not in the add-on (it is the games' own
 tracks, fetched by `tools/fetch_battle_music.py` for a local build), so battles are silent unless you build it yourself;
