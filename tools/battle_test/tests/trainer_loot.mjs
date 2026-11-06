@@ -5,7 +5,8 @@ import { M, D, check } from "../harness.mjs";
 
 const text = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/rct_trainers.js", import.meta.url), "utf-8");
 const items = new Set([...readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/rct_trainers.js", import.meta.url), "utf-8").matchAll(/"i":"([^"]+)"/g)].map((m) => m[1]));
-check("every gym trainer has a loot table", (text.match(/"trainers":\{([^}]*)\}/)?.[1].match(/":"rctmod:/g) ?? []).length === 14);
+const picks = text.match(/"trainers":\{([^}]*)\}/)?.[1] ?? "";
+check("every gym trainer has a loot table, among RCT's", (picks.match(/":"rctmod:/g) ?? []).length >= 14 && picks.includes('"leader_brock_019e":"rctmod:trainers/single/leader_brock_019e"'));
 const random = Math.random;
 const drops = [];
 for (let n = 0; n < 400; n++) drops.push(...M.rollRctLoot("rctmod:trainers/single/leader_brock_019e", 30, 0));

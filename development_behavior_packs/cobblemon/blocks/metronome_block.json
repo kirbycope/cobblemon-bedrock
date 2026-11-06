@@ -1,5 +1,5 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:metronome_block",
@@ -70,7 +70,20 @@
         "seconds_to_destroy": 0.5
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/metronome.json"
+      "minecraft:loot": "loot_tables/blocks/metronome.json",
+      "cobblemon:activatable": {},
+      "minecraft:redstone_producer": {
+        "power": 0
+      },
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": true,
+            "on_liquid_touches": "no_reaction"
+          }
+        ]
+      }
     },
     "permutations": [
       {
@@ -334,6 +347,14 @@
               90,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:active')",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 4
           }
         }
       }

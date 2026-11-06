@@ -11,20 +11,26 @@ import { BlockTypes } from "@minecraft/server";
 import { world, system, EntityComponentTypes, EntityInitializationCause, ItemStack, InputButton, ButtonState, BlockPermutation, MolangVariableMap, EntityDamageCause, EquipmentSlot, BlockVolume, StructureRotation, StructureSaveMode } from "@minecraft/server";
 import { ActionFormData, FormCancelationReason, MessageFormData, ModalFormData, uiManager } from "@minecraft/server-ui";
 import { SPAWN_MULTIPLIERS } from "./spawn_multipliers.js";
+import { registerDecorComponents, tangleInBush, TERRAIN_PLANTS } from "./decor_blocks.js";
 import { POT_SHAPED, POT_SHAPELESS, SEASONINGS, SEASONING_FILTERS, APRIJUICES, ITEM_ICONS, BROTH_INDEX, DYE_COLOURS, SNACK_PALETTE } from "./pot.js";
 import { POT_LAYOUT } from "./pot_layout.js";
 import { POKEMON, MOVES, TYPES, BALLS, ABILITY_NAMES, ABILITY_DESC, MOVE_DESC, NATURES, TIME_RANGES } from "./data.js";
 import { SUMMARY_LAYOUT } from "./summary_layout.js";
 import { NPC_SCENES, NPC_BATTLER } from "./npc_dialogue.js";
-import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT, RCT_LOOT } from "./rct_trainers.js";
-import { GYM_ROLES, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
+import { initStorageNpc, tickStorageNpc, sceneNext, sceneAction, tellStarterSkipped } from "./storage_npc.js";
+import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT, RCT_LOOT, RCT_DIALOG, RCT_TYPES } from "./rct_trainers.js";
+import { GYM_ROLES, GYM_TRAINER_IDS, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
+import { initRctWorld, trainerOf as rctTrainerOf, typeOf as rctTypeOf, rctName, rctLine, speak as rctSpeak, record as rctRecord, addRecord as rctAddRecord,
+    spawnTrainer as rctSpawnTrainer, noteGym as rctNoteGym, noteLeague as rctNoteLeague, leagueStock } from "./rct_world.js";
 import { MARKS } from "./marks.js";
 import { HABITAT_POOLS } from "./habitats.js";
 import { BERRY_CARE } from "./berry_care.js";
 import { TMS, TM_SPECIES } from "./tms.js";
+import * as battleRules from "./battle_rules.js";
 import { INTERACT_GENDERS } from "./interactions.js";
 import { FEATURE_BARS } from "./features.js";
 import { RIDES } from "./rides.js";
+import * as riding from "./riding.js";
 import { DEFENDERS, PREDATORS } from "./defenders.js";
 import { SHOULDER } from "./shoulder.js";
 import { DEX_VARIATIONS } from "./dex_variations.js";
@@ -32,15 +38,18 @@ import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
 import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
+import { seasonFor, seasonLook, isSeasonal, revivalPotentialMarks, buildMoveset, ALPHA_SLOTS, preEvolutionsOf, evolutionMovesOf, exchangePp } from "./progression.js";
 import { MOVE_FX, FX_ANIMS, FX_PRIMARY, FX_BONES } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
 import { FORMATIONS, BRUSH_LOOT } from "./fossil_loot.js";
+import { heightRangeOk, groundOffset, pokecenterRolls, villageHouses } from "./worldgen.js";
 import { CHEST_LOOT } from "./chest_loot.js";
 import { STRUCTURE_PIECES } from "./structure_sites.js";
 import { JIGSAW_STRUCTURES, JIGSAW_POOLS, JIGSAW_PIECES } from "./jigsaw.js";
 import { RODS, ROD_LINES, FISHING_SPAWNS, BIOME_TAGS, BUCKETS, ROD_TREASURE, BAITS, FISH_EGG_GROUPS, SNACK_SPAWNS, SNACK_BUCKETS, WORLD_SPAWNS, SPECIAL_SPAWNS, VANILLA_STRUCTURE_SIGNS } from "./fishing.js";
+import { markEntryDrops, entryDrops, moonPhaseOk, currentMoonPhase, inBounds, fishStep, NO_BITE_HOOK, NO_BITE_TEXT, rodLoot, isOpenWater, SNACK_PER_AREA } from "./spawn_checks.js";
 import { HERDS } from "./herds.js";
 import { SILK_SELF, FORTUNE } from "./silk.js";
 import { POTTED } from "./potted.js";
@@ -50,8 +59,17 @@ import { DEX_EVO_TREES, DEX_EVO_OF } from "./dex_evolution.js";
 import { HELD_ITEMS, MEDICINE, CANDIES, EV_ITEMS, MINTS, EV_BERRIES, HOLD_BLACKLIST, TOOLTIPS, POKE_FOOD, HYPER_CANDIES, MOCHIS } from "./items.js";
 import { HELD_INDEX, HELD_ICONS } from "./held_display.js";
 import { DISPLAY_INDEX, DISPLAY_BLOCK } from "./display_case.js";
+import { registerFurnitureComponents } from "./furniture.js";
 import { TRADE_LAYOUT, TRADE_EVOLUTIONS } from "./trade_layout.js";
 import { COSMETICS, COSMETIC_ICONS } from "./cosmetics.js";
+import { registerRequestIcons } from "./request_icons.js";
+import { installWorld, adjustSendOut, sendOutRaft, babyScale, airAbove } from "./world.js";
+// the world behaviours (scripts/world.js) run on this file's helpers, wrapped since the consts they read come later
+installWorld({ prop: (e, k) => prop(e, k), setProp: (e, k, v) => setProp(e, k, v), isAlpha: (e) => isAlpha(e), battling: (e) => battling(e),
+               natureOf: (e) => natureOf(e), ivsOf: (e) => ivsOf(e), variantOf: (e) => variantOf(e) });
+import { registerItemBehaviours, handBack, regionalFoodInteract } from "./item_behaviours.js";
+import { initBlockLogic, machineSignals, fossilBroken, recallPartyToHealer, healerParticles } from "./block_logic.js";
+import { ruleOn, registerRuleCommands, registerExtraCommands, battleGuard, watchNaturalSpawns, healPcBoxes, PROP_KEYS, PROP_FLAGS, parseExtraProp, parseExtraFlag, extraRecord, extraEntity, pcMatches, canLearn, tmStacks, dexCommand, fillPokecenterChest } from "./rules.js";
 
 const battles = new Map(); // player id -> battle
 const LEVEL = "cobblemon:level", EXP = "cobblemon:exp", MOVESET = "cobblemon:moves", FAINTED = "cobblemon:fainted";
@@ -160,7 +178,8 @@ function trap(battle, f, by, move) {
     } else if (!f.trappedBy) { f.trappedBy = by; say(battle, `§7${f.info.name} can no longer escape!`); }
 }
 function trappedIn(battle, f) {
-    if (f.info.types.includes("ghost") || held(f) === "shed_shell") return false;
+    // a Shed Shell and a Smoke Ball (Showdown's onTrapPokemon at priority -10) slip every trap
+    if (f.info.types.includes("ghost") || held(f) === "shed_shell" || held(f) === "smoke_ball") return false;
     if (f.noRetreat || f.ingrain || realBattle(battle).fairyLock > 0) return true;
     const other = f === battle.ally ? battle.foe : battle.ally;
     if (other?.hp > 0 && ((other.ability === "shadowtag" && f.ability !== "shadowtag") || (other.ability === "arenatrap" && onGround(battle, f))
@@ -1107,8 +1126,8 @@ function sayNow(battle, own, other) {
     const push = (log, t) => { log.push(t); if (log.length > 40) log.shift(); };
     battle.player.sendMessage(own); push(battle.log ??= [], own);
     if (battle.pvp && battle.opponent?.isValid) { battle.opponent.sendMessage(other); push(battle.opponentLog, other); }
-    // spectators (SpectateBattleCommand) follow the battle in chat, as the player in it sees it
-    for (const id of realBattle(battle).spectators ?? []) { try { world.getEntity(id)?.sendMessage(`§8[${battle.player.name}]§r ${own}`); } catch (e) { } }
+    // spectators (SpectateBattleCommand, the wheel's Spectate) see the battle screen, drawn again as it moves (battle_rules.js)
+    if (realBattle(battle).spectators?.size) battleRules.refreshSpectators(realBattle(battle), spectatorCtx());
 }
 
 function syncHealth(f) {
@@ -2329,6 +2348,8 @@ function heldBerry(battle, f, force = false) {
     // berries raise a stat by one there (Starf two, of one at random), and Lansat gives Focus Energy
     else if (PORTION_BERRIES.has(`cobblemon:${item}`) && (force || f.hp <= pinch)) {
         f.hp = Math.min(f.stats.hp, f.hp + Math.floor(f.stats.hp * 0.33 * ripe)); used = true; syncHealth(f);
+        // and confuse a Pokemon whose nature dislikes the berry's flavour (Berry.dislikedBy, Showdown's onEat), once it has eaten
+        if (PORTION_DISLIKE[`cobblemon:${item}`] === NATURES[effectiveNature(f.entity)]?.[1]) system.run(() => { if (f.hp > 0) confuse(battle, f); });
     } else if (PINCH_BERRIES[item] && (force || f.hp <= pinch)) {
         const stat = PINCH_BERRIES[item] === "random" ? ["atk", "def", "spa", "spd", "spe"][Math.floor(Math.random() * 5)] : PINCH_BERRIES[item];
         const eaten = f.held;
@@ -2425,7 +2446,7 @@ system.runInterval(() => {
                 if (e.getProperty("cobblemon:on_sand") !== sand) e.setProperty("cobblemon:on_sand", sand);
                 const holding = !!prop(e, "cobblemon:held");   // the poses that show a held item
                 if (e.getProperty("cobblemon:holding") !== holding) e.setProperty("cobblemon:holding", holding);
-                if (e.getProperty("cobblemon:held_index") !== ((prop(e, "cobblemon:held") && HELD_INDEX[prop(e, "cobblemon:held")]) || 0)) showHeld(e);
+                if (e.getProperty("cobblemon:held_index") !== ((prop(e, "cobblemon:held") && !prop(e, "cobblemon:held_hidden") && HELD_INDEX[prop(e, "cobblemon:held")]) || 0)) showHeld(e);
             } catch (err) { }
         }
     }
@@ -2442,7 +2463,9 @@ function battleFailed(battle, e) { console.warn(`[cobblemon] battle error: ${e}
 ${e?.stack ?? ""}`); endBattle(battle); }
 function endBattle(battle, text) {
     if (battle.side === 1) battle = battle.mirror;   // a battle between players, ended from the second player's side
+    payBattleExperience(battle);   // PokemonBattle.end: the experience and EVs for the foes knocked out, now that it is over
     battles.delete(battle.player.id);
+    battleRules.endSpectating(battle);
     endBattleMusic(battle.player);
     if (battle.pvp) endBattleMusic(battle.opponent);
     if (battle.pvp) {
@@ -2735,15 +2758,30 @@ function showScene(player, npc, tag) {
     const options = scene.buttons ?? [];
     const layout = !options.length ? "n" : options.length <= 2 ? "h" : "v";
     const kind = npc.typeId.slice("cobblemon:".length);
-    const body = padBytes(kind, 16) + layout + scene.text.replace(/%/g, "%%");
-    const form = new ActionFormData().title("cbm:dialogue" + scene.npc_name).body(body);
+    // the speaker (DialogueSpeaker): the NPC under its own name (q.npc.name, the name it took as it spawned) and face, or
+    // the player under theirs (q.player.username) with the frame empty; the text names either
+    const npcName = npc.nameTag && npc.nameTag !== "NPC" ? npc.nameTag.replace(/§./g, "") : scene.npc_name;
+    const fromPlayer = scene.speaker === "player";
+    const text = scene.text.replace(/\{player\}/g, player.name).replace(/\{npc\}/g, npcName);
+    const body = padBytes(fromPlayer ? "" : kind, 16) + layout + text.replace(/%/g, "%%");
+    const form = new ActionFormData().title("cbm:dialogue" + (fromPlayer ? player.name : npcName)).body(body);
     if (layout === "n") form.button("", HIT);   // a click on the box goes on
-    for (const o of options) form.button(o.name, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}`);
+    // an option whose isSelectable is false (npc-example's Trade) wears DialogueOptionWidget's unselectable frame and does nothing
+    for (const o of options) form.button(o.name, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}${o.enabled === false ? "_off" : ""}`);
     form.show(player).then((r) => {
-        if (r.canceled || layout === "n" || !npc.isValid) return;
-        for (const command of options[r.selection]?.commands ?? []) {
+        if (r.canceled || !npc.isValid) return;
+        if (layout === "n") {   // the page's "next" (a hook of storage_npc.js when it starts with @), where Cobblemon's input sets the page
+            const next = sceneNext(player, npc, scene);
+            if (next) system.runTimeout(() => showScene(player, npc, next), 2);
+            return;
+        }
+        const option = options[r.selection];
+        if (option?.enabled === false) { system.runTimeout(() => showScene(player, npc, tag), 2); return; }
+        for (const command of option?.commands ?? []) {
             const next = command.match(/^\/dialogue open \S+ \S+ (\S+)/);
             if (next) { system.runTimeout(() => showScene(player, npc, next[1]), 2); continue; }
+            const action = command.match(/^\/scriptevent cobblemon:scene (\S+)/);   // an action of storage_npc.js, for this player
+            if (action) { sceneAction(player, npc, action[1]); continue; }
             try { npc.runCommand(command.slice(1).replace(/@initiator/g, `"${player.name}"`)); } catch (e) { }
         }
     }).catch(() => { });
@@ -2772,12 +2810,34 @@ function learnTms(player, moves, passive = []) {
     if (!fresh.length && !quiet.length) return;
     for (const m of [...quiet, ...fresh]) known.add(m);
     player.setDynamicProperty(LEARNED_TMS, JSON.stringify([...known]));
-    if (fresh.length) player.sendMessage(fresh.length === 1 ? `§bYou unlocked the ${MOVES[fresh[0]]?.name ?? fresh[0]} TM!` : "§bNew TMs Learned! §7Check the TM Machine");
+    // TMMoveManager.sendTMToast: "New TMs Learned!" on the advancement toast frame with the TM's disc, the move's name
+    // under it (or "Check the TM Machine" for several), for 4 seconds
+    if (fresh.length) {
+        player.sendMessage(fresh.length === 1 ? `§bYou unlocked the ${MOVES[fresh[0]]?.name ?? fresh[0]} TM!` : "§bNew TMs Learned! §7Check the TM Machine");
+        const k = TM_BY_MOVE.get(fresh[0]), icon = fresh.length === 1 && k !== undefined ? `${TMS[k][1]}_tm` : "blank_disc";
+        hudToast(player, `textures/items/tms/${icon}`, "New TMs Learned!", fresh.length === 1 ? MOVES[fresh[0]]?.name ?? fresh[0] : "Check the TM Machine", 80);
+    }
 }
-// a Pokemon's moves learned without a TM: its level-up moves to its level, its moves and the ones it can relearn
+// a Pokemon's moves learned without a TM (Pokemon.allAccessibleMoves): its level-up moves to its level, its moves, the
+// ones it can relearn and the moves its evolution taught (Learnset.evolutionMoves)
+const PRE_EVOLUTIONS = preEvolutionsOf(POKEMON), EVOLUTION_MOVES = evolutionMovesOf(POKEMON);
 function accessibleMoves(typeId, level, moves, benched) {
     const out = new Set([...(moves ?? []), ...(benched ?? [])]);
     for (const [at, id] of POKEMON[typeId]?.learnset ?? []) if (at <= level) out.add(id);
+    for (const id of EVOLUTION_MOVES[typeId] ?? []) out.add(id);
+    return out;
+}
+// TMMoveManager.getLearnableTMsFromPokemon: the TMs a Pokemon unlocks count every pre-evolution's level-up moves to its
+// level and their evolution moves as well, so a Raichu unlocks the TMs of moves only a Pichu or Pikachu learns
+function tmUnlockMoves(typeId, level, moves, benched) {
+    const out = accessibleMoves(typeId, level, moves, benched), seen = new Set([typeId]), queue = [...(PRE_EVOLUTIONS[typeId] ?? [])];
+    while (queue.length) {
+        const pre = queue.shift();
+        if (seen.has(pre)) continue;
+        seen.add(pre);
+        for (const id of accessibleMoves(pre, level, [], [])) out.add(id);
+        queue.push(...(PRE_EVOLUTIONS[pre] ?? []));
+    }
     return out;
 }
 function syncTms(player) {
@@ -2787,13 +2847,13 @@ function syncTms(player) {
     for (const e of [...summaryParty(player), ...mine]) {
         let known = [];
         try { known = JSON.parse(prop(e, MOVESET) ?? "null") ?? []; } catch (err) { }
-        for (const m of accessibleMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
+        for (const m of tmUnlockMoves(e.typeId, prop(e, LEVEL) ?? POKEMON[e.typeId].level, known, benchedOf(e))) moves.add(m);
     }
     for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) {
         if (!rec?.t) continue;
         let known = [], benched = [];
         try { known = JSON.parse(rec.mv ?? "null") ?? []; benched = JSON.parse(rec.k?.[BENCHED] ?? "[]"); } catch (err) { }
-        for (const m of accessibleMoves(rec.t, rec.lv ?? 1, known, benched)) moves.add(m);
+        for (const m of tmUnlockMoves(rec.t, rec.lv ?? 1, known, benched)) moves.add(m);
     }
     learnTms(player, [...moves].filter((m) => !passive.includes(m)), passive);
 }
@@ -3107,7 +3167,10 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 // pot and what is in it. What a pot holds is kept by the world, by place: the result slot, the nine of the grid, the
 // three seasonings, and the cooking progress.
 const POT_COLOURS = ["red", "yellow", "green", "blue", "pink", "black", "white"];
-const potColour = (id) => (id?.startsWith("cobblemon:campfire_") ? POT_COLOURS.find((c) => id === `cobblemon:campfire_${c}`) : undefined);
+// a pot campfire's colour, on a campfire (cobblemon:campfire_<colour>) or a soul campfire (cobblemon:soul_campfire_<colour>,
+// CampfirePotItem's isSoul), and whether it is the soul one
+const potColour = (id) => (id?.startsWith("cobblemon:campfire_") || id?.startsWith("cobblemon:soul_campfire_") ? POT_COLOURS.find((c) => id.endsWith(`campfire_${c}`)) : undefined);
+const potSoul = (id) => !!id?.startsWith("cobblemon:soul_campfire_");
 const potKey = (block) => `cobblemon:pot|${block.dimension.id}|${block.location.x},${block.location.y},${block.location.z}`;
 // Direction.fromYRot: south at 0 degrees, west at 90, north at 180, east at 270; the item direction is its opposite
 const POT_STEPS = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] };
@@ -3162,15 +3225,24 @@ function removePot(block, player) {
     const data = potData(block);
     dropPot(block.dimension, block.location, data);
     savePot(block, null);
-    block.setPermutation(BlockPermutation.resolve("minecraft:campfire", { "minecraft:cardinal_direction": facing }));
+    block.setPermutation(BlockPermutation.resolve(potSoul(block.typeId) ? "minecraft:soul_campfire" : "minecraft:campfire", { "minecraft:cardinal_direction": facing }));
     if (player.getGameMode?.() !== "Creative") giveOrDrop(player, `cobblemon:campfire_pot_${colour}`);
     playAt(block, "cobblemon.block.campfire_pot.retrieve");
+}
+// CampfireBlock.placeLiquid: water poured on the campfire takes the pot off, dropping it and what it held, puts the fire
+// out and leaves the plain campfire; a Bedrock campfire holds no water, so the bucket keeps its water
+function dousePot(block) {
+    const colour = potColour(block.typeId), facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
+    dropPot(block.dimension, block.location, potData(block), colour);
+    savePot(block, null); potSite(block, false);
+    block.setPermutation(BlockPermutation.resolve(potSoul(block.typeId) ? "minecraft:soul_campfire" : "minecraft:campfire", { "minecraft:cardinal_direction": facing, "extinguished": true }));
+    playAt(block, "random.fizz");
 }
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { block, player, itemStack, isFirstEvent } = event;
     const id = block?.typeId, held = itemStack?.typeId;
-    if (id === "minecraft:campfire" && held?.startsWith("cobblemon:campfire_pot_")) {
-        const colour = held.slice("cobblemon:campfire_pot_".length);
+    if ((id === "minecraft:campfire" || id === "minecraft:soul_campfire") && held?.startsWith("cobblemon:campfire_pot_")) {
+        const colour = held.slice("cobblemon:campfire_pot_".length), soul = id === "minecraft:soul_campfire" ? "soul_" : "";
         if (!POT_COLOURS.includes(colour)) return;
         let lit = false;
         try { lit = !block.permutation.getState("extinguished"); } catch (e) { }
@@ -3179,7 +3251,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
         if (!isFirstEvent) return;
         system.run(() => {
             const facing = block.permutation.getState("minecraft:cardinal_direction") ?? "south";
-            block.setPermutation(BlockPermutation.resolve(`cobblemon:campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
+            block.setPermutation(BlockPermutation.resolve(`cobblemon:${soul}campfire_${colour}`, { "minecraft:cardinal_direction": facing }));
             savePot(block, null); potSite(block, true);
             // CampfirePotItem: the pot's item direction points back at the player who set it (Direction.fromYRot(head
             // yaw).opposite), the side its leftovers go to
@@ -3193,6 +3265,7 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     event.cancel = true;
     if (!isFirstEvent) return;
     system.run(() => {
+        if (held === "minecraft:water_bucket") { dousePot(block); return; }
         if (player.isSneaking) { if (!held) removePot(block, player); return; }
         openPot(block, player);
     });
@@ -3822,7 +3895,7 @@ function offerCosmetic(player, target) {
 const WHEEL_ORDER = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"];
 function openWheel(player, target) {
     if (!target?.isValid) return;
-    const rideable = target.hasComponent("minecraft:rideable");
+    const rideable = target.hasComponent("minecraft:rideable") && !prop(target, PASTURE_AT);   // isRideableFor: not while tethered to a pasture
     const following = !prop(target, "cobblemon:staying");
     const hand = player.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex)?.typeId;
     const options = {
@@ -3839,7 +3912,7 @@ function openWheel(player, target) {
             try { target.triggerEvent(following ? "cobblemon:stay" : "cobblemon:follow"); } catch (e) { }
             setProp(target, "cobblemon:staying", following ? true : undefined);
         } },
-        west: { icon: "ride", tip: "Ride", on: rideable, act: () => { try { target.getComponent("minecraft:rideable").addRider(player); } catch (e) { } } },
+        west: { icon: "ride", tip: "Ride", on: rideable && riding.canMount(player, target), act: () => { try { target.getComponent("minecraft:rideable").addRider(player); } catch (e) { } } },
         northwest: { icon: "shoulder", tip: "Shoulder", on: canShoulder(target, player), act: () => mountShoulder(target, player) },
     };
     // each button's texture is its place, its icon and whether it is offered (the layout adds "_hover")
@@ -3880,7 +3953,8 @@ function shoulderRiders(player) {
     try { return player.getComponent("minecraft:rideable")?.getRiders().filter((e) => POKEMON[e.typeId]) ?? []; } catch (e) { return []; }
 }
 function canShoulder(target, player) {
-    return SHOULDER_SET.has(target.typeId) && prop(target, OWNER) === player.id && !battles.has(player.id) && shoulderRiders(player).length < 2;
+    // PokemonEntity.canSitOnShoulder: a shoulderMountable form, and never an alpha
+    return SHOULDER_SET.has(target.typeId) && !isAlpha(target) && prop(target, OWNER) === player.id && !battles.has(player.id) && shoulderRiders(player).length < 2;
 }
 function mountShoulder(target, player) {
     const d = { x: player.location.x - target.location.x, z: player.location.z - target.location.z }, len = Math.hypot(d.x, d.z) || 1;
@@ -4135,7 +4209,7 @@ function turn(battle) {
     const options = usable.length ? ally.moves.map((m) => ({ kind: "move", move: m, blocked: blockedWhy(ally, m) })) : [{ kind: "move", move: STRUGGLE }];
     const canSwitch = findParty(battle.player).some((e) => e.id !== ally.entity.id), stuck = trappedIn(battle, ally);
     if (canSwitch) options.push({ kind: "switch", stuck });
-    options.push({ kind: "run", stuck });
+    if (!stuck) options.push({ kind: "run" });   // BattleGeneralActionSelection leaves Run out while trapped
     if (battle.choiceLock && held(ally)?.startsWith("choice_")) {
         for (const o of options) if (o.kind === "move" && o.move !== STRUGGLE && o.move.id !== battle.choiceLock) o.locked = true;
     }
@@ -4258,12 +4332,15 @@ function battleBody(battle) {
 // where Cobblemon's R key does
 system.runInterval(() => {
     for (const battle of new Set(battles.values())) {
-        if (!battle.fleeing || battle.pvp || battle.trainer) continue;
+        // PokemonBattle.checkFlee runs every tick of a wild battle, Run pressed or not, trapped or not: 32 blocks
+        // (defaultFleeDistance) from the wild Pokemon the player has fled and the battle ends
+        if (battle.pvp || battle.trainer) continue;
+        const fled = () => { try { uiManager.closeAllForms(battle.player); } catch (e) { } endBattle(battle, "§7Got away safely."); };
         // a foe that is gone (unloaded behind the player, or removed) has been got away from too
-        if (!battle.foe.entity?.isValid) { endBattle(battle, "§7Got away safely."); continue; }
+        if (!battle.foe.entity?.isValid) { fled(); continue; }
         try {
             const p = battle.player.location, f = battle.foe.entity.location;
-            if (Math.hypot(p.x - f.x, p.y - f.y, p.z - f.z) > 32) endBattle(battle, "§7Got away safely.");
+            if (Math.hypot(p.x - f.x, p.y - f.y, p.z - f.z) > 32) fled();
         } catch (e) { }
     }
 }, 10);
@@ -4285,17 +4362,21 @@ world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState 
 
 // BattleGeneralActionSelection: Fight, Switch, then Catch and Run against a wild Pokemon or Forfeit against a trainer
 function pickAction(battle, options) {
-    const menu = new ActionFormData().title(battleTitle(battle, "menu")).body(battleBody(battle))
-        .button("Fight", `${UI}/battle/menu_fight`).button("Switch", `${UI}/battle/menu_switch`);
-    if (battle.trainer) menu.button("Forfeit", `${UI}/battle/menu_forfeit`);
-    else menu.button("Catch", `${UI}/battle/menu_bag`).button("Run", `${UI}/battle/menu_run`);
+    // the tiles in order; Run is left out while the Pokemon is trapped, as BattleGeneralActionSelection leaves it out
+    // and Switch while it is trapped (request.moveSet.trapped), the next tile taking its place
+    const switchTile = options.find((o) => o.kind === "switch")?.stuck ? [] : ["switch"];
+    const tiles = battle.trainer ? ["fight", ...switchTile, "forfeit"] : ["fight", ...switchTile, "catch", ...(options.some((o) => o.kind === "run") ? ["run"] : [])];
+    const icons = { fight: "menu_fight", switch: "menu_switch", forfeit: "menu_forfeit", catch: "menu_bag", run: "menu_run" };
+    const menu = new ActionFormData().title(battleTitle(battle, "menu")).body(battleBody(battle));
+    for (const tile of tiles) menu.button(tile[0].toUpperCase() + tile.slice(1), `${UI}/battle/${icons[tile]}`);
     menu.button("", LOG_TOGGLE);
     return menu.show(battle.player).then((r) => {
         if (r.canceled || !battles.has(battle.player.id)) return undefined;
-        if (r.selection === (battle.trainer ? 3 : 4)) { toggleLog(battle); return pickAction(battle, options); }   // the log toggle, after Forfeit or Run
-        if (r.selection === 3) return options.find((o) => o.kind === "run");
-        if (r.selection === 2) return { kind: battle.trainer ? "forfeit" : "catch" };
-        if (r.selection === 1) {
+        const tile = tiles[r.selection];
+        if (!tile) { toggleLog(battle); return pickAction(battle, options); }   // the log toggle, after the last tile
+        if (tile === "run") return options.find((o) => o.kind === "run");
+        if (tile === "forfeit" || tile === "catch") return { kind: tile };
+        if (tile === "switch") {
             const sw = options.find((o) => o.kind === "switch");
             if (!sw) { say(battle, "§7There is no other Pokemon to switch to."); return pickAction(battle, options); }
             return sw;
@@ -4320,7 +4401,10 @@ function pickAction(battle, options) {
             if (m.selection === moves.length + (shift ? 2 : 1)) { toggleLog(battle); return showMoves(); }
             if (shift && m.selection === moves.length + 1) return shift;
             if (m.selection >= moves.length) return pickAction(battle, options);
-            return moves[m.selection];
+            // an unselectable tile (MoveTile.selectable: disabled, choice-locked or out of PP) takes no click
+            const picked = moves[m.selection];
+            if (picked.locked || picked.blocked || (picked.move !== STRUGGLE && picked.move.left <= 0)) return showMoves();
+            return picked;
         });
         };
         return showMoves();
@@ -4392,7 +4476,8 @@ system.runInterval(() => {
         // Cobblemon hides the party overlay while its battle overlay is up
         // and while the player has hidden it (HidePartyBinding, here /cobblemon:hideparty)
         const mine = battles.has(player.id) || player.getDynamicProperty(HIDE_PARTY) ? [] : summaryParty(player), sel = selIndex(player);
-        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + "iei" + "bxxc" + "n" + "   " + "z";
+        // an empty slot is drawn collapsed (party_slot_collapsed) while the party holds any Pokemon, and not at all otherwise
+        const empty = " ".repeat(18) + "h00e00bxxeoi----nn" + " ".repeat(10) + "hzz" + "non" + (mine.length ? "iec" : "iei") + "bxxc" + "n" + "   " + "z";
         const text = PARTY_MARKER + mine.map((e, n) => partyRecord(e, n === sel, player)).join("") + empty.repeat(6 - mine.length);
         const last = partySent.get(player.id);
         if (last && last.text === text && system.currentTick - last.tick < 100) continue;
@@ -4637,6 +4722,14 @@ function gainExperience(battle, f, foe, amount) {
     }
 }
 
+// PokemonBattle.end pays experience and EVs when the battle ends, not as each foe faints (battle_rules.js): a foe knocked
+// out is noted with whose it was, whose party is paid and which of theirs stood against it, and the payment comes once
+// the battle is over and only if the loser's whole team was knocked out (awardExperienceOnBattleLoss is off)
+function recordBattleFaint(battle, foe, loser, winners, facing) { battleRules.recordFaint(realBattle(battle), foe, loser, winners ?? battle, facing); }
+function payBattleExperience(battle) {
+    battleRules.payExperience(realBattle(battle), { partyOf: (view) => findParty(view.player), prop, FAINTED, allActives, fighter, memberKey, held, addEvs, POWER_ITEMS, battleExperience, gainExperience });
+}
+
 function faint(battle, fainted) {
     if (fainted === battle.foe) {
         say(battle, `§a${battle.foe.info.name} fainted! ${battle.ally.info.name} wins!`);
@@ -4646,17 +4739,10 @@ function faint(battle, fainted) {
         if (!battle.trainer) wildDrops(gone, true);
         try { if (clip) playClip(gone, clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
-        // PokemonBattle.end: each party Pokemon that faced the foe gets all of its experience and EVs, and an Exp. Share
-        // holder that did not, half the experience and the EVs; a fainted one gets none
-        const faced = battle.faced ?? new Set(), allyKey = memberKey(battle.ally.entity);
-        faced.add(allyKey);
-        for (const e of findParty(battle.player)) {
-            const key = memberKey(e), isAlly = key === allyKey || e.id === battle.ally.entity.id;
-            const share = isAlly || faced.has(key) ? 1 : prop(e, "cobblemon:held") === "cobblemon:exp_share" ? 0.5 : 0;
-            const f = !share ? null : isAlly ? battle.ally : fighter(e);
-            if (f) gainExperience(battle, f, battle.foe, battleExperience(battle, f, battle.foe, share));
-        }
+        // PokemonBattle.end pays the experience and EVs when the battle ends, once the foe's team is wiped (battle_rules.js)
+        recordBattleFaint(battle, battle.foe, "foe", battle, [memberKey(battle.ally.entity)]);
         if (battle.gym && gymNextPokemon(battle)) return;
+        battleRules.teamWiped(realBattle(battle), "foe");
         if (battle.gym) gymWon(battle);
         else if (battle.trainer) say(battle, "§6You defeated the Trainer!");
         endBattle(battle);
@@ -4695,27 +4781,55 @@ const RCT_STATUS_BIAS = 0.85, RCT_ITEM_BIAS = 0.85;
 const GYM_ITEM = { name: "(item)", priority: 6 };   // the trainer used an item this turn instead of a move
 // the trainer switches this turn instead of moving (to: its party index); the switch comes before any move
 const gymSwitchTo = (to) => ({ name: "(switch)", priority: 7, gymSwitch: true, to });
-const gymRest = new Map();   // trainer entity id -> the tick it battles again
+const gymRest = new Map();   // trainer entity id -> { until: the tick it battles again, extra: TrainerMob.extraCooldown then }
 // trainers in the same group of a requirement stand in for each other (SeriesManager's siblings): the two Agathas
 const RCT_SIBLINGS = new Map();
 for (const t of Object.values(RCT_TRAINERS)) for (const group of t.requires) if (group.length > 1) for (const id of group) RCT_SIBLINGS.set(id, group);
+// the trainers somebody requires: one nobody requires that requires nobody is alone (TrainerNode.isAlone) and sets no cap
+const RCT_REQUIRED = new Set();
+for (const t of Object.values(RCT_TRAINERS)) for (const group of t.requires) for (const id of group) RCT_REQUIRED.add(id);
 function rctDefeats(player) { return jsonProp(player, RCT_DEFEATS, {}); }
-function rctDone(player, id) { const d = rctDefeats(player); return (RCT_SIBLINGS.get(id) ?? [id]).some((s) => (d[s] ?? 0) > 0); }
-function rctUnlocked(player, id) { return RCT_TRAINERS[id].requires.every((group) => group.some((r) => rctDone(player, r))); }
-// the player's series (TrainerPlayerData.getCurrentSeries): "radicalred", "freeroam", or undefined for none; a world from
-// before the Trainer Association kept true for "started", which is Radical Red
+const rctDoneIn = (d, id) => (RCT_SIBLINGS.get(id) ?? [id]).some((s) => (d[s] ?? 0) > 0);
+function rctDone(player, id) { return rctDoneIn(rctDefeats(player), id); }
+// TrainerMobData.isOfSeries: a trainer with no series belongs to every one, the empty series and Freeroam among them
+function rctInSeries(id, sid) { const t = RCT_TRAINERS[id]; return !!t && (!t.series.length || (!!sid && t.series.includes(sid))); }
+// a group of required trainers is met by one of them beaten, or one not of the player's series (getMissingRequirements
+// counts only the series' trainers, so a requirement from another series never bars the way)
+const rctUnlockedIn = (d, sid, id) => RCT_TRAINERS[id].requires.every((group) => group.some((r) => !RCT_TRAINERS[r] || !rctInSeries(r, sid) || rctDoneIn(d, r)));
+function rctUnlocked(player, id) { return rctUnlockedIn(rctDefeats(player), rctSeries(player), id); }
+// the player's series (TrainerPlayerData.getCurrentSeries): "radicalred", "bdsp", "unbound", "freeroam", or undefined
+// for none; a world from before the Trainer Association kept true for "started", which is Radical Red
 function rctSeries(player) {
     const s = player?.getDynamicProperty?.(RCT_SERIES);
     return s === true ? "radicalred" : s || undefined;
 }
-// the series is done once its last trainer, the Champion, is beaten (isSeriesCompleted)
-const rctSeriesDone = (player) => rctSeries(player) === "radicalred" && RCT_TRAINER_IDS.every((id) => rctDone(player, id));
+// the series' graph (SeriesManager): its key trainers are those not optional and not alone; getNext is those not beaten
+// whose every requirement is met, the trainers the Trainer Card marks and the level cap follows
+function rctGraph(sid) { return RCT_TRAINER_IDS.filter((id) => !RCT_TRAINERS[id].optional && rctInSeries(id, sid) && (RCT_TRAINERS[id].requires.length > 0 || RCT_REQUIRED.has(id))); }
+function rctNext(player) {
+    const sid = rctSeries(player);
+    if (!sid || sid === "freeroam") return [];
+    const d = rctDefeats(player);
+    return rctGraph(sid).filter((id) => !rctDoneIn(d, id) && rctUnlockedIn(d, sid, id));
+}
+function rctIsKey(player, id) { return rctNext(player).includes(id); }   // PlayerState.isKeyTrainer
+// isSeriesCompleted: every key trainer of the series beaten (getRemaining empty); Freeroam counts as completed
+function rctSeriesDone(player) {
+    const sid = rctSeries(player);
+    if (!sid) return false;
+    if (sid === "freeroam") return true;
+    const d = rctDefeats(player), graph = rctGraph(sid);
+    return graph.length > 0 && graph.every((id) => rctDoneIn(d, id));
+}
+// LevelUtils.levelCap: the lowest level among the trainers next in line, never under the initial cap (15), 100 once none
+// are left; no cap outside a series (RCT caps its empty series at 15, which the port leaves off: README)
 function rctLevelCap(player) {
-    if (rctSeries(player) !== "radicalred") return 100;
-    const next = RCT_TRAINER_IDS.filter((id) => !rctDone(player, id) && rctUnlocked(player, id));
+    const sid = rctSeries(player);
+    if (!sid || sid === "freeroam") return 100;
+    const next = rctNext(player);
     return next.length ? Math.max(RCT_INITIAL_CAP, Math.min(...next.map((id) => RCT_TRAINERS[id].level))) : 100;
 }
-const gymTrainerOf = (npc) => { try { return RCT_TRAINER_IDS[npc.getProperty("cobblemon:trainer")]; } catch (e) { return undefined; } };
+const gymTrainerOf = rctTrainerOf;
 
 // the trainer's dialogue, on Cobblemon's DialogueScreen with the face from its skin
 function gymSay(player, npc, text, options = []) {
@@ -4726,25 +4840,44 @@ function gymSay(player, npc, text, options = []) {
     for (const [label] of options) form.button(label, `textures/ui/cobblemon/dialogue/${layout === "h" ? "button" : "button_full"}`);
     form.show(player).then((r) => { if (!r.canceled && layout !== "n") options[r.selection]?.[1]?.(); }).catch(() => { });
 }
+// the group of required trainers the player still lacks for this one, if any
+function gymMissing(player, data) {
+    const d = rctDefeats(player), sid = rctSeries(player);
+    return data.requires.find((group) => !group.some((r) => !RCT_TRAINERS[r] || !rctInSeries(r, sid) || rctDoneIn(d, r)));
+}
+// TrainerMob.canBattleAgainst and replyTo: why this trainer will not battle the player, as the context of the line it
+// speaks (data/rctmod/dialogs/trainers/default.json), or null when it will. The record is the entity's own
+// (winsAndDefeats): a leader called back by the gym's button is a fresh trainer and battles again
+function gymCanBattle(player, npc) {
+    const id = gymTrainerOf(npc), data = RCT_TRAINERS[id];
+    if (!data?.team.length) return "unknown_reason";
+    if ([...battles.values()].some((b) => b.gym?.npc?.id === npc.id)) return "trainer_busy";
+    const [wins, defeats] = rctRecord(npc, player);
+    if (data.maxDefeats >= 0 && defeats >= data.maxDefeats) return "trainer_lost";
+    if (data.maxWins >= 0 && wins >= data.maxWins) return "trainer_won";
+    if ((gymRest.get(npc.id)?.until ?? 0) > system.currentTick) return "on_cooldown";
+    if (battles.has(player.id)) return "player_busy";
+    if (!rctInSeries(id, rctSeries(player)) && !(rctDefeats(player)[id] > 0)) return "wrong_series";
+    const missing = gymMissing(player, data);
+    if (missing) { const type = `missing_required_trainer_${RCT_TRAINERS[missing[0]]?.type ?? "normal"}`; return RCT_DIALOG[type] ? type : "missing_required_trainer"; }
+    const top = Math.max(0, ...summaryParty(player).map((e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 1));
+    if (top > rctLevelCap(player)) return "over_level_cap";
+    if (!findParty(player).length) return "missing_pokemon";
+    return null;
+}
 function gymTalk(player, npc) {
     const id = gymTrainerOf(npc), data = RCT_TRAINERS[id];
-    if (!data || battles.has(player.id)) return;
-    const names = (group) => group.map((r) => RCT_TRAINERS[r]?.name ?? r).join(" or ");
-    if (rctSeries(player) !== "radicalred" && !rctDone(player, id)) {
-        // RCT's own lines for a player in no series or another (dialogs.rctmod.default.wrong_series.*)
-        const lines = Object.keys(RCT_TEXT).filter((k) => k.startsWith("dialogs.rctmod.default.wrong_series."));
-        gymSay(player, npc, RCT_TEXT[lines[Math.floor(Math.random() * lines.length)]] ?? "Start a series at the Trainer Association first.");
+    if (!data) return;
+    const why = gymCanBattle(player, npc);
+    if (why) {
+        // RCT's own line for the reason (ChatUtils.reply), with the names or the cap the lines leave unsaid
+        let line = rctLine(why, "I can't battle you right now.");
+        if (why.startsWith("missing_required_trainer")) { const g = gymMissing(player, data); if (g) line += ` §7(${g.map((r) => RCT_TRAINERS[r]?.name ?? r).join(" or ")})`; }
+        else if (why === "over_level_cap") line += ` §7(Lv. ${rctLevelCap(player)})`;
+        gymSay(player, npc, line);
         return;
     }
-    if (rctDone(player, id)) { gymSay(player, npc, "You've already beaten me. Go on, your next challenge is waiting!"); return; }
-    const missing = data.requires.find((group) => !group.some((r) => rctDone(player, r)));
-    if (missing) { gymSay(player, npc, `You aren't ready for me yet. Come back once you've beaten ${names(missing)}.`); return; }
-    if ((gymRest.get(npc.id) ?? 0) > system.currentTick) { gymSay(player, npc, "Give me a moment to rest my team."); return; }
-    const cap = rctLevelCap(player);
-    const top = Math.max(0, ...summaryParty(player).map((e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 1));
-    if (top > cap) { gymSay(player, npc, `Your Pokemon are stronger than the level cap allows (Lv. ${cap}). Challenge me with a team at or under it.`); return; }
-    if (!findParty(player).length) { gymSay(player, npc, "Your Pokemon can't fight. Heal them and come back."); return; }
-    gymSay(player, npc, `I'm ${data.name}. Will you take on my challenge?`, [["Battle", () => startGymBattle(player, npc, id)], ["Not now", null]]);
+    gymSay(player, npc, `I'm ${data.name}. Will you take on my challenge?`, [["Battle", () => { if (gymCanBattle(player, npc) === null) startGymBattle(player, npc, id); }], ["Not now", null]]);
 }
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     if (event.target?.typeId !== "cobblemon:rct_trainer") return;
@@ -4768,14 +4901,16 @@ function spawnGymPokemon(npc, spec, player) {
     if (NATURES[spec.nature]) setProp(e, "cobblemon:nature", spec.nature);
     if (spec.ability) setProp(e, "cobblemon:ability", spec.ability);
     if (spec.held) setProp(e, HELD, spec.held);
+    if (spec.ball) setProp(e, "cobblemon:caught_ball", spec.ball);   // the standard trainer's pokeball= properties
     setProp(e, "cobblemon:gender", (info.maleRatio ?? 0.5) < 0 ? "genderless" : spec.female ? "female" : "male");
     return e;
 }
 function startGymBattle(player, npc, id) {
     const data = RCT_TRAINERS[id];
     if (!data?.team.length) return;
+    rctSpeak(npc, rctLine("on_battle_start", "Let the battle begin!"));   // TrainerMob.startBattleWith's line, as a speech bubble
     (data.doubles ? startDoubleBattle : startTeamBattle)(player, npc, data.team, { id, name: data.name, itemsLeft: data.maxItemUses < 0 ? Infinity : data.maxItemUses,
-                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin, switchBias: data.switchBias });
+                                             bag: data.bag.map(([item, n]) => [item, n]), margin: data.margin, switchBias: data.switchBias, cooldown: data.cooldown });
 }
 // a trainer's team battle: its first Pokemon comes out, and the rest follow as each faints (gymNextPokemon)
 function startTeamBattle(player, npc, team, trainer) {
@@ -4830,10 +4965,16 @@ function npcSpec([t, lv]) {
     return { t, lv, moves: movesAt(info, lv), female: (info.maleRatio ?? 0.5) >= 0 && Math.random() >= (info.maleRatio ?? 0.5) };
 }
 function startNpcBattle(player, npc) {
-    const team = npcTrainerParty(npc).filter(([t]) => POKEMON[t]).map(npcSpec);
+    // the standard class's own party (SimplePartyProvider, static: the same six every time, with their items, natures,
+    // moves, IVs and EVs) when the data gives one, else the preset's pool party; gender rolls by the species' ratio
+    const standard = (NPC_BATTLER.party ?? []).filter((s) => POKEMON[s.t]);
+    const team = standard.length
+        ? standard.map((s) => ({ ...s, female: s.female || ((POKEMON[s.t].maleRatio ?? 0.5) >= 0 && Math.random() >= (POKEMON[s.t].maleRatio ?? 0.5)) }))
+        : npcTrainerParty(npc).filter(([t]) => POKEMON[t]).map(npcSpec);
     const name = npc.nameTag && npc.nameTag !== "NPC" ? npc.nameTag.replace(/§./g, "") : "Trainer";
     if ((gymRest.get(npc.id) ?? 0) > system.currentTick) return;
-    const fmt = prop(npc, BATTLE_FORMAT), trainer = { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown };
+    // npc-example's Battle is q.npc.start_battle(q.player, 'double'): a doubles battle unless cobblemon:battle_format set another
+    const fmt = prop(npc, BATTLE_FORMAT) ?? NPC_BATTLER.format, trainer = { name, preset: true, skill: NPC_BATTLER.skill, cooldown: NPC_BATTLER.cooldown };
     if (fmt === "doubles" || fmt === "triples") startDoubleBattle(player, npc, team, trainer, fmt === "triples" ? 3 : 2);
     else startTeamBattle(player, npc, team, trainer);
 }
@@ -5082,17 +5223,19 @@ function gymNextPokemon(battle, swap) {
 function gymWon(battle) {
     const g = battle.gym, player = battle.player, data = RCT_TRAINERS[g.id];
     if (g.preset) { g.won = true; say(battle, `§6You defeated ${g.name}!`); try { player.playSound("random.levelup"); } catch (e) { } return; }
-    const before = rctLevelCap(player), defeats = rctDefeats(player), wasDone = rctSeriesDone(player);
+    const before = rctLevelCap(player), defeats = rctDefeats(player), sid = rctSeries(player), wasDone = rctSeriesDone(player);
     defeats[g.id] = (defeats[g.id] ?? 0) + 1;
     player.setDynamicProperty(RCT_DEFEATS, JSON.stringify(defeats));
+    // TrainerBattle.distributeRewards: the entity's own defeat (its record), and the trainer's line on losing
+    if (g.npc?.isValid) { rctAddRecord(g.npc, player, 0, 1); rctSpeak(g.npc, rctLine("on_battle_lost", "Oh no...")); }
     g.won = true;
     say(battle, `§6You defeated ${data.name}!`);
-    if (!wasDone && rctSeriesDone(player)) {
+    if (sid && sid !== "freeroam" && !wasDone && rctSeriesDone(player)) {
         // the series completed (TrainerPlayerData's completed series): counted, Freeroam offered from now on
         const completed = jsonProp(player, RCT_COMPLETED, {});
-        completed.radicalred = (completed.radicalred ?? 0) + 1;
+        completed[sid] = (completed[sid] ?? 0) + 1;
         player.setDynamicProperty(RCT_COMPLETED, JSON.stringify(completed));
-        try { player.onScreenDisplay.setTitle(RCT_TEXT["gui.rctmod.title.series_completed"] ?? "Completed", { subtitle: RCT_SERIES_DATA.radicalred.title, fadeInDuration: 10, stayDuration: 60, fadeOutDuration: 20 }); } catch (e) { }
+        try { player.onScreenDisplay.setTitle(RCT_TEXT["gui.rctmod.title.series_completed"] ?? "Completed", { subtitle: RCT_SERIES_DATA[sid]?.title ?? sid, fadeInDuration: 10, stayDuration: 60, fadeOutDuration: 20 }); } catch (e) { }
     }
     const after = rctLevelCap(player);
     if (after > before) say(battle, `§bYour level cap rose to Lv. ${after}.`);
@@ -5111,18 +5254,22 @@ function rctLuck(player) {
     for (let i = 1; i <= n; i++) r += (1 - r) / (i * 8);
     return r;
 }
-function rollRctLoot(table, level, luck, out = []) {
+// rctmod:defeat_count (DefeatCountCondition): the player's defeats of the trainer, this one counted, against the entry's
+// count by its comparator (an Ancient Origin Ball on the first defeat only, #343)
+const DEFEAT_CMP = { "==": (a, b) => a === b, "<": (a, b) => a < b, "<=": (a, b) => a <= b, ">": (a, b) => a > b, ">=": (a, b) => a >= b, "%": (a, b) => b > 0 && a % b === 0 };
+function rollRctLoot(table, level, luck, out = [], defeats = 1) {
     for (const pool of RCT_LOOT.tables[table] ?? []) {
         const r = pool.rolls;
         let rolls = r.c ?? (r.u ? ri(r.u[0], r.u[1]) : [...Array(r.b[0])].filter(() => Math.random() < r.b[1]).length);
         rolls += Math.floor((pool.bonus ?? 0) * luck);
         for (let k = 0; k < rolls; k++) {
-            const live = pool.entries.filter((e) => !e.l || (level >= e.l[0] && level <= e.l[1])).map((e) => [e, Math.max(Math.floor(e.w + e.q * luck), 0)]).filter(([, w]) => w > 0);
+            const live = pool.entries.filter((e) => (!e.l || (level >= e.l[0] && level <= e.l[1])) && (!e.d || (DEFEAT_CMP[e.d[0]] ?? DEFEAT_CMP["=="])(defeats, e.d[1])))
+                .map((e) => [e, Math.max(Math.floor(e.w + e.q * luck), 0)]).filter(([, w]) => w > 0);
             const total = live.reduce((sum, [, w]) => sum + w, 0);
             if (!total) continue;
             let roll = Math.floor(Math.random() * total);
             const [entry] = live.find(([, w]) => (roll -= w) < 0);
-            if (entry.t) rollRctLoot(entry.t, level, luck, out);
+            if (entry.t) rollRctLoot(entry.t, level, luck, out, defeats);
             else out.push([entry.i, entry.n ? ri(entry.n[0], entry.n[1]) : 1]);
         }
     }
@@ -5132,14 +5279,22 @@ function dropRctLoot(npc, player, id) {
     const table = RCT_LOOT.trainers[id];
     if (!table || !npc?.isValid) return;
     const level = Math.max(...(RCT_TRAINERS[id]?.team ?? []).map((m) => m.lv), 0);
-    for (const [item, count] of rollRctLoot(table, level, rctLuck(player))) {
+    for (const [item, count] of rollRctLoot(table, level, rctLuck(player), [], rctDefeats(player)[id] ?? 1)) {
         try { npc.dimension.spawnItem(new ItemStack(item, count), npc.location); } catch (e) { }
     }
 }
 // the battle is over, won or lost: the trainer's Pokemon still out goes, and the trainer rests
 function gymEnded(battle) {
     const g = battle.gym;
-    if (g.npc?.isValid) gymRest.set(g.npc.id, system.currentTick + (g.cooldown ?? GYM_COOLDOWN));
+    if (g.npc?.isValid) {
+        // TrainerMob.finishBattle: the rest is the cooldown plus the extra so far, and the extra grows by the rest (240,
+        // 480, 960 ticks for battles in a row), the extra wearing off a tick at a time once the rest is over
+        const rest = gymRest.get(g.npc.id) ?? { until: 0, extra: 0 }, now = system.currentTick;
+        const extra = Math.max(0, rest.extra - Math.max(0, now - rest.until)), cooldown = (g.cooldown ?? GYM_COOLDOWN) + extra;
+        gymRest.set(g.npc.id, { until: now + cooldown, extra: extra + cooldown });
+        // the trainer's win (a forfeit is one too): its record against the player, and its line
+        if (!g.won && !g.preset) { rctAddRecord(g.npc, battle.player, 1, 0); rctSpeak(g.npc, rctLine("on_battle_won", "That was easy.")); }
+    }
     for (const foe of battle.doubles ? battle.slots.b.filter(Boolean).map((f) => f.entity) : [battle.foe?.entity]) {
         if (foe?.isValid) system.runTimeout(() => { try { if (foe.isValid) foe.triggerEvent("cobblemon:vanish"); } catch (e) { } }, g.won ? 30 : 0);
     }
@@ -5173,8 +5328,12 @@ function completeLeague(block) {
                 if (dim.getEntities({ type: "cobblemon:poke_mart_clerk", location: at, maxDistance: 2 }).length) continue;
                 const clerk = dim.spawnEntity("cobblemon:poke_mart_clerk", at);
                 clerk.nameTag = name || "Shopkeeper"; clerk.addTag("poke_mart_clerk");
+                // the Shopkeeper's own stock, Radical Gyms' CobbleDollars offers as emeralds (gyms.js)
+                if (GYM_LEAGUE.shop?.length) try { clerk.setDynamicProperty("cobblemon:shop", JSON.stringify(GYM_LEAGUE.shop)); } catch (e) { }
                 clerk.addEffect("slowness", 20000000, { amplifier: 255, showParticles: false });
             }
+            // the League's display cases filled with Radical Gyms' medicine, and its box kept mob-free (rct_world.js)
+            rctNoteLeague(dim, o, setCaseItem);
         } catch (e) { console.warn(`league at ${key}: ${e}`); }
         try { dim.runCommand(`tickingarea remove ${area}`); } catch (e) { }
         leagueBuilding.delete(key);
@@ -5193,8 +5352,10 @@ const CARD = "rctmod:trainer_card";
 const GYM_SITES = "cobblemon:gym_sites", SITES_PER_TRAINER = 16;
 function gymSites() { try { return JSON.parse(world.getDynamicProperty(GYM_SITES) ?? "{}"); } catch (e) { return {}; } }
 function noteGymSite(trainer, dimension, at) {
-    const id = RCT_TRAINER_IDS[trainer];
+    const id = GYM_TRAINER_IDS[trainer];
     if (!id) return;
+    // the building's display cases filled and its box kept mob-free (rct_world.js), once its door plate is found too
+    try { rctNoteGym(trainer, dimension, at, () => findMarker(dimension, at, "entrance", trainer, 30, 3)?.block.location, setCaseItem); } catch (e) { console.warn(`[cobblemon] gym cases: ${e}`); }
     const sites = gymSites(), here = [dimension.id, Math.floor(at.x), Math.floor(at.y), Math.floor(at.z)];
     const old = sites[id] ?? [];
     if (old[0]?.join() === here.join()) return;
@@ -5219,9 +5380,12 @@ function scanForGyms(player) {
     } catch (e) { }
 }
 const ARROWS = ["\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196"];
-const rctOrder = () => [...RCT_TRAINER_IDS].sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name));
+// TrainerListWidget: the trainers of the player's series (every trainer with no series among them) by their teams' level
+const rctOrder = (player) => { const sid = rctSeries(player); return RCT_TRAINER_IDS.filter((id) => RCT_TRAINERS[id].team.length && rctInSeries(id, sid)).sort((a, b) => RCT_TRAINERS[a].level - RCT_TRAINERS[b].level || RCT_TRAINERS[a].name.localeCompare(RCT_TRAINERS[b].name)); };
 const REGIONAL = { alolan: "Alolan ", galarian: "Galarian ", hisuian: "Hisuian ", paldean: "Paldean " };   // as the battle names them
-const rctType = (id) => id.startsWith("leader_") ? "Gym Leader" : id.startsWith("elite_four_") ? "Elite Four" : "Champion";
+const rctType = (id) => rctTypeOf(id).name;   // TrainerType's name: Leader, E4, Champ, Rival, Team Rocket...
+// RCT's biome tag as the card's Spawning page shows a biome: is_mountain "Mountain", has_structure/end_city "End City"
+const rctBiomeName = (tag) => tag.replace(/^has_structure\//, "").replace(/^is_/, "").split("_").map(cap).join(" ");
 // the next trainer to battle as { dim, x, z }: one standing in a loaded gym, else the nearest remembered gym; in no
 // series, or with the series done, the nearest Trainer Association instead (TrainerCard.inventoryTick's first branch)
 function cardTarget(player) {
@@ -5231,12 +5395,16 @@ function cardTarget(player) {
         const d = dim === player.dimension.id ? Math.hypot(x - player.location.x, z - player.location.z) : Infinity;
         if (!best || d < bestD) { best = { dim, x, z }; bestD = d; }
     };
+    // a key trainer about that could battle the player (couldBattleAgainst: its own record not used up, isKeyTrainer)
+    const next = new Set(rctNext(player));
     for (const id of ["overworld", "nether", "the_end"]) {
         let list = [];
         try { list = world.getDimension(id).getEntities({ type: "cobblemon:rct_trainer" }); } catch (e) { continue; }
         for (const npc of list) {
             const tid = gymTrainerOf(npc);
-            if (!tid || rctDone(player, tid) || !rctUnlocked(player, tid)) continue;
+            if (!tid || !next.has(tid)) continue;
+            const [wins, defeats] = rctRecord(npc, player), t = RCT_TRAINERS[tid];
+            if ((t.maxDefeats >= 0 && defeats >= t.maxDefeats) || (t.maxWins >= 0 && wins >= t.maxWins)) continue;
             consider(npc.dimension.id, npc.location.x, npc.location.z);
         }
     }
@@ -5244,7 +5412,7 @@ function cardTarget(player) {
     const sites = gymSites();
     let gone = false;
     for (const [tid, list] of Object.entries(sites)) {
-        if (!RCT_TRAINERS[tid] || rctDone(player, tid) || !rctUnlocked(player, tid)) continue;
+        if (!next.has(tid)) continue;
         for (const [dim, x, y, z] of list) {
             // a remembered gym whose chunk is loaded and holds no marker any more is forgotten
             let here;
@@ -5283,7 +5451,8 @@ function nearestAssociation(player) {
     }
     return best;
 }
-const hasCard = (player) => countItem(player, CARD) > 0;
+const CARD_GLINT = "rctmod:trainer_card_glint", isCard = (id) => id === CARD || id === CARD_GLINT;   // the card and its glinting twin
+const hasCard = (player) => countItem(player, CARD) + countItem(player, CARD_GLINT) > 0;
 function countItem(player, typeId) {
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     let n = 0;
@@ -5348,7 +5517,7 @@ function spawnAssociation(player, sentTo) {
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
-        if (player.dimension.id !== "minecraft:overworld") continue;
+        // in any dimension, as RCT's spawns (canSpawnNearby, with no dimension blacklisted)
         const near = player.dimension.getEntities({ type: TA, location: player.location, maxDistance: TA_MAX });
         if (near.length) continue;
         const sent = taFor.get(player.id) && world.getEntity(taFor.get(player.id));
@@ -5358,7 +5527,7 @@ system.runInterval(() => {
     }
 }, TA_SPAWN_TICKS);
 system.runInterval(() => {
-    for (const ta of world.getDimension("overworld").getEntities({ type: TA })) {
+    for (const ta of ["overworld", "nether", "the_end"].flatMap((d) => { try { return world.getDimension(d).getEntities({ type: TA }); } catch (e) { return []; } })) {
         const near = ta.dimension.getPlayers({ location: ta.location, maxDistance: TA_DESPAWN_DISTANCE }).length > 0;
         const idle = near ? 0 : (taIdle.get(ta.id) ?? 0) + 20;
         if (idle >= TA_DESPAWN_TICKS) { taIdle.delete(ta.id); try { ta.remove(); } catch (e) { } continue; }
@@ -5429,7 +5598,7 @@ function showSeriesOffer(player, ta, sid) {
             if (r.canceled || r.selection !== 1) return;
             if (!hasCard(player)) { player.sendMessage("§7You need a Trainer Card to start a series."); return; }
             // the card is taken and given back named for the series (SeriesSwitchOffer)
-            takeItem(player, CARD, 1);
+            takeItem(player, countItem(player, CARD) > 0 ? CARD : CARD_GLINT, 1);
             const card = new ItemStack(CARD, 1);
             card.nameTag = data.title;
             try { card.setLore([data.description]); } catch (e) { }
@@ -5457,8 +5626,17 @@ system.runInterval(() => {
     for (const player of world.getPlayers()) {
         let held;
         try { held = player.getComponent(EntityComponentTypes.Equippable)?.getEquipment(EquipmentSlot.Mainhand)?.typeId; } catch (e) { }
-        if (held !== CARD) continue;
+        if (!isCard(held)) continue;
         const target = cardTarget(player);
+        // TrainerCard.isFoil: the card glints while it has a target. A Bedrock item's glint is fixed, so the held card
+        // is swapped for its glinting twin (rctmod:trainer_card_glint) and back, keeping its name and lore
+        const want = target ? CARD_GLINT : CARD;
+        if (held !== want) {
+            try {
+                const equip = player.getComponent(EntityComponentTypes.Equippable), old = equip?.getEquipment(EquipmentSlot.Mainhand);
+                if (old) { const swap = new ItemStack(want, 1); swap.nameTag = old.nameTag; try { swap.setLore(old.getLore()); } catch (e) { } equip.setEquipment(EquipmentSlot.Mainhand, swap); }
+            } catch (e) { }
+        }
         if (!target) {
             // nothing to point at yet: no Association about for a player in no series, or no gym with a trainer to
             // battle near a player in one, who may be standing at a gym whose spot marker has not had its random tick yet
@@ -5478,41 +5656,74 @@ system.runInterval(() => {
         try { player.onScreenDisplay.setActionBar(`\u00a7c${arrow}`); } catch (e) { }
     }
 }, 5);
+// TrainerCardScreen: the trainers of the series, filtered by type with RCT's cycle button (All, then each TrainerType),
+// a page of CARD_PAGE at a time since a series has hundreds; the card remembers the filter and page
+const CARD_FILTERS = ["all", ...Object.keys(RCT_TYPES)], CARD_PAGE = 60;
+const cardView = new Map();   // player id -> { filter, page }
 function showTrainerCard(player) {
-    const ids = rctOrder(), defeats = rctDefeats(player), next = new Set(ids.filter((id) => !rctDone(player, id) && rctUnlocked(player, id)));
-    const total = ids.reduce((n, id) => n + (defeats[id] ?? 0), 0);
+    const view = cardView.get(player.id) ?? { filter: "all", page: 0 }, defeats = rctDefeats(player), next = new Set(rctNext(player)), sid = rctSeries(player);
+    const all = rctOrder(player), ids = all.filter((id) => view.filter === "all" || (RCT_TRAINERS[id].type ?? "normal") === view.filter);
+    const pages = Math.max(1, Math.ceil(ids.length / CARD_PAGE)), page = Math.min(view.page, pages - 1), shown = ids.slice(page * CARD_PAGE, (page + 1) * CARD_PAGE);
+    const total = Object.values(defeats).reduce((n, c) => n + c, 0);
     // no cap outside a series (rctLevelCap's 100); RCT's initial cap starts with the series
-    const series = RCT_SERIES_DATA[rctSeries(player)];
-    const cap = rctSeries(player) === "radicalred" ? `${rctLevelCap(player)}` : rctSeries(player) === "freeroam" ? "none (Freeroam)" : "none yet (choose a series at a Trainer Association)";
+    const series = RCT_SERIES_DATA[sid];
+    const cap = sid && sid !== "freeroam" ? `${rctLevelCap(player)}` : sid === "freeroam" ? "none (Freeroam)" : "none yet (choose a series at a Trainer Association)";
     const form = new ActionFormData().title("Trainer Card")
         .body(`\u00a7f${player.name}\n\u00a77Series: \u00a7f${series?.title ?? "No Series"}\n\u00a77Level Cap: \u00a7f${cap}\n\u00a77Total: \u00a7f${total}\n\u00a77Hold the card to point at your next trainer.`);
-    const rows = ids.map((id) => {
-        const n = defeats[id] ?? 0, key = next.has(id);
-        // RCT hides the next one in obfuscated text, which a Bedrock form shows as noise: here "???", marked as next
-        const name = n > 0 ? RCT_TRAINERS[id].name : key ? `??? (next ${rctType(id)})` : "???";
+    // the cycle button shows the series' title for All (#313), else the type's name
+    form.button(`\u00a78Type: \u00a7f${view.filter === "all" ? series?.title ?? "All" : RCT_TYPES[view.filter]?.name ?? view.filter}  \u00a77(${ids.length})`);
+    const rows = shown.map((id) => {
+        const n = defeats[id] ?? 0, key = next.has(id), t = RCT_TRAINERS[id];
+        // RCT hides the next one in obfuscated text, which a Bedrock form shows as noise: here "???", marked as next,
+        // the rest "???" with their type's symbol
+        const name = n > 0 ? t.name : key ? `??? (next ${rctType(id)})` : `??? ${RCT_TYPES[t.type]?.symbol ?? ""}`.trimEnd();
         form.button(`${key ? "\u00a72" : n > 0 ? "\u00a70" : "\u00a78"}${name}  ${n > 0 ? n : ""}`);
         return id;
     });
+    const extra = pages > 1 ? [["prev", `\u00a77Page ${page + 1} of ${pages}: previous`], ["next", "\u00a77Next page"]] : [];
+    for (const [, label] of extra) form.button(label);
     form.show(player).then((r) => {
         if (r.canceled) return;
-        const id = rows[r.selection];
+        if (r.selection === 0) { cardView.set(player.id, { filter: CARD_FILTERS[(CARD_FILTERS.indexOf(view.filter) + 1) % CARD_FILTERS.length], page: 0 }); return showTrainerCard(player); }
+        const pick = r.selection - 1;
+        if (pick >= rows.length) {
+            const [what] = extra[pick - rows.length] ?? [];
+            if (what) cardView.set(player.id, { filter: view.filter, page: (page + (what === "next" ? 1 : pages - 1)) % pages });
+            return showTrainerCard(player);
+        }
+        const id = rows[pick];
         if (!(defeats[id] > 0) && !next.has(id)) {
             // a locked trainer: say so rather than redraw the card, which looked like the tap did nothing
             new ActionFormData().title("Trainer Card").body(`§f???\n§7Type: §f${rctType(id)}\n§7Beat the trainers before this one first.`)
                 .button("Back").show(player).then((b) => { if (!b.canceled) showTrainerCard(player); }).catch(() => { });
             return;
         }
-        const t = RCT_TRAINERS[id], missing = t.requires.filter((g) => !g.some((x) => rctDone(player, x))).map((g) => g.map((x) => RCT_TRAINERS[x]?.name ?? x).join(" or "));
-        const later = ids.filter((x) => RCT_TRAINERS[x].requires.some((g) => g.includes(id))).map((x) => RCT_TRAINERS[x].level);
+        const t = RCT_TRAINERS[id], missing = t.requires.filter((g) => !g.some((x) => !RCT_TRAINERS[x] || !rctInSeries(x, sid) || rctDone(player, x))).map((g) => g.map((x) => RCT_TRAINERS[x]?.name ?? x).join(" or "));
+        const later = all.filter((x) => RCT_TRAINERS[x].requires.some((g) => g.includes(id))).map((x) => RCT_TRAINERS[x].level);
+        // TrainerInfoWidget's pages: Overview (type, the cap it needs and gives, required trainers), Spawning (the biome
+        // tags it spawns in and keeps out of, its signature item for a Trainer Spawner) and Team (once beaten)
+        const spawning = `\n\u00a77Biomes: \u00a7f${t.biomes.length ? t.biomes.map(rctBiomeName).join(", ") : "anywhere"}${t.noBiomes.length ? ` \u00a77(not ${t.noBiomes.map(rctBiomeName).join(", ")})` : ""}`
+            + (t.sig ? `\n\u00a77Signature Item: \u00a7f${itemName(t.sig)}` : "") + (t.swf <= 0 ? "\n\u00a77Found in its gym only" : "");
         new ActionFormData().title("Trainer Card")
             .body(`\u00a7f${defeats[id] > 0 ? t.name : "???"}\n\u00a77Type: \u00a7f${rctType(id)}\n\u00a77Level Cap: \u00a7f${Math.max(RCT_INITIAL_CAP, t.level)} -> ${later.length ? Math.max(RCT_INITIAL_CAP, Math.min(...later)) : 100}`
-                + (missing.length ? `\n\u00a77Required Trainers:\n\u00a7f${missing.join("\n")}` : "")
+                + (missing.length ? `\n\u00a77Required Trainers:\n\u00a7f${missing.join("\n")}` : "") + spawning
                 + (defeats[id] > 0 ? `\n\u00a77Team:\n\u00a7f${t.team.map((m) => `${REGIONAL[m.form] ?? ""}${POKEMON[m.t]?.name ?? m.t} Lv. ${m.lv}`).join("\n")}` : ""))
             .button("Back").show(player).then((b) => { if (!b.canceled) showTrainerCard(player); }).catch(() => { });
     }).catch(() => { });
 }
+// a gym trainer's death ends its battle at once (TrainerMob.cancelBattle, #113), the player's Pokemon kept as they are
+world.afterEvents.entityDie.subscribe(({ deadEntity }) => {
+    if (deadEntity?.typeId !== "cobblemon:rct_trainer") return;
+    for (const b of [...battles.values()]) if (b.gym?.npc?.id === deadEntity.id) endBattle(b, "\u00a77The trainer is gone. The battle is over.");
+});
+// what rct_world.js needs from here: the party and its levels, the series, the cap, the progression and the battles
+initRctWorld({
+    party: (player) => summaryParty(player), levelOf: (e) => prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 1,
+    series: rctSeries, levelCap: rctLevelCap, unlocked: rctUnlocked, next: rctNext, canBattle: gymCanBattle, startBattle: startGymBattle,
+    inBattle: (npc) => [...battles.values()].some((b) => b.gym?.npc?.id === npc.id)
+});
 world.afterEvents.itemUse.subscribe(({ itemStack, source }) => {
-    if (itemStack?.typeId === CARD && source?.typeId === "minecraft:player") showTrainerCard(source);
+    if (isCard(itemStack?.typeId) && source?.typeId === "minecraft:player") showTrainerCard(source);
 });
 
 // the markers' jobs (port.py's GYM_ROLES), when the plate or button above one is used
@@ -5535,16 +5746,12 @@ function findMarker(dimension, at, role, trainer, reach, height) {
     return undefined;
 }
 function summonGymTrainer(marker) {
-    const id = RCT_TRAINER_IDS[marker.trainer], { dimension, location } = marker.block;
+    const id = GYM_TRAINER_IDS[marker.trainer], { dimension, location } = marker.block;
     if (!id) return;
-    // the one already there makes way, as a rematch calls the trainer back
+    // the one already there makes way, as a rematch calls the trainer back: a fresh trainer with no record against anyone
     for (const old of dimension.getEntities({ type: "cobblemon:rct_trainer", location, maxDistance: 48 })) if (gymTrainerOf(old) === id) old.remove();
     noteGymSite(marker.trainer, dimension, location);
-    try {
-        const npc = dimension.spawnEntity("cobblemon:rct_trainer", { x: location.x + 0.5, y: location.y + marker.rise, z: location.z + 0.5 });
-        npc.setProperty("cobblemon:trainer", marker.trainer);
-        npc.nameTag = RCT_TRAINERS[id].name;
-    } catch (e) { }
+    rctSpawnTrainer(dimension, { x: location.x + 0.5, y: location.y + marker.rise, z: location.z + 0.5 }, id);
 }
 world.afterEvents.pressurePlatePush.subscribe(({ block, source }) => {
     const player = source?.typeId === "minecraft:player" ? source : undefined;
@@ -6025,14 +6232,8 @@ function doubleAfterTurn(battle) {
         const gone = f.entity, clip = FX_ANIMS[gone?.typeId]?.faint;
         try { if (clip) playClip(gone, clip); } catch (e) { }
         system.runTimeout(() => { try { if (gone?.isValid) gone.triggerEvent("cobblemon:vanish"); } catch (e) { } }, clip ? 30 : 0);
-        // the player's Pokemon standing get its experience in full, and an Exp. Share holder on the bench half
-        const out = battle.slots.a.filter(alive), outIds = new Set(out.map((a) => a.entity.id));
-        for (const a of out) { focus(battle, a); gainExperience(battle, a, f, battleExperience(battle, a, f, 1)); }
-        for (const e of findParty(battle.player)) {
-            if (outIds.has(e.id) || prop(e, "cobblemon:held") !== "cobblemon:exp_share") continue;
-            const h = fighter(e);
-            if (h) gainExperience(battle, h, f, battleExperience(battle, h, f, 0.5));
-        }
+        // PokemonBattle.end pays the experience and EVs when the battle ends, once the trainer's team is wiped (battle_rules.js)
+        recordBattleFaint(battle, f, "foe", battle, battle.slots.a.filter(alive).map((a) => memberKey(a.entity)));
     }
     for (const f of battle.slots.a) {
         if (!f || f.hp > 0 || f.gone) continue;
@@ -6045,6 +6246,7 @@ function doubleAfterTurn(battle) {
     }
     const trainerLeft = battle.slots.b.some(alive) || (g?.party ?? []).some((p) => !p.down && !p.out);
     if (!trainerLeft) {
+        battleRules.teamWiped(realBattle(battle), "foe");
         if (g) { focus(battle, battle.slots.a.find(alive)); gymWon(battle); }
         else say(battle, "§6You defeated the Trainer!");
         endBattle(battle);
@@ -6231,11 +6433,12 @@ function pvpDoubleAfterTurn(battle) {
             if (!f.clone) { setProp(f.entity, FAINTED, true); loseFriendship(f.entity, 1); countProgress(f, (p) => { p.damage = 0; p.recoil = 0; }); }
             freeze(f.entity, false);
             try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
-            const winners = viewOf(battle, otherSide(key));
-            for (const w of battle.slots[otherSide(key)].filter(alive)) if (!w.clone) gainExperience(winners, w, f);
+            // PokemonBattle.end pays the experience when the battle ends, once the loser's team is wiped (battle_rules.js)
+            recordBattleFaint(battle, f, viewOf(battle, key), viewOf(battle, otherSide(key)), battle.slots[otherSide(key)].filter(alive).map((w) => memberKey(w.entity)));
         }
     }
     const out = ["a", "b"].filter((key) => !battle.slots[key].some(alive) && !benchFor(viewOf(battle, key)).length);
+    for (const key of out) battleRules.teamWiped(realBattle(battle), viewOf(battle, key));
     if (out.length === 2) { pvpEnd(battle, null, "§7Both trainers are out of usable Pokémon!"); return; }
     if (out.length) { const loser = viewOf(battle, out[0]); pvpEnd(battle, loser, `§c${loser.player.name} is out of usable Pokémon!`); return; }
     battle.picks = [];
@@ -6359,9 +6562,10 @@ function pvpAfterTurn(battle) {
         freeze(f.entity, false);
         try { f.entity.triggerEvent("cobblemon:stay"); } catch (e) { }
         const w = v.mirror;
-        if (w.ally.hp > 0 && !w.ally.clone) gainExperience(w, w.ally, f);
+        recordBattleFaint(battle, f, v, w, w.ally.hp > 0 ? [memberKey(w.ally.entity)] : []);   // paid when the battle ends
     }
     const out = down.filter((v) => !pvpReady(v).length);
+    for (const v of out) battleRules.teamWiped(realBattle(battle), v);
     if (out.length === 2) { pvpEnd(battle, null, "§7Both trainers are out of usable Pokémon!"); return; }
     if (out.length) { pvpEnd(battle, out[0], `§c${out[0].player.name} is out of usable Pokémon!`); return; }
     const forced = views.filter((v) => down.includes(v) || (v.ejectAlly && pvpReady(v).length));
@@ -6476,17 +6680,9 @@ system.runInterval(() => {
 }, 20);
 world.afterEvents.playerLeave.subscribe(({ playerId }) => {
     for (let i = challenges.length - 1; i >= 0; i--) if (challenges[i].from.id === playerId || challenges[i].to.id === playerId) challenges.splice(i, 1);
+    // BattleRegistry.onPlayerDisconnect: any battle of theirs, wild, trainer or between players, stops as a forced tie
     const view = battles.get(playerId);
-    if (!view?.pvp) return;
-    const battle = realBattle(view);
-    battles.delete(playerId);
-    const other = view.opponent;
-    if (other?.isValid) {
-        for (const line of [`§7${view.player.name ?? "Your opponent"} forfeited the battle!`, `§6${other.name} won!`]) other.sendMessage(line);
-        battles.delete(other.id);
-        try { uiManager.closeAllForms(other); } catch (e) { }
-    }
-    for (const f of [battle.ally, battle.foe]) if (f?.entity?.isValid) freeze(f.entity, false);
+    if (view) battleRules.forcedTie(view, playerId, { realBattle, endBattle });
 });
 
 // Heal a player's Pokemon: full health, and fit to battle again
@@ -6587,6 +6783,7 @@ function useHealingMachine(block, player) {
         saveHealers(all);
     }
     healingAt.add(key); healingPlayers.add(player.id);
+    recallPartyToHealer(player);   // HealingMachineBlock.useWithoutItem: the party out in the world goes back into its balls (tryRecallWithAnimation)
     const dim = block.dimension, { x, y, z } = block.location;
     // the tray's slots turned with the machine: HealingMachineRenderer rotates by -FACING.toYRot() and draws at 0.65.
     // A machine placed facing a way (the placer's look, cardinal_direction) has its open front toward the placer, which
@@ -6605,6 +6802,7 @@ function useHealingMachine(block, player) {
     });
     const lit = (on) => { try { const b = dim.getBlock({ x, y, z }); if (b?.typeId === "cobblemon:healing_machine") b.setPermutation(b.permutation.withState("cobblemon:active", on)); } catch (e) { } };
     lit(true);
+    healerParticles(dim, { x, y, z }, HEAL_TICKS);   // HealingMachineBlock.animateTick's happy villagers while it heals
     try { dim.playSound("cobblemon.block.healing_machine.active", { x: x + 0.5, y, z: z + 0.5 }); } catch (e) { }
     system.runTimeout(() => {
         healingAt.delete(key); healingPlayers.delete(player.id);
@@ -6613,6 +6811,7 @@ function useHealingMachine(block, player) {
         try { const b = dim.getBlock({ x, y, z }); if (b?.typeId === "cobblemon:healing_machine") showHealerCharge(b, healerRecords()[key], world.getAbsoluteTime()); } catch (e) { }
         if (!player.isValid) return;
         healAround(dim, { x: x + 0.5, y: y + 0.5, z: z + 0.5 }, player);
+        if (ruleOn("healersHealPC")) healPcBoxes(player, { pcBoxes, box, saveBox });   // the healersHealPC game rule
         player.onScreenDisplay.setActionBar("§aYour Pokémon party has been healed!");
     }, HEAL_TICKS);
 }
@@ -6649,12 +6848,10 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
         // testing: battle a gym trainer (part of its id or name) without the order or the level cap, the nearest one
         // of them within 16 blocks or one called up beside the player
         const want = event.message.trim().toLowerCase(), n = RCT_TRAINER_IDS.findIndex((id) => id.includes(want) || RCT_TRAINERS[id].name.toLowerCase().includes(want));
-        if (!want || n < 0) { source.sendMessage(`§7Gym trainers: ${RCT_TRAINER_IDS.join(", ")}`); return; }
+        if (!want || n < 0) { source.sendMessage(`§7Gym trainers: ${GYM_TRAINER_IDS.join(", ")}; any of RCT's ${RCT_TRAINER_IDS.length} by id`); return; }
         let npc = source.dimension.getEntities({ type: "cobblemon:rct_trainer", location: source.location, maxDistance: 16 }).find((e) => gymTrainerOf(e) === RCT_TRAINER_IDS[n]);
-        if (!npc) {
-            npc = source.dimension.spawnEntity("cobblemon:rct_trainer", { x: source.location.x + 3, y: source.location.y, z: source.location.z });
-            npc.setProperty("cobblemon:trainer", n); npc.nameTag = RCT_TRAINERS[RCT_TRAINER_IDS[n]].name;
-        }
+        if (!npc) npc = rctSpawnTrainer(source.dimension, { x: source.location.x + 3, y: source.location.y, z: source.location.z }, RCT_TRAINER_IDS[n]);
+        if (!npc) return;
         system.runTimeout(() => startGymBattle(source, npc, RCT_TRAINER_IDS[n]), 2);
     } else if (event.id === "cobblemon:gym_reset" && source.typeId === "minecraft:player") {
         source.setDynamicProperty(RCT_DEFEATS, undefined); source.setDynamicProperty(RCT_SERIES, undefined); source.setDynamicProperty(RCT_PREVIOUS, undefined);
@@ -7204,6 +7401,7 @@ function show(m, st) {
     else if (st.left > 0) screen = `scanning_${Math.min(8, Math.floor(((FOSSILS.reviveSeconds - st.left) * 9) / FOSSILS.reviveSeconds))}`;
     else if (st.fossils.length || st.material) screen = "grid";
     setState(m.monitor, "cobblemon:screen", screen);
+    machineSignals(m, st);   // the tank's and the monitor's comparator signals (block_logic.js)
     showFetus(m, st);
 }
 
@@ -7262,6 +7460,9 @@ function useMachine(block, player) {
                 }
                 if (isAlpha(pokemon)) unlockWallpaper(player, "pokemon_alpha");
                 register(player, st.result, 2);
+                // callbacks/fossil_revived/apply_marks: its potential marks are the rare, uncommon and personality marks and
+                // the Revival Mark (1 in 25), rolled as it is handed over
+                setProp(pokemon, POTENTIAL_MARKS, JSON.stringify(revivalPotentialMarks())); applyPotentialMarks(pokemon);
             } catch (e) { }
         });
         player.sendMessage(`§a${POKEMON[st.result]?.name ?? "The Pokemon"} was revived! It is yours.`);
@@ -7377,7 +7578,9 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     const bottom = brokenBlockPermutation.getState("cobblemon:part") === "bottom" ? block : block.below();
     const key = keyOf(block.dimension, bottom.location), st = machines.get(key);
     if (st) {
-        for (const f of st.fossils) { try { block.dimension.spawnItem(new ItemStack(f, 1), block.location); } catch (e) { } }
+        // FossilMultiblockStructure.playerWillDestroy: a finished Pokemon comes out wild, and the fossils drop unless
+        // the machine is about to finish (block_logic.js)
+        fossilBroken(block, bottom, st);
         machines.delete(key); saveMachines();
     }
     for (const e of block.dimension.getEntities({ families: ["fossil_display"], location: bottom.location, maxDistance: 2 })) e.remove();
@@ -7459,7 +7662,9 @@ function layoutJigsaw(dim, x, z, structure) {
     const r = Math.floor(Math.random() * 4), turned = turnedPiece(JIGSAW_PIECES[startEl[0]], r);
     const [lo, hi] = structure.h;
     const box = boxOf(x - Math.floor(turned.size[0] / 2), ground + lo + Math.floor(Math.random() * (hi - lo + 1)), z - Math.floor(turned.size[2] / 2), turned.size);
-    const start = { key: startEl[0], r, box, rigid: !startEl[2], turned, parent: null, inside: false };
+    // a piece carrying a height_range processor outside its range discards the whole start (StructureMixin): nothing grows
+    if (!heightRangeOk(JIGSAW_PIECES[startEl[0]], box)) return [];
+    const start = { key: startEl[0], r, box, rigid: !startEl[2], flag: startEl[2], turned, parent: null, inside: false };
     const pieces = [start], queue = [[start, 0]], reach = structure.dist;
     const inReach = (b) => b.x0 >= x - reach && b.x1 <= x + reach && b.z0 >= z - reach && b.z1 <= z + reach && b.y0 >= box.y0 - reach && b.y1 <= box.y0 + reach;
     while (queue.length) {
@@ -7484,13 +7689,14 @@ function layoutJigsaw(dim, x, z, structure) {
                         else {
                             // ground not loaded yet (a cove wider than the loaded area): the jigsaw's own height
                             const g = groundTop(dim, target.x, target.z, false) ?? target.y - 1;
-                            y0 = el[2] ? g : g + 1 - cj.at[1];
+                            y0 = el[2] ? g + 1 + groundOffset(el[2]) : g + 1 - cj.at[1];
                         }
                         const b = boxOf(target.x - cj.at[0], y0, target.z - cj.at[2], turned2.size);
                         if (!inReach(b)) continue;
+                        if (!heightRangeOk(JIGSAW_PIECES[el[0]], b)) return [];
                         if (inside ? !boxHolds(piece.box, b) || pieces.some((o) => o.parent === piece && o.inside && boxesMeet(o.box, b))
                                    : pieces.some((o) => boxesMeet(o.box, b))) continue;
-                        const child = { key: el[0], r: r2, box: b, rigid: !el[2], turned: turned2, parent: piece, inside };
+                        const child = { key: el[0], r: r2, box: b, rigid: !el[2], flag: el[2], turned: turned2, parent: piece, inside };
                         pieces.push(child);
                         if (depth + 1 <= structure.depth) queue.push([child, depth + 1]);
                         placed = true; break;
@@ -7547,7 +7753,8 @@ function growJigsaw(block) {
     if (!pieces.length) return;
     const all = { x0: Infinity, y0: Infinity, z0: Infinity, x1: -Infinity, y1: -Infinity, z1: -Infinity }, waiting = [];
     for (const p of pieces) {
-        const fit = p.rigid ? (structure.adapt ? JIGSAW_BEARD_FIT : 0) : JIGSAW_TERRAIN_FIT;
+        // a piece that follows the ground carries its gravity offset's size in the bits over the fit and carve bits
+        const fit = p.rigid ? (structure.adapt ? JIGSAW_BEARD_FIT : 0) : JIGSAW_TERRAIN_FIT | (-groundOffset(p.flag) << 3);
         if (boxLoaded(dim, p.box)) placeJigsawPiece(dim, p.key, p.r, p.box, fit, structure.adapt === "beard_box");
         else waiting.push([dim.id, p.key, p.r, p.box.x0, p.box.y0, p.box.z0, fit + (structure.adapt === "beard_box" ? JIGSAW_CARVE : 0)]);
         for (const k of ["x0", "y0", "z0"]) all[k] = Math.min(all[k], p.box[k]);
@@ -7598,11 +7805,11 @@ function placeJigsawPiece(dim, key, r, box, fit = 0, carve = false) {
         const g = groundTop(dim, x, z, false);
         if (g !== undefined) ground.set(`${x},${z}`, [g, groundFill(dim, x, g, z)]);
     }
-    if (fit === JIGSAW_BEARD_FIT) { beardUnder(dim, box, ground); beardSkirt(dim, box); }
+    if ((fit & 3) === JIGSAW_BEARD_FIT) { beardUnder(dim, box, ground); beardSkirt(dim, box); }
     try { world.structureManager.place(`cobblemon:${key}`, dim, { x: box.x0, y: box.y0, z: box.z0 }, { rotation: StructureRotation[JIGSAW_ROTATIONS[r]] }); }
     catch (e) { console.warn(`[cobblemon] jigsaw piece ${key}: ${e}`); return; }
-    if (fit === JIGSAW_TERRAIN_FIT) followGround(dim, key, r, box, ground);
-    if (fit === JIGSAW_BEARD_FIT && carve) carveBox(dim, key, r, box);
+    if ((fit & 3) === JIGSAW_TERRAIN_FIT) followGround(dim, key, r, box, ground, -(fit >> 3) || -1);
+    if ((fit & 3) === JIGSAW_BEARD_FIT && carve) carveBox(dim, key, r, box);
 }
 // the beard's falloff round a raised piece: the ground within JIGSAW_SKIRT blocks of its footprint rises toward its
 // floor, a block lower for each block out, so the plinth beardUnder makes slopes into the hill instead of standing
@@ -7655,7 +7862,7 @@ function beardUnder(dim, box, ground) {
 // a terrain-matching piece (a path, a flower bed: StructureTemplatePool's TERRAIN_MATCHING, a GravityProcessor on the
 // surface heightmap): placed flat at its jigsaw's height, then each column moved up or down to the ground there, the
 // spot it left filled with the ground's block below the surface and cleared above it
-function followGround(dim, key, r, box, ground) {
+function followGround(dim, key, r, box, ground, off = -1) {
     let template;
     try { template = world.structureManager.get(`cobblemon:${key}`); } catch (e) { }
     if (!template) return;
@@ -7664,8 +7871,11 @@ function followGround(dim, key, r, box, ground) {
     const local = (dx, dz) => (r === 0 ? [dx, dz] : r === 1 ? [dz, sz - 1 - dx] : r === 2 ? [sx - 1 - dx, sz - 1 - dz] : [sx - 1 - dz, dx]);
     for (let x = box.x0; x <= box.x1; x++) for (let z = box.z0; z <= box.z1; z++) {
         const [g, fill] = ground.get(`${x},${z}`) ?? [];
-        if (g === undefined || g === box.y0) continue;
-        const d = g - box.y0, [lx, lz] = local(x - box.x0, z - box.z0), moved = [];
+        if (g === undefined) continue;
+        // GravityProcessor: the column's bottom layer goes to the heightmap (the air over the top block) plus the offset,
+        // -1 for a terrain-matching piece, a rigid piece's own (a sandpit clearing's -6) otherwise
+        const d = g + 1 + off - box.y0, [lx, lz] = local(x - box.x0, z - box.z0), moved = [];
+        if (d === 0) continue;
         for (let ly = 0; ly < sy; ly++) {
             let own, placed;
             try { own = template.getBlockPermutation({ x: lx, y: ly, z: lz }); } catch (e) { return; }
@@ -7689,7 +7899,7 @@ system.runInterval(() => {
         if (!piece) return false;
         const box = boxOf(x, y, z, r % 2 ? [piece.size[2], piece.size[1], piece.size[0]] : piece.size);
         if (!boxLoaded(dim, box)) return true;
-        placeJigsawPiece(dim, key, r, box, (fit ?? 0) & 3, !!((fit ?? 0) & JIGSAW_CARVE));
+        placeJigsawPiece(dim, key, r, box, (fit ?? 0) & ~JIGSAW_CARVE, !!((fit ?? 0) & JIGSAW_CARVE));
         return false;
     });
     if (left.length !== pending.length) world.setDynamicProperty(JIGSAW_PENDING, left.length ? JSON.stringify(left) : undefined);
@@ -7813,7 +8023,8 @@ function snapshot(entity) {
 const KEPT = ["cobblemon:ivs", "cobblemon:evs", "cobblemon:nature", "cobblemon:mint", "cobblemon:friendship", "cobblemon:ability", "cobblemon:held",
     "cobblemon:gender", "cobblemon:caught_ball", "cobblemon:markings", "cobblemon:marks", "cobblemon:active_mark", "cobblemon:benched", "cobblemon:fullness", "cobblemon:blocks_traveled",
     "cobblemon:gimmighoul_coins", "cobblemon:gimmighoul_netherite", "cobblemon:ride_boosts", "cobblemon:status", "cobblemon:scale",
-    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress", "cobblemon:region_bias"];
+    "cobblemon:ot", "cobblemon:friendship_by", "cobblemon:cosmetic", "cobblemon:alpha", "cobblemon:progress", "cobblemon:region_bias",
+    "cobblemon:tradeable", "cobblemon:uncatchable", "cobblemon:labels", "cobblemon:held_hidden"];   // PokemonProperties' tradeable, uncatchable, label and held_item_visible
 // Pokemon.markings: six markings, each 0 (off) or one of two colours, cycled by the Summary's MarkingsWidget
 const MARKINGS = "cobblemon:markings";
 
@@ -7834,7 +8045,7 @@ const variantOf = (e) => { try { return e?.getComponent("minecraft:variant")?.va
 function pcInfo(v, rec, entity) {
     const typeId = rec?.t ?? entity?.typeId, info = POKEMON[typeId];
     for (let i = 0; i < 6; i++) { v[`mark${i}`] = "n"; v[`sv${i}`] = ""; }   // no Pokemon chosen, no markings or stats shown
-    if (!info) { Object.assign(v, { portrait: "i----", gender: "o", ball: "b--", type1: "t--", type2: "t--" }); return; }
+    if (!info) { Object.assign(v, { portrait: "i----", gender: "o", ball: "b--", type1: "t--", type2: "t--", shiny: "n", status: "non" }); return; }
     const kept = (key) => (rec ? rec.k?.[key] : prop(entity, key));
     const marks = String(kept(MARKINGS) ?? "000000");
     for (let i = 0; i < 6; i++) v[`mark${i}`] = marks[i] ?? "0";
@@ -7851,6 +8062,9 @@ function pcInfo(v, rec, entity) {
     const tag = rec ? rec.n : (nicknameOf(entity));
     Object.assign(v, {
         level: num(level), name: tag || form.name, portrait: iconOf(typeId, variant),
+        // PCGUI's shiny icon and status bar for the chosen Pokemon
+        shiny: (SHINY_VARIANTS[typeId] ?? []).includes(variant) ? "y" : "n",
+        status: kept(FAINTED) ? "fnt" : (() => { try { const st = JSON.parse(kept(STATUS) ?? "null"); return st && st.left > 0 ? st.s : "non"; } catch (e) { return "non"; } })(),
         gender: { male: "m", female: "f" }[kept("cobblemon:gender")] ?? "o", ball: `b${String(Math.max(0, ball)).padStart(2, "0")}`,
         type1: typeCode(form.types[0]), type2: typeCode(form.types[1]),
         nature: natureName(kept("cobblemon:mint") ?? kept("cobblemon:nature")), ability: abilityName(kept("cobblemon:ability") ?? form.ability),
@@ -7876,21 +8090,22 @@ function alphaScale(typeId) {
 function makeAlpha(e, quiet = false) {
     if (!e?.isValid || !POKEMON[e.typeId] || isAlpha(e)) return;
     setProp(e, ALPHA, true);
+    // pokemon_non_party.json: a wild alpha retaliates whatever its species does (port.py's alpha_retaliate_group)
+    if (prop(e, OWNER) === undefined) try { e.triggerEvent("cobblemon:alpha_retaliate"); } catch (err) { }
     const mark = "cobblemon:mark_alpha";
     if (MARKS[mark] && !marksOf(e).includes(mark)) setProp(e, MARK_LIST, JSON.stringify([...marksOf(e), mark]));
     setProp(e, ACTIVE_MARK, mark);
     const info = POKEMON[e.typeId], level = prop(e, LEVEL) ?? info.level;
-    setProp(e, MOVESET, JSON.stringify(alphaMoves(info, level)));
+    setProp(e, MOVESET, JSON.stringify(alphaMoves(info, level, e.typeId)));
     showScale(e);
     if (!quiet) try { e.dimension.spawnParticle("cobblemon:statup_actor", e.location); } catch (err) { }
 }
-// moveset_builders/alpha: the last damaging moves learnt by level first (the strongest), then the last others
-function alphaMoves(info, level) {
-    const learned = [];
-    for (const [at, id] of info.learnset ?? []) if (at <= level && MOVES[id] && !learned.includes(id)) learned.push(id);
-    const damaging = learned.filter((id) => MOVES[id].power).sort((a, b) => MOVES[b].power - MOVES[a].power).slice(0, 2);
-    const rest = learned.filter((id) => !damaging.includes(id)).slice(-(4 - damaging.length));
-    const moves = [...damaging, ...rest].slice(0, 4);
+// moveset_builders/alpha.json (DefaultMovesetBuilder, MoveSelector): slot 1 the last suitable offensive move it has learnt
+// by level (physical when its base Attack is the higher, special when Sp. Atk is), slot 2 the last offensive one, slots 3
+// and 4 TM moves the species learns by no level, each picked by move_weights.json and falling back to the last level-up move
+function alphaMoves(info, level, typeId) {
+    const tmMoves = (TM_SPECIES[typeId] ?? []).map((n) => TMS[n]?.[0]).filter((id) => MOVES[id]);
+    const moves = buildMoveset(ALPHA_SLOTS, { learnset: info.learnset ?? [], level, tmMoves, moves: MOVES, atk: info.stats?.atk ?? 0, spa: info.stats?.spa ?? 0 });
     return moves.length ? moves : movesAt(info, level);
 }
 function rollAlpha(e, oneIn) { if (oneIn > 0 && Math.floor(Math.random() * oneIn) === 0) makeAlpha(e); }
@@ -7911,7 +8126,7 @@ system.runInterval(() => {
             if (!level) continue;
             alphaMatched.set(e.id, player.id);
             setProp(e, LEVEL, level); setProp(e, EXP, expFor(POKEMON[e.typeId].expGroup, level));
-            setProp(e, MOVESET, JSON.stringify(alphaMoves(POKEMON[e.typeId], level)));
+            setProp(e, MOVESET, JSON.stringify(alphaMoves(POKEMON[e.typeId], level, e.typeId)));
             try { e.dimension.spawnParticle("cobblemon:statup_actor", { x: e.location.x, y: e.location.y + 1, z: e.location.z }); } catch (err) { }
             try { const cry = POKEMON[e.typeId]?.cry; if (cry) e.dimension.playSound(cry, e.location, { pitch: 0.92, volume: 1.5 }); } catch (err) { }   // AlphaCrySoundInstance
         }
@@ -8212,10 +8427,16 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
         }
     });
 });
-world.afterEvents.playerInteractWithBlock.subscribe(({ player, block, itemStack }) => {
+world.afterEvents.playerInteractWithBlock.subscribe(({ player, block, itemStack, blockFace }) => {
     if (block?.typeId !== "cobblemon:saccharine_log" || itemStack?.typeId !== "minecraft:honey_bottle") return;
-    const dir = ["south", "west", "north", "east"][Math.floor((((player.getRotation().y + 45) % 360) + 360) % 360 / 90)];
-    const facing = { south: "north", west: "east", north: "south", east: "west" }[dir];   // the honey faces the player
+    // SaccharineLogBlock.useItemOn: only a standing log (axis y) takes honey, on the side clicked, and not a side that
+    // water touches
+    let axisFace = "up"; try { axisFace = block.permutation.getState("minecraft:block_face") ?? "up"; } catch (e) { }
+    if (axisFace !== "up" && axisFace !== "down") return;
+    const facing = String(blockFace ?? "").toLowerCase();
+    if (!(facing in POT_STEPS)) return;
+    let front; try { front = block.dimension.getBlock({ x: block.x + POT_STEPS[facing][0], y: block.y, z: block.z + POT_STEPS[facing][1] }); } catch (e) { }
+    if (front?.isLiquid) return;
     try {
         block.setPermutation(BlockPermutation.resolve("cobblemon:saccharine_log_slathered", { "minecraft:cardinal_direction": facing, "cobblemon:honey_type": Math.floor(Math.random() * 6) }));
     } catch (e) { return; }
@@ -8381,13 +8602,14 @@ function wallpapersOf(player) {
     const unlocked = jsonProp(player, WALLS_UNLOCKED, []);
     return PC_WALLPAPERS.filter(([, unlock]) => !unlock || unlocked.includes(unlock));
 }
-function unlockWallpaper(player, unlock) {
+function unlockWallpaper(player, unlock, playSound = true) {
     const unlocked = jsonProp(player, WALLS_UNLOCKED, []);
     if (unlocked.includes(unlock)) return;
     unlocked.push(unlock); player.setDynamicProperty(WALLS_UNLOCKED, JSON.stringify(unlocked));
     const unseen = jsonProp(player, WALLS_UNSEEN, []); unseen.push(unlock); player.setDynamicProperty(WALLS_UNSEEN, JSON.stringify(unseen));
     player.sendMessage(`§eWallpaper Unlocked §7"${WALL_NAMES[unlock] ?? unlock}"`);
-    try { player.playSound("cobblemon.pc.wallpaper.unlock"); } catch (e) { }
+    hudToast(player, "textures/blocks/cobblemon/block/functional/pc", "Wallpaper Unlocked", `"${WALL_NAMES[unlock] ?? unlock}"`, 100);   // PCStore's toast, 5 seconds
+    if (playSound) try { player.playSound("cobblemon.pc.wallpaper.unlock"); } catch (e) { }
 }
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
@@ -8706,6 +8928,7 @@ function release(player, n, slot, done) {
 // lists the player's PC Pokemon to send out and the ones it already has to bring back; a PC slot that is out shows
 // as pastured and cannot be withdrawn or released until it is back. Breaking the pasture brings them all back.
 const PASTURE_LIMIT = 16, PASTURE_SLOT = "cobblemon:pc_slot", PASTURE_AT = "cobblemon:pasture", OWNER_NAME = "cobblemon:owner_name";
+const pastureViewers = new Map();   // player id -> the pasture block whose screen they have open (PastureLinkManager's links)
 
 // PokemonPastureBlockEntity.canAddPokemon's crowding limit: no more go out while the 32 block square round the pasture
 // (pastureMaxWanderDistance wide, at any height) holds pastureMaxPerChunk (4) Pokemon for each of its 4 by 4 chunks
@@ -8865,7 +9088,7 @@ function predationOn() { return world.getDynamicProperty(PREDATION) !== false; }
 function predation() {
     if (!predationOn()) { hunting.clear(); return; }
     for (const dim of ["overworld", "nether", "the_end"]) {
-        for (const [type, [targets, range, chance]] of Object.entries(PREDATORS)) {
+        for (const [type, [targets, range, chance, need]] of Object.entries(PREDATORS)) {
             let hunters = [];
             try { hunters = world.getDimension(dim).getEntities({ type }); } catch (e) { continue; }
             for (const e of hunters) {
@@ -8874,7 +9097,7 @@ function predation() {
                 if (!foe?.isValid || battling(foe) || prop(foe, FAINTED) || dist(foe, e) > range) {
                     hunting.delete(e.id);
                     let near = [];
-                    try { near = e.dimension.getEntities({ location: e.location, maxDistance: range, families: ["pokemon"] }).filter((o) => targets.includes(o.typeId) && !battling(o)); } catch (err) { }
+                    try { near = e.dimension.getEntities({ location: e.location, maxDistance: range, families: ["pokemon"] }).filter((o) => targets.includes(o.typeId) && !battling(o) && (need !== "air_above" || airAbove(o))); } catch (err) { }   // TargetEntityTaskConfig: Pidgeotto's beached Magikarp
                     foe = near.sort((a, b) => dist(a, e) - dist(b, e))[0];
                     if (!foe || (chance < 1 && Math.random() >= chance)) continue;
                     hunting.set(e.id, foe.id);
@@ -8912,6 +9135,9 @@ function openPasture(block, player, state) {
     const shown = here.slice(0, PASTURE_LIMIT);
     const body = PC_LAYOUT.map(([k, width]) => (width ? padBytes(v[k] ?? "", width) : v[k] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pasture").body(body);
+    // the lamp is lit while a player within 5 blocks has the screen open (the TICKER's getInRangeViewerCount), as the PC's is;
+    // storage_npc.js follows the viewers' distance, and the paths below that close the screen put it out
+    setPastureLamp(block, true); pastureViewers.set(player.id, block);
     for (let n = 0; n < 30; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
     form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("exit", `${PC_UI}/summary/exit`);
     form.button("recall", `${PC_UI}/pc/recall_all`);
@@ -8933,7 +9159,7 @@ function openPasture(block, player, state) {
         form.button(e ? "defend" : "", can ? `${PC_UI}/pc/def_${prop(e, CONFLICT) ? "y" : "n"}` : `${PC_UI}/pc/none`);   // empty text: no row
     }
     form.show(player).then((r) => {
-        if (r.canceled || r.selection === 32) return;
+        if (r.canceled || r.selection === 32) { pastureViewers.delete(player.id); setPastureLamp(block, false); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPasture(block, player, state), delay);
         if (pick >= 50 && pick < 50 + PASTURE_LIMIT) {
             const e = shown[pick - 50];
@@ -8968,7 +9194,7 @@ function openPasture(block, player, state) {
         }
         if (!send) { again(); return; }
         if (here.length >= PASTURE_LIMIT) { player.sendMessage(`§cThis pasture already has ${PASTURE_LIMIT} Pokemon.`); again(); return; }
-        if (pastureCrowded(block)) { player.onScreenDisplay.setActionBar("§cThere are too many Pokémon nearby."); return; }
+        if (pastureCrowded(block)) { player.onScreenDisplay.setActionBar("§cThere are too many Pokémon nearby."); pastureViewers.delete(player.id); setPastureLamp(block, false); return; }
         const pcBox = box(player, send.box), rec = pcBox[send.slot];
         state.sel = null;
         if (!rec || rec.p) { again(); return; }
@@ -8995,7 +9221,6 @@ function recall(player, entity, block) {
     player.sendMessage(`§a${describe(contents[slot])} is back in Box ${n + 1}.`);
     recallEffect(player, entity, () => {
         try { entity.remove(); } catch (e) { }
-        if (block && !pasturedHere(block.dimension, pastureKey(block), block.location).filter((e) => e.isValid).length) setPastureLamp(block, false);
     });
 }
 
@@ -9187,8 +9412,9 @@ function getDrops(table) {
 }
 function wildDrops(e, battle) {
     try {
-        if (!POKEMON[e.typeId] || prop(e, OWNER) !== undefined) return;
-        const table = POKEMON[e.typeId].drops, at = { ...e.location, y: e.location.y + 0.5 };
+        if (!POKEMON[e.typeId] || prop(e, OWNER) !== undefined || !ruleOn("doPokemonLoot")) return;   // the doPokemonLoot game rule
+        // the spawn entry's own table where it had one (PokemonSpawnDetail.drops), else the species'
+        const table = entryDrops(e) ?? POKEMON[e.typeId].drops, at = { ...e.location, y: e.location.y + 0.5 };
         const held = prop(e, "cobblemon:held");
         if (held) e.dimension.spawnItem(new ItemStack(held, 1), at);
         if (!table) return;
@@ -9218,6 +9444,13 @@ function spawnAllowed(spawn, cast, bobber, tags) {
     if (spawn.maxLureLevel !== undefined && cast.lure > spawn.maxLureLevel) return false;
     if (spawn.minY !== undefined && at.y < spawn.minY) return false;
     if (spawn.maxY !== undefined && at.y > spawn.maxY) return false;
+    // minX and maxX (Shellos' seas by hemisphere), and the block light (Venonat by a light, Misdreavus in the dark)
+    if ((spawn.minX !== undefined || spawn.maxX !== undefined) && !inBounds(at.x, [spawn.minX, spawn.maxX])) return false;
+    if (spawn.minLight !== undefined || spawn.maxLight !== undefined) {
+        let light;
+        try { light = bobber.dimension.getLightLevel({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) }); } catch (e) { }
+        if (light !== undefined && !inBounds(light, [spawn.minLight, spawn.maxLight])) return false;
+    }
     if (spawn.minSkyLight !== undefined || spawn.maxSkyLight !== undefined) {
         let sky;
         try { sky = bobber.dimension.getSkyLightLevel(at); } catch (e) { }
@@ -9336,7 +9569,19 @@ function spawnSpot(dim, c, radius, pos = "grounded") {
         }
     }
 }
-const snackSpot = (block) => spawnSpot(block.dimension, block.location, SNACK_RADIUS);
+// where a snack's draw comes: its spawner's zone is 8 blocks each way (FixedAreaSpawner, PokeSnackBlockEntity.RADIUS),
+// and Cobblemon resolves every position in it, so a column under water at the snack's height gives one of its water
+// positions (a seafloor, submerged, the surface, as the spawner's spot does: a snack on a dock draws Tentacool), else
+// the ground within the radius
+function snackWhere(block) {
+    const dim = block.dimension, at = block.location;
+    for (let n = 0; n < 6; n++) {
+        const where = spawnerSpot(dim, { x: at.x + ri(-SNACK_RADIUS, SNACK_RADIUS), y: at.y, z: at.z + ri(-SNACK_RADIUS, SNACK_RADIUS) });
+        if (where && where.pos !== "grounded" && where.pos !== "lava" && Math.abs(where.spot.y - at.y) <= SNACK_RADIUS + 1) return where;
+    }
+    const spot = spawnSpot(dim, at, SNACK_RADIUS);
+    return spot && { spot, ground: { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, pos: "grounded" };
+}
 function eatSnack(block) {
     const dim = block.dimension, at = block.location, bites = block.permutation.getState("cobblemon:bites") + 1;
     try { dim.playSound("random.eat", at); } catch (e) { }
@@ -9352,18 +9597,21 @@ function snackTick(block) {
     rec.t = snackTicks(effects); all[key] = rec; saveSnackRecords(all);
     const centre = { x: at.x + 0.5, y: at.y + 0.5, z: at.z + 0.5 };
     if (!dim.getPlayers({ location: centre, maxDistance: 64 }).length) return "no player within 64";
-    let wild = [];
-    try { wild = dim.getEntities({ families: ["pokemon"], location: centre, maxDistance: SNACK_RADIUS + 4 }).filter((e) => prop(e, OWNER) === undefined); } catch (e) { }
-    if (wild.length >= 2) return "two wild Pokemon about it already";
-    const spot = snackSpot(block);
-    if (!spot) return "no spot to spawn on";
+    // its spawner's cap (Spawner.calculateSpawnActionsForArea): pokeSnackPokemonPerChunk, 2, over the 3 by 3 chunks about it
+    try {
+        const cx = Math.floor(at.x / 16) * 16, cz = Math.floor(at.z / 16) * 16;
+        if (dim.getEntities({ families: ["pokemon"], location: { x: cx - 16, y: -64, z: cz - 16 }, volume: { x: 48, y: 384, z: 48 } }).length >= SNACK_PER_AREA) return `${SNACK_PER_AREA} Pokemon about it already`;
+    } catch (e) { }
+    const where = snackWhere(block);
+    if (!where) return "no spot to spawn on";
+    const { spot, pos } = where;
     // a snack draws the spawns that need a place too (nearby blocks, the block beneath, a village, a mansion, one of
     // Cobblemon's structures) where the spot offers it, as the spawner it works through tests every condition
     let tags = [];
     try { tags = BIOME_TAGS[dim.getBiome(spot).id] ?? []; } catch (e) { }
-    const place = placeTest(dim, spot, { x: Math.floor(spot.x), y: Math.floor(spot.y) - 1, z: Math.floor(spot.z) }, tags);
-    const pool = place ? SNACK_SPAWNS.filter(place.fits) : SNACK_SPAWNS.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures || sp.vanilla));
-    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot }, pool, SNACK_BUCKETS, true);
+    const place = placeTest(dim, spot, where.ground, tags), atPos = SNACK_SPAWNS.filter((sp) => (sp.pos ?? "grounded") === pos);
+    const pool = place ? atPos.filter(place.fits) : atPos.filter((sp) => !(sp.near || sp.base || sp.village || sp.mansion || sp.structures || sp.vanilla));
+    const cast = { effects, luck: 0, lure: 0 }, plan = planSpawn(cast, { dimension: dim, location: spot, sky: where.sky }, pool, SNACK_BUCKETS, true);
     if (!plan) return "nothing in the pool can spawn here";
     let pokemon;
     try { pokemon = dim.spawnEntity(plan.spawn.entity, spot); } catch (e) { return `spawning ${plan.spawn.entity} failed: ${e}`; }
@@ -9374,6 +9622,7 @@ function snackTick(block) {
             setProp(pokemon, LEVEL, level);
             applyBait(pokemon, cast);
             setProp(pokemon, SNACK_CRUMBED, true);   // PokeSnackBlockEntity.affectSpawn's poke_snack_crumbed
+            markEntryDrops(pokemon, plan.spawn);
         } catch (e) { }
     });
     eatSnack(block);
@@ -9421,6 +9670,7 @@ function herdSeedOf(eventId) {
 function dressHerdMember(e, m) {
     if (m.held && HELD_SET.has(m.held)) setProp(e, HELD, m.held);
     if (m.alpha) makeAlpha(e, true);
+    markEntryDrops(e, m);   // the member's own dropTable (Herdable.dropTable), where it has one
 }
 function herdMemberLevel(m, level) {
     let l = m.level ? Math.min(Math.max(level, m.level[0]), m.level[1]) : level;
@@ -9443,6 +9693,12 @@ function fillHerd(seed, eventId) {
     const fits = (h) => herdFirsts(h).filter((m) => m.entity === seed.typeId && (m.event ?? null) === form);
     const share = (h, ms) => h.weight * ms.reduce((a, m) => a + m.w, 0) / (herdFirsts(h).reduce((a, m) => a + m.w, 0) || 1);
     let options = HERDS.filter((h) => !!h.boss === alpha && fits(h).length);
+    // a herd's moon phase (SpawningCondition.moonPhase: Basculin's stripes each under their own moon, Clefable's alpha herd
+    // under a full one), which the seed's spawn rule cannot test: with every herd the seed could start at the wrong
+    // phase, the seed goes, as Cobblemon would not have spawned it
+    const phase = currentMoonPhase(), underThisMoon = options.filter((h) => moonPhaseOk(h.moonPhase, phase));
+    if (options.length && !underThisMoon.length) { try { seed.remove(); } catch (e) { } return; }
+    options = underThisMoon;
     const here = options.filter((h) => spawnAllowed(h, { effects: [], luck: 0, lure: 0 }, seed, tags));
     if (here.length) options = here;
     if (!options.length) return;
@@ -9515,6 +9771,47 @@ function timedHolds(cond, dimension, at) {
     if ((cond.village || cond.structures) && !((cond.village && villageAt(dimension, at)) || (cond.structures && inStructure(at, cond.structures)))) return false;
     return true;
 }
+// The rest of what a condition asks that a spawn rule cannot test, on the same event (port.py's entry_checks): its
+// anticonditions (SpawnDetail.anticonditions: the spawn's own and one from each preset, any of them holding whole takes
+// the spawn away, every field of the one at once: the wild preset's village with concrete about, a cove's floors between
+// its heights, Stonjourner's henge at dusk), its block light (minLight, maxLight: Venonat by a light at night, Misdreavus
+// in the dark) and its x bounds (minX, maxX: Shellos' East Sea from x 0, its West Sea west of it)
+function entryHolds(entry, dimension, at) {
+    if (entry.anti?.some((a) => antiHolds(a, dimension, at))) return false;
+    if (entry.light) {
+        let light;
+        try { light = dimension.getLightLevel({ x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) }); } catch (e) { }
+        if (light !== undefined && !inBounds(light, entry.light)) return false;
+    }
+    if (entry.x && !inBounds(at.x, entry.x)) return false;
+    return true;
+}
+function antiHolds(a, dimension, at) {
+    if (a.minY !== undefined && at.y < a.minY) return false;
+    if (a.maxY !== undefined && at.y > a.maxY) return false;
+    const x = Math.floor(at.x), y = Math.floor(at.y), z = Math.floor(at.z);
+    if (a.base) {
+        let b;
+        try { b = dimension.getBlock({ x, y: y - 1, z }); } catch (e) { }
+        if (!b || !a.base.includes(b.typeId)) return false;
+    }
+    if (a.maxLight !== undefined) {
+        let light;
+        try { light = dimension.getLightLevel({ x, y, z }); } catch (e) { }
+        if (light === undefined || light > a.maxLight) return false;
+    }
+    if (a.minSkyLight !== undefined || a.maxSkyLight !== undefined) {
+        let sky;
+        try { sky = dimension.getSkyLightLevel({ x, y, z }); } catch (e) { }
+        if (sky === undefined || !inBounds(sky, [a.minSkyLight, a.maxSkyLight])) return false;
+    }
+    if (a.canSeeSky !== undefined) {
+        let sees = true;
+        try { const top = dimension.getTopmostBlock({ x, z }); sees = !top || top.location.y <= y; } catch (e) { }
+        if (sees !== a.canSeeSky) return false;
+    }
+    return timedHolds(a, dimension, at);   // its time, weather, moon, blocks nearby, minLight, village and structures
+}
 function multipliedSpawn(entry, dimension, at) {
     const now = entry.wm.reduce((m, [mult, cond]) => (timedHolds(cond, dimension, at) ? m * mult : m), 1);
     return now / entry.top;
@@ -9526,9 +9823,12 @@ function spawnEvent(entity, eventId) {
         if (!entry) return;
         let at;
         try { at = entity.location; } catch (e) { return; }
-        if (Math.random() >= multipliedSpawn(entry, entity.dimension, at)) system.run(() => { try { if (entity.isValid) entity.remove(); } catch (e) { } });
-        // kept: what the condition's own event asked of the script (a herd seed's herd, a slime chunk's check)
-        else if (entry.was) spawnEvent(entity, entry.was);
+        if (Math.random() >= multipliedSpawn(entry, entity.dimension, at) || !entryHolds(entry, entity.dimension, at)) system.run(() => { try { if (entity.isValid) entity.remove(); } catch (e) { } });
+        else {
+            markEntryDrops(entity, entry);   // the condition's own drop table (PokemonSpawnDetail.drops), where it has one
+            // kept: what the condition's own event asked of the script (a herd seed's herd, a slime chunk's check)
+            if (entry.was) spawnEvent(entity, entry.was);
+        }
     }
     else if (eventId.startsWith("cobblemon:herd_seed")) system.run(() => fillHerd(entity, eventId));
     else if (eventId === "cobblemon:spawn_slime_chunk") system.run(() => {
@@ -9693,6 +9993,7 @@ function spawnDrawn(dim, drawn, spot) {
     system.run(() => {
         try {
             if (drawn.event) pokemon.triggerEvent(drawn.event);
+            markEntryDrops(pokemon, drawn);
             if (drawn.herd) fillHerd(pokemon, drawn.event ? `cobblemon:herd_seed_${drawn.event.slice("cobblemon:spawn_form_".length)}` : "cobblemon:herd_seed");
         } catch (e) { }
     });
@@ -9755,7 +10056,7 @@ function checkSpawns(player, bucket) {
         return `§f${name}: ${colour(p)}${Number(p.toFixed(2))}%`;
     }).join("§f, ");
 }
-system.runInterval(() => { for (const player of world.getPlayers()) specialSpawn(player); }, 20);
+system.runInterval(() => { if (ruleOn("doPokemonSpawning")) for (const player of world.getPlayers()) specialSpawn(player); }, 20);
 // PokeSnackBlock.playerEat: a Poke Cake (not a lure) is eaten a bite at a time like a cake, by a player who is hungry,
 // two hunger a bite (saturation for a tick gives it), gone after its ninth
 // PokeSnackBlock's candle, on the Poke Cake: a candle (any of the 17) goes on top of one without, flint and steel or a
@@ -9858,6 +10159,12 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
     if (key in all) { delete all[key]; saveSnackRecords(all); }
 });
 
+// whether the bobber sees the sky (FishingHook's canSeeSky), told once as it lands, and whether it rains on it
+// (isRainingAt: raining, under the open sky): the wait and the fish's approach run by them (spawn_checks.js, fishStep)
+function bobberSky(bobber) {
+    try { const b = bobber.location, top = bobber.dimension.getTopmostBlock({ x: b.x, z: b.z }); return !top || top.location.y <= b.y + 1; } catch (e) { return true; }
+}
+const rainOnBobber = (cast) => cast.sky !== false && weatherIn(cast.bobber.dimension) !== "Clear";
 function castRod(player, item) {
     const eye = player.getHeadLocation(), d = player.getViewDirection();
     let bobber;
@@ -9925,6 +10232,8 @@ function reel(cast) {
     if (cast.phase !== "bite" || !bobber.isValid) { endCast(cast); return; }
     const at = { ...bobber.location }, dim = bobber.dimension;
     endCast(cast);
+    // the roll said Pokemon and none could bite here: fishing.no_bite, and the rod is not worn (retrieve returns 0)
+    if (cast.noBite) { player.sendMessage(`§c${NO_BITE_TEXT}`); return; }
     damageRod(player);
     if (cast.catch) {
         const { spawn } = cast.catch;
@@ -9933,7 +10242,7 @@ function reel(cast) {
         const level = ri(spawn.level[0], spawn.level[1]);
         system.run(() => {
             try {
-                setProp(pokemon, LEVEL, level); setProp(pokemon, "cobblemon:fished", true);
+                setProp(pokemon, LEVEL, level); setProp(pokemon, "cobblemon:fished", true); markEntryDrops(pokemon, spawn);
                 applyBait(pokemon, cast);
                 if ((POKEMON[spawn.entity]?.weight ?? 0) < 900) {   // lighter than 90 kg: pulled to the player
                     const p = player.location, dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz) || 1;
@@ -9944,14 +10253,17 @@ function reel(cast) {
         player.sendMessage(`§bYou fished up a wild ${POKEMON[spawn.entity]?.name ?? "Pokemon"}! §7(Lv ${level})`);
         consumeRodBait(player);
         register(player, spawn.entity, 1);
+        // a second after the reel-in the Pokemon on the line turns on the angler (spawnPokemonFromFishing: forceBattle)
+        system.runTimeout(() => { try { if (pokemon?.isValid && player.isValid) startBattle(player, pokemon); } catch (e) { } }, 20);
         try { player.dimension.playSound("cobblemon.fishing.splash_big", at); } catch (e) { }
         return;
     }
     // an item: the Poke Rod table
-    const p = player.location, roll = Math.random() * 100;
+    // (junk 66, the two treasure tables 17 each; treasure only with the bobber in open water, in_open_water)
+    const p = player.location, loot = rodLoot(isOpenWater(dim, at), Math.random() * 100);
     try {
-        if (roll < 66) dim.runCommand(`loot spawn ${p.x} ${p.y} ${p.z} loot "gameplay/fishing/junk"`);
-        else if (roll < 83) dim.spawnItem(new ItemStack(ROD_TREASURE[Math.floor(Math.random() * ROD_TREASURE.length)], 1), p);
+        if (loot === "junk") dim.runCommand(`loot spawn ${p.x} ${p.y} ${p.z} loot "gameplay/fishing/junk"`);
+        else if (loot === "cobblemon") dim.spawnItem(new ItemStack(ROD_TREASURE[Math.floor(Math.random() * ROD_TREASURE.length)], 1), p);
         else {
             dim.runCommand(`loot spawn ${p.x} ${p.y} ${p.z} loot "gameplay/fishing/treasure"`);
             if (Math.random() < 0.167) dim.spawnItem(new ItemStack("cobblemon:pokerod_smithing_template", 1), p);
@@ -9980,19 +10292,22 @@ system.runInterval(() => {
         const b = bobber.location, p = player.location;
         if (Math.hypot(b.x - p.x, b.y - p.y, b.z - p.z) > 32) { endCast(cast); continue; }
         drawLine(cast);
-        if (cast.phase === "flying") { if (bobber.isInWater) { cast.phase = "waiting"; try { bobber.dimension.playSound("cobblemon.fishing.bobber_land", b); } catch (e) { } } else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
+        if (cast.phase === "flying") { if (bobber.isInWater) { cast.phase = "waiting"; cast.sky = bobberSky(bobber); try { bobber.dimension.playSound("cobblemon.fishing.bobber_land", b); } catch (e) { } } else if (cast.age > 100 && bobber.isOnGround) endCast(cast); continue; }
         if (cast.phase === "waiting") {
-            cast.wait -= 1 + cast.lure;
+            cast.wait -= fishStep(rainOnBobber(cast), cast.sky !== false) + cast.lure;
             if (cast.wait <= 0) { cast.phase = "travel"; cast.travel = ri(20, 80); }
         } else if (cast.phase === "travel") {
-            if (--cast.travel <= 0) {
+            cast.travel -= fishStep(rainOnBobber(cast), cast.sky !== false);
+            if (cast.travel <= 0) {
                 const chances = cast.effects.filter((e) => e.t === "pokemon_chance");
                 const chance = chances.length ? chances[Math.floor(Math.random() * chances.length)].chance * 100 : 85;
-                cast.catch = Math.random() * 100 < chance ? planSpawn(cast, bobber) : null;
+                const pokemonBite = Math.random() * 100 < chance;
+                cast.catch = pokemonBite ? planSpawn(cast, bobber) : null;
+                cast.noBite = pokemonBite && !cast.catch;   // nothing in the pool can bite here: the reel brings "Not even a nibble."
                 if (cast.catch) {
                     const w = cast.catch.bucketWeight;
                     cast.hook = ri(Math.max(15, Math.min(20, Math.floor(15 + 0.05 * w))), Math.max(20, Math.min(40, Math.floor(20 + 0.2 * w))));
-                } else cast.hook = ri(20, 40);
+                } else cast.hook = cast.noBite ? ri(NO_BITE_HOOK[0], NO_BITE_HOOK[1]) : ri(20, 40);
                 cast.phase = "bite";
                 try {
                     bobber.teleport({ x: b.x, y: b.y - 0.25, z: b.z });
@@ -10002,7 +10317,7 @@ system.runInterval(() => {
                 } catch (e) { }
             }
         } else if (cast.phase === "bite") {
-            if (--cast.hook <= 0) { cast.phase = "waiting"; cast.wait = baitWait(cast, ri(100, 600)); cast.catch = null; }
+            if (--cast.hook <= 0) { cast.phase = "waiting"; cast.wait = baitWait(cast, ri(100, 600)); cast.catch = null; cast.noBite = false; }
         }
         if (cast.phase === "bite" && cast.hook % 5 === 0) {
             try { bobber.dimension.spawnParticle("minecraft:water_splash_particle_manual", { x: b.x, y: b.y + 0.1, z: b.z }); } catch (e) { }
@@ -10177,13 +10492,72 @@ function dexEvolution(v, s, id, aspect, state) {
     return evo;
 }
 
+// MovesLearnsetWidget's learnset (buildLearnsetEntries): the level-up moves by level, then the TMs it can learn and its
+// egg moves by name, each move once. A level-up move is discovered once a Pokemon of the species the player keeps has
+// reached its level (standing in for the dex's highest level met), a TM move once its TM is unlocked or a default one,
+// an egg move always; an undiscovered move reads ???. LearnsetCategory filters All, Level, TM and Egg, LearnsetSort
+// orders by level, name, type or discovered, four rows a page where Cobblemon's list scrolls, and the chosen move's
+// PP, power, accuracy, effect and description fill the info box (renderDataSection), a dash while undiscovered
+const DEX_MOVE_PAGE = 4, DEX_MOVE_SORTS = ["level", "name", "type", "discovered"], DEX_MOVE_FILTERS = ["All", "Level", "TM", "Egg"];
+function dexLearnset(species, id, unlocked, top) {
+    const entries = new Map(), byName = (a, b) => MOVES[a].name.localeCompare(MOVES[b].name);
+    const tmUnlocked = (move) => { const k = TM_BY_MOVE.get(move); return k !== undefined && (TMS[k][2] === "default" || unlocked.has(move)); };
+    const add = (move, source, level, discovered) => {
+        if (MOVES[move] && !entries.has(move)) entries.set(move, { id: move, source, level, discovered, tm: TM_BY_MOVE.get(move), tmUnlocked: tmUnlocked(move) });
+    };
+    for (const [at, move] of [...(species.learnset ?? [])].sort((a, b) => a[0] - b[0])) add(move, "Level", at, at <= top);
+    for (const move of (TM_SPECIES[id] ?? []).map((k) => TMS[k][0]).filter((m) => MOVES[m]).sort(byName)) add(move, "TM", null, tmUnlocked(move));
+    for (const move of (species.egg ?? []).filter((m) => MOVES[m]).sort(byName)) add(move, "Egg", null, true);
+    return [...entries.values()];
+}
+function dexSortMoves(entries, sort) {
+    const name = (e) => MOVES[e.id].name, level = (e) => e.level ?? 1000;
+    return [...entries].sort((a, b) => {
+        if (sort === "name") return name(a).localeCompare(name(b));
+        if (sort === "type") return MOVES[a.id].type.localeCompare(MOVES[b.id].type) || name(a).localeCompare(name(b));
+        if (sort === "discovered") return (b.discovered ? 1 : 0) - (a.discovered ? 1 : 0) || level(a) - level(b) || name(a).localeCompare(name(b));
+        return level(a) - level(b) || name(a).localeCompare(name(b));
+    });
+}
+// the Moves tab's fields, and the page shown (its entries, for the row buttons)
+function dexMoves(v, state, species, id, unlocked, top) {
+    state.msort ??= "level"; state.mfilter ??= 0; state.movePage ??= 0;
+    const all = dexLearnset(species, id, unlocked, top);
+    const filtered = dexSortMoves(all.filter((e) => state.mfilter === 0 || e.source === DEX_MOVE_FILTERS[state.mfilter]), state.msort);
+    const pages = Math.max(1, Math.ceil(filtered.length / DEX_MOVE_PAGE));
+    state.movePage %= pages;
+    const page = filtered.slice(state.movePage * DEX_MOVE_PAGE, (state.movePage + 1) * DEX_MOVE_PAGE);
+    v.mcat = `§l${DEX_MOVE_FILTERS[state.mfilter]}`;
+    page.forEach((e, r) => Object.assign(v, {
+        [`r${r}name`]: `§l${e.discovered ? MOVES[e.id].name : "???"}`, [`r${r}cat`]: `§l${e.source === "Level" ? `Lv. ${e.level}` : e.source}`,
+        [`r${r}type`]: typeCode(MOVES[e.id].type), [`r${r}tm`]: e.tm === undefined ? "n" : e.tmUnlocked ? "d" : "u", [`r${r}sel`]: state.msel === e.id ? "y" : "n",
+    }));
+    const chosen = all.find((e) => e.id === state.msel), mv = chosen?.discovered ? MOVES[chosen.id] : null;
+    Object.assign(v, {
+        mname: mv ? mv.name : "-", mpp: mv ? num(`${mv.pp} PP`) : "", mcatc: mv ? categoryCode(mv) : "c--",
+        mpow: mv && mv.power > 0 ? num(mv.power) : "-", macc: mv ? (mv.accuracy === true || !mv.accuracy ? "-" : num(`${mv.accuracy}%%`)) : "-",
+        meff: mv ? (mv.secondary?.chance ? num(`${mv.secondary.chance}%%`) : "-") : "-", mdesc: mv ? MOVE_DESC[chosen.id] ?? "" : "",
+    });
+    return { pages, page };
+}
+// the Moves, Stats and Size tabs' fields at rest: nothing in the rows, the viewport and ball shown, the titles blank
+function dexExtrasDefault(v) {
+    for (let r = 0; r < DEX_MOVE_PAGE; r++) Object.assign(v, { [`r${r}name`]: "", [`r${r}cat`]: "", [`r${r}type`]: "t--", [`r${r}tm`]: "n", [`r${r}sel`]: "n" });
+    Object.assign(v, { vp: "y", mcat: "", mname: "", mpp: "", mcatc: "c--", mpow: "", macc: "", meff: "", mdesc: "", ltitle: "", rtitle: "", sstyle: "", hsz: "z" });
+}
+// SizeWidget's portrait step on the height grid: the player silhouette is 16 pixels for 1.8 blocks, the Pokemon drawn at
+// its height on that scale (and the portrait's framing round it), in twelve steps of 4 pixels from 8
+function dexHeightStep(decimetres) {
+    const px = ((decimetres ?? 0) / 10) * (16 / 1.8) * 1.15;
+    return "abcdefghijkl"[Math.max(0, Math.min(11, Math.round((px - 8) / 4)))];
+}
 function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0, chosen: null, tab: "i" }) {
     if (!state.kept) { registerKept(player); state.kept = true; }
     const s = dexString(player), region = REGIONS[state.region];
     state.by ??= 0;
     // what Undiscovered TM Move reads: the TMs learned and the highest level of each species the player keeps
     const ctx = { learned: learnedTms(player), levels: new Map() };
-    if (state.filter === 4) {
+    if (state.filter === 4 || state.tab === "m") {
         const note = (t, lv) => ctx.levels.set(t, Math.max(ctx.levels.get(t) ?? 0, lv ?? 0));
         for (let b = 0; b < pcBoxes(player); b++) for (const rec of box(player, b)) if (rec?.t) note(rec.t, rec.lv);
         for (const slot of partyOf(player.id)) note(slot.rec.t, slot.rec.lv);
@@ -10209,6 +10583,8 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     }
     const chosen = state.chosen;
     let evo = null;   // the evolution tab's buttons, while it shows a tree
+    let moves = null;   // the Moves tab's page, for its row buttons
+    dexExtrasDefault(v);
     if (chosen !== null) {
         const id = NATIONAL[chosen], st = s[chosen], info = DEX_INFO[id] ?? {}, species = POKEMON[id];
         v.num = num(String(info.n ?? chosen + 1).padStart(4, "0"));
@@ -10229,26 +10605,30 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
             v.line1 = `Abilities: ${(species.abilities ?? [species.ability]).map(abilityName).join(", ")}`;
             v.line2 = species.hidden?.length ? `Hidden: ${species.hidden.map(abilityName).join(", ")}` : "";
         }
-        if (st === "2" && state.tab === "s") for (const k of STAT_KEYS) v[`stat${k}`] = `${STAT_NAMES[k]} ${species.stats[k]}`;
-        // SizeWidget's height and weight (decimetres and hectograms in the species files)
-        if (st === "2" && state.tab === "z") { v.line1 = `Height: ${(info.h ?? 0) / 10}m`; v.line2 = `Weight: ${(info.w ?? 0) / 10}kg`; }
+        if (st === "2" && state.tab === "s") {
+            // StatsWidget: the base stats, or with its arrows the Ride Stats page of a rideable species (RidingProperties:
+            // each behaviour's stat ranges, the sub-arrows turning through them, and the seat count)
+            const rides = RIDES[id] ?? [];
+            if (!rides.length) state.spage = "b";
+            state.ride = (state.ride ?? 0) % Math.max(1, rides.length);
+            if (state.spage === "r") {
+                const [style, icon, ranges, extra] = rides[state.ride], seats = extra?.seats;
+                v.ltitle = "§lRide Stats"; v.rtitle = seats ? `§lSeats: ${seats}` : "";
+                v.sstyle = `${RIDE_STYLE_NAMES[`i${icon}`] ?? cap(style)} | ${cap(style)}`;
+                [["acceleration", "Accel."], ["skill", "Skill"], ["speed", "Speed"], ["stamina", "Stamina"], ["jump", "Jump"], [null, ""]].forEach(([key, label], i) => {
+                    const range = key && ranges?.[key];
+                    v[`stat${STAT_KEYS[i]}`] = range ? `${label} ${range[0]}-${range[1]}` : "";
+                });
+            } else { v.ltitle = "§lStats"; for (const k of STAT_KEYS) v[`stat${k}`] = `${STAT_NAMES[k]} ${species.stats[k]}`; }
+        }
+        // SizeWidget: the weight as its title (decimetres and hectograms in the species files), the height at the right
+        // (dropped on Java, where the grid shows it) and the portrait beside the player silhouette on the height grid
+        if (st === "2" && state.tab === "z") { v.ltitle = `§lWeight: ${(info.w ?? 0) / 10}kg`; v.rtitle = `§lHeight: ${(info.h ?? 0) / 10}m`; v.hsz = dexHeightStep(info.h); }
         if (st === "2" && state.tab === "d") v.desc = info.dr?.length ? num(info.dr.join("\n").replace(/%/g, "%%")) : "No drops available.";   // a leading digit reads as a number
-        // MovesLearnsetWidget's learnset: the level-up moves by level, then the TMs it can learn and its egg moves by
-        // name, each move once; a TM the player has not unlocked (and is not a default one) shows as ???. The box holds a
-        // heading and seven rows of two, and the Moves tab, pressed again, turns the page, where Cobblemon's list scrolls
+        // MovesLearnsetWidget over the info widget (dexMoves): the Moves tab, pressed again, turns the page as the arrows do
         if (st === "2" && state.tab === "m") {
-            const seen = new Set(), rows = [], unlocked = learnedTms(player), byName = (a, b) => MOVES[a].name.localeCompare(MOVES[b].name);
-            const add = (move, row) => { if (MOVES[move] && !seen.has(move)) { seen.add(move); rows.push(row(MOVES[move].name)); } };
-            for (const [at, move] of species.learnset ?? []) add(move, (n) => `Lv. ${at} ${n}`);
-            const tms = (TM_SPECIES[id] ?? []).map((k) => TMS[k]).filter((tm) => MOVES[tm[0]]).sort((a, b) => byName(a[0], b[0]));
-            for (const [move, , how] of tms) add(move, (n) => `TM ${how === "default" || unlocked.has(move) ? n : "???"}`);
-            for (const move of (species.egg ?? []).filter((m) => MOVES[m]).sort(byName)) add(move, (n) => `Egg ${n}`);
-            const pages = Math.max(1, Math.ceil(rows.length / DEX_MOVE_ROWS));
-            state.movePage = (state.movePage ?? 0) % pages;
-            const page = rows.slice(state.movePage * DEX_MOVE_ROWS, (state.movePage + 1) * DEX_MOVE_ROWS);
-            const pairs = [];
-            for (let i = 0; i < page.length; i += 2) pairs.push(page.slice(i, i + 2).join("   "));
-            v.desc = rows.length ? [`Moves ${state.movePage + 1}/${pages}${pages > 1 ? " - press Moves again for more" : ""}`, ...pairs].join("\n") : "";
+            moves = dexMoves(v, state, species, id, ctx.learned, ctx.levels.get(id) ?? 0);
+            Object.assign(v, { vp: "n", portrait: "i----", platform: "p--" });
         }
         if (st === "2" && state.tab === "e") evo = dexEvolution(v, s, id, VARIANT_FORMS[id]?.[variant] ?? "", state);
         if (st !== "2") v.line1 = st === "0" ? "Not yet seen." : "Seen, not yet caught.";
@@ -10273,16 +10653,33 @@ function openDex(player, colour = "red", state = { region: 0, page: 0, filter: 0
     form.button("up", `${PC_UI}/pokedex/${evo?.up ? "arrow_up" : "none"}`).button("down", `${PC_UI}/pokedex/${evo?.down ? "arrow_down" : "none"}`);
     for (let n = 0; n < 35; n++) form.button(evo?.nodes[n] ?? "", `${PC_UI}/pokedex/${evo?.nodes[n] !== undefined ? "evo_node" : "none"}`);
     for (let n = 0; n < 21; n++) form.button(evo?.edges[n]?.[1] ?? "", evo?.edges[n]?.[0] || `${PC_UI}/pokedex/none`);
+    // MovesLearnsetWidget's category arrows, sort buttons (their text the tooltip), move slots and page arrows;
+    // StatsWidget's page arrows and the Ride page's behaviour arrows, on a rideable species' Stats tab
+    const movesTab = chosen !== null && s[chosen] === "2" && state.tab === "m", statsTab = chosen !== null && s[chosen] === "2" && state.tab === "s";
+    form.button("", `${PC_UI}/pokedex/${movesTab ? "arrow_up" : "none"}`).button("", `${PC_UI}/pokedex/${movesTab ? "arrow_down" : "none"}`);
+    for (const kind of DEX_MOVE_SORTS) form.button(`Sort by ${kind}`, `${PC_UI}/pokedex/${movesTab ? `sort_${kind}${state.msort === kind ? "_on" : ""}` : "none"}`);
+    for (let r = 0; r < DEX_MOVE_PAGE; r++) form.button("", `${PC_UI}/pokedex/none`);
+    const paged = movesTab && moves?.pages > 1;
+    form.button("", `${PC_UI}/pokedex/${paged ? "arrow_up" : "none"}`).button("", `${PC_UI}/pokedex/${paged ? "arrow_down" : "none"}`);
+    const rideable = statsTab && (RIDES[NATIONAL[chosen]]?.length ?? 0) > 0, rideSub = rideable && state.spage === "r" && RIDES[NATIONAL[chosen]].length > 1;
+    form.button("", `${PC_UI}/pokedex/${rideable ? "sarrow_l" : "none"}`).button("", `${PC_UI}/pokedex/${rideable ? "sarrow_r" : "none"}`);
+    form.button("", `${PC_UI}/pokedex/${rideSub ? "subarrow_l" : "none"}`).button("", `${PC_UI}/pokedex/${rideSub ? "subarrow_r" : "none"}`);
     form.show(player).then((r) => {
         // PokedexGUI's sounds: close as it shuts, click on an entry (EntriesScrollingWidget), click_short on every other
         // button (ScaledButton)
         if (r.canceled) { scanSound(player, "close"); state.onClose?.(); return; }
         const pick = r.selection, again = () => openDex(player, colour, state);
-        if (pick < 50) scanSound(player, pick < 25 ? "click" : "click_short");   // the tree's slots and icons are not buttons on Java
+        if (pick < 50 || pick >= 106) scanSound(player, pick < 25 ? "click" : "click_short");   // the tree's slots and icons are not buttons on Java
         if (pick < 25) { if (shown[pick] !== undefined && shown[pick] !== state.chosen) { state.chosen = shown[pick]; state.form = 0; state.movePage = 0; state.evoPan = 0; } }
         else if (pick === 46) { if (state.tab !== "e") { state.tab = "e"; state.evoPan = 0; } }
         else if (pick === 47) { state.evoExpanded = !state.evoExpanded; state.evoPan = 0; }   // updatePositioning resets the panning
         else if (pick === 48 || pick === 49) state.evoPan = (state.evoPan ?? 0) + (pick === 48 ? -1 : 1);
+        else if (pick === 106 || pick === 107) { state.mfilter = ((state.mfilter ?? 0) + (pick === 107 ? 1 : 3)) % 4; state.movePage = 0; }   // LearnsetCategory
+        else if (pick >= 108 && pick <= 111) { state.msort = DEX_MOVE_SORTS[pick - 108]; state.movePage = 0; }   // LearnsetSort
+        else if (pick >= 112 && pick < 112 + DEX_MOVE_PAGE) { const e = moves?.page[pick - 112]; state.msel = e && state.msel !== e.id ? e.id : null; }   // selectMove
+        else if (pick === 116 || pick === 117) { if (moves) state.movePage = ((state.movePage ?? 0) + (pick === 117 ? 1 : moves.pages - 1)) % moves.pages; }
+        else if (pick === 118 || pick === 119) state.spage = state.spage === "r" ? "b" : "r";   // StatsWidget.switchStatType
+        else if (pick === 120 || pick === 121) { const n = Math.max(1, RIDES[NATIONAL[chosen]]?.length ?? 1); state.ride = ((state.ride ?? 0) + (pick === 121 ? 1 : n - 1)) % n; }
         else if (pick >= 50) { }
         else if (pick === 25 || pick === 26) { state.region = (state.region + (pick === 26 ? 1 : REGIONS.length - 1)) % REGIONS.length; state.page = 0; }
         else if (pick === 27) state.page = (state.page + pages - 1) % pages;
@@ -10412,22 +10809,27 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
 });
 function scanSound(player, name) { try { player.playSound(`cobblemon.item.pokedex.${name}`); } catch (e) { } }
 function scanRecord(st) {
-    if (!st.open) return "of" + "of" + "of" + "of" + "xxxx" + " ".repeat(160) + "nn";
+    if (!st.open) return "of" + "of" + "of" + "of" + "xxxx" + " ".repeat(160) + "nn" + " ".repeat(14) + "n";
     const target = st.target?.isValid ? st.target : null;
     const seg = st.progress > 0 && st.progress >= 20 ? Math.max(0, Math.min(40, Math.floor((st.progress - 20) / 2))) : 40;
-    let sides = "xxxx", texts = Array(8).fill("");
+    let sides = "xxxx", texts = Array(8).fill(""), own = "", caught = "n";
     if (target && st.focus >= 9) {
         const info = POKEMON[target.typeId], owned = st.caught;
-        const lines = [`Lv.${prop(target, LEVEL) ?? info.level}`, info.name, `Size: ${sizeCategory(target)}`, `${info.types.map(cap).join("/")} Type`];
+        // renderInfoFrames: the name with its gender symbol (BattleOverlay's colours), "Alpha" in place of an alpha's size,
+        // "Trainer Owned" small over another trainer's Pokemon and the caught indicator before a caught species' name
+        const gender = { male: "§b♂", female: "§d♀" }[genderOf(target)] ?? "";
+        const lines = [`Lv.${prop(target, LEVEL) ?? info.level}`, `${info.name}${gender}`, isAlpha(target) ? "Alpha" : `Size: ${sizeCategory(target)}`, `${info.types.map(cap).join("/")} Type`];
         sides = st.sides.map((s, k) => (k < 2 || owned ? s : "x")).join("");
         lines.forEach((line, k) => { if (sides[k] !== "x") texts[k * 2 + (sides[k] === "l" ? 0 : 1)] = line; });
+        own = prop(target, OWNER) && prop(target, OWNER) !== st.player?.id ? "Trainer Owned" : "";
+        caught = owned ? "y" : "n";
     }
     const registered = st.registered > 0;
     // frame numbers go as a letter and a digit (scan_code in port.py), since digits alone read as a number
     const code = (n) => String.fromCharCode(97 + Math.floor(n / 10)) + (n % 10);
     const frame = (angle) => code(Math.floor(angle / 15) % 24);
     return "on" + frame(st.usage * 0.5) + frame(st.inner) + code(seg) + sides + texts.map((x) => padBytes(x, 20)).join("")
-        + (registered ? "y" : "n") + (st.progress > 0 && !registered ? "y" : "n") + (registered ? st.regText ?? "Pokémon Registered" : "");
+        + (registered ? "y" : "n") + (st.progress > 0 && !registered ? "y" : "n") + padBytes(own, 14) + caught + (registered ? st.regText ?? "Pokémon Registered" : "");
 }
 world.afterEvents.itemStartUse.subscribe(({ source: player, itemStack }) => {
     if (!itemStack?.typeId.startsWith("cobblemon:pokedex_")) return;
@@ -10649,14 +11051,17 @@ function silkTouch(item) {
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
     const { block, player, itemStack } = event, id = block.typeId;
     if (!id.startsWith("cobblemon:")) return;
-    if (id.endsWith("_leaves") ? itemStack?.typeId !== "minecraft:shears" && !silkTouch(itemStack) : !SILK_BLOCKS.has(id) || !silkTouch(itemStack)) return;
+    // leaves and the terrain plants (Voltaconia and the rest) come whole to shears too
+    if (id.endsWith("_leaves") || TERRAIN_PLANTS.has(id) ? itemStack?.typeId !== "minecraft:shears" && !silkTouch(itemStack) : !SILK_BLOCKS.has(id) || !silkTouch(itemStack)) return;
     event.cancel = true;
     const where = block.location, dim = block.dimension;
     system.run(() => {
         const b = dim.getBlock(where);
         if (b?.typeId !== id) return;
         b.setType("minecraft:air");
-        try { dim.playSound(id.endsWith("_leaves") ? "dig.grass" : "dig.stone", where); } catch (e) { }
+        // a tall plant's other half goes with it (DoublePlantBlock)
+        if (TERRAIN_PLANTS.has(id)) for (const o of [b.above(), b.below()]) if (o?.typeId === id) o.setType("minecraft:air");
+        try { dim.playSound(id.endsWith("_leaves") || TERRAIN_PLANTS.has(id) ? "dig.grass" : "dig.stone", where); } catch (e) { }
         if (player.getGameMode?.() !== "Creative") dim.spawnItem(new ItemStack(id, 1), { x: where.x + 0.5, y: where.y + 0.5, z: where.z + 0.5 });
     });
 });
@@ -10669,6 +11074,8 @@ function fortuneExtra(bonus, level) {
     const base = typeof bonus.base === "object" ? ri(bonus.base.min, bonus.base.max) : bonus.base ?? 1;
     if (bonus.formula === "ore_drops") return base * Math.max(0, Math.floor(Math.random() * (level + 2)) - 1);
     if (bonus.formula === "uniform_bonus_count") return Math.floor(Math.random() * ((bonus.params.bonusMultiplier ?? 1) * level + 1));
+    // a drop only Fortune gives (a match_tool pool: the mints' extra seeds at age 7), from its least level at its pool's chance
+    if (bonus.formula === "fortune_levels") return level >= (bonus.params.min ?? 1) && Math.random() < (bonus.params.chance ?? 1) ? base : 0;
     if (bonus.formula === "binomial_with_bonus_count") {
         let n = 0;
         for (let i = 0; i < level + (bonus.params.extra ?? 0); i++) if (Math.random() < (bonus.params.probability ?? 0.5)) n++;
@@ -11000,7 +11407,10 @@ function registerApricornComponents(registry) {
             if (age !== 3 || (player && holding(player, "minecraft:bone_meal"))) return;
             pickApricorn(block, block.dimension);
             block.setPermutation(block.permutation.withState("cobblemon:age", 0));
-            try { block.dimension.playSound("cobblemon.block.apricorn.harvest", block.location); } catch (e) { }
+            // ApricornBlock.attemptShear: shears pick it with a sheep's shear sound and wear by one
+            const sheared = !!player && holding(player, "minecraft:shears");
+            if (sheared) damageHeld(player);
+            try { block.dimension.playSound(sheared ? "mob.sheep.shear" : "cobblemon.block.apricorn.harvest", block.location); } catch (e) { }
         }
     });
     registry.registerCustomComponent("cobblemon:apricorn_sapling", {
@@ -11026,6 +11436,20 @@ function registerApricornComponents(registry) {
     });
 }
 
+// bone meal on a berry bush (BerryBlock.performBonemeal, growHelper): a stage on, the berry's boneMealChance of the time,
+// until it is ripe, the bone meal used either way as on Java; a bush it ripens rolls its mutation as a random tick's
+// ripening does (determineMutation), so bone-mealed trees mutate too
+function bonemealBerry(block, player) {
+    const bush = BERRIES[block.typeId];
+    if (!bush || !block.isValid) return false;
+    if (player) useBoneMeal(player);
+    try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+    const stage = block.permutation.getState("cobblemon:stage");
+    if (stage >= 3 || Math.random() >= bush.boneMeal) return false;
+    block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1)); scheduleBerry(block, stage + 1);
+    if (stage + 1 === 3) berryMutation(block);
+    return true;
+}
 world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
     const { player, block, itemStack } = event;
     if (itemStack?.typeId !== "minecraft:bone_meal") return;
@@ -11045,17 +11469,10 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
         });
         return;
     }
-    const bush = BERRIES[block.typeId];
-    if (bush) {
+    if (BERRIES[block.typeId]) {
         if (block.permutation.getState("cobblemon:stage") >= 3) return;
         event.cancel = true;
-        system.run(() => {
-            if (!block.isValid) return;
-            useBoneMeal(player);
-            try { block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
-            const stage = block.permutation.getState("cobblemon:stage");
-            if (stage < 3 && Math.random() < bush.boneMeal) { block.setPermutation(block.permutation.withState("cobblemon:stage", stage + 1)); scheduleBerry(block, stage + 1); }
-        });
+        system.run(() => bonemealBerry(block, player));
         return;
     }
     if (!sapling && !fruit) return;
@@ -11085,6 +11502,7 @@ world.afterEvents.playerBreakBlock.subscribe(({ block, brokenBlockPermutation })
 // the Bag button uses medicine on the Pokemon fighting, which costs the turn. Medicine amounts are Cobblemon's
 // (mechanics/potions.json and remedies.json).
 const HELD = "cobblemon:held", HELD_SET = new Set(HELD_ITEMS);
+const ITEM_HIDDEN = "cobblemon:held_hidden";   // Pokemon.heldItemVisible off: the model shows nothing in place of its held item (showHeld reads it)
 
 function heldItem(entity) { return prop(entity, HELD) ?? null; }
 
@@ -11279,6 +11697,7 @@ system.runInterval(() => {
 }, 20);
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const { player, target, itemStack } = event, id = itemStack?.typeId;
+    if (regionalFoodInteract(event)) return;   // RegionalFoodItem: a regional dish cures an owned Pokemon's status (item_behaviours.js)
     if (!id || !POKEMON[target.typeId] || player.isSneaking) return;   // sneaking opens the wheel instead
     if (id === "minecraft:shears" || /_dye$/.test(id) || id === "minecraft:water_bucket") {
         if ((id === "minecraft:shears" && (SHEARABLE.has(target.typeId) || target.typeId === SLOWPOKE)) || COLOURABLE.has(target.typeId)) {
@@ -11295,14 +11714,7 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         const boosts = stackSlot(itemStack)?.[2]?.boosts ?? {};
         if (Object.keys(boosts).length) {
             event.cancel = true;
-            system.run(() => {
-                if (!target.isValid) return;
-                const now = rideBoostsOf(target), most = (k) => Math.max(0, ...RIDES[target.typeId].map(([, , r]) => (r[k.toLowerCase()] ? r[k.toLowerCase()][1] - r[k.toLowerCase()][0] : 0)));
-                if (!Object.entries(boosts).some(([k, v]) => (v < 0 ? (now[k] ?? 0) > 0 : (now[k] ?? 0) < most(k)))) { player.sendMessage("§7It won't have any effect."); return; }
-                for (const [k, v] of Object.entries(boosts)) now[k] = Math.max(0, Math.min(most(k), (now[k] ?? 0) + v));
-                setProp(target, RIDE_BOOSTS, JSON.stringify(now)); feedPokemon(target, 1); consumeHand(player);
-                player.sendMessage(`§a${nicknameOf(target) || POKEMON[target.typeId].name} drank the ${itemStack.nameTag?.replace(/§./g, "") ?? "Aprijuice"}.`);
-            });
+            system.run(() => { if (target.isValid) useAprijuiceOn(player, target, itemStack); });
             return;
         }
     }
@@ -11337,6 +11749,21 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
         useItemOn(player, target, id, itemStack);
     });
 });
+// AprijuiceItem.applyToPokemon: a juice's ride boosts go onto a rideable Pokemon's within each stat's widest range
+// (Pokemon.addRideBoosts), it is fed one and the juice is used up; nothing happens when no stat can move. Used on the
+// Pokemon in the world, or picked for a party member when the juice is used in the air (item_behaviours.js)
+function useAprijuiceOn(player, target, itemStack) {
+    if (!target?.isValid || !RIDES[target.typeId]) { player.sendMessage("§7It won't have any effect."); return false; }
+    // PokemonSelectingItem.canUseOnPokemon: an Aprijuice is Poke food, which a full Pokemon refuses, nothing consumed
+    if (fullnessOf(target) >= maxFullness(target.typeId)) return false;
+    const boosts = stackSlot(itemStack)?.[2]?.boosts ?? {};
+    const now = rideBoostsOf(target), most = (k) => Math.max(0, ...RIDES[target.typeId].map(([, , r]) => (r[k.toLowerCase()] ? r[k.toLowerCase()][1] - r[k.toLowerCase()][0] : 0)));
+    if (!Object.entries(boosts).some(([k, v]) => (v < 0 ? (now[k] ?? 0) > 0 : (now[k] ?? 0) < most(k)))) { player.sendMessage("§7It won't have any effect."); return false; }
+    for (const [k, v] of Object.entries(boosts)) now[k] = Math.max(0, Math.min(most(k), (now[k] ?? 0) + v));
+    setProp(target, RIDE_BOOSTS, JSON.stringify(now)); feedPokemon(target, 1); consumeHand(player);
+    player.sendMessage(`§a${nicknameOf(target) || POKEMON[target.typeId].name} drank the ${itemStack.nameTag?.replace(/§./g, "") ?? "Aprijuice"}.`);
+    return true;
+}
 // What an item does to one of the player's Pokemon out of battle, in the world or in its ball (ballProxy):
 // PokemonSelectingItem.applyToPokemon. Right-clicking the Pokemon uses it; using the item in the air picks a party member
 const FRESH_START = "cobblemon:fresh_start_mochi";
@@ -11394,12 +11821,14 @@ function useItemOn(player, target, id, itemStack) {
         player.sendMessage(`§a${name} ${raised ? "became more friendly" : "ate the berry"}${lowered ? `, and its ${STAT_NAMES[evBerry]} base points fell` : ""}.`);
         refreshHealth(target);
     } else if (changer) {
-        // Ability Capsule swaps between the two normal abilities; Ability Patch gives the hidden one
+        // Ability Capsule swaps between the two normal abilities and hands its bottle back; Ability Patch gives the hidden
+        // one, and on a Pokemon that has it, one of the normal ones again (AbilityTypeChanger: a hidden ability's target is
+        // the common type)
         const info = POKEMON[target.typeId], current = fighter(target).ability;
-        const hidden = (info.hidden ?? []).includes(current);
-        const choices = id === "cobblemon:ability_patch" ? (hidden ? [] : info.hidden ?? []) : (hidden ? [] : (info.abilities ?? []).filter((a) => a !== current));
+        const hidden = (info.hidden ?? []).includes(current), common = (info.abilities ?? []).filter((a) => a !== current);
+        const choices = id === "cobblemon:ability_patch" ? (hidden ? common : info.hidden ?? []) : (hidden ? [] : common);
         if (!choices.length) { player.sendMessage("§7It won't have any effect."); return; }
-        setProp(target, "cobblemon:ability", choices[0]); consumeHand(player);
+        setProp(target, "cobblemon:ability", choices[0]); consumeHand(player); handBack(player, id);
         player.sendMessage(`§a${info.name}'s ability became ${abilityName(choices[0])}!`);
     } else if (medicine?.pp || PP_RAISE[id]) {
         usePpItem(player, target, id, medicine);
@@ -11407,7 +11836,7 @@ function useItemOn(player, target, id, itemStack) {
         const message = applyMedicine(target, medicine);
         if (!message) { player.sendMessage("§7It won't have any effect."); return; }
         if (medicine.friendship < 0) loseFriendship(target, -medicine.friendship);
-        consumeHand(player); playItemUse(target, id); fed(); player.sendMessage(`§a${message}`);
+        consumeHand(player); handBack(player, id); playItemUse(target, id); fed(); player.sendMessage(`§a${message}`);
     } else if (candy !== undefined) {
         if (applyCandy(player, target, candy)) { consumeHand(player); playItemUse(target, id); } else player.sendMessage("§7It won't have any effect.");
     } else {
@@ -11440,6 +11869,7 @@ function usePpItem(player, target, id, medicine) {
         setProp(target, PP_LEFT, JSON.stringify(left));
         consumeHand(player); playItemUse(target, id);
         if (PP_RAISE[id] && player.getGameMode?.() !== "Creative") giveOrDrop(player, "minecraft:glass_bottle");
+        else handBack(player, id);   // an Ether's or Elixir's bottle
         if (id.endsWith("_berry")) feedPokemon(target, 1);
         player.sendMessage(`§a${PP_RAISE[id] ? `${name}'s ${moves[0].name} PP rose.` : `${name}'s PP was restored.`}`);
     };
@@ -11501,7 +11931,7 @@ function playItemUse(entity, id) { try { entity.dimension.playSound(itemUseSound
 function showHeld(entity) {
     const id = prop(entity, "cobblemon:held");
     try {
-        entity.setProperty("cobblemon:held_index", (id && HELD_INDEX[id]) || 0);   // the index follows the pack's icon list
+        entity.setProperty("cobblemon:held_index", (id && !prop(entity, "cobblemon:held_hidden") && HELD_INDEX[id]) || 0);   // the index follows the pack's icon list; held_item_visible=false hides it
     } catch (e) { }
 }
 
@@ -11630,12 +12060,20 @@ const EVO_FORM = "cobblemon:evo_form";
 function evolutionEffects(entity, evolution) {
     if (evolution.form) setProp(entity, EVO_FORM, evolution.form);
     const ids = (() => { try { return JSON.parse(prop(entity, MOVESET) ?? "null"); } catch (e) { return null; } })() ?? fighter(entity)?.moves.map((m) => m.id) ?? [];
-    const learned = [];
-    for (const id of evolution.moves ?? []) if (MOVES[id] && !ids.includes(id) && ids.length < 4) { ids.push(id); learned.push(MOVES[id].name); }
-    if (learned.length) setProp(entity, MOVESET, JSON.stringify(ids));
+    // Evolution.evolutionMethod: what the pre-evolution could still relearn (its level-up moves to its level, its benched
+    // moves and its own evolution moves) and then the evolution's learnableMoves go into a free slot, or onto the bench
+    // when the four are taken, so a Dewott evolved at 17 keeps Razor Shell; only a move the pre-evolution had no way to is told
+    const f = fighter(entity), before = f ? relearnable(entity, f) : [], benched = benchedOf(entity), learned = [];
+    for (const id of [...before, ...(evolution.moves ?? [])]) {
+        if (!MOVES[id] || ids.includes(id)) continue;
+        if (ids.length < 4) { ids.push(id); const n = benched.indexOf(id); if (n >= 0) benched.splice(n, 1); }
+        else if (!benched.includes(id)) benched.push(id);
+        if (!before.includes(id)) learned.push(MOVES[id].name);
+    }
+    setProp(entity, MOVESET, JSON.stringify(ids)); setProp(entity, BENCHED, benched.length ? JSON.stringify(benched) : undefined);
     const owner = world.getPlayers().find((p) => p.id === prop(entity, OWNER)), name = nicknameOf(entity) || POKEMON[entity.typeId]?.name;
     for (const move of learned) owner?.sendMessage(`§b${name} learned ${move}!`);
-    for (const [item, chance] of evolution.drops ?? []) {
+    for (const [item, chance] of ruleOn("doPokemonLoot") ? evolution.drops ?? [] : []) {   // Evolution.evolutionMethod drops under doPokemonLoot
         if (Math.random() * 100 >= chance) continue;
         try { (owner ?? entity).dimension.spawnItem(new ItemStack(item, 1), (owner ?? entity).location); } catch (e) { }
     }
@@ -11768,13 +12206,13 @@ const RIDE_K = 2.203, SWIM_K = 4.4, BEDROCK_JUMP = Math.sqrt(0.08 / 0.0588);   /
 // each behaviour's expressions at stat 0 and stat 100: speeds in blocks a tick, acceleration and stamina in seconds
 const RIDE_SETTINGS = {
     horse: { speed: [0.1, 1.2], acceleration: [12.0, 0.1], stamina: [4.0, 240.0], jump: [0.2, 1.6] },
-    bird: { speed: [4 / 20, 20 / 20], acceleration: [8.0, 2.0], stamina: [0.0, 80.0] },
-    hover: { speed: [1 / 20, 20 / 20], acceleration: [6.0, 1.0], stamina: [0.0, 60.0] },
-    jet: { speed: [4 / 20, 24 / 20], acceleration: [8.0, 2.0], stamina: [4.0, 120.0] },
-    rocket: { speed: [0.1, 0.5], acceleration: [3.0, 1.5], stamina: [1.0, 96.0] },
-    boat: { speed: [0.08, 0.75], acceleration: [8.0, 0.1], stamina: [2.0, 60.0], jump: [1.0, 2.0] },        // jump: the sprint's speed modifier
+    bird: { speed: [4 / 20, 20 / 20], acceleration: [8.0, 2.0], stamina: [0.0, 80.0], jump: [1.0, 2.0] },          // jump: the glide's speed multiple (glideSpeedExpr)
+    hover: { speed: [1 / 20, 20 / 20], acceleration: [6.0, 1.0], stamina: [0.0, 60.0], jump: [2.0, 32.0] },        // jump: the height it may fly at, in blocks
+    jet: { speed: [4 / 20, 24 / 20], acceleration: [8.0, 2.0], stamina: [4.0, 120.0], jump: [1.0, 2.0] },          // jump: the boost's speed multiple
+    rocket: { speed: [0.1, 0.5], acceleration: [3.0, 1.5], stamina: [1.0, 96.0], jump: [1.0, 4.0], lift: [1 / 120, 1 / 60] },   // jump: the lift's top speed; lift: its push a tick (accelerationExpr, (1 / (20 * 3)) * 0.5 to (1 / (20 * 1.5)) * 0.5)
+    boat: { speed: [0.08, 0.75], acceleration: [8.0, 0.1], stamina: [2.0, 60.0], jump: [1.0, 2.0], leap: [0.8, 1.6] },   // jump: the sprint's speed modifier; leap: the jump's strength (jumpStrengthExpr)
     dolphin: { speed: [2 / 20, 24 / 20], acceleration: [8.0, 0.1], stamina: [2.0, 40.0], jump: [1.0, 2.0] }, // jump: the boost's
-    submarine: { speed: [2 / 20, 12 / 20], acceleration: [8.0, 1.2], stamina: [10.0, 360.0] },
+    submarine: { speed: [2 / 20, 12 / 20], acceleration: [8.0, 1.2], stamina: [10.0, 360.0], jump: [1 / 20, 10 / 20] },   // jump: the strafe and reverse speed (jumpExpr, blocks a second)
 };
 const RIDE_KINDS = ["bird", "hover", "jet", "rocket", "horse", "horse", "boat", "dolphin", "submarine"];   // by RIDE_ICONS' index
 const FLY_TIERS = Array.from({ length: 16 }, (_, n) => 0.05 * Math.pow(1.2 / 0.05, n / 15));
@@ -11803,25 +12241,30 @@ function rideBar(player, share, shown) {
 // displayControlSeconds, 0 by default; the port shows it for RIDE_HINT_TICKS
 const RIDE_HINT_TICKS = 160;
 const [K_UP, K_DOWN, K_LEFT, K_RIGHT, K_JUMP, K_SNEAK, K_MOUSE] = Array.from({ length: 7 }, (_, n) => String.fromCharCode(0xE800 + n));
-function rideHintText(style, kind, settings) {
+function rideHintText(style, kind, settings, flier) {
     const steer = `${K_MOUSE} §7steer`, off = `${K_SNEAK} §7get off`;
+    if (style === "air" && kind === "hover") return `${steer}   ${K_UP} §7move   ${K_JUMP} §7climb   §7stay low to keep stamina   ${off}`;
+    if (style === "air" && kind === "jet") return `${steer}   ${K_UP} §7fly   ${K_UP}${K_UP} §7boost   ${K_MOUSE} §7look down to dive   ${off}`;
+    if (style === "air" && kind === "rocket") return `${steer}   ${K_UP} §7fly   ${K_UP}${K_UP} §7boost   ${K_JUMP} §7hold to lift   ${off}`;
     if (style === "air") return `${K_MOUSE} §7steer   ${K_UP} §7fly   ${K_JUMP} §7climb   ${K_MOUSE} §7look down to dive   ${off}`;
-    if (kind === "boat") return `${K_UP} §7go   ${K_UP}${K_UP} §7sprint   ${K_LEFT}${K_RIGHT} §7turn   ${off}`;
+    if (kind === "boat") return `${K_UP} §7go   ${K_UP}${K_UP} §7sprint   ${K_LEFT}${K_RIGHT} §7turn   ${K_JUMP} §7jump   ${off}`;
     if (kind === "dolphin") return `${steer}   ${K_UP} §7swim   ${K_UP}${K_UP} §7boost   ${K_JUMP} §7up   ${off}`;
     if (kind === "submarine") return `${steer}   ${K_UP} §7swim   ${K_JUMP} §7up   ${off}`;
     const sprint = settings.sprint === false ? "" : `   ${K_UP}${K_UP} §7sprint`, jump = settings.jump === false ? "" : `   ${K_JUMP} §7hold to jump`;
-    return `${steer}   ${K_UP} §7walk${sprint}${jump}   ${off}`;
+    const takeOff = flier ? `   ${K_JUMP}${K_JUMP} §7take off` : "";
+    return `${steer}   ${K_UP} §7walk${sprint}${jump}${takeOff}   ${off}`;
 }
-function rideHint(player, st, style, kind, settings) {
+function rideHint(player, st, style, kind, settings, flier) {
     const key = `${style}|${kind}`, now = system.currentTick;
     if (st.hintKey !== key) { st.hintKey = key; st.hintUntil = now + RIDE_HINT_TICKS; }
     if (now < st.hintUntil && (st.hintUntil - now) % 40 === 0) {
-        try { player.onScreenDisplay.setActionBar(rideHintText(style, kind, settings)); } catch (e) { }
+        try { player.onScreenDisplay.setActionBar(rideHintText(style, kind, settings, flier)); } catch (e) { }
     }
 }
 function endRide(st) {
     try { st.mount.getComponent("minecraft:movement")?.resetToDefaultValue(); st.mount.getComponent("minecraft:underwater_movement")?.resetToDefaultValue(); } catch (e) { }
-    if (st.mount.isValid) { setProp(st.mount, RIDE_STAMINA, st.stamina); setProp(st.mount, RIDE_STAMINA_AT, Date.now()); if (st.tired) try { st.mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
+    // DismountPokemonPacketHandler: the driver off, every passenger off; the rider's exit event has taken the flight groups away
+    if (st.mount.isValid) { setProp(st.mount, RIDE_STAMINA, st.stamina); setProp(st.mount, RIDE_STAMINA_AT, Date.now()); riding.ejectAll(st.mount); }
     if (st.player.isValid && st.bar !== null) rideBar(st.player, 0, false);
     rideStates.delete(st.mount.id);
 }
@@ -11844,10 +12287,16 @@ function rideSounds(player, mount, st, settings) {
         } catch (e) { }
     }
 }
-function rideStyle(ride, mount) {
+// RidingController.checkForNewTransition: its liquid behaviour in water, though a flier only once its eyes are under
+// (canTransitionToLiquid); its air behaviour once a double jump has taken it off the ground (canTransitionToAir), or
+// always when it has no land behaviour; and its land behaviour as soon as it is on the ground again, no sooner than ten
+// ticks after the last change (lastTransitionAge)
+function rideStyle(ride, mount, st) {
     const has = (style) => ride.some(([s]) => s === style);
-    if (has("liquid") && mount.isInWater) return "liquid";
-    if (has("air") && (!mount.isOnGround || !has("land"))) return "air";
+    if (st?.airborne && mount.isOnGround && system.currentTick >= (st.styleLock ?? 0)) st.airborne = false;
+    const eyeUnder = () => { try { return mount.dimension.getBlock(mount.getHeadLocation())?.typeId === "minecraft:water"; } catch (e) { return false; } };
+    if (has("liquid") && (st?.style === "air" ? eyeUnder() : mount.isInWater)) return "liquid";
+    if (has("air") && (!has("land") || (st ? st.airborne : !mount.isOnGround))) return "air";
     return has("land") ? "land" : has("air") ? "air" : "liquid";
 }
 system.runInterval(() => {
@@ -11858,6 +12307,9 @@ system.runInterval(() => {
         const ride = mount?.isValid ? RIDES[mount.typeId] : undefined;
         if (!ride) continue;
         let driver; try { driver = mount.getComponent("minecraft:rideable")?.getRiders()[0]; } catch (e) { }
+        // getControllingPassenger: the owner drives or nobody does, so a first seat that is not the owner's (the owner got
+        // off, or never got on) throws every rider off, as DismountPokemonPacketHandler does when the driver leaves
+        if (driver && !riding.ownerDrives(mount, driver)) { riding.ejectAll(mount); continue; }
         if (driver?.id !== player.id) continue;
         ridden.add(mount.id);
         const flier = ride.some(([s]) => s === "air");
@@ -11868,38 +12320,31 @@ system.runInterval(() => {
             const stored = prop(mount, RIDE_STAMINA), at = prop(mount, RIDE_STAMINA_AT);
             const rested = typeof at === "number" ? Math.max(0, (Date.now() - at) / 1000) * 0.1 : 1;
             st = { mount, player, stamina: Math.min(1, (typeof stored === "number" ? stored : 1) + rested), speed: 0, sprinting: false, toggleable: true,
-                   forwardLast: false, timer: 0, jumpTicks: 0, bar: null, tier: -1, tired: false, rest: 0 };
+                   forwardLast: false, timer: 0, jumpTicks: 0, bar: null, tier: -1, tired: false, rest: 0,
+                   // a flier mounts into its flight group (the rider's enter event), on the ground until a double jump takes it off
+                   flight: flier ? "air" : undefined, airborne: !mount.isOnGround, styleLock: 0, jumpWindow: 0, jumpLast: false, jumpBuffer: -1 };
             rideStates.set(mount.id, st);
         }
-        const style = rideStyle(ride, mount), entry = ride.find(([s]) => s === style), settings = entry[3] ?? {};
+        const style = rideStyle(ride, mount, st), entry = ride.find(([s]) => s === style), settings = entry[3] ?? {};
+        st.style = style;
         // the seat where Cobblemon's rider sits in this style (port.py's add_ride_seats); swapping the seat's rideable
         // may run its rider events, so a ridden flier's state is set again after, tired or not
         if (settings.seat && st.seat !== style) {
             st.seat = style;
             try { mount.triggerEvent(`cobblemon:seat_${style}`); } catch (e) { }
-            if (flier) { st.tier = -1; try { mount.triggerEvent("cobblemon:ride_air_on"); if (st.tired) mount.triggerEvent("cobblemon:ride_tired"); } catch (e) { } }
+            if (flier) { const was = st.flight; try { mount.triggerEvent("cobblemon:ride_air_on"); } catch (e) { } st.flight = "air"; st.tier = -1; if (was && was !== "air") riding.setFlight(st, mount, was); }
         }
         const kind = RIDE_KINDS[entry[1]] ?? "horse";
-        rideHint(player, st, style, kind, settings);
+        rideHint(player, st, style, kind, settings, flier);
         rideSounds(player, mount, st, settings);
         let input = { x: 0, y: 0 }, jumping = false;
         try { input = player.inputInfo.getMovementVector(); jumping = player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed; } catch (e) { }
-        const forward = input.y > 0.1;
+        const forward = input.y > 0.1, back = input.y < -0.1;
         const drain = 1 / rideExpr(mount, style, kind, "stamina") / 20;
         if (style === "air") {
-            // BirdBehaviour's tickStamina: flying drains, hovering half, gliding (no input, falling) a quarter
-            const moving = Math.abs(input.x) > 0.1 || Math.abs(input.y) > 0.1 || jumping;
-            const falling = (mount.getVelocity?.().y ?? 0) < -0.05;
-            st.stamina = Math.max(0, st.stamina - drain * (moving ? 1 : falling ? 0.25 : 0.5));
-            // the speed: up to its air Speed in its Acceleration's time while forward is held, flown at the nearest tier
-            const top = rideExpr(mount, style, kind, "speed");
-            const thrust = forward || jumping;   // climbing speeds up as flying forward does (vertical input, half the top speed in Cobblemon)
-            st.speed = thrust ? Math.min(top, st.speed + top / (rideExpr(mount, style, kind, "acceleration") * 20)) : Math.max(0, st.speed - top / 40);
-            if (st.stamina <= 0 && !st.tired) { st.tired = true; try { mount.triggerEvent("cobblemon:ride_tired"); } catch (e) { } }
-            if (!st.tired) {
-                const tier = FLY_TIERS.reduce((best, v, n) => (Math.abs(v - Math.max(st.speed, 0.05)) < Math.abs(FLY_TIERS[best] - Math.max(st.speed, 0.05)) ? n : best), 0);
-                if (tier !== st.tier) { st.tier = tier; try { mount.triggerEvent(`cobblemon:fly_${tier}`); } catch (e) { } }
-            }
+            // BirdBehaviour, HoverBehaviour, JetBehaviour and RocketBehaviour, in scripts/riding.js: the stamina, the speed
+            // (flown at the nearest of FLY_TIERS) and the flight group (flying, falling, tired)
+            riding.tickAir({ st, mount, player, kind, input, jumping, drain, expr: (stat) => rideExpr(mount, style, kind, stat), tiers: FLY_TIERS, tap: RIDE_TAP_TICKS });
         } else if (style === "liquid" && kind !== "horse") {
             // the double tap of forward stands in for the sprint key (Bedrock gives no sprint to a rider)
             let doubleTapped = false;
@@ -11914,7 +12359,9 @@ system.runInterval(() => {
                 const mod = st.sprinting && st.stamina > 0 ? rideExpr(mount, style, kind, "jump") : 1;
                 if (st.sprinting && st.speed > 0.1) { st.stamina = Math.max(0, st.stamina - drain); st.rest = 0; if (st.stamina === 0) st.sprinting = false; }
                 else if (!st.sprinting && ++st.rest >= 20) st.stamina = Math.min(1, st.stamina + 1 / 15 / 20);
-                st.speed = forward ? Math.min(top * mod, st.speed + accel * mod) : st.speed - st.speed * 0.04;
+                // backing up at a quarter of the speed with half the push, and the jump out of the water (scripts/riding.js)
+                st.speed = forward ? Math.min(top * mod, st.speed + accel * mod) : back ? Math.min(top * riding.REVERSE.boat, st.speed + accel * 0.5) : st.speed - st.speed * 0.04;
+                riding.boatJump(st, mount, jumping, rideExpr(mount, style, kind, "leap"));
             } else if (kind === "dolphin") {
                 if (!forward) st.sprinting = false;
                 else if (doubleTapped && st.stamina >= 0.25) st.sprinting = !st.sprinting;
@@ -11922,20 +12369,23 @@ system.runInterval(() => {
                 const mod = st.sprinting ? rideExpr(mount, style, kind, "jump") : 1;
                 st.stamina = st.sprinting ? Math.max(0, st.stamina - drain) : Math.min(1, st.stamina + drain * 2);
                 top *= mod; accel *= mod;
-                st.speed = forward ? Math.min(top, st.speed + accel) : Math.max(0, st.speed - accel);
+                st.speed = forward ? Math.min(top, st.speed + accel) : back ? Math.min(top * riding.REVERSE.dolphin, st.speed + accel) : Math.max(0, st.speed - accel);
             } else {
                 // submarine: breath while the rider's head is under water
                 const under = (() => { try { return player.dimension.getBlock(player.getHeadLocation())?.typeId === "minecraft:water"; } catch (e) { return false; } })();
                 st.stamina = under ? Math.max(0, st.stamina - drain) : Math.min(1, st.stamina + 1 / (5 * 20));
-                st.speed = forward ? Math.min(top, st.speed + accel) : Math.max(0, st.speed - accel);
+                // and its rider's air while it has breath (LivingEntityMixin); it backs up at its strafe speed (jumpExpr)
+                riding.breathe(st, player);
+                const strafe = rideExpr(mount, style, kind, "jump"), strafeAccel = strafe / (rideExpr(mount, style, kind, "acceleration") * 20);
+                st.speed = forward ? Math.min(top, st.speed + accel) : back ? Math.min(strafe, st.speed + strafeAccel) : Math.max(0, st.speed - accel);
             }
             try {
                 const movement = mount.getComponent("minecraft:underwater_movement"), value = Math.max(st.speed, 0.005) / SWIM_K;
                 if (movement && Math.abs(movement.currentValue - value) > 0.0005) movement.setCurrentValue(value);
             } catch (e) { }
         } else {
-            // on the ground a tired flier is rested once it lands
-            if (st.tired && mount.isOnGround) { st.tired = false; st.tier = -1; try { mount.triggerEvent("cobblemon:ride_rested"); } catch (e) { } }
+            // RidingController.canTransitionToLand: on the ground a flier rides by its land behaviour, its flight groups off
+            if (flier) riding.setFlight(st, mount, "land");
             // handleSprinting: a second press of forward within seven ticks sprints, while there is stamina and forward is held
             let doubleTapped = false;
             if (!st.forwardLast && forward && !st.sprinting && st.timer === 0) st.timer = RIDE_TAP_TICKS;
@@ -11952,8 +12402,10 @@ system.runInterval(() => {
             const walk = (settings.walk ?? 0.35) * 0.7 * 0.42;
             const top = st.sprinting ? rideExpr(mount, style, kind, "speed") : walk;
             const accel = top / (st.sprinting ? rideExpr(mount, style, kind, "acceleration") * 20 : 10);
-            if (forward && st.speed < top) st.speed = Math.min(top, st.speed + accel);
-            else if (st.speed > top || !forward) st.speed = Math.max(forward ? top : 0, st.speed - 0.03);
+            // backing up at a third of it (HorseBehaviour's reverse), and slowing to a stop with no input
+            const goal = forward ? top : back ? top * riding.REVERSE.horse : 0;
+            if (st.speed < goal) st.speed = Math.min(goal, st.speed + accel);
+            else if (st.speed > goal) st.speed = Math.max(goal, st.speed - 0.03);
             try {
                 const swimming = style === "liquid";
                 const movement = mount.getComponent(swimming ? "minecraft:underwater_movement" : "minecraft:movement");
@@ -11961,12 +12413,19 @@ system.runInterval(() => {
                 if (movement && Math.abs(movement.currentValue - value) > 0.0005) movement.setCurrentValue(value);
             } catch (e) { }
             // the jump, on land: six ticks of force while jump is held from the ground, then three on the ground before the next
-            if (style === "land" && kind === "horse" && !flier && settings.jump !== false && jumping && st.jumpTicks >= 0 && st.jumpTicks < 6 && (st.jumpTicks > 0 || mount.isOnGround)) {
+            if (style === "land" && kind === "horse" && settings.jump !== false && jumping && st.jumpTicks >= 0 && st.jumpTicks < 6 && (st.jumpTicks > 0 || mount.isOnGround)) {
                 const force = rideExpr(mount, style, kind, "jump") * 0.75 * 1.5 / 6;
                 try { mount.applyImpulse({ x: 0, y: force * BEDROCK_JUMP, z: 0 }); } catch (e) { }
                 st.jumpTicks++;
             } else if (st.jumpTicks > 0) st.jumpTicks = -3;
             else if (st.jumpTicks < 0 && mount.isOnGround) st.jumpTicks++;
+            // RidingController.canTransitionToAir: a second jump inside LocalPlayerMixin's 12 tick window takes a flier off the
+            // ground, lifted 0.1 blocks a tick, and the style holds for ten ticks after (lastTransitionAge)
+            if (flier && riding.doubleJumped(st, jumping)) {
+                st.airborne = true; st.styleLock = system.currentTick + 10;
+                riding.setFlight(st, mount, "air");
+                try { mount.applyImpulse({ x: 0, y: 0.1, z: 0 }); } catch (e) { }
+            }
         }
         // the ride bar, sent when its fill moves a step
         const step = Math.round(st.stamina * 50) / 50;
@@ -11974,6 +12433,7 @@ system.runInterval(() => {
     }
     for (const st of [...rideStates.values()]) if (!ridden.has(st.mount.id) || !st.mount.isValid) endRide(st);
 }, 1);
+riding.setup(() => ({ prop, OWNER, RIDES, PARTY_ITEM, battles, recalling, rafts, PASTURE_AT, scaleOf, rideStates }));
 function rideBoostsOf(entity) { try { return JSON.parse(prop(entity, RIDE_BOOSTS) ?? "{}"); } catch (e) { return {}; } }
 const speciesKey = (typeId) => (POKEMON[typeId]?.name ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const needsSteps = (typeId) => (POKEMON[typeId]?.evolutions ?? []).some((evo) => evo.req.some((r) => r.t === "steps"));
@@ -12205,7 +12665,10 @@ function removeMember(player, slot) {
 function sendOutMember(player, slot, at, effect = true) {
     const rec = slot.rec;
     let entity;
-    try { entity = player.dimension.spawnEntity(rec.t, at); } catch (e) { return undefined; }
+    // PokemonEntity.getAdjustedSendoutPosition: over water it lands at the surface, on its raft, under it or above it (world.js)
+    const placed = adjustSendOut(player.dimension, at, rec.t);
+    try { entity = player.dimension.spawnEntity(rec.t, placed.at); } catch (e) { return undefined; }
+    if (placed.raft) system.runTimeout(() => sendOutRaft(entity), 2);
     const props = { ...(rec.k ?? {}), [OWNER]: player.id, [LEVEL]: rec.lv, [EXP]: rec.xp, [PID]: slot.pid };
     if (rec.mv) props[MOVESET] = rec.mv;
     if (rec.n) props[NICK] = rec.n;
@@ -12256,11 +12719,14 @@ function usePartyItem(player, target) {
     if (system.currentTick - (partyUsed.get(player.id) ?? -100) < 8) return;
     partyUsed.set(player.id, system.currentTick);
     const slots = partyOf(player.id);
+    // CobblemonPartyLockedKeyBinding: the Summary key with an empty party and no starter chosen opens the starter screen
+    if (!slots.length && !player.getDynamicProperty(STARTER_CHOSEN)) { openStarter(player); return; }
     if (!slots.length) { player.onScreenDisplay.setActionBar("§7You have no Pokemon with you."); return; }
     // SummaryBinding (Cobblemon's M key): sneaking and looking straight up opens the selected Pokemon's Summary, in its
     // ball or out, where it can be renamed, evolved, relearn moves and hold items
     if (player.isSneaking && player.getRotation().x < -60 && !battles.has(player.id)) {
         try { player.playSound("cobblemon.gui.click"); } catch (e) { }
+        if (!player.getDynamicProperty(STARTER_CHOSEN)) tellStarterSkipped(player);   // owns Pokemon, chose no starter: told once how to
         system.run(() => showSummary(partyMember(player, slots[selIndex(player)]), "i", player, selIndex(player)));
         return;
     }
@@ -12277,8 +12743,11 @@ function usePartyItem(player, target) {
         startBattle(player, target, false);
         return;
     }
-    // looking at one of theirs out: that one is selected and comes back
-    const own = target && slots.find((s) => s.pid === prop(target, PID) && s.out === target.id);
+    // PartySendBinding: used while riding, the key gets the rider off (a passenger at once, the driver off the selected
+    // Pokemon, every rider with them, the Pokemon left out where it is), never mid-air on a flier that also walks
+    if (riding.partyDismount(player, slots[selIndex(player)])) return;
+    // looking at one of theirs out (not the one under them): that one is selected and comes back
+    const own = target && target.id !== riding.mountOf(player)?.id && slots.find((s) => s.pid === prop(target, PID) && s.out === target.id);
     if (own) { player.setDynamicProperty(PARTY_SEL, slots.indexOf(own)); recallMember(player, own); return; }
     const slot = slots[selIndex(player)], e = partyMember(player, slot);
     if (!e.isProxy) { recallMember(player, slot); return; }
@@ -12403,6 +12872,8 @@ function relearnable(entity, f) {
     const known = f.moves.map((m) => m.id), out = [];
     for (const [at, id] of f.info.learnset ?? []) if (at <= f.level && MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);
     for (const id of benchedOf(entity)) if (MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);   // taught by a TM
+    // the moves its evolution taught (Learnset.evolutionMoves), relearnable for good
+    for (const id of EVOLUTION_MOVES[entity?.typeId] ?? []) if (MOVES[id] && !known.includes(id) && !out.includes(id)) out.push(id);
     return out;
 }
 function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
@@ -12540,6 +13011,7 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     // InfoWidget's size icon (the port has no alphas)
     v.size = "abcde"[["XS", "S", "M", "L", "XL"].indexOf(sizeCategory(source))] ?? "c";
     v.portrait = iconOf(source.typeId, variantOf(source));
+    v.shiny = (SHINY_VARIANTS[source.typeId] ?? []).includes(variantOf(source)) ? "y" : "n";   // Summary's shiny icon
     v.evolve = evolutions.length ? "Evolve" : "";
     const body = SUMMARY_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
 
@@ -12599,18 +13071,29 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
     form.button(tab === "i" ? `Size: ${sizeCategory(source)}` : "", `${SUMMARY_UI}/none`);   // the size icon's tooltip
     form.button("item toggle", `${SUMMARY_UI}/itog_${v.imode === "c" ? "h" : "c"}`);
     form.button("party swap", side === "p" && party.length > 1 ? `${SUMMARY_UI}/pswap${swapping ? "_on" : ""}` : `${SUMMARY_UI}/none`);
+    // heldItemVisibilityButton (item_visible, or item_hidden while the model hides its held item) for your own Pokemon
+    // holding one while the slot shows the held item; and the portrait, whose click plays the cry (ModelWidget)
+    const hideable = mine && !!held && !showCosmetic.has(player.id);
+    form.button("item visibility", `${SUMMARY_UI}/${hideable ? `itv_${prop(source, ITEM_HIDDEN) ? "h" : "v"}` : "none"}`);
+    form.button("portrait", `${SUMMARY_UI}/none`);
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 10) return;
         const pick = r.selection;
+        if (pick === 85 + SWAP_ROWS) {
+            // SetItemHiddenPacket: the model shows nothing in place of its held item (Cobblemon shows the hand item, empty for a Pokemon)
+            if (hideable) { setProp(source, ITEM_HIDDEN, prop(source, ITEM_HIDDEN) ? undefined : true); showHeld(source); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
+            showSummary(source, tab, player, selected, side); return;
+        }
+        if (pick === 86 + SWAP_ROWS) { const cry = POKEMON[source.typeId]?.cry; if (cry) try { player.playSound(cry); } catch (e) { } showSummary(source, tab, player, selected, side); return; }
         if (pick <= 2) { showSummary(source, ["i", "m", "s"][pick], player, selected); return; }
         if (pick === 42 + SWAP_ROWS) { showSummary(source, "k", player, selected); return; }
         if (pick >= 43 + SWAP_ROWS && pick < 73 + SWAP_ROWS) {
             // a mark chosen becomes the active one, whose title the Pokemon carries (SetActiveMarkPacket), only your own
             const id = markIds[pick - 43 - SWAP_ROWS];
-            if (id && mine) { setProp(source, ACTIVE_MARK, id); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
+            if (id && mine) { setProp(source, ACTIVE_MARK, id); showScale(source); try { player.playSound("cobblemon.gui.click"); } catch (e) { } }
             showSummary(source, tab, player, selected); return;
         }
-        if (pick === 73 + SWAP_ROWS) { if (mine) setProp(source, ACTIVE_MARK, undefined); showSummary(source, tab, player, selected); return; }
+        if (pick === 73 + SWAP_ROWS) { if (mine) { setProp(source, ACTIVE_MARK, undefined); showScale(source); } showSummary(source, tab, player, selected); return; }
         if (pick >= 11 && pick <= 14) { showSummary(source, tab, player, tab === "m" && f.moves[pick - 11] ? pick - 11 : selected); return; }
         if (pick === 15) { showSummary(source, tab, player, selected, evolutions.length && side === "p" ? "e" : "p"); return; }
         if (pick === 80 + SWAP_ROWS || pick === 82 + SWAP_ROWS) { showSummary(source, tab, player, selected, side); return; }
@@ -12644,6 +13127,8 @@ function showSummary(source, tab = "i", viewer, selected = 0, side = "p") {
                 if (out && !benched.includes(out)) benched.push(out);
                 setProp(source, BENCHED, benched.length ? JSON.stringify(benched) : undefined);
                 setProp(source, MOVESET, JSON.stringify(ids));
+                // Pokemon.exchangeMove: the move coming in keeps the leaving move's share of its PP, or none into an empty slot
+                if (id) { const left = storedObject(source, PP_LEFT, () => ({})), gone = f.moves.find((m) => m.id === out); left[id] = exchangePp(gone?.left ?? 0, gone?.pp ?? 0, maxPp(id, storedObject(source, PP_UPS, () => ({}))[id] ?? 0)); setProp(source, PP_LEFT, JSON.stringify(left)); }
                 try { player.playSound("cobblemon.gui.click"); } catch (e) { }
                 showSummary(source, tab, player, Math.min(selected, ids.length - 1), "p"); return;
             }
@@ -12748,19 +13233,31 @@ function takeHeld(source) {
 // gives Mist (no stat drops from the foe for five turns); each is used on the Pokemon fighting, as the turn's action
 const BATTLE_ITEMS = { "cobblemon:x_attack": { boost: "atk" }, "cobblemon:x_defence": { boost: "def" }, "cobblemon:x_special_attack": { boost: "spa" },
     "cobblemon:x_special_defence": { boost: "spd" }, "cobblemon:x_speed": { boost: "spe" }, "cobblemon:x_accuracy": { boost: "accuracy" },
-    "cobblemon:dire_hit": { focus: true }, "cobblemon:guard_spec": { mist: true } };
+    "cobblemon:dire_hit": { focus: true }, "cobblemon:guard_spec": { mist: true },
+    // MoomooMilk's bag item (clear_boost.js) and StatusCuringBerryItem's cure_status for the volatiles: Persim confusion, Eggant infatuation
+    "cobblemon:moomoo_milk": { clearBoost: true }, "cobblemon:persim_berry": { confusion: true }, "cobblemon:eggant_berry": { attract: true } };
+// PortionHealingBerryItem: the stat whose nature dislikes each berry's flavour (Berry.dislikedBy), Showdown's onEat confusion
+const PORTION_DISLIKE = { "cobblemon:figy_berry": "atk", "cobblemon:wiki_berry": "spa", "cobblemon:mago_berry": "spe", "cobblemon:aguav_berry": "spd", "cobblemon:iapapa_berry": "def" };
 function useBagItem(battle, id) {
     const f = battle.ally, effect = MEDICINE[id] ?? {}, item = BATTLE_ITEMS[id];
     let used = false;
     if (item?.boost && f.hp > 0 && f.stages[item.boost] < 6) {
         boost(battle, f, { [item.boost]: 2 }, f); gainFriendship(f.entity, 1); used = true;
     }
-    if (item?.focus && !f.focusEnergy) { f.focusEnergy = true; say(battle, `§a${f.info.name} is getting pumped!`); used = true; }
-    if (item?.mist && !(sideOf(battle, f).mist > 0)) { sideOf(battle, f).mist = 5; say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
+    // DireHitItem and GuardSpecItem add a point of friendship too (incrementFriendship(1))
+    if (item?.focus && !f.focusEnergy) { f.focusEnergy = true; gainFriendship(f.entity, 1); say(battle, `§a${f.info.name} is getting pumped!`); used = true; }
+    if (item?.mist && !(sideOf(battle, f).mist > 0)) { sideOf(battle, f).mist = 5; gainFriendship(f.entity, 1); say(battle, `§a${f.info.name}'s team became shrouded in mist!`); used = true; }
+    // clear_boost: every stat stage back to 0
+    if (item?.clearBoost && f.hp > 0 && Object.values(f.stages).some((v) => v !== 0)) { for (const k of Object.keys(f.stages)) f.stages[k] = 0; say(battle, `§a${f.info.name}'s stat changes were removed!`); used = true; }
+    // cure_status on the volatiles: Persim, Lum and a Full Restore (full_restore.js) take confusion, Eggant infatuation
+    if ((item?.confusion || (effect.cure === true && (id === "cobblemon:lum_berry" || id === "cobblemon:full_restore"))) && f.confused > 0) { f.confused = 0; say(battle, `§a${f.info.name} snapped out of its confusion!`); used = true; }
+    if (item?.attract && f.attracted) { f.attracted = null; say(battle, `§a${f.info.name} got over its infatuation!`); used = true; }
     if (effect.heal && f.hp < f.stats.hp) {
         const amount = effect.heal === "max" ? f.stats.hp : effect.heal === "third" ? Math.floor(f.stats.hp * 0.33) : effect.heal;
         const before = f.hp; f.hp = Math.min(f.stats.hp, f.hp + amount); syncHealth(f);
         say(battle, `§a${f.info.name} regained ${f.hp - before} HP.`); used = true;
+        // potion_by_portion: a portion berry confuses a Pokemon whose nature dislikes its flavour (Berry.dislikedBy)
+        if (PORTION_DISLIKE[id] && PORTION_DISLIKE[id] === NATURES[effectiveNature(f.entity)]?.[1]) confuse(battle, f);
     }
     if (effect.cure && f.status && (effect.cure === true || effect.cure.includes(f.status))) { f.status = null; say(battle, `§a${f.info.name} was cured.`); used = true; }
     if (effect.pp) {
@@ -12776,6 +13273,8 @@ function useBagItem(battle, id) {
         if (it.amount > 1) { it.amount--; inv.setItem(i, it); } else inv.setItem(i, undefined);
         break;
     }
+    handBack(battle.player, id);   // BagItem.returnItem: the medicine's bottle or bowl
+    if (id === "cobblemon:moomoo_milk") try { inv.addItem(new ItemStack("minecraft:glass_bottle")); } catch (e) { }   // MoomooMilk's craftRemainder
     return true;
 }
 
@@ -12789,7 +13288,7 @@ function useBagItem(battle, id) {
 // A party slot is 1 to 6. A command runs in a read-only moment, so what it changes happens on the next tick
 const COMMAND_PROPS = 6;
 function parseProps(words) {
-    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species", "region_bias"];
+    const props = {}, KEYS = ["level", "lvl", "l", "gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "species", "region_bias", ...PROP_KEYS];
     // Bedrock's command parser takes "level=5" only in quotes, so "level 5" (the key, then its value) works too
     // and a number alone is no word to Bedrock's parser ("level 5" stops at the 5), so a level can run on: "level5", "lvl5"
     const list = words.filter(Boolean).join(" ").split(/\s+/).filter(Boolean).map((w) => w.replace(/^(level|lvl|l)(\d+)$/i, "level=$2"));
@@ -12799,11 +13298,13 @@ function parseProps(words) {
         const key = k.toLowerCase();
         if (!rest.length) {
             if (["shiny", "s"].includes(key)) props.shiny = true;
+            else if (PROP_FLAGS.includes(key)) parseExtraFlag(props, key);
             else if (!props.species) props.species = key;
         } else if (key === "species") props.species = v;
         else if (key === "level" || key === "lvl" || key === "l") props.level = Math.max(1, Math.min(100, Number(v) || 1));
         else if (key === "shiny") props.shiny = v !== "no" && v !== "false";
-        else props[key.replace("helditem", "held_item")] = rest.join("=");
+        else if (["gender", "nature", "ability", "form", "nickname", "held_item", "helditem", "region_bias"].includes(key)) props[key.replace("helditem", "held_item")] = rest.join("=");
+        else parseExtraProp(props, key, rest.join("="));   // PokemonProperties.parse's other keys (rules.js)
     }
     return props;
 }
@@ -12822,6 +13323,8 @@ function variantFor(typeId, props) {
     const n = looks.findIndex((l) => (form ? (l[0] ?? "").includes(form) : !l[0]) && l[2] === shiny && !l[1]);
     return n < 0 ? 0 : n;
 }
+// what rules.js needs of this file to land the other property keys (friendship, IVs, a status, an alpha and the rest)
+const propApi = () => ({ POKEMON, MOVES, STAT_KEYS, SHINY_VARIANTS, VARIANT_LOOKS, TM_SPECIES, TM_BY_MOVE, setProp, prop, makeAlpha, showScale, speciesNamed });
 // a record for a new Pokemon of these properties, as the party and PC keep them
 function recordFor(typeId, props) {
     const info = POKEMON[typeId], level = props.level ?? info.level;
@@ -12830,7 +13333,7 @@ function recordFor(typeId, props) {
     if (props.nature) k["cobblemon:nature"] = props.nature.toLowerCase();
     if (props.ability) k["cobblemon:ability"] = props.ability.toLowerCase().replace(/[^a-z]/g, "");
     if (props.held_item) k["cobblemon:held"] = props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`;
-    return { t: typeId, v: variantFor(typeId, props), lv: level, xp: expFor(info.expGroup, level), mv: JSON.stringify(movesAt(info, level)), f: false, hp: 1, n: props.nickname ?? null, k };
+    return extraRecord({ t: typeId, v: variantFor(typeId, props), lv: level, xp: expFor(info.expGroup, level), mv: JSON.stringify(movesAt(info, level)), f: false, hp: 1, n: props.nickname ?? null, k }, props, propApi());
 }
 // properties put on a Pokemon that exists (pokemonedit, spawnpokemon)
 function applyProps(e, props) {
@@ -12842,6 +13345,7 @@ function applyProps(e, props) {
     if (props.held_item) setProp(e, "cobblemon:held", props.held_item.includes(":") ? props.held_item : `cobblemon:${props.held_item}`);
     if (props.nickname) setProp(e, "cobblemon:nickname", props.nickname);
     if (props.region_bias) setProp(e, REGION_BIAS, props.region_bias.toLowerCase());
+    extraEntity(e, props, propApi());
     if (props.shiny !== undefined || props.form) {
         const n = variantFor(e.typeId, props);
         if (e.isProxy) { e.slot.rec.v = n; saveParty(prop(e, OWNER)); }
@@ -12859,12 +13363,14 @@ function registerCommands(registry) {
     const P = CustomCommandParamType, admin = CommandPermissionLevel.GameDirectors;
     const words = (n) => Array.from({ length: n }, (_, i) => ({ type: P.String, name: `more${i + 1}` }));
     const later = (fn) => system.run(() => { try { fn(); } catch (e) { console.warn(`[cobblemon] command: ${e}`); } });
-    const add = (name, description, mandatory, optional, run, permissionLevel = admin) => registry.registerCommand(
-        { name: `cobblemon:${name}`, description, permissionLevel, mandatoryParameters: mandatory, optionalParameters: optional }, run);
+    // a command's name, or its name and Cobblemon's aliases for it (GivePokemon's pokegive and the rest)
+    const add = (names, description, mandatory, optional, run, permissionLevel = admin) => [names].flat().forEach((name) => registry.registerCommand(
+        { name: `cobblemon:${name}`, description, permissionLevel, mandatoryParameters: mandatory, optionalParameters: optional }, run));
     const memberAt = (player, slot) => summaryParty(player)[slot - 1];
-    registry.registerEnum("cobblemon:dexaction", ["grant", "revoke"]);
+    registry.registerEnum("cobblemon:dexaction", ["grant", "revoke", "printcalculations"]);
     registry.registerEnum("cobblemon:boxcount", ["query", "add", "remove", "set"]);
-    registry.registerEnum("cobblemon:tmaction", ["unlock", "lock"]);
+    registry.registerEnum("cobblemon:tmaction", ["unlock", "lock", "check"]);
+    registry.registerEnum("cobblemon:info", ["info"]);
     registry.registerEnum("cobblemon:bucket", Object.keys(BUCKETS));
 
     // SpawnPokemonFromPool (alias forcespawn) and CheckSpawnsCommand, on the script's spawner and the port's spawn tables
@@ -12893,7 +13399,7 @@ function registerCommands(registry) {
     });
 
     // CobblemonInfoCommand
-    add("cobblemon", "Shows the add-on's version and what it carries", [], [], () => ok(`Cobblemon for Bedrock: ${Object.keys(POKEMON).length} Pokemon, ${Object.keys(MOVES).length} moves`), CommandPermissionLevel.Any);
+    add("cobblemon", "Shows the add-on's version and what it carries (cobblemon info)", [], [{ type: P.Enum, name: "cobblemon:info" }], () => ok(`Cobblemon for Bedrock, from Cobblemon 1.8.4: ${Object.keys(POKEMON).length} Pokemon, ${Object.keys(MOVES).length} moves`), CommandPermissionLevel.Any);
     // GivePokemon: to the player, or another player with givepokemonother
     const give = (player, props) => {
         const typeId = speciesNamed(props.species);
@@ -12906,39 +13412,41 @@ function registerCommands(registry) {
         });
         return ok(`Gave ${POKEMON[typeId].name}`);
     };
-    add("givepokemon", "Gives the player a Pokemon: species then level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+    add(["givepokemon", "pokegive"], "Gives the player a Pokemon: species then level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
         (origin, ...w) => give(commandPlayer(origin), parseProps(w)));
-    add("givepokemonother", "Gives a player a Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+    add(["givepokemonother", "pokegiveother"], "Gives a player a Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
         (origin, players, ...w) => give(commandPlayer(origin, players), parseProps(w)));
     // SpawnPokemon: a wild one here, or at a position with spawnpokemonat
     const spawn = (dim, at, props) => {
         const typeId = speciesNamed(props.species);
         if (!typeId || !dim) return bad(`Unknown species ${props.species ?? ""}`);
-        later(() => { const e = dim.spawnEntity(typeId, at); system.run(() => { try { applyProps(e, props); } catch (err) { } }); });
+        // the tag keeps the Pokemon when doPokemonSpawning is off (rules.js's watchNaturalSpawns), as Cobblemon's command spawns regardless
+        later(() => { const e = dim.spawnEntity(typeId, at); try { e.addTag("cobblemon:commanded"); } catch (err) { } system.run(() => { try { applyProps(e, props); } catch (err) { } }); });
         return ok(`Spawned ${POKEMON[typeId].name}`);
     };
-    add("spawnpokemon", "Spawns a wild Pokemon of these properties where the command runs", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
+    add(["spawnpokemon", "pokespawn"], "Spawns a wild Pokemon of these properties where the command runs", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS),
         (origin, ...w) => { const src = origin.sourceEntity ?? origin.sourceBlock; return spawn(src?.dimension, src?.location, parseProps(w)); });
-    add("spawnpokemonat", "Spawns a wild Pokemon at a position", [{ type: P.Location, name: "position" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
+    add(["spawnpokemonat", "pokespawnat"], "Spawns a wild Pokemon at a position", [{ type: P.Location, name: "position" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS),
         (origin, at, ...w) => spawn((origin.sourceEntity ?? origin.sourceBlock)?.dimension ?? world.getDimension("overworld"), at, parseProps(w)));
-    // SpawnAllPokemon and GiveAllPokemon: every species from one National Dex number to another
-    const range = (min, max) => NATIONAL.slice(Math.max(0, min - 1), Math.max(min, max)).filter((id) => POKEMON[id]);
-    add("spawnallpokemon", "Spawns one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+    // SpawnAllPokemon and GiveAllPokemon: every species from one National Dex number to another, or from one onward, or all
+    const range = (min = 1, max = NATIONAL.length) => NATIONAL.slice(Math.max(0, min - 1), Math.max(min, max)).filter((id) => POKEMON[id]);
+    add("spawnallpokemon", "Spawns one of each species from one Pokedex number to another", [], [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], (origin, min, max) => {
         const src = origin.sourceEntity, list = range(min, max);
         if (!src) return bad("Run it as a player or entity");
         later(() => list.forEach((id, i) => system.runTimeout(() => { try { src.dimension.spawnEntity(id, { x: src.location.x + (i % 10) * 2, y: src.location.y, z: src.location.z + Math.floor(i / 10) * 2 }); } catch (e) { } }, i)));
         return ok(`Spawning ${list.length} Pokemon`);
     });
-    add("giveallpokemon", "Gives the player one of each species from one Pokedex number to another", [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], [], (origin, min, max) => {
+    add("giveallpokemon", "Gives the player one of each species from one Pokedex number to another", [], [{ type: P.Integer, name: "min" }, { type: P.Integer, name: "max" }], (origin, min, max) => {
         const player = commandPlayer(origin), list = range(min, max);
         if (!player) return bad("Run it as a player");
         later(() => { for (const id of list) { const rec = recordFor(id, {}); if (!addRecord(player, rec)) break; register(player, id, 2, 0); } });
         return ok(`Giving ${list.length} Pokemon`);
     });
     // HealPokemonCommand
-    add("healpokemon", "Heals a player's party fully", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
+    add(["healpokemon", "pokeheal"], "Heals a player's party fully", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
         const player = commandPlayer(origin, players);
         if (!player) return bad("No player");
+        if (battles.has(player.id)) return bad("You cannot heal Pokemon while in battle!");   // HealPokemonCommand's pokeheal.in_battle
         later(() => { for (const m of summaryParty(player)) { setProp(m, FAINTED, undefined); setProp(m, STATUS, undefined); try { m.getComponent(EntityComponentTypes.Health)?.resetToMaxValue(); } catch (e) { } if (m.isProxy) { m.slot.rec.f = false; m.slot.rec.hp = 1; } } saveParty(player.id); player.sendMessage("§aYour Pokemon were healed."); });
         return ok("Healed");
     });
@@ -12984,21 +13492,22 @@ function registerCommands(registry) {
         if (!player) return bad("No player");
         toBox(player, partyOf(player.id).map((_, i) => i + 1), n ? n - 1 : undefined); return ok("Moved the party to the PC");
     });
-    // PcTakeCommand: a PC Pokemon into the party
+    // PcTakeCommand: a PC Pokemon into the party; another player's into the caller's own party (PcTakeCommand's taken_other)
     add("pctake", "Takes a Pokemon from the PC into the party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "box" }, { type: P.Integer, name: "slot" }], [], (origin, players, b, slot) => {
         const player = commandPlayer(origin, players), contents = player && box(player, b - 1), rec = contents?.[slot - 1];
         if (!rec) return bad("Nothing in that slot");
-        if (partyOf(player.id).length >= PARTY_SIZE) return bad("The party is full");
-        later(() => { contents[slot - 1] = null; saveBox(player, b - 1, contents); addRecord(player, rec); });
-        return ok("Taken into the party");
+        const caller = commandPlayer(origin), to = caller && caller.id !== player.id ? caller : player;
+        if (partyOf(to.id).length >= PARTY_SIZE) return bad("The party is full");
+        later(() => { contents[slot - 1] = null; saveBox(player, b - 1, contents); addRecord(to, rec); });
+        return ok(to === player ? "Taken into the party" : `Took ${describe(rec)} from ${player.name}`);
     });
-    // PcSearchCommand: where in the PC the Pokemon of these properties are
+    // PcSearchCommand: where in the PC the Pokemon of these properties are (PokemonProperties.matches, rules.js's pcMatches)
     add("pcsearch", "Lists where in the PC Pokemon of these properties are", [{ type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, ...w) => {
-        const player = commandPlayer(origin), props = parseProps(w), typeId = speciesNamed(props.species);
+        const player = commandPlayer(origin), props = parseProps(w);
         if (!player) return bad("Run it as a player");
         const found = [];
         for (let n = 0; n < pcBoxes(player); n++) box(player, n).forEach((rec, i) => {
-            if (rec && (!typeId || rec.t === typeId) && (!props.level || rec.lv === props.level) && (props.shiny === undefined || (SHINY_VARIANTS[rec.t] ?? []).includes(rec.v ?? 0) === props.shiny)) found.push(`Box ${n + 1} slot ${i + 1}: ${describe(rec)}`);
+            if (rec && pcMatches(rec, props, propApi())) found.push(`Box ${n + 1} slot ${i + 1}: ${describe(rec)}`);
         });
         return ok(found.length ? found.slice(0, 30).join("\n") : "None found");
     });
@@ -13015,12 +13524,17 @@ function registerCommands(registry) {
         later(() => { for (let n = 0; n < pcBoxes(player); n++) saveBox(player, n, []); });
         return ok("PC cleared");
     });
-    // TakePokemon
+    // TakePokemon: removed from the party; another player's goes into the caller's own party ("You took ...")
     add("takepokemon", "Takes a Pokemon from a player's party", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
         const player = commandPlayer(origin, players), s = player && partyOf(player.id)[slot - 1];
         if (!s) return bad("No Pokemon in that slot");
-        later(() => { removeMember(player, s); saveParty(player.id); });
-        return ok("Taken");
+        const caller = commandPlayer(origin), taker = caller && caller.id !== player.id ? caller : undefined;
+        later(() => {
+            const m = partyMember(player, s), rec = m?.isProxy || !m ? s.rec : snapshot(m);
+            removeMember(player, s); saveParty(player.id);
+            if (taker && !addRecord(taker, rec)) taker.sendMessage("§cThe party and the PC are full.");
+        });
+        return ok(taker ? `You took ${describe(s.rec)}` : `${describe(s.rec)} was removed.`);
     });
     // ChangePCBoxesCommand (boxcount query|add|remove|set <player> [amount]): a PC grows by empty boxes at the end, and
     // shrinks by its empty boxes, the last first, the boxes after each moving down; it will not drop a box holding
@@ -13051,33 +13565,38 @@ function registerCommands(registry) {
         later(() => { const walls = jsonProp(player, WALLS, {}); walls[b - 1] = code; player.setDynamicProperty(WALLS, JSON.stringify(walls)); });
         return ok(`Box ${b}'s wallpaper set`);
     });
-    add("unlockpcboxwallpaper", "Unlocks a PC wallpaper for a player", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "wallpaper" }], [], (origin, players, unlock) => {
+    add("unlockpcboxwallpaper", "Unlocks a PC wallpaper for a player, with or without its sound", [{ type: P.PlayerSelector, name: "player" }, { type: P.String, name: "wallpaper" }], [{ type: P.Boolean, name: "playsSound" }], (origin, players, unlock, playsSound) => {
         const player = commandPlayer(origin, players);
         if (!player) return bad("No player");
-        later(() => unlockWallpaper(player, unlock.includes(":") ? unlock : `cobblemon:${unlock}`));
+        later(() => unlockWallpaper(player, unlock.includes(":") ? unlock : `cobblemon:${unlock}`, playsSound !== false));
         return ok("Unlocked");
     });
-    // PokedexCommand: grant or revoke a species, or all
-    add("pokedex", "Grants or revokes Pokedex entries: grant|revoke, player, species or all", [{ type: P.Enum, name: "cobblemon:dexaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "species" }], [], (origin, action, players, species) => {
-        const player = commandPlayer(origin, players), all = species === "all", typeId = all ? null : speciesNamed(species);
-        if (!player || (!all && !typeId)) return bad("No such player or species");
-        later(() => {
-            if (action === "grant") { for (const id of all ? NATIONAL.filter((i) => POKEMON[i]) : [typeId]) register(player, id, 2, 0); return; }
-            let s = dexString(player);
-            for (const id of all ? NATIONAL : [typeId]) { const n = DEX_INDEX.get(id); if (n !== undefined) s = s.slice(0, n) + "0" + s.slice(n + 1); }
-            player.setDynamicProperty(DEX, s);
+    // PokedexCommand: grant or revoke a species (one form of it with a form), or "all" with a dex named (the National
+    // one otherwise), and printcalculations for a dex or "all" (rules.js's dexCommand)
+    add("pokedex", "Pokedex entries: grant|revoke <player> all [dex] or <species> [form]; printcalculations <player> [dex|all]", [{ type: P.Enum, name: "cobblemon:dexaction" }, { type: P.PlayerSelector, name: "player" }],
+        [{ type: P.String, name: "species" }, { type: P.String, name: "form" }], (origin, action, players, species, form) => {
+            const player = commandPlayer(origin, players);
+            if (!player) return bad("No such player");
+            const api = { NATIONAL, REGIONS, POKEMON, DEX, DEX_VARIANTS, DEX_CAUGHT, dexString, register, jsonProp, speciesNamed, variantFor, VARIANT_LOOKS };
+            if (action === "printcalculations") { const text = dexCommand(action, player, species ?? "national", form, api); return text ? ok(text) : bad("No such dex"); }
+            let text;
+            later(() => { text = dexCommand(action, player, species ?? "all", form, api); if (text) player.sendMessage(`§7${text}`); else player.sendMessage("§cNo such species, form or dex"); });
+            return ok("");
         });
-        return ok(`${action === "grant" ? "Granted" : "Revoked"} ${all ? "every entry" : POKEMON[typeId].name}`);
-    });
-    // TeachCommand, QueryLearnsetCommand
-    add("teach", "Teaches a party Pokemon a move", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [], (origin, players, slot, move) => {
+    // TeachCommand (LearnsetQuery.ANY.canLearn, unless the bypass is given, as command.teach.bypass allows; a fifth move
+    // goes to the moves it can relearn, BenchedMoves), QueryLearnsetCommand
+    add("teach", "Teaches a party Pokemon a move it can learn; true after the move teaches one it cannot", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "move" }], [{ type: P.Boolean, name: "bypass" }], (origin, players, slot, move, bypass) => {
         const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
         if (!m || !MOVES[id]) return bad("No such Pokemon or move");
+        const name = nicknameOf(m) || POKEMON[m.typeId].name;
+        if (!bypass && !canLearn(m.typeId, id, propApi())) return bad(`${name} cannot learn ${MOVES[id].name}`);
+        const ids = fighter(m)?.moves.map((x) => x.id) ?? [];
+        if (ids.includes(id) || benchedOf(m).includes(id)) return bad(`${name} already knows ${MOVES[id].name}`);
         later(() => {
-            const ids = fighter(m)?.moves.map((x) => x.id) ?? [];
-            if (ids.includes(id)) return;
-            setProp(m, MOVESET, JSON.stringify(ids.length < 4 ? [...ids, id] : [...ids.slice(0, 3), id])); saveParty(player.id);
-            player.sendMessage(`§a${nicknameOf(m) || POKEMON[m.typeId].name} learned ${MOVES[id].name}!`);
+            if (ids.length < 4) setProp(m, MOVESET, JSON.stringify([...ids, id]));
+            else setProp(m, BENCHED, JSON.stringify([...benchedOf(m), id]));
+            saveParty(player.id);
+            player.sendMessage(`§a${name} learned ${MOVES[id].name}!`);
         });
         return ok("Taught");
     });
@@ -13104,8 +13623,8 @@ function registerCommands(registry) {
         if (!m) return bad("No Pokemon in that slot");
         return ok(`${nicknameOf(m) || POKEMON[m.typeId].name}'s friendship is ${prop(m, "cobblemon:friendship") ?? POKEMON[m.typeId].friendship ?? 50}`);
     });
-    // PokemonEditCommand
-    add("pokemonedit", "Changes a party Pokemon's properties: level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.Integer, name: "slot" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, slot, ...w) => {
+    // PokemonEditCommand (pokemoneditother is in rules.js)
+    add(["pokemonedit", "pokeedit"], "Changes a party Pokemon's properties: level=, shiny, gender=, nature=, ability=, form=, nickname=", [{ type: P.Integer, name: "slot" }, { type: P.String, name: "properties" }], words(COMMAND_PROPS), (origin, slot, ...w) => {
         const player = commandPlayer(origin), m = player && memberAt(player, slot);
         if (!m) return bad("No Pokemon in that slot");
         later(() => { applyProps(m, parseProps(w)); saveParty(player.id); });
@@ -13122,7 +13641,7 @@ function registerCommands(registry) {
     add("takemark", "Takes a mark from a party Pokemon", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }, { type: P.String, name: "mark" }], [], (origin, players, slot, mark) => {
         const player = commandPlayer(origin, players), m = player && memberAt(player, slot), id = markId(mark);
         if (!m) return bad("No Pokemon in that slot");
-        later(() => { setProp(m, MARK_LIST, JSON.stringify(marksOf(m).filter((x) => x !== id))); if (prop(m, ACTIVE_MARK) === id) setProp(m, ACTIVE_MARK, undefined); saveParty(player.id); });
+        later(() => { setProp(m, MARK_LIST, JSON.stringify(marksOf(m).filter((x) => x !== id))); if (prop(m, ACTIVE_MARK) === id) { setProp(m, ACTIVE_MARK, undefined); showScale(m); } saveParty(player.id); });
         return ok("Taken");
     });
     add("giveallmarks", "Gives a party Pokemon every mark", [{ type: P.PlayerSelector, name: "player" }, { type: P.Integer, name: "slot" }], [], (origin, players, slot) => {
@@ -13131,16 +13650,31 @@ function registerCommands(registry) {
         later(() => { setProp(m, MARK_LIST, JSON.stringify(Object.keys(MARKS))); saveParty(player.id); });
         return ok("Gave every mark");
     });
-    // GiveTmCommand, TmCommand (unlock or lock a TM for the TM Machine)
-    add("givetm", "Gives TMs of a move", [{ type: P.String, name: "move" }], [{ type: P.Integer, name: "quantity" }, { type: P.PlayerSelector, name: "player" }], (origin, move, quantity, players) => {
+    // GiveTmCommand (up to 2304, in stacks of 64, the rest dropped at the player when the inventory is full), TmCommand
+    // (unlock or lock a TM for the TM Machine, or check: unlock every TM a Pokemon of the player's party or PC can learn)
+    add("givetm", "Gives TMs of a move, up to 2304", [{ type: P.String, name: "move" }], [{ type: P.Integer, name: "quantity" }, { type: P.PlayerSelector, name: "player" }], (origin, move, quantity, players) => {
         const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, "");
         if (!player || !TM_BY_MOVE.has(id)) return bad("No such TM");
-        later(() => player.getComponent("minecraft:inventory")?.container?.addItem(new ItemStack(`cobblemon:tm_${id}`, Math.max(1, Math.min(64, quantity ?? 1)))));
-        return ok("Given");
+        later(() => {
+            const inv = player.getComponent("minecraft:inventory")?.container;
+            for (const n of tmStacks(quantity)) { const left = inv?.addItem(new ItemStack(`cobblemon:tm_${id}`, n)); if (left) player.dimension.spawnItem(left, player.location); }
+        });
+        return ok(`Gave ${tmStacks(quantity).reduce((a, b) => a + b, 0)} TM ${MOVES[id]?.name ?? id} to ${player.name}`);
     });
-    add("technicalmachine", "Unlocks or locks a TM for a player's TM Machine: unlock|lock, player, move or all", [{ type: P.Enum, name: "cobblemon:tmaction" }, { type: P.PlayerSelector, name: "player" }, { type: P.String, name: "move" }], [], (origin, action, players, move) => {
-        const player = commandPlayer(origin, players), id = move.toLowerCase().replace(/[^a-z0-9]/g, ""), all = id === "all";
-        if (!player || (!all && !TM_BY_MOVE.has(id))) return bad("No such TM");
+    add("technicalmachine", "Unlocks or locks a TM for a player's TM Machine: unlock|lock, player, move or all; check unlocks what their Pokemon can learn", [{ type: P.Enum, name: "cobblemon:tmaction" }, { type: P.PlayerSelector, name: "player" }], [{ type: P.String, name: "move" }], (origin, action, players, move) => {
+        const player = commandPlayer(origin, players), id = (move ?? "all").toLowerCase().replace(/[^a-z0-9]/g, ""), all = id === "all";
+        if (!player || (action !== "check" && !all && !TM_BY_MOVE.has(id))) return bad("No such TM");
+        if (action === "check") {
+            later(() => {
+                const owned = [...summaryParty(player).map((m) => m.typeId)];
+                for (let n = 0; n < pcBoxes(player); n++) for (const rec of box(player, n)) if (rec) owned.push(rec.t);
+                const moves = new Set(owned.flatMap((t) => (TM_SPECIES[t] ?? []).map((n) => TMS[n]?.[0]).filter(Boolean)));
+                const before = learnedTms(player).size;
+                learnTms(player, [...moves]);
+                player.sendMessage(`§bUnlocked ${learnedTms(player).size - before} TMs for ${player.name}`);
+            });
+            return ok("");
+        }
         later(() => {
             const known = learnedTms(player), ids = all ? TMS.map((t) => t[0]) : [id];
             for (const t of ids) action === "unlock" ? known.add(t) : known.delete(t);
@@ -13155,7 +13689,7 @@ function registerCommands(registry) {
         later(() => endBattle(battle, "§7The battle was stopped."));
         return ok("Stopped");
     });
-    add("spectatebattle", "Follows another player's battle in chat", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
+    add("spectatebattle", "Watches another player's battle", [{ type: P.PlayerSelector, name: "player" }], [], (origin, players) => {
         const player = commandPlayer(origin), target = players?.[0], battle = target && battles.get(target.id);
         if (!player || !battle) return bad("That player is not in a battle");
         later(() => spectateBattle(player, target, battle));
@@ -13181,6 +13715,10 @@ function registerCommands(registry) {
         later(() => player.setDynamicProperty(HIDE_PARTY, player.getDynamicProperty(HIDE_PARTY) ? undefined : true));
         return ok("");
     }, CommandPermissionLevel.Any);
+    // the other six CobblemonGameRules as world settings, and the commands this file lacked (rules.js)
+    registerRuleCommands(add, ok, later);
+    registerExtraCommands(add, { ...propApi(), ok, bad, later, words, COMMAND_PROPS, commandPlayer, memberAt, parseProps, applyProps, saveParty, partyOf, removeMember,
+        pcBoxes, saveBox, box, STARTER_CHOSEN, openStarter, describe });
     // OpenStarterScreenCommand
     add("openstarterscreen", "Opens the starter screen", [], [{ type: P.PlayerSelector, name: "player" }], (origin, players) => {
         const player = commandPlayer(origin, players);
@@ -13190,11 +13728,21 @@ function registerCommands(registry) {
     });
 }
 
+// the battleInvulnerability and doPokemonSpawning game rules (rules.js)
+battleGuard(() => battles);
+watchNaturalSpawns({ POKEMON, prop, OWNER, LEVEL, PID, cause: EntityInitializationCause.Spawned });
 system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRegistry }) => {
     try { registerCommands(customCommandRegistry); } catch (e) { console.warn(`[cobblemon] commands: ${e}`); }
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
+    registerFurnitureComponents(blockComponentRegistry);   // CobbleFurnies' seats, lamps and TV (scripts/furniture.js)
+    // the terrain seeds and plants, the redstone decorations, Wistensu, Pauvillea, the honeyed log and the herb's mutation (scripts/decor_blocks.js)
+    registerDecorComponents(blockComponentRegistry, { consumeHand, damageHeld, giveOrDrop, pickApricorn, weatherIn,
+        unslather: (block) => saveSlathered(slatheredLogs().filter((l) => !(l.x === block.x && l.y === block.y && l.z === block.z))) });
+    // the Monitor on its own, the Disc Shelf's slots, the fossil machine's redstone and hoppers, the gilded chests'
+    // hoppers and the healing machine's recall (block_logic.js), lent what they need of this file
+    initBlockLogic({ findMachine, stateFor, machines, loadMachines, saveMachines, show, resultFor, FOSSILS, MOVES, TM_INDEX, learnTms, rollAlpha, variantOf, VARIANT_LOOKS, hopperAt, HOPPER_INTO, partyOf, recallMember, setProp, LEVEL });
     blockComponentRegistry.registerCustomComponent("cobblemon:jigsaw_start", { onTick({ block }) { growJigsaw(block); }, onRandomTick({ block }) { growJigsaw(block); } });
     blockComponentRegistry.registerCustomComponent("cobblemon:display_case", { onPlayerInteract({ block, player, face }) { if (player) useDisplayCase(block, player, face); } });
     // NutBushBlock: grows one random tick in eight where the light above is 9 or more, bone meal a stage; used fully
@@ -13212,6 +13760,8 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
         }
     });
     blockComponentRegistry.registerCustomComponent("cobblemon:nut_bush", {
+        // NutBushBlock.entityInside: the bush slows what stands in it, foxes and bees excepted (scripts/decor_blocks.js)
+        onTick({ block }) { tangleInBush(block); },
         onRandomTick({ block }) {
             const age = block.permutation.getState("cobblemon:age");
             let light = 15;
@@ -13285,6 +13835,12 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
         onPlayerInteract({ block, player }) {
             const hand = player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(player.selectedSlotIndex);
             if (hand && applyMulch(block, player, hand.typeId)) return;
+            // BerryBlock.useWithoutItem: a shovel takes the mulch off a mulched tree (MULCH_REMOVE)
+            if (hand?.typeId.endsWith("_shovel") && careOf(block).mulch) {
+                setCare(block, { ...careOf(block), mulch: null, uses: 0 });
+                try { block.dimension.playSound("cobblemon.block.mulch.remove", block.location); block.dimension.spawnParticle("minecraft:crop_growth_emitter", block.center()); } catch (e) { }
+                return;
+            }
             if (block.permutation.getState("cobblemon:stage") !== 3) return;
             const berry = BERRIES[block.typeId];
             if (!berry) return;
@@ -13292,7 +13848,10 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
             for (const [item, count] of berryHarvest(block)) block.dimension.spawnItem(new ItemStack(item, count), { x: x + 0.5, y: y + 0.6, z: z + 0.5 });
             block.setPermutation(block.permutation.withState("cobblemon:stage", 2));
             scheduleBerry(block, 2);
-            try { block.dimension.playSound("cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
+            // BerryBlock.attemptShear: shears harvest a ripe tree too, with a sheep's shear sound, and wear by one
+            const sheared = hand?.typeId === "minecraft:shears";
+            if (sheared) damageHeld(player);
+            try { block.dimension.playSound(sheared ? "mob.sheep.shear" : "cobblemon.block.berry_bush.harvest", { x: x + 0.5, y: y + 0.5, z: z + 0.5 }); } catch (e) { }
         }
     });
     // a revival herb (RevivalHerbBlock.randomTick): an age on, one random tick in 26, as a dry crop's
@@ -13480,6 +14039,8 @@ system.runInterval(() => {
         for (const e of list) {
             const rest = POKEMON[e.typeId]?.rest;
             if (!rest) continue;
+            // pokemon_sleeps.json: a party Pokemon sleeps only from the Sleep status (go_to_sleep's onlyFromStatus); a pastured one naps
+            if (prop(e, OWNER) !== undefined && prop(e, PASTURE_SLOT) === undefined) continue;
             let battling = false;
             try { battling = !!e.getProperty("cobblemon:battle"); } catch (err) { }
             const hurt = now - (hurtAt.get(e.id) ?? -HURT_MEMORY) < HURT_MEMORY;
@@ -13491,13 +14052,18 @@ system.runInterval(() => {
             if (now_drowsy === was) continue;
             if (now_drowsy) drowsy.add(e.id); else drowsy.delete(e.id);
             try { e.triggerEvent(now_drowsy ? "cobblemon:bedtime" : "cobblemon:wake_up"); } catch (err) { }
+            // GoToSleepTask gives a napping wild Pokemon the Sleep status, which it carries into a battle; WakeUpTask takes it off
+            if (prop(e, OWNER) === undefined) setProp(e, STATUS, now_drowsy ? JSON.stringify({ s: "slp", left: 180 + Math.floor(Math.random() * 121) }) : undefined);
         }
     }
 }, 20);
 world.afterEvents.entityHurt.subscribe(({ hurtEntity }) => {
     if (!POKEMON[hurtEntity?.typeId]) return;
     hurtAt.set(hurtEntity.id, system.currentTick);
-    if (drowsy.delete(hurtEntity.id)) try { hurtEntity.triggerEvent("cobblemon:wake_up"); } catch (e) { }
+    if (drowsy.delete(hurtEntity.id)) {
+        try { hurtEntity.triggerEvent("cobblemon:wake_up"); } catch (e) { }
+        if (prop(hurtEntity, OWNER) === undefined) setProp(hurtEntity, STATUS, undefined);
+    }
 });
 
 // Despawning (CobblemonAgingDespawner; despawnerNearDistance 32, despawnerFarDistance 96, despawnerMinAgeTicks 600,
@@ -13538,10 +14104,25 @@ function scaleOf(e) {
     return s;
 }
 function showScale(e) {
-    try { if (e.getProperty("cobblemon:intrinsic") !== scaleOf(e)) e.setProperty("cobblemon:intrinsic", Math.min(2, scaleOf(e))); } catch (err) { }
-    try { if (e.getProperty("cobblemon:alpha") !== isAlpha(e)) e.setProperty("cobblemon:alpha", isAlpha(e)); } catch (err) { }   // the alpha eyes' pass
+    // Pokemon.effectiveScale: the intrinsic size, times a baby's share by level (babyScale) unless it is an alpha
+    const shown = isAlpha(e) ? scaleOf(e) : scaleOf(e) * babyScale(prop(e, LEVEL) ?? POKEMON[e.typeId]?.level ?? 9);
+    try { if (e.getProperty("cobblemon:intrinsic") !== shown) e.setProperty("cobblemon:intrinsic", Math.min(2, shown)); } catch (err) { }
+    // the alpha eyes' pass: the Alpha Mark's alpha_eyes aspect (MARK_ASPECT), so they glow only while it is the active mark
+    try { const eyes = isAlpha(e) && prop(e, ACTIVE_MARK) === "cobblemon:mark_alpha"; if (e.getProperty("cobblemon:alpha") !== eyes) e.setProperty("cobblemon:alpha", eyes); } catch (err) { }
     // a region_bias spawn's bias (port.py's cobblemon:spawn_bias_<region>), kept with the Pokemon from then on
     try { const bias = e.getProperty("cobblemon:region_bias"); if (bias && bias !== "none" && prop(e, REGION_BIAS) === undefined) setProp(e, REGION_BIAS, bias); } catch (err) { }
+}
+// SeasonFeatureHandler.updateSeason: a Deerling or Sawsbuck takes the season of the biome it spawns or is sent out in
+// (TagSeasonResolver on the has_season biome tags: winter, then spring, autumn and summer) and keeps the one it has in a
+// biome with no season; its look is that season's variant with its own shininess (variants.js)
+function updateSeason(e) {
+    if (!isSeasonal(e?.typeId)) return;
+    let tags;
+    try { tags = BIOME_TAGS[e.dimension.getBiome(e.location).id] ?? []; } catch (err) { return; }
+    const season = seasonFor(tags, filterPasses);
+    if (!season) return;
+    const n = seasonLook(VARIANT_LOOKS[e.typeId], variantOf(e), season);
+    if (n >= 0 && n !== variantOf(e)) try { e.triggerEvent(`cobblemon:set_variant_${n}`); } catch (err) { }
 }
 function sizeCategory(e) {
     if (isAlpha(e)) return "XL";
@@ -13551,6 +14132,7 @@ function sizeCategory(e) {
 world.afterEvents.entitySpawn.subscribe(({ entity }) => {
     if (!POKEMON[entity?.typeId]) return;
     system.runTimeout(() => { if (entity.isValid) showScale(entity); }, 2);
+    system.runTimeout(() => { if (entity.isValid) updateSeason(entity); }, 3);   // after a send-out has put its stored look back
     system.runTimeout(() => { if (entity.isValid) spawnMarks(entity); }, 6);   // after the spawner has made it an alpha
 });
 // callbacks/pokemon_entity_spawn: a wild Pokemon spawning XS, and no alpha, takes the Mini Mark, one XL or an alpha the
@@ -13678,10 +14260,24 @@ function sendOutEffect(player, entity, ballId = prop(entity, "cobblemon:caught_b
 // Recall: the red beam runs from the Pokemon to the hand and takes it in; then() runs as it vanishes. A battle switch
 // (stays) keeps it in the party, since a replacement can be asked for on the same tick and may pick it again
 const recalling = new Set();   // Pokemon on their way back into a ball, already out of the party
+// RecallArmAnimationTracker and PlayerRecallBallRenderer: the trainer's arm comes up holding the Pokemon's own ball for
+// 0.8 s (HOLD_SECONDS, easing 0.15 s each way) as it is recalled, the beam ending at that ball; the arm is the add-on's
+// own animation (port.py's create_trainer_recall), the ball a capture_ball entity kept at the hand for the 16 ticks
+const RECALL_HOLD_TICKS = 16;
+function recallArm(player, ballId) {
+    try { player.playAnimation("animation.cobblemon.trainer_recall", { blendOutTime: 0.1 }); } catch (e) { }
+    let ball;
+    try { ball = captureBall(player.dimension, ballId, handOf(player)); ballState(ball, "shut"); } catch (e) { return; }
+    timeline(RECALL_HOLD_TICKS, (t) => {
+        if (!player.isValid || !ball.isValid || t >= RECALL_HOLD_TICKS) { try { ball.remove(); } catch (e) { } return false; }
+        try { ball.teleport(handOf(player)); } catch (e) { }
+    });
+}
 function recallEffect(player, entity, then, stays = false) {
     if (!entity?.isValid || !player?.isValid) { then?.(); return; }
     if (!stays) recalling.add(entity.id);
     try { entity.addEffect("slowness", 40, { amplifier: 255, showParticles: false }); } catch (e) { }
+    recallArm(player, prop(entity, "cobblemon:caught_ball") ?? "cobblemon:poke_ball");
     beamIn(entity, () => handOf(player), false, () => { recalling.delete(entity.id); then?.(); });
 }
 
@@ -13691,19 +14287,23 @@ function captureRoll(player, pokemon, ballId, battle) {
     // in battle the foe as it stands (its health and status) and the battle's own rules for the ball; half the rate outside
     const f = battle ? battle.foe : fighter(pokemon);
     if (!f) return { shakes: 0, caught: false };
+    if (prop(battle ? battle.foe?.entity : pokemon, "cobblemon:uncatchable")) return { shakes: 0, caught: false };   // UncatchableProperty
     let mult = battle ? ballMultiplier(battle, ballId) : worldBallMultiplier(player, f, ballId);
-    if (mult === Infinity) return { shakes: 3, caught: true };
+    // PokedexStatusCaptureInfluencer: a catch of a species the thrower's Pokedex already has as owned is a critical capture
+    // of one shake, a guaranteed ball's too
+    let owned = false;
+    try { owned = dexStatus(player, pokemon.typeId) >= 2; } catch (e) { }
+    if (mult === Infinity) return owned ? { shakes: 1, caught: true, critical: true } : { shakes: 3, caught: true };
     if (f.info.ultraBeast && BALLS[ballId]?.rule !== "beast") mult *= 0.1;
     const levelBonus = f.level < 13 ? Math.max(Math.trunc((36 - 2 * f.level) / 10), 1) : 1;
     const statusBonus = f.status === "slp" || f.status === "frz" ? 2.5 : f.status ? 1.5 : 1;
     let rate = (((3 * f.stats.hp - 2 * f.hp) * f.info.catchRate * (battle ? 1 : 0.5) * mult) / (3 * f.stats.hp)) * levelBonus * statusBonus;
-    const highest = Math.max(0, ...findParty(player, player.location).map((e) => fighter(e)?.level ?? 0));
-    if (highest && highest < f.level && f.level - highest >= 50) rate *= 0.1;
     const chance = Math.round(65536 / Math.pow(255 / Math.max(rate, 0.0001), 0.1875));
     // CriticalCaptureProvider: more likely the more the player has caught; a critical capture is one check, one shake
     if (criticalCapture(player, rate)) return { shakes: 1, caught: Math.floor(Math.random() * 65537) < chance, critical: true };
     let shakes = 0;
     for (let i = 0; i < 4; i++) if (Math.floor(Math.random() * 65537) < chance) shakes++;
+    if (shakes === 4 && owned) return { shakes: 1, caught: true, critical: true };
     return { shakes: Math.min(shakes, 3), caught: shakes === 4 };
 }
 function criticalCapture(player, rate) {
@@ -13730,13 +14330,15 @@ function worldBallMultiplier(player, f, ballId) {
 
 const captureBattles = new Map();   // the battle a capture belongs to, by the Pokemon's id
 function startCapture(player, projectileId, pokemon, hit, velocity, battle) {
-    const mine = battles.get(player.id);
-    if (!battle && mine?.minimised && mine.foe.entity?.id === pokemon.id && !mine.trainer) { restore(mine); battle = mine; }
-    const ballId = BALL_FROM_PROJECTILE.get(projectileId), dim = pokemon.dimension;
+    const mine = battles.get(player.id), ballId = BALL_FROM_PROJECTILE.get(projectileId), dim = pokemon.dimension;
     const wild = POKEMON[pokemon.typeId] && !prop(pokemon, OWNER) && !pokemon.hasComponent(EntityComponentTypes.IsTamed);
-    let busy = capturing.has(pokemon.id);
-    try { busy = busy || (!battle && pokemon.getProperty("cobblemon:battle")); } catch (e) { }
-    if (!wild || busy) { dropBall(dim, ballId, hit, player); if (battle) system.runTimeout(() => foeTurn(battle), 20); return; }
+    let inBattle = false;
+    try { inBattle = !battle && !!pokemon.getProperty("cobblemon:battle"); } catch (e) { }
+    // EmptyPokeBallEntity.onHitEntity: a ball that may not try drops, and the thrower is told why (battle_rules.captureRefusal)
+    const refusal = battleRules.captureRefusal({ name: POKEMON[pokemon.typeId]?.name ?? "Pokemon", wild: !!wild, inBattle, capturing: capturing.has(pokemon.id), asked: !!battle,
+        mine: mine ? { foe: mine.foe?.entity?.id === pokemon.id, minimised: !!mine.minimised, trainer: !!mine.trainer, doubles: !!mine.doubles } : null });
+    if (refusal) { try { player.sendMessage(`§c${refusal}`); } catch (e) { } dropBall(dim, ballId, hit, player); if (battle) system.runTimeout(() => foeTurn(battle), 20); return; }
+    if (!battle && mine?.foe?.entity?.id === pokemon.id) { restore(mine); battle = mine; }
     capturing.add(pokemon.id);
     if (battle) captureBattles.set(pokemon.id, battle);
     else { freeze(pokemon, true); try { pokemon.setProperty("cobblemon:battle", false); } catch (e) { } }
@@ -13988,7 +14590,11 @@ function brokeFree(ball, pos, pokemon, ballId, gone) {
         if (battle) {
             if (pokemon.isValid) say(battle, `§7Oh no! ${battle.foe.info.name} broke free!`);
             if (battles.has(battle.player.id)) system.runTimeout(() => foeTurn(battle), 20);
-        } else freeze(pokemon, false);
+        } else {
+            freeze(pokemon, false);
+            // PokemonBrain.onCaptureFailed: out of battle it avoids the thrower for 5 to 20 seconds (port.py's wary_group)
+            try { pokemon.triggerEvent("cobblemon:wary"); } catch (e) { }
+        }
     }, 2);
     system.runTimeout(() => { try { if (ball.isValid) ball.remove(); } catch (e) { } }, 24);
 }
@@ -14102,7 +14708,7 @@ world.afterEvents.worldLoad?.subscribe?.(() => {
 // Starter selection, laid out by ui/server_form.json on Cobblemon's starter textures: offered when a player joins
 // without having chosen, as Cobblemon's starter prompt is, until they choose. The starter comes out of its ball
 // beside them at the level StarterConfig gives it, and is registered as caught.
-const STARTER_CHOSEN = "cobblemon:starter_chosen";
+const STARTER_CHOSEN = "cobblemon:starter_chosen", STARTER_PROMPTED = "cobblemon:starter_prompted";   // GeneralPlayerData's starterSelected and starterPrompted
 // A form shown while the client is busy (still on the Loading screen of a first join, which can take minutes the
 // first time a world loads the pack, or in another screen) is cancelled as UserBusy and never seen, so the screen is
 // offered again every second until it shows: busy counts those tries, up to ten minutes' worth.
@@ -14166,6 +14772,8 @@ function giveStarter(player, chosen) {
             setProp(entity, EXP, expFor(info.expGroup, chosen.level));
             setProp(entity, MOVESET, JSON.stringify(movesAt(info, chosen.level)));
             setProp(entity, "cobblemon:caught_ball", chosen.ball);
+            // the doShinyStarters game rule (CobbledStarterHandler): the starter is shiny
+            if (ruleOn("doShinyStarters")) { const n = variantFor(chosen.id, { shiny: true }); if (n) try { entity.triggerEvent(`cobblemon:set_variant_${n}`); } catch (e) { } }
             if (chosen.bias) setProp(entity, REGION_BIAS, chosen.bias);
         } catch (e) { }
         register(player, chosen.id, 2);
@@ -14185,12 +14793,20 @@ function starterToast(player, shown) {
                                         { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 });
     } catch (e) { }
 }
+// CobblemonToast's other toasts on the same frame (ToastPacket: an item's icon, a title and a description for a while,
+// Toast.expireAfter), then the starter toast back if it is still due, or the frame hidden
+function hudToast(player, icon, title, description, ticks) {
+    const field = (text, width) => text + " ".repeat(Math.max(0, width - text.length));
+    try { player.onScreenDisplay.setTitle(`cbm:toasty${field(icon, 40)}${field(title, 40)}${description}`, { fadeInDuration: 0, stayDuration: 1, fadeOutDuration: 0 }); } catch (e) { }
+    system.runTimeout(() => { if (player.isValid) starterToast(player, !player.getDynamicProperty(STARTER_CHOSEN) && !summaryParty(player).length); }, ticks);
+}
 const lastSneak = new Map();   // player id -> tick of their last sneak press
 world.afterEvents.playerButtonInput.subscribe(({ player, button, newButtonState }) => {
     if (button !== InputButton.Sneak || newButtonState !== ButtonState.Pressed || player.getDynamicProperty(STARTER_CHOSEN)) return;
     const last = lastSneak.get(player.id) ?? -100;
     lastSneak.set(player.id, system.currentTick);
-    if (system.currentTick - last <= 10 && !summaryParty(player).length) { lastSneak.delete(player.id); openStarter(player); }
+    // with Pokemon already owned the right to a starter stays (starterSelected is still false): the player is told to box them
+    if (system.currentTick - last <= 10) { lastSneak.delete(player.id); if (summaryParty(player).length) tellStarterSkipped(player); else openStarter(player); }
 });
 // The spawn hub (tools/build_hub.py). Inside its area no wild Pokemon, wild trainer or hostile mob stays: one that
 // spawns there is removed a few ticks later, once a script that made it has had the chance to make it someone's (a
@@ -14265,28 +14881,31 @@ function takeOf(player, id, count) {
 }
 function emeraldsOf(player) { return countOf(player, "minecraft:emerald"); }
 function takeEmeralds(player, count) { takeOf(player, "minecraft:emerald", count); }
-function openMart(player) {
+function openMart(player, clerk) {
     const have = emeraldsOf(player);
+    // the League's Shopkeeper sells what Radical Gyms' CobbleDollars merchant did, its prices as emeralds (gyms.js)
+    const stock = leagueStock(clerk)?.map(([id, price]) => [id, 1, price]) ?? POKE_MART;
     const form = new ActionFormData().title("Poke Mart").body(`§7Welcome! You have §a${have} emerald${have === 1 ? "" : "s"}§7.`);
-    for (const [id, n, price] of POKE_MART) form.button(`${itemName(id)}${n > 1 ? ` x${n}` : ""}\n${have >= price ? "§2" : "§c"}${price} emerald${price === 1 ? "" : "s"}`, potIcon(id));
+    for (const [id, n, price] of stock) form.button(`${itemName(id)}${n > 1 ? ` x${n}` : ""}\n${have >= price ? "§2" : "§c"}${price} emerald${price === 1 ? "" : "s"}`, potIcon(id));
     form.show(player).then((r) => {
         if (r.canceled || r.selection === undefined) return;
-        const [id, n, price] = POKE_MART[r.selection];
-        if (emeraldsOf(player) < price) { player.sendMessage("§cYou don't have enough emeralds."); return openMart(player); }
+        const [id, n, price] = stock[r.selection];
+        if (emeraldsOf(player) < price) { player.sendMessage("§cYou don't have enough emeralds."); return openMart(player, clerk); }
         takeEmeralds(player, price);
         giveOrDrop(player, id);
         for (let i = 1; i < n; i++) giveOrDrop(player, id);
         try { player.playSound("cobblemon.gui.click"); } catch (e) { }
         player.sendMessage(`§aYou bought ${n > 1 ? `${n} ` : "a "}${itemName(id)}${n > 1 ? "s" : ""}.`);
-        openMart(player);
+        openMart(player, clerk);
     }).catch(() => { });
 }
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const type = event.target?.typeId;
     if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse") return;
+    if (type === "cobblemon:nurse" && event.itemStack?.typeId === "minecraft:name_tag") return;   // a Name Tag names her (Nurse Joy)
     event.cancel = true;
     const target = event.target;
-    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player, target) : openMart(event.player));
+    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player, target) : openMart(event.player, target));
 });
 
 // The Nurse's trades (CobblemonTradeOffers) by villager level, Novice to Master: what she wants, what she gives, its
@@ -14536,14 +15155,28 @@ function placePokecenter(dim, near, kind) {
         return pokecenterAreas.get(area) >= 3 ? done("retry") : "retry";
     }
     // the village's own farms, counted before anything of this pack's stands among them
-    const farms = villageFarms(dim, bell);
+    const farms = villageFarms(dim, bell), houses = villageHouses(dim, bell);
     const volume = placeVillagePiece(dim, id, size, site, POKECENTER_DOOR_Y[kind] - 1);
     if (!volume) return done("none");
     sites.push([bell.x, bell.z]);
     world.setDynamicProperty(POKECENTERS, JSON.stringify(sites.slice(-500)));
+    fillPokecenterChest(dim, volume);   // villages/village_pokecenters, which the converted piece's chest does not carry
     pokecenterNurse(dim, volume.from, volume.to);
     console.warn(`[cobblemon] ${kind} pokecenter at ${site.ox} ${volume.from.y} ${site.oz} for the bell at ${bell.x} ${bell.y} ${bell.z}`);
-    placeBerryFarms(dim, bell, kind, farms, 0, [site]);
+    // Cobblemon adds the center to the village's houses pool at weight 35 (CobblemonStructures.pokecenterWeight), so a
+    // village usually draws several: one more for each of its other houses (counted by its beds before anything of this
+    // pack's stands among them) at the center's share of the pool, each on its own open ground with its own Nurse
+    const taken = [site];
+    for (let n = pokecenterRolls(kind, houses); n > 0; n--) {
+        const more = villageSite(dim, bell, size, taken);
+        if (!more || more === "unloaded") break;
+        taken.push(more);
+        const extra = placeVillagePiece(dim, id, size, more, POKECENTER_DOOR_Y[kind] - 1);
+        if (!extra) continue;
+        fillPokecenterChest(dim, extra);
+        pokecenterNurse(dim, extra.from, extra.to);
+    }
+    placeBerryFarms(dim, bell, kind, farms, 0, taken);
     return done("done");
 }
 // Village berry farms (<type>_berry_small and _large, weight 1 each in the houses pool, at most two to a village by
@@ -14626,10 +15259,13 @@ world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
 });
 world.afterEvents.playerSpawn.subscribe(({ player, initialSpawn }) => {
     if (!initialSpawn || player.getDynamicProperty(STARTER_CHOSEN)) return;
-    // a player who already has Pokemon (from before the starter screen existed) keeps them and is not asked
+    // StarterConfig.promptStarterOnceOnly: the screen and PartyOverlay's toast come by themselves on the first join only
+    // (starterPrompted); afterwards sneaking twice with an empty party opens it, as the Summary key does. A player who
+    // already owns Pokemon keeps the right to a starter until one is chosen (starterSelected stays false)
     system.runTimeout(() => {
-        if (!player.isValid) return;
-        if (summaryParty(player).length) { player.setDynamicProperty(STARTER_CHOSEN, true); return; }
+        if (!player.isValid || player.getDynamicProperty(STARTER_PROMPTED)) return;
+        player.setDynamicProperty(STARTER_PROMPTED, true);
+        if (summaryParty(player).length) { tellStarterSkipped(player); return; }
         starterToast(player, true);
         openStarter(player);
     }, 60);
@@ -14651,6 +15287,9 @@ world.afterEvents.worldLoad?.subscribe?.(() => console.log("[cobblemon] battle s
 // which accepts a request, offers its first Pokemon and accepts the player's offer, for testing with one player.
 const TRADE_RANGE = 12, TRADE_EXPIRY = 20 * 20, OT = "cobblemon:ot", FRIENDSHIP_BY = "cobblemon:friendship_by", TEST_TRADER = "cobblemon:test_trader";
 const tradeRequests = [];   // { from: participant, to: participant, at: tick }
+// ClientPlayerIcon: the exclamation over the head of a player whose challenge or trade offer awaits your answer
+registerRequestIcons(() => [...challenges.filter((c) => !c.test).map((c) => ({ from: c.from, to: c.to, at: c.at, expiry: CHALLENGE_EXPIRY })),
+                            ...tradeRequests.map((r) => ({ from: r.from.entity, to: r.to.player, at: r.at, expiry: TRADE_EXPIRY }))]);
 const trades = new Map();   // participant id -> the trade it is in
 function tradeParticipant(entity) {
     if (!entity?.isValid) return null;
@@ -14670,11 +15309,13 @@ function tradeDistance(a, b) {
     const p = a.entity.location, q = b.entity.location;
     return a.entity.dimension.id === b.entity.dimension.id ? Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z) : Infinity;
 }
-// SpectateBattleCommand and the wheel's Spectate: the player follows the battle in chat, as its player sees it
+// SpectateBattleCommand and the wheel's Spectate: BattleGUI as a spectator (ClientBattle.spectating), the battle screen
+// read-only as its player sees it, Leave in place of the actions, drawn again as the battle moves (battle_rules.js)
+function spectatorCtx() { return { battleBody, battleTitle, UI, battles }; }
 function spectateBattle(player, target, battle) {
     if (!battle) return;
-    (realBattle(battle).spectators ??= new Set()).add(player.id);
     player.sendMessage(`§7Spectating ${target.name}'s battle.`);
+    battleRules.startSpectating(realBattle(battle), player, spectatorCtx());
 }
 // the player wheel (createPlayerInteractGui), on a player or the test trader
 function openPlayerWheel(player, target) {
@@ -15004,3 +15645,12 @@ world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     event.cancel = true;
     system.run(() => openPlayerWheel(player, target));
 });
+
+// scripts/storage_npc.js: Nurse Joy's look, the pasture's lamp and tether, the starter's skipped-choosing line, Professor
+// Sacchi's dialogue branches and the standard trainer's name and hurt memory, ticked every second with main.js's own pieces
+initStorageNpc({ prop, setProp, summaryParty, missingShare, healerRecords, healerCharge, healingAt, useHealingMachine, recall, setPastureLamp,
+                 startNpcBattle, showScene, POKEMON, NPC_BATTLER, PASTURE_AT, OWNER, STATUS, PP_LEFT, pastureViewers });
+system.runInterval(tickStorageNpc, 20);
+// the item behaviours module's hold on this file's helpers (item_behaviours.js: regional foods, Aprijuice party select)
+registerItemBehaviours({ consumeHand, giveOrDrop, prop, setProp, statusOf, STATUS, OWNER, FAINTED, nicknameOf, partyOf, partyMember, stackSlot, useAprijuiceOn, RIDES,
+    inBattle: (playerId) => battles.has(playerId) });

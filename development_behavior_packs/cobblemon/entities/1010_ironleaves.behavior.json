@@ -91,6 +91,10 @@
                     "type": "bool",
                     "default": false,
                     "client_sync": true
+                },
+                "cobblemon:lightning_immune": {
+                    "type": "bool",
+                    "default": false
                 }
             },
             "animations": {},
@@ -365,6 +369,49 @@
                     "track_target": true
                 }
             },
+            "cobblemon:alpha_retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:wary": {
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 1,
+                    "max_dist": 15,
+                    "max_flee": 15,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 15,
+                            "max_flee": 15,
+                            "walk_speed_multiplier": 1.57,
+                            "sprint_speed_multiplier": 1.57
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": [
+                        5,
+                        20
+                    ],
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:calm_wary",
+                        "target": "self"
+                    }
+                }
+            },
             "cobblemon:looks_around": {
                 "minecraft:behavior.look_at_player": {
                     "priority": 6,
@@ -378,7 +425,18 @@
             }
         },
         "components": {
-            "minecraft:nameable": {},
+            "minecraft:nameable": {
+                "allow_name_tag_renaming": false
+            },
+            "minecraft:leashable": {},
+            "minecraft:ambient_sound_interval": {
+                "value": 54,
+                "range": 4,
+                "event_name": "ambient"
+            },
+            "minecraft:experience_reward": {
+                "on_death": "query.last_hit_by_player ? 1 + math.random_integer(0, 2) : 0"
+            },
             "minecraft:type_family": {
                 "family": [
                     "mob",
@@ -481,6 +539,18 @@
             },
             "minecraft:damage_sensor": {
                 "triggers": [
+                    {
+                        "cause": "lightning",
+                        "deals_damage": false,
+                        "on_damage": {
+                            "filters": {
+                                "test": "bool_property",
+                                "subject": "self",
+                                "domain": "cobblemon:lightning_immune",
+                                "value": true
+                            }
+                        }
+                    },
                     {
                         "cause": "suffocation",
                         "on_damage": {
@@ -603,7 +673,9 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:retaliates"
+                        "cobblemon:retaliates",
+                        "cobblemon:alpha_retaliates",
+                        "cobblemon:wary"
                     ]
                 },
                 "add": {
@@ -617,7 +689,9 @@
                     "component_groups": [
                         "cobblemon:wild",
                         "cobblemon:released",
-                        "cobblemon:retaliates"
+                        "cobblemon:retaliates",
+                        "cobblemon:alpha_retaliates",
+                        "cobblemon:wary"
                     ]
                 },
                 "add": {
@@ -652,7 +726,9 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
-                        "cobblemon:retaliates"
+                        "cobblemon:retaliates",
+                        "cobblemon:alpha_retaliates",
+                        "cobblemon:wary"
                     ]
                 },
                 "add": {
@@ -670,6 +746,7 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:following",
+                        "cobblemon:alpha_retaliates",
                         "cobblemon:retaliates"
                     ]
                 }
@@ -711,6 +788,28 @@
                                 "cobblemon:retaliates"
                             ]
                         }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "test": "has_component",
+                                    "subject": "self",
+                                    "value": "minecraft:despawn"
+                                },
+                                {
+                                    "test": "bool_property",
+                                    "subject": "self",
+                                    "domain": "cobblemon:alpha",
+                                    "value": true
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:alpha_retaliates"
+                            ]
+                        }
                     }
                 ]
             },
@@ -719,7 +818,9 @@
                     "component_groups": [
                         "cobblemon:wild",
                         "cobblemon:in_battle",
-                        "cobblemon:retaliates"
+                        "cobblemon:retaliates",
+                        "cobblemon:alpha_retaliates",
+                        "cobblemon:wary"
                     ]
                 },
                 "add": {
@@ -763,6 +864,33 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:pasture_conflict"
+                    ]
+                }
+            },
+            "cobblemon:alpha_retaliate": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:alpha_retaliates"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:panics",
+                        "cobblemon:fleeing"
+                    ]
+                }
+            },
+            "cobblemon:wary": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:calm_wary": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:wary"
                     ]
                 }
             }

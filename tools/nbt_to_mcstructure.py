@@ -131,6 +131,9 @@ BLOCK_NAMES = {
     "chain": "iron_chain", "tall_seagrass": "seagrass", "cave_vines_plant": "cave_vines", "small_dripleaf": "small_dripleaf_block",
     "repeater": "unpowered_repeater", "comparator": "unpowered_comparator",
     "dirt_block": "dirt",   # a jigsaw's final_state in Cobblemon's flowerbed clearings, which Java does not know either
+    # the growing plants' body blocks, which Bedrock does not split from their heads (the feature habitats and coves)
+    "kelp_plant": "kelp", "twisting_vines_plant": "twisting_vines", "weeping_vines_plant": "weeping_vines",
+    "big_dripleaf_stem": "big_dripleaf",
 }
 # Cobblemon blocks with a vanilla stand-in; the rest (berries, relic coins) become air until they are ported
 COBBLEMON_BLOCKS = {"gilded_chest": "chest", "gimmighoul_chest": "chest", "apricorn_planks": "oak_planks", "habitat_block": "grass_block"}
@@ -209,9 +212,9 @@ def convert_states(java_name, name, props):
 
 def parse_processors(processors):
     """A Java processor list as rule lists: [[(block, properties or None, probability, (name, properties))]].
-    Only replacement rules are read; a capped processor counts as its delegate without the cap, and rules
+    Replacement rules and block rot are read; a capped processor changes at most its limit of blocks, and rules
     that look at the block already in the world (a location predicate other than always_true) are skipped,
-    as are gravity, height range and rotation processors."""
+    as are gravity, height range and rotation processors (scripts/main.js reads those from jigsaw.js)."""
     result = []
     for processor in processors or []:
         limit = None
@@ -219,6 +222,12 @@ def parse_processors(processors):
             # a capped processor changes at most `limit` blocks of each placement
             limit = processor.get("limit") if isinstance(processor.get("limit"), int) else None
             processor = processor["delegate"]
+        if processor.get("processor_type") == "minecraft:block_rot":
+            # BlockRotProcessor: a block named in rottable_blocks (any block, when none are named) is left out, the
+            # world's own block staying, when a roll beats the integrity (the deserted house, tower and fallen statue)
+            result.append({"rules": [], "limit": None, "used": 0, "rot": float(processor.get("integrity", 1.0)),
+                           "blocks": set(processor.get("rottable_blocks") or [])})
+            continue
         if processor.get("processor_type") != "minecraft:rule": continue
         rules = []
         for rule in processor.get("rules", []):
@@ -240,6 +249,9 @@ def apply_processors(name, props, processors, rng):
     loot table a rule gave it, if any."""
     loot = None
     for processor in processors:
+        if "rot" in processor:
+            if (not processor["blocks"] or name in processor["blocks"]) and rng.random() > processor["rot"]: return "minecraft:structure_void", {}, loot
+            continue
         if processor["limit"] is not None and processor["used"] >= processor["limit"]: continue
         for block, want, probability, output in processor["rules"]:
             if block != name or (want and any(props.get(k) != v for k, v in want.items())): continue
@@ -303,6 +315,141 @@ def sign(nbt):
                         IgnoreLighting=Tag(BYTE, 1 if (text or {}).get("has_glowing_text") else 0), HideGlowOutline=Tag(BYTE, 0), PersistFormatting=Tag(BYTE, 1))
     return compound(block_entity_data=compound(id=Tag(STRING, "Sign"), isMovable=Tag(BYTE, 1), IsWaxed=Tag(BYTE, 1),
                                                FrontText=side(nbt.get("front_text")), BackText=side(nbt.get("back_text"))))
+
+
+# Bedrock's potion ids, the Damage a potion item carries, by Java's potion name (the Mossy Oubliette's dispensers)
+POTIONS = {"water": 0, "mundane": 1, "long_mundane": 2, "thick": 3, "awkward": 4, "night_vision": 5, "long_night_vision": 6,
+           "invisibility": 7, "long_invisibility": 8, "leaping": 9, "long_leaping": 10, "strong_leaping": 11, "fire_resistance": 12,
+           "long_fire_resistance": 13, "swiftness": 14, "long_swiftness": 15, "strong_swiftness": 16, "slowness": 17, "long_slowness": 18,
+           "water_breathing": 19, "long_water_breathing": 20, "healing": 21, "strong_healing": 22, "harming": 23, "strong_harming": 24,
+           "poison": 25, "long_poison": 26, "strong_poison": 27, "regeneration": 28, "long_regeneration": 29, "strong_regeneration": 30,
+           "strength": 31, "long_strength": 32, "strong_strength": 33, "weakness": 34, "long_weakness": 35, "wither": 36,
+           "turtle_master": 37, "long_turtle_master": 38, "strong_turtle_master": 39, "slow_falling": 40, "long_slow_falling": 41,
+           "strong_slowness": 42, "wind_charged": 43, "weaving": 44, "oozing": 45, "infested": 46}
+
+
+def item_stack(name, count=1, damage=0, slot=None):
+    """A Bedrock item stack as a container or a pot holds it."""
+    stack = compound(Count=Tag(BYTE, max(1, min(64, int(count)))), Damage=Tag(SHORT, damage), Name=Tag(STRING, name), WasPickedUp=Tag(BYTE, 0))
+    if slot is not None: stack.value["Slot"] = Tag(BYTE, slot)
+    return stack
+
+
+def java_item(item):
+    """A Java saved item ({id, Count or count, tag or components}) as (Bedrock name, damage): a potion's kind is its Damage."""
+    name = item.get("id", "")
+    if not name.startswith("minecraft:"): return None
+    potion = (item.get("tag") or {}).get("Potion") or ((item.get("components") or {}).get("minecraft:potion_contents") or {}).get("potion", "")
+    return name, POTIONS.get(str(potion).split(":")[-1], 0)
+
+
+def dispenser(block_name, items):
+    """Block entity data for a dispenser or dropper with the items Java saved in it (the oubliette's poison and TNT traps)."""
+    stacks = []
+    for item in items or []:
+        kind = java_item(item)
+        if kind: stacks.append(item_stack(kind[0], item.get("Count", item.get("count", 1)), kind[1], int(item.get("Slot", len(stacks)))))
+    return compound(block_entity_data=compound(id=Tag(STRING, "Dispenser" if block_name == "dispenser" else "Dropper"), isMovable=Tag(BYTE, 1),
+                                               Items=Tag(LIST, stacks, COMPOUND)))
+
+
+def mob_spawner(nbt):
+    """Block entity data for a mob spawner with the mob Java's SpawnData names (the crypt's cave spiders, a tombstone's
+    zombies) and Java's delays and counts, or None when it names none."""
+    nbt = nbt or {}
+    entity = ((nbt.get("SpawnData") or {}).get("entity") or {}).get("id")
+    if not entity:
+        entity = next((((p.get("data") or {}).get("entity") or {}).get("id") for p in nbt.get("SpawnPotentials", []) if ((p.get("data") or {}).get("entity") or {}).get("id")), None)
+    if not entity: return None
+    short = lambda key, default: Tag(SHORT, int(nbt.get(key, default)))
+    return compound(block_entity_data=compound(
+        id=Tag(STRING, "MobSpawner"), isMovable=Tag(BYTE, 1), EntityIdentifier=Tag(STRING, entity),
+        Delay=short("Delay", 20), MinSpawnDelay=short("MinSpawnDelay", 200), MaxSpawnDelay=short("MaxSpawnDelay", 800),
+        SpawnCount=short("SpawnCount", 4), MaxNearbyEntities=short("MaxNearbyEntities", 6), RequiredPlayerRange=short("RequiredPlayerRange", 16),
+        SpawnRange=short("SpawnRange", 4), DisplayEntityWidth=Tag(FLOAT, 0.8), DisplayEntityHeight=Tag(FLOAT, 0.8), DisplayEntityScale=Tag(FLOAT, 1.0)))
+
+
+def beehive():
+    """Block entity data for a bee nest Java saved with bees in it: Bedrock spawns the nest's bees when it first loads."""
+    return compound(block_entity_data=compound(id=Tag(STRING, "Beehive"), isMovable=Tag(BYTE, 1), Occupants=Tag(LIST, [], COMPOUND), ShouldSpawnBees=Tag(BYTE, 1)))
+
+
+# a Java loot table name -> the converted Bedrock table's file, for the one stack a decorated pot holds; port.py sets it
+POT_LOOT_PATH = None
+
+
+def roll_loot(path, rng):
+    """One stack from a converted Bedrock loot table, as a decorated pot holds one (Java fills the pot from its whole
+    table when opened): the first pool's roll, an item entry by weight at its set_count, or None."""
+    try:
+        with open(path, encoding="utf-8") as file: table = json.load(file)
+    except (OSError, ValueError): return None
+    for pool in table.get("pools", []):
+        entries = [e for e in pool.get("entries", []) if e.get("type") == "item" and e.get("name")]
+        if not entries: continue
+        pick = rng.random() * sum(e.get("weight", 1) for e in entries)
+        for entry in entries:
+            pick -= entry.get("weight", 1)
+            if pick < 0: break
+        count = 1
+        for function in entry.get("functions", []):
+            if function.get("function") == "set_count":
+                c = function.get("count", 1)
+                count = rng.randint(int(c.get("min", 1)), int(c.get("max", 1))) if isinstance(c, dict) else int(c)
+        return entry["name"], count
+    return None
+
+
+def decorated_pot(nbt, loot, rng):
+    """Block entity data for a decorated pot: Java's sherds (plain bricks where none), the item saved in it, or, for a pot
+    a processor fills from a loot table (append_loot, the ruins' pots), one stack rolled from that table."""
+    nbt = nbt or {}
+    sherds = [s if isinstance(s, str) else "minecraft:brick" for s in (nbt.get("sherds") or [])]
+    data = compound(id=Tag(STRING, "DecoratedPot"), isMovable=Tag(BYTE, 1),
+                    sherds=Tag(LIST, [Tag(STRING, s) for s in (sherds + ["minecraft:brick"] * 4)[:4]], STRING))
+    saved = nbt.get("item")
+    if isinstance(saved, dict) and java_item(saved):
+        name, damage = java_item(saved); data.value["item"] = item_stack(name, saved.get("count", saved.get("Count", 1)), damage)
+    elif loot and POT_LOOT_PATH:
+        rolled = roll_loot(POT_LOOT_PATH(loot), rng)
+        if rolled: data.value["item"] = item_stack(rolled[0], rolled[1])
+    return compound(block_entity_data=data)
+
+
+def trial_spawner(nbt, loot_path):
+    """Block entity data for a trial spawner as Java configured it (the shipwreck coves' drowned): its spawn potentials,
+    mob counts, spawn delay and reward tables for the normal and ominous configs, Bedrock's own names for the same."""
+    def config(c):
+        potentials = [compound(TypeId=Tag(STRING, p["data"]["entity"]["id"]), Weight=Tag(INT, int(p.get("weight", 1))))
+                      for p in c.get("spawn_potentials", []) if ((p.get("data") or {}).get("entity") or {}).get("id")]
+        tables = [compound(data=Tag(STRING, loot_path(t["data"])), weight=Tag(INT, int(t.get("weight", 1)))) for t in c.get("loot_tables_to_eject", []) if t.get("data")]
+        return compound(spawn_potentials=Tag(LIST, potentials, COMPOUND), loot_tables_to_eject=Tag(LIST, tables, COMPOUND),
+                        simultaneous_mobs=Tag(FLOAT, float(c.get("simultaneous_mobs", 2.0))),
+                        simultaneous_mobs_added_per_player=Tag(FLOAT, float(c.get("simultaneous_mobs_added_per_player", 1.0))),
+                        total_mobs=Tag(FLOAT, float(c.get("total_mobs", 6.0))), total_mobs_added_per_player=Tag(FLOAT, float(c.get("total_mobs_added_per_player", 2.0))),
+                        ticks_between_spawn=Tag(INT, int(c.get("ticks_between_spawn", 40))),
+                        items_to_drop_when_ominous=Tag(STRING, loot_path(c["items_to_drop_when_ominous"]) if c.get("items_to_drop_when_ominous") else "loot_tables/spawners/trial_chamber/items_to_drop_when_ominous.json"))
+    normal = nbt.get("normal_config") or {}
+    ominous = nbt.get("ominous_config") or normal
+    first = next((p for p in normal.get("spawn_potentials", []) if ((p.get("data") or {}).get("entity") or {}).get("id")), None)
+    data = compound(id=Tag(STRING, "TrialSpawner"), isMovable=Tag(BYTE, 1),
+                    required_player_range=Tag(INT, int(nbt.get("required_player_range", 14))),
+                    target_cooldown_length=Tag(INT, int(nbt.get("target_cooldown_length", 36000))),
+                    normal_config=config(normal), ominous_config=config(ominous))
+    if first: data.value["spawn_data"] = compound(TypeId=Tag(STRING, first["data"]["entity"]["id"]), Weight=Tag(INT, int(first.get("weight", 1))))
+    return compound(block_entity_data=data)
+
+
+def entity(nbt, pos, rng):
+    """A mob Java saved in a template (the Gimmighoul towers' breeze, witches and husks) as a Bedrock structure entity at
+    the same spot in the template, kept from despawning, or None for one that is not a vanilla mob."""
+    identifier = (nbt or {}).get("id", "")
+    if not identifier.startswith("minecraft:"): return None
+    rotation = (list(nbt.get("Rotation") or []) + [0.0, 0.0])[:2]
+    return compound(identifier=Tag(STRING, identifier), Pos=Tag(LIST, [Tag(FLOAT, float(v)) for v in pos], FLOAT),
+                    Rotation=Tag(LIST, [Tag(FLOAT, float(v)) for v in rotation], FLOAT), Persistent=Tag(BYTE, 1),
+                    UniqueID=Tag(LONG, -(rng.getrandbits(62) + 1)), definitions=Tag(LIST, [Tag(STRING, f"+{identifier}")], STRING),
+                    Tags=Tag(LIST, [], STRING))
 
 
 def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=False, loot_path=None, loot_counts=None, overrides=None, region=None,
@@ -384,6 +531,14 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
             position_data[str(index)] = brushable(key[0], loot_path(loot))
             if loot_counts is not None: loot_counts[loot_path(loot)] = loot_counts.get(loot_path(loot), 0) + 1
             if brush_counts is not None: brush_counts[loot_path(loot)] = brush_counts.get(loot_path(loot), 0) + 1
+        # the other block entities a template saves: a trial spawner's configs, a spawner's mob, a nest's bees, a
+        # dispenser's items, a pot's sherds and loot
+        nbt = block.get("nbt") or {}
+        if key[0] == "trial_spawner" and loot_path and nbt.get("normal_config"): position_data[str(index)] = trial_spawner(nbt, loot_path)
+        elif key[0] == "mob_spawner" and (spawner := mob_spawner(nbt)): position_data[str(index)] = spawner
+        elif key[0] in ("bee_nest", "beehive") and nbt.get("Bees"): position_data[str(index)] = beehive()
+        elif key[0] in ("dispenser", "dropper") and nbt.get("Items"): position_data[str(index)] = dispenser(key[0], nbt["Items"])
+        elif key[0] == "decorated_pot" and (nbt.get("sherds") or nbt.get("item") or loot): position_data[str(index)] = decorated_pot(nbt, loot, rng)
     if foundation:
         thin = ("_slab", "_stairs", "glass", "_pane", "fence", "door", "carpet", "torch", "sign", "button", "plate", "lantern",
                 "_wall", "bars", "chain", "ladder", "rail", "candle", "flower", "air",
@@ -400,12 +555,19 @@ def convert(src, dst, invalid=None, unmapped=None, processors=None, air_as_void=
                 for y in range(foundation): grown[(x * tall + y) * sz + z] = block
         position_data = {str((int(i) // sz // sy * tall + int(i) // sz % sy + foundation) * sz + int(i) % sz): v for i, v in position_data.items()}
         layer, sy = grown, tall
+    # the mobs saved in the template, at the same spot in it (a structure's entities stand off its origin, which is 0)
+    entities = []
+    for saved in java.get("entities", []):
+        pos = saved.get("pos") or saved.get("blockPos") or [0, 0, 0]
+        if not (x0 <= pos[0] < x1 and z0 <= pos[2] < z1): continue
+        mob = entity(saved.get("nbt"), [pos[0] - x0, pos[1] + foundation, pos[2] - z0], rng)
+        if mob: entities.append(mob)
     root = compound(
         format_version=Tag(INT, 1),
         size=int_list([sx, sy, sz]),
         structure=compound(
             block_indices=Tag(LIST, [int_list(layer), int_list([-1] * len(layer))], LIST),
-            entities=Tag(LIST, [], COMPOUND),
+            entities=Tag(LIST, entities, COMPOUND),
             palette=compound(default=compound(block_palette=Tag(LIST, palette, COMPOUND), block_position_data=Tag(COMPOUND, position_data)))),
         structure_world_origin=int_list([0, 0, 0]))
     os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)

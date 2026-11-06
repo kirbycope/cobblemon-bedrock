@@ -1,5 +1,5 @@
 {
-  "format_version": "1.21.90",
+  "format_version": "1.21.120",
   "minecraft:block": {
     "description": {
       "identifier": "cobblemon:eject_button_block",
@@ -69,7 +69,20 @@
         "seconds_to_destroy": 0.5
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/eject_button.json"
+      "minecraft:loot": "loot_tables/blocks/eject_button.json",
+      "cobblemon:eject_button": {},
+      "minecraft:redstone_producer": {
+        "power": 0
+      },
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": true,
+            "on_liquid_touches": "no_reaction"
+          }
+        ]
+      }
     },
     "permutations": [
       {
@@ -717,6 +730,16 @@
               90,
               0
             ]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('cobblemon:powered')",
+        "components": {
+          "minecraft:redstone_producer": {
+            "power": 15,
+            "strongly_powered_face": "down",
+            "transform_relative": true
           }
         }
       }

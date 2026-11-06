@@ -3,7 +3,7 @@
   "minecraft:feature_rules": {
     "description": {
       "identifier": "cobblemon:revival_herb_rule",
-      "places_feature": "cobblemon:revival_herb_patch"
+      "places_feature": "cobblemon:revival_herb_column"
     },
     "conditions": {
       "placement_pass": "underground_pass",
@@ -22,13 +22,7 @@
           15
         ]
       },
-      "y": {
-        "distribution": "uniform",
-        "extent": [
-          -56,
-          60
-        ]
-      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
       "z": {
         "distribution": "uniform",
         "extent": [

@@ -29,3 +29,21 @@ const total = (out) => out.reduce((n, [, c]) => n + c, 0);
     check("a ripe tree beside its partner can mutate, and the harvest gives the mutation", out.some(([item]) => item === "cobblemon:lum_berry"), JSON.stringify(out));
     check("Surprise Mulch is spent on the roll", M.careOf(b).uses === 2 || !M.careOf(b).mulch, JSON.stringify(M.careOf(b)));
 }
+
+// bone meal (BerryBlock.performBonemeal): a stage on, and a bush it ripens rolls its mutation as a random tick's ripening
+// does; before this the bone meal path skipped the roll, so a bone-mealed tree never mutated (Planet Minecraft, 6 Nov 2026)
+{
+    const b = bush("cobblemon:oran_berry_bush", { "1,0": "cobblemon:cheri_berry_bush" });
+    M.setCare(b, null);
+    const perm = (states) => ({ getState: (k) => states[k], withState: (k, v) => perm({ ...states, [k]: v }) });
+    b.isValid = true; b.permutation = perm({ "cobblemon:stage": 2, "cobblemon:mulch": "none" });
+    b.setPermutation = (p) => { b.permutation = p; };
+    const stage = () => b.permutation.getState("cobblemon:stage");
+    const random = Math.random; Math.random = () => 0.1;
+    let grew;
+    try { grew = M.bonemealBerry(b, null); } finally { Math.random = random; }
+    check("bone meal takes a flowering bush to ripe", grew && stage() === 3, `${grew} ${stage()}`);
+    check("and the bush beside its partner mutates", M.careOf(b).mut === "cobblemon:lum_berry", JSON.stringify(M.careOf(b)));
+    check("a ripe bush takes no bone meal", !M.bonemealBerry(b, null));
+    M.setCare(b, null);
+}

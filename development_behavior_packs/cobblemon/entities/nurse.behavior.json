@@ -27,7 +27,7 @@
             },
             "minecraft:nameable": {
                 "always_show": true,
-                "allow_name_tag_renaming": false
+                "allow_name_tag_renaming": true
             },
             "minecraft:persistent": {},
             "minecraft:physics": {},
@@ -85,6 +85,44 @@
                             0
                         ]
                     }
+                }
+            }
+        },
+        "component_groups": {
+            "cobblemon:joy": {
+                "minecraft:variant": {
+                    "value": 1
+                }
+            },
+            "cobblemon:plain": {
+                "minecraft:variant": {
+                    "value": 0
+                }
+            }
+        },
+        "events": {
+            "cobblemon:joy_on": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:joy"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:plain"
+                    ]
+                }
+            },
+            "cobblemon:joy_off": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:plain"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:joy"
+                    ]
                 }
             }
         }

@@ -10,10 +10,6 @@
         "cobblemon:lit": [
           false,
           true
-        ],
-        "cobblemon:waterlogged": [
-          false,
-          true
         ]
       }
     },
@@ -61,11 +57,20 @@
         "seconds_to_destroy": 0.5
       },
       "minecraft:light_dampening": 0,
-      "minecraft:loot": "loot_tables/blocks/incense_sweet.json"
+      "minecraft:loot": "loot_tables/blocks/incense_sweet.json",
+      "minecraft:liquid_detection": {
+        "detection_rules": [
+          {
+            "liquid_type": "water",
+            "can_contain_liquid": true,
+            "on_liquid_touches": "no_reaction"
+          }
+        ]
+      }
     },
     "permutations": [
       {
-        "condition": "q.block_state('cobblemon:lit') == true && q.block_state('cobblemon:waterlogged') == false",
+        "condition": "q.block_state('cobblemon:lit') == true",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_incense_sweet_0",
           "minecraft:material_instances": {
@@ -92,61 +97,7 @@
         }
       },
       {
-        "condition": "q.block_state('cobblemon:lit') == false && q.block_state('cobblemon:waterlogged') == false",
-        "components": {
-          "minecraft:geometry": "geometry.cobblemon_incense_sweet_1",
-          "minecraft:material_instances": {
-            "t0": {
-              "texture": "cobblemon_block_incense_sweet_unlit",
-              "render_method": "alpha_test",
-              "ambient_occlusion": false,
-              "face_dimming": false
-            },
-            "*": {
-              "texture": "cobblemon_block_incense_sweet_unlit",
-              "render_method": "alpha_test",
-              "ambient_occlusion": false,
-              "face_dimming": false
-            }
-          },
-          "minecraft:transformation": {
-            "rotation": [
-              0,
-              0,
-              0
-            ]
-          }
-        }
-      },
-      {
-        "condition": "q.block_state('cobblemon:lit') == true && q.block_state('cobblemon:waterlogged') == true",
-        "components": {
-          "minecraft:geometry": "geometry.cobblemon_incense_sweet_0",
-          "minecraft:material_instances": {
-            "t0": {
-              "texture": "cobblemon_block_incense_sweet_lit",
-              "render_method": "alpha_test",
-              "ambient_occlusion": false,
-              "face_dimming": false
-            },
-            "*": {
-              "texture": "cobblemon_block_incense_sweet_lit",
-              "render_method": "alpha_test",
-              "ambient_occlusion": false,
-              "face_dimming": false
-            }
-          },
-          "minecraft:transformation": {
-            "rotation": [
-              0,
-              0,
-              0
-            ]
-          }
-        }
-      },
-      {
-        "condition": "q.block_state('cobblemon:lit') == false && q.block_state('cobblemon:waterlogged') == true",
+        "condition": "q.block_state('cobblemon:lit') == false",
         "components": {
           "minecraft:geometry": "geometry.cobblemon_incense_sweet_1",
           "minecraft:material_instances": {
