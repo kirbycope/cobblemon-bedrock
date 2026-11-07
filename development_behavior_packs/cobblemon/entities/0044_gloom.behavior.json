@@ -617,6 +617,80 @@
                         8
                     ]
                 }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0045_vileplume",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_bellossom"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_gloom"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_vileplume"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
             }
         },
         "components": {
@@ -881,6 +955,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -906,6 +1000,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -923,6 +1018,7 @@
                         "cobblemon:released",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -975,6 +1071,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -1045,6 +1142,7 @@
                         "cobblemon:in_battle",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -1741,6 +1839,101 @@
                         "cobblemon:wary"
                     ]
                 }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:spawn_mult_9": {},
+            "cobblemon:spawn_mult_10": {
+                "randomize": [
+                    {
+                        "weight": 4095500,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_5",
+                                "cobblemon:variant_6",
+                                "cobblemon:variant_7"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_4"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 500,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_4",
+                                "cobblemon:variant_6",
+                                "cobblemon:variant_7"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_5"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 4095500,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_4",
+                                "cobblemon:variant_5",
+                                "cobblemon:variant_7"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_6"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 500,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2",
+                                "cobblemon:variant_3",
+                                "cobblemon:variant_4",
+                                "cobblemon:variant_5",
+                                "cobblemon:variant_6"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_7"
+                            ]
+                        }
+                    }
+                ]
             }
         }
     }

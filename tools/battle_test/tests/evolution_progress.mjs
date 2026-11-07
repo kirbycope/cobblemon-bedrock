@@ -9,9 +9,15 @@ function rolled(roll, fn) { const random = Math.random; Math.random = () => roll
     check("a Pokemon counts the times it uses a move", M.progressOf(a.entity).used?.ragefist === 3 && M.meets(a.entity, a, { t: "used", move: "ragefist", min: 3 }));
 }
 {
+    // credited when the battle ends (PokemonBattle.end), to the party's Pokemon that faced it (evolution_rules.mjs)
     const a = owned("Bisharp", { level: 100 }), d = mon("Bisharp", { level: 2, held: "kings_rock" }), b = battle(a, d);
+    b.player = { ...b.player, id: "defeats" };
+    M.partyOf("defeats").push({ pid: "pid-a", rec: { t: a.entity.typeId, v: 0, lv: 100, k: {} }, out: null });
+    const kept = M.summaryParty(b.player)[0];
     rolled(0.5, () => { M.useMove(b, a, d, move("tackle")); flush(); });
-    check("and the Pokemon it knocks out, with what they held", M.defeatsOf(a.entity, "bisharp held_item=cobblemon:kings_rock") === 1, JSON.stringify(M.progressOf(a.entity)));
+    b.pendingExp = [{ foe: d, loser: "foe", winners: b, faced: new Set(["pid-a"]) }];
+    M.creditDefeats(b);
+    check("and the Pokemon it knocks out, with what they held", M.defeatsOf(kept, "bisharp held_item=cobblemon:kings_rock") === 1, JSON.stringify(M.progressOf(kept)));
 }
 {
     const d = owned("Yamask", { level: 100 }), b = battle(mon("Snorlax", { level: 20 }), d);

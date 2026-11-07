@@ -320,12 +320,16 @@ export function machineSignals(m, st) {
 // or 20 ticks and more)
 export const fossilsDropOnBreak = (st) => st.left <= 0 || st.left >= 1;
 // the finished Pokemon comes out wild behind the tank (spawn), shiny one in fossilMachineShinyChance (100) and alpha
-// one in fossilMachineAlphaChance (20), with the retrieve sound
+// one in fossilMachineAlphaChance (20), with the retrieve sound, at level 1: the fossil's result is PokemonProperties
+// with no level, and PokemonProperties.create starts from a new Pokemon's (Pokemon.level = 1). Set at once, before the
+// wild level roll (main.js's wildLevel, four ticks on) would give it one
+export const REVIVED_LEVEL = 1;
 function releaseWild(tank, st) {
     if (!st.done || !st.result) return false;
     const at = spawnSpot(tank, facingOf(tank));
     let e;
     try { e = tank.dimension.spawnEntity(st.result, at); } catch (err) { return false; }
+    D.setProp?.(e, D.LEVEL, REVIVED_LEVEL);
     system.run(() => {
         if (!e.isValid) return;
         D.rollAlpha(e, 20);

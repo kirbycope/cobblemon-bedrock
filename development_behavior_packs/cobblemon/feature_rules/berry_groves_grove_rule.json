@@ -1,0 +1,83 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:berry_groves_grove_rule",
+      "places_feature": "cobblemon:berry_groves_grove"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "all_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "cold"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "grove"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "monster"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "mountains"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "overworld"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_cold_variant_farm_animals"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_cold_variant_frogs"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_snow_foxes"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "spawns_white_rabbits"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 25
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      }
+    }
+  }
+}

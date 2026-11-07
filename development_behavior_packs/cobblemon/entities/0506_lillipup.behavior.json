@@ -442,7 +442,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0508_stoutland",
                     "filters": {
@@ -453,6 +453,21 @@
                                         "test": "is_family",
                                         "subject": "other",
                                         "value": "species_herdier"
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_lillipup"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
                                     },
                                     {
                                         "test": "is_family",
@@ -1031,6 +1046,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

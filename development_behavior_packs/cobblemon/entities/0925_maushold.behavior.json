@@ -462,7 +462,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0925_maushold",
                     "filters": {
@@ -1123,8 +1123,7 @@
                 ]
             },
             "cobblemon:spawn_mult_0": {},
-            "cobblemon:spawn_mult_1": {},
-            "cobblemon:spawn_mult_2": {
+            "cobblemon:spawn_mult_1": {
                 "randomize": [
                     {
                         "weight": 8191000,
@@ -1158,8 +1157,8 @@
                     }
                 ]
             },
-            "cobblemon:spawn_mult_3": {},
-            "cobblemon:spawn_mult_4": {
+            "cobblemon:spawn_mult_2": {},
+            "cobblemon:spawn_mult_3": {
                 "randomize": [
                     {
                         "weight": 8191000,
@@ -1193,6 +1192,7 @@
                     }
                 ]
             },
+            "cobblemon:spawn_mult_4": {},
             "cobblemon:spawn_mult_5": {},
             "cobblemon:spawn_mult_6": {
                 "randomize": [
@@ -1335,6 +1335,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

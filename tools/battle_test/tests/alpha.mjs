@@ -6,8 +6,9 @@ import { M, mon, battle, check, flush } from "../harness.mjs";
     const before = { ...f.stats };
     f.entity.setDynamicProperty("cobblemon:alpha", true);
     M.enter(b, f, b.ally); flush();
-    const raised = ["atk", "def", "spa", "spd", "spe"].filter((k) => f.stats[k] > before[k]).length;
-    check("a wild alpha comes into battle boosted (level / 10 + 1 stat steps)", raised >= 1 && b.log.join(" ").includes("alpha"), JSON.stringify([before, f.stats]));
+    // the steps are Showdown's alphaBoosts, which getStat reads; the stored stats stay as they were (battle_rolls.mjs)
+    const steps = Object.values(f.alphaBoosts ?? {}).reduce((n, v) => n + v, 0);
+    check("a wild alpha comes into battle boosted (level / 10 + 1 stat steps)", steps === 5 && JSON.stringify(before) === JSON.stringify(f.stats) && b.log.join(" ").includes("alpha"), JSON.stringify([f.alphaBoosts, f.stats]));
     const g = mon("Snorlax", { level: 40 }), gb = battle(mon("Pikachu"), g);
     M.enter(gb, g, gb.ally); flush();
     check("an ordinary one is not", !g.alphaBoosted);

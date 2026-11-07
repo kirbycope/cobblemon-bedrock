@@ -7,6 +7,7 @@ B.initBlockLogic({
     TM_INDEX: new Map([["cobblemon:tm_flamethrower", 0], ["cobblemon:tm_darkpulse", 1], ["cobblemon:tm_tackle", 2]]),
     MOVES: { flamethrower: { type: "fire" }, darkpulse: { type: "dark" }, tackle: { type: "normal" } },
     FOSSILS: { materialToStart: 128, reviveSeconds: 720 },
+    setProp: (e, k, v) => e.props.set(k, v), LEVEL: "cobblemon:level", rollAlpha() { },
 });
 
 // the disc screens: a music disc the MUSIC screen, a TM its type's, over the two disc states
@@ -46,6 +47,21 @@ check("a finished machine reads 15", B.fossilSignals({ material: 128, left: -1, 
 check("the fossils drop from an idle machine", B.fossilsDropOnBreak({ left: -1 }));
 check("and from one with time to go", B.fossilsDropOnBreak({ left: 5 }));
 check("but not from one about to finish", !B.fossilsDropOnBreak({ left: 0.5 }));
+
+// a finished machine broken (or pulsed) lets its Pokemon out wild at level 1: the fossil's result names no level, and
+// PokemonProperties.create starts from Pokemon.level's 1
+{
+    const spawned = [];
+    const dimension = {
+        getBlock: ({ x, y, z }) => ({ x, y, z, isAir: y >= 64, above: () => ({ isAir: y + 1 >= 64 }), below: () => ({ isAir: y - 1 >= 64 }) }),
+        spawnEntity: (typeId, at) => { const e = { typeId, at, isValid: true, props: new Map() }; spawned.push(e); return e; },
+        playSound() { }, spawnItem() { }, getEntities: () => [],
+    };
+    const tank = { typeId: "cobblemon:restoration_tank", x: 0, y: 64, z: 0, location: { x: 0, y: 64, z: 0 }, dimension, permutation: { getState: () => "north" } };
+    B.fossilBroken(tank, tank, { done: true, result: "cobblemon:p0142_aerodactyl", fossils: [], left: -1 });
+    check("the revived level is 1", B.REVIVED_LEVEL === 1);
+    check("a finished machine broken lets its Pokemon out at level 1, before the wild level roll", spawned.length === 1 && spawned[0].typeId === "cobblemon:p0142_aerodactyl" && spawned[0].props.get("cobblemon:level") === 1, JSON.stringify([...(spawned[0]?.props ?? [])]));
+}
 
 // findSafeSpawnPos: the nearest standing place forward of the front
 {

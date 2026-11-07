@@ -515,6 +515,65 @@
                         8
                     ]
                 }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0738_vikavolt",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_charjabug"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_vikavolt"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
             }
         },
         "components": {
@@ -749,6 +808,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -774,6 +853,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -791,6 +871,7 @@
                         "cobblemon:released",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -836,6 +917,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -906,6 +988,7 @@
                         "cobblemon:in_battle",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -993,6 +1076,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

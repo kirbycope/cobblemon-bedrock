@@ -372,7 +372,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0699_aurorus",
                     "filters": {
@@ -951,7 +951,23 @@
                         "cobblemon:wary"
                     ]
                 }
-            }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:spawn_mult_0": {},
+            "cobblemon:spawn_mult_1": {}
         }
     }
 }

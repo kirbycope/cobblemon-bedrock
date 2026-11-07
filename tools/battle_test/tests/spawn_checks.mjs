@@ -1,11 +1,12 @@
 // Spawning and fishing checks (scripts/spawn_checks.js and main.js): a spawn entry's own drops, the anticondition, light
-// and x checks a spawn rule cannot make, herd moon phases, the fishing wait in rain and shade, the no-bite reel, the open
-// water the treasure needs, and the Poke Snack's cap
+// and x checks a spawn rule cannot make, herd moon phases, the fishing wait in rain and shade (and the biomes it rains in),
+// the rod's and the snack's bucket rolls and levelling, the no-bite reel, the open water the treasure needs, the template
+// and experience orb of a reel, and the Poke Snack's cap
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { M, check } from "../harness.mjs";
+import { M, F, check } from "../harness.mjs";
 
 // the module is an ES module in a folder with no package.json, which this Node reads as CommonJS: a copy beside one that
 // says so loads it, as the harness loads main.js
@@ -80,6 +81,56 @@ const store = () => { const m = new Map(); return { getDynamicProperty: (k) => m
 }
 {
     check("a snack waits at eighteen Pokemon in its 3 by 3 chunks (pokeSnackPokemonPerChunk 2)", SNACK_PER_AREA === 18);
+}
+{
+    // the rod's spawner rolls BestSpawnerConfig.fishingBuckets (FishingSpawnerFactory.createSharedSpawner), not the world's
+    check("the rod's buckets are common 83.25, uncommon 11.25, rare 4.125, ultra-rare 1.375", JSON.stringify(F.FISHING_BUCKETS) === JSON.stringify({ common: 83.25, uncommon: 11.25, rare: 4.125, "ultra-rare": 1.375 }));
+    const plain = { effects: [], luck: 0, lure: 0 }, bobber = { location: { x: 0, y: 63, z: 0 }, sky: true, dimension: {} };
+    const entry = (bucket) => ({ entity: "cobblemon:p0129_magikarp", bucket, weight: 1, biome: null });
+    const pool = ["common", "uncommon", "rare", "ultra-rare"].map(entry);
+    const rolled = (r, cast, ...args) => { const random = Math.random; Math.random = () => r; try { return M.planSpawn(cast, bobber, ...args); } finally { Math.random = random; } };
+    // a roll of 90 in 100 is uncommon on the rod's buckets (83.25 to 94.5) and would be common on the world's (94)
+    check("the rod draws its bucket by them", rolled(0.9, plain, pool).spawn.bucket === "uncommon" && rolled(0.5, plain, pool).spawn.bucket === "common" && rolled(0.96, plain, pool).spawn.bucket === "rare" && rolled(0.99, plain, pool).spawn.bucket === "ultra-rare");
+    check("the hook window reads the bucket's fishing weight", rolled(0.9, plain, pool, F.FISHING_BUCKETS).bucketWeight === 11.25 && rolled(0.9, plain, pool, F.BUCKETS).spawn.bucket === "common");
+    const main = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/main.js", import.meta.url), "utf-8");
+    check("the rod's cast passes them", main.includes("planSpawn(cast, bobber, FISHING_SPAWNS, FISHING_BUCKETS)"));
+    // Spawner.chooseBucket rolls over every bucket the pool has, and the selector gives nothing when the rolled bucket has
+    // nothing allowed here: the rod's no bite, a snack's cycle spent
+    check("a rolled bucket with nothing here is no bite", rolled(0.9, plain, [entry("common")]) === undefined && rolled(0.5, plain, [entry("common")]).spawn.bucket === "common");
+    check("and a snack's draw the same", rolled(0.9, plain, [entry("common")], F.SNACK_BUCKETS, true, 1.2) === undefined && rolled(0.5, plain, [entry("common")], F.SNACK_BUCKETS, true, 1.2).spawn.bucket === "common");
+    // BucketNormalizingInfluence: a rarity bait levels the rod's buckets from 1.29 (its default firstTier) and a snack's
+    // seasoning from 1.2 (PokeSnackSpawnerFactory); the common share differs, so a roll between the two tells them apart
+    const share = (first) => { const a = Math.pow(83.25, 1 / first), b = Math.pow(1.375, 1 / first); return a / (a + b); };
+    const lure = { effects: [{ t: "rarity_bucket", value: 1 }], luck: 0, lure: 0 }, two = [entry("common"), entry("ultra-rare")], flat = { common: 83.25, "ultra-rare": 1.375 };
+    const between = (share(1.2) + share(1.29)) / 2;
+    check("a snack levels its buckets from 1.2, the rod from 1.29", rolled(between, lure, two, flat, true, 1.2).spawn.bucket === "common" && rolled(between, lure, two, flat).spawn.bucket === "ultra-rare" && rolled(between, lure, two, flat, false, 1.29).spawn.bucket === "ultra-rare");
+}
+{
+    // Level.isRainingAt: the rain that hastens the wait falls only where the biome's precipitation is rain
+    const rainy = { id: "test:rain", getWeather: () => "Rain" }, cast = (rains) => ({ sky: true, rains, bobber: { dimension: rainy } });
+    check("rain on the bobber hastens the wait in the plains", M.rainsIn(F.BIOME_TAGS["minecraft:plains"]) && M.rainOnBobber(cast(true)) && M.rainOnBobber(cast(undefined)));
+    check("not in a snowy biome", !M.rainsIn(F.BIOME_TAGS["minecraft:ice_plains"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:cold_taiga"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:frozen_river"]) && !M.rainOnBobber(cast(false)));
+    check("nor in one without rain", !M.rainsIn(F.BIOME_TAGS["minecraft:desert"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:savanna"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:mesa"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:hell"]));
+    check("the cold oceans and the deep frozen ocean are 0.5 in Java, rain", M.rainsIn(F.BIOME_TAGS["minecraft:cold_ocean"]) && M.rainsIn(F.BIOME_TAGS["minecraft:deep_frozen_ocean"]) && !M.rainsIn(F.BIOME_TAGS["minecraft:frozen_ocean"]));
+    const landed = (id) => M.bobberRains({ location: { x: 0, y: 63, z: 0 }, dimension: { getBiome: () => ({ id }) } });
+    check("told from the bobber's biome as it lands", !landed("minecraft:ice_plains") && landed("minecraft:river") && landed("minecraft:unknown_biome"));
+}
+{
+    // retrieve: the Poke Rod Smithing Template is a pool of the vanilla treasure table (loot_table/injection, one in six),
+    // rolled by the table alone, and an ExperienceOrb comes with a Pokemon as with an item
+    const calls = [];
+    const dim = { id: "test:reel", spawnEntity: (id) => { calls.push(["entity", id]); return { isValid: true, applyImpulse() { } }; }, spawnItem: (item) => calls.push(["item", item.typeId]), runCommand: (c) => calls.push(["command", c]), getBlock: () => { throw new Error("unloaded"); }, playSound() { } };
+    const player = { id: "angler", isValid: true, location: { x: 0, y: 64, z: 0 }, dimension: dim, sendMessage() { }, playSound() { }, getComponent: () => undefined, getDynamicProperty: () => undefined, setDynamicProperty() { } };
+    const reel = (r, extra) => { const random = Math.random; Math.random = () => r; try { M.reel({ player, bobber: { isValid: true, location: { x: 3, y: 63, z: 0 }, dimension: dim, remove() { } }, phase: "bite", noBite: false, effects: [], luck: 0, lure: 0, ...extra }); } finally { Math.random = random; } };
+    reel(0.9, { catch: null });   // 90 of 100 on the Poke Rod table is vanilla treasure (the bobber in open water, as an unreadable block counts)
+    check("vanilla treasure comes from its table alone, the template not rolled again", calls.some(([k, v]) => k === "command" && v.includes("gameplay/fishing/treasure")) && !calls.some(([k, v]) => k === "item" && v === "cobblemon:pokerod_smithing_template"));
+    const treasure = JSON.parse(readFileSync(new URL("../../../development_behavior_packs/cobblemon/loot_tables/gameplay/fishing/treasure.json", import.meta.url), "utf-8"));
+    const templatePools = treasure.pools.filter((p) => p.entries.some((e) => e.name === "cobblemon:pokerod_smithing_template"));
+    check("the table's template pool is one in six", templatePools.length === 1 && templatePools[0].conditions?.[0]?.chance === 0.167);
+    check("an item reeled in gives an experience orb", calls.some(([k, v]) => k === "entity" && v === "minecraft:xp_orb"));
+    calls.length = 0;
+    reel(0.5, { catch: { spawn: { entity: "cobblemon:p0129_magikarp", bucket: "common", weight: 1, level: [5, 10] }, bucketWeight: 83.25 } });
+    check("and a Pokemon reeled in gives one too", calls.some(([k, v]) => k === "entity" && v === "cobblemon:p0129_magikarp") && calls.some(([k, v]) => k === "entity" && v === "minecraft:xp_orb"));
 }
 {
     // generated by the next port run (create_spawn_rules): the wild preset's anticondition on the natural spawns, a herd

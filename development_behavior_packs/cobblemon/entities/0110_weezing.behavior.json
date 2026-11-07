@@ -339,7 +339,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0110_weezing",
                     "filters": {
@@ -995,7 +995,40 @@
                     }
                 ]
             },
-            "cobblemon:spawn_mult_0": {},
+            "cobblemon:spawn_mult_0": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_3"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_2"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_3"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:spawn_mult_1": {
                 "randomize": [
                     {
@@ -1132,7 +1165,40 @@
                     }
                 ]
             },
-            "cobblemon:spawn_mult_5": {},
+            "cobblemon:spawn_mult_5": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_3"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_2"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_3"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:spawn_mult_6": {},
             "cobblemon:spawn_mult_7": {
                 "randomize": [
@@ -1240,6 +1306,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }
