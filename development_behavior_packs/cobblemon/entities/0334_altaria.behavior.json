@@ -123,12 +123,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -300,10 +294,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.63,
+                    "start_distance": 5.85,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.85
                 }
             },
             "cobblemon:captured": {
@@ -571,7 +566,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -725,7 +720,7 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
@@ -811,13 +806,27 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": {
                         "min": 4,
                         "max": 8
+                    },
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
                     }
                 }
             }
@@ -857,23 +866,37 @@
                 "max": 108
             },
             "minecraft:attack": {
-                "damage": 7
+                "damage": 6
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0334_altaria.json"
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": {
                     "min": 4,
                     "max": 8
+                },
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
                 }
             },
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.1837
             },
             "minecraft:can_fly": {},
             "minecraft:jump.static": {},
@@ -890,7 +913,8 @@
             },
             "minecraft:behavior.random_stroll": {
                 "priority": 9,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0

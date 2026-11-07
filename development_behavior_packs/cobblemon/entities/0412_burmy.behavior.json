@@ -203,10 +203,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.4,
+                    "start_distance": 5.16,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.16
                 }
             },
             "cobblemon:captured": {
@@ -282,7 +283,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -433,11 +434,55 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
                         "target": "self"
+                    }
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0413_wormadam",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_wormadam"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
                     }
                 }
             },
@@ -485,55 +530,25 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
-                }
-            },
-            "cobblemon:herd_follower": {
-                "minecraft:behavior.follow_mob": {
-                    "priority": 7,
-                    "search_range": 16,
-                    "stop_distance": 6,
-                    "speed_multiplier": 1.14,
-                    "preferred_actor_type": "cobblemon:p0413_wormadam",
+                    ],
                     "filters": {
-                        "all_of": [
+                        "any_of": [
                             {
-                                "any_of": [
-                                    {
-                                        "all_of": [
-                                            {
-                                                "test": "is_family",
-                                                "subject": "other",
-                                                "value": "species_wormadam"
-                                            },
-                                            {
-                                                "test": "bool_property",
-                                                "subject": "other",
-                                                "domain": "cobblemon:alpha",
-                                                "value": true
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "test": "has_component",
+                                "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "minecraft:behavior.follow_mob"
+                                "value": "mob"
                             },
                             {
                                 "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "owned"
+                                "value": "player"
                             }
                         ]
                     }
@@ -574,7 +589,7 @@
                 "max": 12
             },
             "minecraft:attack": {
-                "damage": 3
+                "damage": 1
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0412_burmy.json"
@@ -584,17 +599,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.2144
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -615,7 +644,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -755,7 +785,23 @@
                     {
                         "randomize": [
                             {
-                                "weight": 4095500,
+                                "weight": 2730333,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_0"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 333,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_1"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 2730333,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_2"
@@ -763,7 +809,7 @@
                                 }
                             },
                             {
-                                "weight": 500,
+                                "weight": 333,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_3"
@@ -771,7 +817,7 @@
                                 }
                             },
                             {
-                                "weight": 4095500,
+                                "weight": 2730333,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_4"
@@ -779,7 +825,7 @@
                                 }
                             },
                             {
-                                "weight": 500,
+                                "weight": 333,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_5"

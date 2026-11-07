@@ -127,12 +127,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -278,10 +272,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 2.04,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.63,
+                    "start_distance": 5.75,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.75
                 }
             },
             "cobblemon:captured": {
@@ -549,7 +544,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -600,6 +595,50 @@
                     "track_target": true
                 }
             },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0006_charizard",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_charizard"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
+            },
             "cobblemon:alpha_retaliates": {
                 "minecraft:behavior.hurt_by_target": {
                     "priority": 1
@@ -644,55 +683,25 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": {
                         "min": 4,
                         "max": 8
-                    }
-                }
-            },
-            "cobblemon:herd_follower": {
-                "minecraft:behavior.follow_mob": {
-                    "priority": 7,
-                    "search_range": 16,
-                    "stop_distance": 6,
-                    "speed_multiplier": 1.14,
-                    "preferred_actor_type": "cobblemon:p0006_charizard",
+                    },
                     "filters": {
-                        "all_of": [
+                        "any_of": [
                             {
-                                "any_of": [
-                                    {
-                                        "all_of": [
-                                            {
-                                                "test": "is_family",
-                                                "subject": "other",
-                                                "value": "species_charizard"
-                                            },
-                                            {
-                                                "test": "bool_property",
-                                                "subject": "other",
-                                                "domain": "cobblemon:alpha",
-                                                "value": true
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "test": "has_component",
+                                "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "minecraft:behavior.follow_mob"
+                                "value": "mob"
                             },
                             {
                                 "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "owned"
+                                "value": "player"
                             }
                         ]
                     }
@@ -734,23 +743,37 @@
                 "max": 113
             },
             "minecraft:attack": {
-                "damage": 8
+                "damage": 7
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0006_charizard.json"
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": {
                     "min": 4,
                     "max": 8
+                },
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
                 }
             },
             "minecraft:movement": {
-                "value": 0.147
+                "value": 0.1837
             },
             "minecraft:can_fly": {},
             "minecraft:jump.static": {},
@@ -767,7 +790,8 @@
             },
             "minecraft:behavior.random_stroll": {
                 "priority": 9,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -1755,6 +1779,26 @@
             },
             "cobblemon:herd_seed": {},
             "cobblemon:herd_seed_alpha": {},
+            "cobblemon:spawn_mult_0": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_mult_1": {},
+            "cobblemon:spawn_mult_2": {},
+            "cobblemon:spawn_mult_3": {},
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [
@@ -1809,27 +1853,7 @@
                         "cobblemon:herd_follower"
                     ]
                 }
-            },
-            "cobblemon:spawn_mult_0": {
-                "sequence": [
-                    {
-                        "filters": {
-                            "test": "weather_at_position",
-                            "subject": "self",
-                            "operator": "!=",
-                            "value": "clear"
-                        },
-                        "add": {
-                            "component_groups": [
-                                "cobblemon:gone"
-                            ]
-                        }
-                    }
-                ]
-            },
-            "cobblemon:spawn_mult_1": {},
-            "cobblemon:spawn_mult_2": {},
-            "cobblemon:spawn_mult_3": {}
+            }
         }
     }
 }

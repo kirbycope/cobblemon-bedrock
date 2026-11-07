@@ -123,12 +123,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -250,10 +244,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.63,
+                    "start_distance": 5.42,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.42
                 }
             },
             "cobblemon:captured": {
@@ -323,7 +318,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -454,53 +449,10 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
-                        "target": "self"
-                    }
-                }
-            },
-            "cobblemon:alpha_retaliates": {
-                "minecraft:behavior.hurt_by_target": {
-                    "priority": 1
-                },
-                "minecraft:behavior.melee_box_attack": {
-                    "priority": 2,
-                    "speed_multiplier": 1.43,
-                    "horizontal_reach": 0.75,
-                    "cooldown_time": 1.0,
-                    "track_target": true
-                }
-            },
-            "cobblemon:wary": {
-                "minecraft:behavior.avoid_mob_type": {
-                    "priority": 1,
-                    "max_dist": 15,
-                    "max_flee": 15,
-                    "entity_types": [
-                        {
-                            "filters": {
-                                "test": "is_family",
-                                "subject": "other",
-                                "value": "player"
-                            },
-                            "max_dist": 15,
-                            "max_flee": 15,
-                            "walk_speed_multiplier": 1.57,
-                            "sprint_speed_multiplier": 1.57
-                        }
-                    ]
-                },
-                "minecraft:timer": {
-                    "time": [
-                        5,
-                        20
-                    ],
-                    "looping": false,
-                    "time_down_event": {
-                        "event": "cobblemon:calm_wary",
                         "target": "self"
                     }
                 }
@@ -578,6 +530,49 @@
                         ]
                     }
                 }
+            },
+            "cobblemon:alpha_retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:wary": {
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 1,
+                    "max_dist": 15,
+                    "max_flee": 15,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 15,
+                            "max_flee": 15,
+                            "walk_speed_multiplier": 1.57,
+                            "sprint_speed_multiplier": 1.57
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": [
+                        5,
+                        20
+                    ],
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:calm_wary",
+                        "target": "self"
+                    }
+                }
             }
         },
         "components": {
@@ -614,7 +609,7 @@
                 "max": 20
             },
             "minecraft:attack": {
-                "damage": 2
+                "damage": 1
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0063_abra.json"
@@ -625,7 +620,7 @@
             },
             "minecraft:conditional_bandwidth_optimization": {},
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.1837
             },
             "minecraft:movement.fly": {},
             "minecraft:navigation.fly": {
@@ -652,7 +647,8 @@
             },
             "minecraft:behavior.random_stroll": {
                 "priority": 9,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0

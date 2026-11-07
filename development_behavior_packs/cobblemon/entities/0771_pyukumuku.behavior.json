@@ -204,9 +204,10 @@
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
                     "speed_multiplier": 2.59,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "start_distance": 5.28,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.28
                 }
             },
             "cobblemon:captured": {
@@ -270,7 +271,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -284,49 +285,6 @@
             "cobblemon:variant_1": {
                 "minecraft:variant": {
                     "value": 1
-                }
-            },
-            "cobblemon:alpha_retaliates": {
-                "minecraft:behavior.hurt_by_target": {
-                    "priority": 1
-                },
-                "minecraft:behavior.melee_box_attack": {
-                    "priority": 2,
-                    "speed_multiplier": 1.43,
-                    "horizontal_reach": 0.75,
-                    "cooldown_time": 1.0,
-                    "track_target": true
-                }
-            },
-            "cobblemon:wary": {
-                "minecraft:behavior.avoid_mob_type": {
-                    "priority": 1,
-                    "max_dist": 15,
-                    "max_flee": 15,
-                    "entity_types": [
-                        {
-                            "filters": {
-                                "test": "is_family",
-                                "subject": "other",
-                                "value": "player"
-                            },
-                            "max_dist": 15,
-                            "max_flee": 15,
-                            "walk_speed_multiplier": 1.57,
-                            "sprint_speed_multiplier": 1.57
-                        }
-                    ]
-                },
-                "minecraft:timer": {
-                    "time": [
-                        5,
-                        20
-                    ],
-                    "looping": false,
-                    "time_down_event": {
-                        "event": "cobblemon:calm_wary",
-                        "target": "self"
-                    }
                 }
             },
             "cobblemon:herd_follower": {
@@ -372,6 +330,49 @@
                         ]
                     }
                 }
+            },
+            "cobblemon:alpha_retaliates": {
+                "minecraft:behavior.hurt_by_target": {
+                    "priority": 1
+                },
+                "minecraft:behavior.melee_box_attack": {
+                    "priority": 2,
+                    "speed_multiplier": 1.43,
+                    "horizontal_reach": 0.75,
+                    "cooldown_time": 1.0,
+                    "track_target": true
+                }
+            },
+            "cobblemon:wary": {
+                "minecraft:behavior.avoid_mob_type": {
+                    "priority": 1,
+                    "max_dist": 15,
+                    "max_flee": 15,
+                    "entity_types": [
+                        {
+                            "filters": {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            },
+                            "max_dist": 15,
+                            "max_flee": 15,
+                            "walk_speed_multiplier": 1.57,
+                            "sprint_speed_multiplier": 1.57
+                        }
+                    ]
+                },
+                "minecraft:timer": {
+                    "time": [
+                        5,
+                        20
+                    ],
+                    "looping": false,
+                    "time_down_event": {
+                        "event": "cobblemon:calm_wary",
+                        "target": "self"
+                    }
+                }
             }
         },
         "components": {
@@ -408,7 +409,7 @@
                 "max": 48
             },
             "minecraft:attack": {
-                "damage": 6
+                "damage": 4
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0771_pyukumuku.json"

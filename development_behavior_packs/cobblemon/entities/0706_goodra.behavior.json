@@ -123,12 +123,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -303,10 +297,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.58,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 2.58,
+                    "start_distance": 5.81,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.81
                 }
             },
             "cobblemon:captured": {
@@ -393,7 +388,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -454,6 +449,50 @@
                     "track_target": true
                 }
             },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0706_goodra",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_goodra"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
+                }
+            },
             "cobblemon:alpha_retaliates": {
                 "minecraft:behavior.hurt_by_target": {
                     "priority": 1
@@ -498,55 +537,25 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
-                }
-            },
-            "cobblemon:herd_follower": {
-                "minecraft:behavior.follow_mob": {
-                    "priority": 7,
-                    "search_range": 16,
-                    "stop_distance": 6,
-                    "speed_multiplier": 1.14,
-                    "preferred_actor_type": "cobblemon:p0706_goodra",
+                    ],
                     "filters": {
-                        "all_of": [
+                        "any_of": [
                             {
-                                "any_of": [
-                                    {
-                                        "all_of": [
-                                            {
-                                                "test": "is_family",
-                                                "subject": "other",
-                                                "value": "species_goodra"
-                                            },
-                                            {
-                                                "test": "bool_property",
-                                                "subject": "other",
-                                                "domain": "cobblemon:alpha",
-                                                "value": true
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "test": "has_component",
+                                "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "minecraft:behavior.follow_mob"
+                                "value": "mob"
                             },
                             {
                                 "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "owned"
+                                "value": "player"
                             }
                         ]
                     }
@@ -587,7 +596,7 @@
                 "max": 165
             },
             "minecraft:attack": {
-                "damage": 10
+                "damage": 8
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0706_goodra.json"
@@ -597,17 +606,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.19
+                "value": 0.1164
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -628,7 +651,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -1179,6 +1203,40 @@
             "cobblemon:spawn_mult_3": {},
             "cobblemon:spawn_mult_4": {},
             "cobblemon:spawn_mult_5": {},
+            "cobblemon:spawn_mult_6": {
+                "randomize": [
+                    {
+                        "weight": 8191000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_3"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_2"
+                            ]
+                        }
+                    },
+                    {
+                        "weight": 1000,
+                        "remove": {
+                            "component_groups": [
+                                "cobblemon:variant_0",
+                                "cobblemon:variant_1",
+                                "cobblemon:variant_2"
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:variant_3"
+                            ]
+                        }
+                    }
+                ]
+            },
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [
@@ -1233,40 +1291,6 @@
                         "cobblemon:herd_follower"
                     ]
                 }
-            },
-            "cobblemon:spawn_mult_6": {
-                "randomize": [
-                    {
-                        "weight": 8191000,
-                        "remove": {
-                            "component_groups": [
-                                "cobblemon:variant_0",
-                                "cobblemon:variant_1",
-                                "cobblemon:variant_3"
-                            ]
-                        },
-                        "add": {
-                            "component_groups": [
-                                "cobblemon:variant_2"
-                            ]
-                        }
-                    },
-                    {
-                        "weight": 1000,
-                        "remove": {
-                            "component_groups": [
-                                "cobblemon:variant_0",
-                                "cobblemon:variant_1",
-                                "cobblemon:variant_2"
-                            ]
-                        },
-                        "add": {
-                            "component_groups": [
-                                "cobblemon:variant_3"
-                            ]
-                        }
-                    }
-                ]
             }
         }
     }

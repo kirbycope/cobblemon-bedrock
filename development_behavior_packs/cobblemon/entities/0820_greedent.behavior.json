@@ -203,10 +203,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.43,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 2.33,
+                    "start_distance": 5.44,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.44
                 }
             },
             "cobblemon:captured": {
@@ -270,7 +271,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -424,11 +425,55 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
                         "target": "self"
+                    }
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0820_greedent",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_greedent"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
                     }
                 }
             },
@@ -476,55 +521,25 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
-                }
-            },
-            "cobblemon:herd_follower": {
-                "minecraft:behavior.follow_mob": {
-                    "priority": 7,
-                    "search_range": 16,
-                    "stop_distance": 6,
-                    "speed_multiplier": 1.14,
-                    "preferred_actor_type": "cobblemon:p0820_greedent",
+                    ],
                     "filters": {
-                        "all_of": [
+                        "any_of": [
                             {
-                                "any_of": [
-                                    {
-                                        "all_of": [
-                                            {
-                                                "test": "is_family",
-                                                "subject": "other",
-                                                "value": "species_greedent"
-                                            },
-                                            {
-                                                "test": "bool_property",
-                                                "subject": "other",
-                                                "domain": "cobblemon:alpha",
-                                                "value": true
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                "test": "has_component",
+                                "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "minecraft:behavior.follow_mob"
+                                "value": "mob"
                             },
                             {
                                 "test": "is_family",
                                 "subject": "other",
-                                "operator": "!=",
-                                "value": "owned"
+                                "value": "player"
                             }
                         ]
                     }
@@ -565,7 +580,7 @@
                 "max": 99
             },
             "minecraft:attack": {
-                "damage": 10
+                "damage": 6
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0820_greedent.json"
@@ -575,17 +590,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.21
+                "value": 0.1286
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -606,7 +635,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0

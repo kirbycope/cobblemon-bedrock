@@ -228,9 +228,10 @@
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
                     "speed_multiplier": 1.49,
-                    "start_distance": 5,
+                    "start_distance": 6.21,
                     "stop_distance": 3,
-                    "can_teleport": true
+                    "can_teleport": true,
+                    "max_distance": 33.21
                 }
             },
             "cobblemon:captured": {
@@ -529,7 +530,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -683,7 +684,7 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
@@ -769,13 +770,27 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": {
                         "min": 4,
                         "max": 8
+                    },
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
                     }
                 }
             }
@@ -815,19 +830,33 @@
                 "max": 100
             },
             "minecraft:attack": {
-                "damage": 4
+                "damage": 5
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0226_mantine.json"
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": {
                     "min": 4,
                     "max": 8
+                },
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
                 }
             },
             "minecraft:movement": {

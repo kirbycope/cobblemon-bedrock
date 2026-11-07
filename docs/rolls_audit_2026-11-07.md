@@ -3,7 +3,10 @@
 Thirteen read-only audits compared every rate, chance, roll, formula, threshold and timing in the port against
 Cobblemon 1.8.4's source (and the Pokemon Showdown build it bundles, `data/cobblemon/showdown.zip`), one area each.
 Each finding below names Cobblemon's value and the port's; the "Fixed" column is filled in from the fix pass that
-followed the same day (release 1.0.558). Items marked "upstream" are places where Cobblemon 1.8.4's shipped code
+followed the same day (release 1.0.558). Two of the audit's own numbers were corrected in that pass and are given
+as the source has them: Cobblemon's `wild.json` moveset builder is not `alpha.json` (slot 1 the last offensive move,
+slots 2 to 4 the last level-up moves), and Java's wild berry bushes come up at ages 3, 4, 5 about 50:34:16
+(`ClampedNormalInt` truncates), not 16:68:16. Items marked "upstream" are places where Cobblemon 1.8.4's shipped code
 does not do what its data or comments intend; the port now follows the shipped behaviour, since that is what a
 Cobblemon player meets, and the README notes each so it can be flipped when Cobblemon changes.
 
@@ -16,7 +19,7 @@ Cobblemon player meets, and the README notes each so it can be flipped when Cobb
 | Night and dusk entries with `minSkyLight 8` | any open sky in the window | brightness exactly 7, only during the dimming minutes | yes |
 | Untimed `maxSkyLight 7` entries without `canSeeSky`/`maxY` (265 conditions, cave species) | never an open-sky spot | surface rules at brightness 0..7, so caves' species on the surface at night | yes |
 | Per-species bucket totals | odds at a spot = P(bucket) x raw weight / eligible raw weight of the bucket there | every species one total per bucket: plains Rattata 9.66% of spawns there vs 0.30% here, uncommon bucket 5% vs about 0.4%, herds 31% of land spawns vs 47% | yes (biome-aware normalisation) |
-| Legendary Encounters odds | ultra-rare roll then raw weight | weight 1 each: Ho-Oh and Xerneas 22x, Regigigas 30x, Mew 0.13x | yes |
+| Legendary Encounters odds | ultra-rare roll then raw weight | weight 1 each: Ho-Oh and Xerneas 22x, Regigigas 30x, Mew 0.13x | yes: 0.7 to 4x (a weight under 1 is kept at its share by the script); Mewtwo in the deep dark still rarer, its share averaged over its biomes |
 | The datapack's `"weather"` key on legendaries (Zapdos, Rayquaza thunder; Ho-Oh clear) | not a `SpawningCondition` field, ignored: any weather | honoured, so thunderstorms only | yes (upstream) |
 | Alpha herd rate after the 1.0.557 floor | boss bucket 0.3% | 0.54% land, 0.91% water (floor of 1 per condition) | yes (sub-1 conditions merged) |
 
@@ -34,7 +37,7 @@ multipliers, natural base blocks.
 | Herd conditions at the fill | a herd that fails its weather or other condition is not selected | `fillHerd` fell back to every herd when none fit: 94 dry-weather seeds filled in rain, Flygon's in clear | yes |
 | Member placement | a resolved position meeting every herd condition, no room spends no `maxTimes` | any non-liquid block within 6, `counts` spent before the spot was found | yes |
 | Follow distance | walks when the leader is 4 to 8 away | `stop_distance` 4 | yes (6) |
-| Leader election | re-elected every second among visible tolerated Pokemon | a coin flip at spawn fixes the roles | README note (Bedrock's `follow_mob` has no election) |
+| Leader election | re-elected every second among visible tolerated Pokemon | a coin flip at spawn fixed the roles | partly: the seed leads and its members follow; roles stay as spawned (Bedrock's `follow_mob` has no election) |
 
 Matching: first member by weight (leader first), leader-first fill, `maxTimes`, size min(maxHerdSize, 8), herd level
 and member clamp and offset, held items, alpha marking and scale, member drop tables, moon phase, cap check, regional
@@ -46,7 +49,7 @@ first members, boss bucket 0.3.
 | --- | --- | --- | --- |
 | Wild level | `PokemonSpawnAction.createEntity` overwrites the party influence: uniform over the entry's range | narrowed to the party's best plus or minus 5 | yes (upstream) |
 | Regional forms' abilities | the form's own list (Alolan Raichu Surge Surfer, Alolan Geodude Magnet Pull) | the base species' | yes |
-| Random features whose plain choice is the base look | uniform or weighted over every choice (Toxtricity 50/50, Dudunsparce 99/1, Gyarados eyes 50/50, Minior 100% meteor with a hidden core) | the base look got 0 (100% Low Key, 100% three-segment, 100% purple eyes, 50% bare cores) | yes (full run) |
+| Random features whose plain choice is the base look | uniform or weighted over every choice (Toxtricity 50/50, Dudunsparce 99/1, Gyarados eyes 50/50, Minior 100% meteor with a hidden core) | the base look got 0 (100% Low Key, 100% three-segment, 100% purple eyes, 50% bare cores) | yes  |
 | Species with several random features (Spinda's spots, Alcremie's cream and decoration) | every feature rolled | one look from one feature | not carried (combination looks) |
 | Marks sharing a 2% chance (uncommon, time, weather) | a TreeMap keyed on the chance merges them: only uncommon is ever awarded | each rolled, about 6.9% of catches marked vs 3.1% | yes (upstream) |
 | `/spawnpokemon` and `/givepokemon` without `level=` | level 1 | the species' lowest spawn level | yes |
@@ -159,7 +162,7 @@ friendship gains, animation timing, evolution drops.
 | Saccharine honey drip | 1 in 2 per random tick | 0.5 per Bedrock tick (3x slower) | yes |
 | Saplings | two 1-in-7 successes, light 9, 45% per bone meal stage | one roll, one bone meal | yes |
 | Berry mutation moment | when flowering begins | when fruit forms | yes |
-| Wild berry grove rate | 1 in 25 per chunk everywhere; ages 3..5 about 31% ripe | 1 in 20 to 1 in 47 by biome; 67% ripe | yes (full run) |
+| Wild berry grove rate | 1 in 25 per chunk everywhere; ages 3:4:5 about 50:34:16 | 1 in 20 to 1 in 47 by biome; 67% ripe | yes |
 
 Matching: all 70 berries' numbers, the growth timer, mulches, mutation 125/1000 and x4, honey log odds, apricorn
 yields, Revival Herb ages and loot, tumblestone, roots, terrain seeds, Hearty Grains growth, Galarica, worldgen rates.
@@ -220,7 +223,7 @@ cap steps, cooldowns, health, force battle, repel rod, Trainer Association, loot
 
 | Finding | Source | Port before | Fixed |
 | --- | --- | --- | --- |
-| Wild moveset builder | `wild.json`: two offensive level-up moves and two TM moves, weighted | the four latest level-up moves | yes |
+| Wild moveset builder | `wild.json`: the last offensive level-up move, then the last level-up moves | the four latest level-up moves, one damaging kept | yes |
 | Regional forms' abilities and level-up moves (54 and 70 forms) | the form's | the base's | yes |
 | Female forms (Indeedee, Basculegion, Oinkologne, Meowstic) | own stats and abilities | none | yes |
 | Secret Power | 70 power, 30% paralysis | a 100% SpA drop scraped from code, paralysis rolled twice | yes |
@@ -235,15 +238,15 @@ abilities, height, weight, level-up and egg moves; the type chart; natures; dex 
 | Finding | Cobblemon | Port before | Fixed |
 | --- | --- | --- | --- |
 | Melee damage | ceil(sqrt((Attack - 10)^0.875)) from the real stat (level 5 Rattata 2) | base Attack / 10 at every level (Rattata 6) | yes |
-| Walking speed | 0.7 x 0.35 x 2.5 x walkSpeed, default 0.35 | walkSpeed itself, default 0.25 (1.63x) | yes (full run) |
-| Flying speed | flySpeedHorizontal 0.3 for every flier | walkSpeed | yes (full run) |
-| Hover wander | one spot in 120 ticks, 10 across, 5 up, 0..6 high | every tick, 8, 8, 1..4 | yes (full run) |
-| Stroll and amphibious swim cadence | about 11 s; 3 s, 7 up | 6 s; 1 s, 5 up | yes (full run) |
-| Looking | any living entity | players only | yes (full run) |
-| Follow owner | teleport past 32, stop at 3 | 60, 2 | yes (full run) |
-| Panic | while the attacker lives | 30 s | yes |
+| Walking speed | 0.7 x 0.35 x 2.5 x walkSpeed, default 0.35 | walkSpeed itself, default 0.25 (1.63x) | yes  |
+| Flying speed | flySpeedHorizontal 0.3 for every flier | walkSpeed | yes  |
+| Hover wander | 1 in 120 a tick after a 100-tick cooldown, 10 across, 5 up, 0..6 high | every tick, 8, 8, 1..4 | yes (interval 220) |
+| Stroll and amphibious swim cadence | about 11 s; 3 s, 7 up | 6 s; 1 s, 5 up | yes  |
+| Looking | any living entity | players only | yes  |
+| Follow owner | teleport past 32, stop at 3 | 60, 2 | yes  |
+| Panic | while the attacker lives | 30 s | yes (calmed by the script when the attacker dies or leaves; 600 s backstop) |
 | Wary after a failed capture | not applied in 1.8.4 | 5..20 s avoidance | yes (upstream) |
-| Breaking out of a ball while napping | sleep cleared | kept | yes |
+| Breaking out of a ball while napping | Sleep status cleared, the nap goes on | kept | yes |
 | Nap filter | no weather test; not while retaliating | refused thunderstorms | yes |
 | Sleep time lists ("167-11833,13702-22299", 14 species) | parsed | fell back to all day | yes |
 | Sleep spot light (8 species need a glowing block) | tested | not tested | README note |
@@ -251,3 +254,15 @@ abilities, height, weight, level-up and egg moves; the type chart; natures; dex 
 
 Matching: flee and defend flags, panic trigger, villager hostile ranges, relative speeds, melee reach and cooldown,
 look distance, cry interval, sleep odds and hours, pickup, shoulder, follow start, swim speed, fish wander.
+
+## Found while fixing
+
+- The fossil machine's material table kept Java item ids (lily pad, dead bush, melon, frogspawn...) and dropped every
+  tag but three, so flowers, leaves, saplings, meat, mints and apricorns counted for nothing: now Bedrock ids and
+  Cobblemon's tags (245 entries to 353). Six ids Cobblemon itself names wrongly (grass, tall_fern, dripleaf,
+  glistening_melon_slice, rabbits_foot, tall_seagrass) never match in Cobblemon either and stay out.
+- Metronome's pool was 551 moves; Showdown's filter gives 581, so 30 moves (Fusion Flare, Judgment, Doom Desire...)
+  were added to the move table.
+- A gym trainer's Pokemon recalled and sent out again was a new Pokemon to the experience count; it keeps its identity
+  now, as Cobblemon's BattlePokemon does.
+- The StrongBattleAI read `trickroom` where the field is `trickRoom`, so it never saw Trick Room up.
