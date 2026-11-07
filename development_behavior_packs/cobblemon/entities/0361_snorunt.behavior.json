@@ -203,10 +203,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.4,
+                    "start_distance": 5.42,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.42
                 }
             },
             "cobblemon:captured": {
@@ -282,7 +283,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -436,7 +437,7 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
@@ -448,7 +449,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0362_glalie",
                     "filters": {
@@ -532,14 +533,28 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
+                    ],
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -577,7 +592,7 @@
                 "max": 21
             },
             "minecraft:attack": {
-                "damage": 5
+                "damage": 1
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0361_snorunt.json"
@@ -587,17 +602,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.2144
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -618,7 +647,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -1055,6 +1085,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

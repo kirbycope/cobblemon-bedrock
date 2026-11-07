@@ -9,7 +9,7 @@ import { GYM_CASES, GYM_LEAGUE } from "./gyms.js";
 
 export const TRAINER = "cobblemon:rct_trainer";
 // a trainer's own dynamic properties: a wild one (TrainerSpawner's, counted against the caps), the player it spawned
-// for (originPlayer), the tick a player was last close (checkDespawnIfUnseen), the spawner block it stands on (HomePos),
+// for (originPlayer), the tick a player last saw it (checkDespawnIfUnseen's lastTimeSeen), the spawner block it stands on (HomePos),
 // and its wins and defeats against each player (TrainerMob.winsAndDefeats, kept on the entity as RCT keeps them)
 const WILD = "cobblemon:rct_wild", ORIGIN = "cobblemon:rct_origin", NEAR = "cobblemon:rct_near", HOME = "cobblemon:rct_home", RECORD = "cobblemon:rct_record";
 // the world's: the repel rods and the attuned spawners by position, the gyms' boxes and the gyms whose cases are filled
@@ -69,8 +69,9 @@ export function spawnTrainer(dim, at, id, opts = {}) {
     try { npc.setProperty("cobblemon:trainer", n); } catch (e) { }
     try { npc.nameTag = rctName(id); } catch (e) { }
     try {
+        npc.setDynamicProperty(NEAR, system.currentTick);   // lastTimeSeen starts at the spawn, for every trainer
         if (opts.wild) {
-            npc.setDynamicProperty(WILD, true); npc.setDynamicProperty(ORIGIN, opts.origin ?? ""); npc.setDynamicProperty(NEAR, system.currentTick);
+            npc.setDynamicProperty(WILD, true); npc.setDynamicProperty(ORIGIN, opts.origin ?? "");
             npc.triggerEvent("cobblemon:wild");
         } else if (opts.home) { npc.setDynamicProperty(HOME, opts.home); npc.triggerEvent("cobblemon:home"); }
     } catch (e) { }
@@ -113,25 +114,27 @@ export function spawnChance(t, key, pl) {
     const e = 1 - Math.min(maxDiff, Math.abs(pl - t.level)) / maxDiff;
     return (RCT_SPAWN.directChance / (key ? 1 : RCT_SPAWN.nonKeyDiv)) * e * e;
 }
-// TrainerSpawner.nextPos: 25 to 70 blocks off along each axis, either way, within 30 up or down, standing on a solid
-// block with air for its body
+// TrainerSpawner.nextPos: one draw (attemptSpawnFor makes its 8 retries), 25 to 70 blocks off along each axis, either
+// way, and a column scanned from 30 above down or from 30 below up, a coin flip which (dy), standing on a solid block
+// with air for its body: the first such ground from that end, the ground between 30 below and 28 above (the scan's
+// two air blocks above it inside the 30), a column not loaded passed over (isLoaded)
 export function nextPos(dim, from) {
-    for (let tries = 0; tries < RCT_SPAWN.retries; tries++) {
-        const off = () => (RCT_SPAWN.minDistance + Math.floor(Math.random() * (RCT_SPAWN.maxDistance - RCT_SPAWN.minDistance))) * (Math.random() < 0.5 ? -1 : 1);
-        const x = Math.floor(from.x) + off(), z = Math.floor(from.z) + off();
-        for (let y = Math.floor(from.y) + RCT_SPAWN.vertical; y >= Math.floor(from.y) - RCT_SPAWN.vertical; y--) {
-            let ground, feet, head;
-            try { ground = dim.getBlock({ x, y, z }); feet = ground?.above(); head = feet?.above(); } catch (e) { break; }
-            if (!ground || !feet || !head) continue;
-            if (ground.isAir || ground.isLiquid || !feet.isAir || !head.isAir) continue;
-            return { x: x + 0.5, y: y + 1, z: z + 0.5 };
-        }
+    const off = () => (RCT_SPAWN.minDistance + Math.floor(Math.random() * (RCT_SPAWN.maxDistance - RCT_SPAWN.minDistance))) * (Math.random() < 0.5 ? -1 : 1);
+    const x = Math.floor(from.x) + off(), z = Math.floor(from.z) + off(), y0 = Math.floor(from.y), v = RCT_SPAWN.vertical, down = Math.random() < 0.5;
+    for (let i = 0; i <= 2 * v - 2; i++) {
+        const y = down ? y0 + v - 2 - i : y0 - v + i;
+        let ground, feet, head;
+        try { ground = dim.getBlock({ x, y, z }); feet = ground?.above(); head = feet?.above(); } catch (e) { continue; }
+        if (!ground || !feet || !head) continue;
+        if (ground.isAir || ground.isLiquid || !feet.isAir || !head.isAir) continue;
+        return { x: x + 0.5, y: y + 1, z: z + 0.5 };
     }
     return undefined;
 }
-// TrainerSpawner.isUnique: no trainer of the same identity within uniqueTrainerRadius (500) blocks
-function unique(id, dim, at, trainers) {
-    const identity = identityOf(id), d = RCT_SPAWN.uniqueRadius * 2;
+// TrainerSpawner.isUnique: no trainer of the same identity in the box uniqueTrainerRadius (500) blocks either way of the
+// spot (AABB.ofSize(pos, 2r, 2r, 2r), a box 1000 across)
+export function unique(id, dim, at, trainers) {
+    const identity = identityOf(id), d = RCT_SPAWN.uniqueRadius;
     return !trainers.some((e) => e.dimension.id === dim.id && identityOf(trainerOf(e)) === identity
         && Math.abs(e.location.x - at.x) <= d && Math.abs(e.location.z - at.z) <= d && Math.abs(e.location.y - at.y) <= d);
 }
@@ -155,7 +158,8 @@ export function repelled(dim, at) {
 }
 
 // TrainerSpawner.attemptSpawnFor(player): where no rod reaches, the trainers of the player's series that fit the biome,
-// are not about already and can be battled, weighed by spawnWeight; the one drawn spawns with spawnChance
+// are not about already and can be battled, weighed by spawnWeight; the one drawn spawns, with no further roll (the
+// computeChance roll is the Trainer Spawner block's, attemptSpawnFor(player, trainerId, pos, ...))
 export function candidates(player, dim, at, trainers) {
     let biome = "";
     try { biome = dim.getBiome(at)?.id ?? ""; } catch (e) { return []; }
@@ -188,9 +192,7 @@ export function attemptSpawnFor(player, trainers) {
         if (!at || repelled(dim, at)) continue;
         const list = candidates(player, dim, at, trainers);
         if (!list.length) return undefined;
-        const c = pick(list), pl = Math.min(H.levelCap(player), playerLevel(player));
-        if (spawnChance(RCT_TRAINERS[c.id], c.key, pl) < Math.random()) return undefined;
-        return spawnTrainer(dim, at, c.id, { wild: true, origin: player.id });
+        return spawnTrainer(dim, at, pick(list).id, { wild: true, origin: player.id });
     }
     return undefined;
 }
@@ -206,20 +208,56 @@ system.runInterval(() => {
     }
 }, 20);
 
+// The despawns, for every trainer: RCT registers the wild ones, the buildings' summoned leaders (`rctmod trainer summon`,
+// not summon_persistent) and a spawner's alike, none persistent, so all three go the same two ways. Neither runs in a
+// battle, which the port's battle needs its trainer for (RCT's unseen check would cancel it).
+// TrainerMob.shouldDespawn, asked every tick by TrainerSpawner.checkDespawns and deciding every 20 (DESPAWN_TICK_SCALE):
+// with no player within 128 blocks (DESPAWN_DISTANCE) at every look for 600 ticks (TICKS_TO_DESPAWN), it goes
+const far = new Map();   // entity id -> ticks with no player near (despawnTicks, kept in memory as RCT keeps it)
+export function despawnFar(npc, ticks) {
+    if (H.inBattle?.(npc) || npc.dimension.getPlayers({ location: npc.location, maxDistance: RCT_SPAWN.despawnDistance }).length) { far.delete(npc.id); return false; }
+    const n = (far.get(npc.id) ?? 0) + ticks;
+    if (n < RCT_SPAWN.despawnTicks) { far.set(npc.id, n); return false; }
+    far.delete(npc.id); npc.remove();
+    return true;
+}
+// TrainerMob.hasLineOfSight: the player within 128 blocks (LINE_OF_SIGHT_CHECK_DISTANCE), eye to eye, and no block with
+// a collision shape between (ClipContext's Block.COLLIDER and Fluid.NONE: passable blocks and liquids let the look through)
+export function seenBy(npc, player) {
+    if (player.dimension?.id !== npc.dimension.id) return false;
+    const from = npc.getHeadLocation(), to = player.getHeadLocation();
+    const d = { x: to.x - from.x, y: to.y - from.y, z: to.z - from.z }, length = Math.hypot(d.x, d.y, d.z);
+    if (length > RCT_SPAWN.sightDistance) return false;
+    if (length < 1e-6) return true;
+    let hit;
+    try { hit = npc.dimension.getBlockFromRay(from, { x: d.x / length, y: d.y / length, z: d.z / length }, { maxDistance: length, includeLiquidBlocks: false, includePassableBlocks: false }); } catch (e) { return true; }
+    return !hit;
+}
+// TrainerMob.checkDespawnIfUnseen, every 40 ticks (UNSEEN_CHECK_INTERVAL_TICKS): a player with line of sight marks it
+// seen (lastTimeSeen); unseen for more than 6000 ticks (despawnTicksIfUnseen), it goes
+export function despawnUnseen(npc, now) {
+    const last = npc.getDynamicProperty(NEAR);
+    if (H.inBattle?.(npc) || last === undefined || last > now   // in battle, or a trainer from before (or a tick count from a past session)
+        || npc.dimension.getPlayers({ location: npc.location, maxDistance: RCT_SPAWN.sightDistance }).some((p) => seenBy(npc, p))) { npc.setDynamicProperty(NEAR, now); return false; }
+    if (now - last <= RCT_SPAWN.despawnUnseen) return false;
+    npc.remove();
+    return true;
+}
 // every second, for every trainer about: TrainerMob.aiStep's regeneration (a point about every 20 seconds, 1 in 400 a
-// tick), and a wild one's despawn when unseen for 5 minutes (checkDespawnIfUnseen; a player within 48 blocks stands in
-// for one with line of sight; beyond 128 the entity's own despawn takes it, as shouldDespawn does)
+// tick), shouldDespawn, and every other second checkDespawnIfUnseen
+let passes = 0;
 system.runInterval(() => {
-    const now = system.currentTick;
+    const now = system.currentTick, unseen = ++passes % (RCT_SPAWN.unseenInterval / 20) === 0, about = new Set();
     for (const npc of allTrainers()) {
         try {
+            about.add(npc.id);
             const health = npc.getComponent(EntityComponentTypes.Health);
             if (health && health.currentValue < health.effectiveMax && Math.random() < 0.05) health.setCurrentValue(health.currentValue + 1);
-            if (!isWild(npc)) continue;
-            if (H.inBattle?.(npc) || npc.dimension.getPlayers({ location: npc.location, maxDistance: 48 }).length) { npc.setDynamicProperty(NEAR, now); continue; }
-            if (now - (npc.getDynamicProperty(NEAR) ?? now) > RCT_SPAWN.despawnUnseen) npc.remove();
+            if (despawnFar(npc, 20)) continue;
+            if (unseen) despawnUnseen(npc, now);
         } catch (e) { }
     }
+    for (const id of [...far.keys()]) if (!about.has(id)) far.delete(id);   // gone, or its chunk unloaded: RCT saves no such trainer
 }, 20);
 
 // ForceIntoBattleGoal: a trainer stared at by a player within 8 blocks for 60 ticks starts the battle itself, if it may
@@ -252,8 +290,8 @@ system.runInterval(() => {
 
 // The Trainer Spawner (TrainerSpawnerBlock, TrainerSpawnerBlockEntity): a signature item used on it attunes it to the
 // trainers whose signatureItem that is (one item kept, dropped when the block breaks); every 80 ticks with no trainer
-// of its own standing on it, a player 2 to 16 blocks away gets one of them spawned on the block, which stays there
-// (HomePos), by spawnChance, or surely while redstone powers the block (isBoosted)
+// of its own about, a player within 46.67 blocks (none nearer than 1.41) gets one of them spawned on the block, which
+// stays there (HomePos), by spawnChance, or surely while redstone powers the block (isBoosted)
 function spawners() { return jsonWorld(SPAWNERS, {}); }
 export function attuneSpawner(block, player) {
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container, slot = player.selectedSlotIndex, hand = inv?.getItem(slot);
@@ -276,6 +314,15 @@ export function breakSpawner(block) {
     for (const item of entry.items) { try { block.dimension.spawnItem(new ItemStack(item, 1), { x: block.location.x + 0.5, y: block.location.y + 0.5, z: block.location.z + 0.5 }); } catch (e) { } }
     delete all[key]; setWorld(SPAWNERS, all);
 }
+// TrainerSpawnerBlockEntity.attemptSpawn: nobody if the nearest player is closer to the block's centre than the root of
+// half its minimum distance squared (2*2/2, 1.41 blocks), else the players in the block's box grown by
+// maxHorizontalDistanceToPlayers*(2/3.0), 46.67 blocks every way (setPlayerDistanceThreshold)
+export function spawnerPlayers(at, players) {
+    const c = { x: at.x + 0.5, y: at.y + 0.5, z: at.z + 0.5 }, r = RCT_SPAWN.spawnerMax;
+    const d2 = (p) => (p.location.x - c.x) ** 2 + (p.location.y - c.y) ** 2 + (p.location.z - c.z) ** 2;
+    if (!players.length || Math.min(...players.map(d2)) < RCT_SPAWN.spawnerMin ** 2 / 2) return [];
+    return players.filter((p) => ["x", "y", "z"].every((k) => p.location[k] >= at[k] - r && p.location[k] <= at[k] + 1 + r));
+}
 export function tickSpawner(block) {
     const key = posKey(block.dimension, block.location), entry = spawners()[key];
     if (!entry?.ids.length) return;
@@ -288,7 +335,7 @@ export function tickSpawner(block) {
     if (!above?.isAir || !above.above()?.isAir) return;
     let power = 0;
     try { power = block.getRedstonePower() ?? 0; } catch (e) { }
-    const players = dim.getPlayers({ location: at, maxDistance: RCT_SPAWN.spawnerMax }).filter((p) => Math.hypot(p.location.x - at.x, p.location.z - at.z) >= RCT_SPAWN.spawnerMin);
+    const players = spawnerPlayers(block.location, dim.getPlayers());
     const ids = [...entry.ids].sort(() => Math.random() - 0.5);
     for (const player of players) {
         if (playerLevel(player) <= 0) continue;

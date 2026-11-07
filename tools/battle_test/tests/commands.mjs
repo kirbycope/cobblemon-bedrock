@@ -13,3 +13,13 @@ check("a record for a given Pokemon has its level, moves and a shiny variant", r
     const p = M.parseProps(["pikachu", "level5", "shiny"]), q = M.parseProps(["pikachu", "lvl12"]);
     check("a level runs on from its key", p.level === 5 && p.shiny === true && q.level === 12, JSON.stringify([p, q]));
 }
+{
+    // PokemonProperties.create: no level= is Pokemon.level's default of 1 (SpawnPokemon and GivePokemon alike), and
+    // roll() makes it shiny 1 in 8192 (config.shinyRate) unless shiny= says
+    const pikachu = M.speciesNamed("pikachu"), random = Math.random;
+    Math.random = () => 0;
+    let lucky, plain, said;
+    try { lucky = M.recordFor(pikachu, {}); said = M.recordFor(pikachu, { shiny: false }); Math.random = () => 1 / 8192; plain = M.recordFor(pikachu, {}); } finally { Math.random = random; }
+    check("givepokemon with no level gives level 1", lucky.lv === 1 && plain.lv === 1, JSON.stringify([lucky.lv, plain.lv]));
+    check("and rolls shiny 1 in 8192 when shiny is not given", lucky.v > 0 && plain.v === 0 && said.v === 0, JSON.stringify([lucky.v, plain.v, said.v]));
+}

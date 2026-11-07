@@ -127,12 +127,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -255,10 +249,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 2.0,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 3.26,
+                    "start_distance": 5.36,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.36
                 }
             },
             "cobblemon:captured": {
@@ -328,7 +323,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -383,13 +378,28 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0623_golurk",
                     "filters": {
                         "all_of": [
                             {
                                 "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_golett"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
                                     {
                                         "test": "is_family",
                                         "subject": "other",
@@ -457,14 +467,28 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
+                    ],
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -503,7 +527,7 @@
                 "max": 22
             },
             "minecraft:attack": {
-                "damage": 7
+                "damage": 2
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0622_golett.json"
@@ -513,17 +537,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.15
+                "value": 0.0919
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -544,7 +582,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -910,7 +949,6 @@
                     ]
                 }
             },
-            "cobblemon:spawn_mult_0": {},
             "cobblemon:conflict_on": {
                 "add": {
                     "component_groups": [
@@ -949,6 +987,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

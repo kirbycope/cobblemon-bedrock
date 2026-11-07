@@ -123,12 +123,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -251,10 +245,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.58,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 2.58,
+                    "start_distance": 5.55,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.55
                 }
             },
             "cobblemon:captured": {
@@ -324,7 +319,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -379,9 +374,9 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
-                    "preferred_actor_type": "cobblemon:p0697_tyrantrum",
+                    "preferred_actor_type": "cobblemon:p0696_tyrunt",
                     "filters": {
                         "all_of": [
                             {
@@ -390,6 +385,21 @@
                                         "test": "is_family",
                                         "subject": "other",
                                         "value": "species_tyrantrum"
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_tyrunt"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
                                     }
                                 ]
                             },
@@ -453,14 +463,28 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
+                    ],
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -499,7 +523,7 @@
                 "max": 37
             },
             "minecraft:attack": {
-                "damage": 9
+                "damage": 4
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0696_tyrunt.json"
@@ -509,17 +533,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.19
+                "value": 0.1164
             },
             "minecraft:underwater_movement": {
                 "value": 0.2007
@@ -541,7 +579,8 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_stroll": {
                 "priority": 8,
-                "speed_multiplier": 1
+                "speed_multiplier": 1,
+                "interval": 220
             },
             "minecraft:behavior.float": {
                 "priority": 0
@@ -940,6 +979,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

@@ -208,7 +208,7 @@ export function pcMatches(rec, props, { POKEMON, SHINY_VARIANTS, VARIANT_LOOKS, 
     if (props.held_item && (k["cobblemon:held"] ?? "").replace(/^cobblemon:/, "") !== props.held_item.replace(/^cobblemon:/, "")) return false;
     if (props.nickname && (rec.n ?? "") !== props.nickname) return false;
     if (props.alpha !== undefined && !!k["cobblemon:alpha"] !== props.alpha) return false;
-    if (props.friendship !== undefined && (k["cobblemon:friendship"] ?? POKEMON[rec.t]?.friendship ?? 50) !== props.friendship) return false;
+    if (props.friendship !== undefined && (k["cobblemon:friendship"] ?? POKEMON[rec.t]?.variants?.[rec.v ?? 0]?.friendship ?? POKEMON[rec.t]?.friendship ?? 50) !== props.friendship) return false;
     if (props.pokeball && (k["cobblemon:caught_ball"] ?? "cobblemon:poke_ball") !== props.pokeball) return false;
     return true;
 }

@@ -8,7 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 800
+                    "default": 26
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -160,11 +160,6 @@
                     "minecraft:white_terracotta",
                     "minecraft:yellow_terracotta"
                 ],
-                "minecraft:brightness_filter": {
-                    "min": 8,
-                    "max": 15,
-                    "adjust_for_weather": false
-                },
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
@@ -174,7 +169,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 10
+                    "default": 2
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -218,7 +213,6 @@
                         }
                     ]
                 },
-                "minecraft:spawns_on_surface": {},
                 "minecraft:spawns_on_block_filter": [
                     "cobblemon:bug_gem_block",
                     "cobblemon:dark_gem_block",
@@ -326,11 +320,7 @@
                     "minecraft:white_terracotta",
                     "minecraft:yellow_terracotta"
                 ],
-                "minecraft:brightness_filter": {
-                    "min": 0,
-                    "max": 7,
-                    "adjust_for_weather": false
-                },
+                "minecraft:spawns_underground": {},
                 "minecraft:height_filter": {
                     "min": 0,
                     "max": 320
@@ -342,7 +332,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 400
+                    "default": 13
                 },
                 "minecraft:biome_filter": {
                     "any_of": [
@@ -494,15 +484,171 @@
                     "minecraft:white_terracotta",
                     "minecraft:yellow_terracotta"
                 ],
-                "minecraft:brightness_filter": {
-                    "min": 8,
-                    "max": 15,
-                    "adjust_for_weather": false
-                },
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
                     "event": "cobblemon:spawn_mult_1",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 19
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "frozen"
+                        },
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "beach"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "cold"
+                                }
+                            ]
+                        },
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "taiga"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "cold"
+                                }
+                            ]
+                        },
+                        {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "grove"
+                        }
+                    ]
+                },
+                "minecraft:spawns_on_surface": {},
+                "minecraft:spawns_on_block_filter": [
+                    "cobblemon:bug_gem_block",
+                    "cobblemon:dark_gem_block",
+                    "cobblemon:dragon_gem_block",
+                    "cobblemon:electric_gem_block",
+                    "cobblemon:fairy_gem_block",
+                    "cobblemon:fighting_gem_block",
+                    "cobblemon:fire_gem_block",
+                    "cobblemon:flying_gem_block",
+                    "cobblemon:ghost_gem_block",
+                    "cobblemon:grass_gem_block",
+                    "cobblemon:ground_gem_block",
+                    "cobblemon:ice_gem_block",
+                    "cobblemon:normal_gem_block",
+                    "cobblemon:poison_gem_block",
+                    "cobblemon:psychic_gem_block",
+                    "cobblemon:rock_gem_block",
+                    "cobblemon:steel_gem_block",
+                    "cobblemon:water_gem_block",
+                    "minecraft:amethyst_block",
+                    "minecraft:andesite",
+                    "minecraft:basalt",
+                    "minecraft:big_dripleaf",
+                    "minecraft:black_terracotta",
+                    "minecraft:blackstone",
+                    "minecraft:blue_ice",
+                    "minecraft:blue_terracotta",
+                    "minecraft:brain_coral_block",
+                    "minecraft:brown_terracotta",
+                    "minecraft:bubble_coral_block",
+                    "minecraft:budding_amethyst",
+                    "minecraft:calcite",
+                    "minecraft:clay",
+                    "minecraft:coal_ore",
+                    "minecraft:coarse_dirt",
+                    "minecraft:copper_ore",
+                    "minecraft:crimson_nylium",
+                    "minecraft:cyan_terracotta",
+                    "minecraft:deepslate",
+                    "minecraft:deepslate_coal_ore",
+                    "minecraft:deepslate_copper_ore",
+                    "minecraft:deepslate_diamond_ore",
+                    "minecraft:deepslate_emerald_ore",
+                    "minecraft:deepslate_gold_ore",
+                    "minecraft:deepslate_iron_ore",
+                    "minecraft:deepslate_lapis_ore",
+                    "minecraft:deepslate_redstone_ore",
+                    "minecraft:diamond_ore",
+                    "minecraft:diorite",
+                    "minecraft:dirt",
+                    "minecraft:dirt_with_roots",
+                    "minecraft:dripstone_block",
+                    "minecraft:emerald_ore",
+                    "minecraft:end_stone",
+                    "minecraft:fire_coral_block",
+                    "minecraft:frosted_ice",
+                    "minecraft:gold_ore",
+                    "minecraft:granite",
+                    "minecraft:grass_block",
+                    "minecraft:gravel",
+                    "minecraft:gray_terracotta",
+                    "minecraft:green_terracotta",
+                    "minecraft:hardened_clay",
+                    "minecraft:horn_coral_block",
+                    "minecraft:ice",
+                    "minecraft:iron_ore",
+                    "minecraft:lapis_ore",
+                    "minecraft:light_blue_terracotta",
+                    "minecraft:light_gray_terracotta",
+                    "minecraft:lime_terracotta",
+                    "minecraft:lit_deepslate_redstone_ore",
+                    "minecraft:lit_redstone_ore",
+                    "minecraft:magenta_terracotta",
+                    "minecraft:moss_block",
+                    "minecraft:moss_carpet",
+                    "minecraft:mud",
+                    "minecraft:muddy_mangrove_roots",
+                    "minecraft:mycelium",
+                    "minecraft:nether_gold_ore",
+                    "minecraft:netherrack",
+                    "minecraft:orange_terracotta",
+                    "minecraft:packed_ice",
+                    "minecraft:pink_terracotta",
+                    "minecraft:podzol",
+                    "minecraft:powder_snow",
+                    "minecraft:purple_terracotta",
+                    "minecraft:red_sand",
+                    "minecraft:red_sandstone",
+                    "minecraft:red_terracotta",
+                    "minecraft:redstone_ore",
+                    "minecraft:sand",
+                    "minecraft:sandstone",
+                    "minecraft:sculk",
+                    "minecraft:smooth_basalt",
+                    "minecraft:snow",
+                    "minecraft:snow_layer",
+                    "minecraft:soul_sand",
+                    "minecraft:soul_soil",
+                    "minecraft:stone",
+                    "minecraft:suspicious_sand",
+                    "minecraft:tube_coral_block",
+                    "minecraft:tuff",
+                    "minecraft:warped_nylium",
+                    "minecraft:waterlily",
+                    "minecraft:white_terracotta",
+                    "minecraft:yellow_terracotta"
+                ],
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:spawn_mult_2",
                     "event_skip_count": 0
                 }
             },
@@ -552,7 +698,6 @@
                         }
                     ]
                 },
-                "minecraft:spawns_on_surface": {},
                 "minecraft:spawns_on_block_filter": [
                     "cobblemon:bug_gem_block",
                     "cobblemon:dark_gem_block",
@@ -660,11 +805,7 @@
                     "minecraft:white_terracotta",
                     "minecraft:yellow_terracotta"
                 ],
-                "minecraft:brightness_filter": {
-                    "min": 0,
-                    "max": 7,
-                    "adjust_for_weather": false
-                },
+                "minecraft:spawns_underground": {},
                 "minecraft:height_filter": {
                     "min": 0,
                     "max": 320
@@ -672,173 +813,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
-                    "event_skip_count": 0
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 5
-                },
-                "minecraft:biome_filter": {
-                    "any_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "frozen"
-                        },
-                        {
-                            "all_of": [
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "beach"
-                                },
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "cold"
-                                }
-                            ]
-                        },
-                        {
-                            "all_of": [
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "taiga"
-                                },
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "cold"
-                                }
-                            ]
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "grove"
-                        }
-                    ]
-                },
-                "minecraft:spawns_on_surface": {},
-                "minecraft:spawns_on_block_filter": [
-                    "cobblemon:bug_gem_block",
-                    "cobblemon:dark_gem_block",
-                    "cobblemon:dragon_gem_block",
-                    "cobblemon:electric_gem_block",
-                    "cobblemon:fairy_gem_block",
-                    "cobblemon:fighting_gem_block",
-                    "cobblemon:fire_gem_block",
-                    "cobblemon:flying_gem_block",
-                    "cobblemon:ghost_gem_block",
-                    "cobblemon:grass_gem_block",
-                    "cobblemon:ground_gem_block",
-                    "cobblemon:ice_gem_block",
-                    "cobblemon:normal_gem_block",
-                    "cobblemon:poison_gem_block",
-                    "cobblemon:psychic_gem_block",
-                    "cobblemon:rock_gem_block",
-                    "cobblemon:steel_gem_block",
-                    "cobblemon:water_gem_block",
-                    "minecraft:amethyst_block",
-                    "minecraft:andesite",
-                    "minecraft:basalt",
-                    "minecraft:big_dripleaf",
-                    "minecraft:black_terracotta",
-                    "minecraft:blackstone",
-                    "minecraft:blue_ice",
-                    "minecraft:blue_terracotta",
-                    "minecraft:brain_coral_block",
-                    "minecraft:brown_terracotta",
-                    "minecraft:bubble_coral_block",
-                    "minecraft:budding_amethyst",
-                    "minecraft:calcite",
-                    "minecraft:clay",
-                    "minecraft:coal_ore",
-                    "minecraft:coarse_dirt",
-                    "minecraft:copper_ore",
-                    "minecraft:crimson_nylium",
-                    "minecraft:cyan_terracotta",
-                    "minecraft:deepslate",
-                    "minecraft:deepslate_coal_ore",
-                    "minecraft:deepslate_copper_ore",
-                    "minecraft:deepslate_diamond_ore",
-                    "minecraft:deepslate_emerald_ore",
-                    "minecraft:deepslate_gold_ore",
-                    "minecraft:deepslate_iron_ore",
-                    "minecraft:deepslate_lapis_ore",
-                    "minecraft:deepslate_redstone_ore",
-                    "minecraft:diamond_ore",
-                    "minecraft:diorite",
-                    "minecraft:dirt",
-                    "minecraft:dirt_with_roots",
-                    "minecraft:dripstone_block",
-                    "minecraft:emerald_ore",
-                    "minecraft:end_stone",
-                    "minecraft:fire_coral_block",
-                    "minecraft:frosted_ice",
-                    "minecraft:gold_ore",
-                    "minecraft:granite",
-                    "minecraft:grass_block",
-                    "minecraft:gravel",
-                    "minecraft:gray_terracotta",
-                    "minecraft:green_terracotta",
-                    "minecraft:hardened_clay",
-                    "minecraft:horn_coral_block",
-                    "minecraft:ice",
-                    "minecraft:iron_ore",
-                    "minecraft:lapis_ore",
-                    "minecraft:light_blue_terracotta",
-                    "minecraft:light_gray_terracotta",
-                    "minecraft:lime_terracotta",
-                    "minecraft:lit_deepslate_redstone_ore",
-                    "minecraft:lit_redstone_ore",
-                    "minecraft:magenta_terracotta",
-                    "minecraft:moss_block",
-                    "minecraft:moss_carpet",
-                    "minecraft:mud",
-                    "minecraft:muddy_mangrove_roots",
-                    "minecraft:mycelium",
-                    "minecraft:nether_gold_ore",
-                    "minecraft:netherrack",
-                    "minecraft:orange_terracotta",
-                    "minecraft:packed_ice",
-                    "minecraft:pink_terracotta",
-                    "minecraft:podzol",
-                    "minecraft:powder_snow",
-                    "minecraft:purple_terracotta",
-                    "minecraft:red_sand",
-                    "minecraft:red_sandstone",
-                    "minecraft:red_terracotta",
-                    "minecraft:redstone_ore",
-                    "minecraft:sand",
-                    "minecraft:sandstone",
-                    "minecraft:sculk",
-                    "minecraft:smooth_basalt",
-                    "minecraft:snow",
-                    "minecraft:snow_layer",
-                    "minecraft:soul_sand",
-                    "minecraft:soul_soil",
-                    "minecraft:stone",
-                    "minecraft:suspicious_sand",
-                    "minecraft:tube_coral_block",
-                    "minecraft:tuff",
-                    "minecraft:warped_nylium",
-                    "minecraft:waterlily",
-                    "minecraft:white_terracotta",
-                    "minecraft:yellow_terracotta"
-                ],
-                "minecraft:brightness_filter": {
-                    "min": 8,
-                    "max": 15,
-                    "adjust_for_weather": false
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1,
-                    "event": "cobblemon:spawn_mult_2",
+                    "event": "cobblemon:herd_seed_alpha",
                     "event_skip_count": 0
                 }
             },
@@ -888,7 +863,6 @@
                         }
                     ]
                 },
-                "minecraft:spawns_on_surface": {},
                 "minecraft:spawns_on_block_filter": [
                     "cobblemon:bug_gem_block",
                     "cobblemon:dark_gem_block",
@@ -996,11 +970,7 @@
                     "minecraft:white_terracotta",
                     "minecraft:yellow_terracotta"
                 ],
-                "minecraft:brightness_filter": {
-                    "min": 0,
-                    "max": 7,
-                    "adjust_for_weather": false
-                },
+                "minecraft:spawns_underground": {},
                 "minecraft:height_filter": {
                     "min": 0,
                     "max": 320
@@ -1008,7 +978,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
+                    "event": "cobblemon:spawn_mult_3",
                     "event_skip_count": 0
                 }
             }

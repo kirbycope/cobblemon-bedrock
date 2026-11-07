@@ -12,18 +12,20 @@ export const AWARD_EXPERIENCE_ON_BATTLE_LOSS = false;
 export const EXPERIENCE_SHARE_MULTIPLIER = 0.5;
 
 // a foe knocked out: whose it was (a view of the battle, or "foe" for a wild Pokemon or a trainer), whose party is paid
-// (the view across from it, whose party findParty reads) and which of theirs had faced it by then (BattlePokemon.facedOpponents)
+// (the view across from it, whose party findParty reads) and which of theirs faced it (BattlePokemon.facedOpponents: the
+// pairs main.js keeps per Pokemon, so one that fought an earlier foe and sat this one out is not among them)
 export function recordFaint(real, foe, loser, winners, facing = []) {
-    (real.pendingExp ??= []).push({ foe, loser, winners, faced: new Set([...(real.faced ?? []), ...facing]) });
+    (real.pendingExp ??= []).push({ foe, loser, winners, faced: new Set(facing) });
 }
 // the side whose Pokemon have all been knocked out (PokemonBattle.end's enemyTeamWiped)
 export function teamWiped(real, loser) { (real.wipedSides ??= new Set()).add(loser); }
 
 // PokemonBattle.end: for each foe knocked out, each of the other side's party Pokemon with HP left (a fainted one gets
 // nothing, awardExperienceToFaintedPokemon false) gets its EVs (Generation8EvCalculator, a power item adding 8 to its stat)
-// and its experience: in full having faced it, half holding an Exp. Share, else nothing. The experience of every foe
-// comes as one sum, and only once the foe's team is wiped. A level rule's clones keep nothing (BattlePokemon.effectedPokemon
-// is not the original). Returns what was paid, for the tests
+// and its experience: in full having faced it, half holding an Exp. Share, else nothing. Each foe is paid on its own, in
+// the order they fell (end goes by the loser's party order, the same for a team sent out in turn), at the level the
+// earlier awards brought the Pokemon to (the loop over faintedPokemons in end), and only once the foe's team is wiped. A
+// level rule's clones keep nothing (BattlePokemon.effectedPokemon is not the original). Returns what was paid, for the tests
 export function payExperience(real, ctx) {
     const pending = real.pendingExp ?? [];
     real.pendingExp = [];
@@ -46,12 +48,13 @@ export function payExperience(real, ctx) {
                 for (const [stat, n] of Object.entries(p.foe.info?.evYield ?? {})) ctx.addEvs(e, stat, n);
                 const power = ctx.POWER_ITEMS[ctx.held(f)];
                 if (power) ctx.addEvs(e, power, 8);
-                if (real.wipedSides?.has(p.loser) || AWARD_EXPERIENCE_ON_BATTLE_LOSS) total += ctx.battleExperience(view, f, p.foe, share);
+                if (!real.wipedSides?.has(p.loser) && !AWARD_EXPERIENCE_ON_BATTLE_LOSS) continue;
+                const exp = ctx.battleExperience(view, f, p.foe, share);   // at the level the earlier foes' awards left it
+                if (exp <= 0) continue;
+                try { ctx.gainExperience(view, f, null, exp); } catch (err) { console.warn(`[cobblemon] experience not paid: ${err}`); }
+                total += exp;
             }
-            if (total > 0) {
-                try { ctx.gainExperience(view, f, null, total); } catch (err) { console.warn(`[cobblemon] experience not paid: ${err}`); }
-                paid.push({ entity: e, exp: total });
-            }
+            if (total > 0) paid.push({ entity: e, exp: total });
         }
     }
     return paid;

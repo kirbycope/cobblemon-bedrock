@@ -203,10 +203,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.63,
+                    "start_distance": 5.3,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.3
                 }
             },
             "cobblemon:captured": {
@@ -270,7 +271,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -706,7 +707,7 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
@@ -718,7 +719,7 @@
                 "minecraft:behavior.follow_mob": {
                     "priority": 7,
                     "search_range": 16,
-                    "stop_distance": 4,
+                    "stop_distance": 6,
                     "speed_multiplier": 1.14,
                     "preferred_actor_type": "cobblemon:p0201_unown",
                     "filters": {
@@ -792,14 +793,28 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
+                    ],
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -837,7 +852,7 @@
                 "max": 12
             },
             "minecraft:attack": {
-                "damage": 7
+                "damage": 1
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0201_unown.json"
@@ -847,17 +862,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.25
+                "value": 0.1837
             },
             "minecraft:movement.hover": {},
             "minecraft:navigation.hover": {
@@ -878,13 +907,13 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_hover": {
                 "priority": 8,
-                "xz_dist": 8,
-                "y_dist": 8,
+                "xz_dist": 10,
+                "y_dist": 5,
                 "y_offset": -1,
-                "interval": 1,
+                "interval": 220,
                 "hover_height": [
-                    1,
-                    4
+                    0,
+                    6
                 ]
             },
             "minecraft:behavior.float": {
@@ -1025,7 +1054,23 @@
                     {
                         "randomize": [
                             {
-                                "weight": 303370,
+                                "weight": 292536,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_0"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 36,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:variant_1"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_2"
@@ -1033,7 +1078,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_3"
@@ -1041,7 +1086,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_4"
@@ -1049,7 +1094,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_5"
@@ -1057,7 +1102,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_6"
@@ -1065,7 +1110,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_7"
@@ -1073,7 +1118,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_8"
@@ -1081,7 +1126,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_9"
@@ -1089,7 +1134,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_10"
@@ -1097,7 +1142,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_11"
@@ -1105,7 +1150,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_12"
@@ -1113,7 +1158,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_13"
@@ -1121,7 +1166,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_14"
@@ -1129,7 +1174,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_15"
@@ -1137,7 +1182,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_16"
@@ -1145,7 +1190,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_17"
@@ -1153,7 +1198,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_18"
@@ -1161,7 +1206,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_19"
@@ -1169,7 +1214,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_20"
@@ -1177,7 +1222,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_21"
@@ -1185,7 +1230,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_22"
@@ -1193,7 +1238,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_23"
@@ -1201,7 +1246,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_24"
@@ -1209,7 +1254,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_25"
@@ -1217,7 +1262,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_26"
@@ -1225,7 +1270,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_27"
@@ -1233,7 +1278,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_28"
@@ -1241,7 +1286,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_29"
@@ -1249,7 +1294,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_30"
@@ -1257,7 +1302,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_31"
@@ -1265,7 +1310,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_32"
@@ -1273,7 +1318,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_33"
@@ -1281,7 +1326,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_34"
@@ -1289,7 +1334,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_35"
@@ -1297,7 +1342,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_36"
@@ -1305,7 +1350,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_37"
@@ -1313,7 +1358,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_38"
@@ -1321,7 +1366,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_39"
@@ -1329,7 +1374,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_40"
@@ -1337,7 +1382,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_41"
@@ -1345,7 +1390,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_42"
@@ -1353,7 +1398,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_43"
@@ -1361,7 +1406,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_44"
@@ -1369,7 +1414,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_45"
@@ -1377,7 +1422,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_46"
@@ -1385,7 +1430,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_47"
@@ -1393,7 +1438,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_48"
@@ -1401,7 +1446,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_49"
@@ -1409,7 +1454,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_50"
@@ -1417,7 +1462,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_51"
@@ -1425,7 +1470,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_52"
@@ -1433,7 +1478,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_53"
@@ -1441,7 +1486,7 @@
                                 }
                             },
                             {
-                                "weight": 303370,
+                                "weight": 292536,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_54"
@@ -1449,7 +1494,7 @@
                                 }
                             },
                             {
-                                "weight": 37,
+                                "weight": 36,
                                 "add": {
                                     "component_groups": [
                                         "cobblemon:variant_55"
@@ -9136,6 +9181,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

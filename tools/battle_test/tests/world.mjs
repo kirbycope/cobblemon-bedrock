@@ -87,12 +87,14 @@ check("an Allium stew gives Fire Resistance for 4 seconds, a Pep-Up Flower stew 
     check("a wild Pokemon made an alpha turns on its retaliation", wild.events.includes("cobblemon:alpha_retaliate") && !owned.events.includes("cobblemon:alpha_retaliate"), JSON.stringify(wild.events));
 }
 
-// PokemonBrain.onCaptureFailed: a Pokemon that breaks out of a ball out of battle grows wary of players
+// EmptyPokeBallEntity.breakFree: out of battle a Pokemon that breaks out of a ball loses the Sleep status; onCaptureFailed's
+// avoid_target moves nothing in 1.8.4, so it is not made wary
 {
-    const pokemon = stub("cobblemon:p0143_snorlax"), ball = stub("cobblemon:capture_ball");
+    const pokemon = stub("cobblemon:p0143_snorlax", { "cobblemon:status": JSON.stringify({ s: "slp", left: 200 }) }), ball = stub("cobblemon:capture_ball");
     pokemon.teleport = () => { };
     M.brokeFree(ball, { x: 0, y: 64, z: 0 }, pokemon, "cobblemon:poke_ball", false); flush();
-    check("breaking free out of battle makes it wary, and ends the battle freeze", pokemon.events.includes("cobblemon:wary") && pokemon.events.includes("cobblemon:battle_end"), JSON.stringify(pokemon.events));
+    check("breaking free out of battle ends the battle freeze and does not make it wary", !pokemon.events.includes("cobblemon:wary") && pokemon.events.includes("cobblemon:battle_end"), JSON.stringify(pokemon.events));
+    check("and it wakes from the Sleep status", pokemon.getDynamicProperty("cobblemon:status") === undefined);
 }
 
 // TargetEntityTaskConfig: Pidgeotto hunts a Magikarp with air above it (passes once port.py has run)

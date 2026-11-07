@@ -63,7 +63,7 @@ export function growTerrainSeed(block, steps = 1) {
     return true;
 }
 // CropBlock.hasSufficientLight: the brightest of sky and block light at the crop, 9 or more
-function litEnough(block) {
+export function litEnough(block) {
     let light = 0;
     try { light = Math.max(block.dimension.getLightLevel(block.location), block.dimension.getSkyLightLevel(block.location)); } catch (e) { light = 15; }
     return light >= 9;

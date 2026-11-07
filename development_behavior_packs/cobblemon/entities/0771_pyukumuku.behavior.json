@@ -204,9 +204,10 @@
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
                     "speed_multiplier": 2.59,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "start_distance": 5.28,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.28
                 }
             },
             "cobblemon:captured": {
@@ -270,7 +271,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -284,6 +285,50 @@
             "cobblemon:variant_1": {
                 "minecraft:variant": {
                     "value": 1
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0771_pyukumuku",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_pyukumuku"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
+                    }
                 }
             },
             "cobblemon:alpha_retaliates": {
@@ -364,7 +409,7 @@
                 "max": 48
             },
             "minecraft:attack": {
-                "damage": 6
+                "damage": 4
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0771_pyukumuku.json"
@@ -513,6 +558,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -534,6 +599,7 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -549,6 +615,7 @@
                     "component_groups": [
                         "cobblemon:wild",
                         "cobblemon:released",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -585,6 +652,7 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wild",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -646,6 +714,7 @@
                     "component_groups": [
                         "cobblemon:wild",
                         "cobblemon:in_battle",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -705,6 +774,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

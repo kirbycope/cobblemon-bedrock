@@ -123,12 +123,6 @@
                                 "subject": "self",
                                 "operator": "==",
                                 "value": true
-                            },
-                            {
-                                "test": "is_weather",
-                                "subject": "self",
-                                "operator": "!=",
-                                "value": "thunderstorm"
                             }
                         ]
                     },
@@ -251,10 +245,11 @@
             "cobblemon:following": {
                 "minecraft:behavior.follow_owner": {
                     "priority": 5,
-                    "speed_multiplier": 1.2,
-                    "start_distance": 5,
-                    "stop_distance": 2,
-                    "can_teleport": true
+                    "speed_multiplier": 1.63,
+                    "start_distance": 5.15,
+                    "stop_distance": 3,
+                    "can_teleport": true,
+                    "max_distance": 32.15
                 }
             },
             "cobblemon:captured": {
@@ -318,7 +313,7 @@
                     "value": 0.0
                 },
                 "minecraft:body_rotation_blocked": {},
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 0.1,
                     "probability": 0.0
@@ -502,11 +497,85 @@
                     ]
                 },
                 "minecraft:timer": {
-                    "time": 30,
+                    "time": 600,
                     "looping": false,
                     "time_down_event": {
                         "event": "cobblemon:calm",
                         "target": "self"
+                    }
+                }
+            },
+            "cobblemon:herd_follower": {
+                "minecraft:behavior.follow_mob": {
+                    "priority": 7,
+                    "search_range": 16,
+                    "stop_distance": 6,
+                    "speed_multiplier": 1.14,
+                    "preferred_actor_type": "cobblemon:p0666_vivillon",
+                    "filters": {
+                        "all_of": [
+                            {
+                                "any_of": [
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_beautifly"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_butterfree"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "all_of": [
+                                            {
+                                                "test": "is_family",
+                                                "subject": "other",
+                                                "value": "species_vivillon"
+                                            },
+                                            {
+                                                "test": "bool_property",
+                                                "subject": "other",
+                                                "domain": "cobblemon:alpha",
+                                                "value": true
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "test": "has_component",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "minecraft:behavior.follow_mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "operator": "!=",
+                                "value": "owned"
+                            }
+                        ]
                     }
                 }
             },
@@ -554,14 +623,28 @@
                 }
             },
             "cobblemon:looks_around": {
-                "minecraft:behavior.look_at_player": {
+                "minecraft:behavior.look_at_entity": {
                     "priority": 6,
                     "look_distance": 15,
                     "probability": 1.0,
                     "look_time": [
                         4,
                         8
-                    ]
+                    ],
+                    "filters": {
+                        "any_of": [
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "mob"
+                            },
+                            {
+                                "test": "is_family",
+                                "subject": "other",
+                                "value": "player"
+                            }
+                        ]
+                    }
                 }
             }
         },
@@ -600,7 +683,7 @@
                 "max": 35
             },
             "minecraft:attack": {
-                "damage": 4
+                "damage": 3
             },
             "minecraft:loot": {
                 "table": "loot_tables/entities/0012_butterfree.json"
@@ -610,17 +693,31 @@
                 "is_pushable_by_piston": true
             },
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {
+            "minecraft:behavior.look_at_entity": {
                 "priority": 6,
                 "look_distance": 15,
                 "probability": 1.0,
                 "look_time": [
                     4,
                     8
-                ]
+                ],
+                "filters": {
+                    "any_of": [
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "mob"
+                        },
+                        {
+                            "test": "is_family",
+                            "subject": "other",
+                            "value": "player"
+                        }
+                    ]
+                }
             },
             "minecraft:movement": {
-                "value": 0.4
+                "value": 0.1837
             },
             "minecraft:movement.hover": {},
             "minecraft:navigation.hover": {
@@ -641,13 +738,13 @@
             "minecraft:physics": {},
             "minecraft:behavior.random_hover": {
                 "priority": 8,
-                "xz_dist": 8,
-                "y_dist": 8,
+                "xz_dist": 10,
+                "y_dist": 5,
                 "y_offset": -1,
-                "interval": 1,
+                "interval": 220,
                 "hover_height": [
-                    1,
-                    4
+                    0,
+                    6
                 ]
             },
             "minecraft:behavior.float": {
@@ -834,6 +931,26 @@
                                 }
                             }
                         ]
+                    },
+                    {
+                        "randomize": [
+                            {
+                                "weight": 1,
+                                "add": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "remove": {
+                                    "component_groups": [
+                                        "cobblemon:herd_follower"
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 ]
             },
@@ -859,6 +976,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -876,6 +994,7 @@
                         "cobblemon:released",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -914,6 +1033,7 @@
                         "cobblemon:wild",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -984,6 +1104,7 @@
                         "cobblemon:in_battle",
                         "cobblemon:panics",
                         "cobblemon:fleeing",
+                        "cobblemon:herd_follower",
                         "cobblemon:alpha_retaliates",
                         "cobblemon:wary"
                     ]
@@ -1432,6 +1553,20 @@
                 "remove": {
                     "component_groups": [
                         "cobblemon:wary"
+                    ]
+                }
+            },
+            "cobblemon:herd_lead": {
+                "remove": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
+                    ]
+                }
+            },
+            "cobblemon:herd_follow": {
+                "add": {
+                    "component_groups": [
+                        "cobblemon:herd_follower"
                     ]
                 }
             }

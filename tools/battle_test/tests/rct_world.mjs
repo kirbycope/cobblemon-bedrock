@@ -1,7 +1,7 @@
 // Radical Cobblemon Trainers in the world: the full series graph and its stepped level cap, a trainer's own record
 // against a player (rematches), the cooldown growth, RCT's dialogue by context, the spawner's weights and biome rules,
 // the Trainer Spawner's signature items and the gyms' display case geometry (scripts/rct_world.js and main.js)
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,7 +12,7 @@ import { system } from "../stub_server.mjs";
 // there, so the same instances are read from the newest such copy, not from the scripts folder itself
 const copy = readdirSync(tmpdir()).filter((d) => d.startsWith("cobblemon-battle-")).map((d) => join(tmpdir(), d)).sort((a, b) => statSync(b).mtimeMs - statSync(a).mtimeMs)[0];
 const W = await import(pathToFileURL(join(copy, "rct_world.js")).href);
-const { RCT_TRAINERS, RCT_TRAINER_IDS, RCT_TYPES, RCT_DIALOG, RCT_BIOMES, RCT_LOOT } = await import(pathToFileURL(join(copy, "rct_trainers.js")).href);
+const { RCT_TRAINERS, RCT_TRAINER_IDS, RCT_TYPES, RCT_DIALOG, RCT_BIOMES, RCT_LOOT, RCT_SPAWN } = await import(pathToFileURL(join(copy, "rct_trainers.js")).href);
 const { GYM_CASES, GYM_TRAINER_IDS, GYM_LEAGUE } = await import(pathToFileURL(join(copy, "gyms.js")).href);
 
 // a stand-in player: its dynamic properties, a party of one Pokemon at a level
@@ -102,13 +102,98 @@ W.initRctWorld({ party: () => [], levelOf: () => 1, series: M.rctSeries, levelCa
     check("a trainer too far in level weighs nothing, the allowance scaling with the player's level (never under 4)", W.spawnWeight({ ...generic, level: 30 }, false, 20) === 0 && W.spawnWeight({ ...generic, level: 25 }, false, 20) > 0 && W.spawnWeight({ ...generic, level: 26 }, false, 20) === 0
         && W.spawnWeight({ ...generic, level: 9 }, false, 5) > 0 && W.spawnWeight({ ...generic, level: 10 }, false, 5) === 0);
     check("Brock's weight factor of 0 keeps him out of the wild", W.spawnWeight(brock, true, 14) === 0);
-    check("the direct spawn chance is 0.42 for a key trainer at level, a quarter of it otherwise", Math.abs(W.spawnChance({ ...generic, level: 20 }, true, 20) - 0.42) < 1e-9 && Math.abs(W.spawnChance({ ...generic, level: 20 }, false, 20) - 0.105) < 1e-9);
+    check("the Trainer Spawner block's direct chance is 0.42 for a key trainer at level, a quarter of it otherwise",Math.abs(W.spawnChance({ ...generic, level: 20 }, true, 20) - 0.42) < 1e-9 && Math.abs(W.spawnChance({ ...generic, level: 20 }, false, 20) - 0.105) < 1e-9);
     check("biome tags map to Bedrock biomes: a mountain trainer spawns in jagged peaks, not in the Nether", W.biomeOk(brock, "minecraft:jagged_peaks") && !W.biomeOk(brock, "minecraft:nether_wastes") && !W.biomeOk(brock, "minecraft:plains"));
     check("a trainer with no whitelist spawns anywhere not blacklisted", W.biomeOk({ biomes: [], noBiomes: ["is_nether"] }, "minecraft:plains") && !W.biomeOk({ biomes: [], noBiomes: ["is_nether"] }, "minecraft:crimson_forest"));
     check("RCT_BIOMES knows the tags the trainers use", ["is_plains", "is_cold", "is_end", "has_structure/end_city", "is_peak"].every((t) => RCT_BIOMES[t]?.length > 0) && RCT_BIOMES.is_peak.includes("minecraft:stony_peaks"));
     check("a trainer with no series spawns for a player in any series or none", W.inSeries(generic, undefined) && W.inSeries(generic, "bdsp") && !W.inSeries(brock, undefined) && W.inSeries(brock, "radicalred"));
     // Radical Gyms' own leader files carry no signature item, so the gym leaders cannot be attuned; Terry and the rest can
     check("signature items attune the Trainer Spawner: Terry's is a Life Orb, the gym leaders have none", RCT_TRAINERS.champion_terry_01b8.sig === "cobblemon:life_orb" && RCT_TRAINERS.leader_brock_019e.sig === null && RCT_TRAINER_IDS.filter((id) => RCT_TRAINERS[id].sig).length > 100);
+}
+{
+    // TrainerSpawner.nextPos, isUnique and attemptSpawnFor(player), the Trainer Spawner block's reach, and the despawns
+    const random = Math.random;
+    // a column of air with solid floors at the heights given; heights the world cannot reach throw, as getBlock does
+    const column = (floors, ceiling = Infinity) => {
+        const block = (y) => { if (y >= ceiling) throw new Error("out of bounds"); return { y, isAir: !floors.includes(y), isLiquid: false, above: () => block(y + 1) }; };
+        return { id: "overworld", getBlock: ({ y }) => block(y) };
+    };
+    // the draws: two for each axis's offset, then the coin for which end the column is scanned from
+    Math.random = () => 0.3;
+    const down = W.nextPos(column([40, 80]), { x: 0, y: 60, z: 0 });
+    Math.random = () => 0.7;
+    const up = W.nextPos(column([40, 80]), { x: 0, y: 60, z: 0 });
+    check("nextPos scans from 30 above down on one coin, finding the higher ground", down?.y === 81 && down.x === -37.5, JSON.stringify(down));
+    check("and from 30 below up on the other, finding the lower ground", up?.y === 41 && up.x === 56.5, JSON.stringify(up));
+    Math.random = () => 0.3;
+    check("a height the world cannot reach is passed over, not the end of the scan", W.nextPos(column([40], 70), { x: 0, y: 60, z: 0 })?.y === 41);
+    check("ground 29 above is out of the scan (its body would reach past 30), 28 above is in", W.nextPos(column([89]), { x: 0, y: 60, z: 0 }) === undefined && W.nextPos(column([88]), { x: 0, y: 60, z: 0 })?.y === 89);
+    Math.random = random;
+    check("nextPos makes one draw: attemptSpawnFor's 8 retries are all there are", RCT_SPAWN.retries === 8 && !String(W.nextPos).includes("retries"));
+
+    // isUnique: AABB.ofSize(pos, 2r, 2r, 2r) reaches r = 500 blocks either way, not 1000
+    const id = RCT_TRAINER_IDS.find((t) => RCT_TRAINERS[t].team.length && RCT_TRAINERS[t].swf > 0), dim = { id: "overworld" };
+    const at = (x) => Object.assign(trainer(id), { dimension: dim, location: { x, y: 64, z: 0 } });
+    check("a trainer of the same identity 400 blocks off stops another; 600 off does not", !W.unique(id, dim, { x: 0, y: 64, z: 0 }, [at(400)]) && W.unique(id, dim, { x: 0, y: 64, z: 0 }, [at(600)]));
+
+    // attemptSpawnFor(player): the candidate drawn spawns with no computeChance roll after it
+    const spawned = [];
+    const world = { ...column([63]), getBiome: () => ({ id: "minecraft:plains" }),
+        spawnEntity: (type, where) => { const npc = Object.assign(trainer(id), { location: where }); spawned.push(npc); return npc; } };
+    const hiker = { ...player(undefined), dimension: world, location: { x: 0, y: 64, z: 0 } };
+    W.initRctWorld({ party: () => [{}], levelOf: () => 20, series: () => undefined, levelCap: () => 100, unlocked: () => true, next: () => [], canBattle: () => null, startBattle() { }, inBattle: () => false });
+    Math.random = () => 0.5;   // under the 0.85 global chance, over any non-key trainer's computeChance (0.105 at most)
+    const npc = W.attemptSpawnFor(hiker, []);
+    Math.random = random;
+    check("attemptSpawnFor spawns the trainer it draws, with no computeChance roll after (that roll is the spawner block's)", !!npc && spawned.length === 1 && W.isWild(npc) && npc.location.y === 64, `${spawned.length}`);
+
+    // the Trainer Spawner's players: within 46.67 blocks of its box, none if the nearest is within 1.41 of its centre
+    const p = (x, y = 64.5) => ({ location: { x, y, z: 0.5 } }), block = { x: 0, y: 64, z: 0 };
+    check("the spawner's reach is 46.67 blocks (two thirds of the 70 a wild trainer spawns within)", Math.abs(RCT_SPAWN.spawnerMax - 70 * 2 / 3) < 1e-9
+        && W.spawnerPlayers(block, [p(47.5)]).length === 1 && W.spawnerPlayers(block, [p(48)]).length === 0 && W.spawnerPlayers(block, [p(30), p(-50)]).length === 1);
+    check("a player 1.5 blocks off is served (the minimum is 1.41, not 2); one within 1.41 stops it for all", W.spawnerPlayers(block, [p(2)]).length === 1 && W.spawnerPlayers(block, [p(1.5), p(20)]).length === 0);
+
+    // shouldDespawn: 600 ticks with no player within 128 blocks, looked at every 20; checkDespawnIfUnseen: line of sight
+    // within 128 every 40 ticks, gone once unseen for more than 6000
+    const stand = (players, wall) => {
+        const npc = Object.assign(trainer(id), { removed: false, remove() { this.removed = true; }, getHeadLocation: () => ({ x: 0, y: 65.6, z: 0 }) });
+        npc.rays = [];
+        npc.dimension = { id: "overworld", getPlayers: () => players, getBlockFromRay: (from, dir, opts) => { npc.rays.push(opts); return wall ? { typeId: "minecraft:stone" } : undefined; } };
+        return npc;
+    };
+    const watcher = (x) => ({ dimension: { id: "overworld" }, location: { x, y: 64, z: 0 }, getHeadLocation: () => ({ x, y: 65.6, z: 0 }) });
+    const alone = stand([]);
+    let gone = 0;
+    for (let n = 0; n < 29; n++) if (W.despawnFar(alone, 20)) gone++;
+    const before = alone.removed;
+    W.despawnFar(alone, 20);
+    check("a trainer with no player within 128 blocks goes after 600 ticks, not before", !before && gone === 0 && alone.removed && RCT_SPAWN.despawnDistance === 128 && RCT_SPAWN.despawnTicks === 600);
+    const visited = stand([]);
+    for (let n = 0; n < 20; n++) W.despawnFar(visited, 20);
+    visited.dimension.getPlayers = () => [watcher(10)]; W.despawnFar(visited, 20);
+    visited.dimension.getPlayers = () => [];
+    for (let n = 0; n < 20; n++) W.despawnFar(visited, 20);
+    check("a player coming near starts the 600 over", !visited.removed);
+    const walled = stand([watcher(20)], true);
+    walled.setDynamicProperty("cobblemon:rct_near", 1000);
+    W.despawnUnseen(walled, 7000);
+    const kept = !walled.removed;
+    W.despawnUnseen(walled, 7001);
+    check("a trainer no player can see goes once unseen for more than 6000 ticks", kept && walled.removed && RCT_SPAWN.despawnUnseen === 6000 && RCT_SPAWN.unseenInterval === 40);
+    check("the look is a ray that stops at solid blocks only, not liquids or grass", walled.rays.length > 0 && walled.rays.every((o) => o.includeLiquidBlocks === false && o.includePassableBlocks === false && Math.abs(o.maxDistance - 20) < 1e-9));
+    const seen = stand([watcher(20)], false);
+    seen.setDynamicProperty("cobblemon:rct_near", 1000);
+    W.despawnUnseen(seen, 7001);
+    const far = stand([watcher(129)], false);
+    far.setDynamicProperty("cobblemon:rct_near", 1000);
+    W.despawnUnseen(far, 7001);
+    check("a player with a clear line within 128 blocks keeps it, one 129 off does not", !seen.removed && seen.getDynamicProperty("cobblemon:rct_near") === 7001 && far.removed);
+    const leader = stand([watcher(20)], true);
+    W.despawnUnseen(leader, 9000);
+    check("a summoned leader from before (no lastTimeSeen) starts its count rather than going", !leader.removed && leader.getDynamicProperty("cobblemon:rct_near") === 9000);
+    const behavior = JSON.parse(readFileSync(new URL("../../../development_behavior_packs/cobblemon/entities/rct_trainer.behavior.json", import.meta.url), "utf8"));
+    check("the trainer entity has no minecraft:despawn (no simulation edge): the script's despawns are the only ones", !JSON.stringify(behavior).includes("minecraft:despawn"));
+    W.initRctWorld({ party: () => [], levelOf: () => 1, series: M.rctSeries, levelCap: M.rctLevelCap, unlocked: M.rctUnlocked, next: M.rctNext, canBattle: () => null, startBattle() { }, inBattle: () => false });
 }
 {
     // the gyms' display cases: the template's door-to-spot line turned onto the world's

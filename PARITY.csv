@@ -1,13 +1,14 @@
 area,feature,cobblemon_source,port,status,comment
-README note,`spawn_rules/<id>.json`: where and how o,"`spawn_pool_world`, `spawning/best-spawner-config.json`",README,partial,"not carried: entries for properties the port has no look of its own for (Arbok's patterns), which spawn as the species; a `region_bias` entry marks the Pokemon with its bias (see evolution)"
+README note,`spawn_rules/<id>.json`: where and how o,"`spawn_pool_world`, `spawning/best-spawner-config.json`",README,partial,"not carried: entries for properties the port has no look of its own for (Arbok's patterns), which spawn as the species; the foliage preset's leaves nearby (Burmy, Scatterbug, Caterpie spawn on grass without them); a dusk spawn's hour, which takes the night's dark instead; the time of a spawn underground; a `region_bias` entry marks the Pokemon with its bias (see evolution)"
 README note,"`structures/cobblemon/*.mcstructure`, `f","`data/cobblemon/structure`, `worldgen/structure`, `worldgen/structure_set`, `worldgen/template_pool`, `worldgen/processo",README,partial,"not carried: the beard's exact density falloff, which reaches 12 blocks and rounds the edges, a gravity processor on the ocean floor heightmap (the Submerged Forge's), whose pieces stay rigid, and the environment scan's taller air it asks for over some floors"
 README note,`structures/cobblemon/village_*_pokecent,"`structure/village_*/village_*_pokecenter.nbt`, `CobblemonStructures.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonT",README,partial,not carried: a center inside the village's own street layout
 README note,`trading/economy_trades/fisherman_trades,"`CobblemonTradeOffers.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonStructures.kt`",README,partial,"not carried: the villages' long path, a street piece Cobblemon adds to each village type's streets pool at weight 10, which only fits into a village's own street layout (Bedrock's villages take no new pieces; the berry farms and Pokemon Centers are placed beside them instead, see below)"
 README note,battles between players,"`BattleConfigureGUI.kt`, `ChallengeManager.kt`, `BattleBuilder.pvp1v1`, `textures/gui/interact/request`, lang `cobblemon",README,partial,"not carried: Multi and Royal Battles, which need four players (the arrows skip them)"
 README note,building blocks,"`blockstates`, `models/block`, `loot_table/blocks`",README,partial,"not carried: signs and hanging signs (Bedrock custom blocks cannot hold editable text), and apricorn and saccharine leaves drop themselves to shears or Silk Touch, sticks one time in fifty otherwise, and draw one side of each face so neighbours do not z-fight"
 README note,double battles,"`BattleTypes.kt`, `BattleOverlay.drawTile` (isCompact), `BattleTargetSelection.kt`, `MoveTarget.kt`, `NPCServerDelegate`",README,partial,"not carried: Multi and Royal Battles, which need four players"
-README note,evolution,"species `evolutions`, `LevelUpEvolution`, `FriendshipMutationCalculator`, `TimeRange.kt`",README,partial,"not carried: Alolan Marowak's volcanic route, whose biome only other mods add (its Nether route, a Cubone levelled up in the Nether, is carried) (blocks travelled and Gimmighoul's coins are in the species bars row) An evolution brings Evolution.evolve's side effects: the result's form (Grotle holding a sapling becomes that tree's Torterra, Rockruff at night Midnight Lycanroc; of two evolutions into one species the one asking more comes first), the moves it learns into a free slot or onto the bench (Torterra's Earthquake), a held item kept where consumeHeldItem is false, its drops (a Turtle Scute, a Shed Shell), and Nincada's Shedinja into the party if there is room and a Poke Ball to use"
-README note,gyms,"`radical_gyms/`, `rct_trainers/`, CobbleFurnies 1.2 `assets/cobblefurnies`, Cobblemon Pokemon Badges 0.1.1",README,partial,"not carried: Pokemon this port has no model for (Groudon, Kyogre, Dialga, Zacian and others in the Elite Four's and Terry's teams, and Magearna in Clair's) are left out of those teams; every move the teams use is in the battle's move table (port.py adds RCT's movesets to it, so Surging Strikes, Wicked Blow, Seed Flare and Chloroblast, the last costing its user half its maximum HP as Showdown's calcRecoilDamage does, are no longer dropped); the trainer switches out as RCTBattleAI.evalSwitch rates its bench (the leaving Pokemon's stat stages and status, the two's type matchups against the player's Pokemon, their health and the bench Pokemon's stats against the player's, each blurred by a normal spread and pushed up by the trainer's switch bias, 0.5), weighed with its moves and potions in one pick, the switch coming before any move"
+README note,evolution,"species `evolutions`, `LevelUpEvolution`, `FriendshipMutationCalculator`, `TimeRange.kt`",README,partial,"not carried: Alolan Marowak's volcanic route, whose biome only other mods add (its Nether route, a Cubone levelled up in the Nether, is carried); damage other than a move's (poison, hazards) in the damage count, and a multi-hit move's hits counted one by one; the queue's pass while its trainer is in a battle (blocks travelled and Gimmighoul's coins are in the species bars row) An evolution brings Evolution.evolve's side effects: the result's form (Grotle holding a sapling becomes that tree's Torterra, Rockruff at night Midnight Lycanroc; of two evolutions into one species the one asking more comes first), the moves it learns into a free slot or onto the bench (Torterra's Earthquake), a held item kept where consumeHeldItem is false, its drops (a Turtle Scute, a Shed Shell), and Nincada's Shedinja into the party if there is room and a Poke Ball to use"
+README note,fossils,"`data/cobblemon/fossils`, `natural_materials`, `recipe`, `loot_table/fossils`, `structure/fossils`, `worldgen/configured",README,partial,"not carried: the six ids 1.21.1 has no item for (grass, tall_fern, tall_seagrass, dripleaf, glistening_melon_slice, rabbits_foot), which never match in Cobblemon either"
+README note,gyms,"`radical_gyms/`, `rct_trainers/`, CobbleFurnies 1.2 `assets/cobblefurnies`, Cobblemon Pokemon Badges 0.1.1",README,partial,"not carried: Pokemon this port has no model for (Groudon, Kyogre, Dialga, Zacian and others in the Elite Four's and Terry's teams, and Magearna in Clair's) are left out of those teams; RCT saves no trainer that is not persistent, so one in a chunk that unloads is gone, where Bedrock keeps it with the chunk and the despawns take it up again once it loads; RCT's unseen check can end a battle, the port's waits for it to end; every move the teams use is in the battle's move table (port.py adds RCT's movesets to it, so Surging Strikes, Wicked Blow, Seed Flare and Chloroblast, the last costing its user half its maximum HP as Showdown's calcRecoilDamage does, are no longer dropped); the trainer switches out as RCTBattleAI.evalSwitch rates its bench (the leaving Pokemon's stat stages and status, the two's type matchups against the player's Pokemon, their health and the bench Pokemon's stats against the player's, each blurred by a normal spread and pushed up by the trainer's switch bias, 0.5), weighed with its moves and potions in one pick, the switch coming before any move; its moves are rated as RCTBattleAI.evalMove rates them, by RCT's move kinds (MoveType: damage by the share of the player's health PokeMath.damage takes, on unstaged stats with the 0.85 to 1 roll and RCT's accuracy factor, plus a random floor up to the trainer's maxSelectMargin of 0.25 or 0.15; heals, cures, buffs, maluses and status moves by RCT's own terms times the status move bias, 0.85), MoveType's move evaluators (88 of its 90, Dark Void and Lunar Dance not being in the move table; Thunder Wave into a Ground type, Fake Out after the first turn, a sleep move into a statused Pokemon and the like worth nothing), Clear Body against a malus, a malus or status move divided by the worst type matchup it has faced, and rngRange(health, 1, true) for a slower Pokemon; a potion scores as evalItem does (a Max Potion at half health about 0.21, times the item bias, 0.85, 0 for the friendly coaches; a Pokemon on the bench is not healed), and the pick is ResponseBuilder's (the k-th option within the turn's margin taking it with a chance of 1 in k + floor(16 w)); after a faint the one sent in is evalSwitch's pick the same way"
 README note,held items on the model,"`HeldItemRenderer.kt`, `tags/item/held`, `PokemonEntity.offerHeldItem`, the models' locators",README,partial,"not carried: the 3D look of block items and the vanilla items without a flat icon of their own (the display case draws block items as cubes, but on a Pokemon that would mean 1,700 more textures in each of 905 client files, or Mojang's own block textures shipped in an atlas)"
 README note,items,"`models/item`, `textures/item`, `CobblemonItems.kt`, `mechanics/`, Showdown `items.js` behaviour",README,partial,"not carried: items with 3D or animated models (the ones not made here), and Poke Puffs, which Cobblemon itself has switched off (its item registration is commented out)"
 README note,items and blocks that act,"`CobblemonBoatItem`, `CobblemonBoatEntity`, `LinkCableItem`, `TumblestoneItem`, `GrowableStoneBlock`, `FlowerPotBlock`, ",README,partial,"not carried: a pot already holding a vanilla flower is not told apart from an empty one, since a script cannot see a vanilla pot's plant"
@@ -22,6 +23,7 @@ README note,Poke Snack,"`PokeSnackBlock.kt`, `PokeSnackBlockEntity.kt`, `PokeSna
 README note,Pokedex screen,"`client/gui/pokedex`, `textures/gui/pokedex`",README,partial,not carried: the rotating model
 README note,Pokemon portraits,"`bedrock/pokemon/posers`, `PosableModel`, `drawProfilePokemon`, `TexturedModel`",README,partial,not carried: posed animation (portraits are still) and Cobblemon's PROFILE sprite overrides
 README note,riding,"species `riding.behaviours`, `riding.seats`; model `seat_*` locators; `ride_*` animations; vanilla `happy_ghast.json`",README,partial,"not carried: the fliers' and swimmers' turning and pitch models (Bedrock steers them), and with them the jet's halved handling at no stamina and its forward motion with no input (the free camera moves nothing on its own), the rocket's lift speed by its Jump stat and its slow sink while boosting (the engine climbs at one rate), the flight speeds past 1.2 blocks a tick a jet's or rocket's boost reaches, and a take-off from the water"
+README note,sleeping,"`behaviour.resting`, `DrowsySensor.kt`, `RestBehaviour.kt`",README,partial,"not carried: canSleepAt's `light` test, which reads the light the block under the Pokemon gives off (getLightEmission: the usual 0-4 keeps one off glowstone or a sea lantern, 11-15 or 12-15 lets eight species sleep only on such a block), since the Script API reads only the light falling on a block (getLightLevel), nor the one species' `resting.fluids` that lets it sleep in a fluid"
 README note,starter selection,"`client/gui/startselection`, `config/starter/StarterConfig.kt`",README,partial,not carried: the rotating model
 README note,Summary,"`client/gui/summary`, `textures/gui/summary`, lang `ability.*.desc` and `move.*.desc`",README,partial,"not carried: the ribbons' sources (Cobblemon's own code grants none, though it does award the Mini Mark to a wild Pokemon spawning XS and the Jumbo Mark to one spawning XL or an alpha, as apply_marks gives them here too)"
 README note,Summary,"`client/gui/summary`, `textures/gui/summary`, lang `ability.*.desc` and `move.*.desc`",README,partial,"not carried: the Pokemon model in the portrait (a still portrait stands in), and the Other page's arrows to a second page (no species has more than four bars) Cobblemon opens it with a key (M); here the Party item does, used while sneaking and looking straight up, for the selected Pokemon in its ball or out"
@@ -970,7 +972,7 @@ config,maxRootsInArea,config/CobblemonConfig.kt,named in the port,n/a,no config 
 config,maxVerticalCorrectionBlocks,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,maxVerticalSpace,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,minimumDistanceBetweenEntities,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
-config,minimumLevelRangeMax,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
+config,minimumLevelRangeMax,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,minimumRidingScale,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,minimumSpawningZoneDistanceFromPlayer,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,mongoDBConnectionString,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
@@ -1749,10 +1751,20 @@ mechanic,berries,data/cobblemon/mechanics/berries.json,named in the port,done,
 mechanic,potions,data/cobblemon/mechanics/potions.json,named in the port,done,
 mechanic,remedies,data/cobblemon/mechanics/remedies.json,named in the port,done,
 mechanic,slowpoke_tails,data/cobblemon/mechanics/slowpoke_tails.json,named in the port,done,
+move,Bleakwind Storm,showdown data/moves.js,MOVES.bleakwindstorm,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onModifyMove"
+move,Dark Void,showdown data/moves.js,MOVES.darkvoid,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): noSketch, onTry"
+move,Glaive Rush,showdown data/moves.js,MOVES.glaiverush,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): condition"
+move,Happy Hour,showdown data/moves.js,MOVES.happyhour,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onTryHit"
 move,Hyperspace Fury,showdown data/moves.js,MOVES.hyperspacefury,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): noSketch, onTry"
+move,Ivy Cudgel,showdown data/moves.js,MOVES.ivycudgel,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onModifyType, onPrepareHit"
+move,Lunar Blessing,showdown data/moves.js,MOVES.lunarblessing,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onHit"
 move,Mind Blown,showdown data/moves.js,MOVES.mindblown,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onAfterMove"
 move,Photon Geyser,showdown data/moves.js,MOVES.photongeyser,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onModifyMove"
 move,Plasma Fists,showdown data/moves.js,MOVES.plasmafists,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): pseudoWeather"
+move,Sandsear Storm,showdown data/moves.js,MOVES.sandsearstorm,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onModifyMove"
+move,Shell Side Arm,showdown data/moves.js,MOVES.shellsidearm,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onAfterSubDamage, onHit, onModifyMove, onPrepareHit"
+move,Take Heart,showdown data/moves.js,MOVES.takeheart,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onHit"
+move,Wildbolt Storm,showdown data/moves.js,MOVES.wildboltstorm,partial,"deals its damage or plain effect, but its own code is not carried (heuristic): onModifyMove"
 move,Absorb,showdown data/moves.js,MOVES.absorb,done,standard fields only
 move,Accelerock,showdown data/moves.js,MOVES.accelerock,done,standard fields only
 move,Acid,showdown data/moves.js,MOVES.acid,done,standard fields only
@@ -1812,6 +1824,8 @@ move,Blast Burn,showdown data/moves.js,MOVES.blastburn,done,standard fields only
 move,Blaze Kick,showdown data/moves.js,MOVES.blazekick,done,standard fields only
 move,Blizzard,showdown data/moves.js,MOVES.blizzard,done,"its own code, named in the battle script (heuristic): onModifyMove"
 move,Block,showdown data/moves.js,MOVES.block,done,standard fields only
+move,Blood Moon,showdown data/moves.js,MOVES.bloodmoon,done,standard fields only
+move,Blue Flare,showdown data/moves.js,MOVES.blueflare,done,standard fields only
 move,Body Press,showdown data/moves.js,MOVES.bodypress,done,standard fields only
 move,Body Slam,showdown data/moves.js,MOVES.bodyslam,done,standard fields only
 move,Bolt Beak,showdown data/moves.js,MOVES.boltbeak,done,"its own code, named in the battle script (heuristic): basePowerCallback"
@@ -1836,6 +1850,7 @@ move,Bulldoze,showdown data/moves.js,MOVES.bulldoze,done,standard fields only
 move,Bullet Punch,showdown data/moves.js,MOVES.bulletpunch,done,standard fields only
 move,Bullet Seed,showdown data/moves.js,MOVES.bulletseed,done,standard fields only
 move,Burn Up,showdown data/moves.js,MOVES.burnup,done,"its own code, named in the battle script (heuristic): onTryMove"
+move,Burning Bulwark,showdown data/moves.js,MOVES.burningbulwark,done,"its own code, named in the battle script (heuristic): condition, onHit, onPrepareHit, stallingMove, volatileStatus"
 move,Burning Jealousy,showdown data/moves.js,MOVES.burningjealousy,done,standard fields only
 move,Calm Mind,showdown data/moves.js,MOVES.calmmind,done,standard fields only
 move,Camouflage,showdown data/moves.js,MOVES.camouflage,done,"its own code, named in the battle script (heuristic): onHit"
@@ -1899,6 +1914,7 @@ move,Discharge,showdown data/moves.js,MOVES.discharge,done,standard fields only
 move,Dive,showdown data/moves.js,MOVES.dive,done,"its own code, named in the battle script (heuristic): condition, onTryMove"
 move,Dizzy Punch,showdown data/moves.js,MOVES.dizzypunch,done,standard fields only
 move,Doodle,showdown data/moves.js,MOVES.doodle,done,"its own code, named in the battle script (heuristic): onHit"
+move,Doom Desire,showdown data/moves.js,MOVES.doomdesire,done,"its own code, named in the battle script (heuristic): onTry"
 move,Double Hit,showdown data/moves.js,MOVES.doublehit,done,standard fields only
 move,Double Iron Bash,showdown data/moves.js,MOVES.doubleironbash,done,standard fields only
 move,Double Kick,showdown data/moves.js,MOVES.doublekick,done,standard fields only
@@ -1931,6 +1947,7 @@ move,Earth Power,showdown data/moves.js,MOVES.earthpower,done,standard fields on
 move,Earthquake,showdown data/moves.js,MOVES.earthquake,done,standard fields only
 move,Echoed Voice,showdown data/moves.js,MOVES.echoedvoice,done,"its own code, named in the battle script (heuristic): basePowerCallback, condition, onTry"
 move,Eerie Impulse,showdown data/moves.js,MOVES.eerieimpulse,done,standard fields only
+move,Eerie Spell,showdown data/moves.js,MOVES.eeriespell,done,standard fields only
 move,Egg Bomb,showdown data/moves.js,MOVES.eggbomb,done,standard fields only
 move,Electric Terrain,showdown data/moves.js,MOVES.electricterrain,done,standard fields only
 move,Electrify,showdown data/moves.js,MOVES.electrify,done,"its own code, named in the battle script (heuristic): condition, onTryHit, volatileStatus"
@@ -2009,6 +2026,7 @@ move,Fury Attack,showdown data/moves.js,MOVES.furyattack,done,standard fields on
 move,Fury Cutter,showdown data/moves.js,MOVES.furycutter,done,"its own code, named in the battle script (heuristic): basePowerCallback, condition"
 move,Fury Swipes,showdown data/moves.js,MOVES.furyswipes,done,standard fields only
 move,Fusion Bolt,showdown data/moves.js,MOVES.fusionbolt,done,"its own code, named in the battle script (heuristic): onBasePower"
+move,Fusion Flare,showdown data/moves.js,MOVES.fusionflare,done,"its own code, named in the battle script (heuristic): onBasePower"
 move,Future Sight,showdown data/moves.js,MOVES.futuresight,done,"its own code, named in the battle script (heuristic): ignoreImmunity, onTry"
 move,Gastro Acid,showdown data/moves.js,MOVES.gastroacid,done,"its own code, named in the battle script (heuristic): condition, onTryHit, volatileStatus"
 move,Gear Grind,showdown data/moves.js,MOVES.geargrind,done,standard fields only
@@ -2051,6 +2069,7 @@ move,Heal Order,showdown data/moves.js,MOVES.healorder,done,standard fields only
 move,Heal Pulse,showdown data/moves.js,MOVES.healpulse,done,"its own code, named in the battle script (heuristic): onHit"
 move,Healing Wish,showdown data/moves.js,MOVES.healingwish,done,"its own code, named in the battle script (heuristic): condition, onTryHit, slotCondition"
 move,Heart Stamp,showdown data/moves.js,MOVES.heartstamp,done,standard fields only
+move,Heart Swap,showdown data/moves.js,MOVES.heartswap,done,"its own code, named in the battle script (heuristic): onHit"
 move,Heat Crash,showdown data/moves.js,MOVES.heatcrash,done,"its own code, named in the battle script (heuristic): basePowerCallback, onTryHit"
 move,Heat Wave,showdown data/moves.js,MOVES.heatwave,done,standard fields only
 move,Heavy Slam,showdown data/moves.js,MOVES.heavyslam,done,"its own code, named in the battle script (heuristic): basePowerCallback, onTryHit"
@@ -2058,6 +2077,7 @@ move,Hex,showdown data/moves.js,MOVES.hex,done,"its own code, named in the battl
 move,Hidden Power,showdown data/moves.js,MOVES.hiddenpower,done,"its own code, named in the battle script (heuristic): onModifyType"
 move,High Horsepower,showdown data/moves.js,MOVES.highhorsepower,done,standard fields only
 move,High Jump Kick,showdown data/moves.js,MOVES.highjumpkick,done,standard fields only
+move,Hold Back,showdown data/moves.js,MOVES.holdback,done,"its own code, named in the battle script (heuristic): onDamage, onDamagePriority"
 move,Hone Claws,showdown data/moves.js,MOVES.honeclaws,done,standard fields only
 move,Horn Attack,showdown data/moves.js,MOVES.hornattack,done,standard fields only
 move,Horn Drill,showdown data/moves.js,MOVES.horndrill,done,standard fields only
@@ -2094,6 +2114,7 @@ move,Iron Head,showdown data/moves.js,MOVES.ironhead,done,standard fields only
 move,Iron Tail,showdown data/moves.js,MOVES.irontail,done,standard fields only
 move,Jaw Lock,showdown data/moves.js,MOVES.jawlock,done,standard fields only
 move,Jet Punch,showdown data/moves.js,MOVES.jetpunch,done,standard fields only
+move,Judgment,showdown data/moves.js,MOVES.judgment,done,"its own code, named in the battle script (heuristic): onModifyType"
 move,Jump Kick,showdown data/moves.js,MOVES.jumpkick,done,standard fields only
 move,Jungle Healing,showdown data/moves.js,MOVES.junglehealing,done,"its own code, named in the battle script (heuristic): onHit"
 move,Karate Chop,showdown data/moves.js,MOVES.karatechop,done,standard fields only
@@ -2123,6 +2144,7 @@ move,Low Kick,showdown data/moves.js,MOVES.lowkick,done,"its own code, named in 
 move,Low Sweep,showdown data/moves.js,MOVES.lowsweep,done,standard fields only
 move,Lucky Chant,showdown data/moves.js,MOVES.luckychant,done,"its own code, named in the battle script (heuristic): condition, sideCondition"
 move,Lumina Crash,showdown data/moves.js,MOVES.luminacrash,done,standard fields only
+move,Lunar Dance,showdown data/moves.js,MOVES.lunardance,done,"its own code, named in the battle script (heuristic): condition, onTryHit, slotCondition"
 move,Lunge,showdown data/moves.js,MOVES.lunge,done,standard fields only
 move,Luster Purge,showdown data/moves.js,MOVES.lusterpurge,done,standard fields only
 move,Mach Punch,showdown data/moves.js,MOVES.machpunch,done,standard fields only
@@ -2136,6 +2158,7 @@ move,Magnet Rise,showdown data/moves.js,MOVES.magnetrise,done,"its own code, nam
 move,Magnetic Flux,showdown data/moves.js,MOVES.magneticflux,done,"its own code, named in the battle script (heuristic): onHitSide"
 move,Magnitude,showdown data/moves.js,MOVES.magnitude,done,"its own code, named in the battle script (heuristic): onModifyMove, onUseMoveMessage"
 move,Make It Rain,showdown data/moves.js,MOVES.makeitrain,done,standard fields only
+move,Malignant Chain,showdown data/moves.js,MOVES.malignantchain,done,standard fields only
 move,Mat Block,showdown data/moves.js,MOVES.matblock,done,"its own code, named in the battle script (heuristic): condition, onTry, sideCondition, stallingMove"
 move,Matcha Gotcha,showdown data/moves.js,MOVES.matchagotcha,done,standard fields only
 move,Me First,showdown data/moves.js,MOVES.mefirst,done,"its own code, named in the battle script (heuristic): condition, onTryHit"
@@ -2153,6 +2176,7 @@ move,Meteor Assault,showdown data/moves.js,MOVES.meteorassault,done,standard fie
 move,Meteor Beam,showdown data/moves.js,MOVES.meteorbeam,done,"its own code, named in the battle script (heuristic): onTryMove"
 move,Meteor Mash,showdown data/moves.js,MOVES.meteormash,done,standard fields only
 move,Metronome,showdown data/moves.js,MOVES.metronome,done,"its own code, named in the battle script (heuristic): onHit"
+move,Mighty Cleave,showdown data/moves.js,MOVES.mightycleave,done,standard fields only
 move,Milk Drink,showdown data/moves.js,MOVES.milkdrink,done,standard fields only
 move,Mimic,showdown data/moves.js,MOVES.mimic,done,"its own code, named in the battle script (heuristic): onHit"
 move,Mind Reader,showdown data/moves.js,MOVES.mindreader,done,"its own code, named in the battle script (heuristic): onHit, onTryHit"
@@ -2170,6 +2194,7 @@ move,Moongeist Beam,showdown data/moves.js,MOVES.moongeistbeam,done,standard fie
 move,Moonlight,showdown data/moves.js,MOVES.moonlight,done,"its own code, named in the battle script (heuristic): onHit"
 move,Morning Sun,showdown data/moves.js,MOVES.morningsun,done,"its own code, named in the battle script (heuristic): onHit"
 move,Mortal Spin,showdown data/moves.js,MOVES.mortalspin,done,"its own code, named in the battle script (heuristic): onAfterHit, onAfterSubDamage"
+move,Mountain Gale,showdown data/moves.js,MOVES.mountaingale,done,standard fields only
 move,Mud Bomb,showdown data/moves.js,MOVES.mudbomb,done,standard fields only
 move,Mud Shot,showdown data/moves.js,MOVES.mudshot,done,standard fields only
 move,Mud Sport,showdown data/moves.js,MOVES.mudsport,done,"its own code, named in the battle script (heuristic): condition, pseudoWeather"
@@ -2177,6 +2202,7 @@ move,Mud-Slap,showdown data/moves.js,MOVES.mudslap,done,standard fields only
 move,Muddy Water,showdown data/moves.js,MOVES.muddywater,done,standard fields only
 move,Multi-Attack,showdown data/moves.js,MOVES.multiattack,done,"its own code, named in the battle script (heuristic): onModifyType"
 move,Mystical Fire,showdown data/moves.js,MOVES.mysticalfire,done,standard fields only
+move,Mystical Power,showdown data/moves.js,MOVES.mysticalpower,done,standard fields only
 move,Nasty Plot,showdown data/moves.js,MOVES.nastyplot,done,standard fields only
 move,Natural Gift,showdown data/moves.js,MOVES.naturalgift,done,"its own code, named in the battle script (heuristic): onModifyType, onPrepareHit"
 move,Nature Power,showdown data/moves.js,MOVES.naturepower,done,"its own code, named in the battle script (heuristic): onTryHit"
@@ -2236,6 +2262,7 @@ move,Power Whip,showdown data/moves.js,MOVES.powerwhip,done,standard fields only
 move,Power-Up Punch,showdown data/moves.js,MOVES.poweruppunch,done,standard fields only
 move,Precipice Blades,showdown data/moves.js,MOVES.precipiceblades,done,standard fields only
 move,Present,showdown data/moves.js,MOVES.present,done,"its own code, named in the battle script (heuristic): onModifyMove"
+move,Prismatic Laser,showdown data/moves.js,MOVES.prismaticlaser,done,standard fields only
 move,Protect,showdown data/moves.js,MOVES.protect,done,"its own code, named in the battle script (heuristic): condition, onHit, onPrepareHit, stallingMove, volatileStatus"
 move,Psybeam,showdown data/moves.js,MOVES.psybeam,done,standard fields only
 move,Psyblade,showdown data/moves.js,MOVES.psyblade,done,"its own code, named in the battle script (heuristic): onBasePower"
@@ -2275,6 +2302,7 @@ move,Refresh,showdown data/moves.js,MOVES.refresh,done,"its own code, named in t
 move,Rest,showdown data/moves.js,MOVES.rest,done,"its own code, named in the battle script (heuristic): onHit, onTry"
 move,Retaliate,showdown data/moves.js,MOVES.retaliate,done,"its own code, named in the battle script (heuristic): onBasePower"
 move,Return,showdown data/moves.js,MOVES.return,done,"its own code, named in the battle script (heuristic): basePowerCallback"
+move,Revelation Dance,showdown data/moves.js,MOVES.revelationdance,done,"its own code, named in the battle script (heuristic): onModifyType"
 move,Revenge,showdown data/moves.js,MOVES.revenge,done,"its own code, named in the battle script (heuristic): basePowerCallback"
 move,Reversal,showdown data/moves.js,MOVES.reversal,done,"its own code, named in the battle script (heuristic): basePowerCallback"
 move,Revival Blessing,showdown data/moves.js,MOVES.revivalblessing,done,"its own code, named in the battle script (heuristic): noSketch, slotCondition"
@@ -2325,6 +2353,7 @@ move,Shed Tail,showdown data/moves.js,MOVES.shedtail,done,"its own code, named i
 move,Sheer Cold,showdown data/moves.js,MOVES.sheercold,done,standard fields only
 move,Shell Smash,showdown data/moves.js,MOVES.shellsmash,done,standard fields only
 move,Shell Trap,showdown data/moves.js,MOVES.shelltrap,done,"its own code, named in the battle script (heuristic): condition, onTryMove, priorityChargeCallback"
+move,Shelter,showdown data/moves.js,MOVES.shelter,done,standard fields only
 move,Shift Gear,showdown data/moves.js,MOVES.shiftgear,done,standard fields only
 move,Shock Wave,showdown data/moves.js,MOVES.shockwave,done,standard fields only
 move,Shore Up,showdown data/moves.js,MOVES.shoreup,done,"its own code, named in the battle script (heuristic): onHit"
@@ -2353,6 +2382,7 @@ move,Smart Strike,showdown data/moves.js,MOVES.smartstrike,done,standard fields 
 move,Smelling Salts,showdown data/moves.js,MOVES.smellingsalts,done,"its own code, named in the battle script (heuristic): basePowerCallback, onHit"
 move,Smog,showdown data/moves.js,MOVES.smog,done,standard fields only
 move,Smokescreen,showdown data/moves.js,MOVES.smokescreen,done,standard fields only
+move,Snap Trap,showdown data/moves.js,MOVES.snaptrap,done,standard fields only
 move,Snarl,showdown data/moves.js,MOVES.snarl,done,standard fields only
 move,Snatch,showdown data/moves.js,MOVES.snatch,done,"its own code, named in the battle script (heuristic): condition, volatileStatus"
 move,Snipe Shot,showdown data/moves.js,MOVES.snipeshot,done,redirection only exists in doubles
@@ -2422,6 +2452,7 @@ move,Swords Dance,showdown data/moves.js,MOVES.swordsdance,done,standard fields 
 move,Synchronoise,showdown data/moves.js,MOVES.synchronoise,done,"its own code, named in the battle script (heuristic): onTryImmunity"
 move,Synthesis,showdown data/moves.js,MOVES.synthesis,done,"its own code, named in the battle script (heuristic): onHit"
 move,Syrup Bomb,showdown data/moves.js,MOVES.syrupbomb,done,"its own code, named in the battle script (heuristic): condition"
+move,Tachyon Cutter,showdown data/moves.js,MOVES.tachyoncutter,done,standard fields only
 move,Tackle,showdown data/moves.js,MOVES.tackle,done,standard fields only
 move,Tail Glow,showdown data/moves.js,MOVES.tailglow,done,standard fields only
 move,Tail Slap,showdown data/moves.js,MOVES.tailslap,done,standard fields only
@@ -2449,6 +2480,7 @@ move,Thunder Punch,showdown data/moves.js,MOVES.thunderpunch,done,standard field
 move,Thunder Shock,showdown data/moves.js,MOVES.thundershock,done,standard fields only
 move,Thunder Wave,showdown data/moves.js,MOVES.thunderwave,done,"its own code, named in the battle script (heuristic): ignoreImmunity"
 move,Thunderbolt,showdown data/moves.js,MOVES.thunderbolt,done,standard fields only
+move,Thunderclap,showdown data/moves.js,MOVES.thunderclap,done,"its own code, named in the battle script (heuristic): onTry"
 move,Thunderous Kick,showdown data/moves.js,MOVES.thunderouskick,done,standard fields only
 move,Tickle,showdown data/moves.js,MOVES.tickle,done,standard fields only
 move,Tidy Up,showdown data/moves.js,MOVES.tidyup,done,"its own code, named in the battle script (heuristic): onHit"
@@ -2480,6 +2512,7 @@ move,V-create,showdown data/moves.js,MOVES.vcreate,done,standard fields only
 move,Vacuum Wave,showdown data/moves.js,MOVES.vacuumwave,done,standard fields only
 move,Venom Drench,showdown data/moves.js,MOVES.venomdrench,done,"its own code, named in the battle script (heuristic): onHit"
 move,Venoshock,showdown data/moves.js,MOVES.venoshock,done,"its own code, named in the battle script (heuristic): onBasePower"
+move,Victory Dance,showdown data/moves.js,MOVES.victorydance,done,standard fields only
 move,Vine Whip,showdown data/moves.js,MOVES.vinewhip,done,standard fields only
 move,Vise Grip,showdown data/moves.js,MOVES.visegrip,done,standard fields only
 move,Vital Throw,showdown data/moves.js,MOVES.vitalthrow,done,standard fields only
@@ -2524,13 +2557,9 @@ move,Astral Barrage,showdown data/moves.js,,n/a,"no species the port carries lea
 move,Baddy Bad,showdown data/moves.js,,n/a,nonstandard
 move,Black Hole Eclipse,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Blazing Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Bleakwind Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Blood Moon,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Bloom Doom,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Blue Flare,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Bouncy Bubble,showdown data/moves.js,,n/a,nonstandard
 move,Breakneck Blitz,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Burning Bulwark,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Buzzy Buzz,showdown data/moves.js,,n/a,nonstandard
 move,Catastropika,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Clangorous Soulblaze,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2540,20 +2569,16 @@ move,Combat Torque,showdown data/moves.js,,n/a,"no species the port carries lear
 move,Continental Crush,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Core Enforcer,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Corkscrew Crash,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Dark Void,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Decorate,showdown data/moves.js,MOVES.decorate,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Devastating Drake,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Doom Desire,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Double Shock,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Dragon Cheer,showdown data/moves.js,MOVES.dragoncheer,n/a,"acts on an ally or on targeting, which single battles do not have"
-move,Eerie Spell,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Electro Drift,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Extreme Evoboost,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Floaty Fall,showdown data/moves.js,,n/a,nonstandard
 move,Follow Me,showdown data/moves.js,MOVES.followme,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Freeze Shock,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Freezy Frost,showdown data/moves.js,,n/a,nonstandard
-move,Fusion Flare,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,G-Max Befuddle,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,G-Max Cannonade,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,G-Max Centiferno,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2589,11 +2614,8 @@ move,G-Max Wildfire,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,G-Max Wind Rage,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Genesis Supernova,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Gigavolt Havoc,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Glaive Rush,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Glitzy Glow,showdown data/moves.js,,n/a,nonstandard
 move,Guardian of Alola,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Happy Hour,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Heart Swap,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Helping Hand,showdown data/moves.js,MOVES.helpinghand,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Hidden Power Bug,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Hidden Power Dark,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
@@ -2611,24 +2633,18 @@ move,Hidden Power Psychic,showdown data/moves.js,,n/a,"no species the port carri
 move,Hidden Power Rock,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Hidden Power Steel,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Hidden Power Water,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Hold Back,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Hold Hands,showdown data/moves.js,MOVES.holdhands,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Hydro Vortex,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Hyperspace Hole,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Ice Burn,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Inferno Overdrive,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Instruct,showdown data/moves.js,MOVES.instruct,n/a,"acts on an ally or on targeting, which single battles do not have"
-move,Ivy Cudgel,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Judgment,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Land's Wrath,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Let's Snuggle Forever,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Light of Ruin,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Light That Burns the Sky,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Lunar Blessing,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Lunar Dance,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Magical Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Malicious Moonsault,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Malignant Chain,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Max Airstream,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Max Darkness,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Max Flare,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2649,34 +2665,25 @@ move,Max Steelspike,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Max Strike,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Max Wyrmwind,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Menacing Moonraze Maelstrom,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Mighty Cleave,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Mountain Gale,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Mystical Power,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Never-Ending Nightmare,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Noxious Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Oceanic Operetta,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Paleo Wave,showdown data/moves.js,,n/a,nonstandard
 move,Pika Papow,showdown data/moves.js,,n/a,nonstandard
 move,Power Shift,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Prismatic Laser,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Pulverizing Pancake,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Quash,showdown data/moves.js,MOVES.quash,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Rage Powder,showdown data/moves.js,MOVES.ragepowder,n/a,"acts on an ally or on targeting, which single battles do not have"
 move,Relic Song,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Revelation Dance,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Ruination,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Sandsear Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Sappy Seed,showdown data/moves.js,,n/a,nonstandard
 move,Savage Spin-Out,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Searing Sunraze Smash,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Secret Sword,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Shadow Strike,showdown data/moves.js,,n/a,nonstandard
 move,Shattered Psyche,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Shell Side Arm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Shelter,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Sinister Arrow Raid,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Sizzly Slide,showdown data/moves.js,,n/a,nonstandard
-move,Snap Trap,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Soul-Stealing 7-Star Strike,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Sparkly Swirl,showdown data/moves.js,,n/a,nonstandard
 move,Splintered Stormshards,showdown data/moves.js,,n/a,Z-Move or Max Move
@@ -2687,18 +2694,13 @@ move,Stoked Sparksurfer,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Struggle,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Subzero Slammer,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Supersonic Skystrike,showdown data/moves.js,,n/a,Z-Move or Max Move
-move,Tachyon Cutter,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Take Heart,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Tectonic Rage,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Tera Starstorm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Thousand Arrows,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Thousand Waves,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Thunderclap,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Twinkle Tackle,showdown data/moves.js,,n/a,Z-Move or Max Move
 move,Veevee Volley,showdown data/moves.js,,n/a,nonstandard
-move,Victory Dance,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Wicked Torque,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
-move,Wildbolt Storm,showdown data/moves.js,,n/a,"no species the port carries learns it, so it is not in the move table"
 move,Zippy Zap,showdown data/moves.js,,n/a,nonstandard
 screen,GrabbedStorageSlot,client/gui/pc,,partial,"the PC moves a Pokemon by picking it and its new slot, not by dragging"
 screen,StarterRoundabout,client/gui/startselection/widgets/preview,,partial,"the starter screen shows a still portrait, not the rotating model"

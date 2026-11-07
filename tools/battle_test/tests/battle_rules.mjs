@@ -33,17 +33,107 @@ const evTotal = (f) => Object.values(M.evsOf(f.entity)).reduce((a, b) => a + b, 
     check("but its EVs come (Generation8EvCalculator)", evTotal(a) === yieldTotal, `${evTotal(a)} of ${yieldTotal}`);
 }
 {
-    // the whole team wiped: the experience, in one sum for every foe, to the Pokemon that faced them
+    // the whole team wiped: each foe's experience to the Pokemon that faced it, one award a foe (opponent.awardExperience
+    // in end's loop), the second at the level the first left it
     const a = mon("Charmander", { level: 5 }), f1 = mon("Pidgey", { level: 5 }), f2 = mon("Rattata", { level: 6 }), p = player();
     const b = battle(a, f1, { player: p, trainer: "Youngster" });
-    const expected = M.battleExperience(b, a, f1, 1) + M.battleExperience(b, a, f2, 1);
+    const first = M.battleExperience(b, a, f1, 1);
     rules.recordFaint(b, f1, "foe", b, [M.memberKey(a.entity)]);
     rules.recordFaint(b, f2, "foe", b, [M.memberKey(a.entity)]);
     rules.teamWiped(b, "foe");
     const paid = rules.payExperience(b, ctx([a.entity], [a, f2]));
-    check("a wiped team pays the experience of every foe as one sum", paid.length === 1 && paid[0].exp === expected && expOf(a) >= expected, `${JSON.stringify(paid.map((x) => x.exp))} vs ${expected}`);
-    check("said once", p.lines.filter((l) => l.includes("gained")).length === 1, p.lines.join(" / "));
+    const said = p.lines.filter((l) => l.includes("gained")).map((l) => Number(l.match(/gained (\d+)/)[1]));
+    check("a wiped team pays every foe, one award each", paid.length === 1 && said.length === 2 && said[0] === first && paid[0].exp === said[0] + said[1] && expOf(a) === M.expFor(a.info.expGroup, 5) + paid[0].exp, `${JSON.stringify(paid.map((x) => x.exp))} ${said} first ${first}`);
+    let mid = 5;
+    while (M.expFor(a.info.expGroup, mid + 1) <= M.expFor(a.info.expGroup, 5) + first) mid++;
+    const second = M.battleExperience(b, mon("Charmander", { level: mid }), f2, 1);
+    check("the second at the level the first left it", mid > 5 && said[1] === second && second !== M.battleExperience(b, mon("Charmander", { level: 5 }), f2, 1), `Lv ${mid}: ${said[1]} vs ${second}`);
     check("nothing is pending afterwards", rules.payExperience(b, ctx([a.entity], [a, f2])).length === 0);
+}
+{
+    // Raticate (medium fast) at level 10 against three level 10 foes of base experience 60: 242 and 242 at level 10, which
+    // make level 11, then 223 there; 707 in all, not the 726 of three awards at level 10
+    const a = mon("Raticate", { level: 10 }), p = player(), foes = [1, 2, 3].map(() => { const f = mon("Vulpix", { level: 10 }); f.info = { ...f.info, baseExp: 60 }; return f; });
+    const b = battle(a, foes[0], { player: p, trainer: "Youngster" });
+    for (const f of foes) rules.recordFaint(b, f, "foe", b, [M.memberKey(a.entity)]);
+    rules.teamWiped(b, "foe");
+    const paid = rules.payExperience(b, ctx([a.entity], [a]));
+    const said = p.lines.filter((l) => l.includes("gained")).map((l) => l.match(/gained (\d+)/)[1]).join(",");
+    check("three foes in a row pay 707 to a level 10 medium fast Pokemon, the level updated between them", paid[0]?.exp === 707 && said === "242,242,223" && expOf(a) === 1707, `${paid[0]?.exp} (${said})`);
+}
+{
+    // BattlePokemon.facedOpponents as PokemonBattle.turn records them: Charmander faces the first foe at turn 1, Bulbasaur
+    // switches in during it and faces only the second, from turn 2; each is paid for its own foe only
+    const a = mon("Charmander", { level: 5 }), bench = mon("Bulbasaur", { level: 5 }), f1 = mon("Pidgey", { level: 5 }), f2 = mon("Rattata", { level: 5 }), p = player();
+    const b = battle(a, f1, { player: p, trainer: "Youngster" });
+    M.recordTurnFaced(b);
+    b.ally = bench;   // a switch during turn 1, before the foe went down
+    f1.hp = 0; M.recordBattleFaint(b, f1, "foe", b);
+    b.foe = f2; M.recordTurnFaced(b);
+    f2.hp = 0; M.recordBattleFaint(b, f2, "foe", b);
+    rules.teamWiped(b, "foe");
+    const ea = M.battleExperience(b, a, f1, 1), eb = M.battleExperience(b, bench, f2, 1);
+    const paid = rules.payExperience(b, ctx([a.entity, bench.entity], [bench, f2]));
+    const of = (f) => paid.find((x) => x.entity === f.entity)?.exp;
+    check("the Pokemon out at a turn's start is paid for the foe it faced, and not for the next", of(a) === ea, `${of(a)} vs ${ea}`);
+    check("one switched in mid-turn is paid only for the foe out at the next turn's start", of(bench) === eb, `${of(bench)} vs ${eb}`);
+    const c = mon("Squirtle", { level: 5 }), w = mon("Pidgey", { level: 5 }), d = battle(c, w, { player: player() });
+    c.hp = 0; M.recordTurnFaced(d);
+    check("a fainted Pokemon faces nothing at a turn's start", M.facedBy(d, w).length === 0);
+}
+{
+    // BattlePokemon keeps its identity across switches (PokemonBattle.kt's facedOpponents holds the BattlePokemon): a
+    // trainer's Pidgey recalled and sent out again is a new entity here, but the same party member, so Charmander, which
+    // faced it only before the recall, is still paid when it faints facing Bulbasaur after coming back
+    const p = player(), a = mon("Charmander", { level: 5 }), bench = mon("Bulbasaur", { level: 5 }), other = mon("Rattata", { level: 5 });
+    const npc = { location: { x: 0, y: 0, z: 0 }, dimension: { spawnEntity: (t) => mon(t).entity } };
+    const spec = { t: mon("Pidgey").entity.typeId, lv: 5, moves: ["tackle"], ivs: {}, evs: {} };
+    const first = M.fighter(M.spawnGymPokemon(npc, spec, p));
+    const b = battle(a, first, { player: p, trainer: "Youngster" });
+    M.recordTurnFaced(b);                       // turn 1: Charmander against the Pidgey
+    b.foe = other; M.recordTurnFaced(b);        // the trainer withdrew it for a Rattata
+    b.ally = bench;                             // and the player switched to Bulbasaur
+    const again = M.fighter(M.spawnGymPokemon(npc, spec, p));
+    b.foe = again; M.recordTurnFaced(b);        // the Pidgey back out, a new entity
+    check("a trainer's Pokemon sent out again keeps its member key, a wild one keys by its entity", again.entity.id !== first.entity.id
+        && M.memberKey(again.entity) === M.memberKey(first.entity) && M.memberKey(other.entity) === other.entity.id, M.memberKey(again.entity));
+    again.hp = 0; M.recordBattleFaint(b, again, "foe", b);
+    rules.teamWiped(b, "foe");
+    const ea = M.battleExperience(b, a, again, 1);
+    const paid = rules.payExperience(b, ctx([a.entity, bench.entity], [bench, again]));
+    const of = (f) => paid.find((x) => x.entity === f.entity)?.exp;
+    check("one that faced a trainer's Pokemon before its recall is paid when it faints after coming back", of(a) === ea && of(bench) > 0, `${of(a)} vs ${ea}, ${of(bench)}`);
+}
+{
+    // ExperienceGroups.kt in its integer order: Erratic's bands end below 50, 68 and 98, and its third multiplies before it
+    // divides by 3, so level 97 needs 572,550 (the games' table has 571,333); the other groups as before, level 1 at 0
+    const e = (n) => M.expFor("erratic", n);
+    check("Erratic: 120,001 at 49, 125,000 at 50, 258,043 at 68, 572,550 at 97, 583,539 at 98, 600,000 at 100",
+        e(49) === 120001 && e(50) === 125000 && e(67) === 249633 && e(68) === 258043 && e(97) === 572550 && e(98) === 583539 && e(100) === 600000,
+        [49, 50, 67, 68, 97, 98, 100].map(e).join(","));
+    check("the other groups unchanged", M.expFor("medium_fast", 10) === 1000 && M.expFor("fast", 50) === 100000 && M.expFor("slow", 50) === 156250
+        && M.expFor("medium_slow", 50) === 117360 && M.expFor("fluctuating", 15) === 1957 && M.expFor("fluctuating", 36) === 46656 && M.expFor("fluctuating", 50) === 142500);
+    check("level 1 is 0 in every group", ["erratic", "fast", "medium_fast", "medium_slow", "slow", "fluctuating"].every((g) => M.expFor(g, 1) === 0));
+}
+{
+    // Pokemon's level setter: the health keeps its share, ceil(currentHealth / maxHealth x newMax), not the old health plus
+    // what the maximum gained
+    const a = mon("Raticate", { level: 10 }), p = player(), b = battle(a, mon("Pidgey", { level: 5 }), { player: p });
+    a.hp = Math.floor(a.stats.hp / 3);
+    const [hp, max] = [a.hp, a.stats.hp];
+    M.gainExperience(b, a, null, M.expFor("medium_fast", 11) - M.expFor("medium_fast", 10));
+    const want = Math.ceil(Math.fround(Math.fround(hp / max) * a.stats.hp));
+    check("a level-up keeps the share of health", a.level === 11 && a.hp === want && a.stats.hp > max, `${hp}/${max} to ${a.hp}/${a.stats.hp}, want ${want}`);
+}
+{
+    // RCT's onExperienceGained: past the level cap the gain is cut to what reaches it, and the message says that much
+    const a = mon("Raticate", { level: 14 }), p = player();
+    p.setDynamicProperty("cobblemon:rct_series", "radicalred"); p.setDynamicProperty("cobblemon:rct_defeats", "{}");
+    const b = battle(a, mon("Pidgey", { level: 5 }), { player: p });
+    M.gainExperience(b, a, null, 5000);
+    const allowed = M.expFor("medium_fast", 15) - M.expFor("medium_fast", 14);
+    check("the level cap stops the gain at the cap", expOf(a) === M.expFor("medium_fast", 15) && a.level === 15, `${expOf(a)} Lv ${a.level}`);
+    check("and the gain said is the part let through", p.lines.some((l) => l.includes("level cap (Lv. 15)")) && p.lines.some((l) => l.includes(`gained ${allowed} Exp. Points`)), p.lines.join(" / "));
 }
 {
     // a fainted party member gets nothing; an Exp. Share holder on the bench half the experience and the EVs

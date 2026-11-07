@@ -26,5 +26,5 @@ check("and not past a block that is not a leaf", log.get(10).age === 1 && log.ge
 Math.random = () => 0.9;
 const odds = world([[10, "cobblemon:saccharine_leaves", 2], [9, "cobblemon:saccharine_leaves", 0]]);
 M.honeyDrip(odds.get(10));
-check("one random tick in two", odds.get(10).age === 2);
+check("one Java random tick in two, so seven in eight of Bedrock's (a third as many): not at 0.9", odds.get(10).age === 2);
 Math.random = random;

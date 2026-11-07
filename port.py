@@ -183,10 +183,14 @@ def load_species_features():
         form = feature.get("aspectFormat", "{{choice}}")
         for key in feature.get("keys", [name]): feature_formats[key] = form
         choices = [c if isinstance(c, str) else c.get("aspect", c.get("value", "")) for c in feature.get("choices", [])]
+        # a weighted_choice's choices are {choice: weight} (WeightedChoiceSpeciesFeatureProvider: Maushold's family of three 1,
+        # of four 99), a plain choice's each weigh one
+        weights = feature["choices"] if isinstance(feature.get("choices"), dict) else {}
         default = feature.get("default")
         default_aspect = form.replace("{{choice}}", default) if isinstance(default, str) and default in choices else None
         for choice in choices:
-            feature_aspects[form.replace("{{choice}}", choice)] = {"feature": name, "random": default == "random", "default": default_aspect}
+            feature_aspects[form.replace("{{choice}}", choice)] = {"feature": name, "random": default == "random", "default": default_aspect,
+                                                                   "weight": float(weights.get(choice, 1))}
     # Smeargle's tail paint (PokemonAspects.CHARACTERISTIC_RAINBOW_ASPECT, for behaviour.characteristicRainbow): a rainbow-<colour>
     # aspect from its nature and characteristic, drawn by its resolver, becomes a form scripts/world.js picks (light-blue is
     # spelt rainbow-light_blue in the resolver and never matches, as in Cobblemon)
@@ -240,11 +244,11 @@ def load_cobblemon_data():
                 low, high = int(low), int(high or low)
                 pokemon = spawn.get("pokemon", "").split(" ")[0]
                 spawn_level_by_name[pokemon] = min(low, spawn_level_by_name.get(pokemon, 999))
-                # the widest level range any of the species' wild spawns gives, for PlayerLevelRangeInfluence in main.js
+                # the widest level range any of the species' wild spawns gives, for main.js's wildLevel
                 old = spawn_range_by_name.get(pokemon)
                 spawn_range_by_name[pokemon] = [min(low, old[0]), max(high, old[1])] if old else [low, high]
-                # the range a spawn rule's Pokemon rolls in is its natural entries' own (PlayerLevelRangeInfluence narrows the
-                # chosen entry's levelRange, and a species' natural entries all share one): a herd's default of 5, a fishing
+                # the range a spawn rule's Pokemon rolls in is its natural entries' own (PokemonSpawnAction rolls the chosen
+                # entry's levelRange, and a species' natural entries all share one): a herd's default of 5, a fishing
                 # or snack-only entry's levels must not widen it
                 cond = spawn.get("condition") or {}
                 if spawn.get("type", "pokemon") == "pokemon" and spawn.get("spawnablePositionType") != "fishing" and not cond.get("isPokeSnack") and not cond.get("structures") and not cond.get("neededNearbyBlocks"):
@@ -561,11 +565,14 @@ def combat_flags(species):
 
 def panic_groups():
     """cobblemon:panics (behaviours/panics.json). Hurt by an entity (switch_to_panic_when_hurt) the Pokemon runs from it
-    (behavior.panic at walk_away_from_avoid_target's 0.7), and flee_attacker keeps it avoiding that attacker for
-    avoidDurationTicks, 600: the damage sensor adds cobblemon:fleeing for 30 seconds, in which hurt_by_target makes the
+    (behavior.panic at walk_away_from_avoid_target's 0.7), and flee_attacker keeps it avoiding that attacker: it sets
+    avoid_target for avoidDurationTicks, 600, again every tick while HURT_BY_ENTITY holds (FleeFromAttackerTask compares
+    the remembered entity with the attacker's uuid, which never match), and HurtBySensor keeps that until the attacker
+    dies or leaves the dimension. So the damage sensor adds cobblemon:fleeing, in which hurt_by_target makes the
     attacker its target and avoid_mob_type walks it 9 blocks (flee_desired_distance) from that target and from the
-    villager hostiles (flee_nearest_hostile, 0.5), until cobblemon:calm, as the panic activity's activity_change does
-    once the avoid_target memory lapses."""
+    villager hostiles (flee_nearest_hostile, 0.5), until cobblemon:calm, which scripts/main.js (calmWhenAttackerGone)
+    sends once the attacker is dead or gone, as the panic activity's activity_change does once avoid_target lapses;
+    the timer is only a backstop for a fleeing Pokemon the script lost track of when it reloaded."""
     flee = round(0.7 / WANDER_SPEED, 2)
     hostile = round(0.5 / WANDER_SPEED, 2)
     avoid = [{"filters": {"test": "is_target", "subject": "other", "value": True}, "max_dist": 9, "max_flee": 9,
@@ -577,7 +584,7 @@ def panic_groups():
         "cobblemon:fleeing": {
             "minecraft:behavior.hurt_by_target": {"priority": 2},
             "minecraft:behavior.avoid_mob_type": {"priority": 2, "max_dist": 15, "max_flee": 9, "entity_types": avoid},
-            "minecraft:timer": {"time": 30, "looping": False, "time_down_event": {"event": "cobblemon:calm", "target": "self"}}
+            "minecraft:timer": {"time": 600, "looping": False, "time_down_event": {"event": "cobblemon:calm", "target": "self"}}
         }
     }
 
@@ -593,30 +600,36 @@ def retaliate_group():
 
 
 def herd_leaders(species, keys):
-    """HerdBehaviour.toleratedLeaders as (tier, species key) for the leaders the port has: a leader named with an aspect
-    (alpha, mega, a regional form, a gender) is left out, since the entity cannot tell it; one that only excludes an
-    aspect ("ampharos mega=false") is the plain species."""
+    """HerdBehaviour.toleratedLeaders as (tier, species key, alpha) for the leaders the port has: one named alpha ("abra
+    alpha", 739 of them) is that species while it is an alpha, which the entity's cobblemon:alpha property tells; a leader
+    named with another aspect (mega, a regional form, a gender) is left out, since the entity cannot tell it; one that
+    only excludes an aspect ("ampharos mega=false") is the plain species."""
     leaders = []
     for leader in ((species.get("behaviour") or {}).get("herd") or {}).get("toleratedLeaders", []):
         name, *aspects = str(leader.get("pokemon", "")).split()
-        if any(not a.endswith("=false") for a in aspects): continue
+        if any(not a.endswith("=false") and a != "alpha" for a in aspects): continue
         key = re.sub(r"[^a-z0-9]", "", name.split(":")[-1].lower())
-        if key in keys: leaders.append((leader.get("tier", 0), key))
+        if key in keys: leaders.append((leader.get("tier", 0), key, "alpha" in aspects))
     return leaders
 
 
 def herd_group(leaders, keys):
     """cobblemon:pokemon_herds: follow_herd_leader walks a follower towards its leader at 0.4 when it is further than the
     herd's followDistance (4 to 8), and the leader is whichever tolerated Pokemon the nearest_living_entities sensor
-    (16 blocks) finds that is not in a party. follow_mob does the walking; a follower never leads (the leader filter
-    skips anything with follow_mob, so two followers never stall on each other), and preferred_actor_type picks the
-    highest tier."""
+    (16 blocks) finds that is not in a party. follow_mob does the walking and stops 6 blocks off, the far edge of the
+    spot it walks to (FollowHerdLeaderTask.getRandomOffset, closeEnough 4 to tooFar less half of closeEnough); a follower
+    never leads (the leader filter skips anything with follow_mob, so two followers never stall on each other), an alpha
+    leader is one with cobblemon:alpha (bool_property), and preferred_actor_type picks the highest tier."""
     best = max(leaders)[1]
-    leader = {"all_of": [{"any_of": [{"test": "is_family", "subject": "other", "value": f"species_{key}"} for _, key in sorted(set(leaders))]},
+    plain = {key for _, key, alpha in leaders if not alpha}
+    def match(key, alpha):
+        family = {"test": "is_family", "subject": "other", "value": f"species_{key}"}
+        return {"all_of": [family, {"test": "bool_property", "subject": "other", "domain": "cobblemon:alpha", "value": True}]} if alpha else family
+    leader = {"all_of": [{"any_of": [match(key, alpha) for _, key, alpha in sorted(set(leaders)) if not (alpha and key in plain)]},
                          {"test": "has_component", "subject": "other", "operator": "!=", "value": "minecraft:behavior.follow_mob"},
                          {"test": "is_family", "subject": "other", "operator": "!=", "value": "owned"}]}
     return {"cobblemon:herd_follower": {"minecraft:behavior.follow_mob": {
-        "priority": 7, "search_range": 16, "stop_distance": 4, "speed_multiplier": round(0.4 / WANDER_SPEED, 2),
+        "priority": 7, "search_range": 16, "stop_distance": 6, "speed_multiplier": round(0.4 / WANDER_SPEED, 2),
         "preferred_actor_type": keys[best], "filters": leader}}}
 
 
@@ -688,7 +701,7 @@ def add_wild_behaviours():
         components, groups, events = entity["components"], entity.setdefault("component_groups", {}), entity.setdefault("events", {})
         for key in ("minecraft:behavior.panic", "minecraft:behavior.hurt_by_target", "minecraft:behavior.melee_attack"): components.pop(key, None)
         for group in WILD_AI_GROUPS: groups.pop(group, None)
-        for event in ("cobblemon:flee", "cobblemon:calm"): events.pop(event, None)
+        for event in ("cobblemon:flee", "cobblemon:calm", "cobblemon:herd_lead", "cobblemon:herd_follow"): events.pop(event, None)
         sensor = components.setdefault("minecraft:damage_sensor", {"triggers": []})
         if isinstance(sensor.get("triggers"), dict): sensor["triggers"] = [sensor["triggers"]]
         sensor["triggers"] = [t for t in sensor["triggers"] if t.get("on_damage", {}).get("event") != "cobblemon:flee"]
@@ -733,6 +746,10 @@ def add_wild_behaviours():
             spawned["sequence"] = [s for s in spawned["sequence"] if "cobblemon:herd_follower" not in json.dumps(s)]
             spawned["sequence"].append({"randomize": [{"weight": 1, "add": {"component_groups": ["cobblemon:herd_follower"]}},
                                                       {"weight": 1, "remove": {"component_groups": ["cobblemon:herd_follower"]}}]})
+            # a herd spawn's roles instead (scripts/main.js's fillHerd): its first member leads and the rest follow it. Roles
+            # stay as spawned; Cobblemon's FindHerdLeader and MaintainHerdLeader re-elect leaders, which follow_mob cannot
+            events["cobblemon:herd_lead"] = {"remove": {"component_groups": ["cobblemon:herd_follower"]}}
+            events["cobblemon:herd_follow"] = {"add": {"component_groups": ["cobblemon:herd_follower"]}}
         # the battle freeze stops movement but not a melee swing, so a battle takes retaliation away, and its end gives
         # it back to a Pokemon still wild (despawn is the wild group's)
         # in battle it follows nobody and looks at no player (the battling activity: look_at_targeted_battle_pokemon);
@@ -745,15 +762,15 @@ def add_wild_behaviours():
             "filters": {"all_of": [{"test": "has_component", "subject": "self", "value": "minecraft:despawn"},
                                    {"test": "is_family", "subject": "self", "operator": "!=", "value": "owned"}]},
             "add": {"component_groups": ["cobblemon:retaliates"]}}] if retaliates else []) + [ALPHA_BATTLE_END]}
-        # looks_around (pokemon_core.json, for moving.canLook, true unless said): look_at_entities at see_distance 15,
-        # held by look_at_target for 80 to 160 ticks, every time nothing else is being looked at
+        # looks_around (pokemon_core.json, for moving.canLook, true unless said): look_at_entities at see_distance 15, at any
+        # living entity, held by look_at_target for 80 to 160 ticks, every time nothing else is being looked at (look_around)
+        components.pop("minecraft:behavior.look_at_player", None)
         if ((species.get("behaviour") or {}).get("moving") or {}).get("canLook", True):
-            components["minecraft:behavior.look_at_player"] = {"priority": 6, "look_distance": 15, "probability": 1.0,
-                                                               "look_time": {"min": 4, "max": 8} if word else [4, 8]}
-            groups["cobblemon:looks_around"] = {"minecraft:behavior.look_at_player": dict(components["minecraft:behavior.look_at_player"])}
+            components["minecraft:behavior.look_at_entity"] = look_around(word)
+            groups["cobblemon:looks_around"] = {"minecraft:behavior.look_at_entity": look_around(word)}
             counts["looks around"] += 1
         else:
-            components.pop("minecraft:behavior.look_at_player", None)
+            components.pop("minecraft:behavior.look_at_entity", None)
         second = text.split(chr(10))[1]
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     print("Wild behaviours: " + ", ".join(f"{n} {k}" for k, n in counts.items()) + f" of {len(files)} species.")
@@ -1873,17 +1890,28 @@ def add_variants(entity, species, pokemon):
         events[f"cobblemon:set_variant_{n}"] = {"remove": {"component_groups": [g for g in names if g != name]}, "add": {"component_groups": [name]}}
     male = species.get("maleRatio", 0.5)
     female_share = 0.0 if male is None or male < 0 else 1.0 - male
-    # form shares: the base look, unless a choice feature replaces it with a random or default choice
+    # form shares (ChoiceSpeciesFeatureProvider.invoke): a feature with a default that has a look of its own gives it to
+    # every spawn (Minior's meteor-form, which the core colours under it do not split); otherwise each random feature picks
+    # a choice by its weight (choices.random(), a weighted_choice's WeightedCollection), and a choice the resolvers draw
+    # no differently (Toxtricity's amped-form, Dudunsparce's two segments, Pumpkaboo's average size) is the base look.
+    # Two random features (Spinda's spots, Alcremie's cream and decoration) share the roll equally, a look having one
+    # feature's aspect only
     forms = [f for f in dict.fromkeys(v["form"] for v in variations) if f]
-    shares = {None: 1.0}
-    for feature in {feature_aspects[f]["feature"] for f in forms if f in feature_aspects}:
+    shares, fixed, rolled = {None: 0.0}, [], []
+    for feature in sorted({feature_aspects[f]["feature"] for f in forms if f in feature_aspects}):
         members = [f for f in forms if feature_aspects.get(f, {}).get("feature") == feature]
         info = feature_aspects[members[0]]
-        if info["random"]:
-            shares[None] = 0.0
-            for f in members: shares[f] = 1.0 / len(members)
-        elif info["default"] in members:
-            shares[None] = 0.0; shares[info["default"]] = 1.0
+        if info["random"]: rolled.append((feature, members))
+        elif info["default"] in members: fixed.append(info["default"])
+    if fixed:
+        for f in fixed: shares[f] = 1.0 / len(fixed)
+    elif rolled:
+        for feature, members in rolled:
+            choices = {a: i.get("weight", 1.0) for a, i in feature_aspects.items() if i["feature"] == feature}
+            total = sum(choices.values()) or 1.0
+            for f in members: shares[f] = choices.get(f, 0.0) / total / len(rolled)
+            shares[None] += (1.0 - sum(choices.get(f, 0.0) for f in members) / total) / len(rolled)
+    else: shares[None] = 1.0
     roll = []
     for n, variation in enumerate(variations):
         share = shares.get(variation["form"], 0.0)
@@ -1907,19 +1935,63 @@ def add_variants(entity, species, pokemon):
         if form_roll: events[f"cobblemon:spawn_form_{form}"] = {"randomize": form_roll}
 
 
-def variant_battle_overrides(pokemon, species):
-    """Types, stats and name for each variant that is a regional form, from the species' forms list."""
+def learnset_data(entry, moves, level):
+    """A species' or form's moves for the battle data, from its "moves" list: the level-up learnset [[level, id]...] in level
+    order, its egg moves (the Pokedex's EGG entries) and the moves moveset_builders/wild.json gives it at the level
+    (Pokemon.initializeMovesetFromDefault, DefaultMovesetBuilder): slot 1 the last offensive move learnt by the level
+    (last_offensive), slots 2 to 4 the last level-up moves not yet chosen (last_levelup), Tackle when it has learnt none
+    (Moves.getExceptional). Where a level holds several, the game draws one by move_weights.json (buildMoveset in
+    progression.js, which every spawn runs); this table, which keeps one outcome, takes the one listed last."""
+    learnset = []
+    for m in entry.get("moves", []):
+        match = re.match(r"(\d+):(\w+)$", m)
+        if match and match.group(2) in moves and [int(match.group(1)), match.group(2)] not in learnset: learnset.append([int(match.group(1)), match.group(2)])
+    learnset.sort(key=lambda e: e[0])
+    egg = sorted({m[4:] for m in entry.get("moves", []) if m.startswith("egg:") and m[4:] in moves})
+    learnt, chosen = [(at, m) for at, m in learnset if at <= level], []
+    def last(keep):
+        for at in sorted({a for a, _ in learnt}, reverse=True):
+            ids = [m for a, m in learnt if a == at and m not in chosen and keep(m)]
+            if ids: return ids[-1]
+    for slot in (("last_offensive", "last_levelup"), ("last_levelup",), ("last_levelup",), ("last_levelup",)):
+        for selector in slot:
+            move = last(lambda m: selector == "last_levelup" or moves[m]["category"] != "Status")
+            if move: chosen.append(move); break
+    return {"learnset": learnset, "egg": egg, "moves": chosen or ["tackle"]}
+
+
+def variant_battle_overrides(pokemon, species, moves=None, level=5):
+    """What each variant that is one of the species' forms fights with: its name, types and stats, and, where the form declares
+    its own (FormData's getters fall back to the species for each), its abilities, level-up and egg moves, EV yield, base
+    experience, base friendship, catch rate and weight. The form is the last whose aspects the look all has (Species.getForm),
+    so a regional form, a female form (Indeedee's F, aspect female) and a feature form (Rotom's appliances) each resolve; a
+    look matching no form fights as the species. The moves need Showdown's table and the spawn level (create_battle_data)."""
     overrides = {}
     for n, variation in enumerate(resolver_variations(pokemon)):
-        if not variation["form"]: continue
-        form = next((f for f in species.get("forms", []) if variation["form"] in f.get("aspects", [])), None)
+        form = next((f for f in reversed(species.get("forms", [])) if f.get("aspects") and set(f["aspects"]) <= variation["aspects"]), None)
+        # a look keyed by its one feature aspect stands for the form that carries it with others (Tauros' aqua-breed look
+        # is Paldea-Aqua, aspects paldean and aqua-breed)
+        form = form or next((f for f in reversed(species.get("forms", [])) if variation["form"] and variation["form"] in f.get("aspects", [])), None)
         if not form: continue
         stats = form.get("baseStats") or species.get("baseStats", {})
-        overrides[n] = {
-            "name": f"{variation['form'].capitalize()} {display_name(species)}" if variation["form"] in VARIANT_FORMS else f"{display_name(species)} ({form.get('name', variation['form'])})",
+        label = variation["form"]
+        override = {
+            "name": display_name(species) if not label else f"{label.capitalize()} {display_name(species)}" if label in VARIANT_FORMS else f"{display_name(species)} ({form.get('name', label)})",
             "types": [t for t in (form.get("primaryType", species.get("primaryType")), form.get("secondaryType", species.get("secondaryType") if "primaryType" not in form else None)) if t],
             "stats": {"hp": stats.get("hp", 40), "atk": stats.get("attack", 40), "def": stats.get("defence", 40), "spa": stats.get("special_attack", 40), "spd": stats.get("special_defence", 40), "spe": stats.get("speed", 40)}
         }
+        if form.get("abilities") and form["abilities"] != species.get("abilities"):
+            abilities = [a for a in form["abilities"] if not a.startswith("h:")]
+            override.update({"ability": abilities[0] if abilities else None, "abilities": abilities, "hidden": [a[2:] for a in form["abilities"] if a.startswith("h:")]})
+        if form.get("moves") and form["moves"] != species.get("moves") and moves is not None:
+            data = learnset_data(form, moves, level)
+            override.update({"learnset": data["learnset"], "moves": data["moves"], "egg": data["egg"]})   # the form's whole Learnset
+        if "evYield" in form and form["evYield"] != species.get("evYield"): override["evYield"] = {STAT_KEYS[k]: v for k, v in form["evYield"].items() if v and k in STAT_KEYS}
+        if "baseExperienceYield" in form and form["baseExperienceYield"] != species.get("baseExperienceYield"): override["baseExp"] = form["baseExperienceYield"]
+        if "baseFriendship" in form and form["baseFriendship"] != species.get("baseFriendship"): override["friendship"] = form["baseFriendship"]
+        if "catchRate" in form and form["catchRate"] != species.get("catchRate"): override["catchRate"] = catch_rate(form)
+        if "weight" in form and form["weight"] != species.get("weight"): override["weight"] = form["weight"]
+        overrides[n] = override
     return overrides
 
 
@@ -2876,24 +2948,57 @@ def health_at(base_hp, level):
     return (2 * base_hp + 31) * level // 100 + level + 10
 
 
+def stat_at(base, level):
+    """Any other stat at a level with full IVs, no EVs and a neutral nature (scripts/main.js's statAt on its defaults)."""
+    return (2 * base + 31) * level // 100 + 5
+
+
+def attack_damage(attack):
+    """PokemonServerDelegate.attackToDamageCurve: the ATTACK_DAMAGE a Pokemon's melee hit deals from its Attack stat,
+    ceil(sqrt((attack - 10) ^ 0.875)), at least 1 (Rattata at level 5 hits for 2, Machamp at 30 for 7, Snorlax at 50 for 9).
+    The entity's minecraft:attack takes it at the species' lowest spawn level; scripts/main.js's meleeDamage uses the
+    Pokemon's own stat."""
+    return 1 if attack < 10 else max(1, math.ceil(math.sqrt((attack - 10) ** 0.875)))
+
+
+def look_around(word=False):
+    """looks_around.json (pokemon_core.json, for moving.canLook): look_at_entities, SetEntityLookTarget with no type filter,
+    looks at the nearest living entity of any kind (player or mob) within see_distance 15, held by look_at_target for 80
+    to 160 ticks. The 1.21.90 format spells look_time as a range."""
+    return {"priority": 6, "look_distance": 15, "probability": 1.0, "look_time": {"min": 4, "max": 8} if word else [4, 8],
+            "filters": {"any_of": [{"test": "is_family", "subject": "other", "value": "mob"},
+                                   {"test": "is_family", "subject": "other", "value": "player"}]}}
+
+
 SWIM_SCALE = 0.7 * 0.33 * 2.5   # Cobblemon's wandering swim speed in blocks a tick for each point of swimSpeed
 # WaterWanderTaskConfig: a new spot one tick in 60 (water_wander_chance 1 / (20 * 3)) once the last is reached, within
 # 10 blocks across and 7 up or down. With interval 0 a swimmer never rested and dashed about at full speed all the
 # time, which read as far too fast (issue 32); it rests between swims as on Java
 WATER_WANDER = {"priority": 3, "interval": 60, "xz_dist": 10, "y_dist": 7, "speed_multiplier": 1}
+# PokemonMoveControl walks a Pokemon at its movement attribute (0.7) times the walk target's speed modifier times its
+# walkSpeed (flySpeedHorizontal in the air) times 2.5, and the idle wander's modifier is 0.35 (WanderTaskConfig's
+# walk_speed), which the port's random_stroll at 1 stands for: the movement value is 0.6125 of the medium's speed
+WANDER_PACE = 0.7 * WANDER_SPEED * 2.5
+# WanderTaskConfig: a new spot one tick in 120 (wander_chance 1 / (20 * 6)), tried only once the 100 tick path cooldown
+# it sets (CobblemonWanderControl.pathCooldownTicks) is over, so one about every 220 ticks; wanders_hover's wander is the
+# same task, within 10 blocks across and 5 up or down, 0 to 6 blocks off the ground (hover_wander_minimum_height and
+# hover_wander_maximum_height)
+LAND_WANDER_INTERVAL = 220
 
 
 def movement_components(species, kind):
     """The vanilla component set for each way of moving: fish, bee, parrot and wolf are the references."""
     moving = species.get("behaviour", {}).get("moving", {})
-    walk_speed = moving.get("walk", {}).get("walkSpeed", 0.25)
+    walk_speed = moving.get("walk", {}).get("walkSpeed", 0.35)   # WalkBehaviour's default
+    fly_speed = moving.get("fly", {}).get("flySpeedHorizontal", 0.3)   # FlyBehaviour's default
     swim_speed = moving.get("swim", {}).get("swimSpeed", 0.3)   # SwimBehaviour's default
     # a speed Cobblemon gives as Molang (faster on sand) is a number here: the speed away from sand, the last one named
     def plain(speed, fallback):
         if isinstance(speed, (int, float)): return speed
         numbers = re.findall(r"\d*\.\d+|\d+", str(speed))
         return float(numbers[-1]) if numbers else fallback
-    walk_speed, swim_speed = plain(walk_speed, 0.25), plain(swim_speed, 0.3)
+    walk_speed, fly_speed, swim_speed = plain(walk_speed, 0.35), plain(fly_speed, 0.3), plain(swim_speed, 0.3)
+    walk_speed, fly_speed = round(walk_speed * WANDER_PACE, 4), round(fly_speed * WANDER_PACE, 4)
     # PokemonMoveControl swims a Pokemon at its movement attribute (0.7) times the walk target's speed (0.33 for
     # ChooseWaterWanderTargetTask) times its swimSpeed times 2.5, in blocks a tick; a Bedrock swimmer wandering with
     # random_swim moves at about 4.3 times the square of its underwater movement value (measured: 0.1 gives 0.05 blocks
@@ -2918,19 +3023,19 @@ def movement_components(species, kind):
     floats = {} if breathes_water else {"minecraft:behavior.float": {"priority": 0}}
     if kind == "hover":
         return {
-            "minecraft:movement": {"value": walk_speed},
+            "minecraft:movement": {"value": fly_speed},
             "minecraft:movement.hover": {},
             "minecraft:navigation.hover": {"can_path_over_water": True, "can_sink": False, "can_path_from_air": True, "avoid_water": avoids_water, "avoid_damage_blocks": True},
             "minecraft:can_fly": {},
             "minecraft:jump.static": {},
             "minecraft:breathable": breathable,
             "minecraft:physics": {},
-            "minecraft:behavior.random_hover": {"priority": 8, "xz_dist": 8, "y_dist": 8, "y_offset": -1, "interval": 1, "hover_height": [1, 4]},
+            "minecraft:behavior.random_hover": {"priority": 8, "xz_dist": 10, "y_dist": 5, "y_offset": -1, "interval": LAND_WANDER_INTERVAL, "hover_height": [0, 6]},
             **floats
         }
     if kind == "bird":
         return {
-            "minecraft:movement": {"value": walk_speed},
+            "minecraft:movement": {"value": fly_speed},   # it wanders in the air (random_fly first)
             "minecraft:movement.fly": {},
             "minecraft:navigation.fly": {"can_path_from_air": True, "can_path_over_water": True, "avoid_water": avoids_water, "avoid_damage_blocks": True},
             "minecraft:can_fly": {},
@@ -2938,7 +3043,7 @@ def movement_components(species, kind):
             "minecraft:breathable": breathable,
             "minecraft:physics": {},
             "minecraft:behavior.random_fly": {"priority": 8, "xz_dist": 15, "y_dist": 1, "y_offset": 0, "avoid_damage_blocks": True},
-            "minecraft:behavior.random_stroll": {"priority": 9, "speed_multiplier": 1},
+            "minecraft:behavior.random_stroll": {"priority": 9, "speed_multiplier": 1, "interval": LAND_WANDER_INTERVAL},
             **floats
         }
     if breathes_water:   # walks the land and swims under water, as the vanilla turtle does
@@ -2947,7 +3052,7 @@ def movement_components(species, kind):
             **water_movement(swim_speed, True),
             "minecraft:jump.static": {},
             "minecraft:breathable": breathable,
-            "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1}
+            "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1, "interval": LAND_WANDER_INTERVAL}
         }
     return {
         "minecraft:movement": {"value": walk_speed},
@@ -2957,21 +3062,21 @@ def movement_components(species, kind):
         "minecraft:jump.static": {},
         "minecraft:breathable": breathable,
         "minecraft:physics": {},
-        "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1},
+        "minecraft:behavior.random_stroll": {"priority": 8, "speed_multiplier": 1, "interval": LAND_WANDER_INTERVAL},
         **floats
     }
 
 
 def water_movement(swim_speed, can_walk):
     """Swimming under water and, for one that walks, walking out of it (the turtle's amphibious set), with Cobblemon's
-    water wander (ChooseWaterWanderTargetTask: 10 across, 5 up or down)."""
+    water wander (WaterWanderTaskConfig: one tick in 60, 10 across, 7 up or down, no path cooldown)."""
     return {
         "minecraft:underwater_movement": {"value": swim_speed},
         "minecraft:movement.amphibious": {"max_turn": 15},
         "minecraft:navigation.generic": {"is_amphibious": True, "can_swim": True, "can_walk": can_walk, "can_sink": False, "can_breach": True,
                                          "can_path_over_water": False, "avoid_damage_blocks": True},
         "minecraft:physics": {},
-        "minecraft:behavior.random_swim": {"priority": 7, "interval": 20, "xz_dist": 10, "y_dist": 5, "speed_multiplier": 1}
+        "minecraft:behavior.random_swim": {"priority": 7, "interval": 60, "xz_dist": 10, "y_dist": 7, "speed_multiplier": 1}
     }
 
 
@@ -3005,12 +3110,12 @@ def create_behavior_entities():
             "minecraft:collision_box": {"width": hitbox["width"], "height": hitbox["height"]},
             "minecraft:scale": {"value": scale},
             "minecraft:health": {"value": health, "max": health},
-            "minecraft:attack": {"damage": max(1, round(stats.get("attack", 40) / 10))},
+            "minecraft:attack": {"damage": attack_damage(stat_at(stats.get("attack", 40), level))},
             "minecraft:loot": {"table": f"loot_tables/entities/{pokemon}.json"},
             "minecraft:despawn": WILD_DESPAWN,
             "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
             "minecraft:conditional_bandwidth_optimization": {},
-            "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 6, "probability": 0.02}
+            "minecraft:behavior.look_at_entity": look_around()
         }
         components.update(movement_components(species, kind))
         # Pokemon.isFireImmune: a Fire type, a lava swimmer or the species' fireImmune (Scovillain is Grass/Fire with no flag)
@@ -3115,14 +3220,40 @@ def pack_item_ids():
     return ids
 
 
+vanilla_item_cache = None
+
+
+def vanilla_item_ids():
+    """Every minecraft: item id the game's item catalogs name (vanilla*/item_catalog in each versioned behavior pack)."""
+    global vanilla_item_cache
+    if vanilla_item_cache is None:
+        vanilla_item_cache = set()
+        for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/item_catalog/*.json"):
+            with open(path, encoding="utf-8") as file: vanilla_item_cache.update(re.findall(r'"(minecraft:[a-z0-9_]+)"', file.read()))
+    return vanilla_item_cache
+
+
+def bedrock_drop_item(item):
+    """A vanilla drop's item by Bedrock's id: a Java name the game spells another way goes through BLOCK_NAMES (lily_pad
+    is waterlily, terracotta hardened_clay, jack_o_lantern lit_pumpkin, dead_bush deadbush), and None for one it has no
+    item for at all (Deoxys' minecraft:eye_of_ender, not Java's id either, so ItemDropEntry drops nothing there too)."""
+    known = vanilla_item_ids()
+    if not known or item in known: return item
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import BLOCK_NAMES
+    renamed = "minecraft:" + BLOCK_NAMES.get(item.split(":", 1)[1], item.split(":", 1)[1])
+    return renamed if renamed in known else None
+
+
 def species_drops(species, items):
     """DropTable for data.js: [amount low, amount high, [[item, percentage, quantity low, quantity high, quantity,
-    maxSelectableTimes], ...]], the entries Bedrock has an item for, in Cobblemon's order."""
+    maxSelectableTimes], ...]], the entries Bedrock has an item for (by Bedrock's id, bedrock_drop_item), in Cobblemon's order."""
     drops = (species or {}).get("drops") or {}
     entries = []
     for e in drops.get("entries", []):
         item = e.get("item", "")
         if not item.startswith("minecraft:") and item not in items: continue
+        if item.startswith("minecraft:") and not (item := bedrock_drop_item(item)): continue
         low, _, high = str(e.get("quantityRange", e.get("quantity", 1))).partition("-")
         entries.append([item, e.get("percentage", 100.0), int(low), int(high or low), e.get("quantity", 1), e.get("maxSelectableTimes", 1)])
     lo, _, hi = str(drops.get("amount", 1)).partition("-")
@@ -3871,9 +4002,12 @@ bedrock_biome_tags = {}
 # Cobblemon's bucket weights (data/cobblemon/spawning/best-spawner-config.json), so rarity survives the port
 BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2, "boss": 0.3}
 SURFACE_PRESETS = {"natural", "wild", "treetop", "foliage", "water"}
-# What a species' conditions add up to once normalised, in the 1 to 240 band vanilla's own rules keep to
-# (husk 240 is the highest Bedrock ships, median 10), in Cobblemon's 94 : 5 : 0.5 : 0.2 bucket proportions.
-SPAWN_TOTALS = {"common": 240, "uncommon": 13, "rare": 2, "ultra-rare": 1, "boss": 1}
+# What the spawn rules that hold at one spot add up to once normalised (normalise_weights), the 100 of Cobblemon's bucket
+# roll: large, so that its rarest shares (an ultra-rare legendary's, a few thousandths of its bucket's 0.2 percent) come
+# as near the least weight a rule can carry, 1, as an integer weight allows. SPAWN_CAP, a fifth of it, holds back the
+# few conditions a biome-averaged share would make most of a spot's pool.
+SPAWN_POOL = 50000
+SPAWN_CAP = 10000
 # Bedrock treats the whole Nether as underground: it has no sky, so a rule that only spawns on the surface
 # never fires there. Every vanilla Nether mob spawns underground, Hoglin and Strider included.
 NETHER_TAGS = {"nether", "nether_wastes", "crimson_forest", "warped_forest", "soulsand_valley", "basalt_deltas"}
@@ -3894,28 +4028,74 @@ def biome_tags_in(biome_filter):
     return found
 
 
-def normalise_weights(pairs):
-    """Turn Cobblemon's raw spawn weights into a share of a Bedrock population pool.
+def _filter_passes(node, tags):
+    """Whether a biome filter holds in a biome with these tags."""
+    if isinstance(node, list): return all(_filter_passes(n, tags) for n in node)
+    if "all_of" in node: return all(_filter_passes(n, tags) for n in node["all_of"])
+    if "any_of" in node: return any(_filter_passes(n, tags) for n in node["any_of"])
+    if "none_of" in node: return not any(_filter_passes(n, tags) for n in node["none_of"])
+    if node.get("test") == "has_biome_tag": return (node.get("value") in tags) == (node.get("operator", "==") != "!=")
+    return True
 
-    Cobblemon rolls a rarity bucket first and then picks within it by weight, so a weight only means
-    anything among the spawns eligible at one spot: Dratini's two ocean-ruins entries are 4500 where the
-    median entry in the whole game is 16. Bedrock instead makes one weighted pick across the pool, so those
-    raw numbers carried over unchanged let a handful of species own it - Dratini alone was 62 percent of
-    water_animal, and the top five 85 percent, which is why the same few Pokemon kept turning up.
 
-    Each bucket a species spawns in is given that bucket's total (SPAWN_TOTALS), split between the species'
-    conditions in that bucket in proportion to their raw weight. Where a species prefers to spawn is kept,
-    how often it wins against other species is not left to an unbounded number, and a bucket's rarity
-    survives: splitting one total across buckets by raw weight used to hand Tsareena's alpha herd (boss, raw
-    100) a weight of 60 against 19 for its common spawn (raw 0.1), so alpha herds came six times as often as
-    Cobblemon's boss bucket (0.25 of 100) has them and the species itself was rarely met on its own."""
-    by_bucket = {}
-    for rule, spawn in pairs: by_bucket.setdefault(spawn.get("bucket", "common"), []).append(rule)
-    for bucket, rules in by_bucket.items():
-        raw = [rule["minecraft:weight"]["default"] for rule in rules]
-        total = sum(raw) or 1.0
-        for rule, r in zip(rules, raw):
-            rule["minecraft:weight"]["default"] = max(1, round(SPAWN_TOTALS.get(bucket, 1) * r / total))
+def normalise_weights(species):
+    """Turn Cobblemon's raw spawn weights into a share of a Bedrock population pool: {pokemon: [(rule, spawn)]}, every
+    species of one pool, to {pokemon: [rule]}.
+
+    Cobblemon rolls a rarity bucket first (BestSpawnerConfig.worldBuckets, 94 : 5 : 0.5 : 0.2, boss 0.3) and then picks
+    within it by weight among the spawns that hold at the spot, so a weight only means anything against the rest of its
+    bucket there: Dratini's two ocean-ruins entries are 4500 where the median entry in the whole game is 16. Bedrock
+    instead makes one weighted pick across the rules that hold, so raw numbers carried over let a handful of species own
+    the pool (Dratini alone was 62 percent of water_animal), and a fixed total per species made a Rattata no likelier
+    than a Hawlucha (plains, 0.3 percent of the pool against Cobblemon's 9.7).
+
+    So a condition's weight is its bucket's share of SPAWN_POOL times its raw weight over the raw weights of its bucket's
+    conditions in its biomes (each biome's sum, averaged over the condition's biomes, from tools/bedrock_biome_tags.json),
+    capped at SPAWN_CAP. A species' conditions in one bucket that come under 1 (the rare and ultra-rare ones, the
+    legendaries, an alpha herd's seed) are one condition where nothing but their biomes tells them apart, their biome
+    filters joined, so a species split over many small entries is not met once per entry, its weight theirs summed over
+    their biomes and averaged over the joined ones. One still under 1 carries the least weight a rule can, 1, and its
+    share of that ("cobblemon:keep", which create_spawn_rules makes a weight multiplier's thinning), so a legendary at
+    0.07 comes 0.07 times as often as a weight of 1 would, not as often."""
+    global bedrock_biome_tags
+    if not bedrock_biome_tags:
+        with open(os.path.join(pwd, "tools", "bedrock_biome_tags.json"), encoding="utf-8") as file: bedrock_biome_tags = json.load(file)
+    tags = {biome: set(t) for biome, t in bedrock_biome_tags.items()}
+    biomes_of = {}
+    def biomes(rule):
+        key = json.dumps(rule["minecraft:biome_filter"], sort_keys=True)
+        if key not in biomes_of: biomes_of[key] = [b for b, t in tags.items() if _filter_passes(rule["minecraft:biome_filter"], t)]
+        return biomes_of[key]
+    totals = collections.defaultdict(float)
+    for pairs in species.values():
+        for rule, spawn in pairs:
+            for biome in biomes(rule): totals[spawn.get("bucket", "common"), biome] += rule["minecraft:weight"]["default"]
+    out = {}
+    for pokemon, pairs in species.items():
+        rules, small = [], {}
+        for rule, spawn in pairs:
+            bucket, raw, here = spawn.get("bucket", "common"), rule["minecraft:weight"]["default"], biomes(rule)
+            among = sum(totals[bucket, b] for b in here) / len(here) if here else raw
+            weight = min(SPAWN_CAP, SPAWN_POOL * BUCKET_WEIGHTS.get(bucket, 0) / 100 * raw / (among or 1))
+            # a weight multiplier's condition spawns as often as its multipliers can make it (create_spawn_rules)
+            if "cobblemon:top" in rule: weight *= rule.pop("cobblemon:top")
+            elif weight < 1:
+                rest = {k: v for k, v in rule.items() if k not in ("minecraft:weight", "minecraft:biome_filter")}
+                small.setdefault((bucket, json.dumps(rest, sort_keys=True)), []).append((rule, weight * len(here)))
+                continue
+            if weight < 1: rule["cobblemon:keep"] = weight
+            rule["minecraft:weight"]["default"] = max(1, round(weight))
+            rules.append(rule)
+        for group in small.values():
+            rule = group[0][0]
+            filters = list({json.dumps(r["minecraft:biome_filter"], sort_keys=True): r["minecraft:biome_filter"] for r, _ in group}.values())
+            if len(filters) > 1: rule["minecraft:biome_filter"] = _any(*filters)
+            weight = sum(w for _, w in group) / (len(biomes(rule)) or 1)
+            if weight < 1: rule["cobblemon:keep"] = weight
+            rule["minecraft:weight"]["default"] = max(1, round(weight))
+            rules.append(rule)
+        out[pokemon] = rules
+    return out
 
 
 def biome_filter_for(biome_ids):
@@ -4075,14 +4255,22 @@ def spawn_condition(spawn, species, kind):
     # a spawn only a Poke Snack draws (SpawningCondition.isPokeSnack) comes from snack_spawns, never naturally
     if condition.get("isPokeSnack"): return None
     if not set(spawn.get("presets", ["natural"])) & SURFACE_PRESETS and spawn.get("presets"): return None
-    biome_filter = biome_filter_for(condition.get("biomes", ["#cobblemon:is_overworld"]))
+    # SpawnDetailPreset.apply copies each preset's condition into the entry's (MergeMode.INSERT): one asking more than
+    # biomes (urban's concrete, a pyramid's or redstone's blocks, a nether fossil) is a spawn of special_spawns', which
+    # the script makes where that holds, never a spawn rule; a preset's biomes join the entry's, so salt's and webs'
+    # (other mods' biomes only) leave an entry naming none of its own nowhere to spawn
+    extra = [spawn_presets().get(p, {}).get("condition") or {} for p in spawn.get("presets", []) if p not in SURFACE_PRESETS]
+    if any(set(c) - {"biomes"} for c in extra): return None
+    biomes = condition.get("biomes") or []
+    for c in extra: biomes = biomes + c.get("biomes", [])
+    biome_filter = biome_filter_for(biomes or ["#cobblemon:is_overworld"])
     if biome_filter is None: return None
     # its anticondition's biomes are left out (Clefairy's spooky ones); its other anticonditions are not carried
     anti = biome_filter_for((spawn.get("anticondition") or {}).get("biomes", []))
     if anti: biome_filter = _all(biome_filter, {"none_of": [anti]})
     position = spawn.get("spawnablePositionType", "grounded")
-    # the raw Cobblemon score; normalise_weights rescales a species' conditions into Bedrock's band
-    weight = spawn.get("weight", 10) * BUCKET_WEIGHTS.get(spawn.get("bucket", "common"), 1.0)
+    # the raw Cobblemon weight within its bucket; normalise_weights turns it into a share of the spot's pool
+    weight = spawn.get("weight", 10)
     rule = {"minecraft:weight": {"default": weight}, "minecraft:biome_filter": biome_filter}
     in_water = position in ("submerged", "surface", "seafloor") or kind == "fish"
     underground = condition.get("canSeeSky") is False or (condition.get("maxY") is not None and condition["maxY"] < 60)
@@ -4102,12 +4290,17 @@ def spawn_condition(spawn, species, kind):
     if "minSkyLight" in condition or "maxSkyLight" in condition or "timeRange" in condition:
         low = condition.get("minSkyLight", 0); high = condition.get("maxSkyLight", 15)
         time_range = condition.get("timeRange", "")
-        # Cobblemon's minSkyLight is the open sky over the spot, which night does not dim; Bedrock's brightness is the
-        # light there now, so a night spawn keeps only its darkness (the surface standing for the open sky): minSkyLight
-        # 8 under a cap of 7 was a filter no spot passes, and 37 species never spawned (Abra, Hoothoot, Zorua...)
-        if time_range in ("night", "midnight", "dusk"): high = min(high, 7); low = min(low, high)
-        if time_range in ("day", "morning", "afternoon", "noon"): low = max(low, 8)
-        rule["minecraft:brightness_filter"] = {"min": low, "max": high, "adjust_for_weather": time_range in ("night", "midnight", "dusk", "day", "morning", "afternoon", "noon")}
+        # Cobblemon's sky light is the open sky over the spot (CobblemonSpawningZoneGenerator reads the SKY layer's raw
+        # value), which night does not dim; Bedrock's brightness is the light there now, which it does (vanilla's cow, 7
+        # to 15, never spawns on the surface at night; its zombie, 0 to 7, does). So a night spawn takes the dark (a
+        # minimum of 8 there let no night spawn through), a day one the light, an untimed one under the open sky
+        # (minSkyLight 8) no minimum at all, and an untimed land one never under it (maxSkyLight 7) spawns underground
+        if time_range in ("night", "midnight", "dusk"): rule["minecraft:brightness_filter"] = {"min": 0, "max": 7, "adjust_for_weather": True}
+        elif time_range in ("day", "morning", "afternoon", "noon"): rule["minecraft:brightness_filter"] = {"min": max(low, 8), "max": high, "adjust_for_weather": True}
+        elif not time_range and high <= 7 and not in_water:
+            rule.pop("minecraft:spawns_on_surface", None); rule["minecraft:spawns_underground"] = {}
+        # and water the open sky reaches little of (maxSkyLight 7: deep down, or at night) keeps the dark
+        elif high <= 7: rule["minecraft:brightness_filter"] = {"min": low, "max": high, "adjust_for_weather": False}
     if "minY" in condition or "maxY" in condition:
         rule["minecraft:height_filter"] = {"min": condition.get("minY", -64), "max": condition.get("maxY", 320)}
     # one Pokemon per spawn: behaviour.herd.maxSize is how many may follow a leader, not a spawn size, and Cobblemon's
@@ -4192,7 +4385,7 @@ def create_spawn_rules():
     # picked by weight; then the pass fills it. Each such first member spawns naturally with the herd's conditions and
     # its share of the herd's weight, and its spawn fires cobblemon:herd_seed (with its form, cobblemon:herd_seed_<form>),
     # on which scripts/main.js rolls the rest of the herd about it from scripts/herds.js
-    written = 0; skipped = 0
+    written = 0; skipped = 0; by_pool = {}
     herds, seeds, seed_events, herd_table = herd_spawns(), {}, {}, []
     for herd, members in herds:
         first = [m for m in members if m["leader"]] or [m for m in members if m["follower"]]
@@ -4235,11 +4428,12 @@ def create_spawn_rules():
                 if rule: conditions.append((rule, spawn))
                 continue
             if rule and form: rule["minecraft:herd"]["event"] = f"cobblemon:spawn_form_{form}"; rule["minecraft:herd"]["event_skip_count"] = 0
-            # Bedrock's spawn rules have no weather filter, so a spawn that needs one (Zapdos in a thunderstorm) fires an
-            # event on spawning that tests the weather where it stands and takes it away again in the wrong weather;
-            # Cobblemon's own isThundering and isRaining (rain counting thunder, as its condition does) the same way
+            # Bedrock's spawn rules have no weather filter, so a spawn that needs one (isThundering, isRaining: rain counting
+            # thunder, as its condition does) fires an event on spawning that tests the weather where it stands and takes it
+            # away again in the wrong weather. The Legendary Encounters datapack's "weather" key is no SpawningCondition
+            # field, which Cobblemon's loader passes over, so its Zapdos spawns in any weather there and here
             cond = spawn.get("condition", {})
-            weather = cond.get("weather") or ("thunder" if cond.get("isThundering") else "rain" if cond.get("isRaining") is True else "clear" if cond.get("isRaining") is False else None)
+            weather = "thunder" if cond.get("isThundering") else "rain" if cond.get("isRaining") is True else "clear" if cond.get("isRaining") is False else None
             # a slime chunk spawn (Ditto's, the Goomy line's) fires an event the script answers, taking it away outside one
             if rule and cond.get("isSlimeChunk") and not form:
                 rule["minecraft:herd"]["event"] = "cobblemon:spawn_slime_chunk"; rule["minecraft:herd"]["event_skip_count"] = 0
@@ -4263,14 +4457,24 @@ def create_spawn_rules():
         water = [p for p in conditions if "minecraft:spawns_underwater" in p[0]]
         if len(water) == len(conditions): population = "water_animal"
         else: population = "animal"; conditions = [p for p in conditions if "minecraft:spawns_underwater" not in p[0]]
-        # after the split, so a species keeps the whole of its share in the pool it actually spawns in
-        normalise_weights(conditions)
-        conditions = [rule for rule, _ in conditions]
-        for rule in conditions:
-            if "cobblemon:top" in rule: rule["minecraft:weight"]["default"] = max(1, round(rule["minecraft:weight"]["default"] * rule.pop("cobblemon:top")))
-        data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
-        with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
-        written += 1
+        by_pool.setdefault(population, {})[pokemon] = conditions
+    # after the split, so a species keeps the whole of its share in the pool it actually spawns in, and over every
+    # species of the pool at once, since a weight is a share of what else holds there
+    for population, species in by_pool.items():
+        for pokemon, conditions in normalise_weights(species).items():
+            for rule in conditions:
+                # a condition rarer than a rule's least weight, 1, spawns at 1 and the script keeps it in its share
+                # (normalise_weights' keep) as it keeps a multiplier's: a top of 1 over that share, or its own top over it
+                keep = rule.pop("cobblemon:keep", None)
+                if keep is None: continue
+                own, table = rule["minecraft:herd"].get("event", ""), mult_table.setdefault(entity_id(pokemon), [])
+                if own.startswith("cobblemon:spawn_mult_"): entry = table[int(own.rsplit("_", 1)[1])]; entry["top"] = round(entry["top"] / keep, 3)
+                else:
+                    table.append({"top": round(1 / keep, 3), "wm": [], **({"was": own} if own else {})})
+                    rule["minecraft:herd"]["event"] = f"cobblemon:spawn_mult_{len(table) - 1}"; rule["minecraft:herd"]["event_skip_count"] = 0
+            data = {"format_version": "1.8.0", "minecraft:spawn_rules": {"description": {"identifier": entity_id(pokemon), "population_control": population}, "conditions": conditions}}
+            with open(f"{spawnRulesBedrock}/{pokemon}.json", "w") as file: file.write(json.dumps(data, indent=4))
+            written += 1
     # the legendary spawn rules are made from an MIT datapack, whose licence asks for its notice in every copy, so the
     # behavior pack (and the .mcaddon built from it) carries it beside them
     if legendary:
@@ -4324,7 +4528,8 @@ def create_spawn_rules():
         with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=len(second) - len(second.lstrip())))
     with open(f"{scriptsBedrock}/spawn_multipliers.js", "w", encoding="utf-8", newline="\n") as file:
         file.write("// generated by port.py (create_spawn_rules): each species' spawn conditions with weight multipliers, by the n of their\n"
-                   "// cobblemon:spawn_mult_<n> event: the most the multipliers make (top, its weight here), the multipliers and the event\n"
+                   "// cobblemon:spawn_mult_<n> event: the most the multipliers make (top, its weight here, over its share of a weight of 1\n"
+                   "// where that is under 1), the multipliers and the event\n"
                    "// the condition fired before (was); and what else a rule cannot test (anti, light, x) with the entry's own drops\n")
         file.write("export const SPAWN_MULTIPLIERS = " + json.dumps(mult_table, separators=(",", ":")) + ";\n")
     print(f"Spawn multipliers: {sum(len(v) for v in mult_table.values())} conditions of {len(mult_table)} species follow their weight multipliers.")
@@ -4537,10 +4742,13 @@ def animation_effects(pokemon, pokemonName):
 
 def rest_data(species):
     """RestBehaviour for the script's drowsiness (DrowsySensor): the time ranges it sleeps in and its chances a second
-    of growing drowsy and of rousing (RestBehaviour's defaults 1/30 and 1/240), or None if it never sleeps."""
+    of growing drowsy and of rousing (RestBehaviour's defaults 1/30 and 1/240), or None if it never sleeps. Each time is
+    read as IntRangesAdapter does, a comma list of names and min-max ticks ("night, noon", Vulpix's
+    "167-11833,13702-22299"), one entry per part, which scripts/main.js's inTimeRange reads either way."""
     resting = species.get("behaviour", {}).get("resting", {})
     if not resting.get("canSleep", False): return None
-    return {"times": resting.get("times", ["night"]), "drowsy": resting.get("drowsyChance", 1 / 30), "rouse": resting.get("rouseChance", 1 / 240)}
+    times = [part.strip() for time in resting.get("times", ["night"]) for part in str(time).split(",") if part.strip()]
+    return {"times": times or ["night"], "drowsy": resting.get("drowsyChance", 1 / 30), "rouse": resting.get("rouseChance", 1 / 240)}
 
 
 def sleep_time(species):
@@ -4561,10 +4769,11 @@ def nap_component():
         "cooldown_max": 120.0,
         "mob_detect_dist": 6.0,
         "mob_detect_height": 4.0,
+        # PokemonEntity.canSleepAt: no fluid where it lies and room to stand on land (canEntityStayAt LAND); no weather
+        # test, which neither it nor DrowsySensor has
         "can_nap_filters": {"all_of": [
             {"test": "in_water", "subject": "self", "operator": "==", "value": False},
-            {"test": "on_ground", "subject": "self", "operator": "==", "value": True},
-            {"test": "is_weather", "subject": "self", "operator": "!=", "value": "thunderstorm"}
+            {"test": "on_ground", "subject": "self", "operator": "==", "value": True}
         ]},
         # Cobblemon's DrowsySensor looks only at the time, being hurt and being angry: no player or mob nearby keeps a
         # Pokemon awake or wakes it (SleepDepth's player checks are never called in 1.8.2), so every mob is an exception
@@ -4653,7 +4862,9 @@ def poke_balls():
         # Safari's 1.5x is outside battle, which is every thrown ball here
         # and a rule that needs a battle (Quick, Timer, Level, Moon, Love, Lure, Repeat) is 1x when thrown in the world
         catch = "x1_5" if rule == "safari" else rule if rule in WORLD_RULES else "x1" if rule else "x" + f"{mult:g}".replace(".", "_")
-        power = 2.0 if "flies further" in tooltip else 1.0 if "throws less far" in tooltip else 1.5
+        # PokeBalls.kt throwPower: 1.25, the Feather, Wing and Jet Balls 2.5 (twice it) and the Heavy, Leaden and Gigaton Balls
+        # 0.75 (six tenths), kept as the same ratios on the projectile's 1.5
+        power = 3.0 if "flies further" in tooltip else 0.9 if "throws less far" in tooltip else 1.5
         balls.append({"name": name, "display": lang.get(f"item.cobblemon.{name}", name.replace("_", " ").title()),
                       "item": f"cobblemon:{name}", "entity": f"cobblemon:ball_{name}",   # never the item's own id, which its attachable holds
                       "model": model, "texture": texture, "mult": mult, "rule": rule, "catch": catch, "power": power})
@@ -4828,7 +5039,8 @@ def add_pokemon_interactions(entity, species, pokemon):
         if drops:
             os.makedirs(lootInteractionsBedrock, exist_ok=True)
             table = f"{pokemon}_{index}.json"
-            loot_entries = [{"type": "item", "name": d, "weight": 1, **({"functions": [{"function": "set_count", "count": count}]} if count != 1 else {})} for d, count in drops]
+            # a vanilla item by Bedrock's id (Lotad's lily_pad is waterlily, bedrock_drop_item)
+            loot_entries = [{"type": "item", "name": (bedrock_drop_item(d) or d) if d.startswith("minecraft:") else d, "weight": 1, **({"functions": [{"function": "set_count", "count": count}]} if count != 1 else {})} for d, count in drops]
             with open(f"{lootInteractionsBedrock}/{table}", "w") as file:
                 file.write(json.dumps({"pools": [{"rolls": 1, "entries": loot_entries}]}, indent=4))
             entry["spawn_items"] = {"table": f"loot_tables/interactions/{table}"}
@@ -5175,11 +5387,14 @@ def add_capture(entity, species, pokemon, kind):
     events["cobblemon:pasture"] = {"remove": {"component_groups": ["cobblemon:following"]}, "add": {"component_groups": ["cobblemon:pastured"]}}
     # following at a wolf's pace at least (movement 0.3 at multiplier 1): a big Pokemon's walkSpeed is small (Charizard
     # 0.147, Blastoise 0.17), and at 1.2 times that it fell behind a walking player until follow_owner teleported it,
-    # again and again; it stops off its owner by half its width, as Cobblemon's MoveToOwnerTask does
+    # again and again. pokemon_follows_owner.json's move_to_owner for a party Pokemon: it sets off once more than
+    # maxDistance 5 from its owner, stops within completionRange 4 less one (or its half width less one, if bigger), and
+    # teleports past teleportDistance 32, each past its half width (MoveToOwnerTask)
     walk = (components.get("minecraft:movement") or {}).get("value", 0.25) or 0.25
     width = components.get("minecraft:collision_box", {}).get("width", 0.6) * (components.get("minecraft:scale") or {}).get("value", 1.0)
     groups["cobblemon:following"] = {"minecraft:behavior.follow_owner": {"priority": 5, "speed_multiplier": round(max(1.2, 0.3 / walk), 2),
-                                                                         "start_distance": 5, "stop_distance": max(2, math.ceil(width / 2) + 1), "can_teleport": True}}
+                                                                         "start_distance": round(5 + width / 2, 2), "stop_distance": max(4, math.ceil(width / 2)) - 1,
+                                                                         "can_teleport": True, "max_distance": round(32 + width / 2, 2)}}
     groups["cobblemon:captured"] = {
         "minecraft:spawn_entity": {"entities": [{"spawn_item": f"cobblemon:poke_ball_{pokemon}", "min_wait_time": 0, "max_wait_time": 0, "num_to_spawn": 1, "single_use": True}]},
         "minecraft:timer": {"time": 1.0, "looping": False, "time_down_event": {"event": "cobblemon:vanish", "target": "self"}}
@@ -6108,7 +6323,7 @@ def showdown_moves():
     for match in re.finditer(r"^  (\w+): \{(.*?)^  \},?", text, re.S | re.M):
         body = match.group(2)
         def field(name, default=None):
-            found = re.search(rf"^\s*{name}: ([^,\n]+)", body, re.M)
+            found = re.search(rf"^    {name}: ([^,\n]+)", body, re.M)   # its own line, never one in its code (Mimic's "target: move.target")
             return found.group(1).strip().strip('"') if found else default
         accuracy = field("accuracy", "100")
         def boosts(text):
@@ -6121,7 +6336,10 @@ def showdown_moves():
         }
         # the move's own effect: stat stages and a status condition, on its target or on the user for "self"
         top = re.sub(r"^    (secondary|self|selfBoost): \{.*?^    \},?|^    secondaries: \[.*?^    \],?", "", body, flags=re.S | re.M)
-        if boosts(top): move["boosts"] = boosts(top)
+        # from its top-level lines only: a boosts block inside its code is a case Showdown builds at run time (Secret
+        # Power's Misty Terrain drop, Tera Blast's Stellar one, Curse's non-Ghost raise), not the move's own effect
+        own_boosts = re.search(r"^    boosts: \{.*?\}", top, re.S | re.M)
+        if own_boosts and boosts(own_boosts.group(0)): move["boosts"] = boosts(own_boosts.group(0))
         status = re.search(r'^    status: "(\w+)"', top, re.M)
         if status: move["status"] = status.group(1)
         # confusion as the move's own effect (Confuse Ray, Swagger), and the moves that lock their user in (Outrage)
@@ -6134,10 +6352,12 @@ def showdown_moves():
         if flags:
             names = re.findall(r"(\w+): 1", flags.group(1))
             if "contact" in names: move["contact"] = True
-            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet", "powder", "charge", "recharge", "protect", "bypasssub", "failencore", "wind", "heal", "reflectable")]
+            kept = [f for f in names if f in ("bite", "punch", "sound", "pulse", "slicing", "bullet", "powder", "charge", "recharge", "protect", "bypasssub", "failencore", "wind", "heal", "reflectable", "defrost")]
             if kept: move["flags"] = kept
         if re.search(r"^    (recoil|drain): \[", body, re.M): move["recoil" if "recoil:" in body else "drain"] = [int(x) for x in re.search(r"(?:recoil|drain): \[(\d+), (\d+)\]", body).groups()]
-        if "ohko:" in body: move["ohko"] = True
+        # a one-hit KO move, or the type it cannot KO and whose users it is surer for (Sheer Cold's "Ice", hitStepAccuracy)
+        ohko = re.search(r'^    ohko: (?:true|"(\w+)")', body, re.M)
+        if ohko: move["ohko"] = ohko.group(1) or True
         # multi-hit moves: a fixed number of hits (Double Kick 2) or a range (Bullet Seed 2 to 5)
         hits = re.search(r"^    multihit: (?:\[(\d+), ?(\d+)\]|(\d+))", body, re.M)
         if hits: move["multihit"] = int(hits.group(3)) if hits.group(3) else [int(hits.group(1)), int(hits.group(2))]
@@ -6196,7 +6416,16 @@ def showdown_moves():
         listed = re.search(r"^    secondaries: \[(.*?)^    \],?", body, re.S | re.M)
         if listed:
             effects = []
-            for text in re.findall(r"\{(.*?)\}", listed.group(1), re.S):
+            # each entry by its balanced braces, so one holding a boosts block keeps it (Triple Arrows' Defense drop)
+            entries, depth, start = [], 0, 0
+            for at, ch in enumerate(listed.group(1)):
+                if ch == "{":
+                    if depth == 0: start = at + 1
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth == 0: entries.append(listed.group(1)[start:at])
+            for text in entries:
                 chance = re.search(r"chance: (\d+)", text)
                 effect = {"chance": int(chance.group(1)) if chance else 100}
                 status = re.search(r'status: "(\w+)"', text)
@@ -6257,6 +6486,9 @@ def evolution_extras(evolution):
     moves = [re.sub(r"[^a-z0-9]", "", str(m).lower()) for m in evolution.get("learnableMoves", [])]
     if moves: extra["moves"] = moves
     if evolution.get("consumeHeldItem") is False: extra["keep"] = True
+    # PassiveEvolution.permanent: once queued it stays offered when its requirements stop holding (Grotle's sapling,
+    # used up as it queues), where PlayerPartyStore drops any other that no longer tests
+    if evolution.get("permanent"): extra["permanent"] = True
     drops = [[e.get("item"), e.get("percentage", 100.0)] for e in (evolution.get("drops") or {}).get("entries", []) if e.get("item")]
     if drops: extra["drops"] = drops
     shed = pokemon_for_species_name(str(evolution.get("shedder") or "").split(" ")[0]) if evolution.get("shedder") else None
@@ -6297,11 +6529,11 @@ def bias_evolutions(species):
 
 def item_evolutions(species):
     """A species' item evolutions that depend on the biome (Pikachu into Alolan Raichu with a Thunder Stone in an Alola
-    biome, and into Raichu elsewhere), which the script picks between when
-    the item is used, as the entity's own interaction cannot test a biome. Each is a level-up evolution's record with
-    the item it needs."""
+    biome, and into Raichu elsewhere) or on the party (Shelmet's Link Cable with a Karrablast beside it), which the script
+    picks between when the item is used, as the entity's own interaction cannot test either. Each is a level-up
+    evolution's record with the item it needs."""
     evolutions = [e for e in species.get("evolutions", []) if e.get("variant") == "item_interact"]
-    if not any(r.get("variant") == "biome" for e in evolutions for r in e.get("requirements", [])): return []
+    if not any(r.get("variant") in ("biome", "party_member") for e in evolutions for r in e.get("requirements", [])): return []
     out = []
     for evolution in evolutions:
         result, item = pokemon_for_species_name(evolution.get("result", "")), evolution_item(evolution)
@@ -6314,6 +6546,50 @@ def item_evolution(evolution, result, item):
             "req": [evolution_requirement(r) for r in evolution.get("requirements", [])], **evolution_extras(evolution)}
 
 
+def form_evolutions(species, pokemon):
+    """FormData.evolutions: a form evolves by its own list in place of the species' (Pokemon.evolutions is the form's), so
+    each look that is a form declaring its own (Galarian Farfetch'd's Sirfetch'd, Galarian Meowth's Perrserker, a Dusk
+    Rockruff's Dusk Lycanroc, an Antique Sinistea's Chipped Pot) gets {"level": [...], "item": [...], "trade": [events],
+    "block": [items]}, keyed by the look's form: "block" the items the species' own interaction evolves it by that the form
+    does not (a Galarian Slowpoke's King's Rock), which the script holds back. A form evolving as the species does is left
+    out, and the region-bias forms are bias_evolutions'."""
+    def items_of(evolutions):
+        return [item_evolution(e, result, item) for e in evolutions if e.get("variant") == "item_interact"
+                and (result := pokemon_for_species_name(e.get("result", ""))) and (item := evolution_item(e))]
+    def trades_of(evolutions):
+        return [f"cobblemon:evolve_to_{result}" for e in evolutions if e.get("variant") == "trade" and (result := pokemon_for_species_name(e.get("result", "")))]
+    def uses(evolutions): return {evolution_item(e) for e in evolutions if e.get("variant") in ("item_interact", "trade")} - {None, "cobblemon:link_cable"}
+    own = {"level": level_evolutions(species), "item": items_of(species.get("evolutions", [])), "trade": trades_of(species.get("evolutions", []))}
+    out = {}
+    for variation in resolver_variations(pokemon):
+        label = variation["form"]
+        if not label or label in out: continue
+        form = next((f for f in reversed(species.get("forms", [])) if f.get("aspects") and set(f["aspects"]) <= variation["aspects"]), None)
+        if not form or "evolutions" not in form or any(a.startswith("region-bias-") for a in form["aspects"]): continue
+        entry = {"level": level_evolutions(form), "item": items_of(form["evolutions"]), "trade": trades_of(form["evolutions"])}
+        if entry == own: continue
+        block = sorted(uses(species.get("evolutions", [])) - uses(form["evolutions"]))
+        out[label] = {**entry, **({"block": block} if block else {})}
+    return out
+
+
+def feature_roll(pokemon):
+    """A species feature its Pokemon roll at random (default "random", SpeciesFeatures' providers), as the looks it picks
+    between by weight: {"feature": name, "rolls": [[form or None, weight], ...]}, a choice with no look of its own going to
+    the plain one (Maushold's family of three is its plain model, at 1 to the family of four's 99); None for a species with
+    no such feature. An evolution into the species rolls it when the Pokemon had no such feature before."""
+    forms = [v["form"] for v in resolver_variations(pokemon) if v["form"]]
+    for feature in dict.fromkeys(feature_aspects[f]["feature"] for f in forms if f in feature_aspects):
+        members = [a for a, info in feature_aspects.items() if info["feature"] == feature]
+        if not feature_aspects[members[0]]["random"]: continue
+        rolls = {}
+        for aspect in members:
+            look = aspect if aspect in forms else None
+            rolls[look] = rolls.get(look, 0) + feature_aspects[aspect].get("weight", 1)
+        return {"feature": feature, "rolls": [[look, weight] for look, weight in rolls.items()]}
+    return None
+
+
 def evolution_requirement(r):
     """One evolution requirement as the script checks it; one the port cannot check is {"t": "never"}."""
     v = r.get("variant")
@@ -6322,6 +6598,9 @@ def evolution_requirement(r):
     elif v == "friendship": req.append({"t": "friendship", "min": r.get("amount", 160)})
     elif v == "time_range": req.append({"t": "time", "range": r.get("range", "any")})
     elif v == "held_item" and not str(r.get("itemCondition", "")).startswith("#"): req.append({"t": "held", "item": r.get("itemCondition")})
+    # an item tag (HeldItemRequirement's itemCondition as #cobblemon:azalea_tree, Grotle's Azalea Torterra): any item in it
+    elif v == "held_item" and (tagged := item_tag_values(str(r["itemCondition"]))):
+        req.append({"t": "held", "items": sorted(tagged)})
     # a regional evolution: the biome it happens in (a Bedrock biome filter the script tests), and its
     # everywhere-else partner, which needs any biome but those
     elif v == "biome" and ("biomeCondition" in r or "biomeAnticondition" in r):
@@ -6337,7 +6616,12 @@ def evolution_requirement(r):
     elif v == "recoil": req.append({"t": "recoil", "min": r.get("amount", 1)})
     elif v == "has_move": req.append({"t": "move", "move": re.sub(r"[^a-z0-9]", "", str(r.get("move", "")).lower())})
     elif v == "has_move_type": req.append({"t": "move_type", "type": str(r.get("type", "")).lower()})
-    elif v == "party_member": req.append({"t": "party", "species": str(r.get("target", "")).split()[0].lower(), "contains": r.get("contains", True)})
+    # PartyMemberRequirement's target is PokemonProperties: a species ("remoraid") or a type ("type=dark", Pancham's
+    # Pangoro, which PokemonProperties.matches tests against any of the member's types)
+    elif v == "party_member":
+        words = str(r.get("target", "")).lower().split()
+        species, ptype = next((w for w in words if "=" not in w), None), next((w.split("=", 1)[1] for w in words if w.split("=", 1)[0] in ("type", "elemental_type")), None)
+        req.append({"t": "party", **({"species": species} if species else {}), **({"type": ptype} if ptype else {}), "contains": r.get("contains", True)})
     elif v == "weather": req.append({"t": "weather", "rain": r.get("isRaining"), "thunder": r.get("isThundering")})
     elif v == "moon_phase": req.append({"t": "moon", "phase": r.get("moonPhase")})
     elif v == "blocks_traveled": req.append({"t": "steps", "min": r.get("amount", 0)})
@@ -6406,6 +6690,20 @@ def ev_items():
     return evs, mints, berries
 
 
+def metronome_pool():
+    """The moves Metronome can call, sorted: Showdown's moves.js entries with the metronome flag that are standard or only
+    "Unobtainable" (Metronome's onHit filter), whichever species learn them."""
+    import zipfile
+    with zipfile.ZipFile(f"{cobblemonData}/showdown.zip") as archive: text = archive.read("data/moves.js").decode("utf-8")
+    pool = []
+    for match in re.finditer(r"^  (\w+): \{(.*?)^  \},?", text, re.S | re.M):
+        body = match.group(2)
+        flags = re.search(r"^    flags: \{([^}]*)\}", body, re.M)
+        nonstandard = re.search(r'^    isNonstandard: "(\w+)"', body, re.M)
+        if flags and "metronome: 1" in flags.group(1) and (not nonstandard or nonstandard.group(1) == "Unobtainable"): pool.append(match.group(1))
+    return sorted(pool)
+
+
 def create_battle_data():
     print("Creating battle data...")
     os.makedirs(scriptsBedrock, exist_ok=True)
@@ -6415,23 +6713,13 @@ def create_battle_data():
         species = species_for(pokemon)
         if not species: continue
         level = max(5, spawn_level_by_name.get(species_key(species), 5))
-        learnset = []
-        for entry in species.get("moves", []):
-            match = re.match(r"(\d+):(\w+)$", entry)
-            if match and match.group(2) in moves and [int(match.group(1)), match.group(2)] not in learnset: learnset.append([int(match.group(1)), match.group(2)])
-        learnset.sort(key=lambda e: e[0])
-        # its egg moves, for the Pokedex's learnset (MovesLearnsetWidget's EGG entries)
-        egg = sorted({m[4:] for m in species.get("moves", []) if m.startswith("egg:") and m[4:] in moves})
-        learned = []
-        for at, move in learnset:
-            if at <= level and move not in learned: learned.append(move)
-        # the four latest moves, keeping at least one that does damage
-        known = learned[-4:]
-        if not any(moves[m]["power"] for m in known):
-            damaging = [m for m in learned if moves[m]["power"]]
-            known = (known[1:] + damaging[-1:]) if damaging else known
-        learned = known or ["tackle"]
-        used.update(learned); used.update(m for _, m in learnset); used.update(egg)
+        # its learnset, its egg moves (the Pokedex's MovesLearnsetWidget EGG entries) and wild.json's moves at its level
+        data = learnset_data(species, moves, level)
+        learnset, egg, learned = data["learnset"], data["egg"], data["moves"]
+        # and each form's own (Alolan Ninetales, Indeedee's F), which its variant fights with
+        variants = variant_battle_overrides(pokemon, species, moves, level)
+        for known in [data] + [v for v in variants.values() if "learnset" in v]:
+            used.update(known["moves"]); used.update(m for _, m in known["learnset"]); used.update(known["egg"])
         # and the moves it learns by TM or tutor, which a TM taught (scripts/tms.js) must find in the battle data
         used.update(m.split(":", 1)[1] for m in species.get("moves", []) if m.split(":", 1)[0] in ("tm", "tutor") and m.split(":", 1)[1] in moves)
         abilities = [a for a in species.get("abilities", []) if not a.startswith("h:")]
@@ -6452,21 +6740,10 @@ def create_battle_data():
             # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
             **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
                 ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
-            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
-            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
-                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
-            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
-            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
-                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
-            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
-            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
-                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
-            # PokemonEntity's platform test: one that breathes under water or walks on it never stands on one
-            **({"noRaft": True} if (lambda swim: swim.get("canBreatheUnderwater") or swim.get("canWalkOnWater"))(
-                ((species.get("behaviour") or {}).get("moving") or {}).get("swim") or {}) else {}),
             "maleRatio": species.get("maleRatio", 0.5), "evolutions": level_evolutions(species),
             **({"bias": bias} if (bias := bias_evolutions(species)) else {}), **({"itemEvos": ie} if (ie := item_evolutions(species)) else {}),
-            "variants": variant_battle_overrides(pokemon, species),
+            **({"formEvos": fe} if (fe := form_evolutions(species, pokemon)) else {}), **({"featureRoll": fr} if (fr := feature_roll(pokemon)) else {}),
+            "variants": variants,
             # the cry the send-out and the Pokedex play, when the pack has one
             "cry": f"cobblemon.{species_key(species)}.cry" if has_cry(pokemon, "cry") else None,
             # the hitbox height in blocks, where PokemonRenderer draws the label (half a block above it)
@@ -6477,10 +6754,13 @@ def create_battle_data():
     for path in glob.glob(f"{rctData}/data/rctmod/trainers/*.json") or glob.glob(f"{rctTrainers}/*.json"):
         with open(path, encoding="utf-8") as trainer:
             used.update(m.split(":")[-1] for member in json.load(trainer).get("team", []) for m in member.get("moveset", []) if m.split(":")[-1] in moves)
+    # and every move Metronome can call, which it picks from uniformly (METRONOME_POOL)
+    pool = metronome_pool(); used.update(pool)
     with open(f"{scriptsBedrock}/data.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py from Cobblemon's species files and Showdown's move table and type chart\n")
         file.write("export const POKEMON = " + json.dumps(table, ensure_ascii=False) + ";\n")
         file.write("export const MOVES = " + json.dumps({m: moves[m] for m in sorted(used)}, ensure_ascii=False) + ";\n")
+        file.write("export const METRONOME_POOL = " + json.dumps(pool) + ";\n")
         file.write("export const TYPES = " + json.dumps(chart) + ";\n")
         # Cobblemon's move descriptions, for the Summary's Moves tab
         file.write("export const MOVE_DESC = " + json.dumps({m: lang[f"cobblemon.move.{m}.desc"] for m in sorted(used) if f"cobblemon.move.{m}.desc" in lang}, ensure_ascii=False) + ";\n")
@@ -6522,7 +6802,7 @@ def add_battle_states(entity):
     groups = entity["minecraft:entity"].setdefault("component_groups", {})
     events = entity["minecraft:entity"].setdefault("events", {})
     groups["cobblemon:in_battle"] = {"minecraft:movement": {"value": 0.0}, "minecraft:underwater_movement": {"value": 0.0}, "minecraft:body_rotation_blocked": {},
-                                     "minecraft:behavior.look_at_player": {"priority": 6, "look_distance": 0.1, "probability": 0.0}}
+                                     "minecraft:behavior.look_at_entity": {"priority": 6, "look_distance": 0.1, "probability": 0.0}}   # over look_around's
     events["cobblemon:battle_start"] = {"add": {"component_groups": ["cobblemon:in_battle"]}}
     events["cobblemon:battle_end"] = {"remove": {"component_groups": ["cobblemon:in_battle"]}}
     events["cobblemon:capture"] = {"remove": {"component_groups": ["cobblemon:wild", "cobblemon:in_battle"]}, "add": {"component_groups": ["cobblemon:captured"]}}
@@ -7112,7 +7392,8 @@ function decodeTrainers(raw) {
     for (const [id, r] of Object.entries(raw)) {
         out[id] = { name: r.n, type: r.ty ?? "normal", series: r.se ?? [], level: r.lv, requires: r.req ?? [], optional: !r.key, swf: r.swf ?? 1,
             maxWins: r.mw ?? -1, maxDefeats: r.md ?? 1, cooldown: r.cd ?? 240, sig: r.sig ?? null, biomes: r.bw ?? [], noBiomes: r.bb ?? [], identity: r.idn ?? r.n,
-            bag: r.bag ?? [], maxItemUses: r.miu ?? -1, margin: r.mg ?? 0.25, switchBias: r.sb ?? 0.5, doubles: !!r.dbl,
+            bag: r.bag ?? [], maxItemUses: r.miu ?? -1, margin: r.mg ?? 0.25, switchBias: r.sb ?? 0.5, itemBias: r.ib ?? 0.85,
+            moveBias: r.mb ?? 1, statusMoveBias: r.smb ?? 0.85, doubles: !!r.dbl,
             team: (r.team ?? []).map((m) => ({ t: m[0], lv: m[1], nature: m[2], ability: m[3], moves: m[4], ivs: six(m[5]), evs: six(m[6]), held: m[7], female: !!m[8], shiny: !!m[9], form: m[10] })) };
     }
     return out;
@@ -7122,7 +7403,7 @@ function decodeTrainers(raw) {
 
 def rct_trainer_data(items):
     """Every RCT trainer (data/rctmod/trainers, 1559 of them) as the script reads them, compactly (RCT_DECODER expands
-    it): the team (species as this pack's entities, moves the battle knows), bag, battle rules, format and AI margin
+    it): the team (species as this pack's entities, moves the battle knows), bag, battle rules, format and AI margin and biases
     from the team file (TrainerTeam); the type, series, required defeats, optional flag, spawn weight factor, biome tag
     lists, signature item, win and defeat limits and cooldown from its mob data (TrainerMobData, rct_mob_files).
     LevelUtils: a trainer's level is its strongest Pokemon's, or a required trainer's where that is higher."""
@@ -7152,6 +7433,9 @@ def rct_trainer_data(items):
         ai = data.get("ai", {}).get("data", {})
         if "maxSelectMargin" in ai: entry["mg"] = ai["maxSelectMargin"]
         if "switchBias" in ai: entry["sb"] = ai["switchBias"]
+        # RCTBattleAIConfig's other biases (the friendly coaches set itemBias 0, moveBias and statusMoveBias 1)
+        for key, field in (("ib", "itemBias"), ("mb", "moveBias"), ("smb", "statusMoveBias")):
+            if field in ai: entry[key] = ai[field]
         if data.get("battleFormat") == "GEN_9_DOUBLES": entry["dbl"] = 1
         if rct_requires(mob.get("requiredDefeats")): entry["req"] = rct_requires(mob.get("requiredDefeats"))
         if mob.get("type", "normal") != "normal": entry["ty"] = mob["type"]
@@ -7233,11 +7517,14 @@ def create_trainer_entity(trainers):
     """cobblemon:rct_trainer: the player model in the trainer's RCT skin (TrainerRenderer's PlayerModel, wide arms), one
     skin per trainer picked by the cobblemon:trainer property. TrainerMob: 30 health that can be hurt (a trainer's death
     ends its battle), regenerating a point about every 20 seconds (aiStep, in scripts/rct_world.js). A gym trainer
-    (cobblemon:gym, the default, as the buildings' Slowness 100 left it) stands where it was summoned and is persistent;
+    (cobblemon:gym, the default, as the buildings' Slowness 100 left it) stands where it was summoned and leaves as a
+    wild one does (the buildings' `rctmod trainer summon` is not summon_persistent; the rematch button calls a fresh one);
     a wild one (cobblemon:wild, scripts/rct_world.js's spawner) walks RCT's goals: it keeps clear of zombies, pillagers
     and the other mobs TrainerMob avoids, follows a player holding a Trainer Card (TrainerCardTemptGoal), strolls about
-    (WaterAvoidingRandomStrollGoal at 0.35 of its 0.5 speed) and looks at players, and is gone when no player is within
-    128 blocks (shouldDespawn); a spawner's trainer (cobblemon:home) stands on its block (MoveToHomePosGoal)."""
+    (WaterAvoidingRandomStrollGoal at 0.35 of its 0.5 speed) and looks at players; a spawner's trainer (cobblemon:home)
+    stands on its block (MoveToHomePosGoal). No trainer has a minecraft:despawn: TrainerMob.removeWhenFarAway is false
+    and every trainer goes by scripts/rct_world.js's shouldDespawn and checkDespawnIfUnseen instead, where Bedrock's
+    simulation edge would take a trainer spawned 70 blocks off at once."""
     os.makedirs(f"{texturesEntityBedrock}/rct_trainers", exist_ok=True)
     faces = f"{uiTextures}/dialogue"; os.makedirs(faces, exist_ok=True)
     for n, tid in enumerate(trainers):
@@ -7257,8 +7544,6 @@ def create_trainer_entity(trainers):
             "cobblemon:home": {"minecraft:persistent": {}, "minecraft:movement": {"value": 0}},
             "cobblemon:wild": {
                 "minecraft:movement": {"value": 0.5},
-                "minecraft:despawn": {"despawn_from_distance": {"min_distance": RCT_SPAWN["despawnDistance"], "max_distance": RCT_SPAWN["despawnDistance"]},
-                                      "despawn_from_chance": False, "despawn_from_inactivity": False, "despawn_from_simulation_edge": True},
                 "minecraft:behavior.avoid_mob_type": {"priority": 2, "entity_types": [{"filters": {"any_of": [{"test": "is_family", "subject": "other", "value": a["type"]} for a in avoid]}, "max_dist": 12}],
                                                       "walk_speed_multiplier": 1.0, "sprint_speed_multiplier": 1.0},
                 "minecraft:behavior.tempt": {"priority": 3, "speed_multiplier": 0.9, "within_radius": 10, "items": ["rctmod:trainer_card", "rctmod:trainer_card_glint"], "can_get_scared": False},
@@ -7455,8 +7740,10 @@ rctData = f"{rctRepo}/common/src/main/resources"
 # TrainerSpawner's and TrainerMob's numbers, RCT's defaults (IServerConfig, TrainerSpawner.java, ForceIntoBattleGoal)
 RCT_SPAWN = {"interval": 180, "intervalMax": 2400, "chance": 0.85, "chanceMin": 0.1, "minDistance": 25, "maxDistance": 70, "vertical": 30,
              "perPlayer": 12, "total": 60, "maxLevelDiff": 25, "minLevelDiff": 4, "uniqueRadius": 500, "directChance": 0.42, "nonKeyDiv": 4,
-             "keyWeight": 64, "retries": 8, "repelChunks": 3, "despawnUnseen": 6000, "despawnTicks": 600, "despawnDistance": 128,
-             "forceDistance": 8, "forceLookTicks": 60, "forceLevelDiff": 16, "spawnerInterval": 80, "spawnerMin": 2, "spawnerMax": 16}
+             "keyWeight": 64, "retries": 8, "repelChunks": 3, "despawnUnseen": 6000, "unseenInterval": 40, "sightDistance": 128, "despawnTicks": 600, "despawnDistance": 128,
+             "forceDistance": 8, "forceLookTicks": 60, "forceLevelDiff": 16, "spawnerInterval": 80, "spawnerMin": 2, "spawnerMax": 70 * 2 / 3}
+# (the spawner's reach is TrainerSpawnerBlockEntity's maxHorizontalDistanceToPlayers*(2/3.0); its minimum of 2 keeps it
+# from spawning while the nearest player is within the square root of 2*2/2 of the block's centre)
 # RCT's biome tags (Fabric's c: and Minecraft's own, by path) as the Bedrock biome tags that stand for them
 RCT_BIOME_RULES = {
     "is_overworld": ["overworld"], "is_nether": ["nether"], "is_end": ["the_end"], "is_void": [],
@@ -8267,8 +8554,9 @@ def berry_bushes():
 # ConditionalRarityFilter whose biome does not match lets the spot through, so 25 holds everywhere) Cobblemon picks a berry whose preferred biomes hold the
 # spot, weighted by the berry's weight, and plants a grove of its spawn condition's minGroveSize to maxGroveSize bushes
 # around one block, part grown, on wild soil (cobblemon:berry_wild_soil: dirt, sand, terracotta, snow). Here each
-# berry is a scatter of its bush over its own preferred biomes, at the chunk rate times its share of the weight of
-# the berries that grow there; the bushes come up flowering or ripe (Java's age 3 to 5 of 5). The Mirage Island
+# berry is a scatter of its bush, and each group of biomes sharing the same berries one rule at one chunk in 25 that
+# picks one of those berries' groves by weight; the bushes come up at Java's age 3, 4 or 5 of 5 (the port's mature,
+# flowering and ripe stages 1 to 3) about 50:34:16. The Mirage Island
 # berries have no biome of their own on Bedrock and are left out, as they would be in any world without one.
 BERRY_WILD_SOIL = ["minecraft:grass_block", "minecraft:dirt", "minecraft:podzol", "minecraft:coarse_dirt", "minecraft:dirt_with_roots",
                    "minecraft:mud", "minecraft:moss_block", "minecraft:mycelium", "minecraft:sand", "minecraft:red_sand",
@@ -8289,21 +8577,14 @@ def create_berry_groves():
         kinds = {c.get("variant") for c in data["spawnConditions"]}
         if kinds <= {"cobblemon:specific_biome"}: tags_of[berry] = []; continue   # a biome of its own (the Mirage Island's)
         tags_of[berry] = None if "cobblemon:all_biome" in kinds else [t for t in data.get("preferredBiomeTags", []) if biome_filter_for([f"#{t}"])]
-    # the weight of the berries that grow in each tag's biomes (the all-biome ones grow in every one)
-    everywhere = sum(data.get("weight", 1) for berry, data in berries if tags_of[berry] is None)
-    pool = {}
-    for berry, data in berries:
-        for tag in tags_of[berry] or []: pool[tag] = pool.get(tag, everywhere) + data.get("weight", 1)
     placed = 0
     for berry, data in berries:
         tags = tags_of[berry]
         if tags == []: continue   # only the Mirage Island
-        weight = data.get("weight", 1)
-        share = weight / (sum(pool[t] for t in tags) / len(tags) if tags else max(pool.values(), default=weight))
         sizes = [(c.get("minGroveSize", 3), c.get("maxGroveSize", 5)) for c in data["spawnConditions"]]
         least, most = min(a for a, _ in sizes), max(b for _, b in sizes)
         bush = f"cobblemon:{berry}_bush"
-        for stage in (2, 3):
+        for stage in (1, 2, 3):
             with open(f"{featuresBedrock}/berry_{berry}_{stage}.json", "w") as file:
                 file.write(json.dumps({"format_version": "1.13.0", "minecraft:single_block_feature": {
                     "description": {"identifier": f"cobblemon:berry_{berry}_{stage}"},
@@ -8311,10 +8592,13 @@ def create_berry_groves():
                     "enforce_placement_rules": False, "enforce_survivability_rules": False,
                     "may_attach_to": {"min_sides_must_attach": 1, "auto_rotate": False, "bottom": BERRY_WILD_SOIL},
                     "may_replace": BERRY_REPLACEABLE}}, indent=2))
+        # RandomizedIntStateProvider's ClampedNormalInt.of(4, 1, 3, 5): a normal of mean 4 and deviation 1, clamped and
+        # truncated to an int, so Java's age 3 half the time (below 4), 4 a third (4 to 5) and 5 a sixth (5 and over),
+        # the port's stages 1, 2 and 3
         with open(f"{featuresBedrock}/berry_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {
                 "description": {"identifier": f"cobblemon:berry_{berry}"},
-                "features": [[f"cobblemon:berry_{berry}_2", 1], [f"cobblemon:berry_{berry}_3", 2]]}}, indent=2))
+                "features": [[f"cobblemon:berry_{berry}_1", 50], [f"cobblemon:berry_{berry}_2", 34], [f"cobblemon:berry_{berry}_3", 16]]}}, indent=2))
         with open(f"{featuresBedrock}/berry_grove_{berry}.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:scatter_feature": {
                 "description": {"identifier": f"cobblemon:berry_grove_{berry}"}, "places_feature": f"cobblemon:berry_{berry}",
@@ -8324,22 +8608,58 @@ def create_berry_groves():
                 "iterations": f"math.random_integer({3 * least}, {3 * most})",
                 "x": {"distribution": "uniform", "extent": [-1, 1]}, "z": {"distribution": "uniform", "extent": [-1, 1]},
                 "y": {"distribution": "uniform", "extent": [-1, 1]}}}, indent=2))   # offsets from the grove's centre, as Java's
-        biome_filter = biome_filter_for([f"#{t}" for t in tags]) if tags else biome_filter_for(["#cobblemon:is_overworld"])
-        with open(f"{featureRulesBedrock}/berry_grove_{berry}_rule.json", "w") as file:
+        placed += 1
+    # BerryGroveFeature picks the grove's berry by weight among those that grow in the chunk's biome
+    # (BerryHelper.getBerriesForBiome, weightedSelection), one chunk in 25 whatever the biome. So the overworld's
+    # biomes are grouped by the berries that grow in each (by the server's own biome tags), and a group is one rule at
+    # one chunk in 25 placing a weighted pick of its berries' groves, rather than a rule a berry, whose one rate could
+    # not follow how many other berries share each of its biomes
+    overworld = biome_filter_for(["#cobblemon:is_overworld"])
+    filters = {berry: biome_filter_for([f"#{t}" for t in tags_of[berry]]) if tags_of[berry] else overworld for berry, _ in berries if tags_of[berry] != []}
+    weights = {berry: data.get("weight", 1) for berry, data in berries}
+    groups = {}
+    for biome, biome_tags in sorted(bedrock_biomes().items()):
+        if not biome_filter_holds(overworld, biome_tags): continue
+        here = tuple(berry for berry, rule in filters.items() if biome_filter_holds(rule, biome_tags))
+        if here: groups.setdefault(here, []).append(biome)
+    for here, biomes in groups.items():
+        name = f"berry_groves_{biomes[0]}"
+        with open(f"{featuresBedrock}/{name}.json", "w") as file:
+            file.write(json.dumps({"format_version": "1.13.0", "minecraft:weighted_random_feature": {
+                "description": {"identifier": f"cobblemon:{name}"},
+                "features": [[f"cobblemon:berry_grove_{berry}", weights[berry]] for berry in here]}}, indent=2))
+        biome_filter = _any(*(bedrock_biome_filter(b) for b in biomes)) if len(biomes) > 1 else bedrock_biome_filter(biomes[0])
+        with open(f"{featureRulesBedrock}/{name}_rule.json", "w") as file:
             file.write(json.dumps({"format_version": "1.13.0", "minecraft:feature_rules": {
-                "description": {"identifier": f"cobblemon:berry_grove_{berry}_rule", "places_feature": f"cobblemon:berry_grove_{berry}"},
+                "description": {"identifier": f"cobblemon:{name}_rule", "places_feature": f"cobblemon:{name}"},
                 "conditions": {"placement_pass": "surface_pass", "minecraft:biome_filter": biome_filter},
-                "distribution": {"iterations": 1, "scatter_chance": {"numerator": 1, "denominator": max(1, round(BERRY_GROVE_CHUNKS / share))},
+                "distribution": {"iterations": 1, "scatter_chance": {"numerator": 1, "denominator": BERRY_GROVE_CHUNKS},
                                  "x": {"distribution": "uniform", "extent": [1, 14]}, "y": "query.heightmap(variable.worldx, variable.worldz)",
                                  "z": {"distribution": "uniform", "extent": [1, 14]}}}}, indent=2))
-        placed += 1
-    print(f"  berry groves: {placed} of {len(berries)} wild berries in their biomes")
+    print(f"  berry groves: {placed} of {len(berries)} wild berries in their biomes, {len(groups)} biome groups")
+
+
+def bedrock_biomes():
+    """{Bedrock biome: [tags]}, tools/bedrock_biome_tags.json (the server's own biome definitions)."""
+    global bedrock_biome_tags
+    if not bedrock_biome_tags:
+        with open(os.path.join(pwd, "tools", "bedrock_biome_tags.json"), encoding="utf-8") as file: bedrock_biome_tags = json.load(file)
+    return bedrock_biome_tags
+
+
+def biome_filter_holds(rule, tags):
+    """Whether a minecraft:biome_filter (has_biome_tag tests under any_of and all_of) holds in a biome of these tags."""
+    if "any_of" in rule: return any(biome_filter_holds(r, tags) for r in rule["any_of"])
+    if "all_of" in rule: return all(biome_filter_holds(r, tags) for r in rule["all_of"])
+    return (rule["value"] in tags) == (rule.get("operator", "==") == "==")
 
 
 # Revival herbs (RevivalHerbBlock, configured_feature/revival_herb.json): a crop of nine ages on Cobblemon's own stage
 # models, planted from the Revival Herb item on farmland and found wild, fully grown, in lush caves: two tries a
 # chunk, each a patch of five within 4 blocks across and 1 up or down, on a floor of dirt or moss with air or a moss
-# carpet over it. A random tick grows it one age one time in 26 (Cobblemon's 25 / moisture + 1, dry); bone meal two to
+# carpet over it. With light 9 or more a random tick grows it one age at Cobblemon's one in 25 / moisture + 1, tripled
+# for Bedrock's third as many random ticks (three in 13 on dry farmland, three in 7 on hydrated; scripts/main.js,
+# cropGrowthChance); bone meal two to
 # five (CropBlock.getBonemealAgeIncrease). Broken, it drops what loot_table/blocks/revival_herb.json gives: the herb,
 # one or two more at age 7, two or three more and one or two Pep-Up Flowers at age 8. Surprise Mulch on a herb at age 6
 # or under gives it a mutation (RevivalHerbBlock.applyMulch: Mental, Power, White or Mirror; scripts/decor_blocks.js,
@@ -8715,10 +9035,11 @@ def create_blocks():
             geometry = f"geometry.cobblemon_{berry}_{stage}"
             write_block_geometry(geometry, cubes, mulch_bones)
             instances.update({k: v for k, v in mulch_textures.items() if v})
-            # BerryBlock: broken, a bush just planted gives its berry back and one in fruit its harvest; one growing, nothing
+            # BerryBlock: broken, a bush just planted gives its berry back (loot_table/blocks/<berry>.json, age 0); any
+            # other, nothing from the table, one in fruit dropping its harvest instead (playerWillDestroy, scripts/main.js)
             permutations.append({"condition": f"q.block_state('cobblemon:stage') == {stage}", "components": {
                 "minecraft:geometry": {"identifier": geometry, "bone_visibility": mulch_shown}, "minecraft:material_instances": material_instances(instances),
-                "minecraft:loot": f"loot_tables/blocks/{berry}_bush.json" if stage in (0, 3) else "loot_tables/empty.json"}})
+                "minecraft:loot": f"loot_tables/blocks/{berry}_bush.json" if stage == 0 else "loot_tables/empty.json"}})
         with open(f"{lootBlocksBedrock}/{berry}_bush.json", "w") as file:
             file.write(json.dumps({"pools": [{"rolls": 1, "entries": [{"type": "item", "name": f"cobblemon:{berry}"}]}]}, indent=4))
         definition = {"format_version": "1.21.90", "minecraft:block": {
@@ -8833,9 +9154,16 @@ MAX_FOSSILS = 2                      # CobblemonConfig.maxInsertedFossilItems
 MATERIAL_TO_START = 128
 REVIVE_SECONDS = 12 * 60             # TIME_TO_TAKE, twelve minutes
 PROTECTION_SECONDS = 5 * 60          # the reviver alone may take the Pokemon for five minutes
-# item tags in natural_materials, as the Bedrock items they stand for
+# item tags in natural_materials that neither Cobblemon's data nor the Java jar holds (item_tag_values): the c: tags,
+# as Fabric API's convention tags (fabric-convention-tags-v2) list them
 DYES = ["white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple", "blue", "brown", "green", "red", "black"]
-MATERIAL_TAGS = {"#c:dyes": [f"minecraft:{d}_dye" for d in DYES], "#minecraft:wart_blocks": ["minecraft:nether_wart_block", "minecraft:warped_wart_block"]}
+MATERIAL_TAGS = {"#c:dyes": [f"minecraft:{d}_dye" for d in DYES], "#minecraft:wart_blocks": ["minecraft:nether_wart_block", "minecraft:warped_wart_block"],
+                 "#c:foods/raw_meat": [f"minecraft:{m}" for m in ("beef", "porkchop", "chicken", "rabbit", "mutton")],
+                 "#c:foods/cooked_meat": [f"minecraft:cooked_{m}" for m in ("beef", "porkchop", "chicken", "rabbit", "mutton")],
+                 "#c:foods/raw_fish": ["minecraft:cod", "minecraft:salmon", "minecraft:tropical_fish", "minecraft:pufferfish"],
+                 "#c:foods/cooked_fish": ["minecraft:cooked_cod", "minecraft:cooked_salmon"]}
+# Java item ids Bedrock spells another way that BLOCK_NAMES does not carry
+MATERIAL_RENAMES = {"minecraft:frogspawn": "minecraft:frog_spawn"}
 
 
 def fossil_recipes():
@@ -8848,16 +9176,63 @@ def fossil_recipes():
     return recipes
 
 
+def java_item_ids():
+    """Every item name of the Java release Cobblemon is built for (one models/item file per item in 1.21.1's jar,
+    java_client_jars), or None without a jar."""
+    import zipfile
+    global _java_items
+    if "_java_items" not in globals():
+        _java_items = None
+        for jar in java_client_jars()[:1]:
+            with zipfile.ZipFile(jar) as z:
+                _java_items = {n[len("assets/minecraft/models/item/"):-5] for n in z.namelist() if n.startswith("assets/minecraft/models/item/") and n.endswith(".json")}
+    return _java_items
+
+
+def bedrock_item(item):
+    """A Java item id by Bedrock's: kept when Bedrock has it, else MATERIAL_RENAMES or BLOCK_NAMES' name (lily_pad is
+    waterlily, jack_o_lantern lit_pumpkin, melon melon_block, small_dripleaf small_dripleaf_block), checked against
+    Mojang's full item list (bedrock-samples' mojang-items.json) as well as the catalogs (vanilla_item_ids), which leave
+    out what the creative menu hides (suspicious_stew, frog_spawn, the mushroom blocks); None for one Bedrock lacks.
+    A cobblemon: item is the pack's own and kept as it is."""
+    if not item.startswith("minecraft:"): return item
+    global _bedrock_items
+    if "_bedrock_items" not in globals():
+        _bedrock_items = set(vanilla_item_ids())
+        path = os.path.join(pwd, "java", "bedrock-samples", "mojang-items.json")
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as file: _bedrock_items.update(i["name"] for i in json.load(file)["data_items"])
+    known = _bedrock_items
+    item = MATERIAL_RENAMES.get(item, item)
+    if not known or item in known: return item
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import BLOCK_NAMES
+    renamed = "minecraft:" + BLOCK_NAMES.get(item.split(":", 1)[1], item.split(":", 1)[1])
+    return renamed if renamed in known else None
+
+
 def natural_materials():
-    """{item id: [worth, item given back]} for every natural material: written before most of the pack's items exist, so
-    every one Cobblemon names is kept (an item the pack lacks is never in a player's hand to put in)."""
+    """{Bedrock item id: [worth, item given back]} for every natural material, matched as NaturalMaterials.getContent
+    does: an item's own entry, else the first tag holding it (tagMap in load order), a tag's items from Cobblemon's data
+    or the Java jar (item_tag_values) or MATERIAL_TAGS. An id the Java release has no item for (grass, tall_fern,
+    tall_seagrass, dripleaf, glistening_melon_slice, rabbits_foot; 1.21.1's are short_grass, large_fern, none,
+    big_dripleaf, glistering_melon_slice, rabbit_foot) never equals BuiltInRegistries.ITEM.getKey there, so it is left
+    out; the rest go by Bedrock's id (bedrock_item). Written before most of the pack's items exist, so every cobblemon:
+    one is kept (an item the pack lacks is never in a player's hand to put in)."""
     berries = sorted(f"cobblemon:{berry}" for berry, _ in berry_bushes())
-    materials = {}
+    java = java_item_ids()
+    direct, tagged = {}, {}
     for path in sorted(glob.glob(f"{cobblemonData}/natural_materials/*.json")):
         with open(path, encoding="utf-8") as file: entries = json.load(file)
         for entry in entries:
-            items = (berries if entry["tag"] == "#cobblemon:berries" else MATERIAL_TAGS.get(entry["tag"], [])) if "tag" in entry else [entry["item"]]
-            for item in items: materials[item] = [entry["content"], entry.get("returnItem")]
+            value = [entry["content"], entry.get("returnItem")]
+            if "tag" not in entry: direct[entry["item"]] = value; continue
+            items = berries if entry["tag"] == "#cobblemon:berries" else MATERIAL_TAGS.get(entry["tag"]) or item_tag_values(entry["tag"])
+            for item in items: tagged.setdefault(item, value)
+    materials = {}
+    for item, (worth, back) in {**tagged, **direct}.items():
+        if item.startswith("minecraft:") and java is not None and item.split(":", 1)[1] not in java: continue
+        if item := bedrock_item(item): materials[item] = [worth, back and bedrock_item(back)]
     return materials
 
 
@@ -9109,6 +9484,16 @@ def loot_number(value, default=1):
     return default
 
 
+# Bedrock's potion by its data value, for a Java set_potion as set_data (the vanilla shipwreck tables' 19 and 28)
+POTION_DATA = {p: n for n, p in enumerate((
+    "water", "mundane", "long_mundane", "thick", "awkward", "night_vision", "long_night_vision", "invisibility", "long_invisibility",
+    "leaping", "long_leaping", "strong_leaping", "fire_resistance", "long_fire_resistance", "swiftness", "long_swiftness",
+    "strong_swiftness", "slowness", "long_slowness", "water_breathing", "long_water_breathing", "healing", "strong_healing", "harming",
+    "strong_harming", "poison", "long_poison", "strong_poison", "regeneration", "long_regeneration", "strong_regeneration", "strength",
+    "long_strength", "strong_strength", "weakness", "long_weakness", "wither", "turtle_master", "long_turtle_master",
+    "strong_turtle_master", "slow_falling", "long_slow_falling", "strong_slowness", "wind_charged", "weaving", "oozing", "infested"))}
+
+
 SILK_SELF = set()   # blocks whose Cobblemon loot drops the block itself under Silk Touch (scripts/blocks.js, main.js breaks them)
 converted_sets = set()
 
@@ -9185,8 +9570,21 @@ def convert_loot_table(data, items, state=None, silk=False):
             # an added count (Fortune's bonus, add true) is not carried; the base count is
             if fn == "set_count" and not function.get("add"): functions.append({"function": "set_count", "count": loot_number(function.get("count"))})
             elif fn == "enchant_randomly": functions.append({"function": "enchant_randomly"})
+            # EnchantWithLevelsFunction: its levels, from every enchantment when no options narrow it (the ruins' book at 30,
+            # its old "treasure" flag the 1.21 codec does not read), so Bedrock's treasure pool unless it names the table's
+            elif fn == "enchant_with_levels":
+                functions.append({"function": "enchant_with_levels", "levels": loot_number(function.get("levels")), "treasure": function.get("options") != "#minecraft:in_enchanting_table"})
+            # SetPotionFunction as Bedrock's potion data value (the coves' water breathing 19, the long one 20)
+            elif fn == "set_potion" and function.get("id", "").split(":")[-1] in POTION_DATA:
+                functions.append({"function": "set_data", "data": POTION_DATA[function["id"].split(":")[-1]]})
+            # SetItemDamageFunction: the durability left as a share of the whole, clamped to 0 to 1 (the coves' bow, 10 to 38, comes whole)
+            elif fn == "set_damage" and not function.get("add"):
+                damage = function.get("damage", 1)
+                low, high = (damage.get("min", 0), damage.get("max", 1)) if isinstance(damage, dict) else (damage, damage)
+                functions.append({"function": "set_damage", "damage": {"min": min(1.0, max(0.0, float(low))), "max": min(1.0, max(0.0, float(high)))}})
             elif fn == "set_components" and "cobblemon:tm_move" in function.get("components", {}):
                 name = f"cobblemon:tm_{function['components']['cobblemon:tm_move'].get('move', '')}"
+        if name.startswith("minecraft:"): name = bedrock_drop_item(name) or name   # Bedrock's id (cobweb is web)
         if name.startswith("cobblemon:") and name not in items: return []
         out = {"type": "item", "name": name, "weight": entry.get("weight", 1)}
         if functions: out["functions"] = functions
@@ -9214,7 +9612,7 @@ def brush_entries(table):
 
 def create_fossil_formations(convert, parse_processors, invalid, unmapped):
     """Loot tables, templates, features and feature rules for the fossil formations; returns how many."""
-    items = defined_items()
+    items = pack_item_ids()   # the blocks too: the common tables' Big Root (weight 6) is one
     fresh(lootFossilsBedrock)
     for path in glob.glob(f"{cobblemonData}/loot_table/fossils/**/*.json", recursive=True):
         rel = os.path.relpath(path, f"{cobblemonData}/loot_table/fossils").replace(os.sep, "/")
@@ -9836,10 +10234,14 @@ def create_fishing():
     baits = spawn_baits()
     snacks = snack_spawns()
     world, special = special_spawns()
-    # BestSpawnerConfig.pokeSnackBuckets, the rarity buckets a Poke Snack's spawner rolls
+    # BestSpawnerConfig.fishingBuckets and pokeSnackBuckets, the rarity buckets the rod's spawner (FishingSpawnerFactory)
+    # and a Poke Snack's spawner (PokeSnackSpawnerFactory) roll, flatter than the world's
     with open(f"{cobblemonRepo}/common/src/main/kotlin/com/cobblemon/mod/common/api/spawning/preset/BestSpawnerConfig.kt", encoding="utf-8") as file:
-        block = re.search(r"pokeSnackBuckets\s*=\s*mutableMapOf\((.*?)\)", file.read(), re.S).group(1)
-    snack_buckets = {k: float(v) for k, v in re.findall(r'"([\w-]+)"\s+to\s+([\d.]+)F', block)}
+        config = file.read()
+    def config_buckets(name):
+        block = re.search(name + r"\s*=\s*mutableMapOf\((.*?)\)", config, re.S).group(1)
+        return {k: float(v) for k, v in re.findall(r'"([\w-]+)"\s+to\s+([\d.]+)F', block)}
+    fishing_buckets, snack_buckets = config_buckets("fishingBuckets"), config_buckets("pokeSnackBuckets")
     egg_groups = {}
     for spawn in spawns + snacks:
         species = species_for(spawn["entity"].split(":p", 1)[1]) or {}
@@ -9851,6 +10253,7 @@ def create_fishing():
         file.write("export const FISHING_SPAWNS = " + json.dumps(spawns) + ";" + chr(10))
         file.write("export const BIOME_TAGS = " + json.dumps(vanilla_biome_tags()) + ";" + chr(10))
         file.write("export const BUCKETS = " + json.dumps(BUCKET_WEIGHTS) + ";" + chr(10))
+        file.write("export const FISHING_BUCKETS = " + json.dumps(fishing_buckets) + ";" + chr(10))
         file.write("export const ROD_TREASURE = " + json.dumps(treasure) + ";" + chr(10))
         file.write("export const BAITS = " + json.dumps(baits, separators=(",", ":")) + ";" + chr(10))
         file.write("export const FISH_EGG_GROUPS = " + json.dumps(egg_groups, separators=(",", ":")) + ";" + chr(10))
@@ -17097,20 +17500,23 @@ def check_pokemon_complete():
     return len(missing)
 
 
-def check_spawn_balance(share=0.05):
+def check_spawn_balance(share=0.2):
     """Bedrock makes one weighted pick per population pool, so a species whose weights dwarf the rest is the
     only thing anyone meets. Dratini's raw Cobblemon weights once made it 62 percent of water_animal on their
-    own. This reports any species holding more than `share` of its pool, any weight outside the 1 to 240 band
-    vanilla keeps to, and any Nether spawn left on the surface, where it can never fire."""
+    own. This reports any species holding more than `share` of its pool, any weight outside the 1 to SPAWN_CAP band
+    normalise_weights keeps to (times the most a condition's weight multipliers make, its top in spawn_multipliers.js,
+    which the script thins again), and any Nether spawn left on the surface, where it can never fire."""
     pools, problems = {}, []
+    with open(f"{scriptsBedrock}/spawn_multipliers.js", encoding="utf-8") as file: tops = json.loads(re.search(r"SPAWN_MULTIPLIERS = (.*);", file.read()).group(1))
     for path in glob.glob(f"{spawnRulesBedrock}/*.json"):
         name = os.path.basename(path)[:-len(".json")]
         with open(path, encoding="utf-8") as file: rules = json.load(file)["minecraft:spawn_rules"]
         pools.setdefault(rules["description"].get("population_control"), {})[name] = sum(
             condition["minecraft:weight"]["default"] for condition in rules["conditions"])
         for condition in rules["conditions"]:
-            weight = condition["minecraft:weight"]["default"]
-            if not 1 <= weight <= max(SPAWN_TOTALS.values()): problems.append(f"  {name}: weight {weight} outside 1..{max(SPAWN_TOTALS.values())}")
+            weight, event = condition["minecraft:weight"]["default"], condition.get("minecraft:herd", {}).get("event", "")
+            top = tops[rules["description"]["identifier"]][int(event.rsplit("_", 1)[1])]["top"] if event.startswith("cobblemon:spawn_mult_") else 1
+            if not 1 <= weight <= round(SPAWN_CAP * top): problems.append(f"  {name}: weight {weight} outside 1..{round(SPAWN_CAP * top)}")
             if biome_tags_in(condition.get("minecraft:biome_filter", {})) & NETHER_TAGS and "minecraft:spawns_underground" not in condition:
                 problems.append(f"  {name}: a Nether spawn that only spawns on the surface")
     for population, totals in sorted(pools.items()):

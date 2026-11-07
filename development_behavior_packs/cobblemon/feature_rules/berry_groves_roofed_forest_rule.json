@@ -1,0 +1,68 @@
+{
+  "format_version": "1.13.0",
+  "minecraft:feature_rules": {
+    "description": {
+      "identifier": "cobblemon:berry_groves_roofed_forest_rule",
+      "places_feature": "cobblemon:berry_groves_roofed_forest"
+    },
+    "conditions": {
+      "placement_pass": "surface_pass",
+      "minecraft:biome_filter": {
+        "all_of": [
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "animal"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "forest"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "monster"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "no_legacy_worldgen"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "overworld"
+          },
+          {
+            "test": "has_biome_tag",
+            "operator": "==",
+            "value": "roofed"
+          }
+        ]
+      }
+    },
+    "distribution": {
+      "iterations": 1,
+      "scatter_chance": {
+        "numerator": 1,
+        "denominator": 25
+      },
+      "x": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      },
+      "y": "query.heightmap(variable.worldx, variable.worldz)",
+      "z": {
+        "distribution": "uniform",
+        "extent": [
+          1,
+          14
+        ]
+      }
+    }
+  }
+}
