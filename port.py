@@ -3903,14 +3903,19 @@ def normalise_weights(pairs):
     raw numbers carried over unchanged let a handful of species own it - Dratini alone was 62 percent of
     water_animal, and the top five 85 percent, which is why the same few Pokemon kept turning up.
 
-    Each species is given a total of its own, from the mix of buckets its entries use, and that total is
-    split between its conditions in proportion to their raw weight. Where a species prefers to spawn is
-    kept, how often it wins against other species is not left to an unbounded number."""
-    raw = [rule["minecraft:weight"]["default"] for rule, _ in pairs]
-    total = sum(raw) or 1.0
-    target = sum(r / total * SPAWN_TOTALS.get(spawn.get("bucket", "common"), 1) for r, (_, spawn) in zip(raw, pairs))
-    for (rule, _), r in zip(pairs, raw):
-        rule["minecraft:weight"]["default"] = max(1, round(target * r / total))
+    Each bucket a species spawns in is given that bucket's total (SPAWN_TOTALS), split between the species'
+    conditions in that bucket in proportion to their raw weight. Where a species prefers to spawn is kept,
+    how often it wins against other species is not left to an unbounded number, and a bucket's rarity
+    survives: splitting one total across buckets by raw weight used to hand Tsareena's alpha herd (boss, raw
+    100) a weight of 60 against 19 for its common spawn (raw 0.1), so alpha herds came six times as often as
+    Cobblemon's boss bucket (0.25 of 100) has them and the species itself was rarely met on its own."""
+    by_bucket = {}
+    for rule, spawn in pairs: by_bucket.setdefault(spawn.get("bucket", "common"), []).append(rule)
+    for bucket, rules in by_bucket.items():
+        raw = [rule["minecraft:weight"]["default"] for rule in rules]
+        total = sum(raw) or 1.0
+        for rule, r in zip(rules, raw):
+            rule["minecraft:weight"]["default"] = max(1, round(SPAWN_TOTALS.get(bucket, 1) * r / total))
 
 
 def biome_filter_for(biome_ids):
