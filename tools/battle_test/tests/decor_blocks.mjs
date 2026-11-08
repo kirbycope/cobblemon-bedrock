@@ -99,8 +99,11 @@ check("a hit from above measures across x and z", DB.targetPower({ x: 3.5, y: 5,
 }
 // CampfireBlock.neighborChanged
 {
-    const w = grid({ "0,0,0": ["cobblemon:campfire_red", { "cobblemon:lid": false, "cobblemon:powered": false }], "1,0,0": ["minecraft:redstone_block", { power: 15 }] });
-    check("redstone power shuts the pot's lid", DB.potRedstone(w.block(0, 0, 0)) && w.state(0, 0, 0, "cobblemon:lid") === true && w.state(0, 0, 0, "cobblemon:powered") === true);
+    // the pot's last power is the script's, not a cobblemon:powered state (which doubled the pots' permutations)
+    const w = grid({ "0,0,0": ["cobblemon:campfire_red", { "cobblemon:lid": false }], "1,0,0": ["minecraft:air", {}] });
+    check("a pot first seen only notes its power", !DB.potRedstone(w.block(0, 0, 0)) && w.state(0, 0, 0, "cobblemon:lid") === false);
+    w.at.set("1,0,0", { typeId: "minecraft:redstone_block", states: { power: 15 } });
+    check("redstone power shuts the pot's lid", DB.potRedstone(w.block(0, 0, 0)) && w.state(0, 0, 0, "cobblemon:lid") === true && w.state(0, 0, 0, "cobblemon:powered") === undefined);
     check("and nothing changes while it stays", !DB.potRedstone(w.block(0, 0, 0)));
     w.at.set("1,0,0", { typeId: "minecraft:air", states: {} });
     check("its loss opens the lid", DB.potRedstone(w.block(0, 0, 0)) && w.state(0, 0, 0, "cobblemon:lid") === false);
@@ -134,7 +137,9 @@ const hasPerm = (b, cond, component) => !!b?.permutations?.some((p) => p.conditi
     check("the Ring Target has power 0 to 15", ring?.description.states["cobblemon:power"]?.length === 16 && hasPerm(ring, "power') == 15", "minecraft:redstone_producer"));
     check("the Damaged Monitor starts off and glitches at light 10", monitor?.description.states["cobblemon:screen"]?.[0] === "off" && hasPerm(monitor, "glitching", "minecraft:light_emission") && "cobblemon:damaged_monitor" in (monitor?.components ?? {}));
     check("the honeyed log and Wistensu have their components", "cobblemon:slathered_log" in (block("saccharine_log_slathered")?.components ?? {}) && "cobblemon:wistensu" in (block("wistensu")?.components ?? {}) && "cobblemon:pauvillea" in (block("pauvillea")?.components ?? {}));
-    check("the campfire pot has its powered state", block("campfire_red")?.description.states["cobblemon:powered"]?.length === 2 && "cobblemon:campfire_pot" in (block("campfire_red")?.components ?? {}));
+    // no powered or cooking state: each doubled the 14 pots' permutations and neither is drawn (potRedstone keeps the power)
+    check("the campfire pot has its component and no powered or cooking state", !("cobblemon:powered" in (block("campfire_red")?.description.states ?? {}))
+          && !("cobblemon:cooking" in (block("campfire_red")?.description.states ?? {})) && "cobblemon:campfire_pot" in (block("campfire_red")?.components ?? {}));
 }
 {
     const herb = block("revival_herb");

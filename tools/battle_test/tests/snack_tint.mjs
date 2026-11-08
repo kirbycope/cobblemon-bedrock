@@ -21,10 +21,14 @@ const d = (a, b) => a.reduce((s, v, i) => s + (v - b[i]) ** 2, 0), chosen = PALE
 check("two mix with the first at 70%", d(chosen, mix) <= d(DYES.RED, mix) && d(chosen, mix) <= d(DYES.BLUE, mix), `${chosen} for ${mix}`);
 check("a non-seasoning counts for nothing", M.snackTint(["minecraft:dirt", lime]) === M.snackTint([lime]));
 
-check("a cake's tint is one of the 16 dyes", M.snackTint([byColour("RED"), byColour("BLUE")], 16) < 16);
-// Bedrock gives a block 16 bits of states: the cake's candles, bites, facing and light leave room for 16 colours
+// Bedrock gives a block 16 bits of states. The cake is not tinted: a 16-colour tint made it 36,864 permutations, which
+// with the rest of 1.0.556 left phones unable to load their worlds (tools/check_block_permutations.py)
 const bits = (states) => Object.values(states).reduce((n, v) => n + Math.ceil(Math.log2(Array.isArray(v) ? v.length : v.values.max - v.values.min + 1)), 0);
-for (const [name, colours] of [["poke_snack", 64], ["poke_cake", 16]]) {
+{
+    const cake = JSON.parse(readFileSync(pack("development_behavior_packs/cobblemon/blocks/poke_cake.json"), "utf-8"))["minecraft:block"];
+    check("poke_cake has no tint state or tint permutations", !("cobblemon:tint_lo" in cake.description.states) && !cake.permutations.some((p) => p.condition.includes("tint")));
+}
+for (const [name, colours] of [["poke_snack", 64]]) {
     const block = JSON.parse(readFileSync(pack(`development_behavior_packs/cobblemon/blocks/${name}.json`), "utf-8"))["minecraft:block"];
     const tints = block.permutations.filter((p) => p.condition.includes("cobblemon:tint_lo"));
     const states = { ...block.description.states, ...(block.description.traits?.["minecraft:placement_direction"] ? { direction: [0, 1, 2, 3] } : {}) };

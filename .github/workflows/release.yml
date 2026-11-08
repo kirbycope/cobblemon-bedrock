@@ -33,6 +33,9 @@ jobs:
       - name: Install Pillow
         run: python3 -m pip install pillow
 
+      - name: Check block permutations
+        run: python3 tools/check_block_permutations.py
+
       - name: Build cobblemon-bedrock.mcaddon
         run: python3 tools/build_addon.py
 

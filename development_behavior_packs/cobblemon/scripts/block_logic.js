@@ -310,11 +310,12 @@ export function fossilSignals(st, fossils = D.FOSSILS ?? { materialToStart: 128,
     const monitor = st.done ? 15 : st.left > 0 ? Math.max(1, 15 - Math.floor((st.left * 15) / fossils.reviveSeconds)) : 0;
     return { tank, monitor };
 }
+// The monitor's signal has no state of its own: its screen gives it (port.py's add_comparator_output), each scanning
+// frame the level fossilSignals has at the frame's start, and a finished revival 15
 export function machineSignals(m, st) {
-    const { tank, monitor } = fossilSignals(st);
+    const { tank } = fossilSignals(st);
     quietState(m.tank, "cobblemon:signal", tank);
     try { quietState(m.tank.above(), "cobblemon:signal", tank); } catch (e) { }
-    quietState(m.monitor, "cobblemon:signal", monitor);
 }
 // the fossils drop from a broken machine unless it has started and has less than a second to go (timeRemaining -1
 // or 20 ticks and more)

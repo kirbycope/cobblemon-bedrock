@@ -3833,7 +3833,6 @@ system.runInterval(() => {
         if (!potColour(block.typeId)) { savePot(block, null); continue; }
         const data = potData(block), recipe = potRecipe(data.s.slice(1, 10)), lid = !!block.permutation.getState("cobblemon:lid");
         let progress = potProgress.get(key) ?? 0;
-        const before = progress > 0;
         const out = data.s[0];
         // the seasonings the recipe takes (its seasoningTag) and what they make of the result
         const filter = SEASONING_FILTERS[recipe?.tag] ?? [], seasoned = [10, 11, 12].filter((n) => data.s[n] && filter.includes(data.s[n][0]));
@@ -3858,8 +3857,7 @@ system.runInterval(() => {
                 playAt(block, "cobblemon.block.campfire_pot.cook");
             }
         }
-        potProgress.set(key, progress);
-        if (before !== progress > 0) setState(block, "cobblemon:cooking", progress > 0);
+        potProgress.set(key, progress);   // Java's COOKING, kept here: a block state for it would draw nothing
         // CampfireBlockEntity's loops: with something in it, the running sound while it cooks, the ambient one while it
         // waits; an empty pot is quiet (replayed every three seconds)
         if (system.currentTick % 60 === 0 && data.s.slice(1).some(Boolean)) playAt(block, progress > 0 ? "cobblemon.block.campfire_pot.active" : "cobblemon.block.campfire_pot.ambient");
@@ -10504,8 +10502,8 @@ world.beforeEvents.playerInteractWithBlock.subscribe((event) => {
 });
 // PokeSnackBlockEntity's tint: its seasonings' dye colours mixed (getColourMixFromColors: the first 70%, the rest sharing
 // 30%), drawn as the nearest of the palette's colours (SNACK_PALETTE, port.py's snack_palette); an unseasoned one is
-// the palette's first, white, which leaves it as it is. A cake has room in its block states for the first 16 alone,
-// the dyes
+// the palette's first, white, which leaves it as it is. A cake is not tinted: its tint states made the pack's block
+// permutations more than phones could load (port.py's check_block_permutations)
 function snackTint(seasonings, size = SNACK_PALETTE.length) {
     const colours = (seasonings ?? []).map((id) => DYE_COLOURS[SEASONINGS[id]?.colour]).filter(Boolean);
     if (!colours.length) return 0;
@@ -10515,16 +10513,13 @@ function snackTint(seasonings, size = SNACK_PALETTE.length) {
     SNACK_PALETTE.slice(0, size).forEach((p, k) => { const d = (p[0] - mix[0]) ** 2 + (p[1] - mix[1]) ** 2 + (p[2] - mix[2]) ** 2; if (d < near) { near = d; best = k; } });
     return best;
 }
-// a snack or cake placed takes the tint of the stack it came from
+// a snack placed takes the tint of the stack it came from
 function tintedSnack(event) {
     let item;
     try { item = event.player?.getComponent(EntityComponentTypes.Inventory)?.container?.getItem(event.player.selectedSlotIndex); } catch (e) { }
-    if (item?.typeId !== event.permutationToPlace.type.id) return;
-    const cake = item.typeId === "cobblemon:poke_cake", k = snackTint(stackSlot(item)?.[2]?.ing, cake ? 16 : SNACK_PALETTE.length);
-    try {
-        const tinted = event.permutationToPlace.withState("cobblemon:tint_lo", k & 15);
-        event.permutationToPlace = cake ? tinted : tinted.withState("cobblemon:tint_hi", k >> 4);
-    } catch (e) { }
+    if (item?.typeId !== "cobblemon:poke_snack" || item.typeId !== event.permutationToPlace.type.id) return;
+    const k = snackTint(stackSlot(item)?.[2]?.ing);
+    try { event.permutationToPlace = event.permutationToPlace.withState("cobblemon:tint_lo", k & 15).withState("cobblemon:tint_hi", k >> 4); } catch (e) { }
 }
 // setPlacedBy: the snack keeps the bait of the stack it was placed from
 function placeSnack(player, block) {
@@ -11429,7 +11424,7 @@ function growSaccharine(block) {
 const FLOWERS = new Set(["minecraft:dandelion", "minecraft:poppy", "minecraft:blue_orchid", "minecraft:allium", "minecraft:azure_bluet", "minecraft:red_tulip",
     "minecraft:orange_tulip", "minecraft:white_tulip", "minecraft:pink_tulip", "minecraft:oxeye_daisy", "minecraft:cornflower", "minecraft:lily_of_the_valley",
     "minecraft:wither_rose", "minecraft:sunflower", "minecraft:lilac", "minecraft:rose_bush", "minecraft:peony", "minecraft:torchflower", "minecraft:pitcher_plant",
-    "minecraft:pink_petals", "minecraft:flowering_azalea", "minecraft:flowering_azalea_leaves", "minecraft:cherry_leaves", "minecraft:mangrove_propagule"]);
+    "minecraft:pink_petals", "minecraft:flowering_azalea", "minecraft:azalea_leaves_flowered", "minecraft:cherry_leaves", "minecraft:mangrove_propagule"]);
 // BlockTags.FLOWERS within two blocks every way
 function flowerNear(dim, { x, y, z }) {
     for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) for (let dz = -2; dz <= 2; dz++) {
@@ -14417,7 +14412,6 @@ system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRe
     });
     // a lit candle on a Poke Cake flickers with a candle's flame (AbstractCandleBlock.addParticlesAndSound)
     blockComponentRegistry.registerCustomComponent("cobblemon:poke_cake", {
-        beforeOnPlayerPlace(event) { tintedSnack(event); },
         onTick({ block }) {
             if (!block.permutation.getState("cobblemon:lit")) return;
             try { block.dimension.spawnParticle("minecraft:candle_flame_particle", { x: block.x + 0.5, y: block.y + 0.4375 + 0.5, z: block.z + 0.5 }); } catch (e) { }
