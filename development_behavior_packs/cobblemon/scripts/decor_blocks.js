@@ -287,11 +287,15 @@ world.afterEvents.entityHitBlock.subscribe(({ damagingEntity, hitBlock }) => {
 });
 
 // CampfireBlock.neighborChanged: redstone power shuts the pot's lid and its loss opens it again (toggleLid(!isPowered)),
-// each with the lid's sound; checked every half second, since a block gets no word of its neighbours
+// each with the lid's sound; checked every half second, since a block gets no word of its neighbours. The power last
+// seen is kept here rather than in a block state, which would double the pots' permutations; a pot first seen (placed,
+// or the world just loaded) only has its power noted, so the lid moves on a change, as neighborChanged does
+const potPower = new Map();   // "dimension|x,y,z" -> powered
 export function potRedstone(block) {
-    const powered = redstonePowered(block), was = !!state(block, "cobblemon:powered");
-    if (powered === was) return false;
-    try { block.setPermutation(block.permutation.withState("cobblemon:powered", powered).withState("cobblemon:lid", powered)); } catch (e) { return false; }
+    const key = `${block.dimension.id}|${block.x},${block.y},${block.z}`, powered = redstonePowered(block), was = potPower.get(key);
+    potPower.set(key, powered);
+    if (was === undefined || powered === was) return false;
+    try { block.setPermutation(block.permutation.withState("cobblemon:lid", powered)); } catch (e) { return false; }
     playAt(block, powered ? "cobblemon.block.campfire_pot.close" : "cobblemon.block.campfire_pot.open");
     return true;
 }

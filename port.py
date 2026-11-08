@@ -8094,7 +8094,7 @@ GALARICA_SOILS = ["minecraft:sand", "minecraft:red_sand", "minecraft:dirt", "min
 # CropBlock's farmland, for MintBlock and VivichokeBlock, and MedicinalLeekBlock's medicinal_leek_plantable: the block
 # below is a water source, or a waterlogged mangrove root, slab, trapdoor or leaf block (its fluid must be full water)
 CROPS_ON_FARMLAND = {"red_mint", "blue_mint", "cyan_mint", "pink_mint", "green_mint", "white_mint", "vivichoke_seeds"}
-LEEK_FLOORS = ["minecraft:water", "minecraft:mangrove_roots"] + [f"minecraft:{w}_leaves" for w in ("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "azalea", "flowering_azalea", "pale_oak")]
+LEEK_FLOORS = ["minecraft:water", "minecraft:mangrove_roots"] + [f"minecraft:{w}" for w in ("oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves", "acacia_leaves", "dark_oak_leaves", "mangrove_leaves", "cherry_leaves", "azalea_leaves", "azalea_leaves_flowered", "pale_oak_leaves")]   # azalea_leaves_flowered: Bedrock's name for Java's flowering_azalea_leaves
 terrain_textures = {}
 
 
@@ -8489,7 +8489,9 @@ def create_campfire_blocks():
                                                             "minecraft:transformation": {"rotation": [0, -ry % 360, 0]}}})
         block = {"format_version": "1.21.90", "minecraft:block": {
             "description": {"identifier": f"cobblemon:{kind}_{colour}", "menu_category": {"category": "none"},
-                            "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True], "cobblemon:cooking": [False, True],
+                            # no cooking state: Java's COOKING changes nothing drawn, and every state multiplies the
+                            # block's permutations (check_block_permutations); the script keeps the progress itself
+                            "states": {"cobblemon:lid": [False, True], "cobblemon:occupied": [False, True],
                                        # the broth's colour in two states, since a state holds at most 16 values
                                        "cobblemon:broth_hi": {"values": {"min": 0, "max": (len(mixes) - 1) // 16}}, "cobblemon:broth_lo": {"values": {"min": 0, "max": 15}}},
                             "traits": {"minecraft:placement_direction": {"enabled_states": ["minecraft:cardinal_direction"]}}},
@@ -10506,7 +10508,21 @@ def add_comparator_output():
     so this signal also powers redstone dust and the like beside the machine directly, which Java's does not."""
     # and the fossil machine's (FossilMultiblockStructure.getAnalogOutputSignal: the tank's material in fifteenths of
     # 128, the monitor's progress to 15) and the Disc Shelf's (DiscShelfBlock: its filled slots, to 14), set by block_logic.js
-    for name, top in (("healing_machine", 10), ("tm_machine", 15), ("monitor", 15), ("restoration_tank", 15), ("disc_shelf", 14)):
+    # The monitor's progress is read off its screen instead of a cobblemon:signal state of its own: the screen,
+    # disc and facing states already give it 3,584 permutations and a 16-level signal would make that 57,344, most
+    # of the pack's budget (check_block_permutations). Each scanning frame gives the signal fossilSignals
+    # (block_logic.js) has at the frame's start, max(1, ceil(15 * n / 9)), and a finished revival 15.
+    path = f"{blocksBedrock}/monitor.json"
+    with open(path, encoding="utf-8") as file: block = json.load(file)
+    block["format_version"] = "1.21.120"
+    body = block["minecraft:block"]
+    body["description"].get("states", {}).pop("cobblemon:signal", None)
+    body["permutations"] = [p for p in body.get("permutations", []) if "cobblemon:signal" not in p["condition"]]
+    levels = {f"scanning_{n}": max(1, -(-15 * n // 9)) for n in range(9)} | {"music": 15, "locked": 15}
+    body["permutations"] += [{"condition": f"q.block_state('cobblemon:screen') == '{screen}'",
+                              "components": {"minecraft:redstone_producer": {"power": power}}} for screen, power in levels.items()]
+    with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(block, indent=2))
+    for name, top in (("healing_machine", 10), ("tm_machine", 15), ("restoration_tank", 15), ("disc_shelf", 14)):
         path = f"{blocksBedrock}/{name}.json"
         with open(path, encoding="utf-8") as file: block = json.load(file)
         block["format_version"] = "1.21.120"   # redstone_producer is stable from 1.21.120
@@ -10638,7 +10654,8 @@ def add_decor_components():
     def slathered(block): block["components"]["cobblemon:slathered_log"] = {}; ticking(block, 20, 40)
     patch("saccharine_log_slathered", slathered)
     def campfire_pot(block):
-        block["description"]["states"]["cobblemon:powered"] = [False, True]
+        # the redstone power last seen is the script's (potRedstone), not a cobblemon:powered state, which would
+        # double the 14 pots' permutations for nothing drawn
         block["components"]["cobblemon:campfire_pot"] = {}; ticking(block, 10, 10)
     for colour in CAMPFIRE_POT_COLOURS:
         patch(f"campfire_{colour}", campfire_pot)
@@ -12467,10 +12484,11 @@ def model_block(name, identifier, items, category="items"):
     candle_bones, candle_instances = cake_candle_bones() if name == "poke_cake" else ([], {})
     # two states, as one may hold at most 16 values: the candle is candle_hi * 16 + candle_lo
     if candle_bones: states.update({"cobblemon:candle_hi": [0, 1], "cobblemon:candle_lo": {"values": {"min": 0, "max": 15}}, "cobblemon:lit": [False, True]})
-    # the snack's tint, a palette colour (snack_palette) as tint_hi * 16 + tint_lo, set by the script when it is placed
-    # (the cake's candles, bites, facing and light leave it 4 bits of Bedrock's 16, so it takes the 16 dyes, tint_lo alone)
+    # the snack's tint, a palette colour (snack_palette) as tint_hi * 16 + tint_lo, set by the script when it is placed.
+    # The cake is not tinted: its bites, facing, 18 candles and light are already 2,304 permutations, and a 16-colour
+    # tint made it 36,864, which with the rest of 1.0.556 took the pack past what phones could load
+    # (check_block_permutations)
     if name == "poke_snack": states.update({"cobblemon:tint_hi": list(range(SNACK_TINTS // 16)), "cobblemon:tint_lo": {"values": {"min": 0, "max": 15}}})
-    if name == "poke_cake": states.update({"cobblemon:tint_lo": {"values": {"min": 0, "max": 15}}})
     for props_v, model_ref, rx, ry in variants:
         model = java_model(model_ref)
         if not model or not model.get("elements"): continue
@@ -12555,11 +12573,11 @@ def model_block(name, identifier, items, category="items"):
                        "minecraft:destructible_by_mining": {"seconds_to_destroy": 0.5}, "minecraft:light_dampening": 0,
                        "minecraft:loot": block_loot(name) if "amount" not in props else base["minecraft:loot"], **extra},
         "permutations": ([pm for pm in permutations if pm["condition"] != "1"] or permutations)
-                        + ([{"condition": (f"q.block_state('cobblemon:tint_hi') == {k // 16} && " if name == "poke_snack" else "") + f"q.block_state('cobblemon:tint_lo') == {k % 16}",
+                        + ([{"condition": f"q.block_state('cobblemon:tint_hi') == {k // 16} && q.block_state('cobblemon:tint_lo') == {k % 16}",
                               "components": {"minecraft:material_instances": tinted}}
                              for k, tinted in enumerate(snack_tint_materials({n: m for pm in permutations for n, m in pm["components"]["minecraft:material_instances"].items()}))
-                             if k and (name == "poke_snack" or k < 16)]
-                            if name in ("poke_snack", "poke_cake") else [])
+                             if k]
+                            if name == "poke_snack" else [])
                         + ([{"condition": "q.block_state('cobblemon:lit')", "components": {"minecraft:light_emission": 3}}] if name == "poke_cake" else [])}}
     if name in ROOT_SHAPES:
         low, high = ROOT_SHAPES[name]
@@ -17540,6 +17558,18 @@ def check_structure_blocks():
     print(f"Structure block check: {sum(len(set(v)) for v in found.values())} entries in {len(found)} structures would load as '?'.")
 
 
+def check_block_permutations():
+    """Every block state multiplies its block's permutations, and Bedrock builds them all for every world: past 65,536
+    it warns, and 1.0.556's 194,885 left phones unable to load their worlds. A run over the budget stops here, before
+    the version bump, so it cannot be released (tools/check_block_permutations.py, which the release workflow runs too)."""
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    import check_block_permutations as cbp
+    rows = cbp.count(blocksBedrock)
+    total = sum(n for n, _ in rows)
+    print(f"Block permutations: {total:,} (budget {cbp.BUDGET:,}); heaviest {', '.join(f'{i} {n:,}' for n, i in rows[:5])}.")
+    if total > cbp.BUDGET: sys.exit(f"Block permutations {total:,} are over the budget of {cbp.BUDGET:,}: see tools/check_block_permutations.py.")
+
+
 fix_only = False   # python port.py --fix: the fixes and the generated files only, nothing copied or downloaded afresh
 
 
@@ -17646,6 +17676,7 @@ def main():
     check_pokemon_complete()
     check_spawn_balance()
     check_structure_blocks()
+    check_block_permutations()
     write_flipbooks()   # after every block's textures
     bump_pack_versions()
 
