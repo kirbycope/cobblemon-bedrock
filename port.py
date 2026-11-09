@@ -1293,7 +1293,7 @@ def pose_plan(pokemon, pokemonName):
         has_look = bool(look_animation(pokemon, pokemonName)) or model_has_head(pokemon, pokemonName)
         flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
         plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
-                                ambient_particles(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}),
+                                client_ambient(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}),
                                 seat_shift=lambda pose: ride_poses.setdefault(pokemon, []).append(pose) or seat_shift(pokemon, pose))
         plan["source"] = found["source"]
     pose_plans[pokemon] = plan
@@ -2050,7 +2050,7 @@ def create_animation_controllers():
         water_idle = first("water_idle", "surfacewater_idle", "water_swim"); water_swim = first("water_swim", "surfacewater_swim", "water_idle")
         sleep = first("sleep", "ground_sleep", "water_sleep")
         states = {}
-        ambient = ambient_particles(pokemon, pokemonName)
+        ambient = client_ambient(pokemon, pokemonName)
         def state(name, animations, transitions):
             if animations and animations[0]:
                 states[name] = {"animations": animations, "transitions": transitions, "blend_transition": 0.2}
@@ -4693,22 +4693,68 @@ ambient_cache = {}
 
 
 def ambient_particles(pokemon, pokemonName):
-    """{short animation name: [particle entries]} for effects keyed at time 0 of a looping animation. Bedrock
-    fires an animation's keyframe particles once, so a constant effect (Slugma's bubbles) is spawned by the
-    controller state that plays the animation as well (the keyframe still fires once at spawn, which is harmless)."""
+    """{short animation name: [particle entries]} for effects keyed at time 0 of a looping animation: Cobblemon's
+    pose particles (PosableState.poseParticles), one emitter started when the pose begins and stopped when it ends.
+    Read from Cobblemon's own file, since strip_server_ambient_keyframes takes the ones fired server side out of the
+    pack's copy."""
     if pokemon in ambient_cache: return ambient_cache[pokemon]
     load_particle_ids()
     path = animation_file(pokemon, pokemonName)
     result = ambient_cache[pokemon] = {}
     if not path: return result
-    with open(path, encoding="utf-8") as file: data = json.load(file)
+    source = os.path.join(animationsMain, os.path.relpath(path, animationsBedrock))
+    with open(source if os.path.exists(source) else path, encoding="utf-8") as file: data = json.load(file)
     for name, anim in data.get("animations", {}).items():
         if not anim.get("loop") or "0.0" not in anim.get("particle_effects", {}): continue
         keyframe = anim["particle_effects"]["0.0"]
         entries = [e for e in (keyframe if isinstance(keyframe, list) else [keyframe]) if isinstance(e, dict) and e.get("locator") and f"cobblemon:{e.get('effect')}" in particle_ids]
         if not entries: continue
-        result[name[name.rindex(".")+1:]] = [{"effect": e["effect"], "locator": e["locator"]} for e in entries]
+        name = sanitize_animation_name(name)
+        # one emitter per effect and locator: setPose skips a keyframe the same as one already running (Gastly lists its gas twice)
+        result[name[name.rindex(".")+1:]] = [dict(zip(("effect", "locator"), k)) for k in dict.fromkeys((e["effect"], e["locator"]) for e in entries)]
     return result
+
+
+def server_ambient(pokemon, pokemonName):
+    """The (effect, locator) pairs create_ambient_particles fires with /particle."""
+    return {(e["effect"], e["locator"]) for _, effects in ambient_groups(pokemon, pokemonName).values() for e in effects}
+
+
+def client_ambient(pokemon, pokemonName):
+    """ambient_particles less the effects fired server side. A controller state's particle draws on a local world,
+    where the player hosts, but not from this dedicated server, so one fired both ways drew twice on a phone."""
+    served = server_ambient(pokemon, pokemonName)
+    kept = {a: [e for e in entries if (e["effect"], e["locator"]) not in served] for a, entries in ambient_particles(pokemon, pokemonName).items()}
+    return {a: entries for a, entries in kept.items() if entries}
+
+
+def strip_server_ambient_keyframes():
+    """Takes the time-0 keyframe of an effect fired server side out of the looping animation it came from. Bedrock
+    fires a looping animation's keyframes on every loop, and an ambient emitter never ends (Gastly's gas is
+    emitter_lifetime_expression 1), so each loop left two more of them on the Pokemon for as long as it was loaded."""
+    count = 0
+    for pokemon in pokemons:
+        pokemonName = pokemon[pokemon.index("_")+1:]
+        served = server_ambient(pokemon, pokemonName)
+        path = animation_file(pokemon, pokemonName)
+        if not served or not path: continue
+        with open(path, encoding="utf-8") as file: text = file.read()
+        data = json.loads(text); indent = "\t" if text.startswith("{\n\t") else 2   # the layout the file already has
+        changed = False
+        for anim in data.get("animations", {}).values():
+            effects = anim.get("particle_effects", {})
+            if not anim.get("loop") or "0.0" not in effects: continue
+            keyframe = effects["0.0"] if isinstance(effects["0.0"], list) else [effects["0.0"]]
+            kept = [e for e in keyframe if not (isinstance(e, dict) and (e.get("effect"), e.get("locator")) in served)]
+            if len(kept) == len(keyframe): continue
+            changed = True
+            if kept: effects["0.0"] = kept
+            else: effects.pop("0.0")
+            if not effects: anim.pop("particle_effects")
+        if changed:
+            count += 1
+            with open(path, "w", encoding="utf-8") as file: file.write(json.dumps(data, indent=indent))
+    print(f"Strip server ambient keyframes complete: {count} file(s) changed.")
 
 
 def animation_effects(pokemon, pokemonName):
@@ -17597,6 +17643,7 @@ def main():
     write_gendered_interactions()   # what create_behavior_entities found
     create_poke_mart_clerk()   # after the entity folders are written afresh
     create_ambient_particles()
+    strip_server_ambient_keyframes()   # after the controllers, which read Cobblemon's own files
     create_loot_tables()
     create_spawn_rules()
     create_sounds()
