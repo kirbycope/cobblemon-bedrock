@@ -31,8 +31,10 @@ check("the held item's texture comes last, unpadded", info.item.startsWith("text
 const old = [{ t: "cobblemon:p0004_charmander", v: 0, lv: 5, k: {} }, null, rec];
 check("a stored Pokemon without IVs rolls them once", M.rollMissingIvs(old) && JSON.parse(old[0].k["cobblemon:ivs"]).hp >= 0 && !M.rollMissingIvs(old));
 
-// the screen: every slot button, the box's 30 (in both option layouts) and the party's 6, draws the preview while hovered or
-// pressed and not at rest, at the screen's corner, and only while its text is not empty
+// the screen: every slot button, the box's 30 and the party's 6, draws the preview while hovered or pressed and not at rest,
+// at the screen's corner, and only while its text is not empty. Pressed shows the hover child (pressed_control) rather
+// than a copy of it, and the box's 30 shown with the options draw none: every control here is built for every form the
+// game opens
 const ui = JSON.parse(readFileSync(new URL("../../../development_resource_packs/cobblemon/ui/server_form.json", import.meta.url), "utf-8"));
 const found = {};
 (function walk(node) {
@@ -49,7 +51,11 @@ const ok = (b) => {
     const states = Object.fromEntries(b.controls.map((s) => Object.entries(s)[0]));
     const preview = (s) => s?.controls?.find((c) => c.preview)?.preview;
     const p = preview(states.hover);
-    return p && preview(states.pressed) && !preview(states.default) && p.offset[0] <= 0 && p.offset[1] <= 0
+    return p && b.pressed_control === "hover" && !states.pressed && !preview(states.default) && p.offset[0] <= 0 && p.offset[1] <= 0
         && JSON.stringify(p.bindings).includes("(not (#form_button_text = ''))");
 };
-check("all 36 slots and the 30 shown with the options preview their Pokemon on hover", slots.length === 66 && slots.every(([, list]) => list.every(ok)), `${slots.length} slot buttons`);
+const plain = (b) => !b.controls.some((s) => Object.values(s)[0]?.controls?.some((c) => c.preview));
+check("all 36 slots preview their Pokemon on hover", slots.filter(([k]) => !k.endsWith("_opts")).length === 36
+      && slots.filter(([k]) => !k.endsWith("_opts")).every(([, list]) => list.every(ok)));
+check("the 30 shown with the options draw no preview", slots.filter(([k]) => k.endsWith("_opts")).length === 30
+      && slots.filter(([k]) => k.endsWith("_opts")).every(([, list]) => list.every(plain)));
