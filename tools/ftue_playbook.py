@@ -122,17 +122,32 @@ def starter_screen(t):
     if time.time() - began > 120:
         t.finding(f"The first load of the new world took {(time.time() - began) / 60:.1f} minutes on the Loading screen.")
     if "content log" in found[2].lower():
-        t.finding("A clean install's first join opens the Content Log over the world (the pack has content errors).")
-        c.shot("content_log")
+        # it covers the whole screen, the starter screen behind it too, until it is closed
+        close_content_log(t, "on the first join")
         found = c.wait("starter", "choose", "kanto", timeout=60, why="the starter screen behind the content log")
     c.shot("starter_screen")
     return found[2]
+
+
+def close_content_log(t, when):
+    """The client opens its Content Log History window over the world on joining, even empty, and it can come up after
+    the starter screen is already showing; every press then lands in it (three tries at the starter screen pressed into
+    it and the run stopped). B closes it. True if it was open."""
+    c = t.client
+    if not c.find("content log history", timeout=1): return False
+    log = t.store.content_log()   # the newest content log's path
+    errors = [l for l in open(log, encoding="utf-8", errors="replace") if "error" in l.lower()] if log else []
+    t.finding(f"The Content Log History window opened over the world {when}" + (f", with {len(errors)} error lines in the log." if errors else ", with nothing in it."))
+    c.shot("content_log")
+    t.connect_pad().press("b"); time.sleep(1.5)
+    return True
 
 
 @step("Pick a starter with the controller: Charmander, then I choose you!")
 def pick_starter(t):
     c, pad = t.client, t.connect_pad()
     c.park_mouse()
+    close_content_log(t, "as the starter screen came up")
     if not c.find("i choose you", "starter selection", timeout=5):
         t.finding("The starter screen was not open after the first join; sneaking twice (B, B) to open it as the Getting Started book says.")
         pad.press("b", "b", hold=0.1, gap=0.15)
@@ -143,6 +158,7 @@ def pick_starter(t):
     # The first press after the screen opens can be lost, which leaves the focus a row short (Cyndaquil, in Johto):
     # pressing a starter only shows it, so the moves are made again until the screen shows Charmander
     for attempt in range(3):
+        close_content_log(t, "while the starter was being picked")
         pad.press(*["up"] * (3 + attempt), "right"); time.sleep(0.4)
         c.shot("charmander_focused")
         pad.press("a"); time.sleep(1.5)
@@ -240,10 +256,8 @@ def join_server(t):
 
 @step("Server first join: the starter screen, Charmander chosen")
 def server_starter(t):
-    found = t.client.find("i choose you", "starter selection", "content log", timeout=120)
-    if found and "content log" in found[2].lower():
-        t.finding("The Content Log opened on first joining the server.")
-        t.connect_pad().press("b"); time.sleep(1.5)
+    t.client.find("i choose you", "starter selection", "content log", timeout=120)
+    close_content_log(t, "on first joining the server")
     return pick_starter(t)
 
 
