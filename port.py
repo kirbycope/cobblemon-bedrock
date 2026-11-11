@@ -13329,8 +13329,11 @@ def add_focus_links(ui):
     for screen, root in ui.items():
         if not screen.startswith("cobblemon_"): continue
         for p, panel in enumerate(panels(root)):
-            found = [(key, b) for key, b in buttons(panel.get("controls", []))
-                     if isinstance(b.get("offset"), list) and isinstance(b.get("size"), list) and all(isinstance(v, (int, float)) for v in b["offset"] + b["size"])]
+            every = list(buttons(panel.get("controls", [])))
+            # a focus twin (the PC's, create_pc_ui) shares its button's spot and takes its moves after, not a cell of its own
+            twins = [(key, b) for key, b in every if key.endswith("_f")]
+            found = [(key, b) for key, b in every if not key.endswith("_f")
+                     and isinstance(b.get("offset"), list) and isinstance(b.get("size"), list) and all(isinstance(v, (int, float)) for v in b["offset"] + b["size"])]
             if len(found) < 2 or any(k.startswith("focus_change_") for _, b in found for k in b): continue
             if len({(b.get("anchor_from"), b.get("anchor_to")) for _, b in found}) > 1: continue   # no common frame
             spots = {}
@@ -13356,6 +13359,12 @@ def add_focus_links(ui):
                         score = along + 2 * across
                         if best is None or score < best[0]: best = (score, ob["focus_identifier"])
                     if best: b[f"focus_change_{direction}"] = best[1]; linked += 1
+            by_key = dict(found)
+            for key, b in twins:
+                original = by_key.get(key[:-2])
+                if not original: continue
+                if original.get("focus_identifier"): b["focus_identifier"] = original["focus_identifier"] + "_f"
+                b.update({k: v for k, v in original.items() if k.startswith("focus_change_")})
     print(f"  focus links: {linked} D-pad moves named on the screens' buttons")
 
 
@@ -14017,7 +14026,11 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [(f"s{n}", 1) for n in range(36)] + [(f"q{n}", 1) for n in range(30)] \
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
     + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] \
-    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1), ("shiny", 1), ("status", 3), ("ilabel", 13)] + [("item", 0)]
+    + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1), ("shiny", 1), ("status", 3), ("ilabel", 13)] \
+    + [("focus", 2)] + [("item", 0)]
+# the buttons a reopened PC puts the focus back on when they were the last pressed (PC_FOCUS_RETURN): the 36 slots and the
+# box arrows, which a controller presses one after another; field "focus" names the one, two digits, or "--"
+PC_FOCUS_RETURN = list(range(38))
 # A slot button's own text, for StorageWidget's preview: while nothing is grabbed, the info panel shows the Pokemon
 # under the cursor (PCGUI.setPreviewPokemon on hover), which a controller's focus moves too (issue 70). The parts of the
 # info panel that change with the Pokemon, the page shown, and the held item's texture last
@@ -14390,13 +14403,39 @@ def create_pc_ui():
                 "bindings": [{"binding_name": "#title_text"}, {"binding_type": "view",
                              "source_property_name": f"(not ((#title_text - '{title}') = #title_text))", "target_property_name": "#visible"}],
                 "controls": controls + extra + [{"buttons": {"type": "collection_panel", "size": [349, 205], "collection_name": "form_buttons", "controls": buttons_here}}]}
-    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons + box_opts + info_arrow)
+    # The focus back where it was. Every choice reopens the form, and Bedrock gives a new screen's focus to the control
+    # with the highest default_focus_precedence, which is no binding's to set; with none, the box name bar took it after
+    # each pick and drop (issue 70's follow-up). So each button a controller presses one after another (PC_FOCUS_RETURN)
+    # has a twin on its spot with a precedence, shown only while the body's "focus" names it: the reopened form starts
+    # on the button last pressed. The twin sits beside the other buttons in the collection panel, since one nested in a
+    # panel there neither took the first focus after a drop nor followed its D-pad moves (tried November 2026); its one
+    # visibility binding joins the state its button shows in (the options' layout, the wallpaper list) to the focus field,
+    # compared once ("(opts + focus) = 'n11'"), an "or" in a visibility binding never showing. A twin carries its
+    # button's D-pad moves (add_focus_links copies them), which a hidden one never uses
+    def twin(control, n):
+        key, body = next(iter(control.items()))
+        copy = json.loads(json.dumps(body))
+        copy["default_focus_precedence"] = 10
+        shown = next((b for b in copy["bindings"] if b.get("target_property_name") == "#visible"), None)
+        state = re.fullmatch(r"\((.*) = '(\w)'\)", shown["source_property_name"]) if shown else None
+        if shown: copy["bindings"].remove(shown)
+        if not any(b.get("binding_name") == "#form_text" for b in copy["bindings"]): copy["bindings"].append({"binding_name": "#form_text"})
+        # a letter before the digits either way: compared bare, "37" = '37' never held (a box arrow's twin never showed,
+        # November 2026), which a string led by a letter does
+        source = f"(({state.group(1)} + {field('focus')}) = '{state.group(2)}{n:02d}')" if state else f"((('f' + {field('focus')})) = 'f{n:02d}')"
+        copy["bindings"].append({"binding_type": "view", "source_property_name": source, "target_property_name": "#visible"})
+        return {f"{key}_f": copy}
+    twins = [twin(c, int(re.match(r"button_(\d+)", next(iter(c))).group(1))) for c in buttons + box_opts
+             if int(re.match(r"button_(\d+)", next(iter(c))).group(1)) in PC_FOCUS_RETURN]
+    pc = screen("cbm:pc", [while_("n", c) for c in party_controls] + [wall_panel], buttons + box_opts + info_arrow + twins)
     pasture = screen("cbm:pasture", pasture_controls + [fixed("recall_all_l", "Recall All", (273, 165), 1.0, size=(70, 10), align="center", layer=12)], pasture_buttons)
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
         file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
         file.write("// a slot button's text, the Pokemon it previews (StorageWidget's hover preview)\n")
         file.write("export const PC_SLOT_LAYOUT = " + json.dumps(PC_SLOT_LAYOUT) + ";\n")
+        file.write("// the buttons the reopened form puts the focus back on when last pressed (the slots and the box arrows)\n")
+        file.write("export const PC_FOCUS_RETURN = " + json.dumps(PC_FOCUS_RETURN) + ";\n")
     print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon portraits")
     with open(f"{scriptsBedrock}/pc_layout.js", "a", encoding="utf-8") as file:
         file.write("export const PC_WALLPAPERS = " + json.dumps([[c, u] for c, _, u in PC_WALLPAPERS]) + ";\n")
