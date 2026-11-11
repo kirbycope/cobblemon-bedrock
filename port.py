@@ -14270,9 +14270,9 @@ def create_pc_ui():
     def spicture(name, folder, source, offset, size, layer=4, keep=False):
         return {name: {"type": "image", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": keep,
                        "anchor_from": "top_left", "anchor_to": "top_left", "bindings": sbound(f"('{T}/{folder}' + {source})", "#texture")}}
-    def spage(name, page, children):
+    def spage(name, shown, children):
         return {name: {"type": "panel", "size": [349, 205], "anchor_from": "top_left", "anchor_to": "top_left",
-                       "bindings": sbound(f"({sfield('page')} = '{page}')", "#visible"), "controls": children}}
+                       "bindings": sbound(shown, "#visible"), "controls": children}}
     preview_parts = [spicture("portrait", "icons/", sfield("portrait"), (9, 30), (60, 60), 3, True),
                      slabel("level", sfield("level"), (19, 1.5), size=(40, 10)),
                      slabel("name", sfield("name"), (12, 11.5), 0.75, size=(76, 10)),
@@ -14284,26 +14284,34 @@ def create_pc_ui():
                      {"item_icon": {"type": "image", "offset": [3, 98], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
                                     "bindings": sbound(sfield("item"), "#texture")}},
                      *[spicture(f"mark{i}", f"summary/mark{i}_", sfield(f"mark{i}"), (29 + 7 * i, 96.5), (6, 6), 5) for i in range(6)],
-                     spage("info_page", "i", [slabel("nature", sfield("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
+                     spage("info_page", f"({sfield('page')} = 'i')", [slabel("nature", sfield("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
                                               slabel("ability", sfield("ability"), (9, 154), 0.5, size=(63, 5), align="center"),
                                               *[slabel(f"move{n}", sfield(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]]),
-                     *[spage(f"{kind}_page", kind, [slabel(f"stat_v{i}", sfield(f"sv{i}"), (65 - 10, 139 + 10 * i), 0.5, size=(20, 5), align="center") for i in range(6)])
-                       for kind in ("v", "e")]]
+                     # the IV and EV pages' six numbers, with no page panel round them: pcInfo leaves them empty on the info
+                     # page, so they draw nothing there. A panel shown while the page is not "i" never showed, written either
+                     # as "(not (page = 'i'))" or as a subtraction (November 2026)
+                     *[slabel(f"stat_v{i}", sfield(f"sv{i}"), (65 - 10, 139 + 10 * i), 0.5, size=(20, 5), align="center") for i in range(6)]]
     def previewing(control, x, y):
-        """A slot button whose hover and pressed states also draw its Pokemon's preview."""
+        """A slot button whose hover state also draws its Pokemon's preview, and whose pressed state is that same child
+        (pressed_control), not a copy of it. Every Cobblemon screen is built for every action form the game opens
+        (cobblemon_forms), so each control here is paid for on every form: the preview copied into both states of all 66
+        slots and their focus twins (1.0.562 and 1.0.563) made each form open half a second later on a phone."""
         name, body = next(iter(control.items()))
         preview = {"preview": {"type": "panel", "size": [349, 205], "offset": [-x, -y], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 10,
                                "bindings": sbound("(not (#form_button_text = ''))", "#visible"), "controls": preview_parts}}
         states = []
         for state in body["controls"]:
             key, face_ = next(iter(state.items()))
+            if key == "pressed": continue
             states.append({key: face_} if key == "default" else
                           {key: {"type": "panel", "size": ["100%", "100%"], "controls": [{"face": face_}, preview]}})
-        return {name: {**body, "controls": states}}
+        return {name: {**body, "pressed_control": "hover", "controls": states}}
     buttons = [while_("n", previewing(button(n, (x, y), (25, 25)), x, y), "opts") for n, (x, y) in enumerate(slots[:30])]
     # the same 30 slots again, 5 lower while the options show; named apart, since Bedrock wants every control in a
-    # panel named once ("Child controls must have unique names: cobblemon_pc/buttons/button_0", issue 33)
-    box_opts = [while_("y", {f"button_{n}_opts": previewing(button(n, (x, y + 5), (25, 25)), x, y + 5)[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
+    # panel named once ("Child controls must have unique names: cobblemon_pc/buttons/button_0", issue 33). These
+    # draw no preview: with them and their focus twins, the preview was on 132 buttons built for every form the game
+    # opens, and the options view (wallpapers, marks, sorting) is the one that can go without it
+    box_opts = [while_("y", {f"button_{n}_opts": button(n, (x, y + 5), (25, 25))[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
     buttons += [while_("n", previewing(button(n, (x, y), (25, 25)), x, y)) for n, (x, y) in enumerate(slots[30:], 30)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (279, 151), (58, 16)), button(39, (320, 186), (26, 13))]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
