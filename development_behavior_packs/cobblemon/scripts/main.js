@@ -35,7 +35,7 @@ import { DEFENDERS, PREDATORS } from "./defenders.js";
 import { SHOULDER } from "./shoulder.js";
 import { DEX_VARIATIONS } from "./dex_variations.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
-import { PC_LAYOUT, PC_SLOT_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
+import { PC_LAYOUT, PC_SLOT_LAYOUT, PC_WALLPAPERS, PC_FOCUS_RETURN } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
 import { seasonFor, seasonLook, isSeasonal, revivalPotentialMarks, buildMoveset, ALPHA_SLOTS, WILD_SLOTS, preEvolutionsOf, evolutionMovesOf, exchangePp } from "./progression.js";
@@ -9121,7 +9121,9 @@ function openPc(block, player, state) {
     const walls = jsonProp(player, WALLS, {}), available = wallpapersOf(player), unseen = jsonProp(player, WALLS_UNSEEN, []);
     const names = jsonProp(player, PC_NAMES, {});
     const v = { box: names[state.box] ?? `Box ${state.box + 1}`, item: `${PC_UI}/summary/blank`, wall: walls[state.box] ?? "w05", wmode: state.wmode ? "y" : "n", opts: state.opts ? "y" : "n",
-                page: state.page ?? "i", filter: state.filter ? `§f${state.filter}` : "§7Filter", rel: state.sel ? "y" : "n" };
+                page: state.page ?? "i", filter: state.filter ? `§f${state.filter}` : "§7Filter", rel: state.sel ? "y" : "n",
+                // the slot or box arrow last pressed, which the reopened form puts the focus back on (PC_FOCUS_RETURN)
+                focus: state.focus === undefined ? "--" : String(state.focus).padStart(2, "0") };
     const sel = state.sel;
     if (sel?.kind === "box") {
         // a Pokemon stored before it rolled its IVs rolls them now and keeps them, as every Cobblemon Pokemon has them
@@ -9181,6 +9183,8 @@ function openPc(block, player, state) {
     form.show(player).then((r) => {
         if (r.canceled || r.selection === 39) { done(); return; }
         const pick = r.selection, again = (delay = 0) => system.runTimeout(() => openPc(block, player, state), delay);
+        // a slot or a box arrow keeps the focus when the form comes back; any other button lets it go where Bedrock puts it
+        state.focus = PC_FOCUS_RETURN.includes(pick) ? pick : undefined;
         if (pick === 36 || pick === 37) { state.box = (state.box + (pick === 37 ? 1 : pcBoxes(player) - 1)) % pcBoxes(player); again(); return; }
         if (pick === 38) { pcRelease(player, state, party, () => again(5)); return; }
         if (pick === 40) { state.opts = !state.opts; if (!state.opts) state.wmode = false; again(); return; }
