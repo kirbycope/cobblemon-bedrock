@@ -494,15 +494,21 @@ def series_card(t, series="Radical Red"):
     bridge = t.connect_bridge()
     inventory = bridge.data("mc_player_get_inventory", player=t.data.get("player") or bridge.player()["name"]) or {}
     items = (inventory.get("inventory", {}) or {}).get("items", []) if isinstance(inventory, dict) else []
-    return any(i.get("type_id") == "rctmod:trainer_card" and series.lower() in str(i.get("name_tag") or "").lower() for i in items)
+    return any(i.get("type_id") in CARD_IDS and series.lower() in str(i.get("name_tag") or "").lower() for i in items)
+
+
+# the Trainer Card and its glinting twin, which the add-on swaps in while the held card has something to point at
+# (TrainerCard.isFoil): a card held near the Trainer Association or a gym is rctmod:trainer_card_glint
+CARD_IDS = ("rctmod:trainer_card", "rctmod:trainer_card_glint")
 
 
 def hotbar_slot(t, item):
-    """The hotbar slot (0 to 8) holding item, from the player's inventory through the bridge, or None."""
+    """The hotbar slot (0 to 8) holding item (an id, or a tuple of ids), from the player's inventory through the bridge, or None."""
+    wanted = (item,) if isinstance(item, str) else tuple(item)
     bridge = t.connect_bridge()
     inventory = bridge.data("mc_player_get_inventory", player=t.data.get("player") or bridge.player()["name"]) or {}
     items = (inventory.get("inventory", {}) or {}).get("items", []) if isinstance(inventory, dict) else []
-    return next((i["slot"] for i in items if i.get("type_id") == item and i.get("slot", 9) < 9), None)
+    return next((i["slot"] for i in items if i.get("type_id") in wanted and i.get("slot", 9) < 9), None)
 
 
 def eat(t):
@@ -547,14 +553,14 @@ def held_item(t):
 
 def hold_card(t):
     """The Trainer Card in hand, from wherever it sits in the hotbar."""
-    if hotbar_slot(t, "rctmod:trainer_card") is None: return False
+    if hotbar_slot(t, CARD_IDS) is None: return False
     pad = t.connect_pad()
     for _ in range(10):
         held = held_item(t)
         if held is None: return hold(t, "trainer card")   # a build without the hook
-        if held == "rctmod:trainer_card": return True
+        if held in CARD_IDS: return True
         pad.press("rb", gap=0.15)
-    return held_item(t) == "rctmod:trainer_card"
+    return held_item(t) in CARD_IDS
 
 
 def in_world(t):
@@ -894,7 +900,7 @@ def follow_arrow(t):
     started, behind, legs = time.time(), 0, 0
     while time.time() - started < 60 * 15:
         if in_world(t): t.note("died on the way; respawned at the world spawn")
-        if not hold_card(t) and hotbar_slot(t, "rctmod:trainer_card") is None:
+        if not hold_card(t) and hotbar_slot(t, CARD_IDS) is None:
             t.finding("The player died following the card and dropped it with everything else; only the Party item comes back on respawn.")
             check(False, "the Trainer Card was lost on the way to the gym")
         reading = card_arrow(c)
