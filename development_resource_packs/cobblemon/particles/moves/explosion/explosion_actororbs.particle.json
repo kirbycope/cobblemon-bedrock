@@ -50,9 +50,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					" (v.orbmovement) * (v.particle_random_1-0.5) * math.max(1*2+2, 8)",
+					"-(( (v.orbmovement) * (v.particle_random_1-0.5) * math.max(1*2+2, 8))*(v.fx_fz ?? -1)+( (v.orbmovement) * (v.particle_random_3-0.5) * math.max(1*2+2, 8))*(v.fx_fx ?? 0))",
 					" (v.orbmovement) * (v.particle_random_2-0.5) * math.max(1*2+2, 8)",
-					" (v.orbmovement) * (v.particle_random_3-0.5) * math.max(1*2+2, 8)"
+					"(( (v.orbmovement) * (v.particle_random_1-0.5) * math.max(1*2+2, 8))*(v.fx_fx ?? 0)-( (v.orbmovement) * (v.particle_random_3-0.5) * math.max(1*2+2, 8))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -86,7 +86,8 @@
 						"1.0": "#FFF47211"
 					}
 				}
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

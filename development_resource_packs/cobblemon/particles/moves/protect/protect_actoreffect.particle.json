@@ -43,11 +43,6 @@
 			"minecraft:emitter_lifetime_once": {
 				"active_time": 0.2
 			},
-			"minecraft:emitter_lifetime_events": {
-				"timeline": {
-					"0.07": "resid"
-				}
-			},
 			"minecraft:emitter_shape_box": {
 				"offset": [
 					0,
@@ -61,9 +56,9 @@
 				],
 				"surface_only": true,
 				"direction": [
-					"(v.particle_random_1-0.5)*0.25",
+					"-(((v.particle_random_1-0.5)*0.25)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*0.25)*(v.fx_fx ?? 0))",
 					"((v.particle_random_2+0.25)*0.33)",
-					"(v.particle_random_3-0.5)*0.25"
+					"(((v.particle_random_1-0.5)*0.25)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*0.25)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -54,9 +54,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"direction": [
-					"-v.target_deltax",
-					"v.target_deltay",
-					"-v.target_deltaz"
+					"-((-(v.target_deltax ?? 0))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 0))*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0)",
+					"((-(v.target_deltax ?? 0))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 0))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -66,7 +66,7 @@
 			"minecraft:particle_motion_dynamic": {},
 			"minecraft:particle_appearance_billboard": {
 				"size": [
-					"(v.send*1.5)*v.target_distance",
+					"(v.send*1.5)*(v.target_distance ?? 0)",
 					"(0.25*v.fade)"
 				],
 				"facing_camera_mode": "lookat_direction",

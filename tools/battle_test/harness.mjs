@@ -6,7 +6,8 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { queue } from "./stub_server.mjs";
+import { queue, checkProperty } from "./stub_server.mjs";
+export { checkProperty };
 
 const here = dirname(fileURLToPath(import.meta.url));
 const scripts = join(here, "..", "..", "development_behavior_packs", "cobblemon", "scripts");
@@ -31,7 +32,7 @@ export function flush(limit = 200) { for (let n = 0; n < limit && queue.length; 
 function entity(typeId) {
     const store = new Map();
     return new Proxy({ typeId, id: `test-${typeId}-${Math.random()}`, isValid: true, location: { x: 0, y: 0, z: 0 },
-        getDynamicProperty: (k) => store.get(k), setDynamicProperty: (k, v) => (v === undefined ? store.delete(k) : store.set(k, v)),
+        getDynamicProperty: (k) => store.get(k), setDynamicProperty: (k, v) => (checkProperty(k, v), v === undefined ? store.delete(k) : store.set(k, v)),
         getComponent: () => undefined, hasComponent: () => false, getProperty: () => 0, setProperty() { }, triggerEvent() { },
         addEffect() { }, removeEffect() { }, getHeadLocation: () => ({ x: 0, y: 1, z: 0 }), dimension: new Proxy({}, { get: () => () => [] }) },
         { get: (t, k) => (k in t ? t[k] : () => undefined) });

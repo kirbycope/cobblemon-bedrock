@@ -39,9 +39,9 @@
 			},
 			"minecraft:emitter_shape_box": {
 				"offset": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+(2)*(v.fx_fx ?? 0))",
 					4,
-					2
+					"((0)*(v.fx_fx ?? 0)-(2)*(v.fx_fz ?? -1))"
 				],
 				"half_dimensions": [
 					10,
@@ -49,9 +49,9 @@
 					10
 				],
 				"direction": [
-					"(v.particle_random_1-0.5)*0.5",
-					"(v.target_deltay/v.target_distance)+((v.particle_random_2-0.5)*0.5)",
-					-1
+					"-(((v.particle_random_1-0.5)*0.5)*(v.fx_fz ?? -1)+(-1)*(v.fx_fx ?? 0))",
+					"((v.target_deltay ?? 0)/(v.target_distance ?? 0))+((v.particle_random_2-0.5)*0.5)",
+					"(((v.particle_random_1-0.5)*0.5)*(v.fx_fx ?? 0)-(-1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -60,9 +60,9 @@
 			"minecraft:particle_initial_speed": "(v.particle_random_4+1)*16",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"math.sin(v.particle_age*((v.particle_random_2-0.5)*(360+(v.particle_random_2*180))))*1.5",
+					"-((math.sin(v.particle_age*((v.particle_random_2-0.5)*(360+(v.particle_random_2*180))))*1.5)*(v.fx_fz ?? -1)+(math.sin(v.particle_age*((v.particle_random_1-0.5)*(360+(v.particle_random_2*180))))*1.5)*(v.fx_fx ?? 0))",
 					"math.cos(v.particle_age*((v.particle_random_4-0.5)*(360+(v.particle_random_2*180))))*2",
-					"math.sin(v.particle_age*((v.particle_random_1-0.5)*(360+(v.particle_random_2*180))))*1.5"
+					"((math.sin(v.particle_age*((v.particle_random_2-0.5)*(360+(v.particle_random_2*180))))*1.5)*(v.fx_fx ?? 0)-(math.sin(v.particle_age*((v.particle_random_1-0.5)*(360+(v.particle_random_2*180))))*1.5)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 1.5
 			},

@@ -36,14 +36,11 @@
 			"minecraft:emitter_lifetime_once": {
 				"active_time": 0.04
 			},
-			"minecraft:emitter_lifetime_events": {
-				"creation_event": "mist"
-			},
 			"minecraft:emitter_shape_point": {
 				"direction": [
-					"(v.particle_random_1-0.5)*1",
+					"-(((v.particle_random_1-0.5)*1)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*1)*(v.fx_fx ?? 0))",
 					"(v.particle_random_2-0.25)*1.1",
-					"(v.particle_random_3-0.5)*1"
+					"(((v.particle_random_1-0.5)*1)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

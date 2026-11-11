@@ -36,16 +36,16 @@
 			},
 			"minecraft:emitter_shape_sphere": {
 				"offset": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+(-0.15)*(v.fx_fx ?? 0))",
 					0.1,
-					-0.15
+					"((0)*(v.fx_fx ?? 0)-(-0.15)*(v.fx_fz ?? -1))"
 				],
 				"radius": "0.1/math.clamp(1*1.1-0.07,1,2)",
 				"surface_only": true,
 				"direction": [
-					"math.random(-15,15)",
+					"-((math.random(-15,15))*(v.fx_fz ?? -1)+(math.random(-15,15))*(v.fx_fx ?? 0))",
 					"math.random(-20,50)",
-					"math.random(-15,15)"
+					"((math.random(-15,15))*(v.fx_fx ?? 0)-(math.random(-15,15))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

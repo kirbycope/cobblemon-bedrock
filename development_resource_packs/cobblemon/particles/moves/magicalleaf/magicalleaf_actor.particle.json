@@ -82,14 +82,14 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"(3*(v.particle_random_1 - 0.5) * (1*(1.2/math.clamp(1*0.9,1,255))))*v.leafrise",
-					"((((1*1.85) * (v.particle_random_2*0.66)) * v.leafrise)+(v.leafarc*0.5)) + (v.particle_age<(v.particle_lifetime*0.5) ? 0 : ((v.target_deltay*2.4)-1.6) * ((v.particle_age - (v.particle_lifetime*0.5)) / (v.particle_lifetime - (v.particle_lifetime*0.5))))",
-					"(3 * (v.particle_random_3 - 0.5) * (1*(1.1/math.clamp(1*0.9,1,255))))*v.leafrise + (v.particle_age > (v.particle_lifetime*0.5) ? -(v.target_deltaz*2.4) * ((v.particle_age - (v.particle_lifetime*0.5)) / (v.particle_lifetime - (v.particle_lifetime*0.5))) : 0)"
+					"-(((3*(v.particle_random_1 - 0.5) * (1*(1.2/math.clamp(1*0.9,1,255))))*v.leafrise)*(v.fx_fz ?? -1)+((3 * (v.particle_random_3 - 0.5) * (1*(1.1/math.clamp(1*0.9,1,255))))*v.leafrise + (v.particle_age > (v.particle_lifetime*0.5) ? -((v.target_deltaz ?? 0)*2.4) * ((v.particle_age - (v.particle_lifetime*0.5)) / (v.particle_lifetime - (v.particle_lifetime*0.5))) : 0))*(v.fx_fx ?? 0))",
+					"((((1*1.85) * (v.particle_random_2*0.66)) * v.leafrise)+(v.leafarc*0.5)) + (v.particle_age<(v.particle_lifetime*0.5) ? 0 : (((v.target_deltay ?? 0)*2.4)-1.6) * ((v.particle_age - (v.particle_lifetime*0.5)) / (v.particle_lifetime - (v.particle_lifetime*0.5))))",
+					"(((3*(v.particle_random_1 - 0.5) * (1*(1.2/math.clamp(1*0.9,1,255))))*v.leafrise)*(v.fx_fx ?? 0)-((3 * (v.particle_random_3 - 0.5) * (1*(1.1/math.clamp(1*0.9,1,255))))*v.leafrise + (v.particle_age > (v.particle_lifetime*0.5) ? -((v.target_deltaz ?? 0)*2.4) * ((v.particle_age - (v.particle_lifetime*0.5)) / (v.particle_lifetime - (v.particle_lifetime*0.5))) : 0))*(v.fx_fz ?? -1))"
 				],
 				"direction": [
-					0,
-					"(v.particle_age<(v.particle_lifetime*0.5) ? -90 : -(v.target_deltay*24)-16)",
-					"v.particle_age<(v.particle_lifetime*0.5) ? 0 : -90"
+					"-((0)*(v.fx_fz ?? -1)+(v.particle_age<(v.particle_lifetime*0.5) ? 0 : -90)*(v.fx_fx ?? 0))",
+					"(v.particle_age<(v.particle_lifetime*0.5) ? -90 : -((v.target_deltay ?? 0)*24)-16)",
+					"((0)*(v.fx_fx ?? 0)-(v.particle_age<(v.particle_lifetime*0.5) ? 0 : -90)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -137,7 +137,8 @@
 						"1.0": "#FFFF6743"
 					}
 				}
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

@@ -17,9 +17,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					-0.68571,
+					"-((-0.68571)*(v.fx_fz ?? -1)+(-0.68571)*(v.fx_fx ?? 0))",
 					1.36204,
-					-0.68571
+					"((-0.68571)*(v.fx_fx ?? 0)-(-0.68571)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -27,9 +27,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					0.68571,
+					"-((0.68571)*(v.fx_fz ?? -1)+(-0.68571)*(v.fx_fx ?? 0))",
 					"-0.2*(math.pow((2*((math.clamp(v.particle_age, 0, 0.5))-0.5)), 2))+1.36204",
-					-0.68571
+					"((0.68571)*(v.fx_fx ?? 0)-(-0.68571)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -59,7 +59,8 @@
 						"stretch_to_lifetime": true
 					}
 				}
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

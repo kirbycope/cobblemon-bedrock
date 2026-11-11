@@ -26,9 +26,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 30,
 				"max_particles": 200
@@ -38,14 +35,14 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"math.cos(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9)",
+					"-((math.cos(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9))*(v.fx_fz ?? -1)+(math.sin(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9))*(v.fx_fx ?? 0))",
 					"math.cos(v.emitter_age*540)*math.clamp(1,0.65,9)",
-					"math.sin(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9)"
+					"((math.cos(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9))*(v.fx_fx ?? 0)-(math.sin(v.emitter_age*1200)*math.clamp(1*0.85,0.5,9))*(v.fx_fz ?? -1))"
 				],
 				"direction": [
+					"-((math.random(-0.395,0.395)*0.5)*(v.fx_fz ?? -1)+(math.random(-0.395,0.395)*0.5)*(v.fx_fx ?? 0))",
 					"math.random(-0.395,0.395)*0.5",
-					"math.random(-0.395,0.395)*0.5",
-					"math.random(-0.395,0.395)*0.5"
+					"((math.random(-0.395,0.395)*0.5)*(v.fx_fx ?? 0)-(math.random(-0.395,0.395)*0.5)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

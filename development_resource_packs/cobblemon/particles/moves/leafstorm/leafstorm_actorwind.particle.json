@@ -62,9 +62,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 8,
 				"max_particles": 100
@@ -81,9 +78,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"-v.target_deltax*v.t",
-					"v.target_deltay*v.t",
-					"-v.target_deltaz*v.t"
+					"-((-(v.target_deltax ?? 0)*v.t)*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 5.0)*v.t)*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0)*v.t",
+					"((-(v.target_deltax ?? 0)*v.t)*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 5.0)*v.t)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -123,7 +120,8 @@
 						"1.0": "#00249900"
 					}
 				}
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

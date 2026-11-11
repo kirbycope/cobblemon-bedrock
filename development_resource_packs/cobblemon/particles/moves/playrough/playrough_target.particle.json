@@ -56,12 +56,6 @@
 			"minecraft:emitter_lifetime_once": {
 				"active_time": 1
 			},
-			"minecraft:emitter_lifetime_events": {
-				"creation_event": [
-					"stars",
-					"dots"
-				]
-			},
 			"minecraft:emitter_shape_sphere": {
 				"radius": 0.25,
 				"surface_only": true,
@@ -73,9 +67,9 @@
 			"minecraft:particle_initial_speed": "(1.5+(v.particle_random_4*7))",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*2.5",
+					"-(((v.particle_random_1-0.5)*2.5)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*2.5)*(v.fx_fx ?? 0))",
 					1,
-					"(v.particle_random_3-0.5)*2.5"
+					"(((v.particle_random_1-0.5)*2.5)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*2.5)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 4
 			},

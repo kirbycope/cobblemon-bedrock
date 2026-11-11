@@ -10,9 +10,6 @@
 		},
 		"events": {},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=2;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 4,
 				"max_particles": 4
@@ -21,18 +18,20 @@
 				"active_time": 1.2
 			},
 			"minecraft:emitter_lifetime_events": {
-				"creation_event": "event_sound"
+				"creation_event": [
+					"event_sound"
+				]
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
+					"-((0)*(v.fx_fz ?? -1)+(-0.1)*(v.fx_fx ?? 0))",
 					0,
-					0,
-					-0.1
+					"((0)*(v.fx_fx ?? 0)-(-0.1)*(v.fx_fz ?? -1))"
 				],
 				"direction": [
-					"-v.target_deltax",
-					"v.target_deltay",
-					"-v.target_deltaz"
+					"-((-(v.target_deltax ?? 0))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 2.0))*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0)",
+					"((-(v.target_deltax ?? 0))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 2.0))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

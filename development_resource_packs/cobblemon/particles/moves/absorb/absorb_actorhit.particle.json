@@ -38,9 +38,9 @@
 			},
 			"minecraft:emitter_shape_sphere": {
 				"offset": [
+					"-((0)*(v.fx_fz ?? -1)+(-0.2)*(v.fx_fx ?? 0))",
 					0,
-					0,
-					-0.2
+					"((0)*(v.fx_fx ?? 0)-(-0.2)*(v.fx_fz ?? -1))"
 				],
 				"radius": 0.02,
 				"surface_only": true,
@@ -52,9 +52,9 @@
 			"minecraft:particle_initial_speed": "math.random(3.75,6.05)*0.9",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*6.5",
+					"-(((v.particle_random_1-0.5)*6.5)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*6.5)*(v.fx_fx ?? 0))",
 					"(v.particle_random_2-0.5)*6.5",
-					"(v.particle_random_3-0.5)*6.5"
+					"(((v.particle_random_1-0.5)*6.5)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*6.5)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 3.25
 			},

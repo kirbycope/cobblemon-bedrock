@@ -18,9 +18,9 @@
 			"minecraft:emitter_shape_sphere": {
 				"radius": "(1)*1.2",
 				"direction": [
-					"math.random(-2,2)",
+					"-((math.random(-2,2))*(v.fx_fz ?? -1)+(math.random(-2,2))*(v.fx_fx ?? 0))",
 					"math.random(-1,2)",
-					"math.random(-2,2)"
+					"((math.random(-2,2))*(v.fx_fx ?? 0)-(math.random(-2,2))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

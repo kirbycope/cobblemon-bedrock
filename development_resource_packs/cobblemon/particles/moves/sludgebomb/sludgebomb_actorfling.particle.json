@@ -31,9 +31,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"direction": [
-					"math.random(-10,10)*3",
-					"25+(math.random(-5,15)*2.5)+(v.target_deltay/v.target_deltaz)",
-					"-math.random(30,50)"
+					"-((math.random(-10,10)*3)*(v.fx_fz ?? -1)+(-math.random(30,50))*(v.fx_fx ?? 0))",
+					"25+(math.random(-5,15)*2.5)+((v.target_deltay ?? 0)/(v.target_deltaz ?? 0))",
+					"((math.random(-10,10)*3)*(v.fx_fx ?? 0)-(-math.random(30,50))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -18,18 +18,20 @@
 				"active_time": 0.6
 			},
 			"minecraft:emitter_lifetime_events": {
-				"creation_event": "event_sound"
+				"creation_event": [
+					"event_sound"
+				]
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"math.sin(v.emitter_age*1080)*0.03",
+					"-((math.sin(v.emitter_age*1080)*0.03)*(v.fx_fz ?? -1)+(-0.5)*(v.fx_fx ?? 0))",
 					"0.1+math.cos(v.emitter_age*1080)*0.03",
-					-0.5
+					"((math.sin(v.emitter_age*1080)*0.03)*(v.fx_fx ?? 0)-(-0.5)*(v.fx_fz ?? -1))"
 				],
 				"direction": [
+					"-((0)*(v.fx_fz ?? -1)+(-10)*(v.fx_fx ?? 0))",
 					0,
-					0,
-					-10
+					"((0)*(v.fx_fx ?? 0)-(-10)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -26,9 +26,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;v.target_deltax=0;v.target_deltay=0;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 30,
 				"max_particles": 2000
@@ -38,22 +35,22 @@
 			},
 			"minecraft:emitter_shape_sphere": {
 				"offset": [
-					"-(v.target_deltax/2.5)+math.sin(v.emitter_age*1400)*(v.target_deltax/2.5)",
-					"(v.target_deltay/2.5)-math.sin(v.emitter_age*1400)*(v.target_deltay/2.5)",
-					"-0.2-(v.target_deltaz/2.5)+math.sin(v.emitter_age*1400)*(v.target_deltaz/2.5)"
+					"-((-((v.target_deltax ?? 0.0)/2.5)+math.sin(v.emitter_age*1400)*((v.target_deltax ?? 0.0)/2.5))*(v.fx_fz ?? -1)+(-0.2-((v.target_deltaz ?? 5.0)/2.5)+math.sin(v.emitter_age*1400)*((v.target_deltaz ?? 5.0)/2.5))*(v.fx_fx ?? 0))",
+					"((v.target_deltay ?? 0.0)/2.5)-math.sin(v.emitter_age*1400)*((v.target_deltay ?? 0.0)/2.5)",
+					"((-((v.target_deltax ?? 0.0)/2.5)+math.sin(v.emitter_age*1400)*((v.target_deltax ?? 0.0)/2.5))*(v.fx_fx ?? 0)-(-0.2-((v.target_deltaz ?? 5.0)/2.5)+math.sin(v.emitter_age*1400)*((v.target_deltaz ?? 5.0)/2.5))*(v.fx_fz ?? -1))"
 				],
 				"radius": 0.3,
 				"surface_only": true,
 				"direction": [
-					"-v.target_deltax",
-					"v.target_deltay",
-					"-v.target_deltaz"
+					"-((-(v.target_deltax ?? 0.0))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 5.0))*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0.0)",
+					"((-(v.target_deltax ?? 0.0))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 5.0))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
 				"max_lifetime": 0.55
 			},
-			"minecraft:particle_initial_speed": "math.random(0.32,0.44)*v.target_deltaz",
+			"minecraft:particle_initial_speed": "math.random(0.32,0.44)*(v.target_deltaz ?? 5.0)",
 			"minecraft:particle_motion_dynamic": {},
 			"minecraft:particle_appearance_billboard": {
 				"size": [

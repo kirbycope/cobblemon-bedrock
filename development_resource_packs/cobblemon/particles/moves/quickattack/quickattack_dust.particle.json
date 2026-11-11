@@ -18,9 +18,9 @@
 			"minecraft:emitter_shape_disc": {
 				"radius": "math.clamp(1,1,50)",
 				"direction": [
+					"-((0)*(v.fx_fz ?? -1)+(1)*(v.fx_fx ?? 0))",
 					0,
-					0,
-					1
+					"((0)*(v.fx_fx ?? 0)-(1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -29,9 +29,9 @@
 			"minecraft:particle_initial_speed": 4,
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+(1)*(v.fx_fx ?? 0))",
 					2,
-					1
+					"((0)*(v.fx_fx ?? 0)-(1)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 1
 			},

@@ -21,9 +21,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"math.sin(v.emitter_age*1559)*v.clampradius",
+					"-((math.sin(v.emitter_age*1559)*v.clampradius)*(v.fx_fz ?? -1)+(math.cos(v.emitter_age*2319)*v.clampradius)*(v.fx_fx ?? 0))",
 					"math.max(math.sin(v.emitter_age*2259), -0.3)*v.clampradius",
-					"math.cos(v.emitter_age*2319)*v.clampradius"
+					"((math.sin(v.emitter_age*1559)*v.clampradius)*(v.fx_fx ?? 0)-(math.cos(v.emitter_age*2319)*v.clampradius)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

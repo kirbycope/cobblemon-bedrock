@@ -42,9 +42,9 @@
 					0
 				],
 				"direction": [
-					"(-v.target_deltax)+(((math.round(v.particle_random_1)*2)-1)*(17.5/v.target_distance))",
-					"(3+(v.target_distance*0.2))-v.target_deltay",
-					"-v.target_deltaz"
+					"-(((-(v.target_deltax ?? 0))+(((math.round(v.particle_random_1)*2)-1)*(17.5/(v.target_distance ?? 0))))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 0))*(v.fx_fx ?? 0))",
+					"(3+((v.target_distance ?? 0)*0.2))-(v.target_deltay ?? 0)",
+					"(((-(v.target_deltax ?? 0))+(((math.round(v.particle_random_1)*2)-1)*(17.5/(v.target_distance ?? 0))))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 0))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -62,11 +62,11 @@
 					]
 				}
 			},
-			"minecraft:particle_initial_speed": "v.target_distance*3.5",
+			"minecraft:particle_initial_speed": "(v.target_distance ?? 0)*3.5",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
 					0,
-					"-6*v.target_distance",
+					"-6*(v.target_distance ?? 0)",
 					0
 				],
 				"linear_drag_coefficient": 0.5

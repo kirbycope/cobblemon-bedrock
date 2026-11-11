@@ -47,19 +47,13 @@
 			"minecraft:emitter_lifetime_once": {
 				"active_time": 0.7
 			},
-			"minecraft:emitter_lifetime_events": {
-				"creation_event": [
-					"spray",
-					"bubbles"
-				]
-			},
 			"minecraft:emitter_shape_sphere": {
 				"radius": 0.05,
 				"surface_only": true,
 				"direction": [
-					"(math.random(-0.395,0.395)*0.55)",
-					"(math.random(-0.40,0.275)*0.55)+(v.target_deltay/v.target_deltaz)",
-					"math.random(-2.05,-0.5)"
+					"-(((math.random(-0.395,0.395)*0.55))*(v.fx_fz ?? -1)+(math.random(-2.05,-0.5))*(v.fx_fx ?? 0))",
+					"(math.random(-0.40,0.275)*0.55)+((v.target_deltay ?? 0)/(v.target_deltaz ?? 0))",
+					"(((math.random(-0.395,0.395)*0.55))*(v.fx_fx ?? 0)-(math.random(-2.05,-0.5))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -68,7 +62,7 @@
 			"minecraft:particle_initial_spin": {
 				"rotation": "math.round(v.particle_random_4*3)*90"
 			},
-			"minecraft:particle_initial_speed": "(math.random(1.5,4.25)*(v.target_deltaz*0.4))",
+			"minecraft:particle_initial_speed": "(math.random(1.5,4.25)*((v.target_deltaz ?? 0)*0.4))",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
 					0,

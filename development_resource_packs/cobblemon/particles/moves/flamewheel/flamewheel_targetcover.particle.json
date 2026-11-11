@@ -64,9 +64,9 @@
 				"radius": "(1*(0.7-(v.particle_random_4*0.15)))*math.clamp(1,0.5,1)",
 				"surface_only": true,
 				"direction": [
-					"math.random(-0.45,0.45)",
+					"-((math.random(-0.45,0.45))*(v.fx_fz ?? -1)+(math.random(-0.45,0.45))*(v.fx_fx ?? 0))",
 					"math.random(-0.35,0.35)",
-					"math.random(-0.45,0.45)"
+					"((math.random(-0.45,0.45))*(v.fx_fx ?? 0)-(math.random(-0.45,0.45))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -81,9 +81,9 @@
 			"minecraft:particle_initial_speed": 2,
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*4",
+					"-(((v.particle_random_1-0.5)*4)*(v.fx_fz ?? -1)+((v.particle_random_1-0.5)*4)*(v.fx_fx ?? 0))",
 					"3+(v.particle_random_1-0.5)*2",
-					"(v.particle_random_1-0.5)*4"
+					"(((v.particle_random_1-0.5)*4)*(v.fx_fx ?? 0)-((v.particle_random_1-0.5)*4)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 2
 			},

@@ -3667,6 +3667,235 @@ def add_bone_particles(effects):
     return out
 
 
+# Where a vector in a particle's emitter frame sits in a particle file: a world-space Bedrock emitter reads them along
+# the world's axes, which Cobblemon's emitter (ParticleStorm's emitterSpaceMatrix) reads along the Pokemon's own
+FRAME_VECTORS = [
+    *[(f"minecraft:emitter_shape_{s}", key) for s in ("point", "sphere", "box", "disc", "custom", "entity_aabb") for key in ("offset", "direction", "plane_normal")],
+    ("minecraft:particle_initial_speed", None),
+    ("minecraft:particle_motion_dynamic", "linear_acceleration"),
+    ("minecraft:particle_motion_parametric", "relative_position"),
+    ("minecraft:particle_motion_parametric", "direction"),
+]
+PREVIEW_TARGET = {}   # particle -> the target deltas its creation_expression set for Snowstorm's preview, now its fallbacks
+PREVIEW_SET = re.compile(r"(?:v|variable)\.(target_delta[xyz]|target_distance)\s*=\s*(-?[\d.]+)\s*;\s*")
+
+
+def aim_move_particles(effects, bones):
+    """Move particles aimed as Cobblemon aims them. ParticleStorm's emitter turns with the Pokemon, the model's front
+    along its local -z, and hands its particles the target as target_deltax/y/z: the emitter less the target in that
+    frame, y negated, so a target straight ahead is deltax 0 and deltaz its distance (ember_actor's preview value, 5).
+    A Bedrock emitter the script spawns has no turn, so its particles moved along the world's axes and the deltas
+    pointed nowhere in particular: Ember's fire never crossed to its target. Here, each vector a move particle's
+    emitter reads along its frame (an offset, a direction, an acceleration) is turned by the forward the script
+    passes as variable.fx_fx and variable.fx_fz (scripts/main.js's fxFrame), which fall back to north, the turn that
+    leaves it as it was, wherever nothing passes them. The deltas a creation_expression sets for the preview would
+    overwrite the script's, so they become that particle's fallbacks (PREVIEW_TARGET, read by guard_unset_variables).
+    An event of the emitter of a particle only the script fires (at its creation or on its timeline) that starts an
+    emitter is taken out and played by the script, after the same delay and with the same variables, as FX_FORWARD
+    {particle: [[seconds, child, {preview deltas it hands down}]]}, since Bedrock hands a child none of them."""
+    paths, data = {}, {}
+    for path in glob.glob(f"{particlesBedrock}/**/*.particle.json", recursive=True):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        pid = d.get("particle_effect", {}).get("description", {}).get("identifier")
+        if pid: paths[pid], data[pid] = path, d
+    fired = {}   # particle -> how the script fires it: True from the script, False from a Pokemon's animation (bones)
+    for t in effects.values():
+        for e in t["e"]:
+            if e["k"] != "p": continue
+            ids = [p for p in data if re.fullmatch(re.escape(e["p"]).replace(r"\$name", r"\w+").replace(r"\$type", r"\w+").replace(r"\$cat", r"\w+"), p)] if "$" in e["p"] else [e["p"]]
+            client = not e.get("aim") and e.get("l") in FX_BONE_LOCATORS and bool(bones)
+            for p in ids: fired.setdefault(p, set()).add(not client)
+    started = {}
+    for pid, d in data.items():
+        for name, event in (d["particle_effect"].get("events") or {}).items():
+            child = (event.get("particle_effect") or {}).get("effect") if isinstance(event, dict) else None
+            if child: started.setdefault(child, set()).add((pid, name))
+
+    def emitted(pid, name):
+        event = (data[pid]["particle_effect"].get("events") or {}).get(name)
+        if not isinstance(event, dict) or set(event) != {"particle_effect"}: return None
+        effect = event["particle_effect"]
+        if effect.get("type") != "emitter" or effect.get("pre_effect_expression") or effect.get("effect") not in data: return None
+        return effect["effect"]
+
+    def emitter_level(pid, name):
+        life = data[pid]["particle_effect"].get("components", {}).get("minecraft:emitter_lifetime_events")
+        if not isinstance(life, dict): return False
+        return any(name == l or (isinstance(l, list) and name in l) for l in [life.get("creation_event")] + list((life.get("timeline") or {}).values()))
+
+    # the script owns a particle it alone fires (never from a bone), or one only owned particles' emitter events start
+    owned, grown = set(), True
+    while grown:
+        grown = False
+        for pid in data:
+            if pid in owned: continue
+            starters = started.get(pid, set())
+            alone = fired.get(pid) == {True} and not starters
+            via = bool(starters) and pid not in fired and all(p in owned and emitter_level(p, n) and emitted(p, n) == pid for p, n in starters)
+            if alone or via: owned.add(pid); grown = True
+    # every particle a move effect reaches, through any event: their vectors turn (by nothing, where nothing is passed)
+    reached, queue = set(), list(fired)
+    while queue:
+        pid = queue.pop()
+        if pid in reached or pid not in data: continue
+        reached.add(pid)
+        queue += [(ev.get("particle_effect") or {}).get("effect") for ev in (data[pid]["particle_effect"].get("events") or {}).values() if isinstance(ev, dict)]
+    PREVIEW_TARGET.clear()
+    forward = {}
+    fx, fz = "(v.fx_fx ?? 0)", "(v.fx_fz ?? -1)"
+
+    def turn(vector):
+        if not isinstance(vector, list) or len(vector) != 3: return vector
+        x, y, z = vector
+        if all(isinstance(c, (int, float)) and c == 0 for c in (x, z)): return vector
+        return [f"-(({x})*{fz}+({z})*{fx})", y, f"(({x})*{fx}-({z})*{fz})"]
+
+    for pid in sorted(reached):
+        effect = data[pid]["particle_effect"]
+        components = effect.get("components", {})
+        init = components.get("minecraft:emitter_initialization")
+        if isinstance(init, dict) and isinstance(init.get("creation_expression"), str):
+            found = {m.group(1): float(m.group(2)) for m in PREVIEW_SET.finditer(init["creation_expression"])}
+            if found:
+                PREVIEW_TARGET[pid] = found
+                init["creation_expression"] = PREVIEW_SET.sub("", init["creation_expression"])
+                if not init["creation_expression"].strip(): init.pop("creation_expression")
+                if not init: components.pop("minecraft:emitter_initialization")
+        for component, key in FRAME_VECTORS:
+            c = components.get(component)
+            if key is None: components[component] = turn(c) if isinstance(c, list) else c
+            elif isinstance(c, dict) and key in c: c[key] = turn(c[key])
+        billboard = components.get("minecraft:particle_appearance_billboard")
+        direction = billboard.get("direction") if isinstance(billboard, dict) else None
+        if isinstance(direction, dict) and "custom_direction" in direction: direction["custom_direction"] = turn(direction["custom_direction"])
+    for pid in sorted(owned):
+        components = data[pid]["particle_effect"].get("components", {})
+        life = components.get("minecraft:emitter_lifetime_events")
+        if not isinstance(life, dict): continue
+
+        def take(names, seconds):
+            names = names if isinstance(names, list) else [names]
+            kept = []
+            for name in names:
+                child = emitted(pid, name)
+                if child in owned: forward.setdefault(pid, []).append([round(seconds, 3), child, PREVIEW_TARGET.get(pid, {})])
+                else: kept.append(name)
+            return kept
+
+        if "creation_event" in life:
+            kept = take(life["creation_event"], 0.0)
+            if kept: life["creation_event"] = kept
+            else: life.pop("creation_event")
+        timeline = life.get("timeline") or {}
+        for at in list(timeline):
+            kept = take(timeline[at], float(at))
+            if kept: timeline[at] = kept
+            else: timeline.pop(at)
+        if "timeline" in life and not life["timeline"]: life.pop("timeline")
+        if not life: components.pop("minecraft:emitter_lifetime_events")
+    for pid in reached:
+        with open(paths[pid], "w", encoding="utf-8") as file: file.write(json.dumps(data[pid], indent="\t"))
+    print(f"  move particles turned to the Pokemon's frame: {len(reached)}; {sum(len(v) for v in forward.values())} child emitters started by the script; {len(PREVIEW_TARGET)} preview deltas made fallbacks")
+    return forward
+
+
+# what Bedrock gives every emitter and particle itself
+PARTICLE_BUILTINS = {f"{a}_{b}" for a in ("emitter", "particle") for b in ("age", "lifetime", "random_1", "random_2", "random_3", "random_4")}
+PARTICLE_READ = re.compile(r"(?<![\w.])(?:v|variable)\.([a-z_][a-z0-9_]*)(?![\w])(?!\s*\.)", re.I)
+PARTICLE_SET = re.compile(r"(?<![\w.])(?:v|variable)\.([a-z_][a-z0-9_]*)\s*=(?!=)\s*([^;]+);", re.I)
+PARTICLE_TARGET = {"target_deltax", "target_deltay", "target_deltaz", "target_distance"}   # ParticleStorm's, from scripts/main.js's fxEvent
+
+
+def guard_unset_variables():
+    """A variable a particle reads that nothing on Bedrock sets logs "unhandled request for unknown variable" in the
+    client's content log each time it is read, where Cobblemon's Molang reads it as 0 without a word. Each such read
+    gets a fallback through ??, the value Cobblemon would have used: 0 for one set nowhere (Fire Blast's and Fire
+    Spin's burstarc, a curve of other particles that these never define); the expression an ancestor sets it with,
+    when that uses only what every particle has (Greninja's fading cloud: its parent's smoke_color =
+    v.particle_random_3, which Cobblemon hands down and Bedrock does not); and a curve's starting value where an
+    emitter's rate reads the curve before its first evaluation (Draco Meteor's motion). ParticleStorm's target deltas
+    fall back to the preview's values (aim_move_particles): the script passes them to the particles it fires aimed and
+    the children it starts for them, not to a particle fired unaimed or a child its emitter's particles start, which
+    Bedrock gives none of the parent's variables (a child's pre_effect_expression "will not have access to the event
+    triggering emitter's Molang data"); unguarded, those logged hundreds of errors a battle. The other variables the
+    scripts pass in (spawnParticle's MolangVariableMap: a broth's colour, a request icon's alpha) are left alone."""
+    script_vars = set()
+    for path in glob.glob(f"{behaviorPack}/scripts/*.js"):
+        with open(path, encoding="utf-8") as file:
+            script_vars |= set(re.findall(r"""set(?:Float|Vector3|ColorRGBA?|SpeedAndDirection)\(\s*[`"']variable\.(\w+)""", file.read()))
+    script_vars -= PARTICLE_TARGET   # passed to some spawns of a particle and missing from others
+    paths, data = {}, {}
+    for path in glob.glob(f"{particlesBedrock}/**/*.particle.json", recursive=True):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        pid = d.get("particle_effect", {}).get("description", {}).get("identifier")
+        if pid: paths[pid], data[pid] = path, d
+    parents = {}
+    for pid, d in data.items():
+        for event in (d["particle_effect"].get("events") or {}).values():
+            child = (event.get("particle_effect") or {}).get("effect") if isinstance(event, dict) else None
+            if child: parents.setdefault(child, set()).add(pid)
+
+    def ancestors(pid, seen=None):
+        seen = set() if seen is None else seen
+        for p in parents.get(pid, ()):
+            if p not in seen: seen.add(p); ancestors(p, seen)
+        return seen
+
+    def curve_start(curve):
+        nodes = curve.get("nodes")
+        if isinstance(nodes, dict):   # bezier_chain: {"0.0": {"value": ...}}
+            first = min(nodes, key=float); v = nodes[first]
+            return v.get("value", v.get("left_value", 0)) if isinstance(v, dict) else v
+        if isinstance(nodes, list) and nodes:
+            return nodes[1] if curve.get("type") == "catmull_rom" and len(nodes) > 1 else nodes[0]
+        return 0
+
+    def builtin_only(expr):
+        return all(n in PARTICLE_BUILTINS for n in PARTICLE_READ.findall(expr)) and not re.search(r"(?<![\w.])(?:q|query|t|temp|c|context)\.", expr)
+
+    def guard(text, fallbacks):
+        def one(m):
+            rest = text[m.end():m.end() + 6]
+            if m.group(1) not in fallbacks or re.match(r"\s*=(?!=)", rest) or re.match(r"\s*\?\?", rest): return m.group(0)
+            return f"({m.group(0)} ?? {fallbacks[m.group(1)]})"
+        return PARTICLE_READ.sub(one, text)
+
+    def walk(value, fallbacks):
+        if isinstance(value, str): return guard(value, fallbacks)
+        if isinstance(value, list): return [walk(v, fallbacks) for v in value]
+        if isinstance(value, dict): return {k: walk(v, fallbacks) for k, v in value.items()}
+        return value
+
+    changed = 0
+    for pid, d in data.items():
+        effect = d["particle_effect"]
+        curves = {k.split(".", 1)[1]: c for k, c in (effect.get("curves") or {}).items() if "." in k and isinstance(c, dict)}
+        sets = {name: rhs.strip() for name, rhs in PARTICLE_SET.findall(json.dumps(effect))}
+        inherited = {}
+        for a in ancestors(pid):
+            for name, rhs in PARTICLE_SET.findall(json.dumps(data[a]["particle_effect"])): inherited.setdefault(name, rhs.strip())
+        everywhere, rates = {}, {}
+        for name in set(PARTICLE_READ.findall(json.dumps([effect.get("components"), effect.get("curves")]))):
+            if name in PARTICLE_BUILTINS or name in script_vars or name in sets or name in curves: continue
+            if name in PARTICLE_TARGET:   # the preview's value (aim_move_particles), its own or the nearest ancestor's, else 0
+                own = [PREVIEW_TARGET.get(p, {}).get(name) for p in [pid, *sorted(ancestors(pid))]]
+                everywhere[name] = next((v for v in own if v is not None), 0); continue
+            rhs = inherited.get(name)
+            everywhere[name] = f"({rhs})" if rhs and builtin_only(rhs) else 0
+        for name, curve in curves.items():
+            if name not in sets: rates[name] = curve_start(curve)
+        if not everywhere and not rates: continue
+        components = effect.get("components", {})
+        new = {k: walk(v, {**everywhere, **(rates if k.startswith("minecraft:emitter_rate") else {})}) for k, v in components.items()}
+        new_curves = walk(effect.get("curves"), everywhere) if effect.get("curves") else effect.get("curves")
+        if new == components and new_curves == effect.get("curves"): continue
+        effect["components"] = new
+        if new_curves is not None: effect["curves"] = new_curves
+        with open(paths[pid], "w", encoding="utf-8") as file: file.write(json.dumps(d, indent="\t"))
+        changed += 1
+    print(f"  particles reading a variable nothing sets on Bedrock, given Cobblemon's value as a fallback: {changed}")
+
+
 def create_move_fx():
     root = f"{cobblemonData}/action_effects/moves"
     particles = set()
@@ -3742,6 +3971,8 @@ def create_move_fx():
             with open(path, "w", encoding="utf-8") as file: file.write(held)
     primary = add_primary_controllers(anims, lengths, stems)
     bones = add_bone_particles(effects)
+    forward = aim_move_particles(effects, bones)
+    guard_unset_variables()   # after aim_move_particles, whose preview deltas it falls back to
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py (create_move_fx): Cobblemon's move effects, the species' battle clips and the impact particles\n")
@@ -3750,6 +3981,7 @@ def create_move_fx():
         file.write(f"export const FX_PARTICLES = {json.dumps(impact)};\n")
         file.write(f"export const FX_PRIMARY = {json.dumps(primary, separators=(',', ':'))};\n")
         file.write(f"export const FX_BONES = {json.dumps(bones, separators=(',', ':'))};\n")
+        file.write(f"export const FX_FORWARD = {json.dumps(forward, separators=(',', ':'))};\n")
     print(f"Move effects: {len(effects)} timelines, {len(anims)} species with battle clips.")
 
 

@@ -40,9 +40,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 7,
 				"max_particles": 3
@@ -52,9 +49,9 @@
 			},
 			"minecraft:emitter_shape_disc": {
 				"offset": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+(0.1)*(v.fx_fx ?? 0))",
 					0.02,
-					0.1
+					"((0)*(v.fx_fx ?? 0)-(0.1)*(v.fx_fz ?? -1))"
 				],
 				"radius": 0.5,
 				"direction": "outwards"
@@ -78,9 +75,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"-(v.target_deltax+((v.particle_random_1-0.5)*1.33))*(v.particle_age / v.particle_lifetime)",
-					"(v.target_deltay+((v.particle_random_2-0.5)*1.33))*(v.particle_age / v.particle_lifetime)",
-					"-v.target_deltaz*(v.particle_age / v.particle_lifetime)"
+					"-((-((v.target_deltax ?? 0)+((v.particle_random_1-0.5)*1.33))*(v.particle_age / v.particle_lifetime))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 5.0)*(v.particle_age / v.particle_lifetime))*(v.fx_fx ?? 0))",
+					"((v.target_deltay ?? 0)+((v.particle_random_2-0.5)*1.33))*(v.particle_age / v.particle_lifetime)",
+					"((-((v.target_deltax ?? 0)+((v.particle_random_1-0.5)*1.33))*(v.particle_age / v.particle_lifetime))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 5.0)*(v.particle_age / v.particle_lifetime))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -92,9 +89,9 @@
 				"direction": {
 					"mode": "custom",
 					"custom_direction": [
+						"-((0)*(v.fx_fz ?? -1)+(-1)*(v.fx_fx ?? 0))",
 						0,
-						0,
-						-1
+						"((0)*(v.fx_fx ?? 0)-(-1)*(v.fx_fz ?? -1))"
 					]
 				},
 				"uv": {
@@ -118,7 +115,8 @@
 						"loop": true
 					}
 				}
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

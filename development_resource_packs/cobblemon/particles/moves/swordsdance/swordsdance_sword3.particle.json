@@ -96,9 +96,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"math.clamp(1,0.6,999)*math.sin(v.particle_age*(v.speed*20)+225)",
+					"-((math.clamp(1,0.6,999)*math.sin(v.particle_age*(v.speed*20)+225))*(v.fx_fz ?? -1)+(math.clamp(1,0.6,999)*-math.cos(v.particle_age*(v.speed*20)+225))*(v.fx_fx ?? 0))",
 					"1+(math.clamp(1,0.5,10)+0.5)*variable.move",
-					"math.clamp(1,0.6,999)*-math.cos(v.particle_age*(v.speed*20)+225)"
+					"((math.clamp(1,0.6,999)*math.sin(v.particle_age*(v.speed*20)+225))*(v.fx_fx ?? 0)-(math.clamp(1,0.6,999)*-math.cos(v.particle_age*(v.speed*20)+225))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -135,7 +135,8 @@
 					1,
 					1
 				]
-			}
+			},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

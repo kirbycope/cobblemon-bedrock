@@ -23,9 +23,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;"
-			},
 			"minecraft:emitter_rate_instant": {
 				"num_particles": 1
 			},
@@ -46,9 +43,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"(-(v.target_deltax+(v.particle_random_1-0.5))*(v.particle_age / v.particle_lifetime))",
-					"((v.target_deltay+(v.particle_random_2-0.5))*(v.particle_age / v.particle_lifetime))",
-					"-v.target_deltaz*(v.particle_age / v.particle_lifetime)"
+					"-(((-((v.target_deltax ?? 0)+(v.particle_random_1-0.5))*(v.particle_age / v.particle_lifetime)))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 5.0)*(v.particle_age / v.particle_lifetime))*(v.fx_fx ?? 0))",
+					"(((v.target_deltay ?? 0)+(v.particle_random_2-0.5))*(v.particle_age / v.particle_lifetime))",
+					"(((-((v.target_deltax ?? 0)+(v.particle_random_1-0.5))*(v.particle_age / v.particle_lifetime)))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 5.0)*(v.particle_age / v.particle_lifetime))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -70,7 +67,8 @@
 					]
 				}
 			},
-			"minecraft:particle_appearance_lighting": {}
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }

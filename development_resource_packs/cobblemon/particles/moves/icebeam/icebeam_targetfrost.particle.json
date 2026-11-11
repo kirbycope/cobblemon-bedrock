@@ -36,14 +36,14 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"(math.sin(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6)",
+					"-(((math.sin(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6))*(v.fx_fz ?? -1)+(math.sin(v.emitter_age*1990)*0.25)*(v.fx_fx ?? 0))",
 					"(math.cos(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6)",
-					"math.sin(v.emitter_age*1990)*0.25"
+					"(((math.sin(v.emitter_age*985)*math.sin(v.emitter_age*1860))*math.clamp(1*0.65,0.8,1.6))*(v.fx_fx ?? 0)-(math.sin(v.emitter_age*1990)*0.25)*(v.fx_fz ?? -1))"
 				],
 				"direction": [
+					"-((math.random(-12.5,12.5))*(v.fx_fz ?? -1)+(math.random(-12.5,12.5))*(v.fx_fx ?? 0))",
 					"math.random(-12.5,12.5)",
-					"math.random(-12.5,12.5)",
-					"math.random(-12.5,12.5)"
+					"((math.random(-12.5,12.5))*(v.fx_fx ?? 0)-(math.random(-12.5,12.5))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

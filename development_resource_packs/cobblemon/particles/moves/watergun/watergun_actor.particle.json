@@ -42,9 +42,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"(-v.target_deltax * (v.particle_age / v.particle_lifetime))*1.1",
-					"((v.target_deltay * (v.particle_age / v.particle_lifetime))*1.1)+math.sin(v.particle_age*340)*0.2",
-					"(-v.target_deltaz * (v.particle_age / v.particle_lifetime))*1.1"
+					"-(((-(v.target_deltax ?? 0) * (v.particle_age / v.particle_lifetime))*1.1)*(v.fx_fz ?? -1)+((-(v.target_deltaz ?? 0) * (v.particle_age / v.particle_lifetime))*1.1)*(v.fx_fx ?? 0))",
+					"(((v.target_deltay ?? 0) * (v.particle_age / v.particle_lifetime))*1.1)+math.sin(v.particle_age*340)*0.2",
+					"(((-(v.target_deltax ?? 0) * (v.particle_age / v.particle_lifetime))*1.1)*(v.fx_fx ?? 0)-((-(v.target_deltaz ?? 0) * (v.particle_age / v.particle_lifetime))*1.1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
@@ -74,7 +74,8 @@
 					}
 				}
 			},
-			"minecraft:particle_appearance_lighting": {}
+			"minecraft:particle_appearance_lighting": {},
+			"minecraft:particle_initial_speed": null
 		}
 	}
 }
