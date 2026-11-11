@@ -39,7 +39,7 @@ import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
 import { seasonFor, seasonLook, isSeasonal, revivalPotentialMarks, buildMoveset, ALPHA_SLOTS, WILD_SLOTS, preEvolutionsOf, evolutionMovesOf, exchangePp } from "./progression.js";
-import { MOVE_FX, FX_ANIMS, FX_PRIMARY, FX_BONES } from "./move_fx.js";
+import { MOVE_FX, FX_ANIMS, FX_PRIMARY, FX_BONES, FX_FORWARD } from "./move_fx.js";
 import { DEX_LAYOUT } from "./dex_layout.js";
 import { STARTERS, STARTER_LAYOUT } from "./starters.js";
 import { BERRIES, FOSSILS, APRICORN_TREES } from "./blocks.js";
@@ -1096,17 +1096,39 @@ function fxEvent(e, user, target, move, outcome) {
             }
             const other = (e.w === "t" ? user : target)?.entity, toward = other?.isValid ? other.location : undefined;
             const at = fxLocator(entity, e.l, toward);
-            const vars = new MolangVariableMap();
-            if (e.aim && other?.isValid) {
-                // ParticleStorm's target deltas: from the emitter to the target's locator, y negated as Cobblemon has it
-                const to = fxLocator(other, "target");
-                const dx = to.x - at.x, dy = to.y - at.y, dz = to.z - at.z;
-                vars.setFloat("variable.target_deltax", dx); vars.setFloat("variable.target_deltay", -dy); vars.setFloat("variable.target_deltaz", dz);
-                vars.setFloat("variable.target_distance", Math.hypot(dx, dy, dz));
-            }
-            entity.dimension.spawnParticle(fxFill(e.p, move), at, vars);
+            const values = fxFrame(entity, at, toward);
+            if (e.aim && other?.isValid) Object.assign(values, fxDeltas(values, at, fxLocator(other, "target")));
+            spawnFx(entity.dimension, fxFill(e.p, move), at, values);
         }
     } catch (err) { }
+}
+// ParticleStorm's emitter turns with the Pokemon (its emitterSpaceMatrix), the model's front along the frame's -z, and
+// a Bedrock emitter the script spawns does not, so port.py's aim_move_particles turns a move particle's vectors by
+// this forward: the level way from the emitter to the other Pokemon, or where this one looks when there is none
+function fxFrame(entity, at, toward) {
+    let x = toward ? toward.x - at.x : 0, z = toward ? toward.z - at.z : 0;
+    if (Math.hypot(x, z) < 0.01) { try { const d = entity.getViewDirection(); x = d.x; z = d.z; } catch (err) { } }
+    const len = Math.hypot(x, z);
+    return len < 1e-6 ? { fx_fx: 0, fx_fz: -1 } : { fx_fx: x / len, fx_fz: z / len };
+}
+// ParticleStorm's distanceTo: the emitter less the target in the emitter's frame (right r = (-fz, 0, fx), front f along
+// -z), y negated; a target straight ahead is deltax 0 and deltaz its distance
+function fxDeltas(frame, at, to) {
+    const dx = at.x - to.x, dy = at.y - to.y, dz = at.z - to.z, fx = frame.fx_fx, fz = frame.fx_fz;
+    return { target_deltax: -fz * dx + fx * dz, target_deltay: -dy, target_deltaz: -(fx * dx + fz * dz), target_distance: Math.hypot(dx, dy, dz) };
+}
+// a move particle with its frame and target, and the children its emitter would start (FX_FORWARD), which Bedrock would
+// start with none of these: the script starts them after the same delay with the same values, or with the preview
+// deltas the parent hands down when it has no target
+function spawnFx(dim, id, at, values) {
+    const vars = new MolangVariableMap();
+    for (const [k, v] of Object.entries(values)) vars.setFloat(`variable.${k}`, v);
+    try { dim.spawnParticle(id, at, vars); } catch (err) { }
+    for (const [seconds, child, preview] of FX_FORWARD?.[id] ?? []) {
+        const next = "target_deltaz" in values ? values : { ...values, ...preview };
+        const go = () => spawnFx(dim, child, at, next), ticks = Math.round(seconds * 20);
+        if (ticks) system.runTimeout(go, ticks); else go();
+    }
 }
 // DamageInstruction's damage_<effect> (Fire Spin's flames, Infestation's swarm, Leech Seed's sapping) on the Pokemon
 // that takes residual damage from it, as its own user and target
@@ -7095,6 +7117,7 @@ system.afterEvents.scriptEventReceive.subscribe((event) => {
     const source = event.sourceEntity;
     // the hub's area is set from a function or the server console, which have no entity
     if (event.id === "cobblemon:hub") { setHub(event.message); return; }
+    if (event.id === "cobblemon:pc_limit_test") { pcLimitTest(); return; }   // from the console too
     if (!source) return;
     if (event.id === "cobblemon:battle") {
         const player = nearestPlayer(source);
@@ -8254,16 +8277,74 @@ function resizePc(player, target) {
     const newNames = {}, newWalls = {};
     keep.forEach((n, i) => { if (names[n] !== undefined) newNames[i] = names[n]; if (walls[n] !== undefined) newWalls[i] = walls[n]; });
     contents.forEach((c, i) => saveBox(player, i, c));
-    for (let n = target; n < count; n++) player.setDynamicProperty(`cobblemon:pc_${n}`, undefined);
+    for (let n = target; n < count; n++) clearBox(player, n);
     player.setDynamicProperty(PC_NAMES, JSON.stringify(newNames)); player.setDynamicProperty(WALLS, JSON.stringify(newWalls));
     player.setDynamicProperty(PC_BOX_COUNT, target);
     return true;
 }
+// Bedrock refuses a string dynamic property over 32767 bytes of UTF-8, and a record carries every property its
+// entity had (partySnapshot), so a box's JSON passed that well short of 30 Pokemon: the write threw, a catch with a full
+// party left the Pokemon out and the battle unfinished, and a move between boxes lost the Pokemon (issue #68). A box is
+// therefore kept in pieces of at most PC_PIECE characters, cobblemon:pc_<n> the first and cobblemon:pc_<n>_<i> the
+// rest; a box saved whole before this reads as a box of one piece. The limit counts bytes (BDS 1.26.63 takes 32767
+// ASCII characters and refuses 16384 two-byte ones, pc_limit_test), so PC_PIECE leaves room for three bytes a
+// character, and a piece never ends between the two halves of a surrogate pair
+const PC_PIECE = 8000;
+const boxKey = (n, i) => (i ? `cobblemon:pc_${n}_${i}` : `cobblemon:pc_${n}`);
+function boxText(player, n) {
+    let text = player.getDynamicProperty(boxKey(n, 0)) ?? "[]";
+    for (let i = 1; ; i++) { const more = player.getDynamicProperty(boxKey(n, i)); if (typeof more !== "string") break; text += more; }
+    return text;
+}
+function textPieces(text, size = PC_PIECE) {
+    const pieces = [];
+    for (let at = 0; at < text.length;) {
+        let end = Math.min(text.length, at + size);
+        if (end < text.length) { const c = text.charCodeAt(end - 1); if (c >= 0xd800 && c <= 0xdbff) end--; }
+        pieces.push(text.slice(at, end)); at = end;
+    }
+    return pieces.length ? pieces : [""];
+}
 function box(player, n) {
-    try { const b = JSON.parse(player.getDynamicProperty(`cobblemon:pc_${n}`) ?? "[]"); return Array.from({ length: PER_BOX }, (_, i) => b[i] ?? null); }
+    try { const b = JSON.parse(boxText(player, n)); return Array.from({ length: PER_BOX }, (_, i) => b[i] ?? null); }
     catch (e) { return Array(PER_BOX).fill(null); }
 }
-function saveBox(player, n, contents) { player.setDynamicProperty(`cobblemon:pc_${n}`, JSON.stringify(contents)); }
+function saveBox(player, n, contents) {
+    const pieces = textPieces(JSON.stringify(contents));
+    pieces.forEach((piece, i) => player.setDynamicProperty(boxKey(n, i), piece));
+    for (let i = pieces.length; player.getDynamicProperty(boxKey(n, i)) !== undefined; i++) player.setDynamicProperty(boxKey(n, i), undefined);   // a box that shrank
+}
+function clearBox(player, n) {
+    for (let i = 0; i === 0 || player.getDynamicProperty(boxKey(n, i)) !== undefined; i++) player.setDynamicProperty(boxKey(n, i), undefined);
+}
+// for testing (issue #68): "scriptevent cobblemon:pc_limit_test", from the server console or a player, logs
+// where this engine refuses a string dynamic property (by characters or by UTF-8 bytes) and whether a box of
+// 30 large records saves and reads back whole; it writes to the world under boxes 9000 and up and clears them
+function pcLimitTest() {
+    const store = world, key = "cobblemon:pc_limit_probe", results = {};
+    const tryText = (name, text) => { try { store.setDynamicProperty(key, text); results[name] = "ok"; } catch (e) { results[name] = `refused (${String(e).slice(0, 80)})`; } store.setDynamicProperty(key, undefined); };
+    tryText("ascii_32767", "a".repeat(32767));
+    tryText("ascii_32768", "a".repeat(32768));
+    tryText("two_byte_16384_chars", "é".repeat(16384));   // 32,768 UTF-8 bytes in 16,384 characters
+    tryText("two_byte_20000_chars", "é".repeat(20000));   // 40,000 bytes
+    const big = (i) => {
+        const k = { "cobblemon:ivs": JSON.stringify({ hp: 31, atk: 31, def: 31, spa: 31, spd: 31, spe: 31 }) };
+        for (let n = 0; n < 23; n++) k[`cobblemon:extra_${n}`] = `value-${i}-${n}`.padEnd(24, "x");
+        return { t: "cobblemon:p0025_pikachu", v: 0, lv: 50, xp: 125000, f: false, hp: 1, n: `Pika ${i}`, k };
+    };
+    const full = Array.from({ length: PER_BOX }, (_, i) => big(i));
+    try { store.setDynamicProperty("cobblemon:pc_9001", JSON.stringify(full)); results.box_as_one_property = "ok"; } catch (e) { results.box_as_one_property = `refused (${String(e).slice(0, 80)})`; }
+    clearBox(store, 9001);
+    try {
+        saveBox(store, 9000, full);
+        const back = box(store, 9000), pieces = store.getDynamicPropertyIds().filter((id) => id === "cobblemon:pc_9000" || id.startsWith("cobblemon:pc_9000_")).length;
+        results.box_in_pieces = back.filter(Boolean).length === PER_BOX && back[PER_BOX - 1]?.n === `Pika ${PER_BOX - 1}` ? `ok, ${JSON.stringify(full).length} characters in ${pieces} pieces` : "read back wrong";
+        saveBox(store, 9000, [full[0]]);
+        results.box_shrunk = store.getDynamicProperty("cobblemon:pc_9000_1") === undefined && box(store, 9000).filter(Boolean).length === 1 ? "ok" : "stale pieces";
+    } catch (e) { results.box_in_pieces = `failed (${e})`; }
+    clearBox(store, 9000);
+    console.warn(`[cobblemon] pc_limit_test ${JSON.stringify(results)}`);
+}
 
 function mine(player, radius) {
     return player.dimension.getEntities({ families: ["owned"], location: player.location, maxDistance: radius })
@@ -9146,7 +9227,9 @@ function pcMove(player, from, to) {
     if (from.kind === "box" && to.kind === "box") {
         const src = box(player, from.box), dst = from.box === to.box ? src : box(player, to.box);
         const moving = src[from.slot]; src[from.slot] = dst[to.slot]; dst[to.slot] = moving;
-        saveBox(player, from.box, src); if (dst !== src) saveBox(player, to.box, dst);
+        // the destination first: should a write fail, the Pokemon is still where it was rather than in neither box
+        if (dst !== src) saveBox(player, to.box, dst);
+        saveBox(player, from.box, src);
         return;
     }
     if (from.kind === "party" && to.kind === "party") {
@@ -13244,7 +13327,9 @@ function addRecord(player, rec) {
     for (let n = 0; n < pcBoxes(player); n++) {
         const contents = box(player, n), i = contents.indexOf(null);
         if (i < 0) continue;
-        contents[i] = rec; saveBox(player, n, contents);
+        contents[i] = rec;
+        // a box that will not take the write is passed over, so a catch never stops halfway with the Pokemon in neither place
+        try { saveBox(player, n, contents); } catch (e) { console.warn(`[cobblemon] box ${n + 1} save: ${e}`); continue; }
         return { box: n };
     }
     return null;

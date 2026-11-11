@@ -35,15 +35,15 @@
 			},
 			"minecraft:emitter_shape_sphere": {
 				"offset": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+(0.1)*(v.fx_fx ?? 0))",
 					0.05,
-					0.1
+					"((0)*(v.fx_fx ?? 0)-(0.1)*(v.fx_fz ?? -1))"
 				],
 				"radius": 0.1,
 				"direction": [
-					"math.random(-10,10)*1",
+					"-((math.random(-10,10)*1)*(v.fx_fz ?? -1)+(math.random(-10,10)*1)*(v.fx_fx ?? 0))",
 					"math.random(1.5,25.5)*1.25",
-					"math.random(-10,10)*1"
+					"((math.random(-10,10)*1)*(v.fx_fx ?? 0)-(math.random(-10,10)*1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

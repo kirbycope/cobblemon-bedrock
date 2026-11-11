@@ -11,7 +11,9 @@
 		"events": {},
 		"components": {
 			"minecraft:emitter_lifetime_events": {
-				"creation_event": "event_sound"
+				"creation_event": [
+					"event_sound"
+				]
 			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 500,
@@ -27,9 +29,9 @@
 					0
 				],
 				"direction": [
-					"math.random(-1.61,1.61)",
+					"-((math.random(-1.61,1.61))*(v.fx_fz ?? -1)+(math.random(-0.81,2.21))*(v.fx_fx ?? 0))",
 					"math.random(-0.35,2.15)",
-					"math.random(-0.81,2.21)"
+					"((math.random(-1.61,1.61))*(v.fx_fx ?? 0)-(math.random(-0.81,2.21))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -32,9 +32,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;v.target_deltay=0;v.target_deltax=0;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 20,
 				"max_particles": 10000
@@ -44,14 +41,14 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"-math.sin(v.emitter_age*1953)*1.4",
+					"-((-math.sin(v.emitter_age*1953)*1.4)*(v.fx_fz ?? -1)+(0)*(v.fx_fx ?? 0))",
 					"-math.cos(v.emitter_age*1953)*1.4",
-					0
+					"((-math.sin(v.emitter_age*1953)*1.4)*(v.fx_fx ?? 0)-(0)*(v.fx_fz ?? -1))"
 				],
 				"direction": [
-					"-v.target_deltax",
-					"v.target_deltay",
-					"-v.target_deltaz"
+					"-((-(v.target_deltax ?? 0.0))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 5.0))*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0.0)",
+					"((-(v.target_deltax ?? 0.0))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 5.0))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -60,14 +57,14 @@
 			"minecraft:particle_initial_spin": {
 				"rotation": "math.round(v.particle_random_4*3)*90"
 			},
-			"minecraft:particle_initial_speed": "v.target_deltaz*2",
+			"minecraft:particle_initial_speed": "(v.target_deltaz ?? 5.0)*2",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*5",
+					"-(((v.particle_random_1-0.5)*5)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*2)*(v.fx_fx ?? 0))",
 					"(v.particle_random_2-0.5)*5",
-					"(v.particle_random_3-0.5)*2"
+					"(((v.particle_random_1-0.5)*5)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*2)*(v.fx_fz ?? -1))"
 				],
-				"linear_drag_coefficient": "math.clamp(v.target_deltaz*0.2,0,1.2)"
+				"linear_drag_coefficient": "math.clamp((v.target_deltaz ?? 5.0)*0.2,0,1.2)"
 			},
 			"minecraft:particle_appearance_billboard": {
 				"size": [

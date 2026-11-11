@@ -41,9 +41,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"math.sin(v.emitter_age*2150)*0.35",
+					"-((math.sin(v.emitter_age*2150)*0.35)*(v.fx_fz ?? -1)+(-0.1)*(v.fx_fx ?? 0))",
 					"0.15+math.cos(v.emitter_age*1100)*0.35",
-					-0.1
+					"((math.sin(v.emitter_age*2150)*0.35)*(v.fx_fx ?? 0)-(-0.1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -1,6 +1,6 @@
 // The Restoration Tank takes every natural material Cobblemon names, its own foods among them
 import { readFileSync } from "node:fs";
-import { check } from "../harness.mjs";
+import { check, vanillaItemIds } from "../harness.mjs";
 
 const js = readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/blocks.js", import.meta.url), "utf-8");
 const fossils = JSON.parse(js.match(/export const FOSSILS = (\{.*\});/)[1]);
@@ -15,11 +15,7 @@ const pack = new URL("../../../development_behavior_packs/cobblemon/", import.me
 const ids = new Set();
 const samples = new URL("../../../java/bedrock-samples/mojang-items.json", import.meta.url);
 if (existsSync(samples)) for (const i of JSON.parse(readFileSync(samples, "utf-8")).data_items) ids.add(i.name);
-const server = "C:/GitHub/bedrock-server/behavior_packs";
-if (existsSync(server)) for (const dir of readdirSync(server).filter((d) => d.startsWith("vanilla"))) {
-    const catalog = `${server}/${dir}/item_catalog`;
-    if (existsSync(catalog)) for (const f of readdirSync(catalog)) for (const m of readFileSync(`${catalog}/${f}`, "utf-8").matchAll(/"(minecraft:[a-z0-9_]+)"/g)) ids.add(m[1]);
-}
+for (const id of vanillaItemIds()) ids.add(id);   // loose or in a 1.26 server's __brarchive
 for (const folder of ["items", "blocks"]) {
     const walk = (url) => { for (const e of readdirSync(url, { withFileTypes: true })) {
         if (e.isDirectory()) walk(new URL(`${e.name}/`, url));

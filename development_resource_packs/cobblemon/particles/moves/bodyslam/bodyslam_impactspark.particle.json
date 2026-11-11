@@ -17,9 +17,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"direction": [
-					"math.random((-v.particle_random_4*2),(v.particle_random_4*2))",
+					"-((math.random((-v.particle_random_4*2),(v.particle_random_4*2)))*(v.fx_fz ?? -1)+(math.random((-v.particle_random_4*2),(v.particle_random_4*2)))*(v.fx_fx ?? 0))",
 					2,
-					"math.random((-v.particle_random_4*2),(v.particle_random_4*2))"
+					"((math.random((-v.particle_random_4*2),(v.particle_random_4*2)))*(v.fx_fx ?? 0)-(math.random((-v.particle_random_4*2),(v.particle_random_4*2)))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

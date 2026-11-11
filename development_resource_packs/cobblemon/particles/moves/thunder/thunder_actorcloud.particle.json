@@ -42,9 +42,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 400,
 				"max_particles": 300000
@@ -54,15 +51,15 @@
 			},
 			"minecraft:emitter_shape_disc": {
 				"offset": [
-					0,
+					"-((0)*(v.fx_fz ?? -1)+((-(v.target_deltaz ?? 5.0)*0.75)*(v.cloudsize))*(v.fx_fx ?? 0))",
 					"8+(v.emitter_age*0.3)",
-					"(-v.target_deltaz*0.75)*(v.cloudsize)"
+					"((0)*(v.fx_fx ?? 0)-((-(v.target_deltaz ?? 5.0)*0.75)*(v.cloudsize))*(v.fx_fz ?? -1))"
 				],
 				"radius": "8+(v.cloudsize*10)",
 				"direction": [
-					"math.random(-0.45,0.45)/(v.emitter_age*2)",
+					"-((math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fz ?? -1)+(math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fx ?? 0))",
 					"math.random(-0.25,0.4)/(v.emitter_age*2)",
-					"math.random(-0.45,0.45)/(v.emitter_age*2)"
+					"((math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fx ?? 0)-(math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

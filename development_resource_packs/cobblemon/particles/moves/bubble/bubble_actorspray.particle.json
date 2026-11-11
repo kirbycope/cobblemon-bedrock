@@ -18,7 +18,7 @@
 		},
 		"components": {
 			"minecraft:emitter_rate_steady": {
-				"spawn_rate": "math.clamp(v.target_deltaz*6.5,10,25)",
+				"spawn_rate": "math.clamp((v.target_deltaz ?? 0)*6.5,10,25)",
 				"max_particles": 1500
 			},
 			"minecraft:emitter_lifetime_once": {
@@ -26,16 +26,16 @@
 			},
 			"minecraft:emitter_shape_sphere": {
 				"offset": [
-					"(-v.target_deltax*(v.emitter_age/v.emitter_lifetime))*0.75",
-					"(v.target_deltay*(v.emitter_age/v.emitter_lifetime))*0.75",
-					"-0.25+math.clamp(v.target_deltaz*0.2,0.2,0.5)-(v.target_deltaz*(v.emitter_age/v.emitter_lifetime))*0.75"
+					"-(((-(v.target_deltax ?? 0)*(v.emitter_age/v.emitter_lifetime))*0.75)*(v.fx_fz ?? -1)+(-0.25+math.clamp((v.target_deltaz ?? 0)*0.2,0.2,0.5)-((v.target_deltaz ?? 0)*(v.emitter_age/v.emitter_lifetime))*0.75)*(v.fx_fx ?? 0))",
+					"((v.target_deltay ?? 0)*(v.emitter_age/v.emitter_lifetime))*0.75",
+					"(((-(v.target_deltax ?? 0)*(v.emitter_age/v.emitter_lifetime))*0.75)*(v.fx_fx ?? 0)-(-0.25+math.clamp((v.target_deltaz ?? 0)*0.2,0.2,0.5)-((v.target_deltaz ?? 0)*(v.emitter_age/v.emitter_lifetime))*0.75)*(v.fx_fz ?? -1))"
 				],
 				"radius": "0.075*(v.emitter_age+0.5)",
 				"surface_only": true,
 				"direction": [
-					"(v.particle_random_1-0.5)*0.9",
-					"((v.particle_random_2-0.5)*0.9)+((v.target_deltay*0.75)/v.target_distance)",
-					-1
+					"-(((v.particle_random_1-0.5)*0.9)*(v.fx_fz ?? -1)+(-1)*(v.fx_fx ?? 0))",
+					"((v.particle_random_2-0.5)*0.9)+(((v.target_deltay ?? 0)*0.75)/(v.target_distance ?? 0))",
+					"(((v.particle_random_1-0.5)*0.9)*(v.fx_fx ?? 0)-(-1)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -44,7 +44,7 @@
 			"minecraft:particle_lifetime_events": {
 				"expiration_event": "pop"
 			},
-			"minecraft:particle_initial_speed": "(v.target_deltaz*2)-(v.emitter_age*0.6)",
+			"minecraft:particle_initial_speed": "((v.target_deltaz ?? 0)*2)-(v.emitter_age*0.6)",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
 					0,

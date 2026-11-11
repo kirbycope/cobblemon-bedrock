@@ -19,17 +19,25 @@
 			},
 			"minecraft:emitter_lifetime_events": {
 				"timeline": {
-					"0.05": "event_sound",
-					"0.15": "event_sound",
-					"0.35": "event_sound",
-					"0.55": "event_sound"
+					"0.05": [
+						"event_sound"
+					],
+					"0.15": [
+						"event_sound"
+					],
+					"0.35": [
+						"event_sound"
+					],
+					"0.55": [
+						"event_sound"
+					]
 				}
 			},
 			"minecraft:emitter_shape_disc": {
 				"offset": [
-					"math.sin(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360)",
+					"-((math.sin(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360))*(v.fx_fz ?? -1)+(math.cos(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360))*(v.fx_fx ?? 0))",
 					"0.5-(v.particle_random_2/8)-0.1",
-					"math.cos(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360)"
+					"((math.sin(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360))*(v.fx_fx ?? 0)-(math.cos(v.emitter_age/v.emitter_lifetime*90*9+v.emitter_random_1*360))*(v.fx_fz ?? -1))"
 				],
 				"radius": "1",
 				"direction": "outwards"

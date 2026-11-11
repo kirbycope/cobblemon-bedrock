@@ -45,15 +45,15 @@
 			},
 			"minecraft:emitter_shape_disc": {
 				"offset": [
-					"(v.particle_random_3-0.5)*1",
+					"-(((v.particle_random_3-0.5)*1)*(v.fx_fz ?? -1)+((v.particle_random_4-0.5)*1)*(v.fx_fx ?? 0))",
 					6,
-					"(v.particle_random_4-0.5)*1"
+					"(((v.particle_random_3-0.5)*1)*(v.fx_fx ?? 0)-((v.particle_random_4-0.5)*1)*(v.fx_fz ?? -1))"
 				],
 				"radius": 2.5,
 				"direction": [
-					"math.random(-0.1,0.1)*6",
+					"-((math.random(-0.1,0.1)*6)*(v.fx_fz ?? -1)+(math.random(-0.1,0.1)*6)*(v.fx_fx ?? 0))",
 					0,
-					"math.random(-0.1,0.1)*6"
+					"((math.random(-0.1,0.1)*6)*(v.fx_fx ?? 0)-(math.random(-0.1,0.1)*6)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

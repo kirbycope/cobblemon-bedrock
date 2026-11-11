@@ -74,14 +74,10 @@ rctTrainers = f"{pwd}/rct_trainers/trainers"
 # the mods whose Java block models and textures the port reads, by namespace
 ASSET_ROOTS = {"cobblemon": cobblemon, "cobblefurnies": cobblefurnies}
 
-SPARSE_PATHS = [
-    "common/src/main/resources/data/cobblemon",
-    "common/src/main/resources/assets/cobblemon/bedrock",
-    "common/src/main/resources/assets/cobblemon/lang",
-    "common/src/main/resources/assets/cobblemon/sounds",
-    "common/src/main/resources/assets/cobblemon/textures/pokemon",
-    "common/src/main/resources/assets/cobblemon/textures/entity/villager",
-]
+# what the port reads of Cobblemon: all of its resources (data, models, every texture folder: particle, item, block, gui,
+# poke_balls...) and the Kotlin sources it takes values from (CobblemonBlocks.kt, CobblemonItems.kt, CobblemonSounds.kt,
+# TimeRange.kt...), with gradle.properties at the root; a narrower list left textures/particle out and the port stopped
+SPARSE_PATHS = ["common/src/main"]
 
 
 _server_checked = False
@@ -114,14 +110,47 @@ def fresh(folder):
 
 
 def get_cobblemon():
-    """A partial clone with only the folders the port reads; the whole repository is several GB."""
+    """Cobblemon's latest main, the branch the releases are ported from, as a partial clone of the folders the port
+    reads (the whole repository is several GB). An existing clone is left at the commit it has: update it before a
+    release with `git -C java fetch --depth 1 origin main` and `git -C java checkout -B main origin/main`. The commit
+    is printed, so a release's commit message can say what it was ported from."""
     if os.path.isdir(cobblemonRepo):
-        if not all(os.path.isdir(f"{cobblemonRepo}/{path}") for path in SPARSE_PATHS):
+        if not all(os.path.isdir(f"{cobblemonRepo}/{path}") for path in SPARSE_PATHS) or \
+                not os.path.isdir(f"{cobblemonRepo}/common/src/main/resources/assets/cobblemon/textures/particle"):
             os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
-        return
-    print("Cloning Cobblemon (sparse)...")
-    os.system(f'git clone --depth 1 --filter=blob:none --sparse https://gitlab.com/cable-mc/cobblemon.git "{cobblemonRepo}"')
-    os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
+    else:
+        print("Cloning Cobblemon (sparse)...")
+        os.system(f'git clone --depth 1 --filter=blob:none --sparse --branch main https://gitlab.com/cable-mc/cobblemon.git "{cobblemonRepo}"')
+        os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
+    try:
+        head = subprocess.run(["git", "-C", cobblemonRepo, "log", "-1", "--format=%h %cd %s", "--date=short"], capture_output=True, text=True).stdout.strip()
+        with open(f"{cobblemonRepo}/gradle.properties", encoding="utf-8") as file:
+            version = next((l.split("=", 1)[1].strip() for l in file if l.startswith("mod_version=")), "?")
+        print(f"Cobblemon {version} at {head}")
+    except OSError: pass
+
+
+BEDROCK_SAMPLES = {   # Mojang's bedrock-samples files the port reads, by their name in java/bedrock-samples/
+    "item_texture.json": "resource_pack/textures/item_texture.json",
+    "terrain_texture.json": "resource_pack/textures/terrain_texture.json",
+    "blocks.json": "resource_pack/blocks.json",
+    "mojang-items.json": "metadata/vanilladata_modules/mojang-items.json",
+}
+
+
+def fetch_bedrock_samples():
+    """Mojang's vanilla texture lists, block list and item list (bedrock-samples) into the git-ignored
+    java/bedrock-samples/, before anything reads them. Several readers only use a file that is already there, and the
+    fetches that did happen ran into a folder not yet made, so a fresh clone ported with no vanilla item icons and no
+    block cubes in the display case."""
+    import urllib.request
+    folder = os.path.join(pwd, "java", "bedrock-samples")
+    os.makedirs(folder, exist_ok=True)
+    for name, path in BEDROCK_SAMPLES.items():
+        local = os.path.join(folder, name)
+        if os.path.exists(local): continue
+        try: urllib.request.urlretrieve(f"https://raw.githubusercontent.com/Mojang/bedrock-samples/main/{path}", local)
+        except Exception as error: print(f"  no bedrock-samples {name}: {error!r}")
 
 
 def copy_animations():
@@ -1605,25 +1634,29 @@ def java_client_jars():
 
 def item_tag_values(tag, seen=None, kind="item"):
     """The items in an item tag ('#minecraft:oak_logs'), or with kind "block" the blocks in a block tag, from Cobblemon's
-    data or the Java client's jar (java_client_jars), nested tags followed."""
+    data and the Java client's jar (java_client_jars), nested tags followed. As a Java datapack's tags load, Cobblemon's
+    file adds to the game's tag of the same name unless it says "replace": true: 1.8.5 adds its flowers to
+    #minecraft:flowers, its leaves and saplings to theirs, and read alone those files left the poppy, oak leaves and
+    sapling out of the Restoration Tank's materials."""
     import zipfile
     seen = seen or set()
     if tag in seen: return []
     seen.add(tag)
     space, name = tag.lstrip("#").split(":")
-    data = None
+    data, values = None, []
     local = f"{cobblemonResources}/data/{space}/tags/{kind}/{name}.json"
     if os.path.exists(local):
         with open(local, encoding="utf-8") as file: data = json.load(file)
-    else:
+    if data is None or not data.get("replace"):
         global _client_jars
         if "_client_jars" not in globals(): _client_jars = java_client_jars()
         for jar in _client_jars:
             try:
-                with zipfile.ZipFile(jar) as z: data = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")); break
+                with zipfile.ZipFile(jar) as z: values = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")).get("values", []); break
             except (KeyError, zipfile.BadZipFile, OSError): continue
+    values += (data or {}).get("values", [])
     out = []
-    for value in (data or {}).get("values", []):
+    for value in values:
         value = value.get("id") if isinstance(value, dict) else value
         out += item_tag_values(value, seen, kind) if value.startswith("#") else [value]
     return out
@@ -1824,10 +1857,9 @@ def create_villager_gathering():
     minecraft:shareables list, so the newest vanilla villager_v2 is written into the pack with those items on the farmer's
     lists (behavior_peasant and work_schedule_farmer, the ones holding wheat seeds), wanted and kept as its seeds are."""
     print("Creating the farmer villager's gathering...")
-    found = glob.glob(f"{vanillaBehaviorPacks}/vanilla*/entities/villager_v2.json")
-    if not found: print("  no vanilla villager_v2.json"); return
-    newest = max(found, key=lambda path: tuple(int(n) for n in re.findall(r"\d+", os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0])))
-    with open(newest, encoding="utf-8") as file: villager = json.loads(strip_json_comments(file.read()))
+    text = newest_vanilla_text("entities/villager_v2.json")   # loose, or in a 1.26 server's __brarchive
+    if text is None: print("  no vanilla villager_v2.json"); return
+    villager = json.loads(strip_json_comments(text))
     added = 0
     for group in villager["minecraft:entity"].get("component_groups", {}).values():
         items = group.get("minecraft:shareables", {}).get("items", [])
@@ -3230,6 +3262,18 @@ def vanilla_item_ids():
         vanilla_item_cache = set()
         for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/item_catalog/*.json"):
             with open(path, encoding="utf-8") as file: vanilla_item_cache.update(re.findall(r'"(minecraft:[a-z0-9_]+)"', file.read()))
+        # since 1.26 the catalogs are packed (__brarchive/item_catalog.brarchive) and compiled (\x7fMCB), whose strings
+        # are each led by their length in one byte ("\x11minecraft:chicken"): read by that length, an id is exact; left
+        # empty, every Java drop name went through unconverted (Lotad's lily_pad, not Bedrock's waterlily)
+        for archive in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/__brarchive/item_catalog.brarchive"):
+            for body in brarchive_entries(archive).values():
+                if not body.startswith(b"\x7fMCB"):
+                    vanilla_item_cache.update(re.findall(r'"(minecraft:[a-z0-9_]+)"', body.decode("utf-8", "replace"))); continue
+                for m in re.finditer(rb"minecraft:", body):
+                    start = m.start()
+                    if start == 0: continue
+                    text = body[start: start + body[start - 1]]
+                    if re.fullmatch(rb"minecraft:[a-z0-9_]+", text): vanilla_item_cache.add(text.decode("ascii"))
     return vanilla_item_cache
 
 
@@ -3347,7 +3391,10 @@ def create_sounds():
         sounds = []
         for sound in definition.get("sounds", []):
             entry = sound if isinstance(sound, dict) else {"name": sound}
-            path = entry["name"].split(":", 1)[1]
+            # a name with no namespace is Minecraft's own (1.8.5's stepsound.<block>.minecraft: "step/grass1"), a file
+            # Cobblemon does not ship and Bedrock plays from its own block sounds
+            namespace, _, path = entry["name"].rpartition(":")
+            if namespace != "cobblemon": continue
             source = f"{cobblemon}/sounds/{path}.ogg"
             if not os.path.exists(source): continue
             os.makedirs(os.path.dirname(f"{soundsBedrock}/{path}"), exist_ok=True)
@@ -3667,6 +3714,237 @@ def add_bone_particles(effects):
     return out
 
 
+# Where a vector in a particle's emitter frame sits in a particle file: a world-space Bedrock emitter reads them along
+# the world's axes, which Cobblemon's emitter (ParticleStorm's emitterSpaceMatrix) reads along the Pokemon's own
+FRAME_VECTORS = [
+    *[(f"minecraft:emitter_shape_{s}", key) for s in ("point", "sphere", "box", "disc", "custom", "entity_aabb") for key in ("offset", "direction", "plane_normal")],
+    ("minecraft:particle_initial_speed", None),
+    ("minecraft:particle_motion_dynamic", "linear_acceleration"),
+    ("minecraft:particle_motion_parametric", "relative_position"),
+    ("minecraft:particle_motion_parametric", "direction"),
+]
+PREVIEW_TARGET = {}   # particle -> the target deltas its creation_expression set for Snowstorm's preview, now its fallbacks
+PREVIEW_SET = re.compile(r"(?:v|variable)\.(target_delta[xyz]|target_distance)\s*=\s*(-?[\d.]+)\s*;\s*")
+
+
+def aim_move_particles(effects, bones):
+    """Move particles aimed as Cobblemon aims them. ParticleStorm's emitter turns with the Pokemon, the model's front
+    along its local -z, and hands its particles the target as target_deltax/y/z: the emitter less the target in that
+    frame, y negated, so a target straight ahead is deltax 0 and deltaz its distance (ember_actor's preview value, 5).
+    A Bedrock emitter the script spawns has no turn, so its particles moved along the world's axes and the deltas
+    pointed nowhere in particular: Ember's fire never crossed to its target. Here, each vector a move particle's
+    emitter reads along its frame (an offset, a direction, an acceleration) is turned by the forward the script
+    passes as variable.fx_fx and variable.fx_fz (scripts/main.js's fxFrame), which fall back to north, the turn that
+    leaves it as it was, wherever nothing passes them. The deltas a creation_expression sets for the preview would
+    overwrite the script's, so they become that particle's fallbacks (PREVIEW_TARGET, read by guard_unset_variables).
+    An event of the emitter of a particle only the script fires (at its creation or on its timeline) that starts an
+    emitter is taken out and played by the script, after the same delay and with the same variables, as FX_FORWARD
+    {particle: [[seconds, child, {preview deltas it hands down}]]}, since Bedrock hands a child none of them."""
+    paths, data = {}, {}
+    for path in glob.glob(f"{particlesBedrock}/**/*.particle.json", recursive=True):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        pid = d.get("particle_effect", {}).get("description", {}).get("identifier")
+        if pid: paths[pid], data[pid] = path, d
+    fired = {}   # particle -> how the script fires it: True from the script, False from a Pokemon's animation (bones)
+    for t in effects.values():
+        for e in t["e"]:
+            if e["k"] != "p": continue
+            ids = [p for p in data if re.fullmatch(re.escape(e["p"]).replace(r"\$name", r"\w+").replace(r"\$type", r"\w+").replace(r"\$cat", r"\w+"), p)] if "$" in e["p"] else [e["p"]]
+            client = not e.get("aim") and e.get("l") in FX_BONE_LOCATORS and bool(bones)
+            for p in ids: fired.setdefault(p, set()).add(not client)
+    started = {}
+    for pid, d in data.items():
+        for name, event in (d["particle_effect"].get("events") or {}).items():
+            child = (event.get("particle_effect") or {}).get("effect") if isinstance(event, dict) else None
+            if child: started.setdefault(child, set()).add((pid, name))
+
+    def emitted(pid, name):
+        event = (data[pid]["particle_effect"].get("events") or {}).get(name)
+        if not isinstance(event, dict) or set(event) != {"particle_effect"}: return None
+        effect = event["particle_effect"]
+        if effect.get("type") != "emitter" or effect.get("pre_effect_expression") or effect.get("effect") not in data: return None
+        return effect["effect"]
+
+    def emitter_level(pid, name):
+        life = data[pid]["particle_effect"].get("components", {}).get("minecraft:emitter_lifetime_events")
+        if not isinstance(life, dict): return False
+        return any(name == l or (isinstance(l, list) and name in l) for l in [life.get("creation_event")] + list((life.get("timeline") or {}).values()))
+
+    # the script owns a particle it alone fires (never from a bone), or one only owned particles' emitter events start
+    owned, grown = set(), True
+    while grown:
+        grown = False
+        for pid in data:
+            if pid in owned: continue
+            starters = started.get(pid, set())
+            alone = fired.get(pid) == {True} and not starters
+            via = bool(starters) and pid not in fired and all(p in owned and emitter_level(p, n) and emitted(p, n) == pid for p, n in starters)
+            if alone or via: owned.add(pid); grown = True
+    # every particle a move effect reaches, through any event: their vectors turn (by nothing, where nothing is passed)
+    reached, queue = set(), list(fired)
+    while queue:
+        pid = queue.pop()
+        if pid in reached or pid not in data: continue
+        reached.add(pid)
+        queue += [(ev.get("particle_effect") or {}).get("effect") for ev in (data[pid]["particle_effect"].get("events") or {}).values() if isinstance(ev, dict)]
+    PREVIEW_TARGET.clear()
+    forward = {}
+    fx, fz = "(v.fx_fx ?? 0)", "(v.fx_fz ?? -1)"
+
+    def turn(vector):
+        if not isinstance(vector, list) or len(vector) != 3: return vector
+        x, y, z = vector
+        if all(isinstance(c, (int, float)) and c == 0 for c in (x, z)): return vector
+        return [f"-(({x})*{fz}+({z})*{fx})", y, f"(({x})*{fx}-({z})*{fz})"]
+
+    for pid in sorted(reached):
+        effect = data[pid]["particle_effect"]
+        components = effect.get("components", {})
+        init = components.get("minecraft:emitter_initialization")
+        if isinstance(init, dict) and isinstance(init.get("creation_expression"), str):
+            found = {m.group(1): float(m.group(2)) for m in PREVIEW_SET.finditer(init["creation_expression"])}
+            if found:
+                PREVIEW_TARGET[pid] = found
+                init["creation_expression"] = PREVIEW_SET.sub("", init["creation_expression"])
+                if not init["creation_expression"].strip(): init.pop("creation_expression")
+                if not init: components.pop("minecraft:emitter_initialization")
+        for component, key in FRAME_VECTORS:
+            c = components.get(component)
+            # only a component the particle has: writing an absent one back as null made the client log "required field
+            # does not exist" for particle_initial_speed on 40 particles as the pack loaded
+            if key is None and isinstance(c, list): components[component] = turn(c)
+            elif isinstance(c, dict) and key in c: c[key] = turn(c[key])
+        billboard = components.get("minecraft:particle_appearance_billboard")
+        direction = billboard.get("direction") if isinstance(billboard, dict) else None
+        if isinstance(direction, dict) and "custom_direction" in direction: direction["custom_direction"] = turn(direction["custom_direction"])
+    for pid in sorted(owned):
+        components = data[pid]["particle_effect"].get("components", {})
+        life = components.get("minecraft:emitter_lifetime_events")
+        if not isinstance(life, dict): continue
+
+        def take(names, seconds):
+            names = names if isinstance(names, list) else [names]
+            kept = []
+            for name in names:
+                child = emitted(pid, name)
+                if child in owned: forward.setdefault(pid, []).append([round(seconds, 3), child, PREVIEW_TARGET.get(pid, {})])
+                else: kept.append(name)
+            return kept
+
+        if "creation_event" in life:
+            kept = take(life["creation_event"], 0.0)
+            if kept: life["creation_event"] = kept
+            else: life.pop("creation_event")
+        timeline = life.get("timeline") or {}
+        for at in list(timeline):
+            kept = take(timeline[at], float(at))
+            if kept: timeline[at] = kept
+            else: timeline.pop(at)
+        if "timeline" in life and not life["timeline"]: life.pop("timeline")
+        if not life: components.pop("minecraft:emitter_lifetime_events")
+    for pid in reached:
+        with open(paths[pid], "w", encoding="utf-8") as file: file.write(json.dumps(data[pid], indent="\t"))
+    print(f"  move particles turned to the Pokemon's frame: {len(reached)}; {sum(len(v) for v in forward.values())} child emitters started by the script; {len(PREVIEW_TARGET)} preview deltas made fallbacks")
+    return forward
+
+
+# what Bedrock gives every emitter and particle itself
+PARTICLE_BUILTINS = {f"{a}_{b}" for a in ("emitter", "particle") for b in ("age", "lifetime", "random_1", "random_2", "random_3", "random_4")}
+PARTICLE_READ = re.compile(r"(?<![\w.])(?:v|variable)\.([a-z_][a-z0-9_]*)(?![\w])(?!\s*\.)", re.I)
+PARTICLE_SET = re.compile(r"(?<![\w.])(?:v|variable)\.([a-z_][a-z0-9_]*)\s*=(?!=)\s*([^;]+);", re.I)
+PARTICLE_TARGET = {"target_deltax", "target_deltay", "target_deltaz", "target_distance"}   # ParticleStorm's, from scripts/main.js's fxEvent
+
+
+def guard_unset_variables():
+    """A variable a particle reads that nothing on Bedrock sets logs "unhandled request for unknown variable" in the
+    client's content log each time it is read, where Cobblemon's Molang reads it as 0 without a word. Each such read
+    gets a fallback through ??, the value Cobblemon would have used: 0 for one set nowhere (Fire Blast's and Fire
+    Spin's burstarc, a curve of other particles that these never define); the expression an ancestor sets it with,
+    when that uses only what every particle has (Greninja's fading cloud: its parent's smoke_color =
+    v.particle_random_3, which Cobblemon hands down and Bedrock does not); and a curve's starting value where an
+    emitter's rate reads the curve before its first evaluation (Draco Meteor's motion). ParticleStorm's target deltas
+    fall back to the preview's values (aim_move_particles): the script passes them to the particles it fires aimed and
+    the children it starts for them, not to a particle fired unaimed or a child its emitter's particles start, which
+    Bedrock gives none of the parent's variables (a child's pre_effect_expression "will not have access to the event
+    triggering emitter's Molang data"); unguarded, those logged hundreds of errors a battle. The other variables the
+    scripts pass in (spawnParticle's MolangVariableMap: a broth's colour, a request icon's alpha) are left alone."""
+    script_vars = set()
+    for path in glob.glob(f"{behaviorPack}/scripts/*.js"):
+        with open(path, encoding="utf-8") as file:
+            script_vars |= set(re.findall(r"""set(?:Float|Vector3|ColorRGBA?|SpeedAndDirection)\(\s*[`"']variable\.(\w+)""", file.read()))
+    script_vars -= PARTICLE_TARGET   # passed to some spawns of a particle and missing from others
+    paths, data = {}, {}
+    for path in glob.glob(f"{particlesBedrock}/**/*.particle.json", recursive=True):
+        with open(path, encoding="utf-8") as file: d = json.load(file)
+        pid = d.get("particle_effect", {}).get("description", {}).get("identifier")
+        if pid: paths[pid], data[pid] = path, d
+    parents = {}
+    for pid, d in data.items():
+        for event in (d["particle_effect"].get("events") or {}).values():
+            child = (event.get("particle_effect") or {}).get("effect") if isinstance(event, dict) else None
+            if child: parents.setdefault(child, set()).add(pid)
+
+    def ancestors(pid, seen=None):
+        seen = set() if seen is None else seen
+        for p in parents.get(pid, ()):
+            if p not in seen: seen.add(p); ancestors(p, seen)
+        return seen
+
+    def curve_start(curve):
+        nodes = curve.get("nodes")
+        if isinstance(nodes, dict):   # bezier_chain: {"0.0": {"value": ...}}
+            first = min(nodes, key=float); v = nodes[first]
+            return v.get("value", v.get("left_value", 0)) if isinstance(v, dict) else v
+        if isinstance(nodes, list) and nodes:
+            return nodes[1] if curve.get("type") == "catmull_rom" and len(nodes) > 1 else nodes[0]
+        return 0
+
+    def builtin_only(expr):
+        return all(n in PARTICLE_BUILTINS for n in PARTICLE_READ.findall(expr)) and not re.search(r"(?<![\w.])(?:q|query|t|temp|c|context)\.", expr)
+
+    def guard(text, fallbacks):
+        def one(m):
+            rest = text[m.end():m.end() + 6]
+            if m.group(1) not in fallbacks or re.match(r"\s*=(?!=)", rest) or re.match(r"\s*\?\?", rest): return m.group(0)
+            return f"({m.group(0)} ?? {fallbacks[m.group(1)]})"
+        return PARTICLE_READ.sub(one, text)
+
+    def walk(value, fallbacks):
+        if isinstance(value, str): return guard(value, fallbacks)
+        if isinstance(value, list): return [walk(v, fallbacks) for v in value]
+        if isinstance(value, dict): return {k: walk(v, fallbacks) for k, v in value.items()}
+        return value
+
+    changed = 0
+    for pid, d in data.items():
+        effect = d["particle_effect"]
+        curves = {k.split(".", 1)[1]: c for k, c in (effect.get("curves") or {}).items() if "." in k and isinstance(c, dict)}
+        sets = {name: rhs.strip() for name, rhs in PARTICLE_SET.findall(json.dumps(effect))}
+        inherited = {}
+        for a in ancestors(pid):
+            for name, rhs in PARTICLE_SET.findall(json.dumps(data[a]["particle_effect"])): inherited.setdefault(name, rhs.strip())
+        everywhere, rates = {}, {}
+        for name in set(PARTICLE_READ.findall(json.dumps([effect.get("components"), effect.get("curves")]))):
+            if name in PARTICLE_BUILTINS or name in script_vars or name in sets or name in curves: continue
+            if name in PARTICLE_TARGET:   # the preview's value (aim_move_particles), its own or the nearest ancestor's, else 0
+                own = [PREVIEW_TARGET.get(p, {}).get(name) for p in [pid, *sorted(ancestors(pid))]]
+                everywhere[name] = next((v for v in own if v is not None), 0); continue
+            rhs = inherited.get(name)
+            everywhere[name] = f"({rhs})" if rhs and builtin_only(rhs) else 0
+        for name, curve in curves.items():
+            if name not in sets: rates[name] = curve_start(curve)
+        if not everywhere and not rates: continue
+        components = effect.get("components", {})
+        new = {k: walk(v, {**everywhere, **(rates if k.startswith("minecraft:emitter_rate") else {})}) for k, v in components.items()}
+        new_curves = walk(effect.get("curves"), everywhere) if effect.get("curves") else effect.get("curves")
+        if new == components and new_curves == effect.get("curves"): continue
+        effect["components"] = new
+        if new_curves is not None: effect["curves"] = new_curves
+        with open(paths[pid], "w", encoding="utf-8") as file: file.write(json.dumps(d, indent="\t"))
+        changed += 1
+    print(f"  particles reading a variable nothing sets on Bedrock, given Cobblemon's value as a fallback: {changed}")
+
+
 def create_move_fx():
     root = f"{cobblemonData}/action_effects/moves"
     particles = set()
@@ -3742,6 +4020,8 @@ def create_move_fx():
             with open(path, "w", encoding="utf-8") as file: file.write(held)
     primary = add_primary_controllers(anims, lengths, stems)
     bones = add_bone_particles(effects)
+    forward = aim_move_particles(effects, bones)
+    guard_unset_variables()   # after aim_move_particles, whose preview deltas it falls back to
     impact = sorted(p for p in particles if p.startswith("cobblemon:impact_"))
     with open(f"{behaviorPack}/scripts/move_fx.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py (create_move_fx): Cobblemon's move effects, the species' battle clips and the impact particles\n")
@@ -3750,6 +4030,7 @@ def create_move_fx():
         file.write(f"export const FX_PARTICLES = {json.dumps(impact)};\n")
         file.write(f"export const FX_PRIMARY = {json.dumps(primary, separators=(',', ':'))};\n")
         file.write(f"export const FX_BONES = {json.dumps(bones, separators=(',', ':'))};\n")
+        file.write(f"export const FX_FORWARD = {json.dumps(forward, separators=(',', ':'))};\n")
     print(f"Move effects: {len(effects)} timelines, {len(anims)} species with battle clips.")
 
 
@@ -5518,14 +5799,23 @@ def cobblemon_jar():
     if os.path.exists(props):
         with open(props, encoding="utf-8") as file: version = (re.search(r"^mod_version\s*=\s*(\S+)", file.read(), re.M) or [None, version])[1]
     jar = f"{cobblemonRepo}/minecraft/cobblemon-fabric-{version}.jar"
-    if not os.path.exists(jar):
-        try:
-            found = json.load(urllib.request.urlopen('https://api.modrinth.com/v2/project/cobblemon/version?loaders=["fabric"]'.replace('"', "%22")))
-            # Modrinth names the Fabric builds from 1.8.3 on with an F ("1.8.4F")
-            url = next(f["url"] for v in found if v["version_number"] in (version, f"{version}F") for f in v["files"] if f.get("primary", True))
+    if os.path.exists(jar): return jar
+    # the port follows Cobblemon's main, which names the version in development (1.8.5 in November 2026) before Modrinth
+    # has it: the newest published build stands in, since the assets taken from it (the boats' and water platform's
+    # textures and models) seldom change between releases, and leaving them out dropped the boats from the pack
+    try:
+        found = json.load(urllib.request.urlopen('https://api.modrinth.com/v2/project/cobblemon/version?loaders=["fabric"]'.replace('"', "%22")))
+        # Modrinth names the Fabric builds from 1.8.3 on with an F ("1.8.4F"); the list is newest first
+        exact = [v for v in found if v["version_number"] in (version, f"{version}F")]
+        chosen = (exact or found)[0]
+        name = chosen["version_number"].rstrip("F")
+        jar = f"{cobblemonRepo}/minecraft/cobblemon-fabric-{name}.jar"
+        if not exact: print(f"  no Cobblemon {version} jar on Modrinth yet: using {chosen['version_number']}, the newest published")
+        if not os.path.exists(jar):
+            url = next(f["url"] for f in chosen["files"] if f.get("primary", True))
             os.makedirs(os.path.dirname(jar), exist_ok=True)
             urllib.request.urlretrieve(url, jar)
-        except Exception as error: print(f"  no Cobblemon {version} jar: {error}")
+    except Exception as error: print(f"  no Cobblemon jar ({version}): {error!r}")
     return jar if os.path.exists(jar) else None
 
 
@@ -7095,14 +7385,46 @@ LOOT_INJECTIONS = {
 }
 
 
-def newest_vanilla_file(rel):
-    """A vanilla behavior pack file (loot_tables/chests/igloo_chest.json), from the newest versioned pack that has it."""
+def brarchive_entries(path):
+    """The files of a Bedrock Dedicated Server .brarchive, as {name: bytes}. Since 1.26 a vanilla pack keeps a folder's
+    files packed into __brarchive/<parent>/<folder>.brarchive: an 8-byte magic, the entry count and a version (u32 each),
+    then a 256-byte record per file (its name's length in one byte, the name padded to 247, its offset and length in
+    the data after the records, u32 each). An entry is plain JSON or a compiled one starting \\x7fMCB, which is
+    unreadable without Mojang's schema."""
+    import struct
+    with open(path, "rb") as file: data = file.read()
+    count = struct.unpack_from("<I", data, 8)[0]
+    base, out = 16 + count * 256, {}
+    for i in range(count):
+        record = data[16 + i * 256: 16 + (i + 1) * 256]
+        offset, length = struct.unpack_from("<II", record, 248)
+        out[record[1:1 + record[0]].decode("utf-8")] = data[base + offset: base + offset + length]
+    return out
+
+
+def newest_vanilla_text(rel):
+    """A vanilla behavior pack file's text (loot_tables/chests/igloo_chest.json), from the newest versioned pack that has
+    it, as a loose file or, on a 1.26 server, a JSON entry of the pack's __brarchive (brarchive_entries); None if none."""
     found = []
-    for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/{rel}"):
-        pack = os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0]   # vanilla, vanilla_1.21.30
-        found.append((tuple(int(n) for n in re.findall(r"\d+", pack)), path))
-    if not found: raise FileNotFoundError(f"no vanilla {rel} under {vanillaBehaviorPacks}")
-    with open(max(found)[1], encoding="utf-8") as file: return json.load(file)
+    folder, name = os.path.split(rel)
+    for pack_dir in glob.glob(f"{vanillaBehaviorPacks}/vanilla*"):
+        pack = os.path.basename(pack_dir)   # vanilla, vanilla_1.21.30
+        key = tuple(int(n) for n in re.findall(r"\d+", pack))
+        if os.path.exists(f"{pack_dir}/{rel}"):
+            found.append((key, lambda p=f"{pack_dir}/{rel}": open(p, encoding="utf-8").read()))
+            continue
+        archive = f"{pack_dir}/__brarchive/{folder}.brarchive"
+        if os.path.exists(archive):
+            body = brarchive_entries(archive).get(name)
+            if body is not None and not body.startswith(b"\x7fMCB"): found.append((key, lambda b=body: b.decode("utf-8")))
+    return max(found, key=lambda f: f[0])[1]() if found else None
+
+
+def newest_vanilla_file(rel):
+    """newest_vanilla_text, read as JSON."""
+    text = newest_vanilla_text(rel)
+    if text is None: raise FileNotFoundError(f"no vanilla {rel} under {vanillaBehaviorPacks}, loose or as JSON in a __brarchive")
+    return json.loads(strip_json_comments(text))
 
 
 def create_loot_injections():
@@ -9741,13 +10063,21 @@ def poke_rods():
 
 
 def vanilla_biome_tags():
-    """{biome id: [tags]} from the server's vanilla biome definitions."""
-    tags = {}
+    """{biome id: [tags]} from the server's vanilla biome definitions: loose in behavior_packs/vanilla/biomes, or since
+    1.26 packed in vanilla/__brarchive/biomes.brarchive (brarchive_entries), which left BIOME_TAGS empty and every
+    season, herd and biome check in the scripts reading nothing."""
+    texts = []
     for path in glob.glob(f"{vanillaBiomes}/*.json"):
-        with open(path, encoding="utf-8") as file: text = re.sub(r"//[^\n]*", "", file.read())
-        try: data = json.loads(text)["minecraft:biome"]
+        with open(path, encoding="utf-8") as file: texts.append(file.read())
+    archive = f"{os.path.dirname(vanillaBiomes)}/__brarchive/biomes.brarchive"
+    if not texts and os.path.exists(archive):
+        texts = [body.decode("utf-8") for body in brarchive_entries(archive).values() if not body.startswith(b"\x7fMCB")]
+    tags = {}
+    for text in texts:
+        try: data = json.loads(re.sub(r"//[^\n]*", "", text))["minecraft:biome"]
         except Exception: continue
         tags[data["description"]["identifier"]] = data.get("components", {}).get("minecraft:tags", {}).get("tags", [])
+    if not tags: raise FileNotFoundError(f"no vanilla biome definitions under {vanillaBiomes} or in its __brarchive")
     return tags
 
 
@@ -17623,6 +17953,7 @@ def main():
     global pokemons, fix_only
     fix_only = "--fix" in sys.argv
     get_cobblemon()
+    fetch_bedrock_samples()
     if not fix_only:
         copy_animations()
         copy_models()

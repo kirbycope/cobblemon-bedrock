@@ -122,17 +122,32 @@ def starter_screen(t):
     if time.time() - began > 120:
         t.finding(f"The first load of the new world took {(time.time() - began) / 60:.1f} minutes on the Loading screen.")
     if "content log" in found[2].lower():
-        t.finding("A clean install's first join opens the Content Log over the world (the pack has content errors).")
-        c.shot("content_log")
+        # it covers the whole screen, the starter screen behind it too, until it is closed
+        close_content_log(t, "on the first join")
         found = c.wait("starter", "choose", "kanto", timeout=60, why="the starter screen behind the content log")
     c.shot("starter_screen")
     return found[2]
+
+
+def close_content_log(t, when):
+    """The client opens its Content Log History window over the world on joining, even empty, and it can come up after
+    the starter screen is already showing; every press then lands in it (three tries at the starter screen pressed into
+    it and the run stopped). B closes it. True if it was open."""
+    c = t.client
+    if not c.find("content log history", timeout=1): return False
+    log = t.store.content_log()   # the newest content log's path
+    errors = [l for l in open(log, encoding="utf-8", errors="replace") if "error" in l.lower()] if log else []
+    t.finding(f"The Content Log History window opened over the world {when}" + (f", with {len(errors)} error lines in the log." if errors else ", with nothing in it."))
+    c.shot("content_log")
+    t.connect_pad().press("b"); time.sleep(1.5)
+    return True
 
 
 @step("Pick a starter with the controller: Charmander, then I choose you!")
 def pick_starter(t):
     c, pad = t.client, t.connect_pad()
     c.park_mouse()
+    close_content_log(t, "as the starter screen came up")
     if not c.find("i choose you", "starter selection", timeout=5):
         t.finding("The starter screen was not open after the first join; sneaking twice (B, B) to open it as the Getting Started book says.")
         pad.press("b", "b", hold=0.1, gap=0.15)
@@ -143,6 +158,7 @@ def pick_starter(t):
     # The first press after the screen opens can be lost, which leaves the focus a row short (Cyndaquil, in Johto):
     # pressing a starter only shows it, so the moves are made again until the screen shows Charmander
     for attempt in range(3):
+        close_content_log(t, "while the starter was being picked")
         pad.press(*["up"] * (3 + attempt), "right"); time.sleep(0.4)
         c.shot("charmander_focused")
         pad.press("a"); time.sleep(1.5)
@@ -240,10 +256,8 @@ def join_server(t):
 
 @step("Server first join: the starter screen, Charmander chosen")
 def server_starter(t):
-    found = t.client.find("i choose you", "starter selection", "content log", timeout=120)
-    if found and "content log" in found[2].lower():
-        t.finding("The Content Log opened on first joining the server.")
-        t.connect_pad().press("b"); time.sleep(1.5)
+    t.client.find("i choose you", "starter selection", "content log", timeout=120)
+    close_content_log(t, "on first joining the server")
     return pick_starter(t)
 
 
@@ -494,15 +508,21 @@ def series_card(t, series="Radical Red"):
     bridge = t.connect_bridge()
     inventory = bridge.data("mc_player_get_inventory", player=t.data.get("player") or bridge.player()["name"]) or {}
     items = (inventory.get("inventory", {}) or {}).get("items", []) if isinstance(inventory, dict) else []
-    return any(i.get("type_id") == "rctmod:trainer_card" and series.lower() in str(i.get("name_tag") or "").lower() for i in items)
+    return any(i.get("type_id") in CARD_IDS and series.lower() in str(i.get("name_tag") or "").lower() for i in items)
+
+
+# the Trainer Card and its glinting twin, which the add-on swaps in while the held card has something to point at
+# (TrainerCard.isFoil): a card held near the Trainer Association or a gym is rctmod:trainer_card_glint
+CARD_IDS = ("rctmod:trainer_card", "rctmod:trainer_card_glint")
 
 
 def hotbar_slot(t, item):
-    """The hotbar slot (0 to 8) holding item, from the player's inventory through the bridge, or None."""
+    """The hotbar slot (0 to 8) holding item (an id, or a tuple of ids), from the player's inventory through the bridge, or None."""
+    wanted = (item,) if isinstance(item, str) else tuple(item)
     bridge = t.connect_bridge()
     inventory = bridge.data("mc_player_get_inventory", player=t.data.get("player") or bridge.player()["name"]) or {}
     items = (inventory.get("inventory", {}) or {}).get("items", []) if isinstance(inventory, dict) else []
-    return next((i["slot"] for i in items if i.get("type_id") == item and i.get("slot", 9) < 9), None)
+    return next((i["slot"] for i in items if i.get("type_id") in wanted and i.get("slot", 9) < 9), None)
 
 
 def eat(t):
@@ -547,14 +567,14 @@ def held_item(t):
 
 def hold_card(t):
     """The Trainer Card in hand, from wherever it sits in the hotbar."""
-    if hotbar_slot(t, "rctmod:trainer_card") is None: return False
+    if hotbar_slot(t, CARD_IDS) is None: return False
     pad = t.connect_pad()
     for _ in range(10):
         held = held_item(t)
         if held is None: return hold(t, "trainer card")   # a build without the hook
-        if held == "rctmod:trainer_card": return True
+        if held in CARD_IDS: return True
         pad.press("rb", gap=0.15)
-    return held_item(t) == "rctmod:trainer_card"
+    return held_item(t) in CARD_IDS
 
 
 def in_world(t):
@@ -894,7 +914,7 @@ def follow_arrow(t):
     started, behind, legs = time.time(), 0, 0
     while time.time() - started < 60 * 15:
         if in_world(t): t.note("died on the way; respawned at the world spawn")
-        if not hold_card(t) and hotbar_slot(t, "rctmod:trainer_card") is None:
+        if not hold_card(t) and hotbar_slot(t, CARD_IDS) is None:
             t.finding("The player died following the card and dropped it with everything else; only the Party item comes back on respawn.")
             check(False, "the Trainer Card was lost on the way to the gym")
         reading = card_arrow(c)

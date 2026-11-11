@@ -48,9 +48,6 @@
 			}
 		},
 		"components": {
-			"minecraft:emitter_initialization": {
-				"creation_expression": "v.target_deltaz=5;v.target_deltax=0;v.target_deltay=0;"
-			},
 			"minecraft:emitter_rate_steady": {
 				"spawn_rate": 240,
 				"max_particles": 1000
@@ -60,8 +57,6 @@
 			},
 			"minecraft:emitter_lifetime_events": {
 				"creation_event": [
-					"erupt",
-					"lava",
 					"smoke"
 				]
 			},
@@ -73,9 +68,9 @@
 				],
 				"radius": 0.2,
 				"direction": [
-					"(((v.particle_random_1-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25)",
+					"-(((((v.particle_random_1-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25))*(v.fx_fz ?? -1)+((((v.particle_random_3-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25))*(v.fx_fx ?? 0))",
 					5,
-					"(((v.particle_random_3-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25)"
+					"(((((v.particle_random_1-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25))*(v.fx_fx ?? 0)-((((v.particle_random_3-0.5)*1.05))+(math.sin(v.emitter_age*720)*0.25))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -87,9 +82,9 @@
 			"minecraft:particle_initial_speed": "(8*math.random(0.65,2.05))*2.25",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*4",
+					"-(((v.particle_random_1-0.5)*4)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*1)*(v.fx_fx ?? 0))",
 					"4+(v.particle_random_2-0.5)*2",
-					"(v.particle_random_3-0.5)*1"
+					"(((v.particle_random_1-0.5)*4)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*1)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 3.5
 			},

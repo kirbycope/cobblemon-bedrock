@@ -48,9 +48,9 @@
 			"minecraft:particle_initial_speed": "math.random(20,25)",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"math.random(-50,50) * variable.acceleration",
+					"-((math.random(-50,50) * variable.acceleration)*(v.fx_fz ?? -1)+(math.random(-50,50) * variable.acceleration)*(v.fx_fx ?? 0))",
 					"math.random(-50,75) * variable.acceleration",
-					"math.random(-50,50) * variable.acceleration"
+					"((math.random(-50,50) * variable.acceleration)*(v.fx_fx ?? 0)-(math.random(-50,50) * variable.acceleration)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 10
 			},

@@ -32,7 +32,7 @@
 		},
 		"components": {
 			"minecraft:emitter_rate_steady": {
-				"spawn_rate": "math.max(15 * v.target_distance/4, 20)",
+				"spawn_rate": "math.max(15 * (v.target_distance ?? 0)/4, 20)",
 				"max_particles": 24
 			},
 			"minecraft:emitter_lifetime_once": {
@@ -52,9 +52,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"((1-v.particle_age/v.particle_lifetime) * math.sin(v.particle_age*90) * 0.75) * (math.sin((v.particle_age*15)+(v.emitter_age*1523))*math.clamp(v.target_distance*1.65,1,6))",
-					"(1 -v.particle_age/v.particle_lifetime) * math.sin(v.particle_age*90) * (v.particle_random_2*6-2) + (1 -v.particle_age/v.particle_lifetime) * v.target_deltay",
-					"-v.target_deltaz*(1-v.particle_age/v.particle_lifetime)"
+					"-((((1-v.particle_age/v.particle_lifetime) * math.sin(v.particle_age*90) * 0.75) * (math.sin((v.particle_age*15)+(v.emitter_age*1523))*math.clamp((v.target_distance ?? 0)*1.65,1,6)))*(v.fx_fz ?? -1)+(-(v.target_deltaz ?? 0)*(1-v.particle_age/v.particle_lifetime))*(v.fx_fx ?? 0))",
+					"(1 -v.particle_age/v.particle_lifetime) * math.sin(v.particle_age*90) * (v.particle_random_2*6-2) + (1 -v.particle_age/v.particle_lifetime) * (v.target_deltay ?? 0)",
+					"((((1-v.particle_age/v.particle_lifetime) * math.sin(v.particle_age*90) * 0.75) * (math.sin((v.particle_age*15)+(v.emitter_age*1523))*math.clamp((v.target_distance ?? 0)*1.65,1,6)))*(v.fx_fx ?? 0)-(-(v.target_deltaz ?? 0)*(1-v.particle_age/v.particle_lifetime))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {

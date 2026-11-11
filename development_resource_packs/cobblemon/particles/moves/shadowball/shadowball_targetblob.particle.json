@@ -21,9 +21,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"-v.target_deltax*(v.particle_age/v.particle_lifetime)",
-					"v.target_deltay*(v.particle_age/v.particle_lifetime)",
-					"-0.5+(v.target_deltaz*0.05)-(v.target_deltaz*(v.particle_age/v.particle_lifetime))"
+					"-((-(v.target_deltax ?? 0)*(v.particle_age/v.particle_lifetime))*(v.fx_fz ?? -1)+(-0.5+((v.target_deltaz ?? 0)*0.05)-((v.target_deltaz ?? 0)*(v.particle_age/v.particle_lifetime)))*(v.fx_fx ?? 0))",
+					"(v.target_deltay ?? 0)*(v.particle_age/v.particle_lifetime)",
+					"((-(v.target_deltax ?? 0)*(v.particle_age/v.particle_lifetime))*(v.fx_fx ?? 0)-(-0.5+((v.target_deltaz ?? 0)*0.05)-((v.target_deltaz ?? 0)*(v.particle_age/v.particle_lifetime)))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {

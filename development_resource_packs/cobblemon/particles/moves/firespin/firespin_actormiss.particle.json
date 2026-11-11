@@ -51,13 +51,13 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"offset": [
-					"-(v.target_deltax+((math.round(v.emitter_random_1)*2)-1)*1.5)*(v.emitter_age/v.emitter_lifetime)",
-					"v.target_deltay*(v.emitter_age/v.emitter_lifetime)",
+					"-((v.target_deltax ?? 0)+((math.round(v.emitter_random_1)*2)-1)*1.5)*(v.emitter_age/v.emitter_lifetime)",
+					"(v.target_deltay ?? 0)*(v.emitter_age/v.emitter_lifetime)",
 					"-v.target_deltaz*(v.emitter_age/v.emitter_lifetime)"
 				],
 				"direction": [
 					"math.random(-0.45,0.45)",
-					"(v.burstarc/math.clamp(v.target_deltaz*0.5,1,4))+math.random(-0.45,0.45)-(v.target_deltay/v.target_deltaz)",
+					"((v.burstarc ?? 0)/math.clamp(v.target_deltaz*0.5,1,4))+math.random(-0.45,0.45)-((v.target_deltay ?? 0)/v.target_deltaz)",
 					"math.random(-2.05,-0.55)"
 				]
 			},

@@ -36,9 +36,9 @@
 				"radius": 0.5,
 				"surface_only": true,
 				"direction": [
-					"(v.particle_random_1-0.5)*0.2",
+					"-(((v.particle_random_1-0.5)*0.2)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*0.2)*(v.fx_fx ?? 0))",
 					"((v.particle_random_2+0.25)*0.33)",
-					"(v.particle_random_3-0.5)*0.2"
+					"(((v.particle_random_1-0.5)*0.2)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*0.2)*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

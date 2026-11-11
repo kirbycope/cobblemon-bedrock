@@ -30,9 +30,9 @@
 			},
 			"minecraft:emitter_shape_point": {
 				"direction": [
-					"math.random(-0.5,0.5)",
+					"-((math.random(-0.5,0.5))*(v.fx_fz ?? -1)+(math.random(-0.5,0.5))*(v.fx_fx ?? 0))",
 					"math.random(-0.5, 0.5)",
-					"math.random(-0.5,0.5)"
+					"((math.random(-0.5,0.5))*(v.fx_fx ?? 0)-(math.random(-0.5,0.5))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {
@@ -41,9 +41,9 @@
 			"minecraft:particle_initial_speed": "math.random(2,6)*1.45",
 			"minecraft:particle_motion_dynamic": {
 				"linear_acceleration": [
-					"(v.particle_random_1-0.5)*6",
+					"-(((v.particle_random_1-0.5)*6)*(v.fx_fz ?? -1)+((v.particle_random_3-0.5)*6)*(v.fx_fx ?? 0))",
 					"(v.particle_random_2-0.5)*6",
-					"(v.particle_random_3-0.5)*6"
+					"(((v.particle_random_1-0.5)*6)*(v.fx_fx ?? 0)-((v.particle_random_3-0.5)*6)*(v.fx_fz ?? -1))"
 				],
 				"linear_drag_coefficient": 3
 			},

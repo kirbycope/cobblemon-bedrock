@@ -64,9 +64,9 @@
 				],
 				"radius": "3-(v.cloudsize*1.5)",
 				"direction": [
-					"math.random(-0.45,0.45)/(v.emitter_age*2)",
+					"-((math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fz ?? -1)+(math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fx ?? 0))",
 					"math.random(-0.25,0.4)/(v.emitter_age*2)",
-					"math.random(-0.45,0.45)/(v.emitter_age*2)"
+					"((math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fx ?? 0)-(math.random(-0.45,0.45)/(v.emitter_age*2))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_lifetime_expression": {

@@ -43,9 +43,9 @@
 			},
 			"minecraft:particle_motion_parametric": {
 				"relative_position": [
-					"(math.sin((v.particle_age*420)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7)))",
+					"-(((math.sin((v.particle_age*420)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7))))*(v.fx_fz ?? -1)+((math.cos((v.particle_age*410)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7))))*(v.fx_fx ?? 0))",
 					"(math.cos((v.particle_age*410)+(v.particle_random_1*360))*0.25)+((((v.particle_random_2-0.5)*2)*(1*0.65))+((v.particle_age+v.particle_age)*(v.particle_random_4-0.5)))",
-					"(math.cos((v.particle_age*410)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7)))"
+					"(((math.sin((v.particle_age*420)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7))))*(v.fx_fx ?? 0)-((math.cos((v.particle_age*410)+(v.particle_random_1*360))*(math.clamp(1*1.04,0.65,4)+(v.particle_age*1.7))))*(v.fx_fz ?? -1))"
 				]
 			},
 			"minecraft:particle_appearance_billboard": {
