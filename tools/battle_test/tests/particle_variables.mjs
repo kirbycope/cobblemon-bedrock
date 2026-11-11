@@ -95,3 +95,10 @@ function molang(expr, vars) {
     check("Ember's effect event spawns its actor with the frame and the target deltas", actor && typeof actor.vars["variable.target_deltaz"] === "number" && typeof actor.vars["variable.fx_fx"] === "number", JSON.stringify(seen));
     check("and then its fire with the same", fire && fire.vars["variable.target_deltaz"] === actor.vars["variable.target_deltaz"] && fire.vars["variable.fx_fz"] === actor.vars["variable.fx_fz"], JSON.stringify(seen));
 }
+
+// no component is written as null: an absent one written back that way made the client log "required field does not
+// exist" for particle_initial_speed on 40 particles as the pack loaded
+{
+    const nulls = Object.entries(particles).flatMap(([id, d]) => Object.entries(d.particle_effect.components ?? {}).filter(([, v]) => v === null).map(([k]) => `${id} ${k}`));
+    check("no particle has a component set to null", nulls.length === 0, nulls.slice(0, 5).join("; "));
+}

@@ -2,7 +2,7 @@
 // The scripts are copied to a temporary folder and the copy of main.js exports every top-level function, so a test
 // can build two Pokemon, put them in a battle and call useMove, boost, endOfTurn and the rest directly; the add-on's
 // own files are not changed. Battle text goes into battle.log.
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -83,3 +83,32 @@ export function damage(aSpec, dSpec, moveId, setup) {
 // asserts, counted by run.mjs
 export const results = [];
 export function check(name, ok, detail = "") { results.push({ name, ok: !!ok, detail }); }
+
+// every minecraft: item id the local Bedrock Dedicated Server's item catalogs name, as port.py's vanilla_item_ids reads
+// them: loose (vanilla*/item_catalog/*.json) or, since 1.26, packed in vanilla*/__brarchive/item_catalog.brarchive (an
+// 8-byte magic, the entry count and a version, then a 256-byte record per file: name length, name padded to 247, offset
+// and length in the data after the records) and compiled (MCB), where each string is led by its length in one byte
+export function vanillaItemIds(server = "C:/GitHub/bedrock-server/behavior_packs") {
+    const ids = new Set();
+    if (!existsSync(server)) return ids;
+    for (const dir of readdirSync(server).filter((d) => d.startsWith("vanilla"))) {
+        const catalog = `${server}/${dir}/item_catalog`;
+        if (existsSync(catalog)) for (const f of readdirSync(catalog)) for (const m of readFileSync(`${catalog}/${f}`, "utf-8").matchAll(/"(minecraft:[a-z0-9_]+)"/g)) ids.add(m[1]);
+        const archive = `${server}/${dir}/__brarchive/item_catalog.brarchive`;
+        if (!existsSync(archive)) continue;
+        const data = readFileSync(archive), count = data.readUInt32LE(8), base = 16 + count * 256;
+        for (let i = 0; i < count; i++) {
+            const offset = data.readUInt32LE(16 + i * 256 + 248), length = data.readUInt32LE(16 + i * 256 + 252);
+            const body = data.subarray(base + offset, base + offset + length);
+            if (body.subarray(0, 4).toString("latin1") !== "MCB") {
+                for (const m of body.toString("utf-8").matchAll(/"(minecraft:[a-z0-9_]+)"/g)) ids.add(m[1]);
+                continue;
+            }
+            for (let at = body.indexOf("minecraft:"); at > 0; at = body.indexOf("minecraft:", at + 1)) {
+                const id = body.subarray(at, at + body[at - 1]).toString("latin1");
+                if (/^minecraft:[a-z0-9_]+$/.test(id)) ids.add(id);
+            }
+        }
+    }
+    return ids;
+}

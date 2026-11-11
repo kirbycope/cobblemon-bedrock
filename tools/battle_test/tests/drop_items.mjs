@@ -1,7 +1,7 @@
 // Drop and loot item ids by Bedrock's names: a species' drops (DropTable), the pack's loot tables converted from Cobblemon's
 // (the fossil formations' archaeology, the ruins' and coves' chests and barrels) and an interaction's drop, with what
 // their item functions carry (enchant_with_levels, set_potion as set_data, set_damage)
-import { D, check } from "../harness.mjs";
+import { D, check, vanillaItemIds } from "../harness.mjs";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const pack = new URL("../../../development_behavior_packs/cobblemon/", import.meta.url);
@@ -11,11 +11,7 @@ const entries = (table) => table.pools.flatMap((p) => p.entries);
 
 // every drop id is one Bedrock has: the game's item catalogs, or the pack's own items and blocks
 const ids = new Set();
-const server = "C:/GitHub/bedrock-server/behavior_packs";
-if (existsSync(server)) for (const dir of readdirSync(server).filter((d) => d.startsWith("vanilla"))) {
-    const catalog = `${server}/${dir}/item_catalog`;
-    if (existsSync(catalog)) for (const f of readdirSync(catalog)) for (const m of readFileSync(`${catalog}/${f}`, "utf-8").matchAll(/"(minecraft:[a-z0-9_]+)"/g)) ids.add(m[1]);
-}
+for (const id of vanillaItemIds()) ids.add(id);   // loose or in a 1.26 server's __brarchive
 for (const folder of ["items", "blocks"]) {
     const walk = (url) => { for (const e of readdirSync(url, { withFileTypes: true })) {
         if (e.isDirectory()) walk(new URL(`${e.name}/`, url));

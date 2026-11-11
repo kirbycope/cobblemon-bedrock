@@ -74,14 +74,10 @@ rctTrainers = f"{pwd}/rct_trainers/trainers"
 # the mods whose Java block models and textures the port reads, by namespace
 ASSET_ROOTS = {"cobblemon": cobblemon, "cobblefurnies": cobblefurnies}
 
-SPARSE_PATHS = [
-    "common/src/main/resources/data/cobblemon",
-    "common/src/main/resources/assets/cobblemon/bedrock",
-    "common/src/main/resources/assets/cobblemon/lang",
-    "common/src/main/resources/assets/cobblemon/sounds",
-    "common/src/main/resources/assets/cobblemon/textures/pokemon",
-    "common/src/main/resources/assets/cobblemon/textures/entity/villager",
-]
+# what the port reads of Cobblemon: all of its resources (data, models, every texture folder: particle, item, block, gui,
+# poke_balls...) and the Kotlin sources it takes values from (CobblemonBlocks.kt, CobblemonItems.kt, CobblemonSounds.kt,
+# TimeRange.kt...), with gradle.properties at the root; a narrower list left textures/particle out and the port stopped
+SPARSE_PATHS = ["common/src/main"]
 
 
 _server_checked = False
@@ -114,14 +110,47 @@ def fresh(folder):
 
 
 def get_cobblemon():
-    """A partial clone with only the folders the port reads; the whole repository is several GB."""
+    """Cobblemon's latest main, the branch the releases are ported from, as a partial clone of the folders the port
+    reads (the whole repository is several GB). An existing clone is left at the commit it has: update it before a
+    release with `git -C java fetch --depth 1 origin main` and `git -C java checkout -B main origin/main`. The commit
+    is printed, so a release's commit message can say what it was ported from."""
     if os.path.isdir(cobblemonRepo):
-        if not all(os.path.isdir(f"{cobblemonRepo}/{path}") for path in SPARSE_PATHS):
+        if not all(os.path.isdir(f"{cobblemonRepo}/{path}") for path in SPARSE_PATHS) or \
+                not os.path.isdir(f"{cobblemonRepo}/common/src/main/resources/assets/cobblemon/textures/particle"):
             os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
-        return
-    print("Cloning Cobblemon (sparse)...")
-    os.system(f'git clone --depth 1 --filter=blob:none --sparse https://gitlab.com/cable-mc/cobblemon.git "{cobblemonRepo}"')
-    os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
+    else:
+        print("Cloning Cobblemon (sparse)...")
+        os.system(f'git clone --depth 1 --filter=blob:none --sparse --branch main https://gitlab.com/cable-mc/cobblemon.git "{cobblemonRepo}"')
+        os.system(f'git -C "{cobblemonRepo}" sparse-checkout set {" ".join(SPARSE_PATHS)}')
+    try:
+        head = subprocess.run(["git", "-C", cobblemonRepo, "log", "-1", "--format=%h %cd %s", "--date=short"], capture_output=True, text=True).stdout.strip()
+        with open(f"{cobblemonRepo}/gradle.properties", encoding="utf-8") as file:
+            version = next((l.split("=", 1)[1].strip() for l in file if l.startswith("mod_version=")), "?")
+        print(f"Cobblemon {version} at {head}")
+    except OSError: pass
+
+
+BEDROCK_SAMPLES = {   # Mojang's bedrock-samples files the port reads, by their name in java/bedrock-samples/
+    "item_texture.json": "resource_pack/textures/item_texture.json",
+    "terrain_texture.json": "resource_pack/textures/terrain_texture.json",
+    "blocks.json": "resource_pack/blocks.json",
+    "mojang-items.json": "metadata/vanilladata_modules/mojang-items.json",
+}
+
+
+def fetch_bedrock_samples():
+    """Mojang's vanilla texture lists, block list and item list (bedrock-samples) into the git-ignored
+    java/bedrock-samples/, before anything reads them. Several readers only use a file that is already there, and the
+    fetches that did happen ran into a folder not yet made, so a fresh clone ported with no vanilla item icons and no
+    block cubes in the display case."""
+    import urllib.request
+    folder = os.path.join(pwd, "java", "bedrock-samples")
+    os.makedirs(folder, exist_ok=True)
+    for name, path in BEDROCK_SAMPLES.items():
+        local = os.path.join(folder, name)
+        if os.path.exists(local): continue
+        try: urllib.request.urlretrieve(f"https://raw.githubusercontent.com/Mojang/bedrock-samples/main/{path}", local)
+        except Exception as error: print(f"  no bedrock-samples {name}: {error!r}")
 
 
 def copy_animations():
@@ -1605,25 +1634,29 @@ def java_client_jars():
 
 def item_tag_values(tag, seen=None, kind="item"):
     """The items in an item tag ('#minecraft:oak_logs'), or with kind "block" the blocks in a block tag, from Cobblemon's
-    data or the Java client's jar (java_client_jars), nested tags followed."""
+    data and the Java client's jar (java_client_jars), nested tags followed. As a Java datapack's tags load, Cobblemon's
+    file adds to the game's tag of the same name unless it says "replace": true: 1.8.5 adds its flowers to
+    #minecraft:flowers, its leaves and saplings to theirs, and read alone those files left the poppy, oak leaves and
+    sapling out of the Restoration Tank's materials."""
     import zipfile
     seen = seen or set()
     if tag in seen: return []
     seen.add(tag)
     space, name = tag.lstrip("#").split(":")
-    data = None
+    data, values = None, []
     local = f"{cobblemonResources}/data/{space}/tags/{kind}/{name}.json"
     if os.path.exists(local):
         with open(local, encoding="utf-8") as file: data = json.load(file)
-    else:
+    if data is None or not data.get("replace"):
         global _client_jars
         if "_client_jars" not in globals(): _client_jars = java_client_jars()
         for jar in _client_jars:
             try:
-                with zipfile.ZipFile(jar) as z: data = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")); break
+                with zipfile.ZipFile(jar) as z: values = json.loads(z.read(f"data/{space}/tags/{kind}/{name}.json")).get("values", []); break
             except (KeyError, zipfile.BadZipFile, OSError): continue
+    values += (data or {}).get("values", [])
     out = []
-    for value in (data or {}).get("values", []):
+    for value in values:
         value = value.get("id") if isinstance(value, dict) else value
         out += item_tag_values(value, seen, kind) if value.startswith("#") else [value]
     return out
@@ -1824,10 +1857,9 @@ def create_villager_gathering():
     minecraft:shareables list, so the newest vanilla villager_v2 is written into the pack with those items on the farmer's
     lists (behavior_peasant and work_schedule_farmer, the ones holding wheat seeds), wanted and kept as its seeds are."""
     print("Creating the farmer villager's gathering...")
-    found = glob.glob(f"{vanillaBehaviorPacks}/vanilla*/entities/villager_v2.json")
-    if not found: print("  no vanilla villager_v2.json"); return
-    newest = max(found, key=lambda path: tuple(int(n) for n in re.findall(r"\d+", os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0])))
-    with open(newest, encoding="utf-8") as file: villager = json.loads(strip_json_comments(file.read()))
+    text = newest_vanilla_text("entities/villager_v2.json")   # loose, or in a 1.26 server's __brarchive
+    if text is None: print("  no vanilla villager_v2.json"); return
+    villager = json.loads(strip_json_comments(text))
     added = 0
     for group in villager["minecraft:entity"].get("component_groups", {}).values():
         items = group.get("minecraft:shareables", {}).get("items", [])
@@ -3230,6 +3262,18 @@ def vanilla_item_ids():
         vanilla_item_cache = set()
         for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/item_catalog/*.json"):
             with open(path, encoding="utf-8") as file: vanilla_item_cache.update(re.findall(r'"(minecraft:[a-z0-9_]+)"', file.read()))
+        # since 1.26 the catalogs are packed (__brarchive/item_catalog.brarchive) and compiled (\x7fMCB), whose strings
+        # are each led by their length in one byte ("\x11minecraft:chicken"): read by that length, an id is exact; left
+        # empty, every Java drop name went through unconverted (Lotad's lily_pad, not Bedrock's waterlily)
+        for archive in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/__brarchive/item_catalog.brarchive"):
+            for body in brarchive_entries(archive).values():
+                if not body.startswith(b"\x7fMCB"):
+                    vanilla_item_cache.update(re.findall(r'"(minecraft:[a-z0-9_]+)"', body.decode("utf-8", "replace"))); continue
+                for m in re.finditer(rb"minecraft:", body):
+                    start = m.start()
+                    if start == 0: continue
+                    text = body[start: start + body[start - 1]]
+                    if re.fullmatch(rb"minecraft:[a-z0-9_]+", text): vanilla_item_cache.add(text.decode("ascii"))
     return vanilla_item_cache
 
 
@@ -3347,7 +3391,10 @@ def create_sounds():
         sounds = []
         for sound in definition.get("sounds", []):
             entry = sound if isinstance(sound, dict) else {"name": sound}
-            path = entry["name"].split(":", 1)[1]
+            # a name with no namespace is Minecraft's own (1.8.5's stepsound.<block>.minecraft: "step/grass1"), a file
+            # Cobblemon does not ship and Bedrock plays from its own block sounds
+            namespace, _, path = entry["name"].rpartition(":")
+            if namespace != "cobblemon": continue
             source = f"{cobblemon}/sounds/{path}.ogg"
             if not os.path.exists(source): continue
             os.makedirs(os.path.dirname(f"{soundsBedrock}/{path}"), exist_ok=True)
@@ -3763,7 +3810,9 @@ def aim_move_particles(effects, bones):
                 if not init: components.pop("minecraft:emitter_initialization")
         for component, key in FRAME_VECTORS:
             c = components.get(component)
-            if key is None: components[component] = turn(c) if isinstance(c, list) else c
+            # only a component the particle has: writing an absent one back as null made the client log "required field
+            # does not exist" for particle_initial_speed on 40 particles as the pack loaded
+            if key is None and isinstance(c, list): components[component] = turn(c)
             elif isinstance(c, dict) and key in c: c[key] = turn(c[key])
         billboard = components.get("minecraft:particle_appearance_billboard")
         direction = billboard.get("direction") if isinstance(billboard, dict) else None
@@ -5750,14 +5799,23 @@ def cobblemon_jar():
     if os.path.exists(props):
         with open(props, encoding="utf-8") as file: version = (re.search(r"^mod_version\s*=\s*(\S+)", file.read(), re.M) or [None, version])[1]
     jar = f"{cobblemonRepo}/minecraft/cobblemon-fabric-{version}.jar"
-    if not os.path.exists(jar):
-        try:
-            found = json.load(urllib.request.urlopen('https://api.modrinth.com/v2/project/cobblemon/version?loaders=["fabric"]'.replace('"', "%22")))
-            # Modrinth names the Fabric builds from 1.8.3 on with an F ("1.8.4F")
-            url = next(f["url"] for v in found if v["version_number"] in (version, f"{version}F") for f in v["files"] if f.get("primary", True))
+    if os.path.exists(jar): return jar
+    # the port follows Cobblemon's main, which names the version in development (1.8.5 in November 2026) before Modrinth
+    # has it: the newest published build stands in, since the assets taken from it (the boats' and water platform's
+    # textures and models) seldom change between releases, and leaving them out dropped the boats from the pack
+    try:
+        found = json.load(urllib.request.urlopen('https://api.modrinth.com/v2/project/cobblemon/version?loaders=["fabric"]'.replace('"', "%22")))
+        # Modrinth names the Fabric builds from 1.8.3 on with an F ("1.8.4F"); the list is newest first
+        exact = [v for v in found if v["version_number"] in (version, f"{version}F")]
+        chosen = (exact or found)[0]
+        name = chosen["version_number"].rstrip("F")
+        jar = f"{cobblemonRepo}/minecraft/cobblemon-fabric-{name}.jar"
+        if not exact: print(f"  no Cobblemon {version} jar on Modrinth yet: using {chosen['version_number']}, the newest published")
+        if not os.path.exists(jar):
+            url = next(f["url"] for f in chosen["files"] if f.get("primary", True))
             os.makedirs(os.path.dirname(jar), exist_ok=True)
             urllib.request.urlretrieve(url, jar)
-        except Exception as error: print(f"  no Cobblemon {version} jar: {error}")
+    except Exception as error: print(f"  no Cobblemon jar ({version}): {error!r}")
     return jar if os.path.exists(jar) else None
 
 
@@ -7327,14 +7385,46 @@ LOOT_INJECTIONS = {
 }
 
 
-def newest_vanilla_file(rel):
-    """A vanilla behavior pack file (loot_tables/chests/igloo_chest.json), from the newest versioned pack that has it."""
+def brarchive_entries(path):
+    """The files of a Bedrock Dedicated Server .brarchive, as {name: bytes}. Since 1.26 a vanilla pack keeps a folder's
+    files packed into __brarchive/<parent>/<folder>.brarchive: an 8-byte magic, the entry count and a version (u32 each),
+    then a 256-byte record per file (its name's length in one byte, the name padded to 247, its offset and length in
+    the data after the records, u32 each). An entry is plain JSON or a compiled one starting \\x7fMCB, which is
+    unreadable without Mojang's schema."""
+    import struct
+    with open(path, "rb") as file: data = file.read()
+    count = struct.unpack_from("<I", data, 8)[0]
+    base, out = 16 + count * 256, {}
+    for i in range(count):
+        record = data[16 + i * 256: 16 + (i + 1) * 256]
+        offset, length = struct.unpack_from("<II", record, 248)
+        out[record[1:1 + record[0]].decode("utf-8")] = data[base + offset: base + offset + length]
+    return out
+
+
+def newest_vanilla_text(rel):
+    """A vanilla behavior pack file's text (loot_tables/chests/igloo_chest.json), from the newest versioned pack that has
+    it, as a loose file or, on a 1.26 server, a JSON entry of the pack's __brarchive (brarchive_entries); None if none."""
     found = []
-    for path in glob.glob(f"{vanillaBehaviorPacks}/vanilla*/{rel}"):
-        pack = os.path.relpath(path, vanillaBehaviorPacks).replace(os.sep, "/").split("/", 1)[0]   # vanilla, vanilla_1.21.30
-        found.append((tuple(int(n) for n in re.findall(r"\d+", pack)), path))
-    if not found: raise FileNotFoundError(f"no vanilla {rel} under {vanillaBehaviorPacks}")
-    with open(max(found)[1], encoding="utf-8") as file: return json.load(file)
+    folder, name = os.path.split(rel)
+    for pack_dir in glob.glob(f"{vanillaBehaviorPacks}/vanilla*"):
+        pack = os.path.basename(pack_dir)   # vanilla, vanilla_1.21.30
+        key = tuple(int(n) for n in re.findall(r"\d+", pack))
+        if os.path.exists(f"{pack_dir}/{rel}"):
+            found.append((key, lambda p=f"{pack_dir}/{rel}": open(p, encoding="utf-8").read()))
+            continue
+        archive = f"{pack_dir}/__brarchive/{folder}.brarchive"
+        if os.path.exists(archive):
+            body = brarchive_entries(archive).get(name)
+            if body is not None and not body.startswith(b"\x7fMCB"): found.append((key, lambda b=body: b.decode("utf-8")))
+    return max(found, key=lambda f: f[0])[1]() if found else None
+
+
+def newest_vanilla_file(rel):
+    """newest_vanilla_text, read as JSON."""
+    text = newest_vanilla_text(rel)
+    if text is None: raise FileNotFoundError(f"no vanilla {rel} under {vanillaBehaviorPacks}, loose or as JSON in a __brarchive")
+    return json.loads(strip_json_comments(text))
 
 
 def create_loot_injections():
@@ -9973,13 +10063,21 @@ def poke_rods():
 
 
 def vanilla_biome_tags():
-    """{biome id: [tags]} from the server's vanilla biome definitions."""
-    tags = {}
+    """{biome id: [tags]} from the server's vanilla biome definitions: loose in behavior_packs/vanilla/biomes, or since
+    1.26 packed in vanilla/__brarchive/biomes.brarchive (brarchive_entries), which left BIOME_TAGS empty and every
+    season, herd and biome check in the scripts reading nothing."""
+    texts = []
     for path in glob.glob(f"{vanillaBiomes}/*.json"):
-        with open(path, encoding="utf-8") as file: text = re.sub(r"//[^\n]*", "", file.read())
-        try: data = json.loads(text)["minecraft:biome"]
+        with open(path, encoding="utf-8") as file: texts.append(file.read())
+    archive = f"{os.path.dirname(vanillaBiomes)}/__brarchive/biomes.brarchive"
+    if not texts and os.path.exists(archive):
+        texts = [body.decode("utf-8") for body in brarchive_entries(archive).values() if not body.startswith(b"\x7fMCB")]
+    tags = {}
+    for text in texts:
+        try: data = json.loads(re.sub(r"//[^\n]*", "", text))["minecraft:biome"]
         except Exception: continue
         tags[data["description"]["identifier"]] = data.get("components", {}).get("minecraft:tags", {}).get("tags", [])
+    if not tags: raise FileNotFoundError(f"no vanilla biome definitions under {vanillaBiomes} or in its __brarchive")
     return tags
 
 
@@ -17855,6 +17953,7 @@ def main():
     global pokemons, fix_only
     fix_only = "--fix" in sys.argv
     get_cobblemon()
+    fetch_bedrock_samples()
     if not fix_only:
         copy_animations()
         copy_models()
