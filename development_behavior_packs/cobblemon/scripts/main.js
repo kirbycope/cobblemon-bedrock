@@ -35,7 +35,7 @@ import { DEFENDERS, PREDATORS } from "./defenders.js";
 import { SHOULDER } from "./shoulder.js";
 import { DEX_VARIATIONS } from "./dex_variations.js";
 import { TM_LAYOUT, TM_ROWS, TM_ICONS, TM_TAGS } from "./tm_layout.js";
-import { PC_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
+import { PC_LAYOUT, PC_SLOT_LAYOUT, PC_WALLPAPERS } from "./pc_layout.js";
 import { PC_ALT_WALLS } from "./pc_alt_walls.js";
 import { SHINY_VARIANTS, VARIANT_FORMS, VARIANT_LOOKS } from "./variants.js";
 import { seasonFor, seasonLook, isSeasonal, revivalPotentialMarks, buildMoveset, ALPHA_SLOTS, WILD_SLOTS, preEvolutionsOf, evolutionMovesOf, exchangePp } from "./progression.js";
@@ -9094,6 +9094,25 @@ function propertyMatches(rec, info, w) {
 }
 const PC_NAMES = "cobblemon:pc_names";
 
+// a stored Pokemon's info for its slot's preview (PC_SLOT_LAYOUT), as the info panel shows it on the page shown
+function pcSlotText(player, rec, entity, page) {
+    const v = { page };
+    pcInfo(v, rec, entity);
+    itemSlot(v, v.held, v.cosmetic, player, `${PC_UI}/summary/blank`);
+    return PC_SLOT_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
+}
+// every Cobblemon Pokemon has IVs: one stored before it rolled them rolls them now and keeps them (true if any did),
+// as choosing it did before the preview showed it
+function rollMissingIvs(contents) {
+    let rolled = false;
+    for (const rec of contents) {
+        if (!rec || rec.k?.["cobblemon:ivs"]) continue;
+        rec.k = { ...(rec.k ?? {}), "cobblemon:ivs": JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, Math.floor(Math.random() * 32)]))) };
+        if (!rec.k["cobblemon:evs"]) rec.k["cobblemon:evs"] = JSON.stringify(Object.fromEntries(STAT_KEYS.map((k) => [k, 0])));
+        rolled = true;
+    }
+    return rolled;
+}
 function openPc(block, player, state) {
     if (battles.has(player.id)) { player.sendMessage("§cYou cannot use a PC while in battle!"); return; }
     if (!state) { tidyPastured(player); setPcScreen(block, true); state = { box: 0, sel: null }; showCosmetic.delete(player.id); try { player.playSound("cobblemon.pc.on"); } catch (e) { } }
@@ -9131,7 +9150,16 @@ function openPc(block, player, state) {
     for (let n = 0; n < 6; n++) { v[`p${n}`] = iconOf(party[n]?.typeId, variantOf(party[n])); v[`s${30 + n}`] = sel?.kind === "party" && sel.slot === n ? "y" : "n"; }
     const body = PC_LAYOUT.map(([key, width]) => (width ? padBytes(v[key] ?? "", width) : v[key] ?? "")).join("");
     const form = new ActionFormData().title("cbm:pc").body(body);
-    for (let n = 0; n < 36; n++) form.button("slot", `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
+    // StorageWidget's preview (issue 70): while nothing is chosen, each slot's text is its Pokemon, which the slot's
+    // hover state draws over the info panel, so a controller's focus or the mouse shows each Pokemon as it passes;
+    // with one chosen, the panel keeps to it, as Java's keeps to the grabbed Pokemon
+    const previews = Array(36).fill("");
+    if (!sel) {
+        if (rollMissingIvs(contents)) saveBox(player, state.box, contents);
+        for (let n = 0; n < 30; n++) if (contents[n] && pcPasses(contents[n], state.filter)) previews[n] = pcSlotText(player, contents[n], null, v.page);
+        for (let n = 0; n < 6; n++) if (party[n]) previews[30 + n] = pcSlotText(player, null, party[n], v.page);
+    }
+    for (let n = 0; n < 36; n++) form.button(previews[n], `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
     form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/${state.sel ? "release" : "none"}`).button("exit", `${PC_UI}/summary/exit`);
     form.button("options", `${PC_UI}/pc/options${state.opts ? "_on" : ""}`);
     form.button("wallpaper", `${PC_UI}/pc/${state.opts ? `set_wallpaper${state.wmode ? "_on" : ""}` : "none"}`);

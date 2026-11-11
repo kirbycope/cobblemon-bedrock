@@ -14018,6 +14018,12 @@ PC_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3
     + [("count", 9)] + [(f"r{n}{k}", w) for n in range(4) for k, w in (("icon", 5), ("level", 7), ("name", 12), ("gender", 1), ("slot", 1), ("move", 1))] \
     + [("wall", 3), ("wmode", 1), ("opts", 1)] + [(f"mark{i}", 1) for i in range(6)] \
     + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] + [("filter", 30), ("rel", 1), ("shiny", 1), ("status", 3), ("ilabel", 13)] + [("item", 0)]
+# A slot button's own text, for StorageWidget's preview: while nothing is grabbed, the info panel shows the Pokemon
+# under the cursor (PCGUI.setPreviewPokemon on hover), which a controller's focus moves too (issue 70). The parts of the
+# info panel that change with the Pokemon, the page shown, and the held item's texture last
+PC_SLOT_LAYOUT = [("level", 6), ("name", 16), ("gender", 1), ("ball", 3), ("type1", 3), ("type2", 3), ("portrait", 5), ("nature", 18), ("ability", 20)] \
+    + [(f"move{n}", 16) for n in range(4)] + [(f"mark{i}", 1) for i in range(6)] + [("page", 1)] + [(f"sv{i}", 6) for i in range(6)] \
+    + [("shiny", 1), ("status", 3)] + [("item", 0)]
 # PCBoxWallpaperRepository's wallpapers in its order, each with a three-letter code: the eleven basic ones, then the
 # six Cobblemon unlocks (unlockable_pc_box_wallpapers) with the biome or capture that unlocks them
 PC_WALLPAPERS = [(f"w{n:02d}", f"basic/wallpaper_basic_{n:02d}", None) for n in range(1, 12)] + [
@@ -14233,11 +14239,59 @@ def create_pc_ui():
                                     **FORM_BUTTON,
                                     "bindings": [{"binding_type": "collection_details", "binding_collection_name": "form_buttons"}, *FOCUS_BINDINGS],
                                     "controls": [{"default": face("")}, {"hover": face("_hover")}, {"pressed": face("_hover")}]}}
-    buttons = [while_("n", button(n, (x, y), (25, 25)), "opts") for n, (x, y) in enumerate(slots[:30])]
+    # StorageWidget's preview: a slot's hover state draws its Pokemon over the info panel from the button's own text
+    # (PC_SLOT_LAYOUT), at the screen's corner. The script fills a slot's text only while nothing is chosen, as Java
+    # previews only while nothing is grabbed, and then the body's own info fields are blank beneath it; an empty text
+    # (an empty slot, or a Pokemon chosen) draws nothing
+    slot_at, at = {}, 0
+    for name, width in PC_SLOT_LAYOUT: slot_at[name] = (at, at + width); at += width
+    own = {"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}
+    def sfield(name):
+        a, b = slot_at[name]
+        if name == "item": return f"(#form_button_text - ('%.{a}s' * #form_button_text))"
+        return f"(('%.{b}s' * #form_button_text) - ('%.{a}s' * #form_button_text))"
+    def sbound(source, target): return [own, {"binding_type": "view", "source_property_name": source, "target_property_name": target}]
+    def slabel(name, source, offset, scale=1.0, size=(100, 10), align="left"):
+        return {name: {"type": "label", "anchor_from": "top_left", "anchor_to": "top_left", "offset": list(offset), "size": list(size), "layer": 6,
+                       "font_scale_factor": scale, "text_alignment": align, "shadow": True, "text": "#value", "bindings": sbound(source, "#value")}}
+    def spicture(name, folder, source, offset, size, layer=4, keep=False):
+        return {name: {"type": "image", "offset": list(offset), "size": list(size), "layer": layer, "keep_ratio": keep,
+                       "anchor_from": "top_left", "anchor_to": "top_left", "bindings": sbound(f"('{T}/{folder}' + {source})", "#texture")}}
+    def spage(name, page, children):
+        return {name: {"type": "panel", "size": [349, 205], "anchor_from": "top_left", "anchor_to": "top_left",
+                       "bindings": sbound(f"({sfield('page')} = '{page}')", "#visible"), "controls": children}}
+    preview_parts = [spicture("portrait", "icons/", sfield("portrait"), (9, 30), (60, 60), 3, True),
+                     slabel("level", sfield("level"), (19, 1.5), size=(40, 10)),
+                     slabel("name", sfield("name"), (12, 11.5), 0.75, size=(76, 10)),
+                     spicture("ball", "summary/", sfield("ball"), (3.5, 12), (8, 8)),
+                     spicture("gender", "summary/g", sfield("gender"), (69, 11.5), (5, 7)),
+                     spicture("shiny", "summary/shiny_", sfield("shiny"), (62.5, 28.5), (8, 8), 5),
+                     spicture("status", "summary/st", sfield("status"), (34, 1), (39, 7), 5),
+                     spicture("type1", "summary/", sfield("type1"), (22.5, 112), (18, 18), 5), spicture("type2", "summary/", sfield("type2"), (40.5, 112), (18, 18), 5),
+                     {"item_icon": {"type": "image", "offset": [3, 98], "size": [16, 16], "layer": 4, "anchor_from": "top_left", "anchor_to": "top_left",
+                                    "bindings": sbound(sfield("item"), "#texture")}},
+                     *[spicture(f"mark{i}", f"summary/mark{i}_", sfield(f"mark{i}"), (29 + 7 * i, 96.5), (6, 6), 5) for i in range(6)],
+                     spage("info_page", "i", [slabel("nature", sfield("nature"), (9, 137), 0.5, size=(63, 5), align="center"),
+                                              slabel("ability", sfield("ability"), (9, 154), 0.5, size=(63, 5), align="center"),
+                                              *[slabel(f"move{n}", sfield(f"move{n}"), (9, 170.5 + 7 * n), 0.5, size=(63, 5), align="center") for n in range(4)]]),
+                     *[spage(f"{kind}_page", kind, [slabel(f"stat_v{i}", sfield(f"sv{i}"), (65 - 10, 139 + 10 * i), 0.5, size=(20, 5), align="center") for i in range(6)])
+                       for kind in ("v", "e")]]
+    def previewing(control, x, y):
+        """A slot button whose hover and pressed states also draw its Pokemon's preview."""
+        name, body = next(iter(control.items()))
+        preview = {"preview": {"type": "panel", "size": [349, 205], "offset": [-x, -y], "anchor_from": "top_left", "anchor_to": "top_left", "layer": 10,
+                               "bindings": sbound("(not (#form_button_text = ''))", "#visible"), "controls": preview_parts}}
+        states = []
+        for state in body["controls"]:
+            key, face_ = next(iter(state.items()))
+            states.append({key: face_} if key == "default" else
+                          {key: {"type": "panel", "size": ["100%", "100%"], "controls": [{"face": face_}, preview]}})
+        return {name: {**body, "controls": states}}
+    buttons = [while_("n", previewing(button(n, (x, y), (25, 25)), x, y), "opts") for n, (x, y) in enumerate(slots[:30])]
     # the same 30 slots again, 5 lower while the options show; named apart, since Bedrock wants every control in a
     # panel named once ("Child controls must have unique names: cobblemon_pc/buttons/button_0", issue 33)
-    box_opts = [while_("y", {f"button_{n}_opts": button(n, (x, y + 5), (25, 25))[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
-    buttons += [while_("n", button(n, (x, y), (25, 25))) for n, (x, y) in enumerate(slots[30:], 30)]
+    box_opts = [while_("y", {f"button_{n}_opts": previewing(button(n, (x, y + 5), (25, 25)), x, y + 5)[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
+    buttons += [while_("n", previewing(button(n, (x, y), (25, 25)), x, y)) for n, (x, y) in enumerate(slots[30:], 30)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (279, 151), (58, 16)), button(39, (320, 186), (26, 13))]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
     # IconButton draws its texture at half size
@@ -14341,6 +14395,8 @@ def create_pc_ui():
     with open(f"{scriptsBedrock}/pc_layout.js", "w", encoding="utf-8") as file:
         file.write("// generated by port.py: the PC form's body, field by field, and each field's width in bytes\n")
         file.write("export const PC_LAYOUT = " + json.dumps(PC_LAYOUT) + ";\n")
+        file.write("// a slot button's text, the Pokemon it previews (StorageWidget's hover preview)\n")
+        file.write("export const PC_SLOT_LAYOUT = " + json.dumps(PC_SLOT_LAYOUT) + ";\n")
     print(f"  PC screen: Cobblemon's PC on its own textures, {icons} Pokemon portraits")
     with open(f"{scriptsBedrock}/pc_layout.js", "a", encoding="utf-8") as file:
         file.write("export const PC_WALLPAPERS = " + json.dumps([[c, u] for c, _, u in PC_WALLPAPERS]) + ";\n")
