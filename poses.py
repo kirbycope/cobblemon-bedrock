@@ -39,6 +39,7 @@ DEG = 180 / math.pi
 # Molang the pack can evaluate for each state Cobblemon's conditions read
 BATTLE = "q.property('cobblemon:battle')"
 SUBMERGED = "q.property('cobblemon:submerged')"
+POSE_HOLD = 0.2   # seconds a new pose type holds before it shows (pose_type_molang)
 IN_WATER = "q.is_in_water"
 HOLDING = "q.property('cobblemon:holding')"
 SHOULDER = "q.property('cobblemon:shoulder')"   # 1 on the left shoulder, 2 the right, set by the script
@@ -596,17 +597,26 @@ def static_parts(parts, bones):
 def pose_type_molang(flier, rides=()):
     """v.pose_type as PokemonServerDelegate.updatePoseType sets it, after the shoulder poses PokemonOnShoulderRenderer
     draws a Pokemon on a player's shoulder in: a passenger stands, then sleep, underwater
-    swimming or floating, flying or hovering, walking, standing."""
+    swimming or floating, flying or hovering, walking, standing.
+
+    flier is the way it flies, if it does (port.py's movement_kind): "hover" for one that never walks, which
+    PokemonMoveControl keeps flying whenever it is out of liquid, so it hovers or flies even touching the ground; "bird"
+    for one that walks too, which lands. A new pose type takes over once it has held for POSE_HOLD seconds: the speed
+    of a Bedrock wander hovers round the moving threshold and a flier's feet touch the ground and leave it, and each
+    flip started the pose's half-second blend again, so a Cutiefly or a Magikarp twitched as it moved (issue 65)."""
     moving = "(q.ground_speed > 0.5 || math.abs(q.vertical_speed) > 0.5)"
     ground = "(v.moving ? 1 : 0)"
     # a mount Cobblemon flies (a jet or a bird's riding style, Gyarados' among them) hovers or flies while ridden in the
     # air, as its PoseProvider has it, though on its own it may not fly; one it swims (Dolphin) floats or swims while
     # ridden in water, at the surface too
     lifted = "1" if flier else ("q.has_rider" if "AIR" in rides else "0")
-    air = f"((({lifted}) && !q.is_on_ground && !q.is_in_water) ? (v.moving ? 4 : 3) : {ground})"
+    aloft = "!q.is_in_water" if flier == "hover" else "!q.is_on_ground && !q.is_in_water"
+    air = f"((({lifted}) && {aloft}) ? (v.moving ? 4 : 3) : {ground})"
     under = f"({SUBMERGED} || q.has_rider && q.is_in_water)" if "LIQUID" in rides else SUBMERGED
-    return (f"v.moving = {moving}; "
-            f"v.pose_type = {SHOULDER} > 0 ? 6 + {SHOULDER} : (q.is_riding ? 0 : (q.is_sleeping ? 2 : ({under} ? (v.moving ? 6 : 5) : {air})));")
+    want = f"{SHOULDER} > 0 ? 6 + {SHOULDER} : (q.is_riding ? 0 : (q.is_sleeping ? 2 : ({under} ? (v.moving ? 6 : 5) : {air})))"
+    return (f"v.moving = {moving}; v.pose_want = {want}; "
+            f"v.pose_hold = v.pose_want == (v.pose_next ?? -1) ? (v.pose_hold ?? 0) + q.delta_time : 0; v.pose_next = v.pose_want; "
+            f"v.pose_type = (v.pose_hold >= {POSE_HOLD} || !(v.pose_set ?? 0)) ? v.pose_want : v.pose_type; v.pose_set = 1;")
 
 
 def world_poses(found):

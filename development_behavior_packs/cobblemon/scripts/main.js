@@ -2796,7 +2796,26 @@ function nicknameOf(entity) {
 }
 
 // Item tooltips (CobblemonTooltipGenerator): Cobblemon's gray lines under an item's name, set as its lore when it
-// turns up in a player's inventory without them
+// turns up in a player's inventory without them. Lore keeps two stacks apart, so a picked-up item that has none
+// yet lands in a slot of its own beside the stack it belongs to (a missed Poke Ball, issue 74): once it has its
+// lore it joins any stack of the same item with room, earlier slots first, and keeps its own slot only for the rest
+function withTooltip(item) {
+    const lines = item && (TOOLTIPS[item.typeId] ?? tmLore(item.typeId));
+    if (lines && !item.getLore().length) try { item.setLore(lines.map((line) => `§7${line}`)); } catch (e) { }
+    return item;
+}
+function mergeInto(inv, i, item) {
+    let left = item.amount;
+    for (let j = 0; j < inv.size && left > 0; j++) {
+        if (j === i) continue;
+        const other = inv.getItem(j);
+        if (!other || other.amount >= other.maxAmount || !other.isStackableWith(item)) continue;
+        const n = Math.min(left, other.maxAmount - other.amount);
+        other.amount += n; inv.setItem(j, other); left -= n;
+    }
+    if (left > 0) item.amount = left;
+    inv.setItem(i, left > 0 ? item : undefined);
+}
 system.runInterval(() => {
     for (const player of world.getPlayers()) {
         const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
@@ -2804,7 +2823,7 @@ system.runInterval(() => {
         for (let i = 0; i < inv.size; i++) {
             const item = inv.getItem(i), lines = item && (TOOLTIPS[item.typeId] ?? tmLore(item.typeId));
             if (!lines || item.getLore().length) continue;
-            try { item.setLore(lines.map((line) => `§7${line}`)); inv.setItem(i, item); } catch (e) { }
+            try { mergeInto(inv, i, withTooltip(item)); } catch (e) { }
         }
     }
 }, 40);
@@ -9162,7 +9181,7 @@ function openPc(block, player, state) {
         for (let n = 0; n < 6; n++) if (party[n]) previews[30 + n] = pcSlotText(player, null, party[n], v.page);
     }
     for (let n = 0; n < 36; n++) form.button(previews[n], `${PC_UI}/pc/slot${v[`s${n}`] === "y" ? "_on" : ""}`);
-    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button("release", `${PC_UI}/pc/${state.sel ? "release" : "none"}`).button("exit", `${PC_UI}/summary/exit`);
+    form.button("prev", `${PC_UI}/pc/prev`).button("next", `${PC_UI}/pc/next`).button(state.sel ? "§lRelease" : "", `${PC_UI}/pc/${state.sel ? "release" : "none"}`).button("exit", `${PC_UI}/summary/exit`);
     form.button("options", `${PC_UI}/pc/options${state.opts ? "_on" : ""}`);
     form.button("wallpaper", `${PC_UI}/pc/${state.opts ? `set_wallpaper${state.wmode ? "_on" : ""}` : "none"}`);
     for (let n = 0; n < PC_WALLPAPERS.length; n++) {
@@ -14943,7 +14962,8 @@ function ballState(entity, state) { try { entity.setProperty("cobblemon:state", 
 
 function dropBall(dim, ballId, at, player) {
     if (player?.getGameMode?.() === "Creative") return;
-    try { dim.spawnItem(new ItemStack(ballId, 1), at); } catch (e) { }
+    // with its tooltip already on, so it goes back onto the thrower's stack as it is picked up (issue 74)
+    try { dim.spawnItem(withTooltip(new ItemStack(ballId, 1)), at); } catch (e) { }
 }
 
 // Send-out: the ball flies from the hand to where the Pokemon stands, bursts, and the Pokemon grows out of it
@@ -15334,7 +15354,8 @@ function brokeFree(ball, pos, pokemon, ballId, gone) {
 // never depends on the engine's own projectile collision
 const flying = new Map();
 world.afterEvents.entitySpawn.subscribe(({ entity }) => {
-    if (BALL_FROM_PROJECTILE.has(entity.typeId)) flying.set(entity.id, { entity, last: { ...entity.location } });
+    // a ball thrown point-blank at the ground can hit and be gone before this runs (its drop is projectileHitBlock's)
+    if (BALL_FROM_PROJECTILE.has(entity.typeId) && entity.isValid) flying.set(entity.id, { entity, last: { ...entity.location } });
 });
 system.runInterval(() => {
     for (const [id, f] of flying) {
