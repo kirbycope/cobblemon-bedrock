@@ -1320,7 +1320,8 @@ def pose_plan(pokemon, pokemonName):
     plan = None
     if found and poses.world_poses(found):
         has_look = bool(look_animation(pokemon, pokemonName)) or model_has_head(pokemon, pokemonName)
-        flier = movement_kind(species_for(pokemon)) in ("bird", "hover")
+        kind = movement_kind(species_for(pokemon))
+        flier = kind if kind in ("bird", "hover") else False   # how it flies (poses.pose_type_molang), or not at all
         plan = poses.to_bedrock(pokemon, found, animation_ids(), model_bones(pokemon, pokemonName), flier, has_look,
                                 client_ambient(pokemon, pokemonName), rides=ride_behaviours(species_for(pokemon) or {}),
                                 seat_shift=lambda pose: ride_poses.setdefault(pokemon, []).append(pose) or seat_shift(pokemon, pose))
@@ -3204,6 +3205,7 @@ def create_behavior_entities():
         add_item_evolutions(entity, species, pokemon)
         add_pokemon_interactions(entity, species, pokemon)
         add_water_flight(entity, species, kind)
+        add_flier_fall(entity, kind)
         add_battle(entity, species)
         add_battle_states(entity)
         add_variants(entity, species, pokemon)
@@ -5619,7 +5621,8 @@ def add_riding(entity, species, pokemon):
     # the free camera controls and the ride-tamed behaviour live in the flight groups (air_riding_groups), since on the
     # ground a flier with a land behaviour rides by the ground controls instead (its ridden_land group)
     # a flier lands or is left in the air by its rider without a fall hurting it, as the happy ghast is
-    minecraft["components"].setdefault("minecraft:damage_sensor", {"triggers": []})["triggers"].insert(0, {"cause": "fall", "deals_damage": False})
+    triggers = minecraft["components"].setdefault("minecraft:damage_sensor", {"triggers": []})["triggers"]
+    if not any(t.get("cause") == "fall" for t in triggers): triggers.insert(0, {"cause": "fall", "deals_damage": False})   # add_flier_fall's, on a flier
     # gravity lives in its own group, so a rider can take it away rather than a second physics component trying to override it
     groups, events = minecraft["component_groups"], minecraft["events"]
     # and so do its own flight movement and pathing: the adult happy ghast carries neither, and while they are on,
@@ -5648,6 +5651,17 @@ def add_ride_seats(entity, pokemon):
     for style, positions in styles.items():
         groups[names[style]] = {"minecraft:rideable": dict(rideable, seats=[dict(seat, position=position) for seat, position in zip(rideable["seats"], positions)])}
         events[names[style]] = {"remove": {"component_groups": [n for s, n in names.items() if s != style]}, "add": {"component_groups": [names[style]]}}
+
+
+def add_flier_fall(entity, kind):
+    """PokemonEntity.checkFallDamage: a flier's fall distance is reset while it flies without a rider, so a wild bird
+    never hurts itself coming down. Bedrock's flying wander flaps a bird up and lets it drop back, and without this the
+    drops added up until it died and left its loot (issue 74). Bedrock cannot tell a flier's flying from its falling,
+    so a flier takes no fall damage at all, as a rideable one already did (add_riding)."""
+    if kind not in ("bird", "hover"): return
+    sensor = entity["minecraft:entity"]["components"].setdefault("minecraft:damage_sensor", {"triggers": []})
+    if isinstance(sensor.get("triggers"), dict): sensor["triggers"] = [sensor["triggers"]]
+    if not any(t.get("cause") == "fall" for t in sensor["triggers"]): sensor["triggers"].insert(0, {"cause": "fall", "deals_damage": False})
 
 
 def add_water_flight(entity, species, kind):
@@ -13300,6 +13314,11 @@ def battle_tiles(name, template, item_size, offset, marker, count=6):
                                 "source_property_name": f"(not ((#title_text - '{marker}') = #title_text))", "target_property_name": "#visible"}]}}
 
 
+# A visibility a button is shown under that holds only while another holds (a layout of the Summary's Stats tab, shown on
+# that tab): add_focus_links links such buttons to the other's buttons as though both were shown alike
+FOCUS_WITHIN = {}
+
+
 def add_focus_links(ui):
     """The D-pad's moves on every screen, from where its buttons sit. Inside a collection panel Bedrock does not move
     the focus by position (up from a starter went to "I choose you!", up again to Hoenn, left to Johto; found by the
@@ -13342,6 +13361,8 @@ def add_focus_links(ui):
             # a button shown only in one state of its screen (the PC's slots, drawn 5 lower while the options show)
             # links only to buttons shown in the same state, or always
             def shown(b): return tuple(sorted(x.get("source_property_name", "") for x in b.get("bindings", []) if x.get("target_property_name") == "#visible"))
+            def apart(a, b):   # shown under different conditions, neither of which holds only within the other
+                return a and b and a != b and tuple(FOCUS_WITHIN.get(x, x) for x in a) != b and a != tuple(FOCUS_WITHIN.get(x, x) for x in b)
             for n, (spot, (key, b)) in enumerate(cells):
                 b["focus_identifier"] = f"{screen}_{p}_{key}"
             for spot, (key, b) in cells:
@@ -13351,7 +13372,7 @@ def add_focus_links(ui):
                     best = None
                     for other, (okey, ob) in cells:
                         if okey == key: continue
-                        if shown(ob) and shown(b) and shown(ob) != shown(b): continue
+                        if apart(shown(ob), shown(b)): continue
                         (ox, oy), (ow, oh) = other
                         dx, dy = ox + ow / 2 - cx, oy + oh / 2 - cy
                         along, across = dx * ux + dy * uy, abs(dx * uy - dy * ux)
@@ -13874,6 +13895,10 @@ def create_summary_ui():
         name, body = next(iter(b.items()))
         index = body["collection_index"]
         page = "m" if 11 <= index <= 14 or 16 <= index <= 23 or 34 <= index <= 37 else "k" if 43 + SWAP_SLOTS <= index <= 73 + SWAP_SLOTS else None
+        # the Stats tab's centre, label area and style icon lie over the third move tile (and the size icon's tooltip
+        # area, below, over the first): live on every tab, they took a controller's focus off the tiles (the D-pad went from the
+        # third tile down and from the fourth up onto them) and a pointer's click from the middle of the third (issue 74)
+        page = page or ("s" if 80 + SWAP_SLOTS <= index <= 81 + SWAP_SLOTS else None)   # the centre's own binding is the Ride layout's
         if page: body["bindings"] = body["bindings"] + [{"binding_name": "#form_text"},
             {"binding_type": "view", "source_property_name": f"({field('tab')} = '{page}')", "target_property_name": "#visible"}]
     def tooltip(offset):
@@ -13888,6 +13913,8 @@ def create_summary_ui():
     size_body["controls"] = [{"default": {"type": "panel", "size": ["100%", "100%"]}},
                              {"hover": {"type": "panel", "size": ["100%", "100%"], "controls": [tooltip((22, -12))]}},
                              {"pressed": {"type": "panel", "size": ["100%", "100%"], "controls": [tooltip((22, -12))]}}]
+    size_body["bindings"] = size_body["bindings"] + [{"binding_name": "#form_text"},
+        {"binding_type": "view", "source_property_name": f"({field('tab')} = 'i')", "target_property_name": "#visible"}]
     stat_tab_buttons.append(size_area)
     # the held and cosmetic item toggle (Summary's SummaryButton at 67, 113, 12 square at half size)
     stat_tab_buttons.append(button(83 + SWAP_SLOTS, (67, 113), (6, 6)))
@@ -13911,6 +13938,9 @@ def create_summary_ui():
         layout = "n" if 38 + SWAP_SLOTS <= index < 42 + SWAP_SLOTS else "r" if 74 + SWAP_SLOTS <= index < 80 + SWAP_SLOTS else None
         if layout: body["bindings"] = body["bindings"] + [{"binding_name": "#form_text"},
             {"binding_type": "view", "source_property_name": f"({field('rtabs')} = '{layout}')", "target_property_name": "#visible"}]
+    # the page tabs' layouts are drawn on the Stats tab only (their faces are blank elsewhere), so the D-pad joins them
+    # to the Stats tab's own buttons (add_focus_links)
+    for layout in "nr": FOCUS_WITHIN[f"({field('rtabs')} = '{layout}')"] = f"({field('tab')} = 's')"
     # EvolutionSelectScreen in place of the party (Summary's side screen at 216, 23): a SummaryScrollList of 108 by 112
     # under "Evolution", its slots 91 by 25 and 30 apart from 4 down, each with the species, its types, the Evolve
     # button (40 by 10 at 23, 13) and the portrait; shown while the side field is "e"
@@ -14314,6 +14344,12 @@ def create_pc_ui():
     box_opts = [while_("y", {f"button_{n}_opts": button(n, (x, y + 5), (25, 25))[f"button_{n}"]}, "opts") for n, (x, y) in enumerate(slots[:30])]
     buttons += [while_("n", previewing(button(n, (x, y), (25, 25)), x, y)) for n, (x, y) in enumerate(slots[30:], 30)]
     buttons += [button(36, (117, 9), (14, 14)), button(37, (220, 9), (14, 14)), button(38, (279, 151), (58, 16)), button(39, (320, 186), (26, 13))]
+    # ReleaseButton draws "Release" in bold over its texture, centred and 3.5 down. The texture alone left the button
+    # blank (issue 74); the script gives the button that text only while a Pokemon is chosen, when its texture shows
+    release_text = {"text": {"type": "label", "text": "#form_button_text", "size": [58, 10], "offset": [0, 3.5], "anchor_from": "top_left",
+                             "anchor_to": "top_left", "text_alignment": "center", "shadow": True, "layer": 1,
+                             "bindings": [{"binding_name": "#form_button_text", "binding_type": "collection", "binding_collection_name": "form_buttons"}]}}
+    for state in buttons[-2]["button_38"]["controls"]: next(iter(state.values()))["controls"] = [release_text]
     # PCGUI's options button (218, 186), and while the options show the set-wallpaper button (242, 31)
     # IconButton draws its texture at half size
     buttons += [button(40, (218, 186), (8, 8)), button(41, (242, 31), (10, 10))]
