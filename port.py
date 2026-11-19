@@ -9129,7 +9129,7 @@ def create_revival_herb():
     itemTextureData["texture_data"]["pep_up_flower"] = {"textures": ["textures/items/pep_up_flower"]}
     with open(itemTexturePath, "w", encoding="utf-8") as file: file.write(json.dumps(itemTextureData, indent=4))
     with open(f"{itemsBedrock}/pep_up_flower.json", "w") as file:
-        file.write(json.dumps({"format_version": "1.20.50", "minecraft:item": {
+        file.write(json.dumps({"format_version": "1.21.90", "minecraft:item": {
             "description": {"identifier": "cobblemon:pep_up_flower", "menu_category": {"category": "nature"}},
             "components": {"minecraft:icon": "pep_up_flower", "minecraft:display_name": {"value": "item.cobblemon:pep_up_flower.name"}, "minecraft:max_stack_size": 64}}}, indent=4))
     # worldgen: a wild herb, snapped to the cave floor near each try, five tries to a patch
@@ -9386,6 +9386,15 @@ def create_wild_features():
     if os.path.exists(item_path):
         with open(item_path, encoding="utf-8") as file: item = json.load(file)
         item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": "cobblemon:galarica_nut_bush", "use_on": GALARICA_SOILS}
+        with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
+    # The Saccharine Sapling and the Pep-Up Flower are block items (CobblemonItems' compostableBlockItem): each places
+    # its block, on the dirt a SaplingBlock or FlowerBlock may stand on (BlockTags.DIRT) and farmland. An item of the
+    # block's own name takes the block's place in the inventory, so without a placer neither could be planted (issue 76)
+    for name in ("general/saccharine_sapling", "pep_up_flower"):
+        item_path = f"{itemsBedrock}/{name}.json"
+        if not os.path.exists(item_path): continue
+        with open(item_path, encoding="utf-8") as file: item = json.load(file)
+        item["minecraft:item"]["components"]["minecraft:block_placer"] = {"block": f"cobblemon:{name.split('/')[-1]}", "use_on": APRICORN_SOILS + ["minecraft:farmland"], "replace_block_item": True}
         with open(item_path, "w", encoding="utf-8") as file: file.write(json.dumps(item, indent=2))
     print(f"  wild features: {ores} evolution stone ore placements, Medicinal Leek, mints, big roots, Galarica bushes")
 
