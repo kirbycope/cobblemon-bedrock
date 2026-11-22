@@ -8,90 +8,52 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 9
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "all_of": [
+                    "any_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "beach"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "beach"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "stone"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "!=",
-                            "value": "stone"
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 320
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "nether"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "soulsand_valley"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_endermen"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_ghast"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawns_warm_variant_farm_animals"
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 3
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "beach"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "!=",
-                            "value": "stone"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "nether"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "soulsand_valley"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_endermen"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_ghast"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawns_warm_variant_farm_animals"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -103,40 +65,58 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:spawn_mult_0",
                     "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 100
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "all_of": [
+                    "any_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "nether"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "beach"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "stone"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "soulsand_valley"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_endermen"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_ghast"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawns_warm_variant_farm_animals"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "nether"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "soulsand_valley"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_endermen"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_ghast"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawns_warm_variant_farm_animals"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -148,25 +128,58 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:spawn_mult_1",
                     "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 18
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "all_of": [
+                    "any_of": [
                         {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "beach"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "beach"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "stone"
+                                }
+                            ]
                         },
                         {
-                            "test": "has_biome_tag",
-                            "operator": "!=",
-                            "value": "stone"
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "nether"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "soulsand_valley"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_endermen"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawn_ghast"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "spawns_warm_variant_farm_animals"
+                                }
+                            ]
                         }
                     ]
                 },
@@ -178,52 +191,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
-                    "event_skip_count": 0
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 150
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "nether"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "soulsand_valley"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_endermen"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawn_ghast"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "spawns_warm_variant_farm_animals"
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
+                    "event": "cobblemon:spawn_mult_2",
                     "event_skip_count": 0
                 }
             }

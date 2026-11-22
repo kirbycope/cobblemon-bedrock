@@ -1956,7 +1956,25 @@
                         "cobblemon:herd_follower"
                     ]
                 }
-            }
+            },
+            "cobblemon:spawn_mult_0": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "clear"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_mult_1": {}
         }
     }
 }

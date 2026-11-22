@@ -31,23 +31,29 @@ const HERDS = JSON.parse(herdsJs.slice(herdsJs.indexOf("[")).trim().replace(/;$/
 }
 {
     // an alpha herd's seed spawns from Cobblemon's boss bucket (best-spawner-config's 0.3 of 100): port.py's
-    // normalise_weights gives it that share of a spot's pool (SPAWN_POOL 50000, so at most 150) over the boss entries of
+    // normalise_weights gives it that share of a spot's pool (vanilla's weight there, tools/vanilla_spawn_weights.json, so
+    // at most 0.3 percent of the largest, under 3; most come under 1 and are kept at that share of weight 1, firing
+    // cobblemon:spawn_mult_<n> in place of their seed event, which the table names as "was") over the boss entries of
     // its biomes, and it never outweighs the species' common spawn as it did when one total was split across buckets by
     // raw weight (Tsareena's alpha herd 60, its common spawn 19; issue 61's herds everywhere). In the jungle the two come
     // out alike in Cobblemon too: 0.3 times 100 over the boss bucket's raw weights, 94 times 0.1 over the common ones
     const dir = new URL("../../../development_behavior_packs/cobblemon/spawn_rules/", import.meta.url);
+    const MULT = JSON.parse(readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/spawn_multipliers.js", import.meta.url), "utf-8").match(/SPAWN_MULTIPLIERS = (.*);/)[1]);
+    const VANILLA = JSON.parse(readFileSync(new URL("../../vanilla_spawn_weights.json", import.meta.url), "utf-8"));
+    const BOSS = Math.max(1, Math.ceil(0.003 * Math.max(...Object.values(VANILLA).map((v) => v.land), 100)));
     let alpha = 0, total = 0;
     const heavy = [];
     for (const name of readdirSync(dir)) {
         const rules = JSON.parse(readFileSync(new URL(name, dir), "utf-8"))["minecraft:spawn_rules"];
         if (rules.description.population_control !== "animal") continue;
         for (const c of rules.conditions) {
-            const w = c["minecraft:weight"].default;
+            let w = c["minecraft:weight"].default, ev = c["minecraft:herd"]?.event ?? "";
+            if (ev.startsWith("cobblemon:spawn_mult_")) { const e = MULT[rules.description.identifier][+ev.split("_").pop()]; w /= e.top; ev = e.was ?? ""; }
             total += w;
-            if (c["minecraft:herd"]?.event?.startsWith("cobblemon:herd_seed_alpha")) { alpha += w; if (w > 150) heavy.push(`${name} ${w}`); }
+            if (ev.startsWith("cobblemon:herd_seed_alpha")) { alpha += w; if (c["minecraft:weight"].default > BOSS) heavy.push(`${name} ${c["minecraft:weight"].default}`); }
         }
     }
-    check("an alpha herd's seed carries at most the boss bucket's 150 of a spot's 50000", total > 0 && heavy.length === 0, heavy.slice(0, 5).join(", "));
+    check(`an alpha herd's seed carries at most the boss bucket's ${BOSS} of the largest pool`, total > 0 && heavy.length === 0, heavy.slice(0, 5).join(", "));
     check("alpha herds are under half a percent of the land pool", alpha > 0 && alpha / total < 0.005, `${(100 * alpha / total).toFixed(2)}%`);
     const tsareena = JSON.parse(readFileSync(new URL("0763_tsareena.json", dir), "utf-8"))["minecraft:spawn_rules"].conditions;
     const weightOf = (test) => tsareena.find(test)?.["minecraft:weight"].default ?? 0;

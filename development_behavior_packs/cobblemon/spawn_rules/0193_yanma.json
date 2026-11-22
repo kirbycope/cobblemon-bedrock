@@ -8,97 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 199
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "any_of": [
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "river"
-                                },
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "swamp"
-                                },
-                                {
-                                    "test": "has_biome_tag",
-                                    "operator": "==",
-                                    "value": "mangrove_swamp"
-                                }
-                            ]
-                        },
-                        {
-                            "none_of": [
-                                {
-                                    "any_of": [
-                                        {
-                                            "test": "has_biome_tag",
-                                            "operator": "==",
-                                            "value": "frozen"
-                                        },
-                                        {
-                                            "all_of": [
-                                                {
-                                                    "test": "has_biome_tag",
-                                                    "operator": "==",
-                                                    "value": "beach"
-                                                },
-                                                {
-                                                    "test": "has_biome_tag",
-                                                    "operator": "==",
-                                                    "value": "cold"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "all_of": [
-                                                {
-                                                    "test": "has_biome_tag",
-                                                    "operator": "==",
-                                                    "value": "taiga"
-                                                },
-                                                {
-                                                    "test": "has_biome_tag",
-                                                    "operator": "==",
-                                                    "value": "cold"
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "test": "has_biome_tag",
-                                            "operator": "==",
-                                            "value": "grove"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:brightness_filter": {
-                    "min": 8,
-                    "max": 15,
-                    "adjust_for_weather": true
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1,
-                    "event": "cobblemon:spawn_weather_clear",
-                    "event_skip_count": 0
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 106
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "test": "has_biome_tag",
@@ -124,7 +34,33 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 47
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "test": "has_biome_tag",
+                    "operator": "==",
+                    "value": "lush_caves"
+                },
+                "minecraft:spawns_underwater": {},
+                "minecraft:spawns_on_surface": {},
+                "minecraft:density_limit": {
+                    "surface": 5
+                },
+                "minecraft:brightness_filter": {
+                    "min": 0,
+                    "max": 7,
+                    "adjust_for_weather": false
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:spawn_mult_1",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -208,18 +144,82 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed",
+                    "event": "cobblemon:spawn_mult_2",
                     "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 25
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
-                    "test": "has_biome_tag",
-                    "operator": "==",
-                    "value": "lush_caves"
+                    "all_of": [
+                        {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "river"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "swamp"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mangrove_swamp"
+                                }
+                            ]
+                        },
+                        {
+                            "none_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "frozen"
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "beach"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "all_of": [
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "taiga"
+                                                },
+                                                {
+                                                    "test": "has_biome_tag",
+                                                    "operator": "==",
+                                                    "value": "cold"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "grove"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
                 },
                 "minecraft:spawns_underwater": {},
                 "minecraft:spawns_on_surface": {},
@@ -227,14 +227,14 @@
                     "surface": 5
                 },
                 "minecraft:brightness_filter": {
-                    "min": 0,
-                    "max": 7,
-                    "adjust_for_weather": false
+                    "min": 8,
+                    "max": 15,
+                    "adjust_for_weather": true
                 },
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:spawn_mult_1",
+                    "event": "cobblemon:spawn_mult_3",
                     "event_skip_count": 0
                 }
             }
