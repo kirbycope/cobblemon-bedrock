@@ -952,7 +952,25 @@
                         "cobblemon:herd_follower"
                     ]
                 }
-            }
+            },
+            "cobblemon:spawn_mult_2": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "test": "weather_at_position",
+                            "subject": "self",
+                            "operator": "!=",
+                            "value": "thunderstorm"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobblemon:gone"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "cobblemon:spawn_mult_3": {}
         }
     }
 }

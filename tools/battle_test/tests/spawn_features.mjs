@@ -9,7 +9,11 @@ const rules = (name) => {
     const path = new URL(`../../../development_behavior_packs/cobblemon/spawn_rules/${name}.json`, import.meta.url);
     return existsSync(path) ? JSON.parse(readFileSync(path, "utf-8"))["minecraft:spawn_rules"].conditions : [];
 };
-const events = (name) => new Set(rules(name).map((c) => c["minecraft:herd"]?.event).filter(Boolean));
+// a condition kept at a share of weight 1 fires cobblemon:spawn_mult_<n> instead, whose table entry names the event it
+// stands in for ("was"), the form event among them
+const MULT = JSON.parse(readFileSync(new URL("../../../development_behavior_packs/cobblemon/scripts/spawn_multipliers.js", import.meta.url), "utf-8").match(/SPAWN_MULTIPLIERS = (.*);/)[1]);
+const own = (id, e) => e?.startsWith("cobblemon:spawn_mult_") ? MULT[id]?.[+e.split("_").pop()]?.was : e;
+const events = (name) => new Set(rules(name).map((c) => own(`cobblemon:p${name}`, c["minecraft:herd"]?.event)).filter(Boolean));
 const vivillon = events("0666_vivillon");
 // Flabebe needs flowers nearby, so the script's spawner draws it (port.py's special_spawns)
 const flowers = new Set(tables.match(/cobblemon:spawn_form_flower-[a-z]+/g) ?? []);

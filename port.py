@@ -4286,11 +4286,30 @@ bedrock_biome_tags = {}
 BUCKET_WEIGHTS = {"common": 94.0, "uncommon": 5.0, "rare": 0.5, "ultra-rare": 0.2, "boss": 0.3}
 SURFACE_PRESETS = {"natural", "wild", "treetop", "foliage", "water"}
 # What the spawn rules that hold at one spot add up to once normalised (normalise_weights), the 100 of Cobblemon's bucket
-# roll: large, so that its rarest shares (an ultra-rare legendary's, a few thousandths of its bucket's 0.2 percent) come
-# as near the least weight a rule can carry, 1, as an integer weight allows. SPAWN_CAP, a fifth of it, holds back the
-# few conditions a biome-averaged share would make most of a spot's pool.
-SPAWN_POOL = 50000
-SPAWN_CAP = 10000
+# roll: as much as vanilla's own rules weigh there (tools/vanilla_spawn_weights.json, on land or in water), so the
+# Pokemon take about half of a spot's spawn picks and vanilla keeps the rest. Bedrock makes one weighted pick across
+# every rule that holds, vanilla's and the add-on's, and checks the picked mob's cap only after, so the 50,000 a spot
+# this once was left the Nether nothing but zombified piglins (100) and fortress spawns: no ghasts (40), endermen (6,
+# 10) or piglins (5, 15), issue #79. SPAWN_POOL_FLOOR keeps a spot vanilla barely spawns in (warped forest 20, river 14,
+# deep dark 4) big enough that its common Pokemon still carry whole weights rather than the keep's thinning, which
+# discards the picks it thins. SPAWN_CAP_SHARE, a fifth, holds back the few conditions a biome-averaged share would
+# make most of a spot's pool. A share under 1 goes on being kept in proportion by "cobblemon:keep".
+SPAWN_POOL_FLOOR = 100
+SPAWN_CAP_SHARE = 0.2
+vanilla_spawn_weights = {}
+
+
+def spawn_pools(kind):
+    """{biome: what the Pokemon's rules there add up to}, kind "land" or "water" (normalise_weights)."""
+    global vanilla_spawn_weights
+    if not vanilla_spawn_weights:
+        with open(os.path.join(pwd, "tools", "vanilla_spawn_weights.json"), encoding="utf-8") as file: vanilla_spawn_weights = json.load(file)
+    return {biome: max(SPAWN_POOL_FLOOR, weights[kind]) for biome, weights in vanilla_spawn_weights.items()}
+
+
+def spawn_cap():
+    """The most one condition may weigh: a fifth of the largest spot's pool (check_spawn_balance)."""
+    return round(SPAWN_CAP_SHARE * max(max(spawn_pools(kind).values()) for kind in ("land", "water")))
 # Bedrock treats the whole Nether as underground: it has no sky, so a rule that only spawns on the surface
 # never fires there. Every vanilla Nether mob spawns underground, Hoglin and Strider included.
 NETHER_TAGS = {"nether", "nether_wastes", "crimson_forest", "warped_forest", "soulsand_valley", "basalt_deltas"}
@@ -4321,9 +4340,10 @@ def _filter_passes(node, tags):
     return True
 
 
-def normalise_weights(species):
+def normalise_weights(species, kind="land"):
     """Turn Cobblemon's raw spawn weights into a share of a Bedrock population pool: {pokemon: [(rule, spawn)]}, every
-    species of one pool, to {pokemon: [rule]}.
+    species of one pool, to {pokemon: [rule]}. kind is "water" for water_animal, whose rules share a spot with vanilla's
+    fish and squid, and "land" otherwise.
 
     Cobblemon rolls a rarity bucket first (BestSpawnerConfig.worldBuckets, 94 : 5 : 0.5 : 0.2, boss 0.3) and then picks
     within it by weight among the spawns that hold at the spot, so a weight only means anything against the rest of its
@@ -4332,9 +4352,9 @@ def normalise_weights(species):
     the pool (Dratini alone was 62 percent of water_animal), and a fixed total per species made a Rattata no likelier
     than a Hawlucha (plains, 0.3 percent of the pool against Cobblemon's 9.7).
 
-    So a condition's weight is its bucket's share of SPAWN_POOL times its raw weight over the raw weights of its bucket's
-    conditions in its biomes (each biome's sum, averaged over the condition's biomes, from tools/bedrock_biome_tags.json),
-    capped at SPAWN_CAP. A species' conditions in one bucket that come under 1 (the rare and ultra-rare ones, the
+    So a condition's weight is its bucket's share of each of its biomes' pool (spawn_pools: vanilla's own weight there)
+    times its raw weight over the raw weights of its bucket's conditions in that biome, averaged over the condition's
+    biomes (from tools/bedrock_biome_tags.json), capped at a fifth of those biomes' pool. A species' conditions in one bucket that come under 1 (the rare and ultra-rare ones, the
     legendaries, an alpha herd's seed) are one condition where nothing but their biomes tells them apart, their biome
     filters joined, so a species split over many small entries is not met once per entry, its weight theirs summed over
     their biomes and averaged over the joined ones. One still under 1 carries the least weight a rule can, 1, and its
@@ -4349,6 +4369,7 @@ def normalise_weights(species):
         key = json.dumps(rule["minecraft:biome_filter"], sort_keys=True)
         if key not in biomes_of: biomes_of[key] = [b for b, t in tags.items() if _filter_passes(rule["minecraft:biome_filter"], t)]
         return biomes_of[key]
+    pools = spawn_pools(kind)
     totals = collections.defaultdict(float)
     for pairs in species.values():
         for rule, spawn in pairs:
@@ -4358,8 +4379,10 @@ def normalise_weights(species):
         rules, small = [], {}
         for rule, spawn in pairs:
             bucket, raw, here = spawn.get("bucket", "common"), rule["minecraft:weight"]["default"], biomes(rule)
-            among = sum(totals[bucket, b] for b in here) / len(here) if here else raw
-            weight = min(SPAWN_CAP, SPAWN_POOL * BUCKET_WEIGHTS.get(bucket, 0) / 100 * raw / (among or 1))
+            # a filter no vanilla biome passes (none should) takes the floor's pool, as all its bucket
+            share = sum(pools[b] * raw / (totals[bucket, b] or 1) for b in here) / len(here) if here else SPAWN_POOL_FLOOR
+            pool = sum(pools[b] for b in here) / len(here) if here else SPAWN_POOL_FLOOR
+            weight = min(SPAWN_CAP_SHARE * pool, BUCKET_WEIGHTS.get(bucket, 0) / 100 * share)
             # a weight multiplier's condition spawns as often as its multipliers can make it (create_spawn_rules)
             if "cobblemon:top" in rule: weight *= rule.pop("cobblemon:top")
             elif weight < 1:
@@ -4744,7 +4767,7 @@ def create_spawn_rules():
     # after the split, so a species keeps the whole of its share in the pool it actually spawns in, and over every
     # species of the pool at once, since a weight is a share of what else holds there
     for population, species in by_pool.items():
-        for pokemon, conditions in normalise_weights(species).items():
+        for pokemon, conditions in normalise_weights(species, "water" if population == "water_animal" else "land").items():
             for rule in conditions:
                 # a condition rarer than a rule's least weight, 1, spawns at 1 and the script keeps it in its share
                 # (normalise_weights' keep) as it keeps a multiplier's: a top of 1 over that share, or its own top over it
@@ -18042,13 +18065,18 @@ def check_pokemon_complete():
     return len(missing)
 
 
-def check_spawn_balance(share=0.2):
+def check_spawn_balance(share=0.2, vanilla=0.01):
     """Bedrock makes one weighted pick per population pool, so a species whose weights dwarf the rest is the
     only thing anyone meets. Dratini's raw Cobblemon weights once made it 62 percent of water_animal on their
-    own. This reports any species holding more than `share` of its pool, any weight outside the 1 to SPAWN_CAP band
+    own. This reports any species holding more than `share` of its pool, any weight outside the 1 to spawn_cap() band
     normalise_weights keeps to (times the most a condition's weight multipliers make, its top in spawn_multipliers.js,
-    which the script thins again), and any Nether spawn left on the surface, where it can never fire."""
-    pools, problems = {}, []
+    which the script thins again), any Nether spawn left on the surface, where it can never fire, and any biome where
+    the Pokemon's land rules leave vanilla's own under `vanilla` of the picks: the 50,000 a spot they once came to left
+    it 0.1 percent, and the Nether lost its ghasts, endermen and piglins (issue #79)."""
+    pools, problems, cap = {}, [], spawn_cap()
+    spawn_pools("land")   # loads tools/vanilla_spawn_weights.json
+    tags = {biome: set(t) for biome, t in json.load(open(os.path.join(pwd, "tools", "bedrock_biome_tags.json"), encoding="utf-8")).items()}
+    land = dict.fromkeys(tags, 0)
     with open(f"{scriptsBedrock}/spawn_multipliers.js", encoding="utf-8") as file: tops = json.loads(re.search(r"SPAWN_MULTIPLIERS = (.*);", file.read()).group(1))
     for path in glob.glob(f"{spawnRulesBedrock}/*.json"):
         name = os.path.basename(path)[:-len(".json")]
@@ -18057,8 +18085,11 @@ def check_spawn_balance(share=0.2):
             condition["minecraft:weight"]["default"] for condition in rules["conditions"])
         for condition in rules["conditions"]:
             weight, event = condition["minecraft:weight"]["default"], condition.get("minecraft:herd", {}).get("event", "")
+            if rules["description"].get("population_control") == "animal" and name.startswith(tuple("0123456789")):
+                for biome, t in tags.items():
+                    if _filter_passes(condition.get("minecraft:biome_filter", {}), t): land[biome] += weight
             top = tops[rules["description"]["identifier"]][int(event.rsplit("_", 1)[1])]["top"] if event.startswith("cobblemon:spawn_mult_") else 1
-            if not 1 <= weight <= round(SPAWN_CAP * top): problems.append(f"  {name}: weight {weight} outside 1..{round(SPAWN_CAP * top)}")
+            if not 1 <= weight <= round(cap * top): problems.append(f"  {name}: weight {weight} outside 1..{round(cap * top)}")
             if biome_tags_in(condition.get("minecraft:biome_filter", {})) & NETHER_TAGS and "minecraft:spawns_underground" not in condition:
                 problems.append(f"  {name}: a Nether spawn that only spawns on the surface")
     for population, totals in sorted(pools.items()):
@@ -18067,6 +18098,12 @@ def check_spawn_balance(share=0.2):
             if weight / total > share: problems.append(f"  {name}: {100 * weight / total:.1f}% of the {population} pool")
         print(f"Spawn balance: {population} has {len(totals)} species, heaviest "
               f"{100 * max(totals.values()) / total:.1f}% of the pool (even share would be {100 / len(totals):.1f}%).")
+    kept = {biome: vanilla_spawn_weights[biome]["land"] / ((vanilla_spawn_weights[biome]["land"] + land[biome]) or 1)
+            for biome in land if vanilla_spawn_weights.get(biome, {}).get("land")}
+    for biome, part in sorted(kept.items()):
+        if part < vanilla: problems.append(f"  {biome}: vanilla's mobs get {100 * part:.1f}% of the land spawn picks")
+    print(f"Spawn balance: vanilla keeps {100 * min(kept.values()):.1f}% ({min(kept, key=kept.get)}) to {100 * max(kept.values()):.1f}% of a biome's land picks; "
+          + ", ".join(f"{b} {100 * kept[b]:.0f}%" for b in ("hell", "soulsand_valley", "basalt_deltas", "crimson_forest", "warped_forest", "plains") if b in kept) + ".")
     print("\n".join(problems) or "Spawn balance check passed.")
     return len(problems)
 

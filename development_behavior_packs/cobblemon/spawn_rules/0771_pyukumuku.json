@@ -8,35 +8,7 @@
         "conditions": [
             {
                 "minecraft:weight": {
-                    "default": 213
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "beach"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "!=",
-                            "value": "stone"
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 922
+                    "default": 5
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -99,7 +71,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 3627
+                    "default": 20
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -127,7 +99,7 @@
             },
             {
                 "minecraft:weight": {
-                    "default": 18
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -151,13 +123,61 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
+                    "event": "cobblemon:spawn_mult_0",
                     "event_skip_count": 0
                 }
             },
             {
                 "minecraft:weight": {
-                    "default": 4
+                    "default": 1
+                },
+                "minecraft:biome_filter": {
+                    "any_of": [
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "beach"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "stone"
+                                }
+                            ]
+                        },
+                        {
+                            "all_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "ocean"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "warm"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "minecraft:spawns_underwater": {},
+                "minecraft:spawns_on_surface": {},
+                "minecraft:density_limit": {
+                    "surface": 5
+                },
+                "minecraft:herd": {
+                    "min_size": 1,
+                    "max_size": 1,
+                    "event": "cobblemon:spawn_mult_1",
+                    "event_skip_count": 0
+                }
+            },
+            {
+                "minecraft:weight": {
+                    "default": 1
                 },
                 "minecraft:biome_filter": {
                     "all_of": [
@@ -216,37 +236,7 @@
                 "minecraft:herd": {
                     "min_size": 1,
                     "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
-                    "event_skip_count": 0
-                }
-            },
-            {
-                "minecraft:weight": {
-                    "default": 3
-                },
-                "minecraft:biome_filter": {
-                    "all_of": [
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "ocean"
-                        },
-                        {
-                            "test": "has_biome_tag",
-                            "operator": "==",
-                            "value": "warm"
-                        }
-                    ]
-                },
-                "minecraft:spawns_underwater": {},
-                "minecraft:spawns_on_surface": {},
-                "minecraft:density_limit": {
-                    "surface": 5
-                },
-                "minecraft:herd": {
-                    "min_size": 1,
-                    "max_size": 1,
-                    "event": "cobblemon:herd_seed_alpha",
+                    "event": "cobblemon:spawn_mult_2",
                     "event_skip_count": 0
                 }
             }

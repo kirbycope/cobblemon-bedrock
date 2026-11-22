@@ -10,6 +10,12 @@ const ALL = readdirSync(pack("spawn_rules")).filter((f) => /^\d{4}_/.test(f)).ma
 const TAGS = JSON.parse(readFileSync(new URL("../../bedrock_biome_tags.json", import.meta.url), "utf-8"));
 const MULT = JSON.parse(readFileSync(pack("scripts/spawn_multipliers.js"), "utf-8").match(/SPAWN_MULTIPLIERS = (.*);/)[1]);
 const event = (c) => c["minecraft:herd"]?.event ?? "";
+// what vanilla's own rules weigh in a biome (tools/vanilla_spawn_weights.json): the Pokemon's rules there add up to as
+// much, at least SPAWN_POOL_FLOOR, so vanilla keeps about half the picks (issue 79), and no condition passes a fifth of
+// the largest pool (spawn_cap)
+const VANILLA = JSON.parse(readFileSync(new URL("../../vanilla_spawn_weights.json", import.meta.url), "utf-8"));
+const POOL = (biome) => Math.max(100, VANILLA[biome].land);
+const CAP = Math.round(0.2 * Math.max(...Object.values(VANILLA).flatMap((v) => [v.land, v.water]), 100));
 
 {
     // SpawnDetailPreset.apply copies a preset's condition into the entry's: urban's concrete nearby is the script's to test
@@ -67,12 +73,12 @@ const event = (c) => c["minecraft:herd"]?.event ?? "";
     }
     const rattata = share["cobblemon:p0019_rattata"] / total;
     check("Rattata is 5 to 12 percent of the plains at noon", rattata > 0.05 && rattata < 0.12, `${(100 * rattata).toFixed(2)}%`);
-    check("the spot's weights come near SPAWN_POOL, 50000", total > 20000 && total < 80000, `${Math.round(total)}`);
+    check(`the spot's weights come near vanilla's there, ${POOL("plains")}`, total > 0.4 * POOL("plains") && total < 1.6 * POOL("plains"), `${Math.round(total)}`);
     // Cobblemon's herds are 53 percent of the plains' noon pool by its own buckets, so the seeds are about that here
     check("the herds' seeds are their share there, about half", seeds / total > 0.4 && seeds / total < 0.65, `${(100 * seeds / total).toFixed(1)}%`);
 }
 {
-    // over the whole land pool the herds' seeds are under 40 percent, and no weight leaves the band (1 to SPAWN_CAP, times a
+    // over the whole land pool the herds' seeds are under 40 percent, and no weight leaves the band (1 to spawn_cap(), times a
     // multiplier condition's top)
     let total = 0, seeds = 0;
     const out = [];
@@ -80,14 +86,14 @@ const event = (c) => c["minecraft:herd"]?.event ?? "";
         for (const c of r.conditions) {
             let w = c["minecraft:weight"].default, ev = event(c), top = 1;
             if (ev.startsWith("cobblemon:spawn_mult_")) { const e = MULT[r.description.identifier][+ev.split("_").pop()]; top = e.top; ev = e.was ?? ""; }
-            if (!(w >= 1 && w <= Math.round(10000 * top))) out.push(`${r.description.identifier} ${w}`);
+            if (!(w >= 1 && w <= Math.round(CAP * top))) out.push(`${r.description.identifier} ${w}`);
             if (r.description.population_control !== "animal") continue;
             total += w / top;
             if (ev.startsWith("cobblemon:herd_seed")) seeds += w / top;
         }
     }
     check("herd seeds are under 40 percent of the land pool", seeds / total < 0.4, `${(100 * seeds / total).toFixed(1)}%`);
-    check("every weight is 1 to 10000 times its top", out.length === 0, out.slice(0, 5).join(", "));
+    check(`every weight is 1 to ${CAP} times its top`, out.length === 0, out.slice(0, 5).join(", "));
     // a species' conditions under 1 in one bucket are one condition at 1 where only their biomes differ: Garchomp's rare
     // caves in the badlands and mountains (garchomp-1) and the thermal biomes (garchomp-5) are one, its ultra-rare cave
     // spawn anywhere (garchomp-3, another bucket) another
@@ -124,4 +130,23 @@ const event = (c) => c["minecraft:herd"]?.event ?? "";
     }
     const ratio = (zapdos / total) / (0.002 * 0.6 / 121.6);
     check("Zapdos' kept share in the savanna is Cobblemon's within a factor of 3", ratio > 1 / 3 && ratio < 3, `${ratio.toFixed(2)} times, ${(100 * zapdos / total).toFixed(5)}%`);
+}
+{
+    // issue 79: Bedrock makes one weighted pick across vanilla's rules and the add-on's, so at the 50,000 a spot the
+    // Pokemon once came to, vanilla had 0.1 to 0.4 percent of the Nether's picks and its ghasts, endermen, piglins and
+    // soul sand valley skeletons stopped spawning. Each Nether biome's vanilla weight now keeps a tenth or more
+    const passes = (f, tags) => Array.isArray(f) ? f.every((x) => passes(x, tags)) : f.all_of ? f.all_of.every((x) => passes(x, tags))
+        : f.any_of ? f.any_of.some((x) => passes(x, tags)) : f.none_of ? !f.none_of.some((x) => passes(x, tags))
+        : f.test === "has_biome_tag" ? tags.includes(f.value) === (f.operator !== "!=") : true;
+    const kept = {};
+    for (const biome of ["hell", "soulsand_valley", "basalt_deltas", "crimson_forest", "warped_forest"]) {
+        let pokemon = 0;
+        for (const r of ALL) {
+            if (r.description.population_control !== "animal") continue;
+            for (const c of r.conditions) if (passes(c["minecraft:biome_filter"] ?? {}, TAGS[biome])) pokemon += c["minecraft:weight"].default;
+        }
+        kept[biome] = VANILLA[biome].land / (VANILLA[biome].land + pokemon);
+    }
+    check("vanilla keeps a tenth or more of every Nether biome's spawn picks", Object.values(kept).every((k) => k >= 0.1),
+        Object.entries(kept).map(([b, k]) => `${b} ${(100 * k).toFixed(1)}%`).join(", "));
 }
