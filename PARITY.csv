@@ -5,6 +5,7 @@ README note,`structures/cobblemon/village_*_pokecent,"`structure/village_*/villa
 README note,`trading/economy_trades/fisherman_trades,"`CobblemonTradeOffers.kt`, `CobblemonVillagerProfessions.kt`, `CobblemonStructures.kt`",README,partial,"not carried: the villages' long path, a street piece Cobblemon adds to each village type's streets pool at weight 10, which only fits into a village's own street layout (Bedrock's villages take no new pieces; the berry farms and Pokemon Centers are placed beside them instead, see below)"
 README note,battles between players,"`BattleConfigureGUI.kt`, `ChallengeManager.kt`, `BattleBuilder.pvp1v1`, `textures/gui/interact/request`, lang `cobblemon",README,partial,"not carried: Multi and Royal Battles, which need four players (the arrows skip them)"
 README note,building blocks,"`blockstates`, `models/block`, `loot_table/blocks`",README,partial,"not carried: signs and hanging signs (Bedrock custom blocks cannot hold editable text), and apricorn and saccharine leaves drop themselves to shears or Silk Touch, sticks one time in fifty otherwise, and draw one side of each face so neighbours do not z-fight"
+README note,CobbleDollars,CobbleDollars 2.0.0 Beta-6.1 (`java_cobbledollars/`),README,partial,"not carried: the Omnitool and the shop editor (`/cobblemerchant edit`) and an offer's stock, which only the editor sets; datapack shops and banks and the config files (the defaults are used); the easter egg shop one merchant in 5000 gets, a player head with a skin Bedrock cannot give; the suffixes in a command's amount (1.5K), since Bedrock's parser takes no bare number as a string; the leaderboard's clickable pages (a page number instead); GTS's offline earnings; the bank as a container (a form lists what the merchant buys); a Display Case merchant is the merchant entity rather than a villager, so it does not breed, sleep or turn into a zombie villager"
 README note,double battles,"`BattleTypes.kt`, `BattleOverlay.drawTile` (isCompact), `BattleTargetSelection.kt`, `MoveTarget.kt`, `NPCServerDelegate`",README,partial,"not carried: Multi and Royal Battles, which need four players"
 README note,evolution,"species `evolutions`, `LevelUpEvolution`, `FriendshipMutationCalculator`, `TimeRange.kt`",README,partial,"not carried: Alolan Marowak's volcanic route, whose biome only other mods add (its Nether route, a Cubone levelled up in the Nether, is carried); damage other than a move's (poison, hazards) in the damage count, and a multi-hit move's hits counted one by one; the queue's pass while its trainer is in a battle (blocks travelled and Gimmighoul's coins are in the species bars row) An evolution brings Evolution.evolve's side effects: the result's form (Grotle holding a sapling becomes that tree's Torterra, Rockruff at night Midnight Lycanroc; of two evolutions into one species the one asking more comes first), the moves it learns into a free slot or onto the bench (Torterra's Earthquake), a held item kept where consumeHeldItem is false, its drops (a Turtle Scute, a Shed Shell), and Nincada's Shedinja into the party if there is room and a Poke Ball to use"
 README note,fossils,"`data/cobblemon/fossils`, `natural_materials`, `recipe`, `loot_table/fossils`, `structure/fossils`, `worldgen/configured",README,partial,"not carried: the six ids 1.21.1 has no item for (grass, tall_fern, tall_seagrass, dripleaf, glistening_melon_slice, rabbits_foot), which never match in Cobblemon either"
@@ -19,7 +20,7 @@ README note,ores and wild plants,"`world/feature`, `worldgen/placed_feature`, `l
 README note,party,"`PlayerPartyStore.kt`, `PartySendBinding.kt`, `SendOutPokemonPacket`, `PokemonState.kt`, `PokemonEntity.recallWithAnimat",README,partial,not carried: the keybinds themselves (Bedrock lets a pack add no keys)
 README note,party HUD,"`client/gui/PartyOverlay.kt`, `PokemonState.kt`, `textures/gui/party`, `textures/gui/ball`",README,partial,not carried: the Pokemon models in the portrait windows
 README note,PC screen,"`client/gui/pc`, `textures/gui/pc`",README,partial,not carried: dragging
-README note,Poke Snack,"`PokeSnackBlock.kt`, `PokeSnackBlockEntity.kt`, `PokeSnackSpawnerFactory.kt`, `SpawningCondition.isPokeSnack`",README,partial,"not carried: the Poke Cake's tint (its 16 colours made it 36,864 block permutations; see Block permutations in the README), and the colour of the item in hand and in the inventory (an item's icon is fixed)"
+README note,Poke Snack,"`PokeSnackBlock.kt`, `PokeSnackBlockEntity.kt`, `PokeSnackSpawnerFactory.kt`, `SpawningCondition.isPokeSnack`",README,partial,"not carried: the cake's tint, and the colour of the item in hand and in the inventory (an item's icon is fixed)"
 README note,Pokedex screen,"`client/gui/pokedex`, `textures/gui/pokedex`",README,partial,not carried: the rotating model
 README note,Pokemon portraits,"`bedrock/pokemon/posers`, `PosableModel`, `drawProfilePokemon`, `TexturedModel`",README,partial,not carried: posed animation (portraits are still) and Cobblemon's PROFILE sprite overrides
 README note,riding,"species `riding.behaviours`, `riding.seats`; model `seat_*` locators; `ride_*` animations; vanilla `happy_ghast.json`",README,partial,"not carried: the fliers' and swimmers' turning and pitch models (Bedrock steers them), and with them the jet's halved handling at no stamina and its forward motion with no input (the free camera moves nothing on its own), the rocket's lift speed by its Jump stat and its slow sink while boosting (the engine climbs at one rate), the flight speeds past 1.2 blocks a tick a jet's or rocket's boost reaches, and a take-off from the water"
@@ -991,6 +992,7 @@ config,pokemonIntrinsicSizeMin,config/CobblemonConfig.kt,named in the port,n/a,n
 config,pokemonPerChunk,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,pokemonSaveIntervalSeconds,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,pokeSnackPokemonPerChunk,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
+config,powerItemRideStatGainIntervalSeconds,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
 config,predationChance,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,preventCompletePartyDeposit,config/CobblemonConfig.kt,named in the port,n/a,no config screen; the port runs Cobblemon's default
 config,rememberRidingCamera,config/CobblemonConfig.kt,,n/a,no config screen; the port runs Cobblemon's default where it carries the feature at all
@@ -2803,7 +2805,7 @@ screen,PokemonInfoWidget,client/gui/pokedex/widgets,"port.py, scripts, README",d
 screen,PokemonNameWidget,client/gui/pokedex/widgets,,done,"a part of the carried screen (DropsScrollingWidget, EntriesScrollingWidget, EvolutionTreeWidget), drawn by it"
 screen,PokemonSlotWidget,client/gui/pokedex/widgets,"port.py, README",done,
 screen,RecallButton,client/gui/pasture,port.py,done,
-screen,ReleaseButton,client/gui/pc,README,done,
+screen,ReleaseButton,client/gui/pc,"port.py, README",done,
 screen,ReleaseConfirmButton,client/gui/pc,,done,"a part of the carried screen (FilterWidget, IconButton, PCGUI), drawn by it"
 screen,RenderableFace,client/gui/dialogue,,done,"a part of the carried screen (DialogueScreen), drawn by it"
 screen,ReorderMoveButton,client/gui/summary/widgets/screens/moves,port.py,done,
@@ -2820,7 +2822,7 @@ screen,StarterSelectionScreen,client/gui/startselection,port.py,done,
 screen,StatsWidget,client/gui/pokedex/widgets,"port.py, scripts, README",done,
 screen,StatWidget,client/gui/summary/widgets/screens/stats,"port.py, scripts, README",done,
 screen,StorageSlot,client/gui/pc,,done,"a part of the carried screen (FilterWidget, IconButton, PCGUI), drawn by it"
-screen,StorageWidget,client/gui/pc,"port.py, README",done,
+screen,StorageWidget,client/gui/pc,"port.py, scripts, README",done,
 screen,Summary,client/gui/summary,"port.py, scripts, README",done,
 screen,SummaryButton,client/gui/summary,"port.py, README",done,
 screen,SummaryScrollList,client/gui/summary/widgets/common,port.py,done,
@@ -2869,7 +2871,76 @@ screen,RideSettingsEditor,client/gui/debug/riding,,n/a,debug only
 screen,RidingStatsDebugGUI,client/gui/debug/riding,,n/a,debug only
 screen,SimpleNPCTextInputWidget,client/gui/npc/widgets,,n/a,a development or settings screen
 screen,SnapshotWarningScreen,client/gui/snapshots,,n/a,a development or settings screen
+sound,battle.pvn.default,sounds.json,,missing,
+sound,battle.pvp.default,sounds.json,,missing,
+sound,battle.pvw.default,sounds.json,,missing,
+sound,stepsound.amethyst.minecraft,sounds.json,,missing,
+sound,stepsound.dirt.minecraft,sounds.json,,missing,
+sound,stepsound.glass.minecraft,sounds.json,,missing,
+sound,stepsound.grass.minecraft,sounds.json,,missing,
+sound,stepsound.metal.minecraft,sounds.json,,missing,
+sound,stepsound.mud.minecraft,sounds.json,,missing,
+sound,stepsound.sand.minecraft,sounds.json,,missing,
+sound,stepsound.snow.minecraft,sounds.json,,missing,
+sound,stepsound.stone.minecraft,sounds.json,,missing,
+sound,stepsound.wood.minecraft,sounds.json,,missing,
 sound,block.bright_powder.use,sounds.json,cobblemon.block.bright_powder.use,partial,defined but nothing plays it
+sound,stepsound.dirt.claw.large,sounds.json,cobblemon.stepsound.dirt.claw.large,partial,defined but nothing plays it
+sound,stepsound.dirt.claw.medium,sounds.json,cobblemon.stepsound.dirt.claw.medium,partial,defined but nothing plays it
+sound,stepsound.dirt.hoof.large,sounds.json,cobblemon.stepsound.dirt.hoof.large,partial,defined but nothing plays it
+sound,stepsound.dirt.hoof.medium,sounds.json,cobblemon.stepsound.dirt.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.dirt.standard.large,sounds.json,cobblemon.stepsound.dirt.standard.large,partial,defined but nothing plays it
+sound,stepsound.dirt.standard.medium,sounds.json,cobblemon.stepsound.dirt.standard.medium,partial,defined but nothing plays it
+sound,stepsound.glass.claw.large,sounds.json,cobblemon.stepsound.glass.claw.large,partial,defined but nothing plays it
+sound,stepsound.glass.claw.medium,sounds.json,cobblemon.stepsound.glass.claw.medium,partial,defined but nothing plays it
+sound,stepsound.glass.hoof.large,sounds.json,cobblemon.stepsound.glass.hoof.large,partial,defined but nothing plays it
+sound,stepsound.glass.hoof.medium,sounds.json,cobblemon.stepsound.glass.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.glass.standard.large,sounds.json,cobblemon.stepsound.glass.standard.large,partial,defined but nothing plays it
+sound,stepsound.glass.standard.medium,sounds.json,cobblemon.stepsound.glass.standard.medium,partial,defined but nothing plays it
+sound,stepsound.grass.claw.large,sounds.json,cobblemon.stepsound.grass.claw.large,partial,defined but nothing plays it
+sound,stepsound.grass.claw.medium,sounds.json,cobblemon.stepsound.grass.claw.medium,partial,defined but nothing plays it
+sound,stepsound.grass.hoof.large,sounds.json,cobblemon.stepsound.grass.hoof.large,partial,defined but nothing plays it
+sound,stepsound.grass.hoof.medium,sounds.json,cobblemon.stepsound.grass.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.grass.standard.large,sounds.json,cobblemon.stepsound.grass.standard.large,partial,defined but nothing plays it
+sound,stepsound.grass.standard.medium,sounds.json,cobblemon.stepsound.grass.standard.medium,partial,defined but nothing plays it
+sound,stepsound.leaves.universal.large,sounds.json,cobblemon.stepsound.leaves.universal.large,partial,defined but nothing plays it
+sound,stepsound.leaves.universal.medium,sounds.json,cobblemon.stepsound.leaves.universal.medium,partial,defined but nothing plays it
+sound,stepsound.metal.claw.large,sounds.json,cobblemon.stepsound.metal.claw.large,partial,defined but nothing plays it
+sound,stepsound.metal.claw.medium,sounds.json,cobblemon.stepsound.metal.claw.medium,partial,defined but nothing plays it
+sound,stepsound.metal.hoof.large,sounds.json,cobblemon.stepsound.metal.hoof.large,partial,defined but nothing plays it
+sound,stepsound.metal.hoof.medium,sounds.json,cobblemon.stepsound.metal.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.metal.standard.large,sounds.json,cobblemon.stepsound.metal.standard.large,partial,defined but nothing plays it
+sound,stepsound.metal.standard.medium,sounds.json,cobblemon.stepsound.metal.standard.medium,partial,defined but nothing plays it
+sound,stepsound.mud.claw.large,sounds.json,cobblemon.stepsound.mud.claw.large,partial,defined but nothing plays it
+sound,stepsound.mud.claw.medium,sounds.json,cobblemon.stepsound.mud.claw.medium,partial,defined but nothing plays it
+sound,stepsound.mud.hoof.large,sounds.json,cobblemon.stepsound.mud.hoof.large,partial,defined but nothing plays it
+sound,stepsound.mud.hoof.medium,sounds.json,cobblemon.stepsound.mud.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.mud.standard.large,sounds.json,cobblemon.stepsound.mud.standard.large,partial,defined but nothing plays it
+sound,stepsound.mud.standard.medium,sounds.json,cobblemon.stepsound.mud.standard.medium,partial,defined but nothing plays it
+sound,stepsound.sand.claw.large,sounds.json,cobblemon.stepsound.sand.claw.large,partial,defined but nothing plays it
+sound,stepsound.sand.claw.medium,sounds.json,cobblemon.stepsound.sand.claw.medium,partial,defined but nothing plays it
+sound,stepsound.sand.hoof.large,sounds.json,cobblemon.stepsound.sand.hoof.large,partial,defined but nothing plays it
+sound,stepsound.sand.hoof.medium,sounds.json,cobblemon.stepsound.sand.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.sand.standard.large,sounds.json,cobblemon.stepsound.sand.standard.large,partial,defined but nothing plays it
+sound,stepsound.sand.standard.medium,sounds.json,cobblemon.stepsound.sand.standard.medium,partial,defined but nothing plays it
+sound,stepsound.snow.claw.large,sounds.json,cobblemon.stepsound.snow.claw.large,partial,defined but nothing plays it
+sound,stepsound.snow.claw.medium,sounds.json,cobblemon.stepsound.snow.claw.medium,partial,defined but nothing plays it
+sound,stepsound.snow.hoof.large,sounds.json,cobblemon.stepsound.snow.hoof.large,partial,defined but nothing plays it
+sound,stepsound.snow.hoof.medium,sounds.json,cobblemon.stepsound.snow.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.snow.standard.large,sounds.json,cobblemon.stepsound.snow.standard.large,partial,defined but nothing plays it
+sound,stepsound.snow.standard.medium,sounds.json,cobblemon.stepsound.snow.standard.medium,partial,defined but nothing plays it
+sound,stepsound.stone.claw.large,sounds.json,cobblemon.stepsound.stone.claw.large,partial,defined but nothing plays it
+sound,stepsound.stone.claw.medium,sounds.json,cobblemon.stepsound.stone.claw.medium,partial,defined but nothing plays it
+sound,stepsound.stone.hoof.large,sounds.json,cobblemon.stepsound.stone.hoof.large,partial,defined but nothing plays it
+sound,stepsound.stone.hoof.medium,sounds.json,cobblemon.stepsound.stone.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.stone.standard.large,sounds.json,cobblemon.stepsound.stone.standard.large,partial,defined but nothing plays it
+sound,stepsound.stone.standard.medium,sounds.json,cobblemon.stepsound.stone.standard.medium,partial,defined but nothing plays it
+sound,stepsound.wood.claw.large,sounds.json,cobblemon.stepsound.wood.claw.large,partial,defined but nothing plays it
+sound,stepsound.wood.claw.medium,sounds.json,cobblemon.stepsound.wood.claw.medium,partial,defined but nothing plays it
+sound,stepsound.wood.hoof.large,sounds.json,cobblemon.stepsound.wood.hoof.large,partial,defined but nothing plays it
+sound,stepsound.wood.hoof.medium,sounds.json,cobblemon.stepsound.wood.hoof.medium,partial,defined but nothing plays it
+sound,stepsound.wood.standard.large,sounds.json,cobblemon.stepsound.wood.standard.large,partial,defined but nothing plays it
+sound,stepsound.wood.standard.medium,sounds.json,cobblemon.stepsound.wood.standard.medium,partial,defined but nothing plays it
 sound,animation.chitin.wing_flap.large,sounds.json,cobblemon.animation.chitin.wing_flap.large,done,
 sound,animation.chitin.wing_flap.medium,sounds.json,cobblemon.animation.chitin.wing_flap.medium,done,
 sound,animation.chitin.wing_flap.small,sounds.json,cobblemon.animation.chitin.wing_flap.small,done,
@@ -2879,9 +2950,6 @@ sound,animation.plumage.wing_flap.medium,sounds.json,cobblemon.animation.plumage
 sound,animation.plumage.wing_flap.small,sounds.json,cobblemon.animation.plumage.wing_flap.small,done,
 sound,animation.steel.wing_flap.large,sounds.json,cobblemon.animation.steel.wing_flap.large,done,
 sound,animation.steel.wing_flap.medium,sounds.json,cobblemon.animation.steel.wing_flap.medium,done,
-sound,battle.pvn.default,sounds.json,cobblemon.battle.pvn.default,done,
-sound,battle.pvp.default,sounds.json,cobblemon.battle.pvp.default,done,
-sound,battle.pvw.default,sounds.json,cobblemon.battle.pvw.default,done,
 sound,block.apricorn.harvest,sounds.json,cobblemon.block.apricorn.harvest,done,
 sound,block.berry_bush.break,sounds.json,cobblemon.block.berry_bush.break,done,
 sound,block.berry_bush.harvest,sounds.json,cobblemon.block.berry_bush.harvest,done,
@@ -3115,6 +3183,8 @@ sound,move.flamewheel.actor,sounds.json,cobblemon.move.flamewheel.actor,done,
 sound,move.flamewheel.target,sounds.json,cobblemon.move.flamewheel.target,done,
 sound,move.gigadrain.actor,sounds.json,cobblemon.move.gigadrain.actor,done,
 sound,move.gigadrain.target,sounds.json,cobblemon.move.gigadrain.target,done,
+sound,move.gigatonhammer.actor,sounds.json,cobblemon.move.gigatonhammer.actor,done,
+sound,move.gigatonhammer.target,sounds.json,cobblemon.move.gigatonhammer.target,done,
 sound,move.haze.actor,sounds.json,cobblemon.move.haze.actor,done,
 sound,move.horndrill.target_1,sounds.json,cobblemon.move.horndrill.target_1,done,
 sound,move.horndrill.target_2,sounds.json,cobblemon.move.horndrill.target_2,done,
@@ -3160,6 +3230,8 @@ sound,move.protect.actor,sounds.json,cobblemon.move.protect.actor,done,
 sound,move.psychic.actor,sounds.json,cobblemon.move.psychic.actor,done,
 sound,move.psychic.target,sounds.json,cobblemon.move.psychic.target,done,
 sound,move.pursuit.target,sounds.json,cobblemon.move.pursuit.target,done,
+sound,move.pyroball.actor,sounds.json,cobblemon.move.pyroball.actor,done,
+sound,move.pyroball.target,sounds.json,cobblemon.move.pyroball.target,done,
 sound,move.quickattack.actor,sounds.json,cobblemon.move.quickattack.actor,done,
 sound,move.quickattack.target,sounds.json,cobblemon.move.quickattack.target,done,
 sound,move.ragepowder.actor,sounds.json,cobblemon.move.ragepowder.actor,done,
@@ -3378,6 +3450,7 @@ sound,pokemon.chinchou.ambient,sounds.json,cobblemon.chinchou.ambient,done,
 sound,pokemon.chingling.ambient,sounds.json,cobblemon.chingling.ambient,done,
 sound,pokemon.cinccino.ambient,sounds.json,cobblemon.cinccino.ambient,done,
 sound,pokemon.cinderace.ambient,sounds.json,cobblemon.cinderace.ambient,done,
+sound,pokemon.cinderace.pyroball,sounds.json,cobblemon.pokemon.cinderace.pyroball,done,
 sound,pokemon.clamperl.ambient,sounds.json,cobblemon.clamperl.ambient,done,
 sound,pokemon.clauncher.ambient,sounds.json,cobblemon.clauncher.ambient,done,
 sound,pokemon.clawitzer.ambient,sounds.json,cobblemon.clawitzer.ambient,done,

@@ -21,7 +21,8 @@ import { initStorageNpc, tickStorageNpc, sceneNext, sceneAction, tellStarterSkip
 import { RCT_TRAINER_IDS, RCT_TRAINERS, RCT_INITIAL_CAP, RCT_SERIES_DATA, RCT_TEXT, RCT_LOOT, RCT_DIALOG, RCT_TYPES } from "./rct_trainers.js";
 import { GYM_ROLES, GYM_TRAINER_IDS, GYM_GEMS, GYM_BADGES, GYM_LEAGUE } from "./gyms.js";
 import { initRctWorld, trainerOf as rctTrainerOf, typeOf as rctTypeOf, rctName, rctLine, speak as rctSpeak, record as rctRecord, addRecord as rctAddRecord,
-    spawnTrainer as rctSpawnTrainer, noteGym as rctNoteGym, noteLeague as rctNoteLeague, leagueStock } from "./rct_world.js";
+    spawnTrainer as rctSpawnTrainer, noteGym as rctNoteGym, noteLeague as rctNoteLeague } from "./rct_world.js";
+import * as cobbleDollars from "./cobbledollars.js";
 import { MARKS } from "./marks.js";
 import { HABITAT_POOLS } from "./habitats.js";
 import { BERRY_CARE } from "./berry_care.js";
@@ -2524,6 +2525,7 @@ function battleFailed(battle, e) { console.warn(`[cobblemon] battle error: ${e}
 ${e?.stack ?? ""}`); endBattle(battle); }
 function endBattle(battle, text) {
     if (battle.side === 1) battle = battle.mirror;   // a battle between players, ended from the second player's side
+    payCobbleDollars(battle);   // before the experience, which empties the list of foes knocked out
     payBattleExperience(battle);   // PokemonBattle.end: the experience and EVs for the foes knocked out, now that it is over
     battles.delete(battle.player.id);
     battleRules.endSpectating(battle);
@@ -4867,6 +4869,21 @@ function recordTurnFaced(battle) {
 }
 function facedBy(battle, foe) { return [...(realBattle(battle).facedBy?.get(memberKey(foe?.entity)) ?? [])]; }
 function recordBattleFaint(battle, foe, loser, winners) { battleRules.recordFaint(realBattle(battle), foe, loser, winners ?? battle, facedBy(battle, foe)); }
+// CobbleDollarsEvents.battleVictory, on Cobblemon's BattleVictoryEvent (WinInstruction): in a battle that is not between
+// players, the player who won is paid for the levels of the losing side's Pokemon, a wild Pokemon or an NPC trainer's
+// team. A wild Pokemon caught in the battle is a win too (WinInstruction posts the event with wasWildCapture, which the
+// mod does not look at); a battle fled, forfeited or lost pays nothing
+function payCobbleDollars(battle) {
+    const real = realBattle(battle);
+    if (real.pvp || real.cobbleDollarsPaid || !real.player?.isValid) return;
+    const npc = !!(real.trainer || real.gym);
+    let levels = [];
+    if (real.wipedSides?.has("foe")) levels = (real.pendingExp ?? []).filter((p) => p.loser === "foe").map((p) => p.foe?.level ?? 0);
+    else if (real.captured && !npc) levels = [real.foe?.level ?? 0];
+    if (!levels.length) return;
+    real.cobbleDollarsPaid = true;
+    cobbleDollars.payForBattle(real.player, levels, npc);
+}
 function payBattleExperience(battle) {
     creditDefeats(battle);   // before the experience, which empties the list of foes knocked out
     battleRules.payExperience(realBattle(battle), { partyOf: (view) => findParty(view.player), prop, FAINTED, allActives, fighter, memberKey, held, addEvs, POWER_ITEMS, battleExperience, gainExperience });
@@ -5621,8 +5638,9 @@ function completeLeague(block) {
                 if (dim.getEntities({ type: "cobblemon:poke_mart_clerk", location: at, maxDistance: 2 }).length) continue;
                 const clerk = dim.spawnEntity("cobblemon:poke_mart_clerk", at);
                 clerk.nameTag = name || "Shopkeeper"; clerk.addTag("poke_mart_clerk");
-                // the Shopkeeper's own stock, Radical Gyms' CobbleDollars offers as emeralds (gyms.js)
-                if (GYM_LEAGUE.shop?.length) try { clerk.setDynamicProperty("cobblemon:shop", JSON.stringify(GYM_LEAGUE.shop)); } catch (e) { }
+                // the Shopkeeper's own stock, Radical Gyms' CobbleDollars offers (gyms.js), which cobbledollars.js reads
+                // for a clerk marked as the League's
+                try { clerk.setDynamicProperty("cobblemon:shop", "league"); } catch (e) { }
                 clerk.addEffect("slowness", 20000000, { amplifier: 255, showParticles: false });
             }
             // the League's display cases filled with Radical Gyms' medicine, and its box kept mob-free (rct_world.js)
@@ -14473,6 +14491,7 @@ battleGuard(() => battles);
 watchNaturalSpawns({ POKEMON, prop, OWNER, LEVEL, PID, cause: EntityInitializationCause.Spawned });
 system.beforeEvents.startup.subscribe(({ blockComponentRegistry, customCommandRegistry }) => {
     try { registerCommands(customCommandRegistry); } catch (e) { console.warn(`[cobblemon] commands: ${e}`); }
+    try { cobbleDollars.registerCommands(customCommandRegistry); } catch (e) { console.warn(`[cobbledollars] commands: ${e}`); }
     registerApricornComponents(blockComponentRegistry);
     registerWoodComponents(blockComponentRegistry);
     registerModelBlockComponents(blockComponentRegistry);
@@ -15179,6 +15198,7 @@ function caught(ball, pos, player, pokemon, ballId, gone) {
             const battle = captureBattles.get(pokemon.id);
             captureBattles.delete(pokemon.id);
             keepCaught(player, pokemon, ballId, battle?.foe);   // first, so the battle's end does not heal it as a wild one
+            if (battle) battle.captured = true;   // a win for CobbleDollars (payCobbleDollars)
             if (battle && battles.has(battle.player.id)) endBattle(battle);
         }
         gone();
@@ -15609,13 +15629,9 @@ system.runInterval(() => {
     }
 }, 10);
 
-// The Poke Mart (the hub's clerk, cobblemon:poke_mart_clerk): its screen lists what it sells for emeralds, and buying
-// takes the emeralds from the inventory and hands the items over. Bedrock's trade screen does not open for an entity of
-// a pack's own, so the shop is a form
-const POKE_MART = [["cobblemon:poke_ball", 2, 1], ["cobblemon:great_ball", 1, 1], ["cobblemon:ultra_ball", 1, 2], ["cobblemon:potion", 1, 1],
-    ["cobblemon:super_potion", 1, 2], ["cobblemon:hyper_potion", 1, 4], ["cobblemon:max_potion", 1, 8], ["cobblemon:revive", 1, 6],
-    ["cobblemon:antidote", 1, 1], ["cobblemon:paralyze_heal", 1, 1], ["cobblemon:awakening", 1, 1], ["cobblemon:burn_heal", 1, 1],
-    ["cobblemon:ice_heal", 1, 1], ["cobblemon:full_heal", 1, 1], ["cobblemon:poke_rod", 1, 5]];
+// The Poke Mart (the hub's clerk and the League's Shopkeeper, cobblemon:poke_mart_clerk) and the Cobble Merchant are
+// CobbleDollars merchants (cobbledollars.js): Right Click opens the shop, Shift + Right Click the bank. Bedrock's trade
+// screen does not open for an entity of a pack's own, so both are forms. The Nurse trades for emeralds, as Cobblemon's does
 function countOf(player, id) {
     const inv = player.getComponent(EntityComponentTypes.Inventory)?.container;
     let n = 0;
@@ -15632,32 +15648,15 @@ function takeOf(player, id, count) {
     }
 }
 function emeraldsOf(player) { return countOf(player, "minecraft:emerald"); }
-function takeEmeralds(player, count) { takeOf(player, "minecraft:emerald", count); }
-function openMart(player, clerk) {
-    const have = emeraldsOf(player);
-    // the League's Shopkeeper sells what Radical Gyms' CobbleDollars merchant did, its prices as emeralds (gyms.js)
-    const stock = leagueStock(clerk)?.map(([id, price]) => [id, 1, price]) ?? POKE_MART;
-    const form = new ActionFormData().title("Poke Mart").body(`§7Welcome! You have §a${have} emerald${have === 1 ? "" : "s"}§7.`);
-    for (const [id, n, price] of stock) form.button(`${itemName(id)}${n > 1 ? ` x${n}` : ""}\n${have >= price ? "§2" : "§c"}${price} emerald${price === 1 ? "" : "s"}`, potIcon(id));
-    form.show(player).then((r) => {
-        if (r.canceled || r.selection === undefined) return;
-        const [id, n, price] = stock[r.selection];
-        if (emeraldsOf(player) < price) { player.sendMessage("§cYou don't have enough emeralds."); return openMart(player, clerk); }
-        takeEmeralds(player, price);
-        giveOrDrop(player, id);
-        for (let i = 1; i < n; i++) giveOrDrop(player, id);
-        try { player.playSound("cobblemon.gui.click"); } catch (e) { }
-        player.sendMessage(`§aYou bought ${n > 1 ? `${n} ` : "a "}${itemName(id)}${n > 1 ? "s" : ""}.`);
-        openMart(player, clerk);
-    }).catch(() => { });
-}
+cobbleDollars.init({ itemName, itemIcon: (id) => (id ? potIcon(id) : undefined) });
 world.beforeEvents.playerInteractWithEntity.subscribe((event) => {
     const type = event.target?.typeId;
-    if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse") return;
-    if (type === "cobblemon:nurse" && event.itemStack?.typeId === "minecraft:name_tag") return;   // a Name Tag names her (Nurse Joy)
+    if (type !== "cobblemon:poke_mart_clerk" && type !== "cobblemon:nurse" && type !== cobbleDollars.MERCHANT) return;
+    // a Name Tag names the Nurse (Nurse Joy) and the merchant
+    if (type !== "cobblemon:poke_mart_clerk" && event.itemStack?.typeId === "minecraft:name_tag") return;
     event.cancel = true;
-    const target = event.target;
-    system.run(() => type === "cobblemon:nurse" ? openNurse(event.player, target) : openMart(event.player, target));
+    const target = event.target, player = event.player, sneaking = player.isSneaking;
+    system.run(() => type === "cobblemon:nurse" ? openNurse(player, target) : cobbleDollars.interactMerchant(player, target, sneaking));
 });
 
 // The Nurse's trades (CobblemonTradeOffers) by villager level, Novice to Master: what she wants, what she gives, its

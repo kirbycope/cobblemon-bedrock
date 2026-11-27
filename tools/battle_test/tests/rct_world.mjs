@@ -206,8 +206,11 @@ W.initRctWorld({ party: () => [], levelOf: () => 1, series: M.rctSeries, levelCa
     check("a building turned a quarter maps its case with it", turned && turned.cases[0][0].x === ex - (g.cases[0][2] - g.entrance[2]) && turned.cases[0][0].z === ez + (g.cases[0][0] - g.entrance[0]));
     check("and its box spans 25 by 26 blocks around", asIs.box[3] - asIs.box[0] === 24 && asIs.box[5] - asIs.box[2] === 25 && turned.box[3] - turned.box[0] === 25);
     check("a line that is no rotation of the template's is refused", W.gymTransform(n, { x: ex + 3, y: 70, z: ez + 3 }, { x: ex, y: 70, z: ez }) === undefined);
-    check("the League keeps its seven cases of medicine and its shop of 20 offers in emeralds", GYM_LEAGUE.cases.length === 7 && GYM_LEAGUE.shop.length === 20 && GYM_LEAGUE.shop.every(([id, price]) => id.startsWith("cobblemon:") && price >= 1)
-        && GYM_LEAGUE.shop.some(([id]) => id === "cobblemon:max_elixir"));
+    // the Shopkeeper's CobbleDollars shop as Radical Gyms wrote it: three categories, 20 offers at their own prices
+    const offers = GYM_LEAGUE.shop.flatMap((c) => c.offers);
+    check("the League keeps its seven cases of medicine and its CobbleDollars shop of 20 offers", GYM_LEAGUE.cases.length === 7 && GYM_LEAGUE.shop.length === 3
+        && GYM_LEAGUE.shop[0].name === "Poké Balls" && offers.length === 20 && offers.every((o) => o.item.startsWith("cobblemon:") && Number(o.price) >= 1)
+        && offers.some((o) => o.item === "cobblemon:max_elixir" && o.price === "3000"), JSON.stringify(GYM_LEAGUE.shop).slice(0, 200));
 }
 {
     // the loot's defeat_count condition: an entry for the first defeat only
