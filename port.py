@@ -8057,6 +8057,156 @@ def create_badges():
                    "Which leader gives which badge follows Radical Cobblemon Trainers' badge datapack by hd42.\n")
 
 
+# CobbleDollars by Harmex (https://modrinth.com/mod/cobbledollars, All Rights Reserved, used with credit): money, the Cobble
+# Merchant and its shop and bank. Its jar is fetched into the git-ignored java_cobbledollars/; the rules in
+# scripts/cobbledollars.js were read from its decompiled source there (Vineflower 1.11.1, --kt-enable=false for the
+# classes the Kotlin pass cannot write), and the jar itself supplies the default shop and bank, the merchant's profession
+# texture and the money box
+COBBLEDOLLARS_JAR = "https://cdn.modrinth.com/data/s7N7AsqL/versions/NQdxKsW7/CobbleDollars-fabric-2.0.0%2BBeta-6.1%2B1.21.1.jar"
+cobbledollarsJar = f"{pwd}/java_cobbledollars/CobbleDollars-fabric-2.0.0+Beta-6.1+1.21.1.jar"
+# the hub's Poke Mart clerk sells its own list at the League Shopkeeper's prices (Radical Gyms' CobbleDollars merchant);
+# the Poke Rod, which the League does not sell, at the 5 emeralds it cost before, at the 250 CobbleDollars an emerald the
+# clerks used to stand in for (a Potion's 300 rounded to one emerald)
+POKE_MART_ITEMS = ["poke_ball", "great_ball", "ultra_ball", "potion", "super_potion", "hyper_potion", "max_potion", "revive",
+                   "antidote", "paralyze_heal", "awakening", "burn_heal", "ice_heal", "full_heal"]
+POKE_MART_EXTRA = {"Rods": [{"item": "cobblemon:poke_rod", "price": str(5 * 250)}]}
+# CobbleMerchant: the villager types it wears (VillagerType.byBiome at spawn), in the order of Bedrock's mark_variant
+JAVA_VILLAGER_TYPES = ["plains", "desert", "jungle", "savanna", "snow", "swamp", "taiga"]
+VILLAGER_MARKS = len(JAVA_VILLAGER_TYPES)
+
+
+def cobbledollars_offers(offers, items):
+    """A shop's or bank's offers in the jar's form (an item, a tag, a list of either, with a price) as the script's:
+    {item, price} for one item, {items, name, price} for several, leaving out what the pack has no item for."""
+    out = []
+    for o in offers:
+        ids = []
+        for entry in o.get("items") or [o]:
+            if "item" in entry: ids.append(entry["item"])
+            elif "tag" in entry: ids += item_tag_values("#" + entry["tag"].lstrip("#"))
+        ids = [i for i in ids if i in items or i.startswith("minecraft:")]
+        if not ids: continue
+        price = str(int(str(o.get("price", "0"))))
+        out.append({"item": ids[0], "price": price} if len(ids) == 1 else {"items": ids, "name": o.get("tag", ids[0]), "price": price})
+    return out
+
+
+def create_cobbledollars():
+    """CobbleDollars: the shops' data for scripts/cobbledollars.js, the Cobble Merchant entity and its spawn egg, and the
+    textures the money box and the merchant use."""
+    import urllib.request, zipfile
+    if not os.path.exists(cobbledollarsJar):
+        os.makedirs(os.path.dirname(cobbledollarsJar), exist_ok=True)
+        urllib.request.urlretrieve(COBBLEDOLLARS_JAR, cobbledollarsJar)
+    items = defined_items()
+    def jar_json(jar, path):
+        raw = jar.read(path)
+        try: return json.loads(raw.decode("utf-8"))
+        except UnicodeDecodeError: return json.loads(raw.decode("latin-1"))   # default.json writes "Poké" in Latin-1
+    with zipfile.ZipFile(cobbledollarsJar) as jar:
+        shop = [{"name": c["name"], "offers": cobbledollars_offers(c["offers"], items)} for c in jar_json(jar, "data/cobbledollars/cobbledollars/shop/default.json")]
+        bank = cobbledollars_offers(jar_json(jar, "data/cobbledollars/cobbledollars/bank/default.json"), items)
+        import io
+        outfit = Image.open(io.BytesIO(jar.read("assets/cobbledollars/textures/entity/villager/profession/cobble_merchant.png"))).convert("RGBA")
+        outfit_hat = jar_json(jar, "assets/cobbledollars/textures/entity/villager/profession/cobble_merchant.png.mcmeta").get("villager", {}).get("hat", "none")
+        os.makedirs(f"{uiTextures}/cobbledollars", exist_ok=True)
+        with open(f"{uiTextures}/cobbledollars/background.png", "wb") as file: file.write(jar.read("assets/cobbledollars/textures/gui/cobbledollars_background.png"))
+    # the hub clerk's list, priced from the League Shopkeeper's categories
+    with open(f"{pwd}/radical_gyms/data/rgs/structure/kanto_league.nbt", "rb") as file: raw = file.read()
+    try: raw = gzip.decompress(raw)
+    except OSError: pass
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools"))
+    from nbt_to_mcstructure import read_nbt
+    league = rct_shop(read_nbt(raw).get("entities", []))
+    mart = []
+    for category in league:
+        offers = [o for o in category["offers"] if o["item"].split(":")[1] in POKE_MART_ITEMS]
+        offers.sort(key=lambda o: POKE_MART_ITEMS.index(o["item"].split(":")[1]))
+        if offers: mart.append({"name": category["name"], "offers": offers})
+    mart += [{"name": name, "offers": offers} for name, offers in POKE_MART_EXTRA.items()]
+    with open(f"{scriptsBedrock}/cobbledollars_data.js", "w", encoding="utf-8", newline="\n") as file:
+        file.write("// Generated by port.py (create_cobbledollars): CobbleDollars' default shop and bank (the jar's data/cobbledollars/cobbledollars),\n"
+                   "// and the hub Poke Mart clerk's shop at the League Shopkeeper's prices\n")
+        file.write(f"export const DEFAULT_SHOP = {json.dumps(shop, ensure_ascii=False)};\n")
+        file.write(f"export const DEFAULT_BANK = {json.dumps(bank, ensure_ascii=False)};\n")
+        file.write(f"export const POKE_MART_SHOP = {json.dumps(mart, ensure_ascii=False)};\n")
+    # CobbleMerchant: a PathfinderMob of 20 health (0.6 by 1.95, eyes at 1.62) at movement 0.25 that never despawns, with
+    # its goals in their priorities (registerGoals): FloatGoal, PanicGoal 1.5, TemptGoal 1.25 to a held Poke Ball,
+    # WaterAvoidingRandomStrollGoal 1.0, LookAtPlayerGoal 6 and RandomLookAroundGoal. It opens doors (setCanOpenDoors) and
+    # keeps out of water (WATER's path malus -1)
+    balls = sorted(i for i in item_tag_values("#cobblemon:poke_balls") if i in items)
+    # finalizeSpawn: a merchant spawned (by worldgen, an egg, a command) takes its biome's villager type, which Bedrock's
+    # villager_v2 reads from these biome tags at minecraft:entity_spawned (plains when none match)
+    tag = lambda value, op="==": {"test": "has_biome_tag", "operator": op, "value": value}
+    by_biome = [({"any_of": [tag("desert"), tag("mesa")]}, 1), (tag("jungle"), 2), (tag("savanna"), 3),
+                ({"any_of": [{"all_of": [tag("cold"), tag("ocean", "!=")]}, tag("frozen")]}, 4), ({"any_of": [tag("swamp"), tag("mangrove_swamp")]}, 5),
+                ({"all_of": [{"any_of": [tag("taiga"), tag("extreme_hills")]}, tag("cold", "!=")]}, 6)]
+    events = {f"cobbledollars:type_{n}": {"add": {"component_groups": [f"cobbledollars:type_{n}"]},
+                                          "remove": {"component_groups": [f"cobbledollars:type_{m}" for m in range(VILLAGER_MARKS) if m != n]}} for n in range(VILLAGER_MARKS)}
+    events["minecraft:entity_spawned"] = {"sequence": [{"filters": f, "add": {"component_groups": [f"cobbledollars:type_{n}"]}} for f, n in by_biome]}
+    behaviour = {"format_version": "1.21.0", "minecraft:entity": {
+        "description": {"identifier": "cobbledollars:cobble_merchant", "is_spawnable": True, "is_summonable": True},
+        "component_groups": {f"cobbledollars:type_{n}": {"minecraft:mark_variant": {"value": n}} for n in range(VILLAGER_MARKS)},
+        "events": events,
+        "components": {
+            "minecraft:type_family": {"family": ["npc", "cobble_merchant", "mob"]},
+            "minecraft:health": {"value": 20, "max": 20},
+            "minecraft:collision_box": {"width": 0.6, "height": 1.95},
+            "minecraft:movement": {"value": 0.25},
+            "minecraft:movement.basic": {}, "minecraft:jump.static": {}, "minecraft:can_climb": {},
+            "minecraft:navigation.walk": {"can_path_over_water": True, "avoid_water": True, "can_open_doors": True, "can_pass_doors": True, "avoid_damage_blocks": True},
+            "minecraft:annotation.open_door": {},
+            "minecraft:physics": {}, "minecraft:pushable": {"is_pushable": True, "is_pushable_by_piston": True},
+            "minecraft:persistent": {}, "minecraft:nameable": {}, "minecraft:mark_variant": {"value": 0},
+            "minecraft:breathable": {"total_supply": 15, "suffocate_time": 0},
+            "minecraft:behavior.float": {"priority": 0},
+            "minecraft:behavior.panic": {"priority": 1, "speed_multiplier": 1.5},
+            "minecraft:behavior.tempt": {"priority": 2, "speed_multiplier": 1.25, "items": balls, "within_radius": 10},
+            "minecraft:behavior.random_stroll": {"priority": 3, "speed_multiplier": 1.0},
+            "minecraft:behavior.look_at_player": {"priority": 4, "look_distance": 6, "probability": 0.02},
+            "minecraft:behavior.random_look_around": {"priority": 5}}}}
+    with open(f"{entitiesBedrock}/cobble_merchant.behavior.json", "w", encoding="utf-8") as file: file.write(json.dumps(behaviour, indent=4))
+    # drawn as Java draws it (VillagerRenderer and VillagerProfessionLayer): the villager, its biome type over it, the
+    # merchant's outfit and the stone badge of a level 1 villager. Java's villager texture wears the robe its profession
+    # layers are drawn over, where Bedrock's is bare skin with the robe in each profession texture, so the Java layers are
+    # baked into one texture per type rather than laid over Bedrock's. The outfit's "hat": "full" (its .mcmeta) hides
+    # the type's hat and brim (VillagerModel's hat at 32,0 and hat_rim at 30,47)
+    villager = minecraft_texture("entity/villager/villager", prefer="1.21")
+    badge = minecraft_texture("entity/villager/profession_level/stone", prefer="1.21")
+    folder = f"{resourcePack}/textures/entity/villager"
+    os.makedirs(folder, exist_ok=True)
+    for name in JAVA_VILLAGER_TYPES:
+        kind = minecraft_texture(f"entity/villager/type/{name}", prefer="1.21").copy()
+        if outfit_hat == "full":
+            for box in ((32, 0, 64, 18), (30, 47, 64, 64)): kind.paste((0, 0, 0, 0), box)
+        image = villager.copy()
+        for layer in (kind, outfit, badge): image = Image.alpha_composite(image, layer)
+        image.save(f"{folder}/cobble_merchant_{name}.png")
+    client = json.loads(json.dumps(POKE_MART_CLERK_CLIENT).replace("cobblemon:poke_mart_clerk", "cobbledollars:cobble_merchant"))
+    desc = client["minecraft:client_entity"]["description"]
+    desc["textures"] = {name: f"textures/entity/villager/cobble_merchant_{name}" for name in JAVA_VILLAGER_TYPES}
+    desc["materials"] = {"default": "villager_v2"}
+    desc["render_controllers"] = ["controller.render.cobble_merchant"]
+    desc["spawn_egg"] = {"base_color": "#e0e0e0", "overlay_color": "#a62117"}   # CobbleDollarsItems: 14737632 and 10887447
+    controller = {"format_version": "1.8.0", "render_controllers": {"controller.render.cobble_merchant": {
+        "arrays": {"textures": {"Array.types": [f"Texture.{name}" for name in JAVA_VILLAGER_TYPES]}},
+        "geometry": "Geometry.default", "materials": [{"*": "Material.default"}], "textures": ["Array.types[query.mark_variant]"]}}}
+    with open(f"{resourcePack}/render_controllers/cobble_merchant.render_controllers.json", "w", encoding="utf-8") as file: file.write(json.dumps(controller, indent=4))
+    with open(f"{entityBedrock}/cobble_merchant.entity.json", "w", encoding="utf-8") as file: file.write(json.dumps(client, indent=4))
+    names = ["entity.cobbledollars:cobble_merchant.name=Cobble Merchant", "item.spawn_egg.entity.cobbledollars:cobble_merchant.name=Cobble Merchant Spawn Egg"]
+    with open(f"{textsBedrock}/en_US.lang", encoding="utf-8") as file: have = set(file.read().splitlines())
+    with open(f"{textsBedrock}/en_US.lang", "a", encoding="utf-8") as file:
+        for line in names:
+            if line not in have: file.write(line + "\n")
+    with open(f"{behaviorPack}/COBBLEDOLLARS_CREDITS.txt", "w", encoding="utf-8", newline="\n") as file:
+        file.write("The money (CobbleDollars), the Cobble Merchant with its shop and bank, and the /cobbledollars and /cobblemerchant\n"
+                   "commands follow CobbleDollars by Harmex (https://modrinth.com/mod/cobbledollars), version 2.0.0 Beta-6.1. The\n"
+                   "merchant's profession texture, the money box texture and the default shop and bank come from its jar. They\n"
+                   "remain Harmex's work (the mod is All Rights Reserved) and are used with credit.\n")
+    print(f"  CobbleDollars: {sum(len(c['offers']) for c in shop)} shop offers in {len(shop)} categories, {len(bank)} bank offers, "
+          f"the Poke Mart's {sum(len(c['offers']) for c in mart)}, {len(balls)} balls tempt the merchant")
+
+
 LEAGUE_ANCHORS = 16
 LEAGUE_SEED, LEAGUE_SEED_SIDE = 8, (25, 26)   # the worldgen seed: as wide and long as a gym, and its bottom 8 layers
 
@@ -8163,8 +8313,6 @@ RCT_BIOME_RULES = {
     "has_structure/desert_pyramid": ["desert"], "has_structure/jungle_temple": ["jungle"], "has_structure/nether_fortress": ["nether_wastes", "soulsand_valley", "crimson_forest", "warped_forest"]}
 BEDROCK_COLOURS = {"0": (0, 0, 0), "1": (0, 0, 170), "2": (0, 170, 0), "3": (0, 170, 170), "4": (170, 0, 0), "5": (170, 0, 170), "6": (255, 170, 0), "7": (170, 170, 170),
                    "8": (85, 85, 85), "9": (85, 85, 255), "a": (85, 255, 85), "b": (85, 255, 255), "c": (255, 85, 85), "d": (255, 85, 255), "e": (255, 255, 85), "f": (255, 255, 255)}
-# the League's CobbleDollars prices as emeralds: the hub clerk's scale, a Potion for one
-RCT_SHOP_RATE = 250
 
 
 def get_rct():
@@ -8278,14 +8426,15 @@ def rct_skin(tid):
 
 
 def rct_shop(entities):
-    """The League's CobbleDollars Shopkeeper (a villager with CobbleMerchantShop in Radical Gyms' structure): what it
-    sells, as [item, emeralds], its prices divided by RCT_SHOP_RATE and rounded up."""
+    """The League's CobbleDollars Shopkeeper (a villager with CobbleMerchantShop in Radical Gyms' structure): its
+    categories and their offers at their CobbleDollars prices, in scripts/cobbledollars.js's shop form. The structure
+    writes "Poké" in Latin-1, which reads back as U+FFFD; it is put back as the é it was."""
     out = []
     for e in entities:
         for shop in e.get("nbt", {}).get("CobbleMerchantShop", []) or []:
-            for offer in shop.get("Offers", []):
-                item = str(offer.get("Item", {}).get("id", ""))
-                if item: out.append([item, max(1, -(-int(str(offer.get("Price", "0")).strip('"') or 0) // RCT_SHOP_RATE))])
+            offers = [{"item": str(o.get("Item", {}).get("id", "")), "price": str(int(str(o.get("Price", "0")).strip('"') or 0))} for o in shop.get("Offers", [])]
+            offers = [o for o in offers if o["item"]]
+            if offers: out.append({"name": str(shop.get("Category", "")).replace("�", "é"), "offers": offers})
     return out
 
 
@@ -8393,7 +8542,7 @@ def create_gyms():
                       # the League's villagers (its CobbleDollars "Shopkeeper"), which the script stands the Poke Mart clerk in for
                       "npcs": [[*e["blockPos"], json.loads(str(e["nbt"].get("CustomName", '""')))] for e in template.get("entities", [])
                                if str(e.get("nbt", {}).get("id", "")) == "minecraft:villager"],
-                      # the Shopkeeper's CobbleDollars stock as emeralds, and the League's display cases with their items
+                      # the Shopkeeper's CobbleDollars stock, and the League's display cases with their items
                       "shop": rct_shop(template.get("entities", [])), "cases": gym_cases(template)}
             here = {**overrides, **{(x, y, z): ("cobblemon:league_anchor", {"cobblemon:anchor": Tag(INT, i)}) for i, (x, y, z, _) in enumerate(anchors)}}
             convert(source, f"{structuresBedrock}/rgs_{name}_seed.mcstructure", invalid, unmapped, overrides=here, region=seed)
@@ -17113,6 +17262,54 @@ def create_toast_hud():
     return {"cobblemon_toast": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
 
 
+MONEY_MARKER = "cbm:money"
+
+
+def create_money_hud():
+    """CobbleDollarsOverlay at its default bottom_right: the 54 by 14 money box 4 from the screen's corner, the balance
+    right-justified at 29 across it, and for 30 ticks after it changes the difference 9 above it, green or red
+    (GuiUtils.renderCobbleDollarsElement). scripts/cobbledollars.js sends a title, "cbm:money", the balance and the
+    difference in 13 bytes each (spaces, then "§r" and the text), "y" while the difference shows, "g" or "r"."""
+    def from_data(source, target):
+        return {"binding_type": "view", "source_control_name": "data_control", "resolve_sibling_scope": True,
+                "source_property_name": source, "target_property_name": target}
+    start = len(MONEY_MARKER)
+    def part(a, b): return f"(('%.{start + b}s' * #preserved_text) - ('%.{start + a}s' * #preserved_text))"
+    have = from_data(f"(not ((#preserved_text - '{MONEY_MARKER}') = #preserved_text))", "#visible")
+    delta_on = f"(('%.{start + 27}s' * #preserved_text) - ('%.{start + 26}s' * #preserved_text)) = 'y'"
+    colour = f"(('%.{start + 28}s' * #preserved_text) - ('%.{start + 27}s' * #preserved_text))"
+    box = {"anchor_from": "bottom_right", "anchor_to": "bottom_right"}
+    text = {"type": "label", "text": "#value", "size": [60, 9], "text_alignment": "right", "shadow": False, "anchor_from": "bottom_right", "anchor_to": "bottom_right"}
+    parts = [
+        {"box": {"type": "image", "texture": "textures/ui/cobblemon/cobbledollars/background", "size": [54, 14], "offset": [-4, -4], "layer": 70, **box, "bindings": [have]}},
+        # the label's right edge 29 from the box's left, the box's left 4 + 54 from the screen's right
+        {"amount": {**text, "offset": [-(4 + 54 - 29), -(4 + 2)], "layer": 71, "color": [1.0, 1.0, 1.0], "bindings": [have, from_data(part(0, 13), "#value")]}},
+        {"gain": {**text, "offset": [-(4 + 54 - 29), -(4 + 14)], "layer": 71, "color": [0x20 / 255, 0xAA / 255, 0x20 / 255],
+                  "bindings": [from_data(f"(({delta_on}) and ({colour} = 'g'))", "#visible"), from_data(part(13, 26), "#value")]}},
+        {"loss": {**text, "offset": [-(4 + 54 - 29), -(4 + 14)], "layer": 71, "color": [0xAA / 255, 0x20 / 255, 0x20 / 255],
+                  "bindings": [from_data(f"(({delta_on}) and ({colour} = 'r'))", "#visible"), from_data(part(13, 26), "#value")]}}]
+    controls = [
+        {"data_control": {"type": "panel", "size": [0, 0], "property_bag": {"#preserved_text": ""}, "bindings": [
+            {"binding_name": "#hud_title_text_string"},
+            {"binding_name": "#hud_title_text_string", "binding_name_override": "#preserved_text", "binding_condition": "visibility_changed"},
+            {"binding_type": "view", "source_property_name":
+                f"(not (#hud_title_text_string = #preserved_text) and not ((#hud_title_text_string - '{MONEY_MARKER}') = #hud_title_text_string))",
+             "target_property_name": "#visible"}]}}] + parts
+    return {"cobblemon_money": {"type": "panel", "size": ["100%", "100%"], "controls": controls}}
+
+
+def add_money_hud(hud):
+    """The money box added to a hud_screen.json's definitions, and its title kept off the screen."""
+    hud.update(create_money_hud())
+    mods = hud["root_panel"]["modifications"]
+    if not any("cobblemon_money@hud.cobblemon_money" in m.get("value", {}) for m in mods):
+        mods.append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_money@hud.cobblemon_money": {}}})
+    view = hud["hud_title_text"]["modifications"][0]["value"][1]
+    hidden = f"((#hud_title_text_string - '{MONEY_MARKER}') = #hud_title_text_string) and "
+    s = view["source_property_name"]   # "(" and the clauses joined by "and", then ")"
+    if hidden not in s: view["source_property_name"] = "(" + hidden + s[1:]
+
+
 def create_ride_hud():
     """The ride bar (LocalPlayerMixin.modifyJumpRidingScale: a ride behaviour's setRideBar fills the vanilla jump bar,
     the horse's with its stamina): the Java client's jump bar background and progress, 182 by 5, where the jump bar
@@ -17323,6 +17520,7 @@ def create_party_hud():
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_ride@hud.cobblemon_ride": {}}})
     hud.update(create_toast_hud())
     hud["root_panel"]["modifications"].append({"array_name": "controls", "operation": "insert_back", "value": {"cobblemon_toast@hud.cobblemon_toast": {}}})
+    add_money_hud(hud)
     with open(f"{resourcePack}/ui/hud_screen.json", "w", encoding="utf-8") as file: file.write(json.dumps(hud, indent=2))
     print("  party HUD: Cobblemon's party slots down the left edge")
 
@@ -18231,6 +18429,7 @@ def main():
     create_loot_injections()
     create_trade_injections()
     create_gyms()   # after the furniture and the structures' folders
+    create_cobbledollars()   # after every item is written, and the entity folders
     create_battle_data()
     create_block_sounds()   # after the blocks and sounds, whose ids it pairs
     create_move_fx()   # after the client entities and particles, whose clips and ids it keeps

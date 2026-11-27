@@ -1,0 +1,417 @@
+{
+    "format_version": "1.21.0",
+    "minecraft:entity": {
+        "description": {
+            "identifier": "cobbledollars:cobble_merchant",
+            "is_spawnable": true,
+            "is_summonable": true
+        },
+        "component_groups": {
+            "cobbledollars:type_0": {
+                "minecraft:mark_variant": {
+                    "value": 0
+                }
+            },
+            "cobbledollars:type_1": {
+                "minecraft:mark_variant": {
+                    "value": 1
+                }
+            },
+            "cobbledollars:type_2": {
+                "minecraft:mark_variant": {
+                    "value": 2
+                }
+            },
+            "cobbledollars:type_3": {
+                "minecraft:mark_variant": {
+                    "value": 3
+                }
+            },
+            "cobbledollars:type_4": {
+                "minecraft:mark_variant": {
+                    "value": 4
+                }
+            },
+            "cobbledollars:type_5": {
+                "minecraft:mark_variant": {
+                    "value": 5
+                }
+            },
+            "cobbledollars:type_6": {
+                "minecraft:mark_variant": {
+                    "value": 6
+                }
+            }
+        },
+        "events": {
+            "cobbledollars:type_0": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_0"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_5",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_1": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_1"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_5",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_2": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_2"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_5",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_3": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_3"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_5",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_4": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_4"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_5",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_5": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_5"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_6"
+                    ]
+                }
+            },
+            "cobbledollars:type_6": {
+                "add": {
+                    "component_groups": [
+                        "cobbledollars:type_6"
+                    ]
+                },
+                "remove": {
+                    "component_groups": [
+                        "cobbledollars:type_0",
+                        "cobbledollars:type_1",
+                        "cobbledollars:type_2",
+                        "cobbledollars:type_3",
+                        "cobbledollars:type_4",
+                        "cobbledollars:type_5"
+                    ]
+                }
+            },
+            "minecraft:entity_spawned": {
+                "sequence": [
+                    {
+                        "filters": {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "desert"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mesa"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_1"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "jungle"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_2"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "test": "has_biome_tag",
+                            "operator": "==",
+                            "value": "savanna"
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_3"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "any_of": [
+                                {
+                                    "all_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "cold"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "!=",
+                                            "value": "ocean"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "frozen"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_4"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "any_of": [
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "swamp"
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "==",
+                                    "value": "mangrove_swamp"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_5"
+                            ]
+                        }
+                    },
+                    {
+                        "filters": {
+                            "all_of": [
+                                {
+                                    "any_of": [
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "taiga"
+                                        },
+                                        {
+                                            "test": "has_biome_tag",
+                                            "operator": "==",
+                                            "value": "extreme_hills"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "test": "has_biome_tag",
+                                    "operator": "!=",
+                                    "value": "cold"
+                                }
+                            ]
+                        },
+                        "add": {
+                            "component_groups": [
+                                "cobbledollars:type_6"
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "components": {
+            "minecraft:type_family": {
+                "family": [
+                    "npc",
+                    "cobble_merchant",
+                    "mob"
+                ]
+            },
+            "minecraft:health": {
+                "value": 20,
+                "max": 20
+            },
+            "minecraft:collision_box": {
+                "width": 0.6,
+                "height": 1.95
+            },
+            "minecraft:movement": {
+                "value": 0.25
+            },
+            "minecraft:movement.basic": {},
+            "minecraft:jump.static": {},
+            "minecraft:can_climb": {},
+            "minecraft:navigation.walk": {
+                "can_path_over_water": true,
+                "avoid_water": true,
+                "can_open_doors": true,
+                "can_pass_doors": true,
+                "avoid_damage_blocks": true
+            },
+            "minecraft:annotation.open_door": {},
+            "minecraft:physics": {},
+            "minecraft:pushable": {
+                "is_pushable": true,
+                "is_pushable_by_piston": true
+            },
+            "minecraft:persistent": {},
+            "minecraft:nameable": {},
+            "minecraft:mark_variant": {
+                "value": 0
+            },
+            "minecraft:breathable": {
+                "total_supply": 15,
+                "suffocate_time": 0
+            },
+            "minecraft:behavior.float": {
+                "priority": 0
+            },
+            "minecraft:behavior.panic": {
+                "priority": 1,
+                "speed_multiplier": 1.5
+            },
+            "minecraft:behavior.tempt": {
+                "priority": 2,
+                "speed_multiplier": 1.25,
+                "items": [
+                    "cobblemon:ancient_azure_ball",
+                    "cobblemon:ancient_citrine_ball",
+                    "cobblemon:ancient_feather_ball",
+                    "cobblemon:ancient_gigaton_ball",
+                    "cobblemon:ancient_great_ball",
+                    "cobblemon:ancient_heavy_ball",
+                    "cobblemon:ancient_ivory_ball",
+                    "cobblemon:ancient_jet_ball",
+                    "cobblemon:ancient_leaden_ball",
+                    "cobblemon:ancient_origin_ball",
+                    "cobblemon:ancient_poke_ball",
+                    "cobblemon:ancient_roseate_ball",
+                    "cobblemon:ancient_slate_ball",
+                    "cobblemon:ancient_ultra_ball",
+                    "cobblemon:ancient_verdant_ball",
+                    "cobblemon:ancient_wing_ball",
+                    "cobblemon:azure_ball",
+                    "cobblemon:beast_ball",
+                    "cobblemon:cherish_ball",
+                    "cobblemon:citrine_ball",
+                    "cobblemon:dive_ball",
+                    "cobblemon:dream_ball",
+                    "cobblemon:dusk_ball",
+                    "cobblemon:fast_ball",
+                    "cobblemon:friend_ball",
+                    "cobblemon:great_ball",
+                    "cobblemon:heal_ball",
+                    "cobblemon:heavy_ball",
+                    "cobblemon:level_ball",
+                    "cobblemon:love_ball",
+                    "cobblemon:lure_ball",
+                    "cobblemon:luxury_ball",
+                    "cobblemon:master_ball",
+                    "cobblemon:moon_ball",
+                    "cobblemon:nest_ball",
+                    "cobblemon:net_ball",
+                    "cobblemon:park_ball",
+                    "cobblemon:poke_ball",
+                    "cobblemon:premier_ball",
+                    "cobblemon:quick_ball",
+                    "cobblemon:repeat_ball",
+                    "cobblemon:roseate_ball",
+                    "cobblemon:safari_ball",
+                    "cobblemon:slate_ball",
+                    "cobblemon:sport_ball",
+                    "cobblemon:timer_ball",
+                    "cobblemon:ultra_ball",
+                    "cobblemon:verdant_ball"
+                ],
+                "within_radius": 10
+            },
+            "minecraft:behavior.random_stroll": {
+                "priority": 3,
+                "speed_multiplier": 1.0
+            },
+            "minecraft:behavior.look_at_player": {
+                "priority": 4,
+                "look_distance": 6,
+                "probability": 0.02
+            },
+            "minecraft:behavior.random_look_around": {
+                "priority": 5
+            }
+        }
+    }
+}
